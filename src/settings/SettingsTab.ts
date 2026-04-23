@@ -770,7 +770,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.addClass('ert-ui', 'ert-settings-root', 'ert-scope--settings');
         containerEl.closest('.vertical-tab-content')?.classList.add('ert-settings-scroll-host');
-        containerEl.closest('.vertical-tab-content-container')?.classList.add('ert-settings-scroll-host');
         this._aiRelatedElements = [];
 
         // Auto-migrate: Clean up legacy advanced template if needed

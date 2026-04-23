@@ -76,7 +76,7 @@ export class DragConfirmModal extends Modal {
         this.containerEl.addEventListener('mousedown', this.backdropGuard, true);
         this.containerEl.addEventListener('click', this.backdropGuard, true);
 
-        contentEl.addClass('ert-modal-container', 'rt-drag-confirm-modal', 'ert-stack');
+        contentEl.addClass('ert-modal-container', 'ert-drag-confirm-modal', 'ert-stack');
         
         // Use the passed accent color (subplot color)
         if (this.accent) {
@@ -89,18 +89,18 @@ export class DragConfirmModal extends Modal {
         header.createSpan({ cls: 'ert-modal-badge', text: `Reorder ${capitalLabel}` });
         header.createDiv({ cls: 'ert-modal-title', text: `Confirm ${this.itemLabel} reorder` });
 
-        const listDiv = contentEl.createDiv({ cls: 'rt-drag-confirm-list' });
+        const listDiv = contentEl.createDiv({ cls: 'ert-drag-confirm-list' });
 
-        const currentMoveSection = listDiv.createDiv({ cls: 'rt-drag-confirm-section' });
-        currentMoveSection.createDiv({ cls: 'rt-drag-confirm-section-title', text: 'Current move summary' });
+        const currentMoveSection = listDiv.createDiv({ cls: 'ert-drag-confirm-section' });
+        currentMoveSection.createDiv({ cls: 'ert-drag-confirm-section-title', text: 'Current move summary' });
 
-        const actionRow = currentMoveSection.createDiv({ cls: 'rt-drag-confirm-row' });
-        const actionIcon = actionRow.createDiv({ cls: 'rt-drag-confirm-row-icon' });
+        const actionRow = currentMoveSection.createDiv({ cls: 'ert-drag-confirm-row' });
+        const actionIcon = actionRow.createDiv({ cls: 'ert-drag-confirm-row-icon' });
         this.setIcon(actionIcon, ICON_SHUFFLE);
-        const actionSummary = actionRow.createDiv({ cls: 'rt-drag-confirm-row-text' });
+        const actionSummary = actionRow.createDiv({ cls: 'ert-drag-confirm-row-text' });
         this.renderMoveSummary(actionSummary, this.currentMove.actionSummary);
 
-        const impactGrid = currentMoveSection.createDiv({ cls: 'rt-drag-confirm-impact-grid' });
+        const impactGrid = currentMoveSection.createDiv({ cls: 'ert-drag-confirm-impact-grid' });
         this.createImpactCard(impactGrid, 'Rename impact', this.formatRenameImpact(this.currentMove.renameCount), ICON_LIST_ORDERED);
         if (this.currentMove.contextChange) {
             this.createImpactCard(impactGrid, 'Context change', this.currentMove.contextChange, ICON_BLOCKS);
@@ -110,40 +110,40 @@ export class DragConfirmModal extends Modal {
         }
 
         if (this.recentMoves.length > 0) {
-            const historySection = listDiv.createDiv({ cls: 'rt-drag-confirm-section' });
-            historySection.createDiv({ cls: 'rt-drag-confirm-section-title', text: 'Recent moves' });
-            const historyFrame = historySection.createDiv({ cls: 'rt-drag-confirm-history-frame' });
-            const historyList = historyFrame.createDiv({ cls: 'rt-drag-confirm-history-list' });
+            const historySection = listDiv.createDiv({ cls: 'ert-drag-confirm-section' });
+            historySection.createDiv({ cls: 'ert-drag-confirm-section-title', text: 'Recent moves' });
+            const historyFrame = historySection.createDiv({ cls: 'ert-drag-confirm-history-frame' });
+            const historyList = historyFrame.createDiv({ cls: 'ert-drag-confirm-history-list' });
             this.recentMoves.forEach((entry) => {
                 const row = historyList.createDiv({
-                    cls: 'rt-drag-confirm-history-item',
+                    cls: 'ert-drag-confirm-history-item',
                     attr: { role: 'button', tabindex: '0' }
                 });
-                const rowHeader = row.createDiv({ cls: 'rt-drag-confirm-history-header' });
-                const rowIcon = rowHeader.createDiv({ cls: 'rt-drag-confirm-history-icon' });
+                const rowHeader = row.createDiv({ cls: 'ert-drag-confirm-history-header' });
+                const rowIcon = rowHeader.createDiv({ cls: 'ert-drag-confirm-history-icon' });
                 this.setIcon(rowIcon, ICON_ARROW_RIGHT_TO_LINE);
-                const rowSummary = rowHeader.createDiv({ cls: 'rt-drag-confirm-history-summary' });
+                const rowSummary = rowHeader.createDiv({ cls: 'ert-drag-confirm-history-summary' });
                 this.renderMoveSummary(rowSummary, entry.summary);
 
                 const metaParts = [this.formatRenameImpact(entry.renameCount ?? 0)];
                 if (entry.crossedActs) metaParts.push('Crossed Acts');
                 if (entry.rippleRename) metaParts.push('Ripple rename');
-                row.createDiv({ cls: 'rt-drag-confirm-history-meta', text: metaParts.join(' • ') });
+                row.createDiv({ cls: 'ert-drag-confirm-history-meta', text: metaParts.join(' • ') });
                 row.addEventListener('click', () => {
                     void this.onHistoryClick?.(entry);
                 });
             });
         }
 
-        const statusRow = listDiv.createDiv({ cls: 'rt-drag-confirm-row is-status-row is-hidden' });
-        const statusIcon = statusRow.createDiv({ cls: 'rt-drag-confirm-row-icon' });
+        const statusRow = listDiv.createDiv({ cls: 'ert-drag-confirm-row is-status-row is-hidden' });
+        const statusIcon = statusRow.createDiv({ cls: 'ert-drag-confirm-row-icon' });
         this.setIcon(statusIcon, ICON_LIST_ORDERED);
-        this.statusTextEl = statusRow.createDiv({ cls: 'rt-drag-confirm-row-text ert-drag-confirm-status-text' });
+        this.statusTextEl = statusRow.createDiv({ cls: 'ert-drag-confirm-row-text ert-drag-confirm-status-text' });
         this.statusTextEl.setText('Preparing reorder...');
         this.statusRowEl = statusRow;
 
         const buttons = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        const primaryBtn = buttons.createEl('button', { text: 'Begin', cls: 'rt-mod-cta' });
+        const primaryBtn = buttons.createEl('button', { text: 'Begin', cls: 'ert-mod-cta' });
         const cancelBtn = buttons.createEl('button', { text: 'Cancel' });
         this.primaryButtonEl = primaryBtn;
         this.cancelButtonEl = cancelBtn;
@@ -187,19 +187,19 @@ export class DragConfirmModal extends Modal {
     }
 
     private createImpactCard(container: HTMLElement, label: string, value: string, icon: string): void {
-        const card = container.createDiv({ cls: 'rt-drag-confirm-impact-card' });
-        const iconContainer = card.createDiv({ cls: 'rt-drag-confirm-row-icon' });
+        const card = container.createDiv({ cls: 'ert-drag-confirm-impact-card' });
+        const iconContainer = card.createDiv({ cls: 'ert-drag-confirm-row-icon' });
         this.setIcon(iconContainer, icon);
-        const text = card.createDiv({ cls: 'rt-drag-confirm-impact-text' });
-        text.createDiv({ cls: 'rt-drag-confirm-impact-label', text: label });
-        text.createDiv({ cls: 'rt-drag-confirm-impact-value', text: value });
+        const text = card.createDiv({ cls: 'ert-drag-confirm-impact-text' });
+        text.createDiv({ cls: 'ert-drag-confirm-impact-label', text: label });
+        text.createDiv({ cls: 'ert-drag-confirm-impact-value', text: value });
     }
 
     private renderMoveSummary(container: HTMLElement, summaryText: string): void {
         const [sourcePipe, targetPipe] = summaryText.split('|').map((part) => part.trim());
         if (sourcePipe && targetPipe) {
             container.createSpan({ text: sourcePipe });
-            const inlineIcon = container.createSpan({ cls: 'rt-drag-confirm-inline-icon' });
+            const inlineIcon = container.createSpan({ cls: 'ert-drag-confirm-inline-icon' });
             this.setIcon(inlineIcon, ICON_ARROW_RIGHT);
             container.createSpan({ text: targetPipe });
             return;
@@ -208,7 +208,7 @@ export class DragConfirmModal extends Modal {
         const beforeMatch = summaryText.match(/^(?:Move\s+)?(.+?)\s+before\s+(.+)$/i);
         if (beforeMatch) {
             container.createSpan({ text: beforeMatch[1].trim() });
-            const inlineIcon = container.createSpan({ cls: 'rt-drag-confirm-inline-icon' });
+            const inlineIcon = container.createSpan({ cls: 'ert-drag-confirm-inline-icon' });
             this.setIcon(inlineIcon, ICON_ARROW_RIGHT);
             container.createSpan({ text: beforeMatch[2].trim() });
             return;

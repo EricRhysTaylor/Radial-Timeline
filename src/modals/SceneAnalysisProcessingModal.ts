@@ -175,7 +175,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-scene-analysis-modal');
+        contentEl.addClass('ert-scene-analysis-modal');
         titleEl.setText('');
 
         // If we're already processing (reopening), show progress view
@@ -210,7 +210,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         }
         this.contentEl.classList.add('ert-modal-container', 'ert-stack');
-        this.contentEl.classList.add('rt-scene-analysis-modal');
+        this.contentEl.classList.add('ert-scene-analysis-modal');
     }
 
     private getProcessingTitle(): string {
@@ -261,7 +261,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const badgeLabel = this.taskType === 'synopsis' ? 'AI Summary' : 'AI Pulse Run';
         const parts = [badgeLabel, bookTitle, modelLabel].filter(Boolean);
         const badgeText = parts.join(' · ');
-        hero.createSpan({ text: badgeText, cls: 'rt-scene-analysis-badge' });
+        hero.createSpan({ text: badgeText, cls: 'ert-scene-analysis-badge' });
         hero.createDiv({ text: this.getProcessingTitle(), cls: 'ert-modal-title' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
         const subtitleEl = hero.createDiv({ cls: 'ert-modal-subtitle' });
@@ -274,9 +274,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Add meta pills only if provided (e.g., during progress view)
         const metaItems = options?.metaItems ?? [];
         if (metaItems.length > 0) {
-            const metaEl = hero.createDiv({ cls: 'rt-scene-analysis-meta' });
+            const metaEl = hero.createDiv({ cls: 'ert-scene-analysis-meta' });
             for (const item of metaItems) {
-                metaEl.createSpan({ text: item, cls: 'rt-scene-analysis-meta-item' });
+                metaEl.createSpan({ text: item, cls: 'ert-scene-analysis-meta-item' });
             }
         }
         return hero;

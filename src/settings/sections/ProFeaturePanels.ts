@@ -2757,7 +2757,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     headingTitle.setAttr('role', 'heading');
                     const modeRow = headingPanel.createDiv({ cls: 'ert-layout-special-mode-row' });
                     modeRow.createDiv({ cls: 'ert-layout-epigraph-label', text: 'Style' });
-                    const modeSelect = modeRow.createEl('select', { cls: 'ert-input ert-layout-special-mode-select' });
+                    const modeSelect = modeRow.createEl('select', { cls: 'ert-input ert-input--xl ert-layout-special-mode-select' });
 
                     const options: Array<{ value: ManuscriptSceneHeadingMode; label: string }> = [
                         { value: 'scene-number', label: 'Scene number only' },

@@ -36,7 +36,7 @@ export class PlanetaryTimeModal extends Modal {
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-planetary-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-planetary-modal');
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -68,8 +68,6 @@ export class PlanetaryTimeModal extends Modal {
         const inputSetting = new Settings(contentEl)
             .setName(t('planetary.modal.datetimeLabel'))
             .setDesc(t('planetary.modal.datetimeDesc'));
-        inputSetting.settingEl.addClass('rt-planetary-datetime-setting');
-
         inputSetting.addText((text: TextComponent) => {
             text.inputEl.type = 'date';
             text.setValue(this.localDateValue);
@@ -108,13 +106,11 @@ export class PlanetaryTimeModal extends Modal {
             .setButtonText(t('planetary.modal.convert'))
             .setCta()
             .onClick(() => this.renderResult());
-        convertBtn.buttonEl.classList.add('rt-planetary-convert-btn');
-
-        const resultRow = contentEl.createDiv({ cls: 'rt-planetary-modal-result-row' });
-        this.resultEl = resultRow.createDiv({ cls: 'rt-planetary-modal-result' });
-        const iconEl = this.resultEl.createDiv({ cls: 'rt-planetary-result-icon' });
+        const resultRow = contentEl.createDiv({ cls: 'ert-planetary-modal-result-row' });
+        this.resultEl = resultRow.createDiv({ cls: 'ert-planetary-modal-result' });
+        const iconEl = this.resultEl.createDiv({ cls: 'ert-planetary-result-icon' });
         setIcon(iconEl, 'orbit');
-        this.resultTextEl = this.resultEl.createDiv({ cls: 'rt-planetary-result-text' });
+        this.resultTextEl = this.resultEl.createDiv({ cls: 'ert-planetary-result-text' });
         new ExtraButtonComponent(resultRow)
             .setIcon('copy')
             .setTooltip('Copy YAML')

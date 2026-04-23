@@ -20,22 +20,6 @@
   line-height: 1.5;
 }
 
-/* Consolidated badge pattern - all badges with identical styling grouped together */
-.rt-scene-analysis-badge,
-.rt-subplot-picker-badge {
-  display: inline-block;
-  padding: var(--ert-pad-tight) var(--ert-pad-sm);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
 /* Consolidated meta-item base pattern */
 .rt-pulse-hero-meta-item {
   display: inline-flex;
@@ -122,106 +106,42 @@
 }
 
 /* Rename Subplot Modal sizing */
-.rt-rename-subplot-modal.modal {
+.ert-rename-subplot-modal.modal {
   width: min(640px, 92vw);
   max-height: 92vh;
 }
 
-.rt-ai-context-actions {
-  display: flex;
-  gap: var(--ert-gap-sm);
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 0;
-}
-
-/* AI Context Template Modal Styles */
-.rt-ai-context-info {
-  margin: var(--ert-gap-tight) 0 var(--ert-pad-md) 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.rt-ai-context-selector-section {
-  margin-bottom: 16px;
-}
-
-.rt-ai-context-label {
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: var(--text-normal);
-}
-
-.rt-ai-context-selector-row {
-  display: flex;
-  gap: var(--ert-gap-sm);
-  margin-bottom: 8px;
-}
-
-.rt-ai-context-selector-row .dropdown {
-  flex: 1;
-  min-width: 200px;
-}
-
-.rt-ai-context-button-row {
-  display: flex;
-  gap: var(--ert-gap-tight);
-  flex-wrap: wrap;
-}
-
-.rt-ai-context-editor-section {
-  margin-bottom: 16px;
-}
-
-.rt-ai-context-textarea {
-  width: 100%;
-  min-height: 150px;
-  resize: vertical;
-  font-family: var(--font-monospace);
-  font-size: 13px;
-  padding: var(--ert-pad-xs);
-}
-
-.rt-ai-context-textarea:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: var(--background-modifier-border);
-}
-
-.rt-ai-context-preview-section {
-  margin-bottom: 16px;
-}
-
-.rt-ai-context-preview {
-  background-color: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  padding: var(--ert-pad-cozy);
-  font-family: var(--font-monospace);
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: pre-wrap;
-  max-height: 120px;
-  overflow-y: auto;
-}
-
-.rt-scene-analysis-modal {
+.ert-scene-analysis-modal {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-lg);
 }
 
-/* rt-scene-analysis-badge - consolidated above with ert-modal-badge */
+/* ert-scene-analysis-badge - consolidated above with ert-modal-badge */
 
-.rt-scene-analysis-meta {
+.ert-scene-analysis-badge,
+.ert-subplot-picker-badge {
+  display: inline-block;
+  padding: var(--ert-pad-tight) var(--ert-pad-sm);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.ert-scene-analysis-meta {
   margin-top: 12px;
   display: flex;
   flex-wrap: wrap;
   gap: var(--ert-gap-cozy);
 }
 
-.rt-scene-analysis-meta-item {
+.ert-scene-analysis-meta-item {
   display: inline-block;
   padding: var(--ert-pad-xs) var(--ert-pad-loose);
   border-radius: 10px;
@@ -232,7 +152,7 @@
   line-height: 1.4;
 }
 
-.rt-scene-analysis-modal .rt-glass-card {
+.ert-scene-analysis-modal .rt-glass-card {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
@@ -288,12 +208,12 @@
   padding: var(--ert-pad-sm) var(--ert-pad-loose);
 }
 
-.rt-subplot-management-input-label {
+.ert-subplot-management-input-label {
   margin-bottom: 8px;
   color: var(--text-muted);
 }
 
-.rt-subplot-management-input {
+.ert-subplot-management-input {
   width: 100%;
   padding: var(--ert-pad-xs);
   border-radius: 4px;
@@ -302,12 +222,12 @@
   color: var(--text-normal);
 }
 
-.ert-modal-shell.modal:has(.rt-manage-subplots-modal) {
+.ert-modal-shell.modal:has(.ert-manage-subplots-modal) {
   width: min(700px, 90vw);
   max-height: calc(92vh - 100px);
 }
 
-.rt-manage-subplots-modal {
+.ert-manage-subplots-modal {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-lg);
@@ -354,7 +274,7 @@
 }
 
 /* Planetary Time Modal */
-.rt-planetary-modal-result {
+.ert-planetary-modal-result {
   margin-top: 0;
   font-weight: 700;
   font-size: 1.2rem;
@@ -369,19 +289,19 @@
   gap: var(--ert-gap-cozy);
 }
 
-.rt-planetary-modal .setting-item {
+.ert-planetary-modal .setting-item {
   border-top: none;
   border-bottom: none;
   padding: var(--ert-pad-sm) 0;
 }
 
-.rt-planetary-modal .setting-item + .setting-item {
+.ert-planetary-modal .setting-item + .setting-item {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Match date and time inputs to the same theme style */
-.rt-planetary-modal input[type="date"],
-.rt-planetary-modal input[type="time"] {
+.ert-planetary-modal input[type="date"],
+.ert-planetary-modal input[type="time"] {
   background-color: var(--background-primary-alt);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
@@ -391,72 +311,72 @@
   color-scheme: dark;
 }
 
-.rt-planetary-modal input[type="date"]::-webkit-calendar-picker-indicator,
-.rt-planetary-modal input[type="time"]::-webkit-calendar-picker-indicator {
+.ert-planetary-modal input[type="date"]::-webkit-calendar-picker-indicator,
+.ert-planetary-modal input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7) sepia(0.3) hue-rotate(10deg);
   opacity: 0.7;
 }
 
-.rt-planetary-modal .ert-modal-header {
+.ert-planetary-modal .ert-modal-header {
   padding-bottom: 12px;
   margin-bottom: 0;
   border-bottom: none;
 }
 
-.rt-planetary-modal-result-row {
+.ert-planetary-modal-result-row {
   display: flex;
   align-items: center;
   gap: var(--ert-gap-cozy);
   margin-top: 18px;
 }
 
-.rt-planetary-modal-result-row .rt-planetary-modal-result {
+.ert-planetary-modal-result-row .ert-planetary-modal-result {
   flex: 1;
   margin-top: 0;
 }
 
-.rt-planetary-result-icon {
+.ert-planetary-result-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
 }
 
-.rt-planetary-result-icon svg {
+.ert-planetary-result-icon svg {
   width: 18px;
   height: 18px;
   opacity: 0.85;
   transform: translateY(0);
 }
 
-.rt-planetary-result-text {
+.ert-planetary-result-text {
   flex: 1;
   text-align: center;
 }
 
-/* rt-drag-confirm-modal width controlled via inline styles in DragConfirmModal.ts */
+/* ert-drag-confirm-modal width controlled via inline styles in DragConfirmModal.ts */
 
-.rt-drag-confirm-list {
+.ert-drag-confirm-list {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-sm);
   margin: 0;
 }
 
-.rt-drag-confirm-section {
+.ert-drag-confirm-section {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-cozy);
 }
 
-.rt-drag-confirm-history-frame {
+.ert-drag-confirm-history-frame {
   background: none;
   border: none;
   border-radius: 0;
   padding: 0;
 }
 
-.rt-drag-confirm-history-list {
+.ert-drag-confirm-history-list {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -467,7 +387,7 @@
   padding: var(--ert-pad-tight) var(--ert-gap-xs) var(--ert-pad-tight) var(--ert-gap-xs);
 }
 
-.rt-drag-confirm-section-title {
+.ert-drag-confirm-section-title {
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -476,7 +396,7 @@
   padding: 0 var(--ert-gap-2xs);
 }
 
-.rt-drag-confirm-row {
+.ert-drag-confirm-row {
   display: flex;
   align-items: center;
   gap: var(--ert-gap-lg);
@@ -486,7 +406,7 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-.rt-drag-confirm-row-icon {
+.ert-drag-confirm-row-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -494,18 +414,18 @@
   color: var(--rt-confirm-accent, var(--text-normal));
 }
 
-.rt-drag-confirm-row-icon svg {
+.ert-drag-confirm-row-icon svg {
   width: 24px;
   height: 24px;
 }
 
-.rt-drag-confirm-row-text {
+.ert-drag-confirm-row-text {
   font-size: 1.05em;
   line-height: 1.4;
 }
 
 /* Default inline arrow — used by the "Recent moves" rows. Small and muted. */
-.rt-drag-confirm-inline-icon {
+.ert-drag-confirm-inline-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -517,7 +437,7 @@
   opacity: 0.86;
 }
 
-.rt-drag-confirm-inline-icon svg {
+.ert-drag-confirm-inline-icon svg {
   width: 14px;
   height: 14px;
   display: block;
@@ -525,7 +445,7 @@
 
 /* Current move summary row — larger, thicker, tinted with the subplot accent.
  * Scoped by the row-text parent so history rows keep the small treatment. */
-.rt-drag-confirm-row-text .rt-drag-confirm-inline-icon {
+.ert-drag-confirm-row-text .ert-drag-confirm-inline-icon {
   width: 20px;
   height: 20px;
   margin: 0 var(--ert-gap-sm);
@@ -534,19 +454,19 @@
   opacity: 1;
 }
 
-.rt-drag-confirm-row-text .rt-drag-confirm-inline-icon svg {
+.ert-drag-confirm-row-text .ert-drag-confirm-inline-icon svg {
   width: 20px;
   height: 20px;
   stroke-width: 2.5;
 }
 
-.rt-drag-confirm-impact-grid {
+.ert-drag-confirm-impact-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--ert-gap-cozy);
 }
 
-.rt-drag-confirm-impact-card {
+.ert-drag-confirm-impact-card {
   display: flex;
   align-items: flex-start;
   gap: var(--ert-gap-md);
@@ -556,13 +476,13 @@
   border-radius: 8px;
 }
 
-.rt-drag-confirm-impact-text {
+.ert-drag-confirm-impact-text {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-2xs);
 }
 
-.rt-drag-confirm-impact-label {
+.ert-drag-confirm-impact-label {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -570,13 +490,13 @@
   color: var(--text-muted);
 }
 
-.rt-drag-confirm-impact-value {
+.ert-drag-confirm-impact-value {
   font-size: 0.96rem;
   line-height: 1.35;
   color: var(--text-normal);
 }
 
-.rt-drag-confirm-history-item {
+.ert-drag-confirm-history-item {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -590,23 +510,23 @@
   cursor: pointer;
 }
 
-.rt-drag-confirm-history-item:hover {
+.ert-drag-confirm-history-item:hover {
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-.rt-drag-confirm-history-item:focus-visible {
+.ert-drag-confirm-history-item:focus-visible {
   outline: none;
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-.rt-drag-confirm-history-header {
+.ert-drag-confirm-history-header {
   display: flex;
   align-items: flex-start;
   gap: var(--ert-gap-sm);
   min-width: 0;
 }
 
-.rt-drag-confirm-history-icon {
+.ert-drag-confirm-history-icon {
   flex: 0 0 auto;
   width: 14px;
   height: 14px;
@@ -615,20 +535,20 @@
   margin-top: 2px;
 }
 
-.rt-drag-confirm-history-icon svg {
+.ert-drag-confirm-history-icon svg {
   width: 14px;
   height: 14px;
   display: block;
 }
 
-.rt-drag-confirm-history-summary {
+.ert-drag-confirm-history-summary {
   font-size: 0.88em;
   line-height: 1.35;
   color: var(--text-normal);
   min-width: 0;
 }
 
-.rt-drag-confirm-history-meta {
+.ert-drag-confirm-history-meta {
   font-size: 0.78em;
   line-height: 1.35;
   color: var(--text-muted);
@@ -636,25 +556,25 @@
   font-weight: 600;
 }
 
-.rt-drag-confirm-row.is-status-row {
+.ert-drag-confirm-row.is-status-row {
   border-style: dashed;
 }
 
-.rt-drag-confirm-row.is-status-row.is-hidden {
+.ert-drag-confirm-row.is-status-row.is-hidden {
   display: none;
 }
 
-.rt-drag-confirm-row.is-status-row.is-live {
+.ert-drag-confirm-row.is-status-row.is-live {
   border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 10%, var(--background-secondary));
 }
 
-.rt-drag-confirm-row.is-status-row.is-complete {
+.ert-drag-confirm-row.is-status-row.is-complete {
   border-color: color-mix(in srgb, var(--text-success) 38%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--text-success) 10%, var(--background-secondary));
 }
 
-.rt-drag-confirm-row.is-status-row.is-error {
+.ert-drag-confirm-row.is-status-row.is-error {
   border-color: color-mix(in srgb, var(--text-error) 38%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
 }
@@ -664,22 +584,22 @@
   color: var(--text-normal);
 }
 
-.rt-drag-confirm-modal .ert-modal-actions .is-hidden-action {
+.ert-drag-confirm-modal .ert-modal-actions .is-hidden-action {
   display: none;
 }
 
-.rt-drag-confirm-modal .modal-close-button.is-locked-close {
+.ert-drag-confirm-modal .modal-close-button.is-locked-close {
   visibility: hidden;
   pointer-events: none;
 }
 
-.ert-ui.ert-scope--modal .rt-drag-confirm-modal .ert-modal-badge {
+.ert-ui.ert-scope--modal .ert-drag-confirm-modal .ert-modal-badge {
   color: var(--rt-confirm-accent, var(--text-muted));
   border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 45%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 12%, var(--background-secondary));
 }
 
-.ert-ui.ert-scope--modal .rt-drag-confirm-modal .ert-modal-title {
+.ert-ui.ert-scope--modal .ert-drag-confirm-modal .ert-modal-title {
   background: linear-gradient(90deg,
       var(--rt-confirm-accent, var(--text-normal)),
       color-mix(in srgb, var(--rt-confirm-accent, var(--text-normal)) 66%, var(--text-faint) 34%));
@@ -688,7 +608,7 @@
   -webkit-text-fill-color: transparent;
 }
 
-.ert-ui.ert-scope--modal .rt-drag-confirm-modal .rt-mod-cta {
+.ert-ui.ert-scope--modal .ert-drag-confirm-modal .ert-mod-cta {
   background-color: var(--rt-confirm-accent, var(--interactive-accent));
 }
 
@@ -704,11 +624,11 @@
   justify-content: flex-end;
 }
 
-.rt-subplot-picker-modal {
+.ert-subplot-picker-modal {
   gap: var(--ert-gap-roomy);
 }
 
-.rt-subplot-picker-hero-stats {
+.ert-subplot-picker-hero-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--ert-gap-md);
@@ -717,7 +637,7 @@
   width: 100%;
 }
 
-.rt-subplot-picker-hero-stat {
+.ert-subplot-picker-hero-stat {
   padding: var(--ert-pad-cozy) var(--ert-pad-sm);
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -727,51 +647,51 @@
   gap: var(--ert-gap-xs);
 }
 
-.rt-subplot-picker-hero-label {
+.ert-subplot-picker-hero-label {
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
-.rt-subplot-picker-hero-value {
+.ert-subplot-picker-hero-value {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.rt-subplot-picker-grid {
+.ert-subplot-picker-grid {
   display: grid;
   gap: var(--ert-gap-xl);
   padding-top: 10px;
 }
 
 @media (min-width: 860px) {
-  .rt-subplot-picker-grid {
+  .ert-subplot-picker-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.rt-subplot-picker-card {
+.ert-subplot-picker-card {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-md);
 }
 
-.rt-subplot-picker-info {
+.ert-subplot-picker-info {
   margin: 0;
   color: var(--text-normal);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
-.rt-subplot-picker-hint {
+.ert-subplot-picker-hint {
   margin: 0;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
 
-.rt-subplot-picker-label {
+.ert-subplot-picker-label {
   display: block;
   margin-bottom: 6px;
   color: var(--text-normal);
@@ -779,19 +699,19 @@
   font-size: 0.85rem;
 }
 
-.rt-subplot-picker-select {
+.ert-subplot-picker-select {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-tight);
   margin-bottom: 16px;
 }
 
-.rt-subplot-picker-dropdown .dropdown {
+.ert-subplot-picker-dropdown .dropdown {
   width: 100%;
   font-size: 0.95rem;
 }
 
-.rt-subplot-picker-stats {
+.ert-subplot-picker-stats {
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -801,19 +721,19 @@
   gap: var(--ert-gap-tight);
 }
 
-.rt-subplot-picker-stats-line {
+.ert-subplot-picker-stats-line {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.rt-subplot-picker-summary {
+.ert-subplot-picker-summary {
   margin-top: 10px;
   font-size: 0.78rem;
   color: var(--text-muted);
 }
 
-/* rt-subplot-picker-badge - consolidated at top with ert-modal-badge */
+/* ert-subplot-picker-badge - consolidated at top with ert-modal-badge */
 
 /* AI Prompt & Context advanced panel — wrap long lines instead of horizontal scroll. */
 .ert-ai-advanced-pre {

@@ -222,26 +222,26 @@ class SubplotPickerModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-subplot-picker-modal');
+        contentEl.addClass('ert-subplot-picker-modal');
 
         const modelName = this.service.getActiveModelName();
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         const badgeText = modelName ? `AI pulse run · ${modelName}` : 'AI pulse run';
-        hero.createSpan({ text: badgeText, cls: 'rt-subplot-picker-badge' });
+        hero.createSpan({ text: badgeText, cls: 'ert-subplot-picker-badge' });
         hero.createDiv({ text: 'Process subplot scenes', cls: 'ert-modal-title' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
 
-        const heroStats = hero.createDiv({ cls: 'rt-subplot-picker-hero-stats' });
+        const heroStats = hero.createDiv({ cls: 'ert-subplot-picker-hero-stats' });
         this.heroStats = {
             flagged: this.createHeroStat(heroStats, 'Flagged scenes'),
             processable: this.createHeroStat(heroStats, 'Processable scenes'),
             total: this.createHeroStat(heroStats, 'Total scenes')
         };
 
-        const formCard = contentEl.createDiv({ cls: 'rt-subplot-picker-card' });
-        const selectContainer = formCard.createDiv({ cls: 'rt-subplot-picker-select' });
-        selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'rt-subplot-picker-label' });
-        this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'rt-subplot-picker-dropdown' }));
+        const formCard = contentEl.createDiv({ cls: 'ert-subplot-picker-card' });
+        const selectContainer = formCard.createDiv({ cls: 'ert-subplot-picker-select' });
+        selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'ert-subplot-picker-label' });
+        this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'ert-subplot-picker-dropdown' }));
         this.options.forEach((option, index) => {
             // Show flagged count in parentheses if any scenes are flagged
             const flaggedSuffix = option.stats.flagged > 0 ? ` (${option.stats.flagged})` : '';
@@ -253,7 +253,7 @@ class SubplotPickerModal extends Modal {
             this.updateStats(value);
         });
 
-        this.statsEl = formCard.createDiv({ cls: 'rt-subplot-picker-stats' });
+        this.statsEl = formCard.createDiv({ cls: 'ert-subplot-picker-stats' });
         this.updateStats(this.selectedSubplot);
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -291,9 +291,9 @@ class SubplotPickerModal extends Modal {
     }
 
     private createHeroStat(container: HTMLElement, label: string): HTMLElement {
-        const stat = container.createDiv({ cls: 'rt-subplot-picker-hero-stat' });
-        stat.createSpan({ cls: 'rt-subplot-picker-hero-label', text: label });
-        return stat.createSpan({ cls: 'rt-subplot-picker-hero-value', text: '—' });
+        const stat = container.createDiv({ cls: 'ert-subplot-picker-hero-stat' });
+        stat.createSpan({ cls: 'ert-subplot-picker-hero-label', text: label });
+        return stat.createSpan({ cls: 'ert-subplot-picker-hero-value', text: '—' });
     }
 
     private updateStats(subplotName: string): void {
@@ -304,14 +304,14 @@ class SubplotPickerModal extends Modal {
         }
         this.statsEl.empty();
         const summaryLine = `${stats.flagged} flagged • ${stats.processable} processable • ${stats.total} total`;
-        this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-line', text: summaryLine });
+        this.statsEl.createDiv({ cls: 'ert-subplot-picker-stats-line', text: summaryLine });
 
         const isLocalLlm = this.service.isLocalLlmMode();
         const infoText = isLocalLlm
             ? 'Local LLM mode: Valid results update scene hover fields automatically. Invalid results are logged and marked for review.'
             : 'Flagged scenes with processable metadata are sent to the AI along with the manuscript content.';
         this.statsEl.createDiv({
-            cls: 'rt-subplot-picker-summary',
+            cls: 'ert-subplot-picker-summary',
             text: infoText
         });
 

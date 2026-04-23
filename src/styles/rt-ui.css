@@ -2639,7 +2639,6 @@
   justify-content: center;
   gap: var(--ert-gap-sm);
   min-width: 0;
-  overflow: hidden;
   padding: var(--ert-pad-cozy) var(--ert-pad-md);
   border-radius: 8px;
   cursor: pointer;
@@ -2764,9 +2763,6 @@
 
 .ert-ui.ert-scope--settings .ert-settings-tab-label {
   font-weight: 600;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -2779,9 +2775,8 @@
 }
 
 .vertical-tab-content:has(.ert-settings-root),
-.vertical-tab-content.ert-settings-scroll-host,
-.vertical-tab-content-container.ert-settings-scroll-host {
-  scrollbar-gutter: stable both-edges;
+.vertical-tab-content.ert-settings-scroll-host {
+  scrollbar-gutter: stable;
 }
 
 .ert-ui.ert-scope--settings .setting-item.is-attention-pulse {
@@ -10267,8 +10262,11 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-special-mode-select {
-  width: 100%;
+  /* Width is governed by the ert-input--xl utility applied in markup.
+     Not forcing 100% here lets the utility win so the select stays
+     readable instead of stretching across the grid column. */
   min-width: 0;
+  max-width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-epigraph-rows {
