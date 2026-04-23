@@ -2629,3 +2629,10 @@
     justify-self: end;
   }
 }
+
+.ert-ui.ert-scope--modal .rt-glass-card,
+.ert-ui.ert-scope--modal .rt-card-glass,
+.ert-ui .ert-scope--modal .rt-glass-card,
+.ert-ui .ert-scope--modal .rt-card-glass {
+  box-shadow: none;
+}

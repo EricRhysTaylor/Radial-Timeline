@@ -7,6 +7,11 @@ const projectRoot = process.cwd();
 const SRC_DIR = path.join(projectRoot, 'src');
 const ROOT_FILES = [path.join(projectRoot, 'README.md'), path.join(projectRoot, 'manifest.json')];
 
+const cliArgs = new Set(process.argv.slice(2));
+const MAINTENANCE_MODE = cliArgs.has('--maintenance');
+const WRITE_BASELINE = cliArgs.has('--update-baseline') || cliArgs.has('--write-baseline');
+const BASELINE_PATH = path.join(projectRoot, 'scripts/compliance-baseline.json');
+
 /*
  * LIFECYCLE LEAK GUARDS (Obsidian Component Pattern)
  * 
@@ -588,6 +593,43 @@ function runChecks(filePath, text) {
     console.warn('');
   }
 
+  // Error summary by rule id (used for baseline ratchet)
+  const errorCountById = errors.reduce((acc, issue) => {
+    const id = issue.id || 'unknown';
+    acc[id] = (acc[id] || 0) + 1;
+    return acc;
+  }, {});
+  const totalErrors = errors.length;
+
+  // Baseline handling (maintenance mode / baseline write)
+  if (WRITE_BASELINE) {
+    try {
+      await fs.writeFile(
+        BASELINE_PATH,
+        JSON.stringify({ totalErrors, errorCountById, updatedAt: new Date().toISOString() }, null, 2)
+      );
+      console.log(`\n🧭 Wrote compliance baseline to ${path.relative(projectRoot, BASELINE_PATH)} (total errors: ${totalErrors}).`);
+      process.exit(0);
+    } catch (e) {
+      console.error(`\nFailed to write compliance baseline: ${e?.message || e}`);
+      process.exit(1);
+    }
+  }
+
+  let baseline = null;
+  if (MAINTENANCE_MODE) {
+    try {
+      const raw = await fs.readFile(BASELINE_PATH, 'utf8');
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') baseline = data;
+    } catch {}
+  }
+
+  if (warnings.length) {
+    console.warn('⚠️  Warnings (non-blocking):\n');
+    // Already printed above; re-printing would duplicate. Skip.
+  }
+
   if (errors.length) {
     console.error('❌ Errors:\n');
     for (const issue of errors) {
@@ -596,9 +638,49 @@ function runChecks(filePath, text) {
       if (issue.suggestion) console.error(`  ↳ Suggestion: ${issue.suggestion}`);
     }
     console.error('\n📖 See docs/engineering/standards/code-standards.md for detailed guidelines and best practices.');
+  }
+
+  if (MAINTENANCE_MODE) {
+    const baselineTotal = baseline?.totalErrors ?? 0;
+    const baselineById = baseline?.errorCountById ?? {};
+    console.log('\nCompliance error summary:');
+    console.log(`- current total: ${totalErrors}`);
+    console.log(`- baseline total: ${baselineTotal}`);
+    console.log(`- delta: ${totalErrors - baselineTotal >= 0 ? '+' : ''}${totalErrors - baselineTotal}`);
+    const allIds = new Set([...Object.keys(errorCountById), ...Object.keys(baselineById)]);
+    const breakdown = [...allIds].sort().map((id) => {
+      const cur = errorCountById[id] || 0;
+      const base = baselineById[id] || 0;
+      return { id, cur, base, delta: cur - base };
+    });
+    if (breakdown.length) {
+      console.log('- breakdown (rule: current / baseline, delta):');
+      for (const b of breakdown) {
+        console.log(`  - ${b.id}: ${b.cur} / ${b.base} (${b.delta >= 0 ? '+' : ''}${b.delta})`);
+      }
+    }
+
+    if (!baseline) {
+      console.error('\n❌ No compliance baseline found. Run: npm run check-compliance -- --update-baseline');
+      process.exit(1);
+    }
+
+    // Fail if any rule regressed above its baseline.
+    const regressions = breakdown.filter((b) => b.delta > 0);
+    if (regressions.length) {
+      console.error('\n❌ Compliance regression vs baseline:');
+      for (const r of regressions) console.error(`  - ${r.id}: +${r.delta} (now ${r.cur}, baseline ${r.base})`);
+      console.error('\nFix the new offenders, or (if intentional) run: npm run check-compliance -- --update-baseline');
+      process.exit(1);
+    }
+
+    console.log('\n✅ Compliance maintenance gate passed (no regressions vs baseline).');
+    process.exit(0);
+  }
+
+  if (errors.length) {
     process.exit(1);
   } else {
-    // Only warnings
     console.log('📖 See docs/engineering/standards/code-standards.md for full guidelines.');
     process.exit(0);
   }

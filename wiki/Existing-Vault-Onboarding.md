@@ -1,5 +1,3 @@
-# Existing Vault Onboarding
-
 Use this path when you already have scenes or a manuscript folder and want to hook them into Radial Timeline.
 
 ## Common Obsidian Setup Paths

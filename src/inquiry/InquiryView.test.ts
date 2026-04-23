@@ -255,11 +255,11 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
     });
 
-    it('derives Anthropic persisted cache coverage from actual usage and refreshes the HUD after estimate snapshots', () => {
+    it('derives persisted cache coverage from actual usage and refreshes the HUD after estimate snapshots', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
-        expect(viewSource.includes('private getObservedAnthropicCacheMetrics(trace?: InquiryRunTrace | null):')).toBe(true);
+        expect(viewSource.includes('private getObservedCacheMetrics(trace?: InquiryRunTrace | null):')).toBe(true);
         expect(viewSource.includes('usage.cacheReadInputTokens')).toBe(true);
-        expect(viewSource.includes('const observedAnthropicCacheMetrics = result.aiProvider?.trim().toLowerCase() === \'anthropic\'')).toBe(true);
+        expect(viewSource.includes('const observedCacheMetrics = this.getObservedCacheMetrics(runTrace);')).toBe(true);
         expect(viewSource.includes('this.updateRunningHud();')).toBe(true);
     });
 

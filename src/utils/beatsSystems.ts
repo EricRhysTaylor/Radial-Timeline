@@ -3,7 +3,6 @@
  */
 import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
 import type { BeatDefinition, BeatLibraryCategory, RadialTimelineSettings } from '../types/settings';
-import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 
 export interface PlotBeatInfo {
   name: string;
@@ -540,6 +539,8 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
 export function getCustomSystemFromSettings(
     settings: RadialTimelineSettings
 ): PlotSystemPreset {
+    // Lazy import to break circular dep (workspaceState → NoteScopeResolver → frontmatter → defaults → beatsSystems).
+    const { getActiveLoadedBeatTab } = require('../storyBeats/workspaceState') as typeof import('../storyBeats/workspaceState');
     const activeTab = getActiveLoadedBeatTab(settings);
     const name = normalizeBeatSetNameInput(activeTab?.name ?? '', 'Custom');
     const beatObjs = activeTab?.beats ?? [];

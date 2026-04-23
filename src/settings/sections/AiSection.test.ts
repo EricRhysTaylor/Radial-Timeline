@@ -49,8 +49,8 @@ describe('AI settings models table', () => {
         expect(source.includes('getGossamerEvidencePreference')).toBe(false);
         // Composition copy confirms bodies-only
         expect(source.includes('Scenes (${formatInquiryCount(sceneCount)}) — full text')).toBe(true);
-        expect(source.includes('Outline — not included')).toBe(true);
-        expect(source.includes('References — not included')).toBe(true);
+        expect(source.includes("'Outline — none'")).toBe(true);
+        expect(source.includes("'References — none'")).toBe(true);
     });
 
     it('renders active model preview with author-facing pill signals only', () => {
@@ -181,23 +181,22 @@ describe('AI settings models table', () => {
         expect(source.includes("title: 'Prompt'")).toBe(true);
         expect(source.includes("title: 'Output'")).toBe(true);
         expect(source.includes("title: 'Processing'")).toBe(true);
-        expect(source.includes('Scene documents (')).toBe(true);
-        expect(source.includes('Feature instructions')).toBe(true);
-        expect(source.includes('Output rules + JSON schema')).toBe(true);
-        expect(source.includes('System role template')).toBe(true);
+        expect(source.includes('Scenes (')).toBe(true);
+        expect(source.includes('Editorial analysis instructions')).toBe(true);
+        expect(source.includes('Strict JSON structure')).toBe(true);
+        expect(source.includes('AI role template (author-defined)')).toBe(true);
         expect(source.includes('outputContractTokens')).toBe(true);
         expect(source.includes('totalEstimatedTokens')).toBe(true);
         expect(source.includes('providerExecutionTokens')).toBe(true);
-        expect(source.includes('buildCanonicalInquiryComponentBreakdown')).toBe(true);
+        expect(source.includes('buildInquiryCapacitySections')).toBe(true);
         expect(source.includes('resolveActiveRoleTemplate')).toBe(true);
         expect(source.includes('buildOutputRulesText')).toBe(true);
         expect(source.includes('Cleaned manuscript ·')).toBe(true);
-        expect(source.includes('Total provider input')).toBe(true);
         expect(source.includes('Multi-pass (if required)')).toBe(false);
         expect(source.includes('Beat overlay (ordered sequence)')).toBe(true);
         expect(source.includes('Beat scoring instructions')).toBe(true);
         expect(source.includes('Per-beat scores')).toBe(true);
-        expect(source.includes('Provider wrappers')).toBe(true);
+        expect(source.includes('Citation wrappers + provider overhead')).toBe(true);
         expect(source.includes('Fixed result fields')).toBe(false);
         expect(source.includes('Strict JSON shape')).toBe(false);
         expect(source.includes('Full manuscript (Scene bodies)')).toBe(false);

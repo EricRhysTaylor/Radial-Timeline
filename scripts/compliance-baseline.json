@@ -1,0 +1,14 @@
+{
+  "totalErrors": 117,
+  "errorCountById": {
+    "adapter": 4,
+    "fetch": 3,
+    "console-log": 22,
+    "raw-addEventListener": 79,
+    "node-core-import": 6,
+    "node-core-require": 1,
+    "eval": 1,
+    "new-function": 1
+  },
+  "updatedAt": "2026-04-23T02:50:11.121Z"
+}

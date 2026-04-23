@@ -34,8 +34,8 @@ const steps = [
       },
       {
         cmd: "node",
-        args: ["scripts/compliance-check.mjs"],
-        display: "node scripts/compliance-check.mjs",
+        args: ["scripts/compliance-check.mjs", "--maintenance"],
+        display: "node scripts/compliance-check.mjs --maintenance",
       },
       {
         cmd: "node",

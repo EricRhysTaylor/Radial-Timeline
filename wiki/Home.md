@@ -2,13 +2,34 @@
 
 Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
 
-<a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
+<a href="https://youtu.be/afheHNgSxaw?si=1fOCbV7CEA3lISfm" target="_blank" rel="noopener">
   <p align="center">
-    <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Plan your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <img src="https://i.ytimg.com/vi/afheHNgSxaw/maxresdefault.jpg" alt="Radial Timeline Release 6 overview of new features" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   </p>
   <p align="center" style="font-family: sans-serif; font-size: 16px; margin-top: 10px;">
-    Plan your novel with radial timeline in obsidian<br>
-    Complete author walkthrough & setup guide
+    Release 6 Overview<br>
+    Overview of New Features
+  </p>
+</a>
+
+### YouTube Video Suite
+
+*   **[[Welcome|Volume 1 — Intro]]**: [Original home page intro video](https://youtu.be/7noTSFaj8Eo)
+*   **[[Chronologue-Mode|Volume 2 — Chronologue Mode]]**: [Chronologue Mode Volume 2](https://youtu.be/XKWq32LB0d0?si=VF6S1OELNKIAB-h-)
+*   **[[Views|Volume 3 — Release 6 Overview]]**: [Overview of New Features](https://youtu.be/afheHNgSxaw?si=1fOCbV7CEA3lISfm)
+*   **[[Inquiry|Volume 4 — Inquiry View]]**: [Inquiry View Volume 4](https://youtu.be/BVrARdKfn8k?si=lRlUbtYtkwU7Jj1d)
+*   **[[Author-Progress-Report|Volume 5 — Author Progress Report (APR)]]**: [Author Progress Report (APR) Volume 5](https://youtu.be/zT6rtETT6Pw?si=rB3FLlNigqhlnt1s)
+*   **[[Gossamer-Mode|Volume 6 — Gossamer Mode]]**: [Gossamer Mode Volume 6](https://youtu.be/atQqe3jm7JI?si=zjqhd6lV49VgOd8O)
+
+### Volume 1 Intro
+
+<a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
+  <p align="center">
+    <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Original Radial Timeline introduction video" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  </p>
+  <p align="center" style="font-family: sans-serif; font-size: 16px; margin-top: 10px;">
+    Volume 1 Intro<br>
+    Original home page walkthrough
   </p>
 </a>
 

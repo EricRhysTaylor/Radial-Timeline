@@ -1,5 +1,3 @@
-# Gossamer Mode
-
 Gossamer Mode visualizes beat-level scoring across your active story beat system. It supports four signals — **Momentum**, **Tension**, **Activity**, and **Interiority** — so you can compare not just how your story moves, but what kind of pressure or interior charge each beat carries.
 
 *   **Four signals**: Score **Momentum**, **Tension**, **Activity**, or **Interiority** against the same beat system.

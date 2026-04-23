@@ -1,5 +1,3 @@
-# Progress Mode
-
 **Keyboard Shortcut**: `1`
 
 Progress Mode isolates each subplot into its own radial pass, removing the combined outer ring. This mode focuses on **Author time** (your writing status) and **Progress stages** (revision stages), making it ideal for tracking workflow at a glance.

@@ -1,5 +1,3 @@
-# Fresh Vault Onboarding
-
 Use this path when you are starting a new project or an empty vault.
 
 ## Common Obsidian Setup Paths

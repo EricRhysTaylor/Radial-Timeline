@@ -1,5 +1,3 @@
-# Narrative Mode
-
 **Keyboard Shortcut**: `2`
 
 Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story).

@@ -1,5 +1,3 @@
-# Pro
-
 **Advanced workflows for authors who want more.**
 
 Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaign tools, and specialized visualization modes. The core writing experience remains free — Pro adds capabilities for authors ready to go further.

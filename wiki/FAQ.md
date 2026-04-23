@@ -1,5 +1,3 @@
-# FAQ
-
 ## Custom/Alien Calendars
 
 Radial Timeline now includes a Planetary Time system. Plan in Earth time (fastest for pacing), then view a converted “local” calendar as needed.

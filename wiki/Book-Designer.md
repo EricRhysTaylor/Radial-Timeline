@@ -1,5 +1,3 @@
-# Book Designer
-
 The **Book Designer** is a powerful setup utility that generates a complete manuscript skeleton tailored to your specifications. It creates scene files with pre-configured properties, distributes them across acts and subplots, and can even generate story beat sets.
 
 This tool is perfect for starting a new project or rapidly prototyping a story structure.

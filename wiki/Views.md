@@ -1,5 +1,3 @@
-# Views
-
 Radial Timeline registers two co-equal **views** in Obsidian, each with its own tab in the workspace. You can have both open side by side or switch between them like any Obsidian pane.
 
 ## Timeline View

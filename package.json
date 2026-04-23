@@ -1,7 +1,7 @@
 {
 	"name": "radial-timeline",
 	"version": "6.0.0",
-	"description": "A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.",
+	"description": "Radial Timeline maps your manuscript across four modes — Progress, Narrative, Chronologue, and Gossamer — plus the Inquiry View for higher-level story analysis. Visualize scenes, subplots, structure, chronology, and story shape in one connected workspace.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
@@ -15,7 +15,8 @@
 		"prepare": "husky",
 		"check-quality": "node code-quality-check.mjs src/main.ts src/styles/settings.css",
 		"check-obsidian": "node scripts/check-obsidian-version.mjs",
-		"backup": "node scripts/check-model-updates.mjs --quiet && node scripts/check-api-features.mjs --summary && node check-css-duplicates.mjs --quiet && npm run build-only && BACKUP_NOTE=\"${npm_config_note:-$npm_config_message}\" node backup.mjs --quiet",
+		"backup": "node scripts/check-model-updates.mjs --quiet && node scripts/check-api-features.mjs --summary && node scripts/validate-pricing.mjs && node check-css-duplicates.mjs --quiet && npm run build-only && node code-quality-check.mjs --all && npm run css-drift -- --maintenance && node scripts/compliance-check.mjs --maintenance && npm test && BACKUP_NOTE=\"${npm_config_note:-$npm_config_message}\" node backup.mjs --quiet",
+		"check-compliance": "node scripts/compliance-check.mjs",
 		"check-api-features": "node scripts/check-api-features.mjs",
 		"scripts": "node show-scripts.mjs",
 		"sync-yaml": "node scripts/sync-yaml-to-wiki.mjs",

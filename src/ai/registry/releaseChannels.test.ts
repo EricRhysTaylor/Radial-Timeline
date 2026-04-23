@@ -3,9 +3,9 @@ import { BUILTIN_MODELS } from './builtinModels';
 import { getPickerModelsForProvider, selectLatestModelByReleaseChannel } from './releaseChannels';
 
 describe('release channel curation', () => {
-    it('returns OpenAI picker models in stable/pro/rollback order', () => {
+    it('returns OpenAI picker models in stable/rollback order (pro is hidden from the picker)', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'openai').map(model => model.alias);
-        expect(picker).toEqual(['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.3']);
+        expect(picker).toEqual(['gpt-5.4', 'gpt-5.3']);
     });
 
     it('hides google latest compatibility aliases from the normal picker', () => {

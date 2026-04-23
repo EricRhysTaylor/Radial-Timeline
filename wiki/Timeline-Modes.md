@@ -1,5 +1,3 @@
-# Timeline Modes
-
 Radial Timeline has two co-equal **[[Views]]**: the Timeline view and the Inquiry view. Within the Timeline view, four **modes** let you examine your story from different structural perspectives. Switch modes using the keyboard shortcuts or the top-right navigation.
 
 ### Progress Mode (keyboard 1)
