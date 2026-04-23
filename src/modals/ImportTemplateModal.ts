@@ -7,7 +7,6 @@ import type { DetectedTemplateConfidence, DetectedTemplateMockPreviewKind, Detec
 import { scheduleFocusAfterPaint } from '../utils/domFocus';
 import { scheduleClassAfterPaint } from '../utils/domClassEffects';
 
-type CommitMode = 'draft' | 'activate';
 type ImportTemplateStep = 1 | 2 | 3 | 4;
 
 export interface ImportedTemplateCommit {
@@ -82,8 +81,7 @@ export class ImportTemplateModal extends Modal {
     private readonly onCommit: (commit: ImportedTemplateCommit) => Promise<void> | void;
 
     private usageDropdown?: DropdownComponent;
-    private activateButton?: ButtonComponent;
-    private draftButton?: ButtonComponent;
+    private saveButton?: ButtonComponent;
     private nextButton: ButtonComponent | null = null;
     private backButton: ButtonComponent | null = null;
     private cancelButton: ButtonComponent | null = null;
@@ -239,7 +237,7 @@ export class ImportTemplateModal extends Modal {
         await this.refreshCandidate();
     }
 
-    private async commit(mode: CommitMode): Promise<void> {
+    private async commit(): Promise<void> {
         if (!this.candidate || this.commitInFlight) return;
         this.commitInFlight = true;
         this.updateActionButtons();
@@ -257,15 +255,15 @@ export class ImportTemplateModal extends Modal {
             preset: this.usageContext,
             description: this.templateDescription.trim() || this.candidate.layout.description,
             path: compactTemplatePathForStorage(this.plugin, this.getCandidatePath()) || this.candidate.layout.path.trim(),
-            draft: mode === 'draft',
+            draft: false,
             origin: 'imported',
         };
 
         try {
             await this.onCommit({
                 layout: finalLayout,
-                draft: mode === 'draft',
-                activate: mode === 'activate',
+                draft: false,
+                activate: true,
                 candidate: this.candidate,
             });
             this.close();
@@ -365,25 +363,27 @@ export class ImportTemplateModal extends Modal {
                 }
             });
         this.nextButton.buttonEl.addClass('ert-import-template-nextBtn');
-        this.actionsEl.createDiv({ cls: 'ert-modal-actions-spacer' });
-        this.draftButton = new ButtonComponent(this.actionsEl)
+        this.saveButton = new ButtonComponent(this.actionsEl)
             .setButtonText('Save template')
-            .onClick(() => void this.commit('draft'));
-        this.activateButton = new ButtonComponent(this.actionsEl)
-            .setButtonText('Save and activate')
             .setCta()
-            .onClick(() => void this.commit('activate'));
+            .onClick(() => void this.commit());
         this.cancelButton = new ButtonComponent(this.actionsEl)
             .setButtonText('Cancel')
             .onClick(() => this.close());
     }
 
+    private setButtonVisible(button: ButtonComponent | null | undefined, visible: boolean): void {
+        const el = button?.buttonEl;
+        if (!el) return;
+        el.toggleClass('is-hidden', !visible);
+    }
+
     private updateActionButtonsVisibility(): void {
-        if (!this.backButton?.buttonEl || !this.nextButton?.buttonEl || !this.draftButton?.buttonEl || !this.activateButton?.buttonEl) return;
-        this.backButton.buttonEl.hidden = this.step === 1;
-        this.nextButton.buttonEl.hidden = this.step === 4;
-        this.draftButton.buttonEl.hidden = this.step !== 4;
-        this.activateButton.buttonEl.hidden = this.step !== 4;
+        // Steps 1-3: Back / Next / Cancel (all grouped on the right).
+        // Step 4: Back / Save / Cancel (all grouped on the right).
+        this.setButtonVisible(this.backButton, this.step > 1);
+        this.setButtonVisible(this.nextButton, this.step < 4);
+        this.setButtonVisible(this.saveButton, this.step === 4);
     }
 
     private renderStepHero(
@@ -786,7 +786,6 @@ export class ImportTemplateModal extends Modal {
         this.nextButton?.setDisabled(this.commitInFlight || !this.canAdvanceToNextStep());
         this.nextButton?.buttonEl.classList.toggle('is-ready', this.step < 4 && this.canAdvanceToNextStep());
         this.cancelButton?.setDisabled(this.commitInFlight);
-        this.activateButton?.setDisabled(this.commitInFlight || !this.candidate || !this.candidate.canActivate);
-        this.draftButton?.setDisabled(this.commitInFlight || !this.candidate);
+        this.saveButton?.setDisabled(this.commitInFlight || !this.candidate || !this.candidate.canActivate);
     }
 }

@@ -348,7 +348,7 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   cursor: pointer;
-  padding: 8px 0;
+  padding: var(--ert-pad-xs) 0;
   user-select: none;
 }
 
@@ -383,7 +383,7 @@
 }
 
 .ert-runtime-accordion-content {
-  padding: 12px 0 0 28px;
+  padding: var(--ert-pad-sm) 0 0 calc(var(--ert-pad-lg) + var(--ert-gap-sm));
   border-top: 1px solid var(--background-modifier-border);
   margin-top: 8px;
 }
@@ -411,7 +411,7 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 12px 0 8px 0;
+  margin: var(--ert-pad-sm) 0 var(--ert-gap-sm) 0;
   padding-top: 8px;
   border-top: 1px solid var(--background-modifier-border);
 }

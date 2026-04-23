@@ -2641,17 +2641,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 });
             }
 
-            if (isBundled) {
-                s.addButton(btn => {
-                    btn.setButtonText('Duplicate');
-                    btn.onClick(async () => {
-                        await duplicateBundledLayout(layout);
-                        renderLayoutRows();
-                        refreshPublishingStatusCard();
-                    });
-                });
-            }
-
             if (showsSpecialOptions) {
                 s.addExtraButton(btn => {
                     btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-special-toggle');
@@ -2660,6 +2649,19 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     btn.onClick(() => {
                         expandedSpecialLayoutId = expandedSpecialLayoutId === layout.id ? null : layout.id;
                         renderLayoutRows();
+                    });
+                });
+            }
+
+            if (isBundled) {
+                s.addExtraButton(btn => {
+                    btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-duplicate');
+                    btn.setIcon('copy-plus');
+                    btn.setTooltip('Duplicate');
+                    btn.onClick(async () => {
+                        await duplicateBundledLayout(layout);
+                        renderLayoutRows();
+                        refreshPublishingStatusCard();
                     });
                 });
             }

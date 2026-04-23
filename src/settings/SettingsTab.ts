@@ -769,6 +769,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         containerEl.addClass('ert-ui', 'ert-settings-root', 'ert-scope--settings');
+        containerEl.closest('.vertical-tab-content')?.classList.add('ert-settings-scroll-host');
+        containerEl.closest('.vertical-tab-content-container')?.classList.add('ert-settings-scroll-host');
         this._aiRelatedElements = [];
 
         // Auto-migrate: Clean up legacy advanced template if needed
@@ -811,12 +813,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
         const publishingContent = containerEl.createDiv({
-            cls: `ert-settings-tab-content ert-settings-publishing-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
+            cls: `ert-settings-tab-content ert-settings-publishing-content ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
         });
         const aiContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-ai-content ert-scope--settings' });
         const advancedContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-advanced-content ert-scope--settings' });
         const proContent = containerEl.createDiv({
-            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
+            cls: `ert-settings-tab-content ert-settings-pro-content ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
         });
 
         const updateTabState = () => {
