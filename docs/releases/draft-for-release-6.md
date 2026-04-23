@@ -11,6 +11,7 @@ For authors, the practical difference is simple: you can now do much more of you
 - Added the **Author Progress Report (APR)** system for spoiler-safe progress graphics with custom styling, export controls, reveal options, and Pro campaign workflows.
 - Added **Inquiry**, a second major view alongside the timeline for big-picture manuscript analysis across a book or saga, with a glyph, minimap, corpus controls, and structured prompt workflows.
 - Expanded **story structure and note management** with scene, beat, and backdrop property editors, custom beat systems, saved beat sets, backdrops, and micro-backdrop rings.
+- Expanded and refined several core **author-facing modals and guided workflows**, including Book Designer, Create note…, Manage subplots, and Manuscript export.
 - Added **drag-to-reorder in Narrative mode** with optional ripple rename, a recent-moves overlay, and persistent move history logs so structural edits are easier to track and audit.
 - Upgraded **Gossamer Mode** into a multi-signal, multi-run scoring system with run filtering, signal switching, saved history, and richer AI/manual workflows.
 - Rebuilt the **settings experience** into distinct tabs for Core, Social, Inquiry, Publishing, AI, Advanced, and Pro, with stronger visual separation and integrated wiki/help linking.
@@ -63,6 +64,16 @@ This is the part of Release 6 that most clearly changes the scale of what RT can
 - Added and expanded **Backdrop** and **Micro-backdrop** support for lighter-weight context layers and larger historical/worldbuilding movements in Chronologue workflows.
 
 This matters because many authors do not work from a single fixed method. Some use classic beat sheets, some use custom structures, some track world-state shifts, some rely on detailed YAML fields, and some are bringing in pre-existing note systems. Release 6 pushes much harder toward meeting authors where they already are instead of forcing them into one rigid metadata model.
+
+### Modals and Guided Workflows
+
+- Release 6 also strengthens a number of the author-facing modals that sit at the center of everyday use.
+- **Book Designer** has become a more substantial setup workflow, with a live preview, subplot and structure controls, template support, and a clearer bridge from blank project to usable manuscript scaffold.
+- **Create note…** functions as a more guided note-creation path, helping authors create the right kind of RT note instead of relying on manual setup and memory.
+- **Manage subplots** gives authors a dedicated bulk-management workflow for renaming or deleting subplot labels across scene files, which is especially useful once a manuscript has started to sprawl.
+- **Manuscript export** has become a more polished export modal with filtering, ordering, range selection, subplot selection, and publishing-oriented output decisions gathered into one workflow.
+
+Taken together, these modal improvements matter because they reduce friction at the exact moments where authors move from theory into action: starting a project, creating notes, cleaning up structure, managing labels, and preparing work for reading, export, or delivery.
 
 ### Narrative Reordering and Move History
 

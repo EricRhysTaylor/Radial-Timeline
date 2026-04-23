@@ -119,6 +119,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         status: 'stable',
         rollout: {
             channel: 'pro',
+            hiddenFromPicker: true,
             status: 'stable',
             supersedes: 'gpt-5.3',
             fallbackModelId: 'gpt-5.3',

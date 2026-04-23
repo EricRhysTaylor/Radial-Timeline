@@ -88,13 +88,14 @@ export class CommandRegistrar {
                 this.plugin.getInquiryService().activateView();
             },
         });
-        this.plugin.addCommand({
-            id: 'inquiry-omnibus-pass',
-            name: t('commands.inquiryOmnibusPass'),
-            callback: async () => {
-                await this.plugin.getInquiryService().runOmnibusPass();
-            },
-        });
+        // Temporarily hidden from command palette for upcoming release — not quite ready.
+        // this.plugin.addCommand({
+        //     id: 'inquiry-omnibus-pass',
+        //     name: t('commands.inquiryOmnibusPass'),
+        //     callback: async () => {
+        //         await this.plugin.getInquiryService().runOmnibusPass();
+        //     },
+        // });
 
         this.plugin.addCommand({
             id: 'search-timeline',
