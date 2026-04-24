@@ -626,18 +626,23 @@
   --ert-inquiry-minimap-target-letter-color: var(--ert-inquiry-ai-warning);
 }
 
-.ert-inquiry-minimap-tick.is-selection-boundary .ert-inquiry-minimap-tick-border {
-  stroke-width: 1.6;
-}
-
 .ert-inquiry-minimap-tick-base {
   fill: transparent;
 }
 
-.ert-inquiry-minimap-tick-border {
+.ert-inquiry-minimap-tick-icon {
   fill: none;
   stroke: var(--ert-inquiry-minimap-tick-color);
-  stroke-width: 1;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+  transition: stroke 160ms ease, opacity 160ms ease, filter 160ms ease;
+}
+
+.ert-inquiry-minimap-tick.is-selection-boundary .ert-inquiry-minimap-tick-icon,
+.ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-icon {
+  stroke-width: 2.35;
 }
 
 .ert-inquiry-minimap-target-letter {
@@ -651,12 +656,12 @@
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ert-inquiry-minimap-target-letter-color) 42%, transparent));
 }
 
-.ert-inquiry-minimap-tick.is-target .ert-inquiry-minimap-target-letter {
+.ert-inquiry-minimap-tick.is-target:not(.is-empty) .ert-inquiry-minimap-target-letter {
   display: block;
 }
 
-.ert-inquiry-minimap-tick-marker {
-  fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 70%, transparent);
+.ert-inquiry-minimap-tick.is-empty .ert-inquiry-minimap-tick-icon {
+  stroke: var(--ert-inquiry-empty);
 }
 
 .ert-inquiry-svg.is-running .inq-zone-control,
@@ -1117,10 +1122,6 @@
 
 .ert-inquiry-minimap-tick.is-linked-hover {
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--text-normal) 30%, transparent));
-}
-
-.ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-border {
-  stroke-width: 1.45;
 }
 
 .ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-base {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-16T00:00:00.000Z",
+  "generatedAt": "2026-04-23T23:16:04.000Z",
   "models": [
     {
       "provider": "anthropic",
@@ -56,27 +56,64 @@
     },
     {
       "provider": "openai",
+      "modelId": "gpt-5.5",
+      "inputPer1M": 5.0,
+      "outputPer1M": 30.0,
+      "cacheReadPer1M": 0.5
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5.5-pro",
+      "inputPer1M": 30.0,
+      "outputPer1M": 180.0
+    },
+    {
+      "provider": "openai",
       "modelId": "gpt-5.4",
-      "inputPer1M": 3.0,
-      "outputPer1M": 10.0
+      "inputPer1M": 2.5,
+      "outputPer1M": 15.0,
+      "cacheReadPer1M": 0.25,
+      "longContext": {
+        "thresholdInputTokens": 272000,
+        "inputPer1M": 5.0,
+        "outputPer1M": 22.5,
+        "cacheReadPer1M": 0.5
+      }
     },
     {
       "provider": "openai",
       "modelId": "gpt-5.4-2026-03-05",
-      "inputPer1M": 3.0,
-      "outputPer1M": 10.0
+      "inputPer1M": 2.5,
+      "outputPer1M": 15.0,
+      "cacheReadPer1M": 0.25,
+      "longContext": {
+        "thresholdInputTokens": 272000,
+        "inputPer1M": 5.0,
+        "outputPer1M": 22.5,
+        "cacheReadPer1M": 0.5
+      }
     },
     {
       "provider": "openai",
       "modelId": "gpt-5.4-pro",
-      "inputPer1M": 20.0,
-      "outputPer1M": 120.0
+      "inputPer1M": 30.0,
+      "outputPer1M": 180.0,
+      "longContext": {
+        "thresholdInputTokens": 272000,
+        "inputPer1M": 60.0,
+        "outputPer1M": 270.0
+      }
     },
     {
       "provider": "openai",
       "modelId": "gpt-5.4-pro-2026-03-05",
-      "inputPer1M": 20.0,
-      "outputPer1M": 120.0
+      "inputPer1M": 30.0,
+      "outputPer1M": 180.0,
+      "longContext": {
+        "thresholdInputTokens": 272000,
+        "inputPer1M": 60.0,
+        "outputPer1M": 270.0
+      }
     },
     {
       "provider": "google",

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-04-23T22:44:13.839Z",
+  "checkedAt": "2026-04-24T00:10:08.186Z",
   "mode": "report",
   "snapshotBefore": {
     "generatedAt": "2026-04-23T01:52:52.325Z"
@@ -24,7 +24,28 @@
   "aliasChanges": [],
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
-  "releaseAlerts": [],
-  "hasActionableChanges": false,
+  "releaseAlerts": [
+    {
+      "id": "openai-gpt-5-5-2026-04-23",
+      "provider": "openai",
+      "modelId": "gpt-5.5",
+      "label": "GPT-5.5",
+      "announcedAt": "2026-04-23",
+      "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
+      "state": "announced_not_in_snapshot",
+      "message": "openai announced GPT-5.5 on 2026-04-23, but the local provider snapshot does not include gpt-5.5 yet."
+    },
+    {
+      "id": "openai-gpt-5-5-pro-2026-04-23",
+      "provider": "openai",
+      "modelId": "gpt-5.5-pro",
+      "label": "GPT-5.5 Pro",
+      "announcedAt": "2026-04-23",
+      "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
+      "state": "announced_not_in_snapshot",
+      "message": "openai announced GPT-5.5 Pro on 2026-04-23, but the local provider snapshot does not include gpt-5.5-pro yet."
+    }
+  ],
+  "hasActionableChanges": true,
   "recommendedFollowUps": []
 }

@@ -54,6 +54,25 @@ export const BACKBONE_FADE_OUT_MS = 800;
 
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
 const PREVIEW_PANEL_PADDING_Y = 20;
+const MINIMAP_LUCIDE_VIEWBOX_SIZE = 24;
+
+type MinimapIconName = 'file' | 'file-x-corner' | 'book';
+
+const MINIMAP_LUCIDE_PATHS: Record<MinimapIconName, string[]> = {
+    file: [
+        'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z',
+        'M14 2v4a2 2 0 0 0 2 2h4'
+    ],
+    'file-x-corner': [
+        'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z',
+        'M14 2v4a2 2 0 0 0 2 2h4',
+        'm14 14 4 4',
+        'm18 14-4 4'
+    ],
+    book: [
+        'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a2.5 2.5 0 0 1 0-5H20'
+    ]
+};
 
 // ── Color utilities (pure) ──────────────────────────────────────────
 
@@ -180,6 +199,30 @@ export function getBackbonePressureColors(
             mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.75)
         ]
     };
+}
+
+function getMinimapIconName(item: InquiryCorpusItem, scope: InquiryScope): MinimapIconName {
+    if (scope === 'saga' || typeof (item as { rootPath?: string }).rootPath === 'string') {
+        return 'book';
+    }
+    return 'file';
+}
+
+function appendMinimapLucideIcon(parent: SVGElement, name: MinimapIconName, width: number, height: number): SVGGElement {
+    const icon = createSvgElement('g');
+    icon.classList.add('ert-inquiry-minimap-tick-icon', `ert-inquiry-minimap-tick-icon--${name}`);
+    const iconSize = Math.min(Math.max(width + 4, 18), Math.max(height, 18));
+    const scale = iconSize / MINIMAP_LUCIDE_VIEWBOX_SIZE;
+    const x = (width - iconSize) / 2;
+    const y = (height - iconSize) / 2;
+    icon.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(4)})`);
+    MINIMAP_LUCIDE_PATHS[name].forEach(pathData => {
+        const path = createSvgElement('path');
+        path.setAttribute('d', pathData);
+        icon.appendChild(path);
+    });
+    parent.appendChild(icon);
+    return icon;
 }
 
 // ── Renderer class ──────────────────────────────────────────────────
@@ -569,7 +612,8 @@ export class InquiryMinimapRenderer {
         const isDegradedFocused = options?.selectionMode === 'focused' && options?.roleValidation === 'missing-target-roles';
         this.minimapTicks.forEach(tick => {
             const sceneId = tick.getAttribute('data-scene-id')?.trim().toLowerCase() || '';
-            const isTarget = !!sceneId && targetSceneIdSet.has(sceneId);
+            const isFocusableScene = tick.getAttribute('data-item-kind') === 'scene' && tick.getAttribute('data-is-empty') !== 'true';
+            const isTarget = isFocusableScene && !!sceneId && targetSceneIdSet.has(sceneId);
             tick.classList.toggle('is-target', isTarget);
             tick.classList.toggle('is-target-role-validation-warning', isTarget && isDegradedFocused);
             if (isTarget) {
@@ -1120,7 +1164,32 @@ export class InquiryMinimapRenderer {
         wordCounts.forEach((wordCount, idx) => {
             const tick = this.minimapTicks[idx];
             if (!tick) return;
-            tick.classList.toggle('is-empty', wordCount < emptyMax);
+            const isEmpty = wordCount < emptyMax;
+            tick.classList.toggle('is-empty', isEmpty);
+            tick.setAttribute('data-is-empty', isEmpty ? 'true' : 'false');
+            if (isEmpty) {
+                tick.classList.remove('is-target', 'is-target-role-validation-warning');
+                tick.removeAttribute('data-target-tooltip');
+            }
+            const icon = tick.querySelector('.ert-inquiry-minimap-tick-icon') as SVGGElement | null;
+            if (icon) {
+                const itemKind = tick.getAttribute('data-item-kind');
+                const iconName: MinimapIconName = isEmpty && itemKind === 'scene' ? 'file-x-corner'
+                    : itemKind === 'book' ? 'book'
+                    : 'file';
+                clearSvgChildren(icon);
+                icon.classList.remove(
+                    'ert-inquiry-minimap-tick-icon--file',
+                    'ert-inquiry-minimap-tick-icon--file-x-corner',
+                    'ert-inquiry-minimap-tick-icon--book'
+                );
+                icon.classList.add(`ert-inquiry-minimap-tick-icon--${iconName}`);
+                MINIMAP_LUCIDE_PATHS[iconName].forEach(pathData => {
+                    const path = createSvgElement('path');
+                    path.setAttribute('d', pathData);
+                    icon.appendChild(path);
+                });
+            }
         });
     }
 
@@ -1237,10 +1306,7 @@ export class InquiryMinimapRenderer {
         }
 
         this.minimapBackboneGroup?.removeAttribute('display');
-        const tickCorner = Math.max(2, Math.round(tickWidth * 0.18));
-        const markerWidth = Math.max(3, Math.round(tickWidth * 0.18));
-        const markerHeight = Math.min(8, Math.max(6, Math.round(tickHeight * 0.35)));
-        const markerInsetX = 4;
+        const tickCorner = Math.max(3, Math.round(tickWidth * 0.28));
         const targetLetterX = Math.round(tickWidth / 2);
         const targetLetterY = Math.round(tickHeight / 2) + 1;
         const tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }> = [];
@@ -1256,6 +1322,8 @@ export class InquiryMinimapRenderer {
             const x = Math.round(pos - (tickWidth / 2));
             const y = Math.round(rowY);
             const tick = createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-tick', x, y);
+            const itemKind = getMinimapIconName(item, scope) === 'book' ? 'book' : 'scene';
+            tick.classList.add(`is-${itemKind}`);
             if (isSaga) {
                 tick.classList.add('is-saga');
             }
@@ -1267,27 +1335,8 @@ export class InquiryMinimapRenderer {
             base.setAttribute('height', String(tickHeight));
             base.setAttribute('rx', String(tickCorner));
             base.setAttribute('ry', String(tickCorner));
-            const border = createSvgElement('rect');
-            border.classList.add('ert-inquiry-minimap-tick-border');
-            border.setAttribute('x', '0');
-            border.setAttribute('y', '0');
-            border.setAttribute('width', String(tickWidth));
-            border.setAttribute('height', String(tickHeight));
-            border.setAttribute('rx', String(tickCorner));
-            border.setAttribute('ry', String(tickCorner));
             tick.appendChild(base);
-            tick.appendChild(border);
-            if (isSaga) {
-                const marker = createSvgElement('rect');
-                marker.classList.add('ert-inquiry-minimap-tick-marker');
-                marker.setAttribute('width', String(markerWidth));
-                marker.setAttribute('height', String(markerHeight));
-                marker.setAttribute('x', String(Math.round(tickWidth - markerInsetX - markerWidth)));
-                marker.setAttribute('y', '0');
-                marker.setAttribute('rx', '1');
-                marker.setAttribute('ry', '1');
-                tick.appendChild(marker);
-            }
+            appendMinimapLucideIcon(tick, getMinimapIconName(item, scope), tickWidth, tickHeight);
             const targetLetter = createSvgText(tick, 'ert-inquiry-minimap-target-letter', 'F', targetLetterX, targetLetterY);
             targetLetter.setAttribute('text-anchor', 'middle');
             targetLetter.setAttribute('dominant-baseline', 'middle');
@@ -1298,6 +1347,8 @@ export class InquiryMinimapRenderer {
             tick.setAttribute('data-id', item.id);
             tick.setAttribute('data-label', label);
             tick.setAttribute('data-full-label', fullLabel);
+            tick.setAttribute('data-item-kind', itemKind);
+            tick.setAttribute('data-is-empty', 'false');
             if (item.sceneId) {
                 tick.setAttribute('data-scene-id', item.sceneId);
             } else {

@@ -74,6 +74,18 @@ describe('providerPricing', () => {
         expect(pricing.cacheReadPer1M).toBe(0.25);
     });
 
+    it('stores GPT-5.5 API coming-soon pricing without making it a picker default', () => {
+        const standard = getProviderPricing('openai', 'gpt-5.5');
+        const pro = getProviderPricing('openai', 'gpt-5.5-pro');
+
+        expect(standard.inputPer1M).toBe(5);
+        expect(standard.outputPer1M).toBe(30);
+        expect(standard.cacheReadPer1M).toBe(0.5);
+        expect(pro.inputPer1M).toBe(30);
+        expect(pro.outputPer1M).toBe(180);
+        expect(pro.cacheReadPer1M).toBeUndefined();
+    });
+
     it('applies GPT-5.4 long-context pricing above 272k input tokens', () => {
         const standard = resolveProviderModelPricing('openai', 'gpt-5.4', 272_000);
         const longContext = resolveProviderModelPricing('openai', 'gpt-5.4', 272_001);

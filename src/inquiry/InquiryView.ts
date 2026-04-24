@@ -3782,6 +3782,31 @@ export class InquiryView extends ItemView {
         return false;
     }
 
+    private async isFocusableTargetSceneItem(item: InquiryCorpusItem): Promise<boolean> {
+        if (this.state.scope !== 'book' || !item.sceneId) return false;
+        const scenePath = (item as { filePath?: string }).filePath;
+        if (!scenePath) return false;
+        const stats = await this.loadCorpusCcStatsByPath(scenePath);
+        return stats.bodyWords >= this.getCorpusThresholds().emptyMax;
+    }
+
+    private removeEmptyTargetSceneItems(emptySceneItems: InquiryCorpusItem[]): boolean {
+        if (this.state.scope !== 'book' || !emptySceneItems.length || !this.state.targetSceneIds.length) return false;
+        const next = this.state.targetSceneIds.filter(sceneId => (
+            !emptySceneItems.some(item => this.matchesSceneSelectionId(item, sceneId))
+        ));
+        if (this.areTargetSceneIdsEqual(this.state.targetSceneIds, next)) return false;
+
+        this.state.targetSceneIds = next;
+        const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
+        if (activeBookId) {
+            this.freshModeTouchedBookIds.add(activeBookId);
+            this.lastTargetSceneIdsByBookId.set(activeBookId, [...next]);
+        }
+        this.scheduleTargetPersist();
+        return true;
+    }
+
     private isSceneFile(file: TFile): boolean {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
         if (!frontmatter) return false;
@@ -3838,7 +3863,17 @@ export class InquiryView extends ItemView {
 
         if (!this.minimap.isCurrentEmptyUpdate(updateId)) return;
 
+        const emptySceneItems = items.filter((item, index) => (
+            !!item.sceneId
+            && typeof (item as { filePath?: string }).filePath === 'string'
+            && wordCounts[index] < emptyMax
+        ));
+        const prunedEmptyTargets = this.removeEmptyTargetSceneItems(emptySceneItems);
         this.minimap.applyEmptyStates(wordCounts, emptyMax);
+        this.updateMinimapTargetStates(this.state.activeResult);
+        if (prunedEmptyTargets) {
+            this.refreshUI();
+        }
     }
 
     private renderMinimapTicks(): void {
@@ -3852,7 +3887,7 @@ export class InquiryView extends ItemView {
             getItemTitle: (item) => this.getMinimapItemTitleWithWordCount(item),
             balanceTooltipText,
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
-            onTickClick: (item, event) => {
+            onTickClick: async (item, event) => {
                 this.clearResultPreview();
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
@@ -3862,6 +3897,11 @@ export class InquiryView extends ItemView {
                 if (this.state.scope === 'book') {
                     if (event.shiftKey) {
                         if (item.sceneId) {
+                            const canFocus = await this.isFocusableTargetSceneItem(item);
+                            if (!canFocus) {
+                                this.notifyInteraction('Empty scenes cannot be Target Scenes.');
+                                return;
+                            }
                             this.toggleTargetScene(item.sceneId, { announce: true });
                         } else {
                             this.notifyInteraction('Only scene ticks can be targeted.');

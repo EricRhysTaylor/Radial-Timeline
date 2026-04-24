@@ -91,6 +91,15 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
         }
     },
     openai: {
+        'gpt-5.5': {
+            inputPer1M: 5.0,
+            outputPer1M: 30.0,
+            cacheReadPer1M: 0.5
+        },
+        'gpt-5.5-pro': {
+            inputPer1M: 30.0,
+            outputPer1M: 180.0
+        },
         'gpt-5.4': {
             inputPer1M: 2.5,
             outputPer1M: 15.0,
