@@ -33,6 +33,7 @@ const RT_TOOLTIP_PLACEMENT_ATTR = 'data-rt-tip-placement';
 const RT_TOOLTIP_ANCHOR_ATTR = 'data-rt-tip-anchor';
 const RT_TOOLTIP_OFFSET_X_ATTR = 'data-rt-tip-offset-x';
 const RT_TOOLTIP_OFFSET_Y_ATTR = 'data-rt-tip-offset-y';
+const RT_TOOLTIP_TONE_ATTR = 'data-rt-tip-tone';
 const TOOLTIP_ACTIVE_CLASS = 'rt-tooltip-active';
 
 // Singleton tooltip element
@@ -502,6 +503,15 @@ function showCustomTooltip(
 
     // Reset classes and position before measuring to avoid shrink-to-fit from the previous location.
     customTooltipEl.className = 'rt-tooltip'; // reset placement classes
+    customTooltipEl.style.removeProperty('--rt-tooltip-tone-color');
+    const tone = target.getAttribute(RT_TOOLTIP_TONE_ATTR);
+    if (tone) {
+        customTooltipEl.classList.add(`rt-tooltip-tone-${tone.replace(/[^a-z0-9_-]/gi, '').toLowerCase()}`);
+        const toneColor = window.getComputedStyle(target).getPropertyValue('--ert-inquiry-minimap-tick-color').trim();
+        if (toneColor) {
+            customTooltipEl.style.setProperty('--rt-tooltip-tone-color', toneColor);
+        }
+    }
     customTooltipEl.style.left = '0px';
     customTooltipEl.style.top = '0px';
     updateTooltipWidth();

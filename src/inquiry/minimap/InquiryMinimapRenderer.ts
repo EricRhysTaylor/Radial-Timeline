@@ -56,24 +56,11 @@ export const BACKBONE_FADE_OUT_MS = 800;
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
 const PREVIEW_PANEL_PADDING_Y = 20;
 const MINIMAP_LUCIDE_VIEWBOX_SIZE = 24;
+const MINIMAP_LUCIDE_24PX_EQUIVALENT_SIZE = 24;
+const MINIMAP_LUCIDE_FILE_BOTTOM_INSET = 2;
+const MINIMAP_BOTTOM_ROW_BACKBONE_EXTRA_GAP = 2;
 
 type MinimapIconName = 'file' | 'file-x-corner' | 'book';
-
-const MINIMAP_LUCIDE_PATHS: Record<MinimapIconName, string[]> = {
-    file: [
-        'M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z',
-        'M14 2v5a1 1 0 0 0 1 1h5'
-    ],
-    'file-x-corner': [
-        'M11 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5',
-        'M14 2v5a1 1 0 0 0 1 1h5',
-        'm15 17 5 5',
-        'm20 17-5 5'
-    ],
-    book: [
-        'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a2.5 2.5 0 0 1 0-5H20'
-    ]
-};
 
 // ── Color utilities (pure) ──────────────────────────────────────────
 
@@ -209,7 +196,7 @@ function getMinimapIconName(item: InquiryCorpusItem, scope: InquiryScope): Minim
     return 'file';
 }
 
-function setMinimapLucideIcon(icon: SVGGElement, name: MinimapIconName): void {
+function setMinimapLucideIcon(icon: SVGSVGElement, name: MinimapIconName): void {
     clearSvgChildren(icon);
     icon.classList.remove(
         'ert-inquiry-minimap-tick-icon--file',
@@ -219,22 +206,27 @@ function setMinimapLucideIcon(icon: SVGGElement, name: MinimapIconName): void {
     icon.classList.add(`ert-inquiry-minimap-tick-icon--${name}`);
     const inner = createSvgElement('g');
     inner.classList.add('ert-inquiry-minimap-tick-icon-inner');
-    MINIMAP_LUCIDE_PATHS[name].forEach(pathData => {
-        const path = createSvgElement('path');
-        path.setAttribute('d', pathData);
-        inner.appendChild(path);
-    });
+    const use = createSvgElement('use');
+    const symbolId = `ert-icon-${name}`;
+    use.setAttribute('href', `#${symbolId}`);
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
+    use.setAttribute('x', '0');
+    use.setAttribute('y', '0');
+    use.setAttribute('width', String(MINIMAP_LUCIDE_VIEWBOX_SIZE));
+    use.setAttribute('height', String(MINIMAP_LUCIDE_VIEWBOX_SIZE));
+    inner.appendChild(use);
     icon.appendChild(inner);
 }
 
-function appendMinimapLucideIcon(parent: SVGElement, name: MinimapIconName, width: number, height: number): SVGGElement {
-    const icon = createSvgElement('g');
+function appendMinimapLucideIcon(parent: SVGElement, name: MinimapIconName, width: number, height: number): SVGSVGElement {
+    const icon = createSvgElement('svg');
     icon.classList.add('ert-inquiry-minimap-tick-icon');
-    const iconSize = Math.round(Math.max(width, height));
-    const scale = iconSize / MINIMAP_LUCIDE_VIEWBOX_SIZE;
-    const x = Math.round((width - iconSize) / 2);
-    const y = Math.round((height - iconSize) / 2);
-    icon.setAttribute('transform', `translate(${x} ${y}) scale(${scale.toFixed(4)})`);
+    icon.setAttribute('x', '0');
+    icon.setAttribute('y', '0');
+    icon.setAttribute('width', String(width));
+    icon.setAttribute('height', String(height));
+    icon.setAttribute('viewBox', `0 0 ${MINIMAP_LUCIDE_VIEWBOX_SIZE} ${MINIMAP_LUCIDE_VIEWBOX_SIZE}`);
+    icon.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     setMinimapLucideIcon(icon, name);
     parent.appendChild(icon);
     return icon;
@@ -296,6 +288,11 @@ export class InquiryMinimapRenderer {
     // ── Sweep state ──────────────────────────────────────────────────
 
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number; lastOpacity?: string }> = [];
+    private pendingSweepLayout?: {
+        tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }>;
+        tickWidth: number;
+        length: number;
+    };
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private sweepRandomCycle = -1;
     private sweepRandomActive = new Set<number>();
@@ -594,22 +591,35 @@ export class InquiryMinimapRenderer {
         length: number
     ): void {
         if (!this.minimapTicksEl) return;
+        this.pendingSweepLayout = { tickLayouts, tickWidth, length };
+        this.renderSweepLayerBehindTicks();
+    }
+
+    private renderSweepLayerBehindTicks(): void {
+        if (!this.minimapTicksEl || !this.pendingSweepLayout) return;
+        const { tickLayouts, tickWidth, length } = this.pendingSweepLayout;
         this.minimapTicksEl.querySelector('.ert-inquiry-minimap-sweep')?.remove();
-        const sweepGroup = createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-sweep');
-        const inset = Math.max(3, Math.round(tickWidth * 0.28));
+        const sweepGroup = createSvgElement('g');
+        sweepGroup.classList.add('ert-inquiry-minimap-sweep');
         tickLayouts.forEach(layout => {
+            const rawSweepWidth = Math.max(5, Math.floor(layout.width * 0.46));
+            const sweepWidth = Math.max(4, rawSweepWidth - 1);
+            const sweepHeight = Math.max(8, Math.floor(layout.height * 0.68));
+            const sweepX = Math.round(layout.x + ((layout.width - rawSweepWidth) / 2));
+            const sweepY = Math.round(layout.y + ((layout.height - sweepHeight) / 2));
             const inner = createSvgElement('rect');
             inner.classList.add('ert-inquiry-minimap-sweep-inner');
-            inner.setAttribute('x', String(layout.x + inset));
-            inner.setAttribute('y', String(layout.y + inset));
-            inner.setAttribute('width', String(Math.max(4, layout.width - (inset * 2))));
-            inner.setAttribute('height', String(Math.max(6, layout.height - (inset * 2))));
+            inner.setAttribute('x', String(sweepX));
+            inner.setAttribute('y', String(sweepY));
+            inner.setAttribute('width', String(sweepWidth));
+            inner.setAttribute('height', String(sweepHeight));
             inner.setAttribute('rx', '2');
             inner.setAttribute('ry', '2');
             inner.setAttribute('opacity', '0');
             sweepGroup.appendChild(inner);
             this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (layout.width / 2), rowIndex: layout.rowIndex });
         });
+        this.minimapTicksEl.insertBefore(sweepGroup, this.minimapTicksEl.firstChild);
         this.minimapSweepLayout = {
             startX: -Math.max(tickWidth * 1.6, 36),
             endX: length + Math.max(tickWidth * 1.6, 36),
@@ -1183,10 +1193,15 @@ export class InquiryMinimapRenderer {
             tick.classList.toggle('is-empty', isEmpty);
             tick.setAttribute('data-is-empty', isEmpty ? 'true' : 'false');
             if (isEmpty) {
+                tick.setAttribute('data-rt-tip-tone', 'empty');
+            } else {
+                tick.removeAttribute('data-rt-tip-tone');
+            }
+            if (isEmpty) {
                 tick.classList.remove('is-target', 'is-target-role-validation-warning');
                 tick.removeAttribute('data-target-tooltip');
             }
-            const icon = tick.querySelector('.ert-inquiry-minimap-tick-icon') as SVGGElement | null;
+            const icon = tick.querySelector('.ert-inquiry-minimap-tick-icon') as SVGSVGElement | null;
             if (icon) {
                 const itemKind = tick.getAttribute('data-item-kind');
                 const iconName: MinimapIconName = isEmpty && itemKind === 'scene' ? 'file-x-corner'
@@ -1217,14 +1232,14 @@ export class InquiryMinimapRenderer {
         clearSvgChildren(this.minimapTicksEl);
         this.minimapTicks = [];
         this.minimapSweepTicks = [];
+        this.pendingSweepLayout = undefined;
 
         const count = items.length;
         const length = this.minimapLayout.length;
-        const tickSize = 20;
-        const tickWidth = tickSize;
-        const tickHeight = tickSize;
-        const iconFootprint = tickSize;
-        const tickGap = 8;
+        const tickWidth = MINIMAP_LUCIDE_24PX_EQUIVALENT_SIZE;
+        const tickHeight = MINIMAP_LUCIDE_24PX_EQUIVALENT_SIZE;
+        const iconFootprint = tickWidth;
+        const tickGap = 14;
         const capWidth = 2;
         const capHalfWidth = Math.round(capWidth / 2);
         const edgeScenePadding = iconFootprint;
@@ -1233,7 +1248,7 @@ export class InquiryMinimapRenderer {
         const maxRowWidth = viewboxSize * 0.75;
         const minStep = iconFootprint + tickGap;
         const isSaga = scope === 'saga';
-        const maxRows = isSaga ? 1 : 3;
+        const maxRows = isSaga ? 1 : 4;
         let rowCount = 1;
         if (count > 1) {
             for (let rows = 1; rows <= maxRows; rows += 1) {
@@ -1252,7 +1267,7 @@ export class InquiryMinimapRenderer {
         const extraSpace = Math.max(0, availableLength - usedLength);
         const startOffset = Math.floor(extraSpace / 2);
         const rowGap = 9;
-        const baselineGap = 8;
+        const baselineGap = rowGap + MINIMAP_LUCIDE_FILE_BOTTOM_INSET + MINIMAP_BOTTOM_ROW_BACKBONE_EXTRA_GAP;
         const capHeight = Math.max(30, baselineGap + (tickHeight * rowCount) + (rowGap * Math.max(0, rowCount - 1)) + 8);
 
         const baselineStart = Math.round(this.minimapLayout.startX);
@@ -1318,7 +1333,7 @@ export class InquiryMinimapRenderer {
         this.minimapBackboneGroup?.removeAttribute('display');
         const tickCorner = Math.max(3, Math.round(tickWidth * 0.28));
         const targetLetterX = Math.round(tickWidth / 2);
-        const targetLetterY = Math.round(tickHeight / 2) + 1;
+        const targetLetterY = Math.round(tickHeight / 2) + 3;
         const tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }> = [];
 
         for (let i = 0; i < count; i += 1) {

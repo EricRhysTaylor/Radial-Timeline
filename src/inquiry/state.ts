@@ -14,6 +14,26 @@ export type InquiryRoleValidation = 'ok' | 'missing-target-roles';
 
 export type InquiryCitation = SourceCitation;
 
+/**
+ * Classifies why a prior inquiry run is now stale relative to the current corpus.
+ * A run may have multiple reasons (e.g. one scene edited AND another added).
+ */
+export type InquiryStaleReason =
+    | { kind: 'scenes_edited'; paths: string[] }
+    | { kind: 'scenes_added'; paths: string[] }
+    | { kind: 'scenes_removed'; paths: string[] }
+    | { kind: 'inclusion_changed'; paths: string[] }
+    | { kind: 'target_changed'; paths: string[] }
+    | { kind: 'corpus_changed'; paths: string[] };
+
+export interface InquiryStaleDiagnosis {
+    reasons: InquiryStaleReason[];
+    /** Short fragment for badges: e.g. "1 scene edited", "corpus changed". */
+    shortLabel: string;
+    /** Detail lines for tooltips / modal: each describes one reason with scene names. */
+    tooltipLines: string[];
+}
+
 export interface EvidenceDocumentMeta {
     /** Display title (e.g. "The Red Night" or "Book outline"). */
     title: string;
@@ -139,6 +159,10 @@ export interface InquiryResult {
     verdict: InquiryVerdict;
     findings: InquiryFinding[];
     corpusFingerprint?: string;
+    /** Fingerprint of the corpus state (no modelId) — used to detect "source changed since run". */
+    corpusOnlyFingerprint?: string;
+    /** Minimal manifest snapshot captured at run time — enables diagnosing *why* a run went stale. */
+    corpusManifestSnapshot?: Array<{ path: string; sceneId?: string; mtime: number; class: string; mode: string; isTarget: boolean }>;
     cacheReuseFingerprint?: string;
     corpusOverridesActive?: boolean;
     corpusOverrideSummary?: {
@@ -197,6 +221,10 @@ export interface InquiryState {
     lastError?: string;
     cacheStatus?: 'fresh' | 'stale' | 'missing';
     corpusFingerprint?: string;
+    /** Current corpus-only fingerprint for the active question (no modelId). */
+    corpusOnlyFingerprint?: string;
+    /** Current manifest snapshot for diffing against prior runs' snapshots. */
+    corpusManifestSnapshot?: Array<{ path: string; sceneId?: string; mtime: number; class: string; mode: string; isTarget: boolean }>;
     settingsSnapshot?: string;
     isNarrowLayout: boolean;
     reportPreviewOpen?: boolean;

@@ -1,6 +1,7 @@
 import { App, Modal, normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { InquiryBriefModel } from '../types/inquiryViewTypes';
+import type { InquiryStaleDiagnosis } from '../state';
 import { openOrRevealFile, openOrRevealFileAtSubpath, openOrRevealFileByPath } from '../../utils/fileUtils';
 
 type InquiryBriefingModalOptions = {
@@ -11,6 +12,7 @@ type InquiryBriefingModalOptions = {
     generatedAt?: number | string | null;
     focusAnchorId?: string | null;
     isCorpusStale?: boolean;
+    staleDiagnosis?: InquiryStaleDiagnosis | null;
 };
 
 const ARTICLE_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
@@ -29,6 +31,7 @@ export class InquiryBriefingModal extends Modal {
     private readonly generatedAt: number | string | null | undefined;
     private readonly focusAnchorId: string | null;
     private readonly isCorpusStale: boolean;
+    private readonly staleDiagnosis: InquiryStaleDiagnosis | null;
     private themeObserver?: MutationObserver;
     private readonly sceneReferenceEntries: Array<{ label: string; anchorId?: string }>;
 
@@ -41,6 +44,7 @@ export class InquiryBriefingModal extends Modal {
         this.generatedAt = options.generatedAt;
         this.focusAnchorId = options.focusAnchorId ?? null;
         this.isCorpusStale = options.isCorpusStale ?? false;
+        this.staleDiagnosis = options.staleDiagnosis ?? null;
         this.sceneReferenceEntries = [...(this.brief.sceneReferences || [])].sort((a, b) => b.label.length - a.label.length);
     }
 
@@ -131,15 +135,25 @@ export class InquiryBriefingModal extends Modal {
             const primaryLine = meta.createDiv({ cls: 'rt-briefing-meta-line', text: primaryMeta.join(' · ') });
             if (this.isCorpusStale) {
                 primaryLine.appendText(' · ');
+                const labelText = this.staleDiagnosis
+                    ? `STALE — ${this.staleDiagnosis.shortLabel.toUpperCase()}`
+                    : 'STALE';
+                const tooltip = this.staleDiagnosis?.tooltipLines.length
+                    ? `Corpus has changed since this briefing was generated:\n${this.staleDiagnosis.tooltipLines.join('\n')}\nRe-run to refresh.`
+                    : 'Corpus has changed since this briefing was generated. Re-run to refresh.';
                 primaryLine.createSpan({
                     cls: 'rt-briefing-stale-badge',
-                    text: 'STALE',
-                    attr: { title: 'Corpus has changed since this briefing was generated. Re-run to refresh.' }
+                    text: labelText,
+                    attr: { title: tooltip }
                 });
             }
         }
         if (this.brief.pills.length) {
             meta.createDiv({ cls: 'rt-briefing-meta-line rt-briefing-meta-line--secondary', text: this.brief.pills.join(' · ') });
+        }
+        if (this.isCorpusStale && this.staleDiagnosis?.tooltipLines.length) {
+            const detail = meta.createDiv({ cls: 'rt-briefing-meta-line rt-briefing-stale-detail' });
+            detail.setText(this.staleDiagnosis.tooltipLines.join(' · '));
         }
     }
 

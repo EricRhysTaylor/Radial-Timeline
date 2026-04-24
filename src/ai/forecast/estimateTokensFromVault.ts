@@ -238,7 +238,16 @@ const buildCanonicalManifest = (
     return {
         entries,
         fingerprint: hashString(fingerprintRaw),
+        corpusOnlyFingerprint: hashString(`${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`),
         cacheReuseFingerprint: hashString(`${INQUIRY_SCHEMA_VERSION}|${modelId}|${fingerprintSource}`),
+        snapshot: entries.map(entry => ({
+            path: entry.path,
+            sceneId: entry.sceneId,
+            mtime: entry.mtime,
+            class: entry.class,
+            mode: entry.mode,
+            isTarget: entry.isTarget
+        })),
         generatedAt: now,
         resolvedRoots: [],
         allowedClasses: Array.from(new Set(entries.map(entry => entry.class))),

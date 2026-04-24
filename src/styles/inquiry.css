@@ -615,6 +615,7 @@
 
 .ert-inquiry-minimap-tick.is-empty {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
+  --ert-inquiry-minimap-tick-hover-color: var(--ert-inquiry-empty);
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
 }
 
@@ -633,6 +634,7 @@
 }
 
 .ert-inquiry-minimap-tick-icon {
+  color: var(--ert-inquiry-minimap-tick-color);
   fill: none;
   stroke: var(--ert-inquiry-minimap-tick-color);
   stroke-width: 1;
@@ -641,6 +643,14 @@
   shape-rendering: geometricPrecision;
   pointer-events: none;
   transition: stroke 160ms ease, opacity 160ms ease;
+}
+
+.ert-inquiry-minimap-tick-icon use {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .ert-inquiry-minimap-tick-icon-inner {
@@ -682,6 +692,7 @@
 
 .ert-inquiry-minimap-tick:hover .ert-inquiry-minimap-tick-icon,
 .ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-icon {
+  color: var(--ert-inquiry-minimap-tick-hover-color);
   stroke: var(--ert-inquiry-minimap-tick-hover-color);
 }
 
@@ -1133,6 +1144,10 @@
 
 .ert-inquiry-minimap-tick.is-linked-hover {
   --ert-inquiry-minimap-tick-hover-color: var(--text-normal);
+}
+
+.ert-inquiry-minimap-tick.is-empty.is-linked-hover {
+  --ert-inquiry-minimap-tick-hover-color: var(--ert-inquiry-empty);
 }
 
 .ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-base {

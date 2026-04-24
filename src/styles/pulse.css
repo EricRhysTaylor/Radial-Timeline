@@ -1823,6 +1823,15 @@
   opacity: 1;
 }
 
+.rt-tooltip.rt-tooltip-tone-empty {
+  color: var(--rt-tooltip-tone-color, color-mix(in srgb, var(--rt-color-due) 60%, var(--text-muted)));
+}
+
+.rt-tooltip.rt-tooltip-tone-empty .rt-tooltip__title,
+.rt-tooltip.rt-tooltip-tone-empty .rt-tooltip__body {
+  color: var(--rt-tooltip-tone-color, color-mix(in srgb, var(--rt-color-due) 60%, var(--text-muted)));
+}
+
 .rt-tooltip__title {
   text-transform: uppercase;
   font-weight: 700;

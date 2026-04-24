@@ -42,10 +42,23 @@ export interface CorpusManifestEntry {
     isTarget: boolean;
 }
 
+export interface CorpusManifestSnapshotEntry {
+    path: string;
+    sceneId?: string;
+    mtime: number;
+    class: EvidenceClass;
+    mode: SceneInclusion;
+    isTarget: boolean;
+}
+
 export interface CorpusManifest {
     entries: CorpusManifestEntry[];
     fingerprint: string;
+    /** Fingerprint excluding modelId — used for UX staleness (did the source corpus change?). */
+    corpusOnlyFingerprint: string;
     cacheReuseFingerprint: string;
+    /** Minimal per-entry snapshot persisted with results so we can diff later to explain staleness. */
+    snapshot: CorpusManifestSnapshotEntry[];
     generatedAt: number;
     resolvedRoots: string[];
     allowedClasses: EvidenceClass[];

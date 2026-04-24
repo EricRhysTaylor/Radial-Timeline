@@ -31,6 +31,8 @@ import {
     InquiryPromptFormOverride,
     InquirySelectionMode,
     InquiryScope,
+    InquiryStaleDiagnosis,
+    InquiryStaleReason,
     InquiryTokenUsageScope,
     InquiryZone
 } from './state';
@@ -1970,11 +1972,13 @@ export class InquiryView extends ItemView {
             return;
         }
         if (!anchorId) {
+            const staleDiagnosis = this.diagnoseSessionStaleness(session);
             this.openBriefingPresentation(this.buildInquiryBriefModel(session.result, session.logPath), {
                 briefFile: file,
                 logFile: this.getArtifactFileAtPath(session.logPath),
                 generatedAt: session.result.completedAt ?? session.createdAt,
-                isCorpusStale: this.isSessionCorpusStale(session)
+                isCorpusStale: !!staleDiagnosis,
+                staleDiagnosis
             });
             return;
         }
@@ -1995,6 +1999,7 @@ export class InquiryView extends ItemView {
             generatedAt?: number | string | null;
             focusAnchorId?: string | null;
             isCorpusStale?: boolean;
+            staleDiagnosis?: InquiryStaleDiagnosis | null;
         }
     ): void {
         new InquiryBriefingModal(this.app, {
@@ -2004,15 +2009,138 @@ export class InquiryView extends ItemView {
             logFile: options?.logFile ?? null,
             generatedAt: options?.generatedAt ?? null,
             focusAnchorId: options?.focusAnchorId ?? null,
-            isCorpusStale: options?.isCorpusStale ?? false
+            isCorpusStale: options?.isCorpusStale ?? false,
+            staleDiagnosis: options?.staleDiagnosis ?? null
         }).open();
     }
 
-    private isSessionCorpusStale(session: { result?: { corpusFingerprint?: string } } | null | undefined): boolean {
-        const sessionFingerprint = session?.result?.corpusFingerprint;
-        const currentFingerprint = this.state.corpusFingerprint;
-        if (!sessionFingerprint || !currentFingerprint) return false;
-        return sessionFingerprint !== currentFingerprint;
+    /**
+     * Compute the current corpus fingerprints + snapshot for a given question — this reflects
+     * the live filesystem, independent of whatever session is loaded in state.
+     */
+    private buildCurrentCorpusSnapshot(
+        questionId: string,
+        questionZone?: InquiryZone
+    ): { corpusOnlyFingerprint: string; snapshot: InquiryResult['corpusManifestSnapshot'] } {
+        const contextRequired = this.isContextRequiredForQuestion(questionId, questionZone ?? 'setup');
+        const manifest = this.buildCorpusManifest(questionId, {
+            modelId: this.resolveEngineSelectionForRun().modelId,
+            questionZone,
+            contextRequired
+        });
+        return {
+            corpusOnlyFingerprint: manifest.corpusOnlyFingerprint,
+            snapshot: manifest.snapshot
+        };
+    }
+
+    private isSessionCorpusStale(session: { result?: InquiryResult } | null | undefined): boolean {
+        const prior = session?.result;
+        if (!prior) return false;
+        const priorCorpusOnly = prior.corpusOnlyFingerprint;
+        if (!priorCorpusOnly) return false; // pre-upgrade session — can't judge without a baseline
+        const current = this.buildCurrentCorpusSnapshot(prior.questionId, prior.questionZone);
+        return priorCorpusOnly !== current.corpusOnlyFingerprint;
+    }
+
+    /**
+     * Produce a human-readable diagnosis of *why* a prior session is stale relative to current state.
+     * Returns null if the session isn't stale.
+     */
+    private diagnoseSessionStaleness(session: { result?: InquiryResult } | null | undefined): InquiryStaleDiagnosis | null {
+        const prior = session?.result;
+        if (!prior) return null;
+        const priorCorpusOnly = prior.corpusOnlyFingerprint;
+        if (!priorCorpusOnly) return null;
+        const current = this.buildCurrentCorpusSnapshot(prior.questionId, prior.questionZone);
+        if (priorCorpusOnly === current.corpusOnlyFingerprint) return null;
+
+        const priorSnapshot = prior.corpusManifestSnapshot;
+        const currentSnapshot = current.snapshot;
+        const reasons: InquiryStaleReason[] = [];
+
+        if (priorSnapshot && currentSnapshot) {
+            const priorByPath = new Map(priorSnapshot.map(e => [e.path, e]));
+            const currentByPath = new Map(currentSnapshot.map(e => [e.path, e]));
+
+            const editedScenes: string[] = [];
+            const addedScenes: string[] = [];
+            const removedScenes: string[] = [];
+            const modeChangedScenes: string[] = [];
+            const targetChangedScenes: string[] = [];
+
+            for (const [path, current] of currentByPath) {
+                const prev = priorByPath.get(path);
+                if (!prev) {
+                    addedScenes.push(path);
+                    continue;
+                }
+                if (prev.mtime !== current.mtime) editedScenes.push(path);
+                if (prev.mode !== current.mode) modeChangedScenes.push(path);
+                if (prev.isTarget !== current.isTarget) targetChangedScenes.push(path);
+            }
+            for (const path of priorByPath.keys()) {
+                if (!currentByPath.has(path)) removedScenes.push(path);
+            }
+
+            if (editedScenes.length) reasons.push({ kind: 'scenes_edited', paths: editedScenes });
+            if (addedScenes.length) reasons.push({ kind: 'scenes_added', paths: addedScenes });
+            if (removedScenes.length) reasons.push({ kind: 'scenes_removed', paths: removedScenes });
+            if (modeChangedScenes.length) reasons.push({ kind: 'inclusion_changed', paths: modeChangedScenes });
+            if (targetChangedScenes.length) reasons.push({ kind: 'target_changed', paths: targetChangedScenes });
+        }
+
+        if (!reasons.length) {
+            reasons.push({ kind: 'corpus_changed', paths: [] });
+        }
+
+        return {
+            reasons,
+            shortLabel: this.buildStaleShortLabel(reasons),
+            tooltipLines: this.buildStaleTooltipLines(reasons)
+        };
+    }
+
+    private buildStaleShortLabel(reasons: InquiryStaleReason[]): string {
+        // Prefer the most specific, highest-signal reason.
+        const edited = reasons.find(r => r.kind === 'scenes_edited');
+        if (edited) {
+            return edited.paths.length === 1 ? '1 scene edited' : `${edited.paths.length} scenes edited`;
+        }
+        const added = reasons.find(r => r.kind === 'scenes_added');
+        if (added) {
+            return added.paths.length === 1 ? '1 scene added' : `${added.paths.length} scenes added`;
+        }
+        const removed = reasons.find(r => r.kind === 'scenes_removed');
+        if (removed) {
+            return removed.paths.length === 1 ? '1 scene removed' : `${removed.paths.length} scenes removed`;
+        }
+        if (reasons.some(r => r.kind === 'inclusion_changed')) return 'inclusion changed';
+        if (reasons.some(r => r.kind === 'target_changed')) return 'targets changed';
+        return 'corpus changed';
+    }
+
+    private buildStaleTooltipLines(reasons: InquiryStaleReason[]): string[] {
+        const lines: string[] = [];
+        const sceneLabel = (path: string): string => {
+            const name = path.split('/').pop() ?? path;
+            return name.replace(/\.md$/i, '');
+        };
+        const summarize = (label: string, paths: string[]): string => {
+            if (paths.length <= 3) return `${label}: ${paths.map(sceneLabel).join(', ')}`;
+            return `${label}: ${paths.slice(0, 3).map(sceneLabel).join(', ')} +${paths.length - 3} more`;
+        };
+        for (const reason of reasons) {
+            switch (reason.kind) {
+                case 'scenes_edited': lines.push(summarize('Edited', reason.paths)); break;
+                case 'scenes_added': lines.push(summarize('Added', reason.paths)); break;
+                case 'scenes_removed': lines.push(summarize('Removed', reason.paths)); break;
+                case 'inclusion_changed': lines.push(summarize('Inclusion changed', reason.paths)); break;
+                case 'target_changed': lines.push(summarize('Target changed', reason.paths)); break;
+                case 'corpus_changed': lines.push('Corpus changed (details unavailable for this run)'); break;
+            }
+        }
+        return lines;
     }
 
     private getMostRecentInquiryLogFile(): TFile | null {
@@ -2109,6 +2237,9 @@ export class InquiryView extends ItemView {
         [
             'waves',
             'waves-arrow-down',
+            'file',
+            'file-x-corner',
+            'book',
             'columns-2',
             'cpu',
             'aperture',
@@ -2630,6 +2761,9 @@ export class InquiryView extends ItemView {
         setIcon(holder, iconName);
         const source = holder.querySelector('svg');
         if (!source) {
+            if (iconName === 'file-x-corner') {
+                return this.createFallbackFileXCornerSymbol(defs);
+            }
             if (iconName !== 'sigma') return null;
             const symbol = createSvgElement('symbol');
             const symbolId = `ert-icon-${iconName}`;
@@ -2675,6 +2809,27 @@ export class InquiryView extends ItemView {
                 inner.setAttribute('stroke', 'none');
             }
         }
+        defs.appendChild(symbol);
+        return symbolId;
+    }
+
+    private createFallbackFileXCornerSymbol(defs: SVGDefsElement): string {
+        const symbolId = 'ert-icon-file-x-corner';
+        const existing = defs.querySelector(`#${symbolId}`);
+        if (existing) return symbolId;
+        const symbol = createSvgElement('symbol');
+        symbol.setAttribute('id', symbolId);
+        symbol.setAttribute('viewBox', '0 0 24 24');
+        [
+            'M11 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5',
+            'M14 2v5a1 1 0 0 0 1 1h5',
+            'm15 17 5 5',
+            'm20 17-5 5'
+        ].forEach(d => {
+            const path = createSvgElement('path');
+            path.setAttribute('d', d);
+            symbol.appendChild(path);
+        });
         defs.appendChild(symbol);
         return symbolId;
     }
@@ -2845,9 +3000,14 @@ export class InquiryView extends ItemView {
      * Uses the same cache-key logic as runInquiry rehydration so the visual state
      * is an honest reflection of what will happen on click.
      */
-    private computePromptCacheStates(): { cachedIds: Set<string>; staleIds: Set<string> } {
+    private computePromptCacheStates(): {
+        cachedIds: Set<string>;
+        staleIds: Set<string>;
+        staleDiagnoses: Map<string, InquiryStaleDiagnosis>;
+    } {
         const cachedIds = new Set<string>();
         const staleIds = new Set<string>();
+        const staleDiagnoses = new Map<string, InquiryStaleDiagnosis>();
         const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
@@ -2903,12 +3063,26 @@ export class InquiryView extends ItemView {
                 }
                 const priorByBase = this.sessionStore.getLatestByBaseKey(baseKey);
                 if (priorByBase && !this.isErrorResult(priorByBase.result)) {
-                    staleIds.add(prompt.id);
+                    const priorCorpusOnly = priorByBase.result.corpusOnlyFingerprint;
+                    // Prior corpusOnly matches current → corpus unchanged, prior run is simply
+                    // from a different model. That's not staleness.
+                    if (priorCorpusOnly && priorCorpusOnly === this.hashString(`${INQUIRY_SCHEMA_VERSION}|${prompt.id}|${fingerprintSource}`)) {
+                        continue;
+                    }
+                    // True staleness — build diagnosis so UI can explain why.
+                    const diagnosis = this.diagnoseSessionStaleness(priorByBase);
+                    if (diagnosis) {
+                        staleIds.add(prompt.id);
+                        staleDiagnoses.set(prompt.id, diagnosis);
+                    } else if (!priorCorpusOnly) {
+                        // Pre-upgrade session — no corpusOnly to judge against. Fall back to old behavior.
+                        staleIds.add(prompt.id);
+                    }
                 }
             }
         }
 
-        return { cachedIds, staleIds };
+        return { cachedIds, staleIds, staleDiagnoses };
     }
 
     private updateZonePrompts(): void {
@@ -6140,7 +6314,7 @@ export class InquiryView extends ItemView {
                     detail: 'Provider response received. Saving the result.'
                 });
             } catch (error) {
-                result = this.buildErrorFallback(question, questionText, questionPromptForm, scopeLabel, manifest.fingerprint, error);
+                result = this.buildErrorFallback(question, questionText, questionPromptForm, scopeLabel, manifest, error);
                 const message = error instanceof Error ? error.message : String(error);
                 runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
             }
@@ -6639,7 +6813,7 @@ export class InquiryView extends ItemView {
                         this.resolveQuestionPromptForRun(question, selectionMode),
                         this.resolveQuestionPromptFormForRun(question, selectionMode),
                         scopeLabel,
-                        manifest.fingerprint,
+                        manifest,
                         error
                     );
                     const message = error instanceof Error ? error.message : String(error);
@@ -6731,6 +6905,8 @@ export class InquiryView extends ItemView {
             completedAt: options.completedAt.toISOString(),
             roundTripMs: options.completedAt.getTime() - options.submittedAt.getTime(),
             corpusFingerprint: options.manifest.fingerprint,
+            corpusOnlyFingerprint: options.manifest.corpusOnlyFingerprint,
+            corpusManifestSnapshot: options.manifest.snapshot,
             cacheReuseFingerprint: options.manifest.cacheReuseFingerprint
         };
         this.applyCorpusOverrideSummary(timedResult);
@@ -6993,6 +7169,8 @@ export class InquiryView extends ItemView {
         this.state.activeSessionId = session.key;
         this.state.activeResult = normalized;
         this.state.corpusFingerprint = normalized.corpusFingerprint;
+        this.state.corpusOnlyFingerprint = normalized.corpusOnlyFingerprint;
+        this.state.corpusManifestSnapshot = normalized.corpusManifestSnapshot;
         this.state.cacheStatus = cacheStatus;
         this.state.isRunning = false;
         this.hideSceneDossier(true);
@@ -7010,6 +7188,8 @@ export class InquiryView extends ItemView {
         this.state.activeResult = null;
         this.state.activeSessionId = undefined;
         this.state.corpusFingerprint = undefined;
+        this.state.corpusOnlyFingerprint = undefined;
+        this.state.corpusManifestSnapshot = undefined;
         this.state.cacheStatus = undefined;
     }
 
@@ -7633,7 +7813,7 @@ export class InquiryView extends ItemView {
         this.apiSimulationTimer = window.setTimeout(async () => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
-            let result = this.buildSimulationResult(selectedPrompt, questionText, questionPromptForm, scopeLabel, manifest.fingerprint);
+            let result = this.buildSimulationResult(selectedPrompt, questionText, questionPromptForm, scopeLabel, manifest);
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
@@ -7695,7 +7875,7 @@ export class InquiryView extends ItemView {
         questionText: string,
         questionPromptForm: InquiryQuestionPromptForm,
         scopeLabel: string,
-        fingerprint: string,
+        manifest: CorpusManifest,
         error: unknown
     ): InquiryResult {
         const message = error instanceof Error ? error.message : 'Runner error';
@@ -7728,7 +7908,9 @@ export class InquiryView extends ItemView {
                 evidenceType: 'mixed',
                 lens: 'both'
             }],
-            corpusFingerprint: fingerprint
+            corpusFingerprint: manifest.fingerprint,
+            corpusOnlyFingerprint: manifest.corpusOnlyFingerprint,
+            corpusManifestSnapshot: manifest.snapshot
         };
     }
 
@@ -7737,7 +7919,7 @@ export class InquiryView extends ItemView {
         questionText: string,
         questionPromptForm: InquiryQuestionPromptForm,
         scopeLabel: string,
-        fingerprint: string
+        manifest: CorpusManifest
     ): InquiryResult {
         return {
             runId: `run-${Date.now()}`,
@@ -7760,7 +7942,9 @@ export class InquiryView extends ItemView {
             aiStatus: 'success',
             aiReason: 'simulated',
             findings: [],
-            corpusFingerprint: fingerprint
+            corpusFingerprint: manifest.fingerprint,
+            corpusOnlyFingerprint: manifest.corpusOnlyFingerprint,
+            corpusManifestSnapshot: manifest.snapshot
         };
     }
 
@@ -7956,7 +8140,17 @@ export class InquiryView extends ItemView {
         const modelId = modelIdOverride ?? this.getResolvedEngine().modelId;
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
+        const corpusOnlyFingerprint = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`);
         const cacheReuseFingerprint = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${modelId}|${fingerprintSource}`);
+
+        const snapshot = entries.map(entry => ({
+            path: entry.path,
+            sceneId: entry.sceneId,
+            mtime: entry.mtime,
+            class: entry.class,
+            mode: entry.mode,
+            isTarget: entry.isTarget
+        }));
 
         const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
             acc[entry.class] = (acc[entry.class] || 0) + 1;
@@ -7968,7 +8162,9 @@ export class InquiryView extends ItemView {
         return {
             entries,
             fingerprint,
+            corpusOnlyFingerprint,
             cacheReuseFingerprint,
+            snapshot,
             generatedAt: now,
             resolvedRoots,
             allowedClasses,
@@ -8088,12 +8284,14 @@ export class InquiryView extends ItemView {
         }
         const anchorSource = this.getMinimapItemFilePath(item) || item.id || item.displayLabel;
         const anchorId = this.getBriefSceneAnchorId(anchorSource);
+        const staleDiagnosis = this.diagnoseSessionStaleness(session);
         this.openBriefingPresentation(this.buildInquiryBriefModel(session.result, session.logPath), {
             briefFile: file,
             logFile: this.getArtifactFileAtPath(session.logPath),
             generatedAt: session.result.completedAt ?? session.createdAt,
             focusAnchorId: anchorId,
-            isCorpusStale: this.isSessionCorpusStale(session)
+            isCorpusStale: !!staleDiagnosis,
+            staleDiagnosis
         });
     }
 
@@ -10215,13 +10413,17 @@ export class InquiryView extends ItemView {
         });
         if (this.previewGroup?.classList.contains('is-results')) return;
 
-        if (this.isHoveredQuestionStale()) {
+        const diagnosis = this.getHoveredQuestionStaleDiagnosis();
+        if (diagnosis) {
             const historyRow = this.previewRows.find(row => row.group.classList.contains('is-history-slot'));
             if (historyRow && !historyRow.group.classList.contains('ert-hidden')) {
                 historyRow.group.classList.add('is-token-amber');
+                const detail = diagnosis.tooltipLines.length
+                    ? diagnosis.tooltipLines.join('\n')
+                    : 'Corpus has changed since this run.';
                 addTooltipData(
                     historyRow.group,
-                    balanceTooltipText('Prior run exists — corpus, model, or question changed since then. Click to run fresh.'),
+                    balanceTooltipText(`Stale — ${diagnosis.shortLabel}.\n${detail}\nClick to run fresh.`),
                     'top'
                 );
             }
@@ -10237,15 +10439,20 @@ export class InquiryView extends ItemView {
         const defaultLabel = this.previewRowDefaultLabels.find((_, idx) =>
             this.previewRows[idx]?.group.classList.contains('is-history-slot')
         ) ?? 'Earlier ·';
-        historyRow.label = this.isHoveredQuestionStale() ? 'Stale ·' : defaultLabel;
+        const diagnosis = this.getHoveredQuestionStaleDiagnosis();
+        historyRow.label = diagnosis ? `Stale · ${diagnosis.shortLabel} ·` : defaultLabel;
     }
 
     private isHoveredQuestionStale(): boolean {
+        return !!this.getHoveredQuestionStaleDiagnosis();
+    }
+
+    private getHoveredQuestionStaleDiagnosis(): InquiryStaleDiagnosis | null {
         const hoveredId = this.previewLast?.questionId;
-        if (!hoveredId) return false;
-        if (this.previewGroup?.classList.contains('is-results')) return false;
-        const { staleIds } = this.computePromptCacheStates();
-        return staleIds.has(hoveredId);
+        if (!hoveredId) return null;
+        if (this.previewGroup?.classList.contains('is-results')) return null;
+        const { staleDiagnoses } = this.computePromptCacheStates();
+        return staleDiagnoses.get(hoveredId) ?? null;
     }
 
     private setWrappedSvgText(
