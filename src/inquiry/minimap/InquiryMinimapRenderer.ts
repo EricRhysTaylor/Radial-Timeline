@@ -60,7 +60,7 @@ const MINIMAP_LUCIDE_24PX_EQUIVALENT_SIZE = 24;
 const MINIMAP_LUCIDE_FILE_BOTTOM_INSET = 2;
 const MINIMAP_BOTTOM_ROW_BACKBONE_EXTRA_GAP = 2;
 
-type MinimapIconName = 'file' | 'file-x-corner' | 'book';
+type MinimapIconName = 'file-text' | 'file-x-corner' | 'book';
 
 // ── Color utilities (pure) ──────────────────────────────────────────
 
@@ -193,13 +193,14 @@ function getMinimapIconName(item: InquiryCorpusItem, scope: InquiryScope): Minim
     if (scope === 'saga' || typeof (item as { rootPath?: string }).rootPath === 'string') {
         return 'book';
     }
-    return 'file';
+    return 'file-text';
 }
 
 function setMinimapLucideIcon(icon: SVGSVGElement, name: MinimapIconName): void {
     clearSvgChildren(icon);
     icon.classList.remove(
         'ert-inquiry-minimap-tick-icon--file',
+        'ert-inquiry-minimap-tick-icon--file-text',
         'ert-inquiry-minimap-tick-icon--file-x-corner',
         'ert-inquiry-minimap-tick-icon--book'
     );
@@ -1206,7 +1207,7 @@ export class InquiryMinimapRenderer {
                 const itemKind = tick.getAttribute('data-item-kind');
                 const iconName: MinimapIconName = isEmpty && itemKind === 'scene' ? 'file-x-corner'
                     : itemKind === 'book' ? 'book'
-                    : 'file';
+                    : 'file-text';
                 setMinimapLucideIcon(icon, iconName);
             }
         });

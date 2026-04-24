@@ -81,6 +81,7 @@ import {
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
 import { cleanEvidenceBody } from './utils/evidenceCleaning';
+import { countWords as countManuscriptWords } from '../utils/manuscript';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
 import {
@@ -2238,6 +2239,7 @@ export class InquiryView extends ItemView {
             'waves',
             'waves-arrow-down',
             'file',
+            'file-text',
             'file-x-corner',
             'book',
             'columns-2',
@@ -5265,9 +5267,14 @@ export class InquiryView extends ItemView {
                 title: cached.title
             };
         }
-        const content = await this.app.vault.cachedRead(file);
-        const body = this.stripFrontmatter(content);
-        const bodyWords = this.countWords(body);
+        const yamlWords = this.readFrontmatterWordCount(frontmatter);
+        let bodyWords: number;
+        if (yamlWords !== null) {
+            bodyWords = yamlWords;
+        } else {
+            const content = await this.app.vault.cachedRead(file);
+            bodyWords = countManuscriptWords(cleanEvidenceBody(content));
+        }
         const summary = this.extractSummary(frontmatter);
         const synopsisWords = this.countWords(summary);
         const synopsisQuality = classifySynopsis(summary);
@@ -5342,6 +5349,21 @@ export class InquiryView extends ItemView {
         if (!trimmed) return 0;
         const matches = trimmed.match(/[A-Za-z0-9]+(?:['\u2019'-][A-Za-z0-9]+)*/g);
         return matches ? matches.length : 0;
+    }
+
+    /**
+     * Read the authoritative `words` value from frontmatter (written by manuscript export).
+     * Returns null if the field is absent or unparseable, so the caller can fall back to
+     * a live count that aligns with the export algorithm (cleanEvidenceBody + whitespace split).
+     */
+    private readFrontmatterWordCount(frontmatter: Record<string, unknown>): number | null {
+        const raw = frontmatter['Words'] ?? frontmatter['words'];
+        if (typeof raw === 'number' && Number.isFinite(raw)) return Math.max(0, Math.round(raw));
+        if (typeof raw === 'string') {
+            const parsed = parseFloat(raw.replace(/,/g, '').trim());
+            if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
+        }
+        return null;
     }
 
     private getStyleSource(): Element {
