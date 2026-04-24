@@ -47,6 +47,7 @@ export const MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT = 10;
 export const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
 export const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 export const MINIMAP_BACKBONE_ENDCAP_OFFSET_Y = 2;
+export const MINIMAP_EXTRA_WIDTH = 200;
 
 export const SWEEP_RANDOM_CYCLE_MS = 1800;
 export const MIN_PROCESSING_MS = 5000;
@@ -60,14 +61,14 @@ type MinimapIconName = 'file' | 'file-x-corner' | 'book';
 
 const MINIMAP_LUCIDE_PATHS: Record<MinimapIconName, string[]> = {
     file: [
-        'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z',
-        'M14 2v4a2 2 0 0 0 2 2h4'
+        'M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z',
+        'M14 2v5a1 1 0 0 0 1 1h5'
     ],
     'file-x-corner': [
-        'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z',
-        'M14 2v4a2 2 0 0 0 2 2h4',
-        'm14 14 4 4',
-        'm18 14-4 4'
+        'M11 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5',
+        'M14 2v5a1 1 0 0 0 1 1h5',
+        'm15 17 5 5',
+        'm20 17-5 5'
     ],
     book: [
         'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a2.5 2.5 0 0 1 0-5H20'
@@ -208,19 +209,33 @@ function getMinimapIconName(item: InquiryCorpusItem, scope: InquiryScope): Minim
     return 'file';
 }
 
-function appendMinimapLucideIcon(parent: SVGElement, name: MinimapIconName, width: number, height: number): SVGGElement {
-    const icon = createSvgElement('g');
-    icon.classList.add('ert-inquiry-minimap-tick-icon', `ert-inquiry-minimap-tick-icon--${name}`);
-    const iconSize = Math.min(Math.max(width + 4, 18), Math.max(height, 18));
-    const scale = iconSize / MINIMAP_LUCIDE_VIEWBOX_SIZE;
-    const x = (width - iconSize) / 2;
-    const y = (height - iconSize) / 2;
-    icon.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(4)})`);
+function setMinimapLucideIcon(icon: SVGGElement, name: MinimapIconName): void {
+    clearSvgChildren(icon);
+    icon.classList.remove(
+        'ert-inquiry-minimap-tick-icon--file',
+        'ert-inquiry-minimap-tick-icon--file-x-corner',
+        'ert-inquiry-minimap-tick-icon--book'
+    );
+    icon.classList.add(`ert-inquiry-minimap-tick-icon--${name}`);
+    const inner = createSvgElement('g');
+    inner.classList.add('ert-inquiry-minimap-tick-icon-inner');
     MINIMAP_LUCIDE_PATHS[name].forEach(pathData => {
         const path = createSvgElement('path');
         path.setAttribute('d', pathData);
-        icon.appendChild(path);
+        inner.appendChild(path);
     });
+    icon.appendChild(inner);
+}
+
+function appendMinimapLucideIcon(parent: SVGElement, name: MinimapIconName, width: number, height: number): SVGGElement {
+    const icon = createSvgElement('g');
+    icon.classList.add('ert-inquiry-minimap-tick-icon');
+    const iconSize = Math.round(Math.max(width, height));
+    const scale = iconSize / MINIMAP_LUCIDE_VIEWBOX_SIZE;
+    const x = Math.round((width - iconSize) / 2);
+    const y = Math.round((height - iconSize) / 2);
+    icon.setAttribute('transform', `translate(${x} ${y}) scale(${scale.toFixed(4)})`);
+    setMinimapLucideIcon(icon, name);
     parent.appendChild(icon);
     return icon;
 }
@@ -296,7 +311,7 @@ export class InquiryMinimapRenderer {
      *  Called once during InquiryView.buildSvg. */
     initElements(parentGroup: SVGGElement, viewboxSize: number): void {
         this.minimapGroup = parentGroup;
-        const baselineLength = viewboxSize / 2;
+        const baselineLength = (viewboxSize / 2) + MINIMAP_EXTRA_WIDTH;
         const baselineStartX = -(baselineLength / 2);
         this.minimapLayout = { startX: baselineStartX, length: baselineLength };
 
@@ -1177,18 +1192,7 @@ export class InquiryMinimapRenderer {
                 const iconName: MinimapIconName = isEmpty && itemKind === 'scene' ? 'file-x-corner'
                     : itemKind === 'book' ? 'book'
                     : 'file';
-                clearSvgChildren(icon);
-                icon.classList.remove(
-                    'ert-inquiry-minimap-tick-icon--file',
-                    'ert-inquiry-minimap-tick-icon--file-x-corner',
-                    'ert-inquiry-minimap-tick-icon--book'
-                );
-                icon.classList.add(`ert-inquiry-minimap-tick-icon--${iconName}`);
-                MINIMAP_LUCIDE_PATHS[iconName].forEach(pathData => {
-                    const path = createSvgElement('path');
-                    path.setAttribute('d', pathData);
-                    icon.appendChild(path);
-                });
+                setMinimapLucideIcon(icon, iconName);
             }
         });
     }
@@ -1217,33 +1221,39 @@ export class InquiryMinimapRenderer {
         const count = items.length;
         const length = this.minimapLayout.length;
         const tickSize = 20;
-        const tickWidth = Math.max(12, Math.round(tickSize * 0.7));
-        const tickHeight = Math.max(tickWidth + 4, Math.round(tickWidth * 1.45));
-        const tickGap = 4;
+        const tickWidth = tickSize;
+        const tickHeight = tickSize;
+        const iconFootprint = tickSize;
+        const tickGap = 8;
         const capWidth = 2;
-        const capHeight = Math.max(30, tickHeight + 12);
         const capHalfWidth = Math.round(capWidth / 2);
-        const edgeScenePadding = tickWidth;
-        const tickInset = capWidth + (tickWidth / 2) + 4 + edgeScenePadding;
+        const edgeScenePadding = iconFootprint;
+        const tickInset = capWidth + (iconFootprint / 2) + 4 + edgeScenePadding;
         const availableLength = Math.max(0, length - (tickInset * 2));
         const maxRowWidth = viewboxSize * 0.75;
-        const minStep = tickWidth + tickGap;
+        const minStep = iconFootprint + tickGap;
         const isSaga = scope === 'saga';
-        const needsWrap = count > 1 && ((availableLength / (count - 1)) < minStep || (count * minStep) > maxRowWidth);
-        const rowCount = isSaga ? 1 : (needsWrap ? 2 : 1);
-        const firstRowCount = rowCount === 2 ? Math.ceil(count / 2) : count;
-        const secondRowCount = count - firstRowCount;
-        const columnCount = rowCount === 2 ? firstRowCount : count;
+        const maxRows = isSaga ? 1 : 3;
+        let rowCount = 1;
+        if (count > 1) {
+            for (let rows = 1; rows <= maxRows; rows += 1) {
+                const columns = Math.ceil(count / rows);
+                const requiredWidth = columns > 1 ? (columns - 1) * minStep : 0;
+                rowCount = rows;
+                if (requiredWidth <= availableLength && (columns * minStep) <= maxRowWidth) {
+                    break;
+                }
+            }
+        }
+        const columnCount = Math.ceil(count / rowCount);
         const rawColumnStep = columnCount > 1 ? (availableLength / (columnCount - 1)) : 0;
         const columnStep = columnCount > 1 ? Math.max(1, Math.floor(rawColumnStep)) : 0;
         const usedLength = columnStep * Math.max(0, columnCount - 1);
         const extraSpace = Math.max(0, availableLength - usedLength);
         const startOffset = Math.floor(extraSpace / 2);
-        const verticalGap = 10;
-        const baselineGap = verticalGap;
-        const rowGap = verticalGap;
-        const rowTopY = -(baselineGap + tickHeight + (rowCount === 2 ? (tickHeight + rowGap) : 0));
-        const rowBottomY = -(baselineGap + tickHeight);
+        const rowGap = 9;
+        const baselineGap = 8;
+        const capHeight = Math.max(30, baselineGap + (tickHeight * rowCount) + (rowGap * Math.max(0, rowCount - 1)) + 8);
 
         const baselineStart = Math.round(this.minimapLayout.startX);
         const baselineEnd = Math.round(this.minimapLayout.startX + length);
@@ -1313,12 +1323,12 @@ export class InquiryMinimapRenderer {
 
         for (let i = 0; i < count; i += 1) {
             const item = items[i];
-            const rowIndex = rowCount === 2 && i >= firstRowCount ? 1 : 0;
-            const colIndex = rowIndex === 0 ? i : (i - firstRowCount);
+            const rowIndex = Math.min(rowCount - 1, Math.floor(i / columnCount));
+            const colIndex = i - (rowIndex * columnCount);
             const pos = columnCount > 1
                 ? tickInset + startOffset + (columnStep * colIndex)
                 : tickInset + startOffset + (availableLength / 2);
-            const rowY = rowIndex === 0 ? rowTopY : rowBottomY;
+            const rowY = -(baselineGap + tickHeight + ((rowCount - 1 - rowIndex) * (tickHeight + rowGap)));
             const x = Math.round(pos - (tickWidth / 2));
             const y = Math.round(rowY);
             const tick = createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-tick', x, y);

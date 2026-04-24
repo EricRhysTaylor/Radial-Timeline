@@ -606,6 +606,7 @@
 
 .ert-inquiry-minimap-tick {
   --ert-inquiry-minimap-tick-color: var(--icon-color, var(--text-normal));
+  --ert-inquiry-minimap-tick-hover-color: var(--text-normal);
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 18%, var(--background-secondary));
   --ert-inquiry-minimap-target-letter-color: var(--ert-inquiry-target-color);
   opacity: 1;
@@ -628,21 +629,29 @@
 
 .ert-inquiry-minimap-tick-base {
   fill: transparent;
+  transition: fill 160ms ease;
 }
 
 .ert-inquiry-minimap-tick-icon {
   fill: none;
   stroke: var(--ert-inquiry-minimap-tick-color);
-  stroke-width: 2;
+  stroke-width: 1;
   stroke-linecap: round;
   stroke-linejoin: round;
+  shape-rendering: geometricPrecision;
   pointer-events: none;
-  transition: stroke 160ms ease, opacity 160ms ease, filter 160ms ease;
+  transition: stroke 160ms ease, opacity 160ms ease;
 }
 
-.ert-inquiry-minimap-tick.is-selection-boundary .ert-inquiry-minimap-tick-icon,
-.ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-icon {
-  stroke-width: 2.35;
+.ert-inquiry-minimap-tick-icon-inner {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 160ms ease;
+}
+
+.ert-inquiry-minimap-tick:hover .ert-inquiry-minimap-tick-icon-inner,
+.ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-icon-inner {
+  transform: scale(1.1);
 }
 
 .ert-inquiry-minimap-target-letter {
@@ -653,7 +662,6 @@
   fill: var(--ert-inquiry-minimap-target-letter-color);
   opacity: 0.98;
   pointer-events: none;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ert-inquiry-minimap-target-letter-color) 42%, transparent));
 }
 
 .ert-inquiry-minimap-tick.is-target:not(.is-empty) .ert-inquiry-minimap-target-letter {
@@ -662,6 +670,19 @@
 
 .ert-inquiry-minimap-tick.is-empty .ert-inquiry-minimap-tick-icon {
   stroke: var(--ert-inquiry-empty);
+}
+
+.ert-inquiry-minimap-tick.is-empty .ert-inquiry-minimap-tick-base {
+  fill: color-mix(in srgb, var(--ert-inquiry-empty) 14%, transparent);
+}
+
+.ert-inquiry-minimap-tick:hover .ert-inquiry-minimap-tick-base {
+  fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 14%, transparent);
+}
+
+.ert-inquiry-minimap-tick:hover .ert-inquiry-minimap-tick-icon,
+.ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-icon {
+  stroke: var(--ert-inquiry-minimap-tick-hover-color);
 }
 
 .ert-inquiry-svg.is-running .inq-zone-control,
@@ -1103,25 +1124,15 @@
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-finding {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-finding-color);
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-finding-color) 18%, var(--background-secondary));
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-finding-color) 65%, transparent));
-}
-
-.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-target-finding {
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-finding-color) 72%, transparent));
-}
-
-.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-context-finding {
-  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--ert-inquiry-finding-color) 58%, transparent));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-active {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-active-zone-color);
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, transparent));
 }
 
 .ert-inquiry-minimap-tick.is-linked-hover {
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--text-normal) 30%, transparent));
+  --ert-inquiry-minimap-tick-hover-color: var(--text-normal);
 }
 
 .ert-inquiry-minimap-tick.is-linked-hover .ert-inquiry-minimap-tick-base {
@@ -1138,7 +1149,6 @@
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-empty.is-active {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-empty) 65%, transparent));
 }
 
 .ert-inquiry-zones {
