@@ -151,7 +151,7 @@ export function renderProEntitlementPanel({
 
     keySetting.nameEl.createEl('a', {
         text: ' Learn more \u2192',
-        href: 'https://radial-timeline.com/wiki/pro',
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Pro',
         cls: 'ert-link-accent',
         attr: { target: '_blank', rel: 'noopener' }
     });
