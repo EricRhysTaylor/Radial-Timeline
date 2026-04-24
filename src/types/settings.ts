@@ -650,7 +650,6 @@ export interface RadialTimelineSettings {
     inquiryTargetCache?: InquiryTargetCache;
     inquiryLastMode?: 'flow' | 'depth';
     inquiryCorpusThresholds?: InquiryCorpusThresholds;
-    inquiryCorpusHighlightLowSubstanceComplete?: boolean;
     inquiryPromptZoneExpanded?: Record<InquiryZone, boolean>;
     inquiryActionNotesAutoPopulate?: boolean;
     briefingTheme?: BriefingThemePreference;

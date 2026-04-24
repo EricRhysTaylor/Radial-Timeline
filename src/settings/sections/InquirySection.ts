@@ -1716,6 +1716,7 @@ export function renderInquirySection(params: SectionParams): void {
         header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.corpusTable.tier') });
         header.createDiv({ cls: 'ert-controlGroup__cell' });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.corpusTable.threshold') });
+        header.createDiv({ cls: 'ert-controlGroup__cell' });
 
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
             emptyMax: document.createElement('input'),
@@ -1739,9 +1740,34 @@ export function renderInquirySection(params: SectionParams): void {
             input.value = String(thresholdDefaults[key]);
             input.classList.add('ert-input--sm');
             cell.appendChild(input);
+            const actionCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--action'] });
+            if (key === 'substantiveMin') {
+                const resetButton = actionCell.createDiv({
+                    cls: ['clickable-icon', 'ert-corpus-reset-button'],
+                    attr: {
+                        role: 'button',
+                        tabindex: '0',
+                        'aria-label': t('settings.inquiry.corpus.resetTooltip')
+                    }
+                });
+                setIcon(resetButton, 'rotate-ccw');
+                setTooltip(resetButton, t('settings.inquiry.corpus.resetTooltip'));
+                const resetThresholds = async () => {
+                    const reset = normalizeCorpusThresholds(DEFAULT_SETTINGS.inquiryCorpusThresholds);
+                    await commitThresholds(reset);
+                };
+                plugin.registerDomEvent(resetButton, 'click', () => {
+                    void resetThresholds();
+                });
+                plugin.registerDomEvent(resetButton, 'keydown', (event: KeyboardEvent) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    void resetThresholds();
+                });
+            }
         };
 
-        renderRow(t('settings.inquiry.corpusTier.empty'), 'emptyMax', '<');
+        renderRow(t('settings.inquiry.corpusTier.empty'), 'emptyMax', '<=');
         renderRow(t('settings.inquiry.corpusTier.sketchy'), 'sketchyMin');
         renderRow(t('settings.inquiry.corpusTier.medium'), 'mediumMin');
         renderRow(t('settings.inquiry.corpusTier.substantive'), 'substantiveMin');
@@ -1776,24 +1802,6 @@ export function renderInquirySection(params: SectionParams): void {
             });
         });
 
-        new Settings(corpusPanel)
-            .setName(t('settings.inquiry.highlightLowSubstance.name'))
-            .setDesc(t('settings.inquiry.highlightLowSubstance.desc'))
-            .addToggle(toggle => {
-                toggle.setValue(plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true);
-                toggle.onChange(async (value) => {
-                    plugin.settings.inquiryCorpusHighlightLowSubstanceComplete = value;
-                    await plugin.saveSettings();
-                });
-            })
-            .addExtraButton(button => {
-                button.setIcon('rotate-ccw');
-                button.setTooltip(t('settings.inquiry.corpus.resetTooltip'));
-                button.onClick(async () => {
-                    const reset = normalizeCorpusThresholds(DEFAULT_SETTINGS.inquiryCorpusThresholds);
-                    await commitThresholds(reset);
-                });
-            });
     };
 
     const corpusBody = createSection(containerEl, {

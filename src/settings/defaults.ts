@@ -40,7 +40,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         mediumMin: 300,
         substantiveMin: 1000
     },
-    inquiryCorpusHighlightLowSubstanceComplete: true,
     inquiryPromptZoneExpanded: {
         setup: true,
         pressure: true,

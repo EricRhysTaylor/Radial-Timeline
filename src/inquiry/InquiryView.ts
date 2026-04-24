@@ -3963,7 +3963,7 @@ export class InquiryView extends ItemView {
         const scenePath = (item as { filePath?: string }).filePath;
         if (!scenePath) return false;
         const stats = await this.loadCorpusCcStatsByPath(scenePath);
-        return stats.bodyWords >= this.getCorpusThresholds().emptyMax;
+        return stats.bodyWords > this.getCorpusThresholds().emptyMax;
     }
 
     private removeEmptyTargetSceneItems(emptySceneItems: InquiryCorpusItem[]): boolean {
@@ -4042,7 +4042,7 @@ export class InquiryView extends ItemView {
         const emptySceneItems = items.filter((item, index) => (
             !!item.sceneId
             && typeof (item as { filePath?: string }).filePath === 'string'
-            && wordCounts[index] < emptyMax
+            && wordCounts[index] <= emptyMax
         ));
         const prunedEmptyTargets = this.removeEmptyTargetSceneItems(emptySceneItems);
         this.minimap.applyEmptyStates(wordCounts, emptyMax);

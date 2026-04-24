@@ -1190,7 +1190,7 @@ export class InquiryMinimapRenderer {
         wordCounts.forEach((wordCount, idx) => {
             const tick = this.minimapTicks[idx];
             if (!tick) return;
-            const isEmpty = wordCount < emptyMax;
+            const isEmpty = wordCount <= emptyMax;
             tick.classList.toggle('is-empty', isEmpty);
             tick.setAttribute('data-is-empty', isEmpty ? 'true' : 'false');
             if (isEmpty) {

@@ -412,7 +412,6 @@ export interface TranslationKeys {
             canonicalLibrary: { name: string; descPro: string; descFree: string; loadFullProSet: string; loadAllTooltip: string; loadCoreQuestions: string; };
             corpusTable: { tier: string; threshold: string; };
             corpusTier: { empty: string; sketchy: string; medium: string; substantive: string; };
-            highlightLowSubstance: { name: string; desc: string; };
             config: { name: string; desc: string; };
         };
         authorProgress: {
@@ -1244,7 +1243,6 @@ export const en: TranslationKeys = {
             },
             corpusTable: { tier: 'Tier', threshold: 'Threshold' },
             corpusTier: { empty: 'Empty', sketchy: 'Sketchy', medium: 'Medium', substantive: 'Substantive' },
-            highlightLowSubstance: { name: 'Highlight completed docs with low substance', desc: 'Marks completed scene cells in the Inquiry corpus strip with an X when they fall in Empty or Sketchy tiers.' },
             config: { name: 'Configuration', desc: 'Pending edit behavior for Inquiry briefs.' },
         },
         authorProgress: {

@@ -1086,7 +1086,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup--corpus {
-  --ert-controlGroup-columns: minmax(140px, max-content) 56px minmax(var(--ert-input-width-sm), max-content);
+  --ert-controlGroup-columns: minmax(140px, max-content) 56px minmax(var(--ert-input-width-sm), max-content) minmax(28px, 1fr);
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup--class-scope {
@@ -1209,6 +1209,10 @@
 .ert-ui.ert-scope--settings .ert-controlGroup__cell--mono {
   font-family: var(--font-monospace);
   font-variant-numeric: tabular-nums;
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__cell--action {
+  justify-content: flex-end;
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup__sequenceBadge {

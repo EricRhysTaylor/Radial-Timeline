@@ -117,7 +117,7 @@ function getInquiryCorpusTier(
     wordCount: number,
     thresholds: InquiryCorpusThresholds
 ): CorpusSubstanceTier {
-    if (wordCount < thresholds.emptyMax) return 'empty';
+    if (wordCount <= thresholds.emptyMax) return 'empty';
     if (wordCount < thresholds.sketchyMin) return 'sketchy';
     if (wordCount < thresholds.mediumMin) return 'sketchy';
     if (wordCount < thresholds.substantiveMin) return 'medium';
