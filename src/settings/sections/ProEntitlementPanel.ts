@@ -143,7 +143,10 @@ export function renderProEntitlementPanel({
             text.inputEl.type = 'password';
         })
         .addButton(button => {
-            button.setButtonText('Validate access');
+            button
+                .setButtonText('Validate')
+                .setTooltip('No validation needed during Early Access preview')
+                .setDisabled(true);
         });
 
     keySetting.nameEl.createEl('a', {

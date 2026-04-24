@@ -1240,7 +1240,7 @@ export class InquiryMinimapRenderer {
         const tickWidth = MINIMAP_LUCIDE_24PX_EQUIVALENT_SIZE;
         const tickHeight = MINIMAP_LUCIDE_24PX_EQUIVALENT_SIZE;
         const iconFootprint = tickWidth;
-        const tickGap = 14;
+        const tickGap = 9;
         const capWidth = 2;
         const capHalfWidth = Math.round(capWidth / 2);
         const edgeScenePadding = iconFootprint;

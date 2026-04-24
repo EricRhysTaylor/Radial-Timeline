@@ -542,8 +542,8 @@
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: var(--ert-gap-sm);
-  align-items: start;
+  column-gap: var(--ert-gap-md, var(--ert-gap-sm));
+  align-items: center;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-info {
@@ -558,12 +558,12 @@
   min-width: 0;
   margin-left: 0;
   justify-self: end;
-  align-self: start;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: nowrap;
-  gap: var(--ert-gap-xs, var(--ert-gap-sm));
+  gap: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-control > * {
@@ -572,8 +572,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container :is(input.ert-input--lg, input[type="text"], input[type="password"]) {
-  width: min(100%, var(--ert-input-width-lg));
-  min-width: min(280px, 100%);
+  width: var(--ert-input-width-lg);
+  min-width: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-name {
@@ -586,25 +586,6 @@
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .ert-link-accent {
   color: var(--rt-pro-color);
-}
-
-@media (max-width: 860px) {
-  .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: var(--ert-gap-sm);
-    align-items: start;
-  }
-
-  .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-control {
-    justify-self: stretch;
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .ert-ui.ert-scope--settings .ert-pro-key-container :is(input.ert-input--lg, input[type="text"], input[type="password"]) {
-    min-width: 0;
-  }
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode.is-pro-disabled .ert-pro-key-container .setting-item-name {
@@ -2663,6 +2644,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-settings-tab {
+  box-sizing: border-box;
   flex: 1 1 0;
   display: flex;
   align-items: center;
@@ -2670,6 +2652,7 @@
   gap: var(--ert-gap-sm);
   min-width: 0;
   padding: var(--ert-pad-cozy) var(--ert-pad-md);
+  border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
