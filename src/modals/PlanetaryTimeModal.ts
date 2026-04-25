@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../main';
 import type { PlanetaryProfile } from '../types';
 import { convertFromEarth } from '../utils/planetaryTime';
 import { t } from '../i18n';
+import { IMPACT_FULL } from '../settings/SettingImpact';
 
 export class PlanetaryTimeModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -61,6 +62,7 @@ export class PlanetaryTimeModal extends Modal {
                 this.activeId = value;
                 this.plugin.settings.activePlanetaryProfileId = value;
                 await this.plugin.saveSettings();
+                this.plugin.onSettingChanged(IMPACT_FULL);
                 this.renderResult();
             });
         });

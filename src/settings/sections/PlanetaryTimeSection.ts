@@ -6,6 +6,7 @@ import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { scheduleFocusAfterPaint } from '../../utils/domFocus';
+import { IMPACT_FULL } from '../SettingImpact';
 
 interface SectionParams {
     app: App;
@@ -224,6 +225,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                     activeProfileId = marsProfile.id;
                     plugin.settings.activePlanetaryProfileId = activeProfileId;
                     await plugin.saveSettings();
+                    plugin.onSettingChanged(IMPACT_FULL);
                     renderSelector();
                     renderFields();
                     renderPreview();
@@ -232,6 +234,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 activeProfileId = value;
                 plugin.settings.activePlanetaryProfileId = value;
                 await plugin.saveSettings();
+                plugin.onSettingChanged(IMPACT_FULL);
                 renderFields();
                 renderPreview();
                 updateActiveIcon();
@@ -248,6 +251,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                     activeProfileId = profile.id;
                     plugin.settings.activePlanetaryProfileId = activeProfileId;
                     await plugin.saveSettings();
+                    plugin.onSettingChanged(IMPACT_FULL);
                     renderSelector();
                     renderFields();
                     renderPreview();
@@ -289,6 +293,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 activeProfileId = profiles[0]?.id;
                 plugin.settings.activePlanetaryProfileId = activeProfileId;
                 await plugin.saveSettings();
+                plugin.onSettingChanged(IMPACT_FULL);
                 renderSelector();
                 renderFields();
                 renderPreview();
@@ -332,6 +337,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
             activeProfileId = updated.id;
         }
         await plugin.saveSettings();
+        plugin.onSettingChanged(IMPACT_FULL);
         if (input) flash(input, 'success');
         renderPreview();
         updateActiveIcon();
