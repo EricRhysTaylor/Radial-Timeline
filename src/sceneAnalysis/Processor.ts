@@ -187,6 +187,9 @@ export async function processWithModal(
             const pulseUpdateFlag = getPulseUpdateFlag(scene.frontmatter);
             return normalizeBooleanValue(pulseUpdateFlag);
         }
+        if (mode === 'open') {
+            return plugin.openScenePaths.has(scene.file.path) && hasProcessableContent(scene.frontmatter);
+        }
         return hasProcessableContent(scene.frontmatter);
     });
 
@@ -200,6 +203,9 @@ export async function processWithModal(
 
         if (mode === 'flagged') {
             shouldProcess = isFlagged;
+        } else if (mode === 'open') {
+            shouldProcess = plugin.openScenePaths.has(triplet.current.file.path)
+                && hasProcessableContent(triplet.current.frontmatter);
         } else if (mode === 'force-all') {
             shouldProcess = isResuming
                 ? !hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })

@@ -232,10 +232,13 @@ export async function calculateSceneCount(
             const pulseUpdateFlag = getPulseUpdateFlag(scene.frontmatter);
             return normalizeBooleanValue(pulseUpdateFlag) && hasProcessableContent(scene.frontmatter);
         }
+        if (mode === 'open') {
+            return plugin.openScenePaths.has(scene.file.path) && hasProcessableContent(scene.frontmatter);
+        }
         return hasProcessableContent(scene.frontmatter);
     });
 
-    if (mode === 'flagged') {
+    if (mode === 'flagged' || mode === 'open') {
         return processableScenes.length;
     }
 

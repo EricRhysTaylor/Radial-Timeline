@@ -18,7 +18,7 @@ import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtim
 import { getLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS } from '../ai/localLlm/settings';
 import { getActiveBookTitle } from '../utils/books';
 
-export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
+export type ProcessingMode = 'open' | 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
 export type SceneQueueItem = {
     id: string;
@@ -679,6 +679,13 @@ export class SceneAnalysisProcessingModal extends Modal {
             );
         } else {
             // Pulse Modes
+            this.createModeOption(
+                modesSection,
+                'open',
+                'Process open scenes',
+                'Processes scenes currently open in tabs (Status: Working or Complete). Use while actively editing — ignores the Pulse Update flag.',
+                false
+            );
             this.createModeOption(
                 modesSection,
                 'flagged',
