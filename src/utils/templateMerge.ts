@@ -17,6 +17,7 @@ function extractFieldNames(template: string): Set<string> {
 function filterAdvancedFields(advancedTemplate: string, baseFields: Set<string>): string {
     const lines = advancedTemplate.split('\n');
     const result: string[] = [];
+    const seenAdvancedFields = new Set<string>();
     let skipUntilNextField = false;
 
     for (const line of lines) {
@@ -24,10 +25,11 @@ function filterAdvancedFields(advancedTemplate: string, baseFields: Set<string>)
 
         if (fieldMatch) {
             const fieldName = fieldMatch[1].trim();
-            if (baseFields.has(fieldName)) {
+            if (baseFields.has(fieldName) || seenAdvancedFields.has(fieldName)) {
                 skipUntilNextField = true;
                 continue;
             }
+            seenAdvancedFields.add(fieldName);
             skipUntilNextField = false;
             result.push(line);
             continue;

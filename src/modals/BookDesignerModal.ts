@@ -8,7 +8,7 @@ import { getCustomSystemFromSettings, getPlotSystem } from '../utils/beatsSystem
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
-import { getCustomBeatConfigKey, replaceSavedBeatSystem, resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
+import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { replayTransientClass } from '../utils/domClassEffects';
 import { getActiveBook } from '../utils/books';
 import { ensureActiveBookFolder } from './EnsureFirstBookModal';
@@ -177,7 +177,10 @@ class GenerateDemoProjectModal extends Modal {
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'DEMO' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Generate nonlinear demo project' });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Creates a 20-scene, 5-act example with beats, threads, and chronologue timing.' });
+        header.createDiv({
+            cls: 'ert-modal-subtitle',
+            text: 'Creates a 20-scene, 5-act example to show the difference between narrative order (the order the reader encounters scenes) and chronological order (when events actually happen). The scene numbers run 1–20 in narrative order, but the dates and times jump around — open the START HERE note after generating to see how, and switch between Timeline and Chronologue views to compare.'
+        });
 
         const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         const dateSetting = new Setting(form)
@@ -185,7 +188,6 @@ class GenerateDemoProjectModal extends Modal {
             .setDesc('Used for the chronologue cadence. Format: YYYY-MM-DD.')
             .addText(text => {
                 this.startDateInput = text;
-                text.inputEl.addClass('rt-input-sm');
                 text.setPlaceholder(NONLINEAR_DEMO_DEFAULT_START_DATE);
                 text.setValue(NONLINEAR_DEMO_DEFAULT_START_DATE);
                 text.inputEl.addEventListener('keydown', (evt) => {
@@ -1586,20 +1588,11 @@ export class BookDesignerModal extends Modal {
         return true;
     }
 
-    private async ensureDemoBeatSystemSettings(system: ReturnType<typeof buildNonlinearDemoProjectPlan>['illustrationBeatSystem']): Promise<void> {
-        replaceSavedBeatSystem(this.plugin.settings, system);
-        const configKey = getCustomBeatConfigKey(system.id);
-        this.plugin.settings.beatSystemConfigs = {
-            ...(this.plugin.settings.beatSystemConfigs ?? {}),
-            [configKey]: this.plugin.settings.beatSystemConfigs?.[configKey] ?? {
-                beatYamlAdvanced: '',
-                beatHoverMetadataFields: [],
-            },
-        };
+    private async ensureDemoActCount(): Promise<void> {
         if ((this.plugin.settings.actCount ?? 3) < NONLINEAR_DEMO_ACT_COUNT) {
             this.plugin.settings.actCount = NONLINEAR_DEMO_ACT_COUNT;
+            await this.plugin.saveSettings();
         }
-        await this.plugin.saveSettings();
     }
 
     private async generateNonlinearDemoProject(startDate: string): Promise<void> {
@@ -1651,7 +1644,7 @@ export class BookDesignerModal extends Modal {
             console.error(`Failed to create nonlinear demo note: ${instructionPath}`, error);
         }
 
-        await this.ensureDemoBeatSystemSettings(plan.illustrationBeatSystem);
+        await this.ensureDemoActCount();
 
         const builtinBeatTemplate = getTemplateParts('Beat', this.plugin.settings, plan.builtinBeatSystemName).merged;
         const builtinBeatResult = await createBeatNotesFromSet(
@@ -1665,23 +1658,10 @@ export class BookDesignerModal extends Modal {
             }
         );
 
-        const illustrationBeatTemplate = getTemplateParts('Beat', this.plugin.settings, getCustomBeatConfigKey(plan.illustrationBeatSystem.id)).merged;
-        const illustrationBeatResult = await createBeatNotesFromSet(
-            vault,
-            'Custom',
-            targetFolder,
-            plan.illustrationPlotSystem,
-            {
-                beatTemplate: illustrationBeatTemplate,
-                explicitSceneNumbers: plan.illustrationBeatAnchors.map((beat) => beat.sceneNumber),
-            }
-        );
-
         const skippedSummary = skippedScenes > 0 || skippedNotes > 0
             ? ` Skipped ${skippedScenes} existing scenes and ${skippedNotes} existing notes.`
             : '';
-        const beatCreated = builtinBeatResult.created + illustrationBeatResult.created;
-        new Notice(`Demo project ready: ${createdScenes} scenes, ${createdNotes} notes, ${beatCreated} beat notes.${skippedSummary}`);
+        new Notice(`Demo project ready: ${createdScenes} scenes, ${createdNotes} notes, ${builtinBeatResult.created} beat notes.${skippedSummary}`);
     }
 
     async generateBook(): Promise<void> {

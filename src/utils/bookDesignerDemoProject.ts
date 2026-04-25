@@ -1,6 +1,3 @@
-import type { BeatDefinition, SavedBeatSystem } from '../types/settings';
-import type { PlotSystemPreset } from './beatsSystems';
-
 export const NONLINEAR_DEMO_DEFAULT_START_DATE = '2085-03-30';
 export const NONLINEAR_DEMO_ACT_COUNT = 5;
 export const NONLINEAR_DEMO_SCENE_COUNT = 20;
@@ -32,11 +29,8 @@ export interface NonlinearDemoProjectPlan {
         filename: string;
         content: string;
     };
-    illustrationBeatSystem: SavedBeatSystem;
-    illustrationPlotSystem: PlotSystemPreset;
     builtinBeatSystemName: 'Save The Cat';
     builtinBeatAnchors: DemoBeatAnchorSpec[];
-    illustrationBeatAnchors: DemoBeatAnchorSpec[];
 }
 
 const DEMO_SUBPLOT_LEGEND: Array<{ key: DemoSubplotKey; label: string }> = [
@@ -123,15 +117,6 @@ const SAVE_THE_CAT_SCENE_NUMBERS = [
     16, 16, 17, 19, 20,
 ];
 
-const ILLUSTRATION_BEAT_DEFINITIONS: BeatDefinition[] = [
-    { name: 'Opening Image', act: 1, id: 'demo:illustration-beats:opening-image', purpose: 'Visual anchor for the fractured opening state.' },
-    { name: 'Midpoint', act: 3, id: 'demo:illustration-beats:midpoint', purpose: 'Visual hinge where the chronology starts to clarify.' },
-    { name: 'All Is Lost', act: 4, id: 'demo:illustration-beats:all-is-lost', purpose: 'Visual anchor for the cost finally becoming visible.' },
-    { name: 'Final Image', act: 5, id: 'demo:illustration-beats:final-image', purpose: 'Visual echo that resolves the nonlinear pattern.' },
-];
-
-const ILLUSTRATION_SCENE_NUMBERS = [1, 10, 16, 20];
-
 function isLeapYear(year: number): boolean {
     return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
@@ -181,50 +166,30 @@ function buildInstructionNote(): { filename: string; content: string } {
     return {
         filename: 'START HERE - Nonlinear Example.md',
         content: [
-            '# START HERE - Nonlinear Example',
+            '# Why this demo is "nonlinear"',
             '',
-            'Open Timeline view.',
+            'The 20 scenes are numbered 1–20 in the order a reader would encounter them — that is the **narrative** order.',
             '',
-            'Notice the order of scenes.',
+            'But the dates in each scene\'s `When` field are deliberately scrambled so events do not happen in scene-number order. For example, scene 1 happens *after* scene 3 in story-time, and scene 5 happens *before* scene 4. That is the **chronological** order.',
             '',
-            'Now switch to Chronologue view.',
+            'A linear story would show the same sequence either way. This one does not — that is the point.',
             '',
-            'Compare the sequence.',
+            '## See it for yourself',
             '',
-            'This is the difference between narrative order and actual time.',
+            '1. Open the **Timeline** view. Scenes appear in narrative order (1, 2, 3, …).',
+            '2. Switch to **Chronologue** view. Scenes re-arrange by their `When` date.',
+            '3. Compare the two — the gaps and jumps are the nonlinear structure.',
             '',
-            'Thread legend:',
-            '- A = Objective',
-            '- B = Relationship',
-            '- C = Hidden Pressure',
+            '## Thread legend',
+            '',
+            '- **A** — Objective',
+            '- **B** — Relationship',
+            '- **C** — Hidden Pressure',
+            '',
+            '## Save The Cat beats',
+            '',
+            'Beat anchors are placed on representative scenes so you can see how a beat system overlays a narrative. Open the Beat Workspace in Settings to inspect them.',
         ].join('\n'),
-    };
-}
-
-function buildIllustrationBeatSystem(): SavedBeatSystem {
-    return {
-        id: 'demo-illustration-beats',
-        name: 'Illustration Beats',
-        description: 'Visual anchors for the nonlinear demo project.',
-        beats: ILLUSTRATION_BEAT_DEFINITIONS.map((beat) => ({ ...beat })),
-        createdAt: '2085-03-30T07:00:00.000Z',
-    };
-}
-
-function buildIllustrationPlotSystem(system: SavedBeatSystem): PlotSystemPreset {
-    return {
-        name: system.name,
-        category: 'blank',
-        icon: 'square',
-        beatCount: system.beats.length,
-        beats: system.beats.map((beat) => beat.name),
-        beatDetails: system.beats.map((beat) => ({
-            name: beat.name,
-            description: beat.purpose ?? '',
-            act: beat.act,
-            id: beat.id,
-            range: beat.range,
-        })),
     };
 }
 
@@ -255,16 +220,12 @@ export function buildNonlinearDemoProjectPlan(
         };
     });
 
-    const illustrationBeatSystem = buildIllustrationBeatSystem();
-
     return {
         startDate: normalizedStartDate,
         cast: [...DEMO_CAST],
         subplotLegend: DEMO_SUBPLOT_LEGEND.map((entry) => ({ ...entry })),
         scenes,
         instructionNote: buildInstructionNote(),
-        illustrationBeatSystem,
-        illustrationPlotSystem: buildIllustrationPlotSystem(illustrationBeatSystem),
         builtinBeatSystemName: 'Save The Cat',
         builtinBeatAnchors: [
             'Opening Image',
@@ -285,10 +246,6 @@ export function buildNonlinearDemoProjectPlan(
         ].map((beatName, index) => ({
             beatName,
             sceneNumber: SAVE_THE_CAT_SCENE_NUMBERS[index],
-        })),
-        illustrationBeatAnchors: ILLUSTRATION_BEAT_DEFINITIONS.map((beat, index) => ({
-            beatName: beat.name,
-            sceneNumber: ILLUSTRATION_SCENE_NUMBERS[index],
         })),
     };
 }

@@ -451,15 +451,6 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (!this.queueNoteEl) return;
         this.queueNoteEl.empty();
 
-        const lensHeader = this.queueNoteEl.createDiv({ cls: 'rt-pulse-ruler-lens-header' });
-        lensHeader.setText('Triplet Lens');
-        const focusLine = this.queueNoteEl.createDiv({ cls: 'rt-pulse-ruler-lens-focus' });
-        focusLine.setText(`Focus scene: ${this.formatTripletValue(currentNum, 'Unnumbered scene')}`);
-        const evidenceLine = this.queueNoteEl.createDiv({ cls: 'rt-pulse-ruler-lens-evidence' });
-        evidenceLine.setText(
-            `Evidence scenes: ${this.formatTripletValue(prevNum, 'Start boundary')} • ${this.formatTripletValue(currentNum, 'Unnumbered')} • ${this.formatTripletValue(nextNum, 'End boundary')}`
-        );
-
         const boundaryLabel = this.subplotName ? 'subplot' : 'manuscript';
         const chips = [
             { label: 'Previous', value: prevNum, fallback: `Start of ${boundaryLabel}` },
@@ -1519,22 +1510,13 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Only Pulse analysis writes detailed interaction logs in this modal flow.
         if (this.plugin.settings.logApiInteractions && this.taskType !== 'synopsis') {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
-            logNoteEl.createEl('strong', { text: 'Logs: ' });
-
-            // Pulse-specific log message
-            const aiSettings = getCanonicalAiSettings(this.plugin);
-            const isLocal = resolveConfiguredSelection(aiSettings, {
-                feature: 'PulseAnalysis'
-            })?.provider === 'ollama';
-            const pulseRouting = isLocal
-                ? 'Valid Local LLM pulse updates were written to scene yaml. Invalid results were logged and marked for review.'
-                : 'Triplet pulse updates were written to scene yaml.';
             if (this.logAttempts > 0) {
                 const contentLogFolder = resolveContentLogsRoot();
-                logNoteEl.appendText(`Detailed AI interaction logs were saved to ${contentLogFolder}. ${pulseRouting}`);
+                logNoteEl.createDiv({ text: `Logs saved to ${contentLogFolder}.` });
             } else {
-                logNoteEl.appendText(`Logging is enabled, but no AI request reached the server. ${pulseRouting}`);
+                logNoteEl.createDiv({ text: 'Logging is enabled, but no AI request reached the server.' });
             }
+            logNoteEl.createDiv({ text: 'Scene properties updated.' });
         }
 
         if (this.actionButtonContainer) {

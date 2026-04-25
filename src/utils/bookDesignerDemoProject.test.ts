@@ -54,7 +54,7 @@ describe('bookDesignerDemoProject', () => {
         }
     });
 
-    it('anchors builtin and illustration beats to the expected scenes', () => {
+    it('anchors Save The Cat beats to the expected scenes', () => {
         const plan = buildNonlinearDemoProjectPlan();
 
         expect(plan.builtinBeatSystemName).toBe('Save The Cat');
@@ -76,15 +76,7 @@ describe('bookDesignerDemoProject', () => {
             { beatName: 'Final Image', sceneNumber: 20 },
         ]);
 
-        expect(plan.illustrationBeatSystem.name).toBe('Illustration Beats');
-        expect(plan.illustrationBeatSystem.beats).toHaveLength(4);
-        expect(plan.illustrationBeatAnchors).toEqual([
-            { beatName: 'Opening Image', sceneNumber: 1 },
-            { beatName: 'Midpoint', sceneNumber: 10 },
-            { beatName: 'All Is Lost', sceneNumber: 16 },
-            { beatName: 'Final Image', sceneNumber: 20 },
-        ]);
-        expect(Math.max(...plan.illustrationBeatSystem.beats.map((beat) => beat.act))).toBe(NONLINEAR_DEMO_ACT_COUNT);
+        expect(plan.scenes.length).toBeGreaterThanOrEqual(NONLINEAR_DEMO_ACT_COUNT);
     });
 
     it('validates ISO date-only input', () => {
