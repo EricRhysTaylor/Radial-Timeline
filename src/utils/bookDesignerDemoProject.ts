@@ -15,6 +15,8 @@ export interface DemoSceneSpec {
     characters: string[];
     place: string;
     synopsis: string;
+    /** Subplot list to write to YAML. Always set; default is `[subplotLabel]`. */
+    subplots: string[];
     pendingEdits?: string;
     /** Days from "today" at generation time. Negative = overdue. Undefined = leave Due blank. */
     dueOffsetDays?: number;
@@ -168,6 +170,18 @@ const DEMO_SCENE_STATUSES: Record<number, 'Todo' | 'Working' | 'Complete'> = {
     7: 'Working',
 };
 
+/**
+ * sceneIndex (0-based) → custom subplot list (overrides the default `[subplotLabel]`).
+ * Used to anchor Main Plot to several scenes so the central thread has weight.
+ */
+const DEMO_SCENE_SUBPLOT_OVERRIDES: Record<number, string[]> = {
+    0: ['Main Plot'],                          // Scene 1  — opening, Main Plot only
+    9: ['Main Plot', 'Objective'],             // Scene 10 — pivot, Main Plot + Objective
+    15: ['Main Plot', 'Relationship'],         // Scene 16 — reveal, Main Plot + Relationship
+    16: ['Main Plot', 'Relationship'],         // Scene 17 — emotional turn, Main Plot + Relationship
+    19: ['Main Plot'],                         // Scene 20 — closing, Main Plot only
+};
+
 // Narrative scene -> chronological slot (1-based). This is intentional:
 // scene 1 lands after scene 3, scene 5 lands before scene 4, etc.
 const DEMO_CHRONOLOGY_SLOT_ORDER = [
@@ -255,9 +269,12 @@ function buildInstructionNote(): { filename: string; content: string } {
             '',
             '## Subplot threads',
             '',
+            '- **Main Plot** — the spine of the story. Five scenes anchor here, some on Main Plot alone and some shared with another thread.',
             '- **Objective** — the outer goal each character is chasing.',
             '- **Relationship** — the interpersonal stakes between characters.',
             '- **Hidden Pressure** — the undisclosed force complicating the story.',
+            '',
+            'A scene can belong to more than one thread — for example, scene 10 sits on **Main Plot** and **Objective** at once.',
             '',
             '## Save The Cat beats',
             '',
@@ -281,6 +298,10 @@ export function buildNonlinearDemoProjectPlan(
         const subplot = DEMO_SUBPLOT_SEQUENCE[index];
         const subplotMeta = DEMO_SUBPLOT_LEGEND.find((entry) => entry.key === subplot) ?? DEMO_SUBPLOT_LEGEND[0];
 
+        const subplots = DEMO_SCENE_SUBPLOT_OVERRIDES[index]
+            ? [...DEMO_SCENE_SUBPLOT_OVERRIDES[index]]
+            : [subplotMeta.label];
+
         return {
             sceneNumber,
             act: buildAct(sceneNumber),
@@ -292,6 +313,7 @@ export function buildNonlinearDemoProjectPlan(
             characters: [...DEMO_CHARACTER_ASSIGNMENTS[index]],
             place: DEMO_SCENE_PLACES[index],
             synopsis: DEMO_SCENE_SYNOPSES[index],
+            subplots,
             ...(DEMO_SCENE_PENDING_EDITS[index] ? { pendingEdits: DEMO_SCENE_PENDING_EDITS[index] } : {}),
             ...(DEMO_SCENE_DUE_OFFSETS[index] !== undefined ? { dueOffsetDays: DEMO_SCENE_DUE_OFFSETS[index] } : {}),
             ...(DEMO_SCENE_STATUSES[index] ? { status: DEMO_SCENE_STATUSES[index] } : {}),

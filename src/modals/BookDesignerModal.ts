@@ -1566,7 +1566,7 @@ export class BookDesignerModal extends Modal {
             act: scene.act,
             when: scene.when,
             sceneNumber: scene.sceneNumber,
-            subplots: [scene.subplotLabel],
+            subplots: scene.subplots,
             character: scene.characters.length === 1 ? scene.characters[0] : yamlInlineArray(scene.characters),
             place: scene.place,
             characterList: scene.characters,
