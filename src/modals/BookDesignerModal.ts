@@ -1561,22 +1561,45 @@ export class BookDesignerModal extends Modal {
     private renderDemoSceneContent(templateString: string, scene: ReturnType<typeof buildNonlinearDemoProjectPlan>['scenes'][number]): string {
         const yamlEscapeDoubleQuoted = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
         const yamlInlineArray = (values: string[]) => `[${values.map(v => `"${yamlEscapeDoubleQuoted(v)}"`).join(', ')}]`;
+        const quoted = (value: string) => `"${yamlEscapeDoubleQuoted(value)}"`;
         const data: SceneCreationData = {
             act: scene.act,
             when: scene.when,
             sceneNumber: scene.sceneNumber,
-            subplots: [scene.subplot],
+            subplots: [scene.subplotLabel],
             character: scene.characters.length === 1 ? scene.characters[0] : yamlInlineArray(scene.characters),
-            place: 'Unknown',
+            place: scene.place,
             characterList: scene.characters,
-            placeList: ['Unknown'],
+            placeList: [scene.place],
         };
 
-        const frontmatter = generateSceneContent(templateString, data)
+        let frontmatter = generateSceneContent(templateString, data)
             .replace(/^Duration\s*:\s*.*$/m, `Duration: ${scene.durationMinutes} min`)
-            .replace(/^Due\s*:\s*.*$/m, `Due: ${scene.when}`);
+            .replace(/^Synopsis\s*:\s*.*$/m, `Synopsis: ${quoted(scene.synopsis)}`)
+            .replace(/^Place\s*:\s*.*$/m, `Place: ${quoted(scene.place)}`);
+
+        // Due is intentionally distinct from When — leave blank unless a deadline is set.
+        if (scene.dueOffsetDays !== undefined) {
+            frontmatter = frontmatter.replace(/^Due\s*:\s*.*$/m, `Due: ${this.computeDemoDueDate(scene.dueOffsetDays)}`);
+        } else {
+            frontmatter = frontmatter.replace(/^Due\s*:\s*.*$/m, 'Due:');
+        }
+
+        if (scene.pendingEdits) {
+            frontmatter = frontmatter.replace(/^Pending Edits\s*:\s*.*$/m, `Pending Edits: ${quoted(scene.pendingEdits)}`);
+        }
+
         const withSceneId = ensureSceneTemplateFrontmatter(frontmatter);
         return `---\n${withSceneId.frontmatter}\n---\n\n${this.buildSceneBody(scene.sceneNumber)}`;
+    }
+
+    private computeDemoDueDate(offsetDays: number): string {
+        const today = new Date();
+        today.setUTCDate(today.getUTCDate() + offsetDays);
+        const year = today.getUTCFullYear();
+        const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(today.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     private async createVaultFileIfMissing(filePath: string, content: string): Promise<boolean> {
