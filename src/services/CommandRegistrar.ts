@@ -16,6 +16,7 @@ import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { TimelineAuditModal } from '../modals/TimelineAuditModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { CreateRtNoteModal, type RtNoteSubtypeId } from '../modals/CreateRtNoteModal';
+import { ensureActiveBookFolder } from '../modals/EnsureFirstBookModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
@@ -987,11 +988,9 @@ export class CommandRegistrar {
      * Create a new scene note with basic, advanced, screenplay, or podcast template.
      */
     private async createSceneNote(type: 'base' | 'advanced' | 'screenplay' | 'podcast'): Promise<void> {
-        const sourcePath = this.plugin.settings.sourcePath || '';
-        if (!sourcePath) {
-            new Notice('Please set a source path in settings first.');
-            return;
-        }
+        const book = await ensureActiveBookFolder(this.plugin);
+        if (!book) return;
+        const sourcePath = book.sourceFolder;
 
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
@@ -1063,11 +1062,9 @@ export class CommandRegistrar {
      * Create a new front-matter or back-matter note.
      */
     private async createMatterNote(classValue: 'Frontmatter' | 'Backmatter'): Promise<void> {
-        const sourcePath = this.plugin.settings.sourcePath || '';
-        if (!sourcePath) {
-            new Notice('Please set a source path in settings first.');
-            return;
-        }
+        const book = await ensureActiveBookFolder(this.plugin);
+        if (!book) return;
+        const sourcePath = book.sourceFolder;
 
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
@@ -1143,13 +1140,9 @@ export class CommandRegistrar {
             return sanitizeSourcePath(activeSource);
         }
 
-        const typed = window.prompt('No active source folder found. Enter folder path for BookMeta note:', this.plugin.settings.sourcePath || '');
-        if (typed === null) return null;
-        const trimmed = typed.trim();
-        if (!trimmed) {
-            return '';
-        }
-        return sanitizeSourcePath(trimmed);
+        const book = await ensureActiveBookFolder(this.plugin);
+        if (!book) return null;
+        return sanitizeSourcePath(book.sourceFolder);
     }
 
     private buildCopySafeVaultPath(folderPath: string, baseFilename: string): string {
@@ -1175,11 +1168,9 @@ export class CommandRegistrar {
      * Create a new backdrop note.
      */
     private async createBackdropNote(): Promise<void> {
-        const sourcePath = this.plugin.settings.sourcePath || '';
-        if (!sourcePath) {
-            new Notice('Please set a source path in settings first.');
-            return;
-        }
+        const book = await ensureActiveBookFolder(this.plugin);
+        if (!book) return;
+        const sourcePath = book.sourceFolder;
 
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
@@ -1218,11 +1209,9 @@ export class CommandRegistrar {
      * Create a single beat note with the active beat template.
      */
     private async createBeatNote(): Promise<void> {
-        const sourcePath = this.plugin.settings.sourcePath || '';
-        if (!sourcePath) {
-            new Notice('Please set a source path in settings first.');
-            return;
-        }
+        const book = await ensureActiveBookFolder(this.plugin);
+        if (!book) return;
+        const sourcePath = book.sourceFolder;
 
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);

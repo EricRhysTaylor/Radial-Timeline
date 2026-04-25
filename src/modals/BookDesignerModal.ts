@@ -11,6 +11,7 @@ import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { getCustomBeatConfigKey, replaceSavedBeatSystem, resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { replayTransientClass } from '../utils/domClassEffects';
 import { getActiveBook } from '../utils/books';
+import { ensureActiveBookFolder } from './EnsureFirstBookModal';
 import {
     NONLINEAR_DEMO_ACT_COUNT,
     NONLINEAR_DEMO_DEFAULT_START_DATE,
@@ -718,6 +719,23 @@ export class BookDesignerModal extends Modal {
     }
 
     onOpen(): void {
+        if (this.getBookProfiles().length === 0 || !(getActiveBook(this.plugin.settings)?.sourceFolder || '').trim()) {
+            void this.bootstrapFirstBookAndOpen();
+            return;
+        }
+        this.renderModal();
+    }
+
+    private async bootstrapFirstBookAndOpen(): Promise<void> {
+        const book = await ensureActiveBookFolder(this.plugin);
+        if (!book) {
+            this.close();
+            return;
+        }
+        this.renderModal();
+    }
+
+    private renderModal(): void {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         const maxActs = this.getMaxActs();

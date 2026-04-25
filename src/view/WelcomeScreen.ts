@@ -24,8 +24,8 @@ const WELCOME_COPY = {
     },
     stepsHeading: 'Start in three steps:',
     step1: {
-        title: '1. Set the active book folder',
-        body: 'Create a folder for your book, then link it in the Book Manager.',
+        title: '1. Name your book',
+        body: 'Click \u201cCreate your first scene\u201d above. The first time, we\u2019ll ask for a book name and create a matching folder in your vault. You can rename or add more books anytime in Book Manager.',
         note: ''
     },
     step2: {
@@ -194,7 +194,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const step1 = body.createDiv({ cls: 'rt-welcome-step' });
     step1.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step1.title });
     const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step1Text.createSpan({ text: 'Create a folder for your book, then link it in the ' });
+    step1Text.createSpan({ text: 'Click “Create your first scene” above. The first time, we’ll ask for a book name and create a matching folder in your vault. You can rename or add more books anytime in ' });
     const bookManagerLink = step1Text.createEl('a', { text: 'Book Manager', href: '#' });
     plugin.registerDomEvent(bookManagerLink, 'click', (evt) => {
         evt.preventDefault();
