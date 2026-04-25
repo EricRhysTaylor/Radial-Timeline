@@ -1573,20 +1573,29 @@ export class BookDesignerModal extends Modal {
             placeList: [scene.place],
         };
 
+        // Match a single line only — `\s*` would greedily consume newlines and
+        // eat the following field, which clobbers Subplot/Character lists when
+        // the replaced field was originally empty in the template.
+        const lineRe = (key: string) => new RegExp(`^${key}[ \\t]*:[ \\t]*[^\\n]*$`, 'm');
+
         let frontmatter = generateSceneContent(templateString, data)
-            .replace(/^Duration\s*:\s*.*$/m, `Duration: ${scene.durationMinutes} min`)
-            .replace(/^Synopsis\s*:\s*.*$/m, `Synopsis: ${quoted(scene.synopsis)}`)
-            .replace(/^Place\s*:\s*.*$/m, `Place: ${quoted(scene.place)}`);
+            .replace(lineRe('Duration'), `Duration: ${scene.durationMinutes} min`)
+            .replace(lineRe('Synopsis'), `Synopsis: ${quoted(scene.synopsis)}`)
+            .replace(lineRe('Place'), `Place: ${quoted(scene.place)}`);
 
         // Due is intentionally distinct from When — leave blank unless a deadline is set.
         if (scene.dueOffsetDays !== undefined) {
-            frontmatter = frontmatter.replace(/^Due\s*:\s*.*$/m, `Due: ${this.computeDemoDueDate(scene.dueOffsetDays)}`);
+            frontmatter = frontmatter.replace(lineRe('Due'), `Due: ${this.computeDemoDueDate(scene.dueOffsetDays)}`);
         } else {
-            frontmatter = frontmatter.replace(/^Due\s*:\s*.*$/m, 'Due:');
+            frontmatter = frontmatter.replace(lineRe('Due'), 'Due:');
         }
 
         if (scene.pendingEdits) {
-            frontmatter = frontmatter.replace(/^Pending Edits\s*:\s*.*$/m, `Pending Edits: ${quoted(scene.pendingEdits)}`);
+            frontmatter = frontmatter.replace(lineRe('Pending Edits'), `Pending Edits: ${quoted(scene.pendingEdits)}`);
+        }
+
+        if (scene.status) {
+            frontmatter = frontmatter.replace(lineRe('Status'), `Status: ${scene.status}`);
         }
 
         const withSceneId = ensureSceneTemplateFrontmatter(frontmatter);

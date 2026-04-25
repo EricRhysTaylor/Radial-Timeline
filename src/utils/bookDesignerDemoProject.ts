@@ -18,6 +18,8 @@ export interface DemoSceneSpec {
     pendingEdits?: string;
     /** Days from "today" at generation time. Negative = overdue. Undefined = leave Due blank. */
     dueOffsetDays?: number;
+    /** Override Status. Undefined = leave the template default ("Todo"). */
+    status?: 'Todo' | 'Working' | 'Complete';
 }
 
 export interface DemoBeatAnchorSpec {
@@ -160,6 +162,12 @@ const DEMO_SCENE_DUE_OFFSETS: Record<number, number> = {
     6: -3,
 };
 
+/** sceneIndex (0-based) → Status override. Default is "Todo" from the template. */
+const DEMO_SCENE_STATUSES: Record<number, 'Todo' | 'Working' | 'Complete'> = {
+    0: 'Complete',
+    7: 'Working',
+};
+
 // Narrative scene -> chronological slot (1-based). This is intentional:
 // scene 1 lands after scene 3, scene 5 lands before scene 4, etc.
 const DEMO_CHRONOLOGY_SLOT_ORDER = [
@@ -286,6 +294,7 @@ export function buildNonlinearDemoProjectPlan(
             synopsis: DEMO_SCENE_SYNOPSES[index],
             ...(DEMO_SCENE_PENDING_EDITS[index] ? { pendingEdits: DEMO_SCENE_PENDING_EDITS[index] } : {}),
             ...(DEMO_SCENE_DUE_OFFSETS[index] !== undefined ? { dueOffsetDays: DEMO_SCENE_DUE_OFFSETS[index] } : {}),
+            ...(DEMO_SCENE_STATUSES[index] ? { status: DEMO_SCENE_STATUSES[index] } : {}),
         };
     });
 
