@@ -347,19 +347,22 @@ export class BookDesignerModal extends Modal {
             return String(cls).toLowerCase() === 'beat';
         });
         this.beatsExistInFolder = exists;
+        const noBeatSystem = !this.getActiveBeatSetTitle();
 
         // Update the "Yes" pill visual state
         const yesPill = this.beatPills.find(p => p.dataset.generateBeats === 'true');
         if (!yesPill) return;
         yesPill.toggleClass('is-warn', exists);
-        (yesPill as HTMLButtonElement).disabled = exists;
+        (yesPill as HTMLButtonElement).disabled = exists || noBeatSystem;
         if (exists) {
             yesPill.setAttribute('aria-label', 'Beat notes already exist in this folder');
+        } else if (noBeatSystem) {
+            yesPill.setAttribute('aria-label', 'Select a beat system in Settings → Beats first');
         } else {
             yesPill.removeAttribute('aria-label');
         }
-        // If beats exist and Yes was selected, switch to No
-        if (exists && this.generateBeats) {
+        // If beats exist (or no system) and Yes was selected, switch to No
+        if ((exists || noBeatSystem) && this.generateBeats) {
             this.generateBeats = false;
             this.beatPills.forEach(p => p.removeClass('is-active'));
             const noPill = this.beatPills.find(p => p.dataset.generateBeats === 'false');
@@ -1098,13 +1101,23 @@ export class BookDesignerModal extends Modal {
         // Generate Beats Toggle (Pills)
         const beatSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
         const activeBeatSetTitle = this.getActiveBeatSetTitle();
-        const shortBeatSetTitle = this.truncateLabel(activeBeatSetTitle);
+        const beatLabelText = activeBeatSetTitle
+            ? `Generate ${this.truncateLabel(activeBeatSetTitle)} beats`
+            : 'No beat system active';
+        const beatLabelTooltip = activeBeatSetTitle
+            ? `Generate ${activeBeatSetTitle} beats`
+            : 'Select a beat system in Settings → Beats to enable beat generation.';
         const beatLabelEl = beatSetting.createDiv({
             cls: 'rt-manuscript-setting-label',
-            text: `Generate ${shortBeatSetTitle} beats`
+            text: beatLabelText
         });
-        beatLabelEl.setAttribute('title', `Generate ${activeBeatSetTitle} beats`);
+        beatLabelEl.setAttribute('title', beatLabelTooltip);
         const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row rt-book-designer-yesno-row' });
+
+        // If no beat system is active, force generateBeats off so the toggle reflects reality.
+        if (!activeBeatSetTitle && this.generateBeats) {
+            this.generateBeats = false;
+        }
 
         const beatOptions = [{ val: false, label: 'No' }, { val: true, label: 'Yes' }];
         beatOptions.forEach(opt => {
@@ -1113,8 +1126,8 @@ export class BookDesignerModal extends Modal {
             if (this.generateBeats === opt.val) pill.addClass('is-active');
             this.beatPills.push(pill);
             pill.onclick = () => {
-                // Block selecting Yes when beats already exist
-                if (opt.val && this.beatsExistInFolder) return;
+                // Block selecting Yes when beats already exist or no beat system is active
+                if (opt.val && (this.beatsExistInFolder || !this.getActiveBeatSetTitle())) return;
                 beatPills.querySelectorAll('[data-ert-toggle]').forEach(p => p.removeClass('is-active'));
                 pill.addClass('is-active');
                 this.generateBeats = opt.val;
@@ -1287,10 +1300,11 @@ export class BookDesignerModal extends Modal {
         return Array.from(new Set(acts));
     }
 
-    private getActiveBeatSetTitle(): string {
+    /** Returns the active beat system's title, or null if none is configured. */
+    private getActiveBeatSetTitle(): string | null {
         const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
         const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || '').trim();
-        return beatSystem.length > 0 ? beatSystem : 'No beat system selected';
+        return beatSystem.length > 0 ? beatSystem : null;
     }
 
     private truncateLabel(text: string, maxLength = 22): string {

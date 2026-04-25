@@ -242,6 +242,16 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    /* Don't stretch with the grid row — Settings inside have height: 100% (for
+       grid-cell uses elsewhere), which would otherwise force them to fight for
+       leftCol's stretched height and shove the textarea away from its label. */
+    align-self: start;
+    min-height: 0;
+}
+
+.rt-book-designer-modal .rt-manuscript-content-left > .rt-manuscript-group-setting {
+    height: auto;
+    justify-content: flex-start;
 }
 
 /* Scoped divider between duo grid columns */
