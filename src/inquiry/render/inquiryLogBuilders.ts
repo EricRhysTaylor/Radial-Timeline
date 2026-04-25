@@ -371,6 +371,36 @@ export function buildInquiryLogContent(args: {
         }
     }
 
+    if (!isSimulated) {
+        // Cache diagnostics — emitted so two back-to-back runs can be compared
+        // to confirm whether the prompt_cache_key was actually stable. Compare
+        // these fields between two runs of the same question on the same corpus:
+        // if cacheReuseFingerprint differs, the cache key drifted (most likely
+        // because file mtime drifted), so OpenAI/Anthropic placed the requests
+        // in different cache scopes and could not serve a hit.
+        const requestPayload = trace.requestPayload as Record<string, unknown> | undefined;
+        const promptCacheKeySent = requestPayload && typeof requestPayload === 'object'
+            ? (requestPayload as { prompt_cache_key?: unknown }).prompt_cache_key
+            : undefined;
+        const rawUsageRecord = trace.response?.responseData
+            && typeof trace.response.responseData === 'object'
+                ? (trace.response.responseData as { usage?: unknown }).usage
+                : undefined;
+        const rawUsageJson = rawUsageRecord !== undefined
+            ? JSON.stringify(rawUsageRecord)
+            : 'unavailable';
+        const userPromptChars = typeof trace.userPrompt === 'string' ? trace.userPrompt.length : 0;
+        const evidenceChars = typeof trace.evidenceText === 'string' ? trace.evidenceText.length : 0;
+        const prefixChars = Math.max(0, userPromptChars - evidenceChars);
+        lines.push('## Cache Diagnostics');
+        lines.push(`- cacheReuseFingerprint: ${result.cacheReuseFingerprint ?? '(unset)'}`);
+        lines.push(`- prompt_cache_key sent: ${typeof promptCacheKeySent === 'string' && promptCacheKeySent.length > 0 ? promptCacheKeySent : '(none — bypassProviderReuse or unsupported)'}`);
+        lines.push(`- Cacheable prefix chars (user prompt minus evidence): ${prefixChars}`);
+        lines.push(`- User prompt chars (total): ${userPromptChars}`);
+        lines.push(`- Raw provider usage JSON: ${rawUsageJson}`);
+        lines.push('');
+    }
+
     lines.push('## Result');
     if (status === 'success') {
         lines.push(`- Verdict: Flow ${args.deps.formatMetricDisplay(result.verdict.flow)} · Depth ${args.deps.formatMetricDisplay(result.verdict.depth)}`);
