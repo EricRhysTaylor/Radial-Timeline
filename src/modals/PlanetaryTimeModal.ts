@@ -96,7 +96,7 @@ export class PlanetaryTimeModal extends Modal {
                 this.localTimeValue = this.formatTimeInput(now);
                 const inputs = inputSetting.controlEl.querySelectorAll('input');
                 inputs.forEach((input, idx) => {
-                    input.classList.remove('rt-setting-input-error', 'rt-setting-input-success');
+                    input.classList.remove('ert-setting-input-error', 'ert-setting-input-success');
                     input.value = idx === 0 ? this.localDateValue : this.localTimeValue;
                 });
                 this.renderResult();

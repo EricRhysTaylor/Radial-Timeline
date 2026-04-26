@@ -83,13 +83,13 @@ class SaveExportTemplateModal extends Modal {
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
         }
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-template-dialog');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'Save export preset' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this manuscript export setup for reuse.' });
 
-        const body = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        const body = contentEl.createDiv({ cls: 'ert-template-dialog-panel' });
         let currentName = this.defaultName;
         const input = body.createEl('input', {
             cls: 'ert-input ert-input--full',
@@ -136,7 +136,7 @@ class DeleteExportTemplateModal extends Modal {
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
         }
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-template-dialog');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'Delete export preset' });
@@ -754,7 +754,7 @@ export class ManuscriptOptionsModal extends Modal {
             void this.applyTemplateById(value);
         });
         this.templateHintEl = this.templateCard.createDiv({ cls: 'rt-sub-card-note ert-export-preset-hint' });
-        const templateActions = this.templateCard.createDiv({ cls: 'rt-template-actions' });
+        const templateActions = this.templateCard.createDiv({ cls: 'ert-template-actions' });
         this.saveTemplateButton = new ButtonComponent(templateActions)
             .setButtonText('Create preset')
             .onClick(() => {
@@ -1139,7 +1139,6 @@ export class ManuscriptOptionsModal extends Modal {
             subplot: template.subplot,
             cleanup: this.getNormalizedCleanupOptions(template.cleanup, template.outputFormat),
             selectionPolicy: template.selectionPolicy,
-            createdAt: template.createdAt,
             id: template.id,
             name: template.name,
             templateProfileId: template.templateProfileId,

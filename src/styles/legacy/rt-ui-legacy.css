@@ -24,19 +24,6 @@
   --rt-social-color-rgb: 255, 212, 29;
 }
 
-/* Legacy settings input validation styles (modals) */
-.rt-setting-input-success {
-  border-color: var(--text-success);
-  background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-success) 20%, transparent);
-}
-
-.rt-setting-input-error {
-  border-color: var(--text-error);
-  background-color: color-mix(in srgb, var(--text-error) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
-}
-
 /* -------------------------------------------------------------------------- */
 /* MIGRATED FROM settings.css (rt-* selectors)                                */
 /* -------------------------------------------------------------------------- */
@@ -94,36 +81,10 @@
   margin: 1em 0;
 }
 
-/* Input sizing utilities (shared across settings) */
-.rt-input-xs {
-  width: var(--rt-input-width-xs);
-  min-width: var(--rt-input-width-xs);
-}
-
-.rt-input-sm {
-  width: var(--rt-input-width-sm);
-  min-width: var(--rt-input-width-sm);
-}
-
-.rt-input-lg {
-  width: var(--rt-input-width-lg);
-  min-width: var(--rt-input-width-lg);
-}
-
-.rt-input-full {
-  width: 100%;
-  min-width: var(--rt-input-width-xl);
-}
-
-.ert-settings-root .setting-item .setting-item-control .rt-input-full {
-  width: 100%;
-  min-width: var(--rt-input-width-xl);
-}
-
 /* Default sizing for settings inputs (override with utilities above when needed) */
-.ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full):not(.ert-hex-input),
-.ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full),
-.ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full) {
+.ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full):not(.ert-hex-input),
+.ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full),
+.ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full) {
   width: var(--rt-input-width-md);
   max-width: 100%;
 }
@@ -132,7 +93,7 @@
   width: 100%;
 }
 
-.ert-settings-root .setting-item .setting-item-control textarea.rt-input-lg {
+.ert-settings-root .setting-item .setting-item-control textarea.ert-input--lg {
   width: var(--rt-input-width-lg);
   min-width: var(--rt-input-width-lg);
   max-width: 100%;
@@ -170,11 +131,6 @@
 .ert-settings-root .clickable-icon.extra-setting-button {
   align-self: center;
   margin-top: 0;
-}
-
-.rt-template-actions {
-  justify-content: flex-end;
-  text-align: right;
 }
 
 /* rt-template-input consolidated in base.css */

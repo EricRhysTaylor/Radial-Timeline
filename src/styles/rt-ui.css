@@ -5033,13 +5033,13 @@
 /* Settings helpers (ERT)                                                     */
 /* -------------------------------------------------------------------------- */
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-setting-input-success {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root, .ert-ui.ert-scope--modal, .ert-ui.ert-scope--modal .ert-modal-container) .ert-setting-input-success {
   border-color: var(--text-success);
   background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-success) 20%, transparent);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-setting-input-error {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root, .ert-ui.ert-scope--modal, .ert-ui.ert-scope--modal .ert-modal-container) .ert-setting-input-error {
   border-color: var(--text-error);
   background-color: color-mix(in srgb, var(--text-error) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
@@ -7541,8 +7541,7 @@
 
 .ert-ui .ert-modal-shell input[type="text"].ert-input--full,
 .ert-ui .ert-modal-shell input[type="number"].ert-input--full,
-.ert-ui .ert-modal-shell input[type="password"].ert-input--full,
-.ert-ui .ert-modal-shell input[class*="rt-input-full"] {
+.ert-ui .ert-modal-shell input[type="password"].ert-input--full {
   width: 100%;
   min-width: min(100%, var(--ert-input-width-xl));
 }

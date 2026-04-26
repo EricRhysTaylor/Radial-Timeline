@@ -248,7 +248,7 @@ class RenameSubplotModal extends Modal {
         const inputEl = inputContainer.createEl('input', { 
             type: 'text', 
             value: this.oldName, 
-            cls: 'rt-input-full' 
+            cls: 'ert-input--full' 
         });
 
         scheduleFocusAfterPaint(inputEl, { selectText: true });

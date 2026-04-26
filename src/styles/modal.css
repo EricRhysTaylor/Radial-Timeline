@@ -1,18 +1,18 @@
 /* Template Dialog - Simple modals for save/delete/confirm actions */
-.rt-template-dialog {
+.ert-template-dialog {
   --ert-group-gap: var(--ert-gap-sm);
 }
 
-.rt-template-dialog .rt-glass-card.rt-sub-card {
+.ert-template-dialog .ert-template-dialog-panel {
   padding: var(--ert-pad-md);
   gap: var(--ert-gap-sm);
 }
 
-.rt-template-dialog .rt-manuscript-group-setting {
+.ert-template-dialog .ert-template-dialog-setting {
   padding: 0;
 }
 
-.rt-template-dialog .rt-sub-card-note {
+.ert-template-dialog .ert-template-dialog-note {
   margin-top: 0;
   padding: 0;
   color: var(--text-muted);
@@ -160,8 +160,8 @@
 }
 
 .ert-scene-analysis-modal .ert-pulse-summary-tip {
-  margin: 12px 0;
-  padding: 10px 14px;
+  margin: var(--ert-gap-md) 0;
+  padding: var(--ert-pad-sm) var(--ert-pad-md);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   font-size: 0.9em;

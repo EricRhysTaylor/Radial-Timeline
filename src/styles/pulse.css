@@ -631,19 +631,16 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.rt-manuscript-modal .rt-template-actions {
+.rt-manuscript-modal .ert-template-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+  justify-content: flex-end;
 }
 
 .rt-manuscript-modal .rt-layout-templates-card {
   padding: 10px 16px;
-}
-
-.rt-manuscript-modal .rt-template-actions button:last-child {
-  margin-left: auto;
 }
 
 .rt-manuscript-modal .ert-template-dropdown-row {

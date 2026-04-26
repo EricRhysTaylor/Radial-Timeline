@@ -53,21 +53,20 @@ class SaveTemplateModal extends Modal {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
         }
 
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-template-dialog');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Save scene layout' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
 
-        const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        const form = contentEl.createDiv({ cls: 'ert-template-dialog-panel' });
         const nameSetting = new Setting(form)
             .setName('Layout name')
             .setDesc('Choose a short, unique name.')
             .addText(text => {
                 this.nameInput = text;
-                text.inputEl.addClass('rt-input-lg');
+                text.inputEl.addClass('ert-input--lg');
                 text.setPlaceholder('e.g., Thriller / 3-Act Balanced');
                 text.setValue(this.defaultName);
                 text.inputEl.addEventListener('keydown', (evt) => {
@@ -77,9 +76,9 @@ class SaveTemplateModal extends Modal {
                     }
                 });
             });
-        nameSetting.settingEl.addClass('rt-manuscript-group-setting');
+        nameSetting.settingEl.addClass('ert-template-dialog-setting');
 
-        this.descriptionEl = form.createDiv({ cls: 'rt-sub-card-note', text: 'Templates capture layout, acts, subplots, characters, beats toggle, and the selected YAML type (base/advanced).' });
+        this.descriptionEl = form.createDiv({ cls: 'ert-template-dialog-note', text: 'Templates capture layout, acts, subplots, characters, beats toggle, and the selected YAML type (base/advanced).' });
 
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
@@ -126,8 +125,7 @@ class DeleteTemplateModal extends Modal {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
         }
 
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-template-dialog');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
@@ -171,8 +169,7 @@ class GenerateDemoProjectModal extends Modal {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
         }
 
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-template-dialog');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'DEMO' });
@@ -182,7 +179,7 @@ class GenerateDemoProjectModal extends Modal {
             text: 'Creates a 20-scene, 5-act example to show the difference between narrative order (the order the reader encounters scenes) and chronological order (when events actually happen). The scene numbers run 1–20 in narrative order, but the dates and times jump around — open the START HERE note after generating to see how, and switch between Timeline and Chronologue views to compare.'
         });
 
-        const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        const form = contentEl.createDiv({ cls: 'ert-template-dialog-panel' });
         const dateSetting = new Setting(form)
             .setName('Start date')
             .setDesc('Used for the chronologue cadence. Format: YYYY-MM-DD.')
@@ -197,10 +194,10 @@ class GenerateDemoProjectModal extends Modal {
                     }
                 });
             });
-        dateSetting.settingEl.addClass('rt-manuscript-group-setting');
+        dateSetting.settingEl.addClass('ert-template-dialog-setting');
 
         form.createDiv({
-            cls: 'rt-sub-card-note',
+            cls: 'ert-template-dialog-note',
             text: 'This will also ensure the workspace is configured for five acts so the demo renders correctly.'
         });
 
@@ -825,7 +822,7 @@ export class BookDesignerModal extends Modal {
                 this.timeIncrementInput = text;
                 text.setValue(this.timeIncrement)
                     .setPlaceholder('1 day');
-                text.inputEl.addClass('rt-input-sm');
+                text.inputEl.addClass('ert-input--sm');
 
                 // Use blur to validate
                 text.inputEl.addEventListener('blur', () => {
@@ -894,7 +891,7 @@ export class BookDesignerModal extends Modal {
                             this.schedulePreviewUpdate();
                         }
                     });
-                text.inputEl.addClass('rt-input-xs');
+                text.inputEl.addClass('ert-input--xs');
 
                 // Validate scenes vs target on commit (blur / Enter)
                 const commitScenes = () => {
@@ -939,7 +936,7 @@ export class BookDesignerModal extends Modal {
                             this.schedulePreviewUpdate();
                         }
                     });
-                text.inputEl.addClass('rt-input-xs');
+                text.inputEl.addClass('ert-input--xs');
 
                 // Validate target vs scenes on commit (blur / Enter)
                 const commitTarget = () => {
@@ -1155,7 +1152,7 @@ export class BookDesignerModal extends Modal {
             });
         templateSetting.settingEl.addClass('rt-manuscript-group-setting');
 
-        const templateActions = templateCard.createDiv({ cls: 'rt-template-actions' });
+        const templateActions = templateCard.createDiv({ cls: 'ert-template-actions' });
 
         new ButtonComponent(templateActions)
             .setButtonText('Save Scene Set')
@@ -1198,7 +1195,7 @@ export class BookDesignerModal extends Modal {
                     this.deleteTemplate(selectedId);
                 }).open();
             });
-        this.deleteTemplateBtn.buttonEl.addClass('rt-template-delete');
+        this.deleteTemplateBtn.buttonEl.addClass('ert-template-delete');
 
         // Actions Footer
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });

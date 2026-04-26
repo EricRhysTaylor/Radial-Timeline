@@ -1,6 +1,6 @@
 # CSS Drift Debt
 
-Generated: 2026-04-26T15:45:29.816Z
+Generated: 2026-04-26T17:41:29.536Z
 
 Snapshot of every WARN-level drift hit at the time of baseline reset. Work through these to ratchet the baseline down. After fixing a batch, run `npm run css-drift -- --maintenance --update-baseline` to lock in the new lower ceiling.
 
@@ -10,11 +10,11 @@ Regenerate this report anytime with: `node scripts/css-drift-report.mjs`.
 
 ## Totals
 
-- **Total WARN hits:** 263
-- `spacing-px`: 2
+- **Total WARN hits:** 247
+- `spacing-px`: 0
 - `raw-hex`: 0
 - `shadow-rgba`: 0
-- `rt-legacy`: 261
+- `rt-legacy`: 247
 
 ## How to work a rule
 
@@ -30,15 +30,9 @@ Regenerate this report anytime with: `node scripts/css-drift-report.mjs`.
 - `shadow-rgba` — replace raw `rgba(...)` in `box-shadow` with `color-mix(in srgb, var(--...) N%, transparent)` or an ERT shadow token.
 - `rt-legacy` — rename `.rt-*` selector to `.ert-*` (and update TS class usage) or relocate to `src/styles/legacy/rt-ui-legacy.css`. Note: `legacy/rt-ui-legacy.css` is itself scanned, so renaming beats relocating long-term.
 
-## `spacing-px` (2)
+## `spacing-px` (0)
 
-
-### src/styles/modal.css (2)
-
-```
-src/styles/modal.css:163: margin: 12px
-src/styles/modal.css:164: padding: 10px 14px
-```
+_No hits. 🎉_
 
 ## `raw-hex` (0)
 
@@ -48,27 +42,12 @@ _No hits. 🎉_
 
 _No hits. 🎉_
 
-## `rt-legacy` (261)
+## `rt-legacy` (247)
 
 
-### src/styles/modal.css (211)
+### src/styles/modal.css (207)
 
 ```
-src/styles/modal.css:1: /* Template Dialog - Simple modals for save/delete/confirm actions */
-.rt-template-dialog {
-src/styles/modal.css:2: --ert-group-gap: var(--ert-gap-sm);
-}
-
-.rt-template-dialog .rt-glass-card.rt-sub-card {
-src/styles/modal.css:6: padding: var(--ert-pad-md);
-  gap: var(--ert-gap-sm);
-}
-
-.rt-template-dialog .rt-manuscript-group-setting {
-src/styles/modal.css:11: padding: 0;
-}
-
-.rt-template-dialog .rt-sub-card-note {
 src/styles/modal.css:15: margin-top: 0;
   padding: 0;
   color: var(--text-muted);
@@ -109,8 +88,8 @@ src/styles/modal.css:144: display: inline-block;
 }
 
 .ert-scene-analysis-modal .rt-glass-card {
-src/styles/modal.css:162: margin: 12px 0;
-  padding: 10px 14px;
+src/styles/modal.css:162: margin: var(--ert-gap-md) 0;
+  padding: var(--ert-pad-sm) var(--ert-pad-md);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   font-size: 0.9em;
@@ -1557,7 +1536,7 @@ src/styles/modal.css:2571: grid-column: 2;
 .ert-ui .ert-scope--modal .rt-card-glass {
 ```
 
-### src/styles/legacy/rt-ui-legacy.css (50)
+### src/styles/legacy/rt-ui-legacy.css (40)
 
 ```
 src/styles/legacy/rt-ui-legacy.css:1: /* Legacy rt-* selectors extracted from rt-ui.css during ERT migration. */
@@ -1580,19 +1559,6 @@ src/styles/legacy/rt-ui-legacy.css:20: --rt-pro-color: var(--rt-pro-color-base);
   --rt-social-color-rgb: 255, 212, 29;
 }
 
-/* Legacy settings input validation styles (modals) */
-.rt-setting-input-success {
-src/styles/legacy/rt-ui-legacy.css:28: border-color: var(--text-success);
-  background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-success) 20%, transparent);
-}
-
-.rt-setting-input-error {
-src/styles/legacy/rt-ui-legacy.css:34: border-color: var(--text-error);
-  background-color: color-mix(in srgb, var(--text-error) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
-}
-
 /* -------------------------------------------------------------------------- */
 /* MIGRATED FROM settings.css (rt-* selectors)                                */
 /* -------------------------------------------------------------------------- */
@@ -1602,53 +1568,12 @@ src/styles/legacy/rt-ui-legacy.css:34: border-color: var(--text-error);
 /* -------------------------------------------------------------------------- */
 
 .ert-settings-root .rt-professional-header-toggle .setting-item-control {
-src/styles/legacy/rt-ui-legacy.css:89: background-color: var(--background-primary);
-  padding: 1em;
-  border-radius: 5px;
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-/* Input sizing utilities (shared across settings) */
-.rt-input-xs {
-src/styles/legacy/rt-ui-legacy.css:98: width: var(--rt-input-width-xs);
-  min-width: var(--rt-input-width-xs);
-}
-
-.rt-input-sm {
-src/styles/legacy/rt-ui-legacy.css:103: width: var(--rt-input-width-sm);
-  min-width: var(--rt-input-width-sm);
-}
-
-.rt-input-lg {
-src/styles/legacy/rt-ui-legacy.css:108: width: var(--rt-input-width-lg);
-  min-width: var(--rt-input-width-lg);
-}
-
-.rt-input-full {
-src/styles/legacy/rt-ui-legacy.css:113: width: 100%;
-  min-width: var(--rt-input-width-xl);
-}
-
-.ert-settings-root .setting-item .setting-item-control .rt-input-full {
-src/styles/legacy/rt-ui-legacy.css:118: width: 100%;
-  min-width: var(--rt-input-width-xl);
-}
-
-/* Default sizing for settings inputs (override with utilities above when needed) */
-.ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full):not(.ert-hex-input),
-.ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full),
-.ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full) {
-src/styles/legacy/rt-ui-legacy.css:126: width: var(--rt-input-width-md);
+src/styles/legacy/rt-ui-legacy.css:87: width: var(--rt-input-width-md);
   max-width: 100%;
 }
 
 .ert-settings-root .setting-item .setting-item-control textarea {
-src/styles/legacy/rt-ui-legacy.css:131: width: 100%;
-}
-
-.ert-settings-root .setting-item .setting-item-control textarea.rt-input-lg {
-src/styles/legacy/rt-ui-legacy.css:135: width: var(--rt-input-width-lg);
+src/styles/legacy/rt-ui-legacy.css:96: width: var(--rt-input-width-lg);
   min-width: var(--rt-input-width-lg);
   max-width: 100%;
 }
@@ -1656,35 +1581,30 @@ src/styles/legacy/rt-ui-legacy.css:135: width: var(--rt-input-width-lg);
 /* Align settings rows to the top when descriptions wrap */
 
 .ert-settings-root .setting-item.setting-item-heading .setting-item-name {
-src/styles/legacy/rt-ui-legacy.css:170: align-self: center;
-  margin-top: 0;
-}
-
-.rt-template-actions {
-src/styles/legacy/rt-ui-legacy.css:200: font-weight: 600;
+src/styles/legacy/rt-ui-legacy.css:156: font-weight: 600;
   color: var(--rt-pro-color);
 }
 
 .ert-runtime-hint {
-src/styles/legacy/rt-ui-legacy.css:223: max-height: 200px;
+src/styles/legacy/rt-ui-legacy.css:179: max-height: 200px;
   overflow-y: auto;
   margin-top: 12px;
 }
 
 /* Utility class for hiding elements */
 .rt-hidden {
-src/styles/legacy/rt-ui-legacy.css:243: margin-bottom: 12px;
+src/styles/legacy/rt-ui-legacy.css:199: margin-bottom: 12px;
 }
 
 /* Runtime sections use glass-card but without heavy dropshadow */
 .rt-glass-card.ert-runtime-section {
-src/styles/legacy/rt-ui-legacy.css:248: box-shadow: none;
+src/styles/legacy/rt-ui-legacy.css:204: box-shadow: none;
 }
 
 /* ert-runtime-section-header replaced by rt-section-title in base.css */
 
 .ert-runtime-section-desc {
-src/styles/legacy/rt-ui-legacy.css:254: font-size: 12px;
+src/styles/legacy/rt-ui-legacy.css:210: font-size: 12px;
   color: var(--text-muted);
   margin-bottom: 12px;
 }
@@ -1693,18 +1613,18 @@ src/styles/legacy/rt-ui-legacy.css:254: font-size: 12px;
    replaced by rt-row and rt-stack utilities in base.css */
 
 .ert-runtime-dropdown-container {
-src/styles/legacy/rt-ui-legacy.css:304: color: var(--text-muted);
+src/styles/legacy/rt-ui-legacy.css:260: color: var(--text-muted);
   font-style: italic;
 }
 
 /* ert-runtime-status-row replaced by rt-row rt-row-loose rt-row-wrap in base.css */
 
 .ert-runtime-status-checkbox {
-src/styles/legacy/rt-ui-legacy.css:355: color: var(--rt-pro-color);
+src/styles/legacy/rt-ui-legacy.css:311: color: var(--rt-pro-color);
 }
 
 .ert-runtime-accordion-icon {
-src/styles/legacy/rt-ui-legacy.css:419: font-size: 11px;
+src/styles/legacy/rt-ui-legacy.css:375: font-size: 11px;
   color: var(--text-faint);
   margin-top: 12px;
   font-style: italic;
@@ -1714,16 +1634,16 @@ src/styles/legacy/rt-ui-legacy.css:419: font-size: 11px;
 
 /* "+" add-book button in heading (ert-iconBtn ert-mod-cta base) */
 .rt-books-add-btn--pulse {
-src/styles/legacy/rt-ui-legacy.css:429: box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-success) 28%, transparent);
+src/styles/legacy/rt-ui-legacy.css:385: box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-success) 28%, transparent);
 }
 
 .rt-books-panel {
-src/styles/legacy/rt-ui-legacy.css:433: gap: var(--ert-gap-sm);
+src/styles/legacy/rt-ui-legacy.css:389: gap: var(--ert-gap-sm);
 }
 
 /* Book card: single-row Setting with bordered card look */
 .rt-book-card.setting-item {
-src/styles/legacy/rt-ui-legacy.css:438: display: grid;
+src/styles/legacy/rt-ui-legacy.css:394: display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   column-gap: var(--ert-gap-md);
@@ -1739,36 +1659,36 @@ src/styles/legacy/rt-ui-legacy.css:438: display: grid;
 
 /* Override generic .is-inactive muting — book cards must stay interactive */
 .rt-book-card.setting-item.is-inactive {
-src/styles/legacy/rt-ui-legacy.css:454: opacity: 1;
+src/styles/legacy/rt-ui-legacy.css:410: opacity: 1;
   pointer-events: auto;
 }
 
 .rt-book-card.setting-item.is-active {
-src/styles/legacy/rt-ui-legacy.css:459: border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
+src/styles/legacy/rt-ui-legacy.css:415: border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
 }
 
 .rt-book-card.setting-item.rt-book-card--link-broken {
-src/styles/legacy/rt-ui-legacy.css:463: border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
+src/styles/legacy/rt-ui-legacy.css:419: border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--text-error) 6%, var(--background-primary));
 }
 
 /* Name column: status icon + title stacked above desc */
 .rt-book-card__name {
-src/styles/legacy/rt-ui-legacy.css:469: display: flex;
+src/styles/legacy/rt-ui-legacy.css:425: display: flex;
   align-items: center;
   gap: var(--ert-gap-sm);
 }
 
 .rt-book-card .setting-item-info {
-src/styles/legacy/rt-ui-legacy.css:475: min-width: 0;
+src/styles/legacy/rt-ui-legacy.css:431: min-width: 0;
 }
 
 .rt-book-card .setting-item-control {
-src/styles/legacy/rt-ui-legacy.css:479: min-width: 0;
+src/styles/legacy/rt-ui-legacy.css:435: min-width: 0;
 }
 
 .rt-book-card__drag {
-src/styles/legacy/rt-ui-legacy.css:483: display: flex;
+src/styles/legacy/rt-ui-legacy.css:439: display: flex;
   align-items: center;
   justify-content: center;
   align-self: stretch;
@@ -1778,16 +1698,16 @@ src/styles/legacy/rt-ui-legacy.css:483: display: flex;
 }
 
 .rt-book-card__drag svg {
-src/styles/legacy/rt-ui-legacy.css:493: width: 16px;
+src/styles/legacy/rt-ui-legacy.css:449: width: 16px;
   height: 16px;
 }
 
 .rt-book-card__meta {
-src/styles/legacy/rt-ui-legacy.css:498: letter-spacing: 0.02em;
+src/styles/legacy/rt-ui-legacy.css:454: letter-spacing: 0.02em;
 }
 
 .rt-book-card__status {
-src/styles/legacy/rt-ui-legacy.css:502: display: flex;
+src/styles/legacy/rt-ui-legacy.css:458: display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
@@ -1795,64 +1715,64 @@ src/styles/legacy/rt-ui-legacy.css:502: display: flex;
 }
 
 .rt-book-card__status svg {
-src/styles/legacy/rt-ui-legacy.css:510: width: 16px;
+src/styles/legacy/rt-ui-legacy.css:466: width: 16px;
   height: 16px;
 }
 
 .rt-book-card__status--active {
-src/styles/legacy/rt-ui-legacy.css:515: color: var(--text-success);
+src/styles/legacy/rt-ui-legacy.css:471: color: var(--text-success);
 }
 
 .rt-book-card__status--invalid {
-src/styles/legacy/rt-ui-legacy.css:519: color: var(--text-error);
+src/styles/legacy/rt-ui-legacy.css:475: color: var(--text-error);
 }
 
 /* Clickable row to activate inactive book */
 .rt-book-card--clickable {
-src/styles/legacy/rt-ui-legacy.css:524: cursor: pointer;
+src/styles/legacy/rt-ui-legacy.css:480: cursor: pointer;
 }
 
 .rt-book-card--clickable:hover {
-src/styles/legacy/rt-ui-legacy.css:528: border-color: color-mix(in srgb, var(--text-success) 40%, transparent);
+src/styles/legacy/rt-ui-legacy.css:484: border-color: color-mix(in srgb, var(--text-success) 40%, transparent);
 }
 
 .rt-book-card--clickable:hover .rt-book-card__status {
-src/styles/legacy/rt-ui-legacy.css:532: color: var(--text-success);
+src/styles/legacy/rt-ui-legacy.css:488: color: var(--text-success);
 }
 
 .rt-book-card--clickable.rt-book-card--link-broken:hover {
-src/styles/legacy/rt-ui-legacy.css:536: border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
+src/styles/legacy/rt-ui-legacy.css:492: border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
 }
 
 .rt-book-card--clickable.rt-book-card--link-broken:hover .rt-book-card__status--invalid {
-src/styles/legacy/rt-ui-legacy.css:540: color: var(--text-error);
+src/styles/legacy/rt-ui-legacy.css:496: color: var(--text-error);
 }
 
 .rt-book-card__stat--warn {
-src/styles/legacy/rt-ui-legacy.css:544: color: var(--text-faint);
+src/styles/legacy/rt-ui-legacy.css:500: color: var(--text-faint);
 }
 
 .rt-book-card__stat--invalid {
-src/styles/legacy/rt-ui-legacy.css:548: color: var(--text-error);
+src/styles/legacy/rt-ui-legacy.css:504: color: var(--text-error);
 }
 
 .rt-book-card__trash.is-disabled {
-src/styles/legacy/rt-ui-legacy.css:552: opacity: 0.3;
+src/styles/legacy/rt-ui-legacy.css:508: opacity: 0.3;
   pointer-events: none;
 }
 
 .rt-books-panel--dragging .rt-book-card .setting-item-control,
 .rt-books-panel--dragging .rt-book-card .ert-book-name {
-src/styles/legacy/rt-ui-legacy.css:558: pointer-events: none;
+src/styles/legacy/rt-ui-legacy.css:514: pointer-events: none;
 }
 
 .rt-book-card.setting-item.is-dragging {
-src/styles/legacy/rt-ui-legacy.css:562: opacity: 0.36;
+src/styles/legacy/rt-ui-legacy.css:518: opacity: 0.36;
   box-shadow: none;
 }
 
 .rt-book-card.setting-item.is-dragover {
-src/styles/legacy/rt-ui-legacy.css:567: border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
+src/styles/legacy/rt-ui-legacy.css:523: border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--interactive-accent) 28%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 16%, transparent);

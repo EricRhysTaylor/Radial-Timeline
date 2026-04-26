@@ -478,14 +478,14 @@
     width: auto;
 }
 
-.rt-book-designer-modal .rt-template-actions {
+.rt-book-designer-modal .ert-template-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 8px;
 }
 
-.rt-book-designer-modal .rt-template-actions > button {
+.rt-book-designer-modal .ert-template-actions > button {
     min-height: 30px;
     padding: 6px 12px;
     box-shadow: none;
@@ -505,7 +505,7 @@
     padding-right: 16px;
 }
 
-.rt-book-designer-modal .rt-template-actions .rt-template-delete {
+.rt-book-designer-modal .ert-template-actions .ert-template-delete {
     margin-left: auto;
 }
 
