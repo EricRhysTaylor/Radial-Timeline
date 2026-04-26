@@ -21,7 +21,7 @@
 }
 
 /* Consolidated meta-item base pattern */
-.rt-pulse-hero-meta-item {
+.ert-pulse-hero-meta-item {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-tight);
@@ -35,7 +35,7 @@
 }
 
 /* Warning variant - inherits base + warning colors */
-.rt-pulse-hero-meta-item-warning {
+.ert-pulse-hero-meta-item-warning {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-tight);
@@ -50,7 +50,9 @@
 
 /* Generic modal-scope hidden utility */
 .ert-ui.ert-scope--modal .is-hidden,
-.ert-ui.ert-scope--modal button.is-hidden {
+.ert-ui.ert-scope--modal button.is-hidden,
+.ert-ui.ert-scope--modal .ert-hidden,
+.ert-ui.ert-scope--modal .ert-hidden.ert-hidden {
   display: none;
 }
 
@@ -61,7 +63,7 @@
 
 /* ert-modal-actions base consolidated in rt-ui.css */
 
-.rt-pulse-modal .ert-modal-actions {
+.ert-pulse-modal .ert-modal-actions {
   margin-top: 10px;
 }
 
@@ -152,7 +154,7 @@
   line-height: 1.4;
 }
 
-.ert-scene-analysis-modal .rt-glass-card {
+.ert-scene-analysis-modal .ert-glass-card {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
@@ -169,12 +171,12 @@
   line-height: 1.45;
 }
 
-.rt-pulse-modal-shell.modal {
+.ert-pulse-modal-shell.modal {
   width: min(760px, 92vw);
   max-height: 92vh;
 }
 
-.rt-pulse-modal {
+.ert-pulse-modal {
   position: relative;
   padding:
     calc(var(--ert-pad-xl) + var(--ert-gap-2xs))
@@ -194,11 +196,11 @@
   contain: paint;
 }
 
-.rt-pulse-modal.ert-gossamer-score-modal {
+.ert-pulse-modal.ert-gossamer-score-modal {
   padding: 0;
 }
 
-.rt-pulse-modal::before {
+.ert-pulse-modal::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -207,14 +209,14 @@
   pointer-events: none;
 }
 
-.rt-pulse-modal>* {
+.ert-pulse-modal>* {
   position: relative;
   z-index: 1;
 }
 
-/* rt-glass-card base consolidated in base.css */
+/* ert-glass-card base consolidated in base.css */
 
-.ert-gossamer-score-modal .rt-glass-card {
+.ert-gossamer-score-modal .ert-glass-card {
   padding: var(--ert-pad-sm) var(--ert-pad-loose);
 }
 
@@ -247,9 +249,9 @@
 }
 
 /* Height-safe shells for tall modals */
-.rt-manuscript-modal,
+.ert-manuscript-modal,
 .ert-gossamer-processing-modal,
-.rt-book-designer-modal {
+.ert-book-designer-modal {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-lg);
@@ -257,7 +259,7 @@
   min-height: 0;
 }
 
-.rt-manuscript-modal {
+.ert-manuscript-modal {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
@@ -272,7 +274,7 @@
   contain: paint;
 }
 
-.rt-book-designer-modal .rt-card-stack {
+.ert-book-designer-modal .ert-card-stack {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -622,13 +624,13 @@
   background-color: var(--rt-confirm-accent, var(--interactive-accent));
 }
 
-.rt-text-input-modal-field {
+.ert-text-input-modal-field {
   width: 100%;
   margin-bottom: 12px;
   padding: var(--ert-pad-xs);
 }
 
-.rt-text-input-modal-buttons {
+.ert-text-input-modal-buttons {
   display: flex;
   gap: var(--ert-gap-sm);
   justify-content: flex-end;
@@ -753,7 +755,7 @@
 }
 
 /* Gossamer / Pulse modal overrides */
-.ert-gossamer-score-modal .rt-pulse-progress-hero {
+.ert-gossamer-score-modal .ert-pulse-progress-hero {
   padding: var(--ert-pad-sm) var(--ert-pad-loose);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -762,16 +764,16 @@
   margin-bottom: 12px;
 }
 
-.ert-gossamer-score-modal .rt-pulse-progress-hero::after {
+.ert-gossamer-score-modal .ert-pulse-progress-hero::after {
   display: none;
 }
 
-.ert-gossamer-score-modal .rt-pulse-progress-body {
+.ert-gossamer-score-modal .ert-pulse-progress-body {
   gap: var(--ert-gap-cozy);
   margin-top: 12px;
 }
 
-.ert-gossamer-score-modal .rt-pulse-progress-card {
+.ert-gossamer-score-modal .ert-pulse-progress-card {
   padding: var(--ert-pad-md) var(--ert-pad-roomy);
   gap: var(--ert-gap-md);
 }
@@ -780,7 +782,7 @@
   padding: 0;
 }
 
-.ert-gossamer-proc-modal .rt-pulse-progress-body {
+.ert-gossamer-proc-modal .ert-pulse-progress-body {
   margin-top: 8px;
   overflow-y: visible;
   width: 100%;
@@ -881,11 +883,11 @@
   margin-bottom: 12px;
 }
 
-.rt-gossamer-progress-container {
+.ert-gossamer-progress-container {
   margin: var(--ert-pad-lg) 0;
 }
 
-.rt-gossamer-progress-bg {
+.ert-gossamer-progress-bg {
   width: 100%;
   height: 24px;
   background-color: var(--background-secondary);
@@ -894,7 +896,7 @@
   position: relative;
 }
 
-.rt-gossamer-progress-bar {
+.ert-gossamer-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--interactive-accent), var(--interactive-accent-hover));
   border-radius: 12px;
@@ -903,7 +905,7 @@
   width: var(--progress-width, 0%);
 }
 
-.rt-gossamer-progress-bar::after {
+.ert-gossamer-progress-bar::after {
   content: '';
   position: absolute;
   top: 0;
@@ -914,33 +916,33 @@
   animation: progress-shine 2s infinite;
 }
 
-.rt-gossamer-progress-bar.rt-progress-complete::after {
+.ert-gossamer-progress-bar.ert-progress-complete::after {
   animation: none;
 }
 
-.rt-gossamer-actions {
+.ert-gossamer-actions {
   margin-top: 20px;
   display: flex;
   gap: var(--ert-gap-cozy);
   justify-content: flex-end;
 }
 
-.rt-beat-placement-modal {
+.ert-beat-placement-modal {
   padding: 0;
 }
 
-.rt-beat-placement-modal .rt-beats-info {
+.ert-beat-placement-modal .ert-beats-info {
   margin: var(--ert-gap-tight) 0 var(--ert-pad-lg) 0;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.5;
 }
 
-.rt-beat-placement-modal .rt-manuscript-section {
+.ert-beat-placement-modal .ert-manuscript-section {
   margin-bottom: 20px;
 }
 
-.rt-beat-placement-modal .rt-manuscript-section h3 {
+.ert-beat-placement-modal .ert-manuscript-section h3 {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-normal);
@@ -949,7 +951,7 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.rt-beat-placement-modal .rt-manuscript-details {
+.ert-beat-placement-modal .ert-manuscript-details {
   padding: var(--ert-pad-sm);
   background-color: var(--background-secondary);
   border-radius: 6px;
@@ -961,7 +963,7 @@
   color: var(--text-normal);
 }
 
-.rt-beat-placement-modal .rt-api-warning {
+.ert-beat-placement-modal .ert-api-warning {
   margin-bottom: 20px;
   padding: var(--ert-pad-sm);
   background-color: rgba(255, 165, 0, 0.1);
@@ -972,14 +974,14 @@
   line-height: 1.5;
 }
 
-.rt-beat-placement-modal .ert-modal-buttons {
+.ert-beat-placement-modal .ert-modal-buttons {
   margin-top: 20px;
   display: flex;
   gap: var(--ert-gap-cozy);
   justify-content: flex-end;
 }
 
-.rt-beat-placement-modal .rt-status-text {
+.ert-beat-placement-modal .ert-status-text {
   padding: var(--ert-pad-cozy) var(--ert-pad-sm);
   background-color: var(--background-secondary);
   border-radius: 4px;
@@ -991,7 +993,7 @@
   margin-bottom: 12px;
 }
 
-.rt-beat-placement-modal .rt-api-status {
+.ert-beat-placement-modal .ert-api-status {
   padding: var(--ert-pad-cozy) var(--ert-pad-sm);
   background-color: var(--background-secondary);
   border-radius: 4px;
@@ -1003,11 +1005,11 @@
   margin-bottom: 12px;
 }
 
-.rt-beat-placement-modal .rt-beat-placement-progress-container {
+.ert-beat-placement-modal .ert-beat-placement-progress-container {
   margin: var(--ert-pad-lg) 0;
 }
 
-.rt-beat-placement-modal .rt-beat-placement-progress-bg {
+.ert-beat-placement-modal .ert-beat-placement-progress-bg {
   width: 100%;
   height: 24px;
   background-color: var(--background-secondary);
@@ -1016,7 +1018,7 @@
   position: relative;
 }
 
-.rt-beat-placement-modal .rt-beat-placement-progress-bar {
+.ert-beat-placement-modal .ert-beat-placement-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--interactive-accent), var(--interactive-accent-hover));
   border-radius: 12px;
@@ -1025,7 +1027,7 @@
   width: var(--progress-width, 0%);
 }
 
-.rt-beat-placement-modal .rt-beat-placement-progress-bar::after {
+.ert-beat-placement-modal .ert-beat-placement-progress-bar::after {
   content: '';
   position: absolute;
   top: 0;
@@ -1036,11 +1038,11 @@
   animation: progress-shine 2s infinite;
 }
 
-.rt-beat-placement-modal .rt-beat-placement-progress-bar.rt-progress-complete::after {
+.ert-beat-placement-modal .ert-beat-placement-progress-bar.ert-progress-complete::after {
   animation: none;
 }
 
-.rt-beat-placement-modal .rt-error-list {
+.ert-beat-placement-modal .ert-error-list {
   margin-top: 12px;
   padding: var(--ert-pad-cozy) var(--ert-pad-sm);
   background-color: rgba(255, 92, 92, 0.1);
@@ -1052,28 +1054,28 @@
   gap: var(--ert-gap-tight);
 }
 
-.rt-beat-placement-modal .rt-error-item {
+.ert-beat-placement-modal .ert-error-item {
   margin: 0;
   line-height: 1.4;
 }
 
-.rt-beat-placement-modal .rt-error-item:last-child {
+.ert-beat-placement-modal .ert-error-item:last-child {
   margin-bottom: 0;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-title {
+.ert-gossamer-assembly-modal .ert-gossamer-title {
   margin-bottom: 20px;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-progress {
+.ert-gossamer-assembly-modal .ert-gossamer-progress {
   margin-bottom: 20px;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-progress-title {
+.ert-gossamer-assembly-modal .ert-gossamer-progress-title {
   margin-bottom: 10px;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-progress-status {
+.ert-gossamer-assembly-modal .ert-gossamer-progress-status {
   font-family: var(--font-monospace);
   padding: var(--ert-pad-cozy);
   background-color: var(--background-secondary);
@@ -1081,15 +1083,15 @@
   min-height: 60px;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-summary {
+.ert-gossamer-assembly-modal .ert-gossamer-summary {
   margin-bottom: 20px;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-summary-title {
+.ert-gossamer-assembly-modal .ert-gossamer-summary-title {
   margin-bottom: var(--ert-pad-comfy);
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-summary-content {
+.ert-gossamer-assembly-modal .ert-gossamer-summary-content {
   font-family: var(--font-monospace);
   padding: var(--ert-pad-comfy);
   background-color: var(--background-secondary);
@@ -1097,7 +1099,7 @@
   line-height: 1.8;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-warning {
+.ert-gossamer-assembly-modal .ert-gossamer-warning {
   margin-top: var(--ert-pad-comfy);
   padding: var(--ert-pad-cozy);
   background-color: var(--background-modifier-error);
@@ -1105,18 +1107,18 @@
   color: var(--text-on-accent);
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-buttons {
+.ert-gossamer-assembly-modal .ert-gossamer-buttons {
   margin-top: 20px;
   display: flex;
   gap: var(--ert-gap-cozy);
   justify-content: flex-end;
 }
 
-.rt-gossamer-assembly-modal .rt-gossamer-buttons.rt-hidden {
+.ert-gossamer-assembly-modal .ert-gossamer-buttons.ert-hidden {
   display: none;
 }
 
-.rt-gossamer-assembly-modal .rt-hidden {
+.ert-gossamer-assembly-modal .ert-hidden {
   display: none;
 }
 
@@ -1135,7 +1137,7 @@
 }
 
 /* Scrollable container for beat entries */
-.ert-gossamer-score-modal .rt-container {
+.ert-gossamer-score-modal .ert-gossamer-score-container {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -1156,14 +1158,14 @@
   line-height: 1.5;
 }
 
-.rt-gossamer-simple-header {
+.ert-gossamer-simple-header {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-tight);
   padding: var(--ert-pad-md) var(--ert-pad-lg) var(--ert-pad-sm);
 }
 
-.rt-gossamer-simple-badge {
+.ert-gossamer-simple-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-tight);
@@ -1178,7 +1180,7 @@
   font-weight: 600;
 }
 
-.rt-gossamer-hero-system {
+.ert-gossamer-hero-system {
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -1186,37 +1188,37 @@
   margin: 0;
 }
 
-.rt-gossamer-score-subtitle {
+.ert-gossamer-score-subtitle {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
-.rt-gossamer-simple-meta {
+.ert-gossamer-simple-meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--ert-gap-sm);
   margin-top: 8px;
 }
 
-/* rt-pulse-hero-meta-item - consolidated above with ert-modal-meta-item */
-/* rt-pulse-hero-meta-item-warning - warning override consolidated above */
+/* ert-pulse-hero-meta-item - consolidated above with ert-modal-meta-item */
+/* ert-pulse-hero-meta-item-warning - warning override consolidated above */
 
-.rt-gossamer-score-cards {
+.ert-gossamer-score-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--ert-gap-loose);
 }
 
-.rt-gossamer-score-card {
+.ert-gossamer-score-card {
   padding: var(--ert-pad-loose) var(--ert-pad-md);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.rt-gossamer-score-card-title {
+.ert-gossamer-score-card-title {
   display: flex;
   align-items: center;
   gap: var(--ert-gap-tight);
@@ -1226,26 +1228,26 @@
   color: var(--text-normal);
 }
 
-.rt-gossamer-score-card-value {
+.ert-gossamer-score-card-value {
   margin: 0;
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text-normal);
 }
 
-.rt-gossamer-score-card-meta {
+.ert-gossamer-score-card-meta {
   margin: var(--ert-gap-tight) 0 0;
   color: var(--text-muted);
   font-size: 0.9rem;
 }
 
-.rt-gossamer-score-card-progress {
-  --rt-gossamer-progress-fill-running: linear-gradient(90deg, #ff9900, #ff5e00);
-  --rt-gossamer-progress-fill-complete: linear-gradient(90deg, #31d47b, #0fb069);
-  --rt-gossamer-progress-fill-error: linear-gradient(90deg, #ff5f6d, #d7263d);
-  --rt-gossamer-progress-glow-running: 0 0 10px color-mix(in srgb, #ff9900 30%, transparent);
-  --rt-gossamer-progress-glow-complete: 0 0 10px color-mix(in srgb, #31d47b 45%, transparent);
-  --rt-gossamer-progress-glow-error: 0 0 12px color-mix(in srgb, #d7263d 45%, transparent);
+.ert-gossamer-score-card-progress {
+  --ert-gossamer-progress-fill-running: linear-gradient(90deg, #ff9900, #ff5e00);
+  --ert-gossamer-progress-fill-complete: linear-gradient(90deg, #31d47b, #0fb069);
+  --ert-gossamer-progress-fill-error: linear-gradient(90deg, #ff5f6d, #d7263d);
+  --ert-gossamer-progress-glow-running: 0 0 10px color-mix(in srgb, #ff9900 30%, transparent);
+  --ert-gossamer-progress-glow-complete: 0 0 10px color-mix(in srgb, #31d47b 45%, transparent);
+  --ert-gossamer-progress-glow-error: 0 0 12px color-mix(in srgb, #d7263d 45%, transparent);
   margin-top: 12px;
   width: 100%;
   height: 8px;
@@ -1254,23 +1256,23 @@
   overflow: hidden;
 }
 
-.rt-gossamer-score-card-progress-bar {
+.ert-gossamer-score-card-progress-bar {
   height: 100%;
   width: var(--progress-width, 0%);
-  background: var(--rt-gossamer-progress-fill-running);
+  background: var(--ert-gossamer-progress-fill-running);
   border-radius: 4px;
   transition: width 0.3s ease-out;
-  box-shadow: var(--rt-gossamer-progress-glow-running);
+  box-shadow: var(--ert-gossamer-progress-glow-running);
 }
 
-.rt-gossamer-score-card-progress-bar.rt-progress-complete {
-  background: var(--rt-gossamer-progress-fill-complete);
-  box-shadow: var(--rt-gossamer-progress-glow-complete);
+.ert-gossamer-score-card-progress-bar.ert-progress-complete {
+  background: var(--ert-gossamer-progress-fill-complete);
+  box-shadow: var(--ert-gossamer-progress-glow-complete);
 }
 
-.rt-gossamer-score-card-progress-bar.rt-progress-error {
-  background: var(--rt-gossamer-progress-fill-error);
-  box-shadow: var(--rt-gossamer-progress-glow-error);
+.ert-gossamer-score-card-progress-bar.ert-progress-error {
+  background: var(--ert-gossamer-progress-fill-error);
+  box-shadow: var(--ert-gossamer-progress-glow-error);
 }
 
 .rt-gossamer-score-table {
@@ -1333,8 +1335,8 @@
 }
 
 /* Keep score label/value readable on hover in the manual update modal */
-.ert-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-value,
-.ert-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-label {
+.ert-gossamer-score-modal .ert-gossamer-score-item-container:hover .ert-gossamer-score-value,
+.ert-gossamer-score-modal .ert-gossamer-score-item-container:hover .ert-gossamer-score-label {
   color: var(--text-normal);
 }
 
@@ -1371,7 +1373,7 @@
   gap: var(--ert-gap-cozy);
 }
 
-.ert-gossamer-score-modal .ert-modal-actions.rt-inline-actions {
+.ert-gossamer-score-modal .ert-modal-actions.ert-inline-actions {
   justify-content: space-between;
   align-items: center;
 }
@@ -1478,7 +1480,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   line-height: 1.25;
-  padding: 1px var(--ert-gap-tight);
+  padding: var(--ert-gap-3xs) var(--ert-gap-tight);
   color: var(--text-normal);
 }
 
@@ -2584,9 +2586,9 @@
   }
 }
 
-.ert-ui.ert-scope--modal .rt-glass-card,
+.ert-ui.ert-scope--modal .ert-glass-card,
 .ert-ui.ert-scope--modal .rt-card-glass,
-.ert-ui .ert-scope--modal .rt-glass-card,
+.ert-ui .ert-scope--modal .ert-glass-card,
 .ert-ui .ert-scope--modal .rt-card-glass {
   box-shadow: none;
 }

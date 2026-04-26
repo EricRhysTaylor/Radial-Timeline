@@ -497,7 +497,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Summary-refresh controls (plus optional legacy Synopsis update).
         if (this.taskType === 'synopsis') {
-            const controlsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-controls' });
+            const controlsCard = contentEl.createDiv({ cls: 'ert-glass-card rt-synopsis-controls' });
 
             // Target Summary Length - Two column layout
             const targetControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
@@ -638,7 +638,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         // Mode selection
-        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-glass-card' });
+        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes ert-glass-card' });
 
         if (this.taskType === 'synopsis') {
             this.createModeOption(
@@ -702,7 +702,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         // Scene count display
-        const countSection = contentEl.createDiv({ cls: 'rt-pulse-count rt-glass-card' });
+        const countSection = contentEl.createDiv({ cls: 'rt-pulse-count ert-glass-card' });
         const countEl = countSection.createDiv({ cls: 'rt-pulse-count-number' });
 
         // Show loading state initially
@@ -925,16 +925,16 @@ export class SceneAnalysisProcessingModal extends Modal {
             trackStatus: true
         });
 
-        const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
-        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-glass-card' });
+        const bodyEl = contentEl.createDiv({ cls: 'ert-pulse-progress-body' });
+        const progressCard = bodyEl.createDiv({ cls: 'ert-pulse-progress-card ert-glass-card' });
 
-        const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
-        const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
-        this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
+        const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
+        const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
+        this.progressBarEl = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
         // Start at 0% for smooth animation
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
-        this.progressTextEl = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
+        this.progressTextEl = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         this.progressTextEl.setText(this.progressSnapshotText);
 
         this.statusTextEl = progressCard.createDiv({ cls: 'rt-pulse-status-text' });
@@ -959,7 +959,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
         this.renderAiAdvancedContext();
 
-        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
+        this.errorListEl = bodyEl.createDiv({ cls: 'ert-pulse-error-list ert-glass-card ert-hidden' });
 
         this.actionButtonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
@@ -1027,7 +1027,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             subtitle: `Review and apply changes`
         });
 
-        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-apply-card' });
+        const card = contentEl.createDiv({ cls: 'ert-glass-card rt-apply-card' });
         card.createDiv({
             cls: 'rt-apply-message',
             text: `Processing complete. ${results.size} scenes have new summaries ready to apply, and applying will replace existing Summary values in frontmatter.`
@@ -1323,8 +1323,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.errorMessages.push({ message: normalizedMessage, hint: hint ?? undefined });
 
         // Show error list if it was hidden
-        if (this.errorListEl.hasClass('rt-hidden')) {
-            this.errorListEl.removeClass('rt-hidden');
+        if (this.errorListEl.hasClass('ert-hidden')) {
+            this.errorListEl.removeClass('ert-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
             header.setText(this.isProcessing ? 'Issues encountered (processing continues):' : 'Issues encountered:');
         }
@@ -1397,8 +1397,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.warningMessages.push(normalizedMessage);
 
         // Show error list if it was hidden
-        if (this.errorListEl.hasClass('rt-hidden')) {
-            this.errorListEl.removeClass('rt-hidden');
+        if (this.errorListEl.hasClass('ert-hidden')) {
+            this.errorListEl.removeClass('ert-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
             header.setText(this.isProcessing ? 'Issues encountered (processing continues):' : 'Issues encountered:');
         }
@@ -1417,11 +1417,11 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
-            this.progressBarEl.removeClass('rt-progress-complete', 'rt-progress-error');
+            this.progressBarEl.removeClass('ert-progress-complete', 'ert-progress-error');
             if (this.errorCount > 0) {
-                this.progressBarEl.addClass('rt-progress-error');
+                this.progressBarEl.addClass('ert-progress-error');
             } else {
-                this.progressBarEl.addClass('rt-progress-complete');
+                this.progressBarEl.addClass('ert-progress-complete');
             }
         }
 
@@ -1462,13 +1462,13 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         if (this.errorListEl) {
-            this.errorListEl.addClass('rt-hidden');
+            this.errorListEl.addClass('ert-hidden');
             this.errorListEl.empty();
         }
 
         contentEl.querySelectorAll('.rt-pulse-summary').forEach(el => el.remove());
         if (hasIssues) {
-            const summaryContainer = contentEl.createDiv({ cls: 'rt-pulse-summary rt-glass-card' });
+            const summaryContainer = contentEl.createDiv({ cls: 'rt-pulse-summary ert-glass-card' });
             summaryContainer.createEl('h3', { text: 'Processing details', cls: 'rt-pulse-summary-title' });
             const summaryStats = summaryContainer.createDiv({ cls: 'rt-pulse-summary-stats' });
             if (hasErrors) {
@@ -1528,7 +1528,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             if (this.taskType === 'synopsis' && this.hasPendingSynopsisResults && this.processedResults.size > 0) {
                 // Render apply confirmation card above the action row.
                 contentEl.querySelectorAll('.rt-synopsis-apply-card').forEach(el => el.remove());
-                const applyCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-apply-card' });
+                const applyCard = contentEl.createDiv({ cls: 'ert-glass-card rt-synopsis-apply-card' });
                 const hasSynopsisToo = this.processedSynopsisResults.size > 0;
                 const artifactLabel = hasSynopsisToo ? 'summaries and synopses' : 'summaries';
                 applyCard.createDiv({

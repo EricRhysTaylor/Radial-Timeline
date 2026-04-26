@@ -407,7 +407,7 @@ export class GossamerScoreModal extends Modal {
     // Range validation warning disabled - metadata cache issue
     // if (!rangeValidation.valid && rangeValidation.missingRangeBeats.length > 0) {
     //   const rangeWarningEl = contentEl.createEl('div');
-    //   rangeWarningEl.addClass('rt-gossamer-warning');
+    //   rangeWarningEl.addClass('ert-gossamer-warning');
     //   
     //   const count = rangeValidation.missingRangeBeats.length;
     //   const beatList = rangeValidation.missingRangeBeats.slice(0, 3).join(', ');
@@ -420,46 +420,46 @@ export class GossamerScoreModal extends Modal {
     // }
 
     // Scrollable list of beat scores
-    const scoresContainer = contentEl.createDiv('rt-container');
+    const scoresContainer = contentEl.createDiv('ert-gossamer-score-container');
 
     // Build entries from plot beats
     this.buildEntries();
 
     // Render each beat entry
     this.entries.forEach((entry, index) => {
-      const entryDiv = scoresContainer.createDiv('rt-gossamer-score-entry');
+      const entryDiv = scoresContainer.createDiv('ert-gossamer-score-entry');
 
       // First row: Beat title, justification, and new score input
-      const firstRow = entryDiv.createDiv('rt-gossamer-score-row');
+      const firstRow = entryDiv.createDiv('ert-gossamer-score-row');
 
       // 1. Left side: Beat title with range
-      const titleContainer = firstRow.createDiv('rt-gossamer-beat-title-container');
+      const titleContainer = firstRow.createDiv('ert-gossamer-beat-title-container');
       const beatTitleEl = titleContainer.createEl('span', { text: entry.beatTitle });
-      beatTitleEl.addClass('rt-gossamer-beat-title');
+      beatTitleEl.addClass('ert-gossamer-beat-title');
 
       if (entry.range) {
         const rangeEl = titleContainer.createEl('span', { text: ` (${entry.range})` });
-        rangeEl.addClass('rt-gossamer-beat-range');
+        rangeEl.addClass('ert-gossamer-beat-range');
       }
 
       // 2. Middle: Beat Purpose (primary context) + latest justification (secondary)
-      const justificationContainer = firstRow.createDiv('rt-gossamer-justification-container');
+      const justificationContainer = firstRow.createDiv('ert-gossamer-justification-container');
       if (entry.description && entry.description.trim().length > 0) {
-        const purposeEl = justificationContainer.createDiv('rt-gossamer-beat-purpose');
+        const purposeEl = justificationContainer.createDiv('ert-gossamer-beat-purpose');
         purposeEl.setText(entry.description.trim());
       }
       if (entry.currentJustification) {
-        const currentNote = justificationContainer.createDiv('rt-gossamer-current-justification');
+        const currentNote = justificationContainer.createDiv('ert-gossamer-current-justification');
         currentNote.setText(`Latest: ${entry.currentJustification}`);
       }
 
       // 3. Right side: New score input
-      const inputContainer = firstRow.createDiv('rt-gossamer-input-container');
+      const inputContainer = firstRow.createDiv('ert-gossamer-input-container');
       const inputLabel = inputContainer.createSpan({ text: 'Enter score' });
-      inputLabel.addClass('rt-gossamer-input-label');
+      inputLabel.addClass('ert-gossamer-input-label');
 
       entry.inputEl = new TextComponent(inputContainer);
-      entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
+      entry.inputEl.inputEl.addClass('ert-gossamer-score-input');
       entry.inputEl.setPlaceholder('0-100');
 
       // Validate on input
@@ -467,20 +467,20 @@ export class GossamerScoreModal extends Modal {
         const num = parseInt(value);
         if (!isNaN(num) && num >= 0 && num <= 100) {
           entry.newScore = num;
-          entry.inputEl?.inputEl.removeClass('rt-input-error');
+          entry.inputEl?.inputEl.removeClass('ert-input-error');
         } else if (value.trim().length > 0) {
-          entry.inputEl?.inputEl.addClass('rt-input-error');
+          entry.inputEl?.inputEl.addClass('ert-input-error');
           entry.newScore = undefined;
         } else {
-          entry.inputEl?.inputEl.removeClass('rt-input-error');
+          entry.inputEl?.inputEl.removeClass('ert-input-error');
           entry.newScore = undefined;
         }
         this.refreshSaveButtonState();
       });
 
       // Second row: Existing scores with delete buttons
-      const secondRow = entryDiv.createDiv('rt-gossamer-scores-history-row');
-      const existingScoresEl = secondRow.createDiv('rt-gossamer-existing-scores-container');
+      const secondRow = entryDiv.createDiv('ert-gossamer-scores-history-row');
+      const existingScoresEl = secondRow.createDiv('ert-gossamer-existing-scores-container');
       entry.scoreDisplayEl = existingScoresEl;
 
       const renderScores = () => {
@@ -488,31 +488,31 @@ export class GossamerScoreModal extends Modal {
 
         const createScoreCard = (gossamerNum: number, score: number, justification?: string) => {
           const scoreContainer = existingScoresEl.createDiv();
-          scoreContainer.addClass('rt-gossamer-score-item-container');
+          scoreContainer.addClass('ert-gossamer-score-item-container');
           scoreContainer.setAttribute('data-gossamer-num', gossamerNum.toString());
 
           // Header row: Icon + Label + Value (Centered)
-          const headerRow = scoreContainer.createDiv('rt-gossamer-score-header');
+          const headerRow = scoreContainer.createDiv('ert-gossamer-score-header');
 
           const iconColumn = headerRow.createDiv();
-          iconColumn.addClass('rt-gossamer-icon-column');
+          iconColumn.addClass('ert-gossamer-icon-column');
           iconColumn.appendChild(this.createCircleXIcon());
 
           headerRow.createSpan({
             text: `G${gossamerNum}`,
-            cls: 'rt-gossamer-score-label'
+            cls: 'ert-gossamer-score-label'
           });
           
           headerRow.createSpan({
             text: `${score}`,
-            cls: 'rt-gossamer-score-value'
+            cls: 'ert-gossamer-score-value'
           });
 
           // Body row: Justification (Full width)
           if (justification) {
             const justEl = scoreContainer.createDiv({
               text: justification,
-              cls: 'rt-gossamer-score-justification'
+              cls: 'ert-gossamer-score-justification'
             });
             tooltip(justEl, justification, 'bottom');
           }
@@ -547,7 +547,7 @@ export class GossamerScoreModal extends Modal {
         if (totalScores > 10) {
           const countSpan = existingScoresEl.createSpan({
             text: `(${totalScores} scores)`,
-            cls: 'rt-gossamer-score-count'
+            cls: 'ert-gossamer-score-count'
           });
         }
       };
@@ -558,11 +558,11 @@ export class GossamerScoreModal extends Modal {
 
     // Footer: three groups — Maintenance | AI workflow | Commit cluster
     const activeSignalLabel = signalMeta.label;
-    const footer = contentEl.createDiv({ cls: 'rt-gossamer-footer' });
+    const footer = contentEl.createDiv({ cls: 'ert-gossamer-footer' });
 
     // Group 1: Maintenance (bordered container — demoted, rarely used)
-    const maintenanceGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--maintenance' });
-    maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'rt-gossamer-footer__group-label' });
+    const maintenanceGroup = footer.createDiv({ cls: 'ert-gossamer-footer__group ert-gossamer-footer__group--maintenance' });
+    maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'ert-gossamer-footer__group-label' });
     const maintenanceRow = maintenanceGroup.createDiv({ cls: 'rt-row' });
     const hasNormalizationWork = this.collectNormalizationIssues().length > 0;
     const normalizeBtn = new ButtonComponent(maintenanceRow)
@@ -581,12 +581,12 @@ export class GossamerScoreModal extends Modal {
       });
     // Outline-only danger treatment; only the red border is overridden so the
     // theme's native hover/focus styles still apply.
-    deleteBtn.buttonEl.classList.add('rt-gossamer-btn-danger-outline');
+    deleteBtn.buttonEl.classList.add('ert-gossamer-btn-danger-outline');
 
     // Group 2: AI workflow (bordered container — primary path; both workflow
     // actions live here so Copy → Paste reads as one continuous workflow.)
-    const aiGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--ai' });
-    aiGroup.createEl('span', { text: 'AI workflow', cls: 'rt-gossamer-footer__group-label' });
+    const aiGroup = footer.createDiv({ cls: 'ert-gossamer-footer__group ert-gossamer-footer__group--ai' });
+    aiGroup.createEl('span', { text: 'AI workflow', cls: 'ert-gossamer-footer__group-label' });
     const aiRow = aiGroup.createDiv({ cls: 'rt-row' });
     // Neither Copy nor Paste use setCta(): the CTA class forces taller padding
     // than regular footer buttons, visually "distorting" them relative to Save
@@ -596,7 +596,7 @@ export class GossamerScoreModal extends Modal {
       .setButtonText('Copy AI prompt')
       .onClick(async () => {
         const ok = await this.copyFullAIPrompt(null);
-        if (ok) copyBtn.buttonEl.classList.add('rt-gossamer-copy-success');
+        if (ok) copyBtn.buttonEl.classList.add('ert-gossamer-copy-success');
       });
     const pasteBtn = new ButtonComponent(aiRow)
       .setButtonText('Paste AI response')
@@ -609,11 +609,11 @@ export class GossamerScoreModal extends Modal {
           await this.saveScores('clipboard-paste');
         }
       });
-    const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
+    const aiMeta = aiGroup.createDiv({ cls: 'ert-gossamer-footer__meta' });
     aiMeta.createSpan({ text: 'Prompt → clipboard · manuscript → ' });
     const vaultLink = aiMeta.createEl('a', {
       text: 'vault file',
-      cls: 'rt-gossamer-footer__vault-link',
+      cls: 'ert-gossamer-footer__vault-link',
       attr: { href: '#', role: 'button', tabindex: '0' }
     });
     vaultLink.addEventListener('click', (event) => {
@@ -623,7 +623,7 @@ export class GossamerScoreModal extends Modal {
     aiMeta.createSpan({ text: ` · ${this.entries.length} beats · ${activeSignalLabel}` });
 
     // Group 3: Commit cluster (standard dialog actions) — Save (primary) then Cancel.
-    const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
+    const commitGroup = footer.createDiv({ cls: 'ert-gossamer-footer__commit' });
     const saveBtn = new ButtonComponent(commitGroup)
       .setButtonText('Save scores')
       .setDisabled(true)
@@ -651,21 +651,21 @@ export class GossamerScoreModal extends Modal {
 
   /** Flash the paste button green on valid response, red on invalid. */
   private flashPasteResult(btnEl: HTMLElement, result: { ok: boolean; matchCount: number; expected: number; reason?: string }): void {
-    btnEl.classList.remove('rt-gossamer-paste-success', 'rt-gossamer-paste-error');
+    btnEl.classList.remove('ert-gossamer-paste-success', 'ert-gossamer-paste-error');
     void btnEl.offsetWidth; // reset animation
     if (result.ok) {
-      btnEl.classList.add('rt-gossamer-paste-success');
+      btnEl.classList.add('ert-gossamer-paste-success');
       if (result.matchCount < result.expected) {
         new Notice(`✓ Pasted ${result.matchCount} of ${result.expected} beats. Check for any misnamed rows.`);
       } else {
         new Notice(`✓ Pasted ${result.matchCount} scores + justifications.`);
       }
     } else {
-      btnEl.classList.add('rt-gossamer-paste-error');
+      btnEl.classList.add('ert-gossamer-paste-error');
       new Notice(`⚠️ ${result.reason ?? 'Clipboard format not recognized.'} Expected: "Beat Name | 42 | justification"`);
     }
     window.setTimeout(() => {
-      btnEl.classList.remove('rt-gossamer-paste-success', 'rt-gossamer-paste-error');
+      btnEl.classList.remove('ert-gossamer-paste-success', 'ert-gossamer-paste-error');
     }, 1500);
   }
 
@@ -938,7 +938,7 @@ export class GossamerScoreModal extends Modal {
           entry.inputEl.setValue(hit.score.toString());
           entry.newScore = hit.score;
           entry.newJustification = hit.justification;
-          entry.inputEl.inputEl.removeClass('rt-input-error');
+          entry.inputEl.inputEl.removeClass('ert-input-error');
           matchCount++;
         }
       }
@@ -949,7 +949,7 @@ export class GossamerScoreModal extends Modal {
           entry.inputEl.setValue(hit.score.toString());
           entry.newScore = hit.score;
           entry.newJustification = hit.justification;
-          entry.inputEl.inputEl.removeClass('rt-input-error');
+          entry.inputEl.inputEl.removeClass('ert-input-error');
           matchCount++;
         }
       }
@@ -1169,7 +1169,7 @@ export class GossamerScoreModal extends Modal {
       hero.createDiv({ text: `Delete all ${activeSignalLabel} scores`, cls: 'ert-modal-title' });
       hero.createDiv({ cls: 'ert-modal-subtitle', text: `RT will archive removed ${activeSignalLabel} slots to the Gossamer log before cleanup. Other signal histories are untouched.` });
 
-      const card = contentEl.createDiv({ cls: 'rt-glass-card ert-purge-confirm-card' });
+      const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
       card.createDiv({
         text: `This will remove every Gossamer slot whose signal is ${activeSignalLabel} across ALL Beat notes in the active book, including their justifications. Slots belonging to other signals are kept.`,
         cls: 'ert-purge-message'
@@ -1304,7 +1304,7 @@ class NormalizeConfirmationModal extends Modal {
     hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'ert-modal-title' });
     hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone. RT archives removed fields before cleanup.' });
 
-    const card = contentEl.createDiv({ cls: 'rt-glass-card ert-purge-confirm-card' });
+    const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
 
     // Single summary line — count of beats that will be touched.
     card.createDiv({ cls: 'ert-purge-message' }).setText(this.message);

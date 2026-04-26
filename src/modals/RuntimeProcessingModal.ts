@@ -186,7 +186,7 @@ export class RuntimeProcessingModal extends Modal {
         const scopeControls = scopeLayout.createDiv({ cls: 'rt-stack' });
         
         // Subplot label row (shown only when subplot scope is selected)
-        this.subplotLabelContainer = scopeControls.createDiv({ cls: 'rt-hidden' });
+        this.subplotLabelContainer = scopeControls.createDiv({ cls: 'ert-hidden' });
         this.subplotLabelContainer.createEl('label', { text: 'Subplot:', cls: 'ert-runtime-label' });
         
         // Dropdowns row - both dropdowns aligned horizontally
@@ -269,16 +269,16 @@ export class RuntimeProcessingModal extends Modal {
         this.settingsAccordion.createSpan({ text: 'Estimation Settings', cls: 'ert-runtime-accordion-title' });
         this.settingsAccordion.createSpan({ cls: 'ert-runtime-accordion-hint', text: `(${modeLabel})` });
         
-        this.settingsContent = settingsCard.createDiv({ cls: 'ert-runtime-accordion-content rt-hidden' });
+        this.settingsContent = settingsCard.createDiv({ cls: 'ert-runtime-accordion-content ert-hidden' });
         this.renderSettingsContent();
         
         this.settingsAccordion.addEventListener('click', () => {
             this.settingsExpanded = !this.settingsExpanded;
             if (this.settingsExpanded) {
-                this.settingsContent?.removeClass('rt-hidden');
+                this.settingsContent?.removeClass('ert-hidden');
                 setIcon(accordionIcon, 'chevron-down');
             } else {
-                this.settingsContent?.addClass('rt-hidden');
+                this.settingsContent?.addClass('ert-hidden');
                 setIcon(accordionIcon, 'chevron-right');
             }
         });
@@ -412,9 +412,9 @@ export class RuntimeProcessingModal extends Modal {
         // Show/hide subplot label
         if (this.subplotLabelContainer) {
             if (showSubplot) {
-                this.subplotLabelContainer.removeClass('rt-hidden');
+                this.subplotLabelContainer.removeClass('ert-hidden');
             } else {
-                this.subplotLabelContainer.addClass('rt-hidden');
+                this.subplotLabelContainer.addClass('ert-hidden');
             }
         }
         
@@ -591,12 +591,12 @@ export class RuntimeProcessingModal extends Modal {
         const progressCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
 
         // Progress bar
-        const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
-        const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
-        this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
+        const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
+        const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
+        this.progressBarEl = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
-        this.progressTextEl = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
+        this.progressTextEl = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         this.progressTextEl.setText('0 / 0 scenes (0%)');
 
         // Running total
@@ -706,7 +706,7 @@ export class RuntimeProcessingModal extends Modal {
     private showCompletionSummary(message: string, aiResult?: RuntimeProcessResult['aiResult']): void {
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
-            this.progressBarEl.addClass('rt-progress-complete');
+            this.progressBarEl.addClass('ert-progress-complete');
         }
 
         if (this.statusTextEl) {

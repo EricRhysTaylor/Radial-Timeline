@@ -148,7 +148,7 @@ export class GossamerProcessingModal extends Modal {
 
         this.confirmationView = contentEl;
 
-        const card = contentEl.createDiv({ cls: 'rt-glass-card' });
+        const card = contentEl.createDiv({ cls: 'ert-glass-card' });
 
         // Info section (no extra spacing class)
         const infoEl = card.createDiv();
@@ -210,8 +210,8 @@ export class GossamerProcessingModal extends Modal {
         const modelName = this.getActiveModelDisplayName();
         this.renderProcessingHero(contentEl, 'Analyzing manuscript...', modelName);
 
-        const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
-        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-glass-card' });
+        const bodyEl = contentEl.createDiv({ cls: 'ert-pulse-progress-body' });
+        const progressCard = bodyEl.createDiv({ cls: 'ert-pulse-progress-card ert-glass-card' });
 
         // Manuscript info section (reusing existing styles but inside the card)
         const infoSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-info-section' });
@@ -220,9 +220,9 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl.setText('Assembling manuscript...');
 
         // Progress bar container
-        const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
-        const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
-        this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
+        const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
+        const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
+        this.progressBarEl = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         // Status section
@@ -240,7 +240,7 @@ export class GossamerProcessingModal extends Modal {
         this.renderAiAdvancedContext();
 
         // Error section
-        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
+        this.errorListEl = bodyEl.createDiv({ cls: 'ert-pulse-error-list ert-glass-card ert-hidden' });
 
         // Close button (disabled while processing)
         const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -415,7 +415,7 @@ export class GossamerProcessingModal extends Modal {
         }
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('ert-gossamer-progress-active');
-            this.progressBarEl.addClass('rt-progress-complete');
+            this.progressBarEl.addClass('ert-progress-complete');
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', '100%');
         }
@@ -450,7 +450,7 @@ export class GossamerProcessingModal extends Modal {
         }
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('ert-gossamer-progress-active');
-            this.progressBarEl.addClass('rt-progress-complete');
+            this.progressBarEl.addClass('ert-progress-complete');
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', '0%');
         }
@@ -465,8 +465,8 @@ export class GossamerProcessingModal extends Modal {
         if (!this.errorListEl) return;
 
         // Show error section
-        if (this.errorListEl.hasClass('rt-hidden')) {
-            this.errorListEl.removeClass('rt-hidden');
+        if (this.errorListEl.hasClass('ert-hidden')) {
+            this.errorListEl.removeClass('ert-hidden');
             const header = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-header' });
             header.setText('Errors encountered:');
         }
@@ -500,7 +500,7 @@ export class GossamerProcessingModal extends Modal {
         }
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('ert-gossamer-progress-active');
-            this.progressBarEl.addClass('rt-progress-complete');
+            this.progressBarEl.addClass('ert-progress-complete');
             if (success) {
                 // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
                 this.progressBarEl.style.setProperty('--progress-width', '100%');

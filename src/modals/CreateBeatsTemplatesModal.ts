@@ -45,9 +45,9 @@ export class CreateBeatSetModal extends Modal {
     header.createDiv({ cls: 'ert-modal-subtitle', text: `This will create ${this.beatCount} beat notes for "${this.beatSystem}".` });
 
     // Info card with example
-    const card = contentEl.createDiv({ cls: 'rt-glass-card' });
+    const card = contentEl.createDiv({ cls: 'ert-glass-card' });
 
-    card.createDiv({ cls: 'rt-sub-card-note', text: 'Each beat note will have the following property structure (shown in YAML format):' });
+    card.createDiv({ cls: 'ert-sub-card-note', text: 'Each beat note will have the following property structure (shown in YAML format):' });
 
     // Build preview from the actual merged template (base + custom fields).
     // Substitute placeholders with human-readable sample values.
@@ -75,7 +75,7 @@ export class CreateBeatSetModal extends Modal {
       ? `Notes will be created in: ${sourcePath}/`
       : 'Notes will be created in the vault root (no source path set)';
 
-    card.createDiv({ cls: 'rt-sub-card-note', text: locationText });
+    card.createDiv({ cls: 'ert-sub-card-note', text: locationText });
 
     // Buttons
     const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });

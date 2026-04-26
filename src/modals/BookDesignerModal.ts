@@ -539,8 +539,8 @@ export class BookDesignerModal extends Modal {
         if (this.heroModeMeta) {
             const modeLabel = this.distributionMode === 'manual' ? 'Manual mode' : 'Auto mode';
             this.heroModeMeta.setText(modeLabel);
-            this.heroModeMeta.toggleClass('rt-meta-auto', this.distributionMode !== 'manual');
-            this.heroModeMeta.toggleClass('rt-meta-manual', this.distributionMode === 'manual');
+            this.heroModeMeta.toggleClass('ert-meta-auto', this.distributionMode !== 'manual');
+            this.heroModeMeta.toggleClass('ert-meta-manual', this.distributionMode === 'manual');
         }
     }
 
@@ -762,26 +762,26 @@ export class BookDesignerModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-book-designer-modal');
-        contentEl.addClass('rt-manuscript-surface');
+        contentEl.addClass('ert-book-designer-modal');
+        contentEl.addClass('ert-manuscript-surface');
 
         // Hero Header using generic modal system
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        const heroBadge = hero.createSpan({ cls: 'ert-modal-badge rt-book-designer-badge' });
-        heroBadge.createSpan({ cls: 'rt-book-designer-badge-label', text: 'SETUP' });
-        heroBadge.createSpan({ cls: 'rt-book-designer-badge-sep', text: '•' });
-        this.heroLocationMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail', text: this.getSelectedBookTitle() });
-        heroBadge.createSpan({ cls: 'rt-book-designer-badge-sep', text: '•' });
-        this.heroModeMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail rt-book-designer-badge-mode rt-meta-auto', text: 'Auto mode' });
+        const heroBadge = hero.createSpan({ cls: 'ert-modal-badge ert-book-designer-badge' });
+        heroBadge.createSpan({ cls: 'ert-book-designer-badge-label', text: 'SETUP' });
+        heroBadge.createSpan({ cls: 'ert-book-designer-badge-sep', text: '•' });
+        this.heroLocationMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail', text: this.getSelectedBookTitle() });
+        heroBadge.createSpan({ cls: 'ert-book-designer-badge-sep', text: '•' });
+        this.heroModeMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail ert-book-designer-badge-mode ert-meta-auto', text: 'Auto mode' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
         this.updateHeroMeta();
 
-        const scrollContainer = contentEl.createDiv({ cls: 'rt-container rt-card-stack' });
+        const scrollContainer = contentEl.createDiv({ cls: 'ert-card-stack' });
 
         // SECTION 1: LOCATION & STRUCTURE
-        const structCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        structCard.createDiv({ cls: 'rt-sub-card-head', text: 'Location & Structure' });
+        const structCard = scrollContainer.createDiv({ cls: 'ert-glass-card ert-sub-card' });
+        structCard.createDiv({ cls: 'ert-sub-card-head', text: 'Location & Structure' });
 
         // Target book
         new Setting(structCard)
@@ -809,7 +809,7 @@ export class BookDesignerModal extends Modal {
 
         if (this.getBookProfiles().length === 0) {
             structCard.createDiv({
-                cls: 'rt-sub-card-note',
+                cls: 'ert-sub-card-note',
                 text: 'Add a book in Book Manager and set its folder before generating a scaffold here.'
             });
         }
@@ -830,8 +830,8 @@ export class BookDesignerModal extends Modal {
                     if (!raw) {
                         this.timeIncrement = '0';
                         text.setValue('0');
-                        replayTransientClass(text.inputEl, 'rt-input-flash-success', {
-                            removeClasses: ['rt-input-flash-error'],
+                        replayTransientClass(text.inputEl, 'ert-input-flash-success', {
+                            removeClasses: ['ert-input-flash-error'],
                             durationMs: 1700
                         });
                         return;
@@ -842,15 +842,15 @@ export class BookDesignerModal extends Modal {
 
                     if (valid || isZero) {
                         this.timeIncrement = raw;
-                        replayTransientClass(text.inputEl, 'rt-input-flash-success', {
-                            removeClasses: ['rt-input-flash-error'],
+                        replayTransientClass(text.inputEl, 'ert-input-flash-success', {
+                            removeClasses: ['ert-input-flash-error'],
                             durationMs: 1700
                         });
                     } else {
                         new Notice(`Invalid duration: "${raw}". Reverting to ${this.timeIncrement}.`);
                         text.setValue(this.timeIncrement);
-                        replayTransientClass(text.inputEl, 'rt-input-flash-error', {
-                            removeClasses: ['rt-input-flash-success'],
+                        replayTransientClass(text.inputEl, 'ert-input-flash-error', {
+                            removeClasses: ['ert-input-flash-success'],
                             durationMs: 1700
                         });
                     }
@@ -858,8 +858,8 @@ export class BookDesignerModal extends Modal {
             });
 
         // Scenes + target range group (single border spanning both columns)
-        const countsGroup = structCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block' });
-        const countsGrid = countsGroup.createDiv({ cls: 'rt-manuscript-duo-grid' });
+        const countsGroup = structCard.createDiv({ cls: 'ert-manuscript-card-block ert-manuscript-group-block' });
+        const countsGrid = countsGroup.createDiv({ cls: 'ert-manuscript-duo-grid' });
 
         // Forward reference workaround: Define lengthSetting first but add it later? 
         // No, we can just define the update helper to take setting instance.
@@ -905,7 +905,7 @@ export class BookDesignerModal extends Modal {
                         this.targetRangeMax = this.scenesToGenerate;
                         if (this.targetRangeInput) {
                             this.targetRangeInput.setValue(this.targetRangeMax.toString());
-                            replayTransientClass(this.targetRangeInput.inputEl, 'rt-input-flash-error', {
+                            replayTransientClass(this.targetRangeInput.inputEl, 'ert-input-flash-error', {
                                 durationMs: 1700
                             });
                         }
@@ -918,7 +918,7 @@ export class BookDesignerModal extends Modal {
                     if (evt.key === 'Enter') { evt.preventDefault(); commitScenes(); }
                 });
             });
-        scenesSetting.settingEl.addClass('rt-manuscript-group-setting');
+        scenesSetting.settingEl.addClass('ert-manuscript-group-setting');
 
         const lengthSetting = new Setting(countsGrid)
             .setName('Target book length')
@@ -949,7 +949,7 @@ export class BookDesignerModal extends Modal {
                     if (this.targetRangeMax < this.scenesToGenerate) {
                         this.targetRangeMax = this.scenesToGenerate;
                         text.setValue(this.targetRangeMax.toString());
-                        replayTransientClass(text.inputEl, 'rt-input-flash-error', {
+                        replayTransientClass(text.inputEl, 'ert-input-flash-error', {
                             durationMs: 1700
                         });
                     }
@@ -961,19 +961,19 @@ export class BookDesignerModal extends Modal {
                     if (evt.key === 'Enter') { evt.preventDefault(); commitTarget(); }
                 });
             });
-        lengthSetting.settingEl.addClass('rt-manuscript-group-setting');
+        lengthSetting.settingEl.addClass('ert-manuscript-group-setting');
         lengthSettingRef = lengthSetting; // Assign ref
         this.updateTargetDesc(lengthSetting);
 
         // Acts Selection (Checkboxes)
-        const actSetting = structCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block rt-manuscript-acts-row' });
-        actSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Acts to distribute scenes across' });
-        const actChecks = actSetting.createDiv({ cls: 'rt-manuscript-checkbox-row' });
+        const actSetting = structCard.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block ert-manuscript-acts-row' });
+        actSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: 'Acts to distribute scenes across' });
+        const actChecks = actSetting.createDiv({ cls: 'ert-manuscript-checkbox-row' });
         actChecks.style.flexWrap = 'wrap';
         const actCountForUi = this.getMaxActs();
 
         Array.from({ length: actCountForUi }, (_, i) => i + 1).forEach(num => {
-            const item = actChecks.createDiv({ cls: 'rt-manuscript-checkbox-item' });
+            const item = actChecks.createDiv({ cls: 'ert-manuscript-checkbox-item' });
             const input = item.createEl('input', { type: 'checkbox' });
             input.checked = this.selectedActs.includes(num);
             this.actCheckboxes.push(input);
@@ -999,19 +999,19 @@ export class BookDesignerModal extends Modal {
         });
 
         // SECTION 2: CONTENT CONFIGURATION
-        const contentCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        contentCard.createDiv({ cls: 'rt-sub-card-head', text: 'Content Configuration' });
+        const contentCard = scrollContainer.createDiv({ cls: 'ert-glass-card ert-sub-card' });
+        contentCard.createDiv({ cls: 'ert-sub-card-head', text: 'Content Configuration' });
 
         // Subplots + characters + preview (single border spanning all columns)
-        const contentGroup = contentCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-manuscript-content-grid' });
+        const contentGroup = contentCard.createDiv({ cls: 'ert-manuscript-card-block ert-manuscript-group-block ert-manuscript-content-grid' });
 
         // Left column: Subplots + Characters stacked
-        const leftCol = contentGroup.createDiv({ cls: 'rt-manuscript-content-left' });
+        const leftCol = contentGroup.createDiv({ cls: 'ert-manuscript-content-left' });
 
         const subplotsSetting = new Setting(leftCol)
             .setName('Subplots')
             .setDesc('Enter one subplot per line.')
-            .setClass('rt-setting-stacked')
+            .setClass('ert-setting-stacked')
             .addTextArea(text => {
                 this.subplotsInput = text;
                 text
@@ -1022,7 +1022,7 @@ export class BookDesignerModal extends Modal {
                         this.schedulePreviewUpdate();
                     });
                 text.inputEl.rows = 4;
-                text.inputEl.classList.add('rt-manuscript-textarea');
+                text.inputEl.classList.add('ert-manuscript-textarea');
                 text.inputEl.addEventListener('blur', () => {
                     const trimmed = this.subplots.split('\n').map(s => s.trim()).filter(Boolean);
                     if (trimmed.length === 0) {
@@ -1032,19 +1032,19 @@ export class BookDesignerModal extends Modal {
                     }
                 });
             });
-        subplotsSetting.settingEl.addClass('rt-manuscript-group-setting');
+        subplotsSetting.settingEl.addClass('ert-manuscript-group-setting');
 
         const characterSetting = new Setting(leftCol)
             .setName('Characters')
             .setDesc('Enter one character per line.')
-            .setClass('rt-setting-stacked')
+            .setClass('ert-setting-stacked')
             .addTextArea(text => {
                 this.characterInput = text;
                 text
                     .setValue(this.character)
                     .onChange(value => this.character = value);
                 text.inputEl.rows = 4;
-                text.inputEl.classList.add('rt-manuscript-textarea');
+                text.inputEl.classList.add('ert-manuscript-textarea');
                 text.inputEl.addEventListener('blur', () => {
                     const trimmed = this.character.split('\n').map(s => s.trim()).filter(Boolean);
                     if (trimmed.length === 0) {
@@ -1054,29 +1054,29 @@ export class BookDesignerModal extends Modal {
                     }
                 });
             });
-        characterSetting.settingEl.addClass('rt-manuscript-group-setting');
+        characterSetting.settingEl.addClass('ert-manuscript-group-setting');
 
         // Right column: Preview (larger)
-        const previewCol = contentGroup.createDiv({ cls: 'rt-manuscript-preview-col rt-manuscript-preview-col-wide' });
-        const previewHeader = previewCol.createDiv({ cls: 'rt-manuscript-preview-head' });
-        previewHeader.createDiv({ cls: 'rt-manuscript-preview-title', text: 'Preview' });
-        this.previewStatusEl = previewHeader.createDiv({ cls: 'rt-manuscript-preview-status', text: 'Auto distribution' });
-        this.previewHostEl = previewCol.createDiv({ cls: 'rt-manuscript-preview-host' });
-        this.subplotLegendEl = previewCol.createDiv({ cls: 'rt-subplot-color-legend rt-subplot-color-legend--preview' });
+        const previewCol = contentGroup.createDiv({ cls: 'ert-manuscript-preview-col ert-manuscript-preview-col-wide' });
+        const previewHeader = previewCol.createDiv({ cls: 'ert-manuscript-preview-head' });
+        previewHeader.createDiv({ cls: 'ert-manuscript-preview-title', text: 'Preview' });
+        this.previewStatusEl = previewHeader.createDiv({ cls: 'ert-manuscript-preview-status', text: 'Auto distribution' });
+        this.previewHostEl = previewCol.createDiv({ cls: 'ert-manuscript-preview-host' });
+        this.subplotLegendEl = previewCol.createDiv({ cls: 'ert-subplot-color-legend ert-subplot-color-legend--preview' });
         this.updateDistributionStatus();
         this.schedulePreviewUpdate();
 
 
         // SECTION 3: TEMPLATES & EXTRAS
-        const extraCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        extraCard.createDiv({ cls: 'rt-sub-card-head', text: 'Scene Sets & Extras' });
+        const extraCard = scrollContainer.createDiv({ cls: 'ert-glass-card ert-sub-card' });
+        extraCard.createDiv({ cls: 'ert-sub-card-head', text: 'Scene Sets & Extras' });
 
-        const extraRow = extraCard.createDiv({ cls: 'rt-manuscript-duo-row' });
+        const extraRow = extraCard.createDiv({ cls: 'ert-manuscript-duo-row' });
 
         // Template Selection (Pills)
-        const templSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
-        templSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Scene set' });
-        const templPills = templSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
+        const templSetting = extraRow.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block' });
+        templSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: 'Scene set' });
+        const templPills = templSetting.createDiv({ cls: 'ert-manuscript-pill-row' });
 
         const options: { id: 'base' | 'advanced', label: string }[] = [
             { id: 'base', label: 'Base Scene Set' },
@@ -1096,7 +1096,7 @@ export class BookDesignerModal extends Modal {
         });
 
         // Generate Beats Toggle (Pills)
-        const beatSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
+        const beatSetting = extraRow.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block' });
         const activeBeatSetTitle = this.getActiveBeatSetTitle();
         const beatLabelText = activeBeatSetTitle
             ? `Generate ${this.truncateLabel(activeBeatSetTitle)} beats`
@@ -1105,11 +1105,11 @@ export class BookDesignerModal extends Modal {
             ? `Generate ${activeBeatSetTitle} beats`
             : 'Select a beat system in Settings → Beats to enable beat generation.';
         const beatLabelEl = beatSetting.createDiv({
-            cls: 'rt-manuscript-setting-label',
+            cls: 'ert-manuscript-setting-label',
             text: beatLabelText
         });
         beatLabelEl.setAttribute('title', beatLabelTooltip);
-        const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row rt-book-designer-yesno-row' });
+        const beatPills = beatSetting.createDiv({ cls: 'ert-manuscript-pill-row ert-book-designer-yesno-row' });
 
         // If no beat system is active, force generateBeats off so the toggle reflects reality.
         if (!activeBeatSetTitle && this.generateBeats) {
@@ -1133,7 +1133,7 @@ export class BookDesignerModal extends Modal {
         this.refreshBeatExistsWarning();
 
         // Template load/save
-        const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-layout-templates-card' });
+        const templateCard = extraCard.createDiv({ cls: 'ert-manuscript-card-block ert-manuscript-group-block ert-layout-templates-card' });
         const templateSetting = new Setting(templateCard)
             .setName('Scene layouts')
             .setDesc('Select a saved layout (acts, subplots, assignments, metadata).')
@@ -1150,7 +1150,7 @@ export class BookDesignerModal extends Modal {
                     this.applyTemplateById(value);
                 });
             });
-        templateSetting.settingEl.addClass('rt-manuscript-group-setting');
+        templateSetting.settingEl.addClass('ert-manuscript-group-setting');
 
         const templateActions = templateCard.createDiv({ cls: 'ert-template-actions' });
 
@@ -1175,10 +1175,10 @@ export class BookDesignerModal extends Modal {
                     void this.generateNonlinearDemoProject(startDate);
                 }).open();
             });
-        demoProjectButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'rt-book-designer-demo-btn');
+        demoProjectButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'ert-book-designer-demo-btn');
 
         templateCard.createDiv({
-            cls: 'rt-sub-card-note',
+            cls: 'ert-sub-card-note',
             text: 'Includes scenes, acts, subplots, beats, and chronologue timing.'
         });
 
@@ -1281,10 +1281,10 @@ export class BookDesignerModal extends Modal {
         const subplotList = this.parseSubplots();
         const total = subplotList.length;
         subplotList.forEach((name, index) => {
-            const row = legendEl.createDiv({ cls: 'rt-subplot-color-row' });
-            const swatch = row.createSpan({ cls: 'rt-subplot-color-swatch' });
-            swatch.style.setProperty('--rt-subplot-swatch-color', this.subplotColor(index, total));
-            row.createSpan({ cls: 'rt-subplot-color-label', text: name });
+            const row = legendEl.createDiv({ cls: 'ert-subplot-color-row' });
+            const swatch = row.createSpan({ cls: 'ert-subplot-color-swatch' });
+            swatch.style.setProperty('--ert-subplot-swatch-color', this.subplotColor(index, total));
+            row.createSpan({ cls: 'ert-subplot-color-label', text: name });
         });
     }
 
@@ -1336,7 +1336,7 @@ export class BookDesignerModal extends Modal {
         const cy = size / 2;
 
         const svg = this.previewHostEl.createSvg('svg');
-        svg.addClass('rt-manuscript-preview-svg');
+        svg.addClass('ert-manuscript-preview-svg');
         svg.setAttr('viewBox', `0 0 ${size} ${size}`);
         svg.setAttr('preserveAspectRatio', 'xMidYMid meet');
         svg.setAttr('width', '100%');
@@ -1359,7 +1359,7 @@ export class BookDesignerModal extends Modal {
             guide.setAttr('r', `${r}`);
             guide.setAttr('stroke', ringColor);
             guide.style.setProperty('stroke', ringColor);
-            guide.addClass('rt-manuscript-preview-guide');
+            guide.addClass('ert-manuscript-preview-guide');
         }
 
         // Draw Act Divider Lines (dynamic wedges by configured acts)
@@ -1383,7 +1383,7 @@ export class BookDesignerModal extends Modal {
             line.setAttr('y2', `${y2}`);
             line.setAttr('stroke', spokeColor);
             line.setAttr('stroke-width', '1');
-            line.addClass('rt-manuscript-preview-spoke');
+            line.addClass('ert-manuscript-preview-spoke');
         });
 
         // Render Scenes per Act Sector from assignments
@@ -1413,7 +1413,7 @@ export class BookDesignerModal extends Modal {
                 const path = svg.createSvg('path');
                 path.setAttr('d', this.donutSlicePath(cx, cy, rInLocal, rOutLocal, a0, a1));
                 path.setAttr('fill', this.subplotColor(subplotIndex, subplotList.length));
-                path.addClass('rt-manuscript-preview-slice');
+                path.addClass('ert-manuscript-preview-slice');
                 path.setAttr('data-act', `${assignment.act}`);
                 path.setAttr('data-scene', `${assignment.sceneNumber}`);
                 path.setAttr('data-subplot', `${subplotIndex}`);
@@ -1426,7 +1426,7 @@ export class BookDesignerModal extends Modal {
         core.setAttr('cx', `${cx}`);
         core.setAttr('cy', `${cy}`);
         core.setAttr('r', `${innerR}`);
-        core.addClass('rt-manuscript-preview-core');
+        core.addClass('ert-manuscript-preview-core');
     }
 
     private donutSlicePath(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number): string {
@@ -1456,7 +1456,7 @@ export class BookDesignerModal extends Modal {
         if (!svg) return;
         this.dragState = { sceneNumber, pointerId: evt.pointerId, dims, targetAct: 0, targetSubplot: 0 };
         svg.setPointerCapture(evt.pointerId);
-        if (this.previewHostEl) this.previewHostEl.addClass('rt-preview-dragging');
+        if (this.previewHostEl) this.previewHostEl.addClass('ert-preview-dragging');
 
         const moveHandler = (moveEvt: PointerEvent) => this.handleDragMove(moveEvt, svg as SVGSVGElement, dims);
         const upHandler = (upEvt: PointerEvent) => {
@@ -1500,7 +1500,7 @@ export class BookDesignerModal extends Modal {
         }
         this.dragState = null;
         this.updateDistributionStatus();
-        if (this.previewHostEl) this.previewHostEl.removeClass('rt-preview-dragging');
+        if (this.previewHostEl) this.previewHostEl.removeClass('ert-preview-dragging');
     }
 
     private computeDropTarget(evt: PointerEvent, svg: SVGSVGElement, dims: PreviewDims): { act: number; subplotIndex: number } | null {

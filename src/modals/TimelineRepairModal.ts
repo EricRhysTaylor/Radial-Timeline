@@ -253,7 +253,7 @@ export class TimelineRepairModal extends Modal {
             });
 
         // Setup configuration
-        const setupCard = this.contentEl.createDiv({ cls: 'rt-glass-card rt-timeline-repair-setup-card' });
+        const setupCard = this.contentEl.createDiv({ cls: 'ert-glass-card rt-timeline-repair-setup-card' });
         const setupGrid = setupCard.createDiv({ cls: 'rt-timeline-repair-setup-grid' });
         const leftCol = setupGrid.createDiv({ cls: 'rt-timeline-repair-config-column' });
         const rightCol = setupGrid.createDiv({ cls: 'rt-timeline-repair-config-column' });
@@ -445,13 +445,13 @@ export class TimelineRepairModal extends Modal {
         const statusEl = header.createDiv({ cls: 'ert-modal-subtitle', text: t('timelineRepairModal.analyzing.statusApplying') });
 
         // Progress card
-        const progressCard = this.contentEl.createDiv({ cls: 'rt-glass-card' });
-        const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
-        const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
-        const progressBar = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
+        const progressCard = this.contentEl.createDiv({ cls: 'ert-glass-card' });
+        const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
+        const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
+        const progressBar = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
         progressBar.style.setProperty('--progress-width', '0%');
 
-        const progressText = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
+        const progressText = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         progressText.setText(t('timelineRepairModal.analyzing.preparing'));
 
         // Abort button

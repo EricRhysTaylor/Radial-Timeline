@@ -45,7 +45,7 @@ export class ManageSubplotsModal extends Modal {
         hero.createDiv({ text: 'Rename or remove subplots across the timeline. Orphaned scenes will be moved to Main Plot.', cls: 'ert-modal-subtitle' });
 
         // Single card container (avoid extra nesting)
-        const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card rt-glass-card' });
+        const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card ert-glass-card' });
         this.listContainer = card.createDiv({ cls: 'rt-manage-subplots-list' });
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
