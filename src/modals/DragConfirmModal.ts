@@ -80,7 +80,7 @@ export class DragConfirmModal extends Modal {
         
         // Use the passed accent color (subplot color)
         if (this.accent) {
-            contentEl.style.setProperty('--rt-confirm-accent', this.accent);
+            contentEl.style.setProperty('--ert-confirm-accent', this.accent);
         }
 
         // Header — differentiates between scene and beat moves

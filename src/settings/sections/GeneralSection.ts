@@ -198,12 +198,12 @@ export function renderGeneralSection(params: {
 
     // "+" add-book button in the setting row's control column (far right)
     const addBookBtn = booksHeading.controlEl.createEl('button', {
-        cls: 'ert-iconBtn ert-mod-cta rt-books-add-btn',
+        cls: 'ert-iconBtn ert-mod-cta ert-books-add-btn',
         attr: { 'aria-label': 'Add book', type: 'button' }
     });
     setIcon(addBookBtn, 'plus');
 
-    const booksPanel = containerEl.createDiv({ cls: `${ERT_CLASSES.STACK} rt-books-panel` });
+    const booksPanel = containerEl.createDiv({ cls: `${ERT_CLASSES.STACK} ert-books-panel` });
 
     /** Pulse the "+" button green when books need attention (no books, or missing source folder) */
     const updateAddBtnPulse = () => {
@@ -215,7 +215,7 @@ export function renderGeneralSection(params: {
                 const normalizedFolder = normalizePath(rawFolder);
                 return !(app.vault.getAbstractFileByPath(normalizedFolder) instanceof TFolder);
             });
-        addBookBtn.toggleClass('rt-books-add-btn--pulse', needsAttention);
+        addBookBtn.toggleClass('ert-books-add-btn--pulse', needsAttention);
     };
 
     const addNewBook = async () => {
@@ -243,10 +243,10 @@ export function renderGeneralSection(params: {
             if (!event.dataTransfer) return () => undefined;
             const rect = rowEl.getBoundingClientRect();
             const preview = rowEl.cloneNode(true) as HTMLElement;
-            preview.addClass('rt-book-card--dragPreview');
+            preview.addClass('ert-book-card--dragPreview');
             preview.removeClass('is-dragging');
-            preview.style.setProperty('--rt-book-drag-preview-width', `${Math.ceil(rect.width)}px`);
-            preview.style.setProperty('--rt-book-drag-preview-height', `${Math.ceil(rect.height)}px`);
+            preview.style.setProperty('--ert-book-drag-preview-width', `${Math.ceil(rect.width)}px`);
+            preview.style.setProperty('--ert-book-drag-preview-height', `${Math.ceil(rect.height)}px`);
             document.body.appendChild(preview);
 
             const offsetX = event.clientX > 0 ? Math.max(20, event.clientX - rect.left) : 24;
@@ -259,11 +259,11 @@ export function renderGeneralSection(params: {
         };
 
         const clearBookDragState = () => {
-            booksPanel.removeClass('rt-books-panel--dragging');
-            booksPanel.querySelectorAll('.rt-book-card.is-dragover').forEach(target => {
+            booksPanel.removeClass('ert-books-panel--dragging');
+            booksPanel.querySelectorAll('.ert-book-card.is-dragover').forEach(target => {
                 target.removeClass('is-dragover');
             });
-            booksPanel.querySelectorAll('.rt-book-card.is-dragging').forEach(source => {
+            booksPanel.querySelectorAll('.ert-book-card.is-dragging').forEach(source => {
                 source.removeClass('is-dragging');
             });
             dragState.index = null;
@@ -330,13 +330,13 @@ export function renderGeneralSection(params: {
 
             // ── Single-row book card (Setting row) ───────────────────
             const row = new ObsidianSetting(booksPanel);
-            row.settingEl.addClass('rt-book-card', isActive ? 'is-active' : 'is-inactive');
+            row.settingEl.addClass('ert-book-card', isActive ? 'is-active' : 'is-inactive');
             if (hasBrokenFolderLink) {
-                row.settingEl.addClass('rt-book-card--link-broken');
+                row.settingEl.addClass('ert-book-card--link-broken');
             }
             row.settingEl.setAttribute('data-book-sequence', String(sequenceNumber));
 
-            const dragHandle = row.settingEl.createDiv({ cls: 'rt-book-card__drag ert-drag-handle' });
+            const dragHandle = row.settingEl.createDiv({ cls: 'ert-book-card__drag ert-drag-handle' });
             row.settingEl.insertBefore(dragHandle, row.infoEl);
             setIcon(dragHandle, 'grip-vertical');
             setTooltip(dragHandle, 'Drag to reorder books');
@@ -345,10 +345,10 @@ export function renderGeneralSection(params: {
             // Name: status icon + clickable title
             const nameEl = row.nameEl;
             nameEl.empty();
-            nameEl.addClass('rt-book-card__name');
+            nameEl.addClass('ert-book-card__name');
 
             const statusIcon = nameEl.createDiv({
-                cls: `rt-book-card__status ${hasBrokenFolderLink ? 'rt-book-card__status--invalid' : isActive ? 'rt-book-card__status--active' : ''}`
+                cls: `ert-book-card__status ${hasBrokenFolderLink ? 'ert-book-card__status--invalid' : isActive ? 'ert-book-card__status--active' : ''}`
             });
             setIcon(statusIcon, hasBrokenFolderLink ? 'x-circle' : 'check-circle');
             setTooltip(
@@ -384,16 +384,16 @@ export function renderGeneralSection(params: {
 
             // Desc: scene count stat
             row.setDesc(`BOOK ${sequenceNumber} — ${sceneStatText}`);
-            row.descEl.addClass('rt-book-card__meta');
+            row.descEl.addClass('ert-book-card__meta');
             if (hasBrokenFolderLink) {
-                row.descEl.addClass('rt-book-card__stat--invalid');
+                row.descEl.addClass('ert-book-card__stat--invalid');
             } else if (sceneStatWarn) {
-                row.descEl.addClass('rt-book-card__stat--warn');
+                row.descEl.addClass('ert-book-card__stat--warn');
             }
 
             // Activate: click the row (title stopPropagation prevents conflict)
             if (!isActive) {
-                row.settingEl.addClass('rt-book-card--clickable');
+                row.settingEl.addClass('ert-book-card--clickable');
                 row.settingEl.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                     if (dragState.index !== null) return;
                     await plugin.setActiveBookId(book.id);
@@ -406,7 +406,7 @@ export function renderGeneralSection(params: {
 
             dragHandle.addEventListener('dragstart', (event: DragEvent) => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 dragState.index = index;
-                booksPanel.addClass('rt-books-panel--dragging');
+                booksPanel.addClass('ert-books-panel--dragging');
                 row.settingEl.addClass('is-dragging');
                 event.dataTransfer?.setData('text/plain', String(index));
                 if (event.dataTransfer) {
@@ -593,7 +593,7 @@ export function renderGeneralSection(params: {
             row.addExtraButton(button => {
                 button.setIcon('trash-2');
                 button.setTooltip('Remove profile (files are not deleted)');
-                button.extraSettingsEl.addClass('rt-book-card__trash');
+                button.extraSettingsEl.addClass('ert-book-card__trash');
                 button.onClick(async () => {
                     plugin.settings.books = books.filter(b => b.id !== book.id);
                     if (book.id === plugin.settings.activeBookId) {

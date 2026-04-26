@@ -497,19 +497,19 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Summary-refresh controls (plus optional legacy Synopsis update).
         if (this.taskType === 'synopsis') {
-            const controlsCard = contentEl.createDiv({ cls: 'ert-glass-card rt-synopsis-controls' });
+            const controlsCard = contentEl.createDiv({ cls: 'ert-glass-card ert-synopsis-controls' });
 
             // Target Summary Length - Two column layout
-            const targetControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
-            const targetInfo = targetControl.createDiv({ cls: 'rt-synopsis-control-info' });
-            targetInfo.createEl('label', { text: 'Target summary length', cls: 'rt-synopsis-control-label' });
+            const targetControl = controlsCard.createDiv({ cls: 'ert-synopsis-control ert-synopsis-control--row' });
+            const targetInfo = targetControl.createDiv({ cls: 'ert-synopsis-control-info' });
+            targetInfo.createEl('label', { text: 'Target summary length', cls: 'ert-synopsis-control-label' });
             targetInfo.createDiv({
                 text: 'Target word count for Summary refresh. Each completed scene is written immediately to frontmatter.',
-                cls: 'rt-synopsis-control-help'
+                cls: 'ert-synopsis-control-help'
             });
             const targetInput = targetControl.createEl('input', {
                 type: 'number',
-                cls: 'rt-synopsis-control-input',
+                cls: 'ert-synopsis-control-input',
                 attr: { min: '75', max: '500', step: '25' }
             }) as HTMLInputElement;
             targetInput.value = String(this.synopsisTargetWords);
@@ -534,19 +534,19 @@ export class SceneAnalysisProcessingModal extends Modal {
             });
 
             // Horizontal rule separator
-            controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
+            controlsCard.createEl('hr', { cls: 'ert-synopsis-control-divider' });
 
             // Weak Summary Threshold - Two column layout
-            const thresholdControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
-            const thresholdInfo = thresholdControl.createDiv({ cls: 'rt-synopsis-control-info' });
-            thresholdInfo.createEl('label', { text: 'Treat summary as weak if under', cls: 'rt-synopsis-control-label' });
+            const thresholdControl = controlsCard.createDiv({ cls: 'ert-synopsis-control ert-synopsis-control--row' });
+            const thresholdInfo = thresholdControl.createDiv({ cls: 'ert-synopsis-control-info' });
+            thresholdInfo.createEl('label', { text: 'Treat summary as weak if under', cls: 'ert-synopsis-control-label' });
             thresholdInfo.createDiv({
                 text: 'Only used to decide which scenes are selected for update.',
-                cls: 'rt-synopsis-control-help'
+                cls: 'ert-synopsis-control-help'
             });
             const thresholdInput = thresholdControl.createEl('input', {
                 type: 'number',
-                cls: 'rt-synopsis-control-input',
+                cls: 'ert-synopsis-control-input',
                 attr: { min: '10', max: '300', step: '5' }
             }) as HTMLInputElement;
             thresholdInput.value = String(this.synopsisWeakThreshold);
@@ -572,29 +572,29 @@ export class SceneAnalysisProcessingModal extends Modal {
             });
 
             // Warning for target < threshold
-            const warningEl = controlsCard.createDiv({ cls: 'rt-synopsis-threshold-warning' });
+            const warningEl = controlsCard.createDiv({ cls: 'ert-synopsis-threshold-warning' });
             this.checkThresholdWarning(warningEl);
 
             // Horizontal rule separator
-            controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
+            controlsCard.createEl('hr', { cls: 'ert-synopsis-control-divider' });
 
             // Optional write-through to the legacy Synopsis key.
-            const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
+            const synopsisControl = controlsCard.createDiv({ cls: 'ert-synopsis-control ert-synopsis-control--row' });
             let synopsisWordLimit = getSynopsisGenerationWordLimit(this.plugin.settings);
             const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
-            const synopsisInfo = synopsisControl.createDiv({ cls: 'rt-synopsis-control-info' });
+            const synopsisInfo = synopsisControl.createDiv({ cls: 'ert-synopsis-control-info' });
             synopsisInfo.createEl('label', {
                 text: 'Also update Synopsis',
-                cls: 'rt-synopsis-control-label',
+                cls: 'ert-synopsis-control-label',
                 attr: { for: synopsisCheckboxId }
             });
-            const synopsisHelp = synopsisInfo.createDiv({ cls: 'rt-synopsis-control-help' });
+            const synopsisHelp = synopsisInfo.createDiv({ cls: 'ert-synopsis-control-help' });
             const renderSynopsisHelp = () => {
                 synopsisHelp.setText(`Also replace Synopsis with a concise version generated from scene content. Current stored length target is ${synopsisWordLimit} words. Hover may use a little more when space allows.`);
             };
             renderSynopsisHelp();
 
-            const synopsisControls = synopsisControl.createDiv({ cls: 'rt-synopsis-control-right' });
+            const synopsisControls = synopsisControl.createDiv({ cls: 'ert-synopsis-control-right' });
             const synopsisCheckbox = synopsisControls.createEl('input', {
                 type: 'checkbox',
                 cls: 'ert-synopsis-control-checkbox',
@@ -603,7 +603,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             synopsisCheckbox.checked = this.plugin.settings.alsoUpdateSynopsis ?? false;
             const synopsisLengthInput = synopsisControls.createEl('input', {
                 type: 'number',
-                cls: 'rt-synopsis-control-input',
+                cls: 'ert-synopsis-control-input',
                 attr: { min: '10', max: '300', step: '5' }
             }) as HTMLInputElement;
             synopsisLengthInput.value = String(synopsisWordLimit);

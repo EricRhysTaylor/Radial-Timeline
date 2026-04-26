@@ -1,8 +1,8 @@
-/* Legacy rt-* selectors extracted from rt-ui.css during ERT migration. */
+/* Legacy selector remnants extracted from the shared UI stylesheet during ERT migration. */
 
 
 /* Pro Target Dropdown */
-.rt-apr-pro-target .dropdown {
+.ert-apr-pro-target .dropdown {
   background: color-mix(in srgb, var(--ert-pro-accent-color) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
   color: var(--text-normal);
@@ -10,31 +10,21 @@
   font-weight: 500;
 }
 
-.rt-apr-pro-target .dropdown:hover,
-.rt-apr-pro-target .dropdown:focus {
+.ert-apr-pro-target .dropdown:hover,
+.ert-apr-pro-target .dropdown:focus {
   border-color: var(--ert-pro-accent-color);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-pro-accent-color) 20%, transparent);
 }
 
-/* Legacy settings tokens */
+/* Legacy settings aliases */
 .ert-settings-root {
-  --rt-pro-color: var(--rt-pro-color-base);
-  --rt-pro-color-rgb: 217, 70, 239;
-  --rt-social-color: var(--rt-social-color-base);
-  --rt-social-color-rgb: 255, 212, 29;
+  --ert-settings-pro-color: var(--ert-pro-accent-color);
+  --ert-settings-social-color: var(--ert-social-accent-color-base);
 }
 
 /* -------------------------------------------------------------------------- */
-/* MIGRATED FROM settings.css (rt-* selectors)                                */
+/* MIGRATED FROM settings.css (legacy selectors)                              */
 /* -------------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* PROFESSIONAL SECTION                                                       */
-/* -------------------------------------------------------------------------- */
-
-.ert-settings-root .rt-professional-header-toggle .setting-item-control {
-  padding: 0;
-}
 
 .ert-settings-root .documentation-container {
   padding: 0 1em;
@@ -85,7 +75,7 @@
 .ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full):not(.ert-hex-input),
 .ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full),
 .ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.ert-input--xs):not(.ert-input--2digit):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full) {
-  width: var(--rt-input-width-md);
+  width: var(--ert-input-width-md);
   max-width: 100%;
 }
 
@@ -94,8 +84,8 @@
 }
 
 .ert-settings-root .setting-item .setting-item-control textarea.ert-input--lg {
-  width: var(--rt-input-width-lg);
-  min-width: var(--rt-input-width-lg);
+  width: var(--ert-input-width-lg);
+  min-width: var(--ert-input-width-lg);
   max-width: 100%;
 }
 
@@ -133,7 +123,7 @@
   margin-top: 0;
 }
 
-/* rt-template-input consolidated in base.css */
+/* template input consolidated in base.css */
 
 /* Ensure all settings buttons/toggles use pointer cursor */
 .ert-settings-root .setting-item-control button,
@@ -155,7 +145,7 @@
 
 .ert-runtime-number {
   font-weight: 600;
-  color: var(--rt-pro-color);
+  color: var(--ert-settings-pro-color);
 }
 
 .ert-runtime-hint {
@@ -194,18 +184,14 @@
 /* Section spacing */
 .ert-runtime-section {
   margin-bottom: 16px;
+  box-shadow: none;
 }
 
 .ert-runtime-section:last-of-type {
   margin-bottom: 12px;
 }
 
-/* Runtime sections use glass-card but without heavy dropshadow */
-.rt-glass-card.ert-runtime-section {
-  box-shadow: none;
-}
-
-/* ert-runtime-section-header replaced by rt-section-title in base.css */
+/* runtime section header uses the shared section-title pattern */
 
 .ert-runtime-section-desc {
   font-size: 12px;
@@ -213,8 +199,7 @@
   margin-bottom: 12px;
 }
 
-/* ert-runtime-scope-layout, ert-runtime-scope-info, ert-runtime-scope-controls, ert-runtime-scope-row
-   replaced by rt-row and rt-stack utilities in base.css */
+/* runtime scope layout uses the shared row/stack utilities in base.css */
 
 .ert-runtime-dropdown-container {
   display: flex;
@@ -262,7 +247,7 @@
   font-style: italic;
 }
 
-/* ert-runtime-status-row replaced by rt-row rt-row-loose rt-row-wrap in base.css */
+/* runtime status row uses the shared loose row / wrap utilities in base.css */
 
 .ert-runtime-status-checkbox {
   display: flex;
@@ -309,7 +294,7 @@
 }
 
 .ert-runtime-accordion-header:hover {
-  color: var(--rt-pro-color);
+  color: var(--ert-settings-pro-color);
 }
 
 .ert-runtime-accordion-icon {
@@ -379,19 +364,19 @@
   font-style: italic;
 }
 
-/* Books settings (moved from rt-ui.css during ERT migration) */
+/* Books settings (moved from the shared UI stylesheet during ERT migration) */
 
 /* "+" add-book button in heading (ert-iconBtn ert-mod-cta base) */
-.rt-books-add-btn--pulse {
+.ert-books-add-btn--pulse {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-success) 28%, transparent);
 }
 
-.rt-books-panel {
+.ert-books-panel {
   gap: var(--ert-gap-sm);
 }
 
 /* Book card: single-row Setting with bordered card look */
-.rt-book-card.setting-item {
+.ert-book-card.setting-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -407,36 +392,36 @@
 }
 
 /* Override generic .is-inactive muting — book cards must stay interactive */
-.rt-book-card.setting-item.is-inactive {
+.ert-book-card.setting-item.is-inactive {
   opacity: 1;
   pointer-events: auto;
 }
 
-.rt-book-card.setting-item.is-active {
+.ert-book-card.setting-item.is-active {
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
 }
 
-.rt-book-card.setting-item.rt-book-card--link-broken {
+.ert-book-card.setting-item.ert-book-card--link-broken {
   border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--text-error) 6%, var(--background-primary));
 }
 
 /* Name column: status icon + title stacked above desc */
-.rt-book-card__name {
+.ert-book-card__name {
   display: flex;
   align-items: center;
   gap: var(--ert-gap-sm);
 }
 
-.rt-book-card .setting-item-info {
+.ert-book-card .setting-item-info {
   min-width: 0;
 }
 
-.rt-book-card .setting-item-control {
+.ert-book-card .setting-item-control {
   min-width: 0;
 }
 
-.rt-book-card__drag {
+.ert-book-card__drag {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -446,16 +431,16 @@
   cursor: grab;
 }
 
-.rt-book-card__drag svg {
+.ert-book-card__drag svg {
   width: 16px;
   height: 16px;
 }
 
-.rt-book-card__meta {
+.ert-book-card__meta {
   letter-spacing: 0.02em;
 }
 
-.rt-book-card__status {
+.ert-book-card__status {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -463,76 +448,76 @@
   color: var(--text-faint);
 }
 
-.rt-book-card__status svg {
+.ert-book-card__status svg {
   width: 16px;
   height: 16px;
 }
 
-.rt-book-card__status--active {
+.ert-book-card__status--active {
   color: var(--text-success);
 }
 
-.rt-book-card__status--invalid {
+.ert-book-card__status--invalid {
   color: var(--text-error);
 }
 
 /* Clickable row to activate inactive book */
-.rt-book-card--clickable {
+.ert-book-card--clickable {
   cursor: pointer;
 }
 
-.rt-book-card--clickable:hover {
+.ert-book-card--clickable:hover {
   border-color: color-mix(in srgb, var(--text-success) 40%, transparent);
 }
 
-.rt-book-card--clickable:hover .rt-book-card__status {
+.ert-book-card--clickable:hover .ert-book-card__status {
   color: var(--text-success);
 }
 
-.rt-book-card--clickable.rt-book-card--link-broken:hover {
+.ert-book-card--clickable.ert-book-card--link-broken:hover {
   border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
 }
 
-.rt-book-card--clickable.rt-book-card--link-broken:hover .rt-book-card__status--invalid {
+.ert-book-card--clickable.ert-book-card--link-broken:hover .ert-book-card__status--invalid {
   color: var(--text-error);
 }
 
-.rt-book-card__stat--warn {
+.ert-book-card__stat--warn {
   color: var(--text-faint);
 }
 
-.rt-book-card__stat--invalid {
+.ert-book-card__stat--invalid {
   color: var(--text-error);
 }
 
-.rt-book-card__trash.is-disabled {
+.ert-book-card__trash.is-disabled {
   opacity: 0.3;
   pointer-events: none;
 }
 
-.rt-books-panel--dragging .rt-book-card .setting-item-control,
-.rt-books-panel--dragging .rt-book-card .ert-book-name {
+.ert-books-panel--dragging .ert-book-card .setting-item-control,
+.ert-books-panel--dragging .ert-book-card .ert-book-name {
   pointer-events: none;
 }
 
-.rt-book-card.setting-item.is-dragging {
+.ert-book-card.setting-item.is-dragging {
   opacity: 0.36;
   box-shadow: none;
 }
 
-.rt-book-card.setting-item.is-dragover {
+.ert-book-card.setting-item.is-dragover {
   border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--interactive-accent) 28%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 16%, transparent);
 }
 
-.rt-book-card--dragPreview {
+.ert-book-card--dragPreview {
   position: fixed;
   top: -10000px;
   left: -10000px;
-  width: var(--rt-book-drag-preview-width, auto);
-  min-height: var(--rt-book-drag-preview-height, auto);
+  width: var(--ert-book-drag-preview-width, auto);
+  min-height: var(--ert-book-drag-preview-height, auto);
   margin: 0;
   pointer-events: none;
   box-shadow:

@@ -18,6 +18,9 @@
   /* Green  */
   --rt-pro-color-base: #d946ef;
   --rt-social-color-base: #ffd41d;
+  --ert-pro-accent-rgb-base: 217, 70, 239;
+  --ert-social-accent-color-base: #ffd41d;
+  --ert-social-accent-rgb-base: 255, 212, 29;
   --rt-legacy-black: #000000;
   --rt-legacy-gray: #666666;
   --rt-legacy-gray-light: #888888;
