@@ -646,6 +646,17 @@
   margin-left: auto;
 }
 
+.rt-manuscript-modal .ert-template-dropdown-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-manuscript-modal .ert-template-dropdown-row .rt-manuscript-input-container {
+  flex: 1;
+  min-width: 0;
+}
+
 .ert-manuscript-advanced {
   margin-top: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);

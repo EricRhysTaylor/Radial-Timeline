@@ -133,6 +133,7 @@ export type InquiryPurgePreviewItem = {
 export type InquiryOmnibusModalOptions = {
     initialScope: InquiryScope;
     bookLabel: string;
+    bookTitle?: string;
     questions: InquiryQuestion[];
     providerSummary: string;
     providerLabel: string;

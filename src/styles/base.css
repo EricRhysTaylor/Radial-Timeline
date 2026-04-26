@@ -1028,6 +1028,10 @@ body.rt-modal-open .radial-timeline-container * {
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.ert-skin--pro .rt-section-title {
+  border-bottom-color: var(--ert-pro-border);
+}
+
 /* Icon button - consistent sizing (includes rt-template-icon-btn for settings) */
 .rt-icon-btn,
 .rt-template-icon-btn {

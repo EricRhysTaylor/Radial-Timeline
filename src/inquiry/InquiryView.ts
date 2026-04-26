@@ -6499,6 +6499,7 @@ export class InquiryView extends ItemView {
         const plan = await this.promptOmnibusPlan({
             initialScope: this.state.scope,
             bookLabel: this.getActiveBookLabel(),
+            bookTitle: this.getActiveBookTitleForMessages() ?? undefined,
             questions,
             providerSummary: providerPlan.summary,
             providerLabel: providerPlan.label,

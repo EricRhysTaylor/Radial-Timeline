@@ -309,7 +309,7 @@ class SubplotPickerModal extends Modal {
         const isLocalLlm = this.service.isLocalLlmMode();
         const infoText = isLocalLlm
             ? 'Local LLM mode: Valid results update scene hover fields automatically. Invalid results are logged and marked for review.'
-            : 'Flagged scenes with processable metadata are sent to the AI along with the manuscript content.';
+            : 'Your manuscript will be sent to the AI for pulse analysis of the selected scenes.';
         this.statsEl.createDiv({
             cls: 'ert-subplot-picker-summary',
             text: infoText

@@ -880,7 +880,7 @@ export const en: TranslationKeys = {
             config: {
                 inquiryTitle: 'Inquiry',
                 citationsName: 'Enable citations',
-                citationsDesc: 'Anchor findings to specific passages. Disabling roughly halves Inquiry token usage and API cost.',
+                citationsDesc: 'Anchor findings to specific passages. Cost impact varies by provider — substantial on Anthropic Claude (native document blocks) and Gemini (disables prompt cache reuse); minimal on OpenAI (lighter post-response annotations). Toggle has no effect on local Ollama. See the cost table for details.',
                 timelineDisplayTitle: 'Timeline Display',
                 pulseContextName: 'Pulse context',
                 pulseContextDesc: 'Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)',
@@ -1394,7 +1394,7 @@ export const en: TranslationKeys = {
         config: {
             badge: 'Quick Scaffold',
             title: 'Timeline order normalizer',
-            subtitle: 'Quickly scaffold When dates from narrative order so Chronologue becomes usable. Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit. Scaffolds When values across the active book in narrative order and updates conflicting values.',
+            subtitle: 'Use this when you’ve drafted scenes in narrative order but don’t yet have a complete or accurate set of `When` dates. Quick Scaffold assigns `When` values across the active book using pattern spacing and simple text cues so Chronologue can plot a timeline. For deeper analysis of existing dates, use Timeline Audit.',
             statTotalScenes: 'Total Scenes',
             statWithWhen: 'With When',
             statMissingWhen: 'Missing When',
@@ -1464,7 +1464,7 @@ export const en: TranslationKeys = {
         header: {
             badge: 'Timeline Audit',
             title: 'Evidence-based timeline diagnosis',
-            subtitle: 'Timeline Audit checks each scene\'s YAML When value, summary, synopsis, and body text, then compares nearby scenes in chronology order. It looks for missing or invalid When values, time-of-day mismatches, suspicious jumps, and places where the written sequence appears to disagree with chronology. Direct text evidence counts more than inference, and AI remains optional. Use it to see where the timeline breaks before deciding what to change.',
+            subtitle: 'Use this when you already have `When` dates and want to find problems or inconsistencies. Timeline Audit checks each scene’s `When` value, summary, synopsis, and body text, then compares scenes in chronological order to flag missing or invalid `When` values, time-of-day mismatches, suspicious jumps, and places where the written sequence disagrees with chronology. Direct text evidence counts more than inference, and AI remains optional.',
             aiEnhancedBadge: 'AI-enhanced',
         },
         loading: {

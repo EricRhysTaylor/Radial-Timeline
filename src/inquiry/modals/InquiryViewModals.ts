@@ -314,8 +314,9 @@ export class InquiryOmnibusModal extends Modal {
         const scopePills: HTMLSpanElement[] = [];
         const getScopeLabel = (scope: InquiryScope): string =>
             scope === 'saga' ? `Saga (${SIGMA_CHAR})` : `Book (${this.options.bookLabel})`;
+        const badgeBookName = this.options.bookTitle?.trim() || this.options.bookLabel;
         const getBadgeLabel = (scope: InquiryScope): string =>
-            scope === 'saga' ? `Inquiry · Saga (${SIGMA_CHAR})` : `Inquiry · Book (${this.options.bookLabel})`;
+            scope === 'saga' ? `Inquiry · Saga (${SIGMA_CHAR})` : `Inquiry · Book (${badgeBookName})`;
 
         const updateScopeSelection = (scope: InquiryScope): void => {
             this.selectedScope = scope;

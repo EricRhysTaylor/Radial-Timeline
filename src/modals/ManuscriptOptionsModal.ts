@@ -13,7 +13,6 @@ import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions }
 import { categorizeExportError } from '../utils/exportErrors';
 import {
     adaptPandocLayoutsToPublishingModel,
-    getModalExportProfileSummary,
     buildLegacyTemplateFromModalExportProfile,
     buildPersistedExportProfileFromModalExportProfile,
     buildModalExportProfile,
@@ -738,7 +737,8 @@ export class ManuscriptOptionsModal extends Modal {
         this.templateCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card rt-layout-templates-card' });
         this.createSectionHeading(this.templateCard, 'Saved export presets', 'bookmark');
         this.templateSummaryEl = this.templateCard.createDiv({ cls: 'rt-sub-card-note ert-export-preset-summary' });
-        const templateSetting = new DropdownComponent(this.templateCard.createDiv({ cls: 'rt-manuscript-input-container' }));
+        const dropdownRow = this.templateCard.createDiv({ cls: 'ert-template-dropdown-row' });
+        const templateSetting = new DropdownComponent(dropdownRow.createDiv({ cls: 'rt-manuscript-input-container' }));
         templateSetting.selectEl.addClass('ert-input', 'ert-input--lg');
         this.exportTemplateDropdown = templateSetting.selectEl;
         templateSetting.onChange((value) => {
@@ -867,23 +867,34 @@ export class ManuscriptOptionsModal extends Modal {
         this.templateSummaryEl.empty();
 
         const { selectedTemplate, isCreateMode, hasChanges } = this.getSelectedTemplateState();
-        const summaryProfile = selectedTemplate
-            ? this.createTemplateSnapshot(selectedTemplate.name, selectedTemplate.id)
-            : this.createTemplateSnapshot('Current settings');
-        const summaryText = getModalExportProfileSummary(summaryProfile, this.templateProfiles);
+        const isPandoc = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
+        this.templateSummaryEl.toggleClass('rt-hidden', !isPandoc);
 
-        this.templateSummaryEl.createSpan({
-            cls: 'ert-export-preset-summary-text',
-            text: summaryText
-        });
+        if (isPandoc) {
+            const summaryProfile = selectedTemplate
+                ? this.createTemplateSnapshot(selectedTemplate.name, selectedTemplate.id)
+                : this.createTemplateSnapshot('Current settings');
+            const templateProfile = this.templateProfiles.find(item => item.id === summaryProfile.templateProfileId);
+            const templateName = templateProfile?.name || 'Unknown template';
 
-        const badge = this.templateSummaryEl.createSpan({
-            cls: `ert-badgePill ert-badgePill--sm ${isCreateMode ? 'ert-badgePill--muted' : hasChanges ? 'ert-badgePill--warning' : 'ert-badgePill--success'}`
-        });
-        badge.createSpan({
-            cls: 'ert-badgePill__text',
-            text: isCreateMode ? 'Draft' : hasChanges ? 'Modified' : 'Saved'
-        });
+            const badgeVariant = isCreateMode
+                ? 'ert-badgePill--muted'
+                : hasChanges
+                    ? 'ert-badgePill--warning'
+                    : 'ert-badgePill--success';
+            const badge = this.templateSummaryEl.createSpan({
+                cls: `ert-badgePill ert-badgePill--sm ${badgeVariant}`
+            });
+            badge.createSpan({
+                cls: 'ert-badgePill__text',
+                text: isCreateMode ? 'Draft' : hasChanges ? 'Modified' : 'Saved'
+            });
+
+            this.templateSummaryEl.createSpan({
+                cls: 'ert-export-preset-summary-text',
+                text: ` ${summaryProfile.usageContext} · ${templateName}`
+            });
+        }
 
         if (this.templateHintEl) {
             this.templateHintEl.setText(

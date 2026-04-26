@@ -1182,7 +1182,7 @@ export class BookDesignerModal extends Modal {
 
         templateCard.createDiv({
             cls: 'rt-sub-card-note',
-            text: 'Includes scenes, acts, threads, beats, and chronologue timing.'
+            text: 'Includes scenes, acts, subplots, beats, and chronologue timing.'
         });
 
         this.deleteTemplateBtn = new ButtonComponent(templateActions)

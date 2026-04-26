@@ -240,10 +240,17 @@ export class TimelineRepairModal extends Modal {
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: this.buildConfigBadgeText() });
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.config.title') });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: t('timelineRepairModal.config.subtitle')
-        });
+        const subtitleEl = header.createDiv({ cls: 'ert-modal-subtitle' });
+        t('timelineRepairModal.config.subtitle')
+            .split(/(`[^`]+`)/g)
+            .filter(Boolean)
+            .forEach(part => {
+                if (part.startsWith('`') && part.endsWith('`')) {
+                    subtitleEl.createEl('code', { text: part.slice(1, -1) });
+                } else {
+                    subtitleEl.appendText(part);
+                }
+            });
 
         // Setup configuration
         const setupCard = this.contentEl.createDiv({ cls: 'rt-glass-card rt-timeline-repair-setup-card' });

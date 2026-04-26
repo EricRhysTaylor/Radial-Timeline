@@ -739,7 +739,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             subtitle: 'The Radial Timeline is designed to empower you, the author, toward greater productivity and accountability. Use Core settings to align the timeline with your manuscript’s structure, sharpen your workflow, and move faster with clarity.',
             kicker: 'Core Highlights:',
             features: [
-                { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced fields.' },
+                { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, profiles, and advanced fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
                 { icon: 'timer', text: 'Runtime estimation — calibrate pacing profiles and estimate reading or listening time.' },
             ]

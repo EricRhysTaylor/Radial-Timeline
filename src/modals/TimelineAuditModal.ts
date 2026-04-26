@@ -190,10 +190,17 @@ export class TimelineAuditModal extends Modal {
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: t('timelineAuditModal.header.badge') });
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineAuditModal.header.title') });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: t('timelineAuditModal.header.subtitle')
-        });
+        const subtitleEl = header.createDiv({ cls: 'ert-modal-subtitle' });
+        t('timelineAuditModal.header.subtitle')
+            .split(/(`[^`]+`)/g)
+            .filter(Boolean)
+            .forEach(part => {
+                if (part.startsWith('`') && part.endsWith('`')) {
+                    subtitleEl.createEl('code', { text: part.slice(1, -1) });
+                } else {
+                    subtitleEl.appendText(part);
+                }
+            });
 
         if (this.aiState.status === 'completed') {
             header.createDiv({
