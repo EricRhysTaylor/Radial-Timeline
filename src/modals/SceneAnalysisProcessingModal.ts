@@ -124,6 +124,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private queueGrades: Map<string, 'A' | 'B' | 'C'> = new Map();
     private aiAdvancedContext: AIRunAdvancedContext | null = null;
     private aiAdvancedPreEl?: HTMLElement;
+    private aiAdvancedDetailsEl?: HTMLElement;
 
     // Statistics
     private processedCount: number = 0;
@@ -921,13 +922,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.ensureModalShell();
         titleEl.setText('');
         this.renderProcessingHero(contentEl, {
-            trackStatus: true,
-            metaItems: [
-                `Model: ${this.getActiveModelDisplayName()}`,
-                this.subplotName
-                    ? (this.isEntireSubplot ? 'Entire subplot batch' : 'Flagged subplot scenes')
-                    : this.getModeLabel(this.selectedMode)
-            ]
+            trackStatus: true
         });
 
         const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
@@ -959,6 +954,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
+        this.aiAdvancedDetailsEl = advancedDetails;
         advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
         this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
         this.renderAiAdvancedContext();
@@ -1416,6 +1412,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         titleEl.setText('');
         this.stopSceneAnimation();
 
+        // Drop the meta pills (model / mode) on completion; that info is already in the header badge.
+        contentEl.querySelectorAll('.ert-scene-analysis-meta').forEach(el => el.remove());
+
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
             this.progressBarEl.removeClass('rt-progress-complete', 'rt-progress-error');
@@ -1505,18 +1504,21 @@ export class SceneAnalysisProcessingModal extends Modal {
             }
         }
 
-        contentEl.querySelectorAll('.rt-pulse-summary-tip').forEach(el => el.remove());
+        contentEl.querySelectorAll('.ert-pulse-summary-tip').forEach(el => el.remove());
 
         // Only Pulse analysis writes detailed interaction logs in this modal flow.
         if (this.plugin.settings.logApiInteractions && this.taskType !== 'synopsis') {
-            const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
-            if (this.logAttempts > 0) {
-                const contentLogFolder = resolveContentLogsRoot();
-                logNoteEl.createDiv({ text: `Logs saved to ${contentLogFolder}.` });
+            const logNoteEl = createDiv({ cls: 'ert-pulse-summary-tip' });
+            const noteText = this.logAttempts > 0
+                ? `Logs saved to ${resolveContentLogsRoot()}. Scene properties updated.`
+                : 'Logging is enabled, but no AI request reached the server. Scene properties updated.';
+            logNoteEl.setText(noteText);
+            // Place the note inside the progress card, between the queue and the AI Prompt expander.
+            if (this.aiAdvancedDetailsEl?.parentElement) {
+                this.aiAdvancedDetailsEl.parentElement.insertBefore(logNoteEl, this.aiAdvancedDetailsEl);
             } else {
-                logNoteEl.createDiv({ text: 'Logging is enabled, but no AI request reached the server.' });
+                contentEl.appendChild(logNoteEl);
             }
-            logNoteEl.createDiv({ text: 'Scene properties updated.' });
         }
 
         if (this.actionButtonContainer) {

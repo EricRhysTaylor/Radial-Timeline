@@ -188,6 +188,17 @@ function tagExists(tag) {
     }
 }
 
+function readLocalReleaseDraft(version) {
+    const draftPath = `docs/releases/draft-for-release-${version}.md`;
+    if (!existsSync(draftPath)) return null;
+    try {
+        const body = readFileSync(draftPath, 'utf8').trim();
+        return body.length > 0 ? body : null;
+    } catch {
+        return null;
+    }
+}
+
 // Categorization rules
 const CATEGORIES = [
     {
@@ -497,6 +508,11 @@ async function main() {
     // Generate changelog
     console.log(`\n📝 Generating changelog...`);
     const autoChangelog = generateChangelog(lastTag);
+    const localDraftBody = readLocalReleaseDraft(newVersion);
+    const releaseNotesBody = localDraftBody ?? `## What's Changed\n\n${autoChangelog}`;
+    if (localDraftBody) {
+        console.log(`✅ Using local release notes draft: docs/releases/draft-for-release-${newVersion}.md`);
+    }
     
     // Create Draft Release Logic
     console.log(`\n⚙️  Step 1: Creating Draft Release`);
@@ -505,7 +521,7 @@ async function main() {
     runCommand(`npm version ${newVersion} --no-git-tag-version`, "Bumping version");
     
     // 2. Update bundle with preliminary auto-notes (so we have something)
-    updateBundleWithLocalEntry(newVersion, `## What's Changed\n\n${autoChangelog}`);
+    updateBundleWithLocalEntry(newVersion, releaseNotesBody);
 
     // 3. Commit bump
     runCommand(`git add .`, "Staging version bump");
@@ -518,7 +534,7 @@ async function main() {
     runCommand(`git push origin ${newVersion}`, "Pushing tag");
 
     const notesFile = '.release-notes-temp.md';
-    writeFileSync(notesFile, `## What's Changed\n\n${autoChangelog}`);
+    writeFileSync(notesFile, releaseNotesBody);
 
     const cmd = `gh release create ${newVersion} --title "${newVersion}" --notes-file "${notesFile}" --draft`;
     runCommand(cmd, "Creating Draft Release on GitHub");

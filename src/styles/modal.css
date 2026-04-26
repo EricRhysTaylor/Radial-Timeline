@@ -159,6 +159,16 @@
   box-shadow: none;
 }
 
+.ert-scene-analysis-modal .ert-pulse-summary-tip {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 .rt-pulse-modal-shell.modal {
   width: min(760px, 92vw);
   max-height: 92vh;
