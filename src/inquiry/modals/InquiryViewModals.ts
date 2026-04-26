@@ -431,7 +431,7 @@ export class InquiryOmnibusModal extends Modal {
             this.progressTextEl.setText('Preparing...');
             this.progressMicroEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-micro ert-field-note' });
             const advancedDetails = this.progressEl.createEl('details', { cls: 'ert-ai-advanced-details' });
-            advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+            advancedDetails.createEl('summary', { text: 'AI prompt & context' });
             this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
             this.renderAiAdvancedContext();
         }

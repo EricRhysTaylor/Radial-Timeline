@@ -1,6 +1,6 @@
 # CSS Drift Debt
 
-Generated: 2026-04-26T17:41:29.536Z
+Generated: 2026-04-26T19:42:23.218Z
 
 Snapshot of every WARN-level drift hit at the time of baseline reset. Work through these to ratchet the baseline down. After fixing a batch, run `npm run css-drift -- --maintenance --update-baseline` to lock in the new lower ceiling.
 
@@ -10,11 +10,11 @@ Regenerate this report anytime with: `node scripts/css-drift-report.mjs`.
 
 ## Totals
 
-- **Total WARN hits:** 247
+- **Total WARN hits:** 209
 - `spacing-px`: 0
 - `raw-hex`: 0
 - `shadow-rgba`: 0
-- `rt-legacy`: 247
+- `rt-legacy`: 209
 
 ## How to work a rule
 
@@ -42,10 +42,10 @@ _No hits. 🎉_
 
 _No hits. 🎉_
 
-## `rt-legacy` (247)
+## `rt-legacy` (209)
 
 
-### src/styles/modal.css (207)
+### src/styles/modal.css (169)
 
 ```
 src/styles/modal.css:15: margin-top: 0;
@@ -122,7 +122,7 @@ src/styles/modal.css:177: position: relative;
   contain: paint;
 }
 
-.rt-pulse-modal.rt-gossamer-score-modal {
+.rt-pulse-modal.ert-gossamer-score-modal {
 src/styles/modal.css:197: padding: 0;
 }
 
@@ -142,7 +142,7 @@ src/styles/modal.css:210: position: relative;
 
 /* rt-glass-card base consolidated in base.css */
 
-.rt-gossamer-score-modal .rt-glass-card {
+.ert-gossamer-score-modal .rt-glass-card {
 src/styles/modal.css:240: display: flex;
   flex-direction: column;
   gap: var(--ert-gap-lg);
@@ -153,7 +153,7 @@ src/styles/modal.css:240: display: flex;
 
 /* Height-safe shells for tall modals */
 .rt-manuscript-modal,
-.rt-gossamer-processing-modal,
+.ert-gossamer-processing-modal,
 .rt-book-designer-modal {
 src/styles/modal.css:252: display: flex;
   flex-direction: column;
@@ -163,14 +163,6 @@ src/styles/modal.css:252: display: flex;
 }
 
 .rt-manuscript-modal {
-src/styles/modal.css:260: overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
-  contain: paint;
-}
-
-.rt-gossamer-processing-modal {
 src/styles/modal.css:268: overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -194,7 +186,7 @@ src/styles/modal.css:749: white-space: pre-wrap;
 }
 
 /* Gossamer / Pulse modal overrides */
-.rt-gossamer-score-modal .rt-pulse-progress-hero {
+.ert-gossamer-score-modal .rt-pulse-progress-hero {
 src/styles/modal.css:756: padding: var(--ert-pad-sm) var(--ert-pad-loose);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -203,120 +195,26 @@ src/styles/modal.css:756: padding: var(--ert-pad-sm) var(--ert-pad-loose);
   margin-bottom: 12px;
 }
 
-.rt-gossamer-score-modal .rt-pulse-progress-hero::after {
+.ert-gossamer-score-modal .rt-pulse-progress-hero::after {
 src/styles/modal.css:765: display: none;
 }
 
-.rt-gossamer-score-modal .rt-pulse-progress-body {
+.ert-gossamer-score-modal .rt-pulse-progress-body {
 src/styles/modal.css:769: gap: var(--ert-gap-cozy);
   margin-top: 12px;
 }
 
-.rt-gossamer-score-modal .rt-pulse-progress-card {
-src/styles/modal.css:774: padding: var(--ert-pad-md) var(--ert-pad-roomy);
-  gap: var(--ert-gap-md);
-}
-
-.rt-gossamer-proc-modal {
+.ert-gossamer-score-modal .rt-pulse-progress-card {
 src/styles/modal.css:779: padding: 0;
 }
 
-.rt-gossamer-proc-modal .rt-pulse-progress-body {
-src/styles/modal.css:783: margin-top: 8px;
-  overflow-y: visible;
-  width: 100%;
-}
-
-.rt-gossamer-proc-info-section,
-.rt-gossamer-proc-status-section {
+.ert-gossamer-proc-modal .rt-pulse-progress-body {
 src/styles/modal.css:790: margin-bottom: 20px;
 }
 
 /* rt-gossamer-proc-section-title replaced by rt-section-title in base.css */
 
-.rt-gossamer-proc-manuscript-info {
-src/styles/modal.css:796: margin-top: 12px;
-}
-
-.rt-gossamer-proc-stats {
-src/styles/modal.css:800: display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--ert-gap-md);
-}
-
-.rt-gossamer-proc-stat-item {
-src/styles/modal.css:806: background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: var(--ert-pad-sm) var(--ert-pad-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-xs);
-}
-
-.rt-gossamer-proc-stat-label {
-src/styles/modal.css:816: font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
-.rt-gossamer-proc-stat-value {
-src/styles/modal.css:823: font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--text-normal);
-}
-
-.rt-gossamer-proc-stat-row {
-src/styles/modal.css:829: font-size: 13px;
-  color: var(--text-normal);
-  display: flex;
-  gap: var(--ert-gap-sm);
-}
-
-.rt-gossamer-proc-iterative-note {
-src/styles/modal.css:836: margin-top: 8px;
-  padding: var(--ert-pad-xs) var(--ert-pad-sm);
-  background-color: var(--background-secondary);
-  border-radius: 4px;
-  border-left: 3px solid var(--interactive-accent);
-  font-weight: 500;
-}
-
-.rt-gossamer-proc-status-text {
-src/styles/modal.css:845: padding: var(--ert-pad-cozy) var(--ert-pad-sm);
-  background-color: var(--background-secondary);
-  border-radius: 4px;
-  font-size: 13px;
-  color: var(--text-normal);
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-}
-
-.rt-gossamer-proc-api-status {
-src/styles/modal.css:856: margin-top: 8px;
-  padding: 0 var(--ert-gap-2xs);
-  font-size: 13px;
-  color: var(--text-muted);
-  min-height: 0;
-  display: flex;
-  align-items: center;
-}
-
-.rt-gossamer-proc-error-header {
-src/styles/modal.css:866: font-weight: 600;
-  color: var(--text-error);
-  margin-bottom: 8px;
-}
-
-.rt-gossamer-proc-error-item {
-src/styles/modal.css:872: font-size: 0.85rem;
-  color: var(--text-error);
-  margin-bottom: 4px;
-}
-
-.rt-gossamer-proc-beat-system-info {
+.ert-gossamer-proc-manuscript-info {
 src/styles/modal.css:878: font-weight: 600;
   color: var(--text-normal);
   margin-bottom: 12px;
@@ -558,10 +456,6 @@ src/styles/modal.css:1115: display: none;
 }
 
 .rt-gossamer-assembly-modal .rt-hidden {
-src/styles/modal.css:1119: display: none;
-}
-
-.rt-gossamer-score-modal {
 src/styles/modal.css:1123: padding:
     calc(var(--ert-pad-xl) + var(--ert-gap-2xs))
     calc(var(--ert-pad-2xl) + var(--ert-pad-lg))
@@ -576,17 +470,7 @@ src/styles/modal.css:1123: padding:
 }
 
 /* Scrollable container for beat entries */
-.rt-gossamer-score-modal .rt-container {
-src/styles/modal.css:1138: flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-lg);
-}
-
-.rt-gossamer-warning {
+.ert-gossamer-score-modal .rt-container {
 src/styles/modal.css:1148: margin: 0;
   padding: var(--ert-pad-sm) var(--ert-pad-md);
   color: var(--text-normal);
@@ -774,37 +658,8 @@ src/styles/modal.css:1331: margin-top: 4px;
 }
 
 /* Keep score label/value readable on hover in the manual update modal */
-.rt-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-value,
-.rt-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-label {
-src/styles/modal.css:1337: color: var(--text-normal);
-}
-
-.rt-purge-issues-grid {
-src/styles/modal.css:1341: display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--ert-gap-cozy);
-}
-
-.rt-purge-issue-card {
-src/styles/modal.css:1347: padding: var(--ert-pad-cozy) var(--ert-pad-sm);
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.rt-purge-issue-title {
-src/styles/modal.css:1354: margin: 0 0 var(--ert-pad-tight);
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.rt-purge-issue-note {
-src/styles/modal.css:1360: margin: 0;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.rt-gossamer-score-modal .ert-modal-actions {
+.ert-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-value,
+.ert-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-label {
 src/styles/modal.css:1366: margin-top: 12px;
   flex-shrink: 0;
   display: flex;
@@ -812,108 +667,7 @@ src/styles/modal.css:1366: margin-top: 12px;
   gap: var(--ert-gap-cozy);
 }
 
-.rt-gossamer-score-modal .ert-modal-actions.rt-inline-actions {
-src/styles/modal.css:1374: justify-content: space-between;
-  align-items: center;
-}
-
-.rt-gossamer-score-modal .rt-purge-issues {
-src/styles/modal.css:1379: margin-top: 12px;
-}
-
-.rt-gossamer-score-modal .rt-purge-issues-title {
-src/styles/modal.css:1383: margin: 0 0 var(--ert-pad-tight);
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.rt-gossamer-score-modal .rt-purge-issues-list {
-src/styles/modal.css:1390: list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-tight);
-}
-
-.rt-gossamer-score-modal .rt-purge-issues-item {
-src/styles/modal.css:1399: display: flex;
-  flex-wrap: wrap;
-  gap: var(--ert-gap-tight);
-  align-items: flex-start;
-  color: var(--text-muted);
-  line-height: 1.35;
-}
-
-.rt-gossamer-score-modal .rt-purge-issues-item strong {
-src/styles/modal.css:1408: color: var(--text-normal);
-}
-
-.rt-gossamer-score-modal .rt-purge-issues-footnote {
-src/styles/modal.css:1412: margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.rt-purge-confirm-card {
-src/styles/modal.css:1418: padding: var(--ert-pad-md) var(--ert-pad-roomy);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-cozy);
-}
-
-.rt-purge-confirm-modal .ert-modal-subtitle {
-src/styles/modal.css:1425: margin-bottom: 12px;
-}
-
-.rt-purge-message {
-src/styles/modal.css:1429: font-size: 1rem;
-  color: var(--text-normal);
-  line-height: 1.5;
-}
-
-.rt-purge-message-secondary {
-src/styles/modal.css:1435: color: var(--text-muted);
-}
-
-.rt-purge-message + .rt-purge-message {
-src/styles/modal.css:1439: margin-top: 12px;
-}
-
-.rt-purge-details {
-src/styles/modal.css:1443: display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-sm);
-  color: var(--text-normal);
-}
-
-.rt-purge-danger {
-src/styles/modal.css:1450: color: var(--text-normal);
-  font-weight: 700;
-}
-
-.rt-purge-list {
-src/styles/modal.css:1455: margin: 0;
-  padding-left: 20px;
-  color: var(--text-normal);
-  line-height: 1.4;
-}
-
-.rt-purge-list li {
-src/styles/modal.css:1462: margin: calc(var(--ert-gap-3xs) + var(--ert-gap-2xs)) 0;
-}
-
-.rt-purge-list code {
-src/styles/modal.css:1466: font-family: var(--font-monospace);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: var(--ert-gap-2xs) var(--ert-gap-tight);
-  color: var(--text-normal);
-}
-
-.rt-purge-warning {
+.ert-gossamer-score-modal .ert-modal-actions.rt-inline-actions {
 src/styles/modal.css:1475: color: var(--text-normal);
   font-weight: 700;
 }

@@ -319,7 +319,7 @@ export class GossamerScoreModal extends Modal {
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
     }
 
-    contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
+    contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal');
 
     const selectedBeatModel = resolveSelectedBeatModelFromSettings(this.plugin.settings);
     const settingsSystem = selectedBeatModel ?? '';
@@ -396,12 +396,12 @@ export class GossamerScoreModal extends Modal {
           ? `⚠️ No custom story beats found. Create notes with "Class: Beat" and "Beat Model: ${beatModelLabel}", or change beat system in Settings.`
           : `⚠️ No story beats found with "Beat Model: ${beatModelLabel}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
       });
-      noBeatsWarning.addClass('rt-gossamer-warning');
+      noBeatsWarning.addClass('ert-gossamer-warning');
     } else if (countMismatch && plotSystemTemplate) {
       const warningEl = contentEl.createEl('div', {
         text: `⚠️ Expected ${plotSystemTemplate.beatCount} beats for ${beatModelLabel}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
       });
-      warningEl.addClass('rt-gossamer-warning');
+      warningEl.addClass('ert-gossamer-warning');
     }
 
     // Range validation warning disabled - metadata cache issue
@@ -1159,20 +1159,23 @@ export class GossamerScoreModal extends Modal {
       contentEl.empty();
 
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-      contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
+      modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
 
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
       hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
       hero.createDiv({ text: `Delete all ${activeSignalLabel} scores`, cls: 'ert-modal-title' });
       hero.createDiv({ cls: 'ert-modal-subtitle', text: `RT will archive removed ${activeSignalLabel} slots to the Gossamer log before cleanup. Other signal histories are untouched.` });
 
-      const card = contentEl.createDiv({ cls: 'rt-glass-card' });
+      const card = contentEl.createDiv({ cls: 'rt-glass-card ert-purge-confirm-card' });
       card.createDiv({
         text: `This will remove every Gossamer slot whose signal is ${activeSignalLabel} across ALL Beat notes in the active book, including their justifications. Slots belonging to other signals are kept.`,
-        cls: 'rt-gossamer-confirm-warning'
+        cls: 'ert-purge-message'
       });
 
-      const buttonContainer = contentEl.createDiv({ cls: 'rt-row rt-row-end' });
+      const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
 
       new ButtonComponent(buttonContainer)
         .setButtonText(`Delete ${activeSignalLabel} scores`)
@@ -1292,28 +1295,29 @@ class NormalizeConfirmationModal extends Modal {
       // stretch edge-to-edge.
       modalEl.style.width = '540px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
-    contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
+      contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
 
     const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
     hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
     hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'ert-modal-title' });
     hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone. RT archives removed fields before cleanup.' });
 
-    const card = contentEl.createDiv({ cls: 'rt-glass-card' });
+    const card = contentEl.createDiv({ cls: 'rt-glass-card ert-purge-confirm-card' });
 
     // Single summary line — count of beats that will be touched.
-    card.createDiv({ cls: 'rt-purge-message' }).setText(this.message);
+    card.createDiv({ cls: 'ert-purge-message' }).setText(this.message);
 
     if (this.issues.length > 0) {
-      const issuesEl = card.createDiv({ cls: 'rt-purge-issues' });
-      issuesEl.createEl('h3', { text: 'Beats to normalize', cls: 'rt-purge-issues-title' });
+      const issuesEl = card.createDiv({ cls: 'ert-purge-issues' });
+      issuesEl.createEl('h3', { text: 'Beats to normalize', cls: 'ert-purge-issues-title' });
 
-      const listEl = issuesEl.createEl('ul', { cls: 'rt-purge-issues-list' });
+      const listEl = issuesEl.createEl('ul', { cls: 'ert-purge-issues-list' });
       const preview = this.issues.slice(0, 6);
 
       preview.forEach(issue => {
-        const item = listEl.createEl('li', { cls: 'rt-purge-issues-item' });
+        const item = listEl.createEl('li', { cls: 'ert-purge-issues-item' });
         item.createEl('strong', { text: issue.beatTitle });
 
         const details: string[] = [];
@@ -1336,13 +1340,13 @@ class NormalizeConfirmationModal extends Modal {
 
       if (this.issues.length > preview.length) {
         issuesEl.createDiv({
-          cls: 'rt-purge-issues-footnote',
+          cls: 'ert-purge-issues-footnote',
           text: `+${this.issues.length - preview.length} more beat${this.issues.length - preview.length === 1 ? '' : 's'} will be cleaned.`
         });
       }
     }
 
-    const buttonRow = contentEl.createDiv({ cls: 'rt-row rt-row-end' });
+    const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
     new ButtonComponent(buttonRow)
       .setButtonText('Normalize')
       .setWarning()

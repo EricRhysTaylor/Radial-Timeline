@@ -955,7 +955,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
         this.aiAdvancedDetailsEl = advancedDetails;
-        advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+        advancedDetails.createEl('summary', { text: 'AI prompt & context' });
         this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
         this.renderAiAdvancedContext();
 

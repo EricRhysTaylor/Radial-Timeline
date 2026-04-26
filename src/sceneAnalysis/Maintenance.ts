@@ -222,26 +222,26 @@ class PurgeConfirmationModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = '820px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
             modalEl.style.maxHeight = '92vh';
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.addClass('rt-purge-confirm-modal');
+        contentEl.addClass('ert-purge-confirm-modal');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
         hero.createDiv({ text: 'Confirm purge beats', cls: 'ert-modal-title' });
         hero.createDiv({ text: 'RT will archive removed scene-analysis fields before cleanup.', cls: 'ert-modal-subtitle' });
 
-        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-purge-confirm-card' });
+        const card = contentEl.createDiv({ cls: 'rt-glass-card ert-purge-confirm-card' });
 
-        const messageEl = card.createDiv({ cls: 'rt-purge-message' });
+        const messageEl = card.createDiv({ cls: 'ert-purge-message' });
         messageEl.setText(this.message);
 
-        const detailsEl = card.createDiv({ cls: 'rt-purge-details' });
-        detailsEl.createEl('div', { text: 'This will remove these fields and archive them to a log snapshot first:', cls: 'rt-purge-danger' });
-        const listEl = detailsEl.createEl('ul', { cls: 'rt-purge-list' });
+        const detailsEl = card.createDiv({ cls: 'ert-purge-details' });
+        detailsEl.createEl('div', { text: 'This will remove these fields and archive them to a log snapshot first:', cls: 'ert-purge-danger' });
+        const listEl = detailsEl.createEl('ul', { cls: 'ert-purge-list' });
         this.details.forEach(detail => {
             const li = listEl.createEl('li');
             // Render backtick-wrapped segments as inline code for clearer YAML key styling
@@ -257,7 +257,7 @@ class PurgeConfirmationModal extends Modal {
                 });
         });
 
-        const warningEl = card.createDiv({ cls: 'rt-purge-warning' });
+        const warningEl = card.createDiv({ cls: 'ert-purge-warning' });
         warningEl.setText('Are you sure you want to proceed?');
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });

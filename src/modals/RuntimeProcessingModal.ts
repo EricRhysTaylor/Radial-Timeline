@@ -146,7 +146,7 @@ export class RuntimeProcessingModal extends Modal {
 
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
         const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
-        const modeIconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
+        const modeIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
         const badgeRow = header.createDiv({ cls: 'ert-modal-badge-row' });
 
         const pill = badgeRow.createSpan({
@@ -162,6 +162,16 @@ export class RuntimeProcessingModal extends Modal {
         const badge = badgeRow.createSpan({ cls: 'ert-modal-badge' });
         const modeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(modeIcon, modeIconName);
+        const modeIconSvg = modeIcon.querySelector('svg');
+        if (modeIconSvg instanceof SVGElement) {
+            modeIconSvg.style.cssText = `
+                width: 14px;
+                height: 14px;
+                stroke: var(--ert-modal-pro-accent, var(--rt-pro-color));
+                stroke-width: 2;
+                fill: none;
+            `;
+        }
         badge.appendText(`Runtime · ${modeLabel}`);
         header.createDiv({ cls: 'ert-modal-title', text: 'Runtime estimation' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
@@ -599,7 +609,7 @@ export class RuntimeProcessingModal extends Modal {
         this.queueContainer = progressCard.createDiv({ cls: 'ert-runtime-queue' });
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
-        advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+        advancedDetails.createEl('summary', { text: 'AI prompt & context' });
         this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
         this.renderAiAdvancedContext();
 

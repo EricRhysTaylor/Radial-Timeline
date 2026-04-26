@@ -87,7 +87,7 @@ export class GossamerProcessingModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
         }
 
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-processing-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-processing-modal');
 
         // Show confirmation view first
         this.showConfirmationView();
@@ -144,7 +144,7 @@ export class GossamerProcessingModal extends Modal {
         const modelName = this.getActiveModelDisplayName();
         const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
         const signalLabelLower = GOSSAMER_SIGNAL_METADATA[signal].label.toLowerCase();
-        this.renderProcessingHero(contentEl, `Evaluate narrative ${signalLabelLower} at each story beat. This will pass the selected manuscript evidence to the AI for fresh analysis. The AI evaluates the material with fresh eyes each time, without reference to previous scores, to avoid anchoring bias. The AI will return a score and justification for each beat.`, modelName);
+        this.renderProcessingHero(contentEl, `Evaluate narrative ${signalLabelLower} at each story beat. This will pass the selected manuscript evidence to the AI for analysis. The AI does not reference previous scores or justifications, to avoid anchoring bias. The AI will return a score and justification for each beat.`, modelName);
 
         this.confirmationView = contentEl;
 
@@ -154,13 +154,13 @@ export class GossamerProcessingModal extends Modal {
         const infoEl = card.createDiv();
 
         // Beat system info (will be updated when manuscript info is set)
-        const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-proc-beat-system-info' });
+        const beatSystemEl = infoEl.createDiv({ cls: 'ert-gossamer-proc-beat-system-info' });
         beatSystemEl.setText('Gathering manuscript details...');
 
         // Manuscript info section (will be populated by caller)
-        const infoSection = card.createDiv({ cls: 'rt-gossamer-proc-info-section' });
+        const infoSection = card.createDiv({ cls: 'ert-gossamer-proc-info-section' });
         infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-section-title' });
-        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
+        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
         // Check if API key is configured for the active provider
@@ -214,9 +214,9 @@ export class GossamerProcessingModal extends Modal {
         const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-glass-card' });
 
         // Manuscript info section (reusing existing styles but inside the card)
-        const infoSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-info-section' });
+        const infoSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-info-section' });
         infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-section-title' });
-        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
+        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
 
         // Progress bar container
@@ -226,16 +226,16 @@ export class GossamerProcessingModal extends Modal {
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         // Status section
-        const statusSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-status-section' });
+        const statusSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-status-section' });
         statusSection.createEl('h3', { text: 'Status', cls: 'rt-section-title' });
-        this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-proc-status-text' });
+        this.statusTextEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 
-        this.apiStatusEl = statusSection.createDiv({ cls: 'rt-gossamer-proc-api-status' });
+        this.apiStatusEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
-        advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+        advancedDetails.createEl('summary', { text: 'AI prompt & context' });
         this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
         this.renderAiAdvancedContext();
 
@@ -294,12 +294,12 @@ export class GossamerProcessingModal extends Modal {
             this.manuscriptInfoEl.empty();
 
             // Stats Grid
-            const stats = this.manuscriptInfoEl.createDiv({ cls: 'rt-gossamer-proc-stats' });
+            const stats = this.manuscriptInfoEl.createDiv({ cls: 'ert-gossamer-proc-stats' });
 
             const createStat = (label: string, value: string) => {
-                const item = stats.createDiv({ cls: 'rt-gossamer-proc-stat-item' });
-                item.createDiv({ cls: 'rt-gossamer-proc-stat-label', text: label });
-                item.createDiv({ cls: 'rt-gossamer-proc-stat-value', text: value });
+                const item = stats.createDiv({ cls: 'ert-gossamer-proc-stat-item' });
+                item.createDiv({ cls: 'ert-gossamer-proc-stat-label', text: label });
+                item.createDiv({ cls: 'ert-gossamer-proc-stat-value', text: value });
             };
 
             createStat('Scenes', info.totalScenes.toLocaleString());
@@ -316,7 +316,7 @@ export class GossamerProcessingModal extends Modal {
         this.estimatedProcessingMs = this.estimateProcessingMs(info);
 
         // Update the beat system info in confirmation view if it exists
-        const beatSystemInfoEl = this.confirmationView?.querySelector('.rt-gossamer-proc-beat-system-info');
+        const beatSystemInfoEl = this.confirmationView?.querySelector('.ert-gossamer-proc-beat-system-info');
         if (beatSystemInfoEl) {
             beatSystemInfoEl.setText(`Beat System: ${info.beatSystem}`);
         }
@@ -352,7 +352,7 @@ export class GossamerProcessingModal extends Modal {
 
         // Animate progress bar to indicate activity (pulse between 10% and 90%)
         if (this.progressBarEl) {
-            this.progressBarEl.addClass('rt-gossamer-progress-active');
+            this.progressBarEl.addClass('ert-gossamer-progress-active');
         }
 
         this.startSimulatedProgress();
@@ -414,7 +414,7 @@ export class GossamerProcessingModal extends Modal {
             this.progressSimulator.complete();
         }
         if (this.progressBarEl) {
-            this.progressBarEl.removeClass('rt-gossamer-progress-active');
+            this.progressBarEl.removeClass('ert-gossamer-progress-active');
             this.progressBarEl.addClass('rt-progress-complete');
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', '100%');
@@ -449,7 +449,7 @@ export class GossamerProcessingModal extends Modal {
             this.progressSimulator.fail();
         }
         if (this.progressBarEl) {
-            this.progressBarEl.removeClass('rt-gossamer-progress-active');
+            this.progressBarEl.removeClass('ert-gossamer-progress-active');
             this.progressBarEl.addClass('rt-progress-complete');
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', '0%');
@@ -467,11 +467,11 @@ export class GossamerProcessingModal extends Modal {
         // Show error section
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'rt-gossamer-proc-error-header' });
+            const header = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-header' });
             header.setText('Errors encountered:');
         }
 
-        const errorItem = this.errorListEl.createDiv({ cls: 'rt-gossamer-proc-error-item' });
+        const errorItem = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-item' });
         errorItem.setText(message);
     }
 
@@ -499,7 +499,7 @@ export class GossamerProcessingModal extends Modal {
             }
         }
         if (this.progressBarEl) {
-            this.progressBarEl.removeClass('rt-gossamer-progress-active');
+            this.progressBarEl.removeClass('ert-gossamer-progress-active');
             this.progressBarEl.addClass('rt-progress-complete');
             if (success) {
                 // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
