@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-04-25T22:40:26.943Z",
-  "snapshotGeneratedAt": "2026-04-25T02:17:08.368Z",
+  "checkedAt": "2026-04-26T02:45:08.377Z",
+  "snapshotGeneratedAt": "2026-04-26T02:45:08.366Z",
   "tokenLimits": {
     "gemini-pro-latest": 65536,
     "gemini-flash-latest": 65536
@@ -15,8 +15,8 @@
       "createdAt": "2025-11-10T18:51:13.000Z"
     },
     "gpt-5-chat-latest": {
-      "likelyResolves": "gpt-5.4",
-      "createdAt": "2026-03-05T06:24:12.000Z"
+      "likelyResolves": "gpt-5.5-2026-04-23",
+      "createdAt": "2026-04-22T06:27:21.000Z"
     }
   },
   "gemini": {

@@ -1,15 +1,20 @@
 {
-  "checkedAt": "2026-04-25T22:40:26.943Z",
+  "checkedAt": "2026-04-26T02:45:08.377Z",
   "mode": "report",
   "snapshotBefore": {
     "generatedAt": "2026-04-25T02:17:08.368Z"
   },
   "snapshotAfter": {
-    "generatedAt": "2026-04-25T02:17:08.368Z"
+    "generatedAt": "2026-04-26T02:45:08.366Z"
   },
   "changes": {
     "openai": {
-      "added": [],
+      "added": [
+        "gpt-5.5",
+        "gpt-5.5-2026-04-23",
+        "gpt-5.5-pro",
+        "gpt-5.5-pro-2026-04-23"
+      ],
       "removed": []
     },
     "anthropic": {
@@ -21,7 +26,14 @@
       "removed": []
     }
   },
-  "aliasChanges": [],
+  "aliasChanges": [
+    {
+      "provider": "openai",
+      "alias": "gpt-5-chat-latest",
+      "from": "gpt-5.4",
+      "to": "gpt-5.5-2026-04-23"
+    }
+  ],
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [
@@ -32,8 +44,8 @@
       "label": "GPT-5.5",
       "announcedAt": "2026-04-23",
       "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
-      "state": "announced_not_in_snapshot",
-      "message": "openai announced GPT-5.5 on 2026-04-23, but the local provider snapshot does not include gpt-5.5 yet."
+      "state": "announced_not_curated",
+      "message": "openai released GPT-5.5 on 2026-04-23, and RT has not curated gpt-5.5 yet."
     },
     {
       "id": "openai-gpt-5-5-pro-2026-04-23",
@@ -42,10 +54,14 @@
       "label": "GPT-5.5 Pro",
       "announcedAt": "2026-04-23",
       "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
-      "state": "announced_not_in_snapshot",
-      "message": "openai announced GPT-5.5 Pro on 2026-04-23, but the local provider snapshot does not include gpt-5.5-pro yet."
+      "state": "announced_not_curated",
+      "message": "openai released GPT-5.5 Pro on 2026-04-23, and RT has not curated gpt-5.5-pro yet."
     }
   ],
   "hasActionableChanges": true,
-  "recommendedFollowUps": []
+  "recommendedFollowUps": [
+    "Review scripts/models/latest-models.json and scripts/models/model-drift-report.json for provider catalog drift.",
+    "If a new provider model should ship in RT, update scripts/models/registry.json and src/ai/registry/builtinModels.ts.",
+    "If RT surfaces cost or positioning for the model, update src/ai/cost/providerPricing.ts and src/data/aiModels.ts."
+  ]
 }

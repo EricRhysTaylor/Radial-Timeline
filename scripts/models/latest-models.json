@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-04-25T02:17:08.368Z",
+  "generatedAt": "2026-04-26T02:45:08.366Z",
   "summary": {
-    "openai": 124,
+    "openai": 128,
     "anthropic": 9,
     "google": 55
   },
@@ -918,6 +918,50 @@
         "owned_by": "system"
       },
       "createdAt": "2026-03-04T21:27:37.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.5",
+      "raw": {
+        "id": "gpt-5.5",
+        "object": "model",
+        "created": 1776824847,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-04-22T02:27:27.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.5-2026-04-23",
+      "raw": {
+        "id": "gpt-5.5-2026-04-23",
+        "object": "model",
+        "created": 1776839241,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-04-22T06:27:21.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.5-pro",
+      "raw": {
+        "id": "gpt-5.5-pro",
+        "object": "model",
+        "created": 1776894349,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-04-22T21:45:49.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.5-pro-2026-04-23",
+      "raw": {
+        "id": "gpt-5.5-pro-2026-04-23",
+        "object": "model",
+        "created": 1776894470,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-04-22T21:47:50.000Z"
     },
     {
       "provider": "openai",
