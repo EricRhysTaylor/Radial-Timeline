@@ -192,4 +192,58 @@ describe('buildAnthropicUserContent', () => {
 
         expect(diagnostics.requestedCacheTtl).toBe('1h');
     });
+
+    it('emits evidence as plain text blocks when citations are disabled', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Analyze the attached manuscript evidence.',
+            citationsEnabled: false,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene one body' },
+                { title: 'Scene S2', content: 'Scene two body' }
+            ]
+        });
+
+        expect(content).toEqual([
+            { type: 'text', text: 'Analyze the attached manuscript evidence.' },
+            { type: 'text', text: '## Scene S1\nScene one body' },
+            { type: 'text', text: '## Scene S2\nScene two body' }
+        ]);
+    });
+
+    it('places cache_control on the last evidence block when ttl is set and citations off', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Stable instructions\n<<<CACHE_BREAK>>>\nVolatile question',
+            citationsEnabled: false,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene one body' },
+                { title: 'Scene S2', content: 'Scene two body' }
+            ],
+            cacheTtl: '1h'
+        });
+
+        expect(content).toHaveLength(4);
+        expect(content[0]).toEqual({ type: 'text', text: 'Stable instructions' });
+        expect(content[1]).toEqual({ type: 'text', text: '## Scene S1\nScene one body' });
+        expect(content[2]).toEqual({
+            type: 'text',
+            text: '## Scene S2\nScene two body',
+            cache_control: { type: 'ephemeral', ttl: '1h' }
+        });
+        expect(content[3]).toEqual({ type: 'text', text: 'Volatile question' });
+    });
+
+    it('omits the trailing volatile block when no delimiter is present and citations off', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Just instructions, no delimiter.',
+            citationsEnabled: false,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene one body' }
+            ]
+        });
+
+        expect(content).toEqual([
+            { type: 'text', text: 'Just instructions, no delimiter.' },
+            { type: 'text', text: '## Scene S1\nScene one body' }
+        ]);
+    });
 });

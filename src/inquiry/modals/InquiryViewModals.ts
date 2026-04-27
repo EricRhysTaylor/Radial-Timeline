@@ -327,7 +327,7 @@ export class InquiryOmnibusModal extends Modal {
             scope === 'saga' ? `Saga (${SIGMA_CHAR})` : `Book (${this.options.bookLabel})`;
         const badgeBookName = this.options.bookTitle?.trim() || this.options.bookLabel;
         const getBadgeLabel = (scope: InquiryScope): string =>
-            scope === 'saga' ? `Beta · Inquiry · Saga (${SIGMA_CHAR})` : `Beta · Inquiry · Book (${badgeBookName})`;
+            scope === 'saga' ? `Beta · Inquiry · Saga (${SIGMA_CHAR})` : `Beta · Inquiry · ${badgeBookName}`;
 
         const updateScopeSelection = (scope: InquiryScope): void => {
             this.selectedScope = scope;

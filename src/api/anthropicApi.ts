@@ -151,24 +151,44 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
   const volatileText = hasDelimiter
     ? input.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart()
     : '';
-  if (input.citationsEnabled && input.evidenceDocuments?.length) {
-    // Per-scene document blocks with citations enabled.
-    // Instructions/rules stay in the stable text block; evidence goes in document blocks.
-    // cache_control on last document only — caches entire evidence prefix.
-    const docBlocks: AnthropicContentBlock[] = input.evidenceDocuments.map(
-      (doc, i) => ({
+  if (input.evidenceDocuments?.length) {
+    const docs = input.evidenceDocuments;
+    const lastIndex = docs.length - 1;
+
+    if (input.citationsEnabled) {
+      // Per-scene document blocks with citations enabled.
+      // Instructions/rules stay in the stable text block; evidence goes in document blocks.
+      // cache_control on last document only — caches entire evidence prefix.
+      const docBlocks: AnthropicContentBlock[] = docs.map((doc, i) => ({
         type: 'document' as const,
         source: { type: 'text' as const, media_type: 'text/plain' as const, data: doc.content },
         title: doc.title,
         citations: { enabled: true as const },
-        ...(i === input.evidenceDocuments!.length - 1 && input.cacheTtl
-          ? { cache_control: { type: 'ephemeral' as const, ...(input.cacheTtl ? { ttl: input.cacheTtl } : {}) } }
+        ...(i === lastIndex && input.cacheTtl
+          ? { cache_control: { type: 'ephemeral' as const, ttl: input.cacheTtl } }
           : {})
-      })
-    );
+      }));
+      return [
+        { type: 'text', text: stableText },
+        ...docBlocks,
+        ...(volatileText ? [{ type: 'text' as const, text: volatileText }] : []),
+      ];
+    }
+
+    // Citations disabled: evidence is sent as plain text blocks. The corpus
+    // must still reach the model — the toggle controls source-anchor
+    // metadata, not whether the manuscript is included. cache_control on the
+    // last evidence block keeps the prefix cacheable.
+    const evidenceTextBlocks: AnthropicTextBlock[] = docs.map((doc, i) => ({
+      type: 'text' as const,
+      text: `## ${doc.title}\n${doc.content}`,
+      ...(i === lastIndex && input.cacheTtl
+        ? { cache_control: { type: 'ephemeral' as const, ttl: input.cacheTtl } }
+        : {})
+    }));
     return [
       { type: 'text', text: stableText },
-      ...docBlocks,
+      ...evidenceTextBlocks,
       ...(volatileText ? [{ type: 'text' as const, text: volatileText }] : []),
     ];
   }
@@ -177,7 +197,7 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
     return [{ type: 'text', text: input.userPrompt }];
   }
 
-  // Standard caching path (no citations)
+  // Standard caching path (no citations, no evidence docs)
   return [
     { type: 'text', text: stableText, cache_control: { type: 'ephemeral' as const, ...(input.cacheTtl ? { ttl: input.cacheTtl } : {}) } },
     { type: 'text', text: volatileText },

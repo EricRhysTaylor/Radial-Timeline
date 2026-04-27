@@ -4,6 +4,9 @@
 
 Use it when you want a full Inquiry sweep across the current scope instead of running one question at a time.
 
+> [!NOTE]
+> `Inquiry omnibus pass` is currently undergoing beta testing. It is not part of the public release build yet and remains available only in development/testing paths for now.
+
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/Inquiry omnibus.png" alt="Inquiry omnibus modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Inquiry omnibus pass — run the full enabled Inquiry set across the current scope</div>
