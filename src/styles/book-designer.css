@@ -54,6 +54,32 @@
     color: var(--text-normal);
 }
 
+.ert-book-designer-modal .ert-book-designer-badge-wiki {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 4px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.ert-book-designer-modal .ert-book-designer-badge-wiki:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    border-color: var(--background-modifier-border);
+}
+
+.ert-book-designer-modal .ert-book-designer-badge-wiki svg {
+    width: 12px;
+    height: 12px;
+}
+
 /* Inner Block (Group) */
 .ert-manuscript-surface .ert-manuscript-card-block {
     display: flex;

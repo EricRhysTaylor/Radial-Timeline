@@ -2,6 +2,16 @@ The **Book Designer** is a powerful setup utility that generates a complete manu
 
 This tool is perfect for starting a new project or rapidly prototyping a story structure.
 
+<a href="https://youtu.be/0vkLaI_LewM?si=-02Gem1HQwbI0E9E" target="_blank" rel="noopener">
+  <p align="center">
+    <img src="https://i.ytimg.com/vi/0vkLaI_LewM/maxresdefault.jpg" alt="Book Designer walkthrough" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+  </p>
+  <p align="center" style="font-family: sans-serif; font-size: 16px; margin-top: 10px;">
+    Book Designer walkthrough<br>
+    Full video on YouTube
+  </p>
+</a>
+
 ## Accessing the Book Designer
 
 You can open the Book Designer in two ways:

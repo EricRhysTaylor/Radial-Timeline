@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent } from 'obsidian';
+import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { createBeatNotesFromSet } from '../utils/beatsTemplates';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
@@ -773,6 +773,16 @@ export class BookDesignerModal extends Modal {
         this.heroLocationMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail', text: this.getSelectedBookTitle() });
         heroBadge.createSpan({ cls: 'ert-book-designer-badge-sep', text: '•' });
         this.heroModeMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail ert-book-designer-badge-mode ert-meta-auto', text: 'Auto mode' });
+        const wikiLink = heroBadge.createEl('a', {
+            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Book-Designer',
+            cls: 'ert-book-designer-badge-wiki',
+            attr: {
+                'aria-label': 'Read more in the Wiki',
+                'target': '_blank',
+                'rel': 'noopener'
+            }
+        });
+        setIcon(wikiLink, 'external-link');
         hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
         this.updateHeroMeta();
