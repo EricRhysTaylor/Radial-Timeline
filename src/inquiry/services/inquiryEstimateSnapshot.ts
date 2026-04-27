@@ -49,6 +49,12 @@ export interface InquiryEstimateSnapshot {
 
     readonly scope: InquiryScope;
     readonly activeBookId?: string;
+    /**
+     * Citations toggle state at snapshot build time. Included so that consumers
+     * can detect drift if the snapshot was built before a setting change.
+     * Also baked into stateKey so the service rebuilds on toggle.
+     */
+    readonly citationsEnabled: boolean;
 
     readonly resolvedEngine: {
         readonly provider: AIProviderId;
@@ -113,6 +119,12 @@ export interface EstimateSnapshotParams {
     rules: EvidenceParticipationRules;
     mode: InquiryLens;
     selectionMode: InquirySelectionMode;
+    /**
+     * Whether citation source-anchoring is enabled. Affects bytes-on-the-wire
+     * for Anthropic (document blocks vs plain text) and cache reuse for
+     * Gemini, so it is part of the snapshot identity.
+     */
+    citationsEnabled: boolean;
 }
 
 // ── State key ───────────────────────────────────────────────────────
@@ -121,7 +133,11 @@ export interface EstimateSnapshotParams {
  * Compute a deterministic cache key for snapshot invalidation.
  *
  * Key components:
- *   scope | activeBookId | corpusFingerprint | provider | modelId | overrideClassCount | overrideItemCount
+ *   scope | activeBookId | corpusFingerprint | provider | modelId | overrideClassCount | overrideItemCount | citationsEnabled
+ *
+ * Every dimension that changes bytes-on-the-wire (or the provider request
+ * shape) must be in this key. If you add a new dimension, add it here AND in
+ * EstimateSnapshotParams AND propagate from every requestSnapshot call site.
  *
  * Exclusions (with rationale):
  *   - Question text: Evidence chars (~200k) dwarf question length (~200 chars).
@@ -141,6 +157,7 @@ export function computeEstimateStateKey(params: {
     modelId: string;
     overrideClassCount: number;
     overrideItemCount: number;
+    citationsEnabled: boolean;
 }): string {
     return [
         params.scope,
@@ -149,7 +166,8 @@ export function computeEstimateStateKey(params: {
         params.provider,
         params.modelId,
         params.overrideClassCount,
-        params.overrideItemCount
+        params.overrideItemCount,
+        params.citationsEnabled ? 'cite' : 'nocite'
     ].join('|');
 }
 
@@ -189,7 +207,8 @@ export async function buildInquiryEstimateSnapshot(
         provider: params.engine.provider,
         modelId: params.engine.modelId,
         overrideClassCount: params.overrideSummary.classCount,
-        overrideItemCount: params.overrideSummary.itemCount
+        overrideItemCount: params.overrideSummary.itemCount,
+        citationsEnabled: params.citationsEnabled
     });
 
     const corpusIds = extractCorpusIds(params.manifest);
@@ -239,6 +258,7 @@ export async function buildInquiryEstimateSnapshot(
 
         scope: params.scope,
         activeBookId: params.activeBookId,
+        citationsEnabled: params.citationsEnabled,
 
         resolvedEngine: {
             provider: params.engine.provider,

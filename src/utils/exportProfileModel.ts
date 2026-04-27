@@ -112,6 +112,8 @@ export function buildTransientModalExportProfile(params: {
     subplot: string;
     outlinePreset: OutlinePreset;
     tocMode: ExportProfile['tocMode'];
+    includeSceneIdInToc?: boolean;
+    includeSceneIdInHeading?: boolean;
     includeMatter: boolean;
     includeSynopsis: boolean;
     updateWordCounts: boolean;
@@ -133,6 +135,8 @@ export function buildTransientModalExportProfile(params: {
         manuscriptPreset: params.usageContext,
         outlinePreset: params.outlinePreset,
         tocMode: params.tocMode,
+        includeSceneIdInToc: params.includeSceneIdInToc,
+        includeSceneIdInHeading: params.includeSceneIdInHeading,
         order: params.order,
         subplot: params.subplot,
         includeMatter: params.includeMatter,

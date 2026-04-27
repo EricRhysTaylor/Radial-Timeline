@@ -6,7 +6,7 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
-import type { SourceCitation } from '../ai/types';
+import type { SourceCitation, TokenCountResult } from '../ai/types';
 
 interface GeminiPart { text?: string }
 interface GeminiContent { parts?: GeminiPart[]; role?: string }
@@ -419,6 +419,67 @@ export async function createGeminiCache(
   }
   
   return data.name;
+}
+
+/**
+ * Count input tokens for a Gemini request using the provider's countTokens API.
+ *
+ * Endpoint:
+ *   POST https://generativelanguage.googleapis.com/v1beta/models/{model}:countTokens
+ *
+ * The countTokens endpoint is free (no quota cost beyond the HTTP roundtrip)
+ * and returns the exact tokenization the model would see, so this is the
+ * authoritative source for input cost forecasting.
+ *
+ * Throws on network or API errors so callers can fall back to a heuristic.
+ */
+export async function countGeminiTokens(
+  apiKey: string,
+  modelId: string,
+  systemPrompt: string | null,
+  userPrompt: string
+): Promise<TokenCountResult> {
+  if (!apiKey) {
+    throw new Error('Gemini API key not configured.');
+  }
+  if (!modelId) {
+    throw new Error('Gemini model ID not configured.');
+  }
+
+  const cleanModelId = modelId.startsWith('models/') ? modelId.slice(7) : modelId;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cleanModelId)}:countTokens?key=${encodeURIComponent(apiKey)}`;
+
+  const body: Record<string, unknown> = {
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }]
+  };
+  if (systemPrompt && systemPrompt.length > 0) {
+    body.systemInstruction = { parts: [{ text: systemPrompt }] };
+  }
+
+  const resp = await requestUrl({
+    url,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    throw: false
+  });
+
+  if (resp.status >= 400) {
+    const err = resp.json as GeminiErrorResponse;
+    throw new Error(err?.error?.message ?? `Gemini token count error (${resp.status})`);
+  }
+
+  const data = resp.json as { totalTokens?: number };
+  const totalTokens = typeof data?.totalTokens === 'number' ? data.totalTokens : NaN;
+  if (!Number.isFinite(totalTokens)) {
+    throw new Error('Invalid token count response from Gemini.');
+  }
+  return {
+    provider: 'google',
+    modelId: cleanModelId,
+    inputTokens: Math.max(0, Math.floor(totalTokens)),
+    source: 'provider_count'
+  };
 }
 
 // --- fetch models ---

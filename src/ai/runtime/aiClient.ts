@@ -576,6 +576,21 @@ export class AIClient {
             });
         let tokenEstimateInput = countedEstimate.inputTokens;
         let tokenEstimateMethod = countedEstimate.method;
+        // Empirical bias correction: InputProfileStore tracks the rolling
+        // ratio of actual-billed-input to estimated-input per model. When
+        // we have enough samples it returns a clamped multiplier; otherwise
+        // identity (1.0). This catches drift like provider envelope wrappers
+        // the count APIs do not measure (and is the only way the OpenAI
+        // tiktoken estimate learns about chat-completion overhead).
+        try {
+            const biasMultiplier = this.plugin.getInputProfileStore()
+                .getBiasMultiplier(provider, initialSelection.model.id);
+            if (biasMultiplier > 0 && biasMultiplier !== 1) {
+                tokenEstimateInput = Math.max(0, Math.round(tokenEstimateInput * biasMultiplier));
+            }
+        } catch {
+            // Profile store not available (tests, early init) — keep raw estimate.
+        }
         const tokenEstimateUncertainty = estimateUncertaintyTokens(tokenEstimateMethod, effectiveInputCeiling);
         const expectedPassCount = effectiveInputCeiling > 0
             ? Math.max(1, Math.ceil(tokenEstimateInput / effectiveInputCeiling))

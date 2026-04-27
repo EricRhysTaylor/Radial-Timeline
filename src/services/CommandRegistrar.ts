@@ -414,7 +414,9 @@ export class CommandRegistrar {
                         filteredSelection.matterMetaByPath,
                         {
                             chapterMarkersByScenePath: filteredSelection.chapterMarkersByScenePath,
-                            sceneHeadingRenderMode: 'markdown-h2'
+                            sceneHeadingRenderMode: 'markdown-h2',
+                            includeSceneIdInToc: result.includeSceneIdInToc === true,
+                            includeSceneIdInHeading: result.includeSceneIdInHeading === true,
                         }
                     );
 
@@ -526,6 +528,8 @@ export class CommandRegistrar {
                         sceneHeadingMode: layoutSceneHeadingMode,
                         sceneHeadingRenderMode,
                         suppressMatterPageChrome: true,
+                        includeSceneIdInToc: result.includeSceneIdInToc === true,
+                        includeSceneIdInHeading: result.includeSceneIdInHeading === true,
                         modernClassicStructure: useModernClassicStructure
                             ? {
                                 enabled: true,

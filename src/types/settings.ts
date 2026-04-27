@@ -50,6 +50,10 @@ export interface ManuscriptExportTemplate {
     outlinePreset: 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
     outputFormat: 'markdown' | 'pdf' | 'csv' | 'json';
     tocMode: 'markdown' | 'plain' | 'none';
+    /** Append each scene's SceneId to its TOC entry. Useful when sending exports to AI reviewers. */
+    includeSceneIdInToc?: boolean;
+    /** Append each scene's SceneId to its body heading. Useful when AI may crop the TOC out of context. */
+    includeSceneIdInHeading?: boolean;
     sceneHeadingMode?: ManuscriptSceneHeadingMode;
     order: 'narrative' | 'chronological' | 'reverse-narrative' | 'reverse-chronological';
     subplot: string;
@@ -132,6 +136,10 @@ export interface ExportProfile {
     manuscriptPreset?: 'novel' | 'screenplay' | 'podcast';
     outlinePreset?: 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
     tocMode?: 'markdown' | 'plain' | 'none';
+    /** Append each scene's SceneId to its TOC entry. */
+    includeSceneIdInToc?: boolean;
+    /** Append each scene's SceneId to its body heading. */
+    includeSceneIdInHeading?: boolean;
     order?: 'narrative' | 'chronological' | 'reverse-narrative' | 'reverse-chronological';
     subplot?: string;
     includeMatter: boolean;

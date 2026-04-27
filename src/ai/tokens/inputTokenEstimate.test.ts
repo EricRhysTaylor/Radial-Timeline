@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getCredential, countAnthropicTokens } = vi.hoisted(() => ({
+const { getCredential, countAnthropicTokens, countGeminiTokens, countOpenaiTokens } = vi.hoisted(() => ({
     getCredential: vi.fn(),
-    countAnthropicTokens: vi.fn()
+    countAnthropicTokens: vi.fn(),
+    countGeminiTokens: vi.fn(),
+    countOpenaiTokens: vi.fn()
 }));
 
 vi.mock('../credentials/credentials', () => ({
@@ -11,6 +13,14 @@ vi.mock('../credentials/credentials', () => ({
 
 vi.mock('../../api/anthropicApi', () => ({
     countAnthropicTokens
+}));
+
+vi.mock('../../api/geminiApi', () => ({
+    countGeminiTokens
+}));
+
+vi.mock('../../api/openaiTokenizer', () => ({
+    countOpenaiTokens
 }));
 
 import {
@@ -22,6 +32,8 @@ describe('estimateInputTokens', () => {
     beforeEach(() => {
         getCredential.mockReset();
         countAnthropicTokens.mockReset();
+        countGeminiTokens.mockReset();
+        countOpenaiTokens.mockReset();
     });
 
     it('uses Anthropic provider counts when available', async () => {
@@ -79,27 +91,132 @@ describe('estimateInputTokens', () => {
         expect(result.error).toBe('counting unavailable');
     });
 
-    it('keeps non-Anthropic providers on the heuristic path', async () => {
-        const result = await estimateInputTokens({
+    it('uses local tiktoken counts for OpenAI models (no API key required)', async () => {
+        countOpenaiTokens.mockResolvedValue({
             provider: 'openai',
-            modelId: 'gpt-5.4-mini',
+            modelId: 'gpt-5.4',
+            inputTokens: 87654,
+            source: 'provider_count'
+        });
+
+        const result = await estimateInputTokens({
+            plugin: {} as never,
+            provider: 'openai',
+            modelId: 'gpt-5.4',
+            systemPrompt: 'system',
+            userPrompt: 'user prompt',
+            safeInputBudget: 100000
+        });
+
+        expect(result).toEqual({
+            inputTokens: 87654,
+            method: 'openai_count',
+            uncertaintyTokens: 500
+        });
+        expect(countOpenaiTokens).toHaveBeenCalledWith('gpt-5.4', 'system', 'user prompt');
+        expect(getCredential).not.toHaveBeenCalled();
+    });
+
+    it('falls back to heuristic when the OpenAI tokenizer crashes', async () => {
+        countOpenaiTokens.mockRejectedValue(new Error('tokenizer crash'));
+
+        const result = await estimateInputTokens({
+            plugin: {} as never,
+            provider: 'openai',
+            modelId: 'gpt-5.4',
             systemPrompt: 'system',
             userPrompt: 'user prompt'
         });
 
-        expect(result).toEqual({
-            inputTokens: 5,
-            method: 'heuristic_chars',
-            uncertaintyTokens: 3000
+        expect(result.method).toBe('heuristic_chars');
+        expect(result.error).toBe('tokenizer crash');
+    });
+
+    it('keeps Ollama on the heuristic path (no remote tokenizer)', async () => {
+        const result = await estimateInputTokens({
+            plugin: {} as never,
+            provider: 'ollama',
+            modelId: 'llama-3',
+            systemPrompt: 'system',
+            userPrompt: 'user prompt'
         });
+
+        expect(result.method).toBe('heuristic_chars');
         expect(getCredential).not.toHaveBeenCalled();
         expect(countAnthropicTokens).not.toHaveBeenCalled();
+        expect(countGeminiTokens).not.toHaveBeenCalled();
+        expect(countOpenaiTokens).not.toHaveBeenCalled();
+    });
+
+    it('uses Gemini provider counts for google models when a key is configured', async () => {
+        getCredential.mockResolvedValue('test-key');
+        countGeminiTokens.mockResolvedValue({
+            provider: 'google',
+            modelId: 'gemini-3.1-pro-preview',
+            inputTokens: 12345,
+            source: 'provider_count'
+        });
+
+        const result = await estimateInputTokens({
+            plugin: {} as never,
+            provider: 'google',
+            modelId: 'gemini-3.1-pro-preview',
+            systemPrompt: 'system',
+            userPrompt: 'user',
+            safeInputBudget: 100000
+        });
+
+        expect(result).toEqual({
+            inputTokens: 12345,
+            method: 'google_count',
+            uncertaintyTokens: 500
+        });
+        expect(countGeminiTokens).toHaveBeenCalledWith(
+            'test-key',
+            'gemini-3.1-pro-preview',
+            'system',
+            'user'
+        );
+    });
+
+    it('falls back to heuristic when Gemini count fails, surfacing the error', async () => {
+        getCredential.mockResolvedValue('test-key');
+        countGeminiTokens.mockRejectedValue(new Error('gemini network error'));
+
+        const result = await estimateInputTokens({
+            plugin: {} as never,
+            provider: 'google',
+            modelId: 'gemini-3.1-pro-preview',
+            systemPrompt: 'system',
+            userPrompt: 'user prompt'
+        });
+
+        expect(result.method).toBe('heuristic_chars');
+        expect(result.error).toBe('gemini network error');
+    });
+
+    it('falls back to heuristic when Gemini API key is missing', async () => {
+        getCredential.mockResolvedValue('');
+
+        const result = await estimateInputTokens({
+            plugin: {} as never,
+            provider: 'google',
+            modelId: 'gemini-3.1-pro-preview',
+            systemPrompt: 'system',
+            userPrompt: 'user prompt'
+        });
+
+        expect(result.method).toBe('heuristic_chars');
+        expect(result.error).toContain('Gemini API key unavailable');
+        expect(countGeminiTokens).not.toHaveBeenCalled();
     });
 });
 
 describe('describeTokenEstimateMethod', () => {
     it('labels provider counts and heuristic fallbacks clearly', () => {
         expect(describeTokenEstimateMethod('anthropic_count')).toBe('Anthropic provider count');
+        expect(describeTokenEstimateMethod('google_count')).toBe('Gemini provider count');
+        expect(describeTokenEstimateMethod('openai_count')).toBe('OpenAI provider count');
         expect(describeTokenEstimateMethod('heuristic_chars')).toBe('Heuristic estimate');
     });
 });

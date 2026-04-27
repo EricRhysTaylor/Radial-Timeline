@@ -34,6 +34,8 @@ const OPEN_SCENES_FILTER = '__open_scenes__';
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
     tocMode: TocMode;
+    includeSceneIdInToc?: boolean;
+    includeSceneIdInHeading?: boolean;
     rangeStart?: number;
     rangeEnd?: number;
     subplot?: string;
@@ -164,6 +166,8 @@ export class ManuscriptOptionsModal extends Modal {
 
     private order: ManuscriptOrder = 'narrative';
     private tocMode: TocMode = 'markdown';
+    private includeSceneIdInToc: boolean = true;
+    private includeSceneIdInHeading: boolean = false;
     private subplot: string = 'All Subplots';
     private exportType: ExportType = 'manuscript';
     private manuscriptPreset: ManuscriptPreset = 'novel';
@@ -219,6 +223,10 @@ export class ManuscriptOptionsModal extends Modal {
     private manuscriptPresetDropdown?: DropdownComponent;
     private outlinePresetDropdown?: DropdownComponent;
     private tocCard?: HTMLElement;
+    private sceneIdInTocRow?: HTMLElement;
+    private sceneIdInTocToggle?: ToggleComponent;
+    private sceneIdInHeadingRow?: HTMLElement;
+    private sceneIdInHeadingToggle?: ToggleComponent;
     private manuscriptOptionsCard?: HTMLElement;
     private outlineOptionsCard?: HTMLElement;
     private wordCountCard?: HTMLElement;
@@ -641,20 +649,60 @@ export class ManuscriptOptionsModal extends Modal {
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
             this.tocMode = 'markdown';
             this.updatePills(tocActions, 0);
+            this.updateSceneIdToggleAvailability();
         });
         this.createPill(tocActions, t('manuscriptModal.tocPlain'), this.tocMode === 'plain', () => {
             this.tocMode = 'plain';
             this.updatePills(tocActions, 1);
+            this.updateSceneIdToggleAvailability();
         });
         this.createPill(tocActions, t('manuscriptModal.tocNone'), this.tocMode === 'none', () => {
             this.tocMode = 'none';
             this.updatePills(tocActions, 2);
+            this.updateSceneIdToggleAvailability();
         });
         this.tocCard.createDiv({
             cls: 'ert-sub-card-note',
             text: t('manuscriptModal.tocNote')
         });
+
+        const sceneIdTocRow = this.tocCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        sceneIdTocRow.createSpan({
+            cls: 'ert-manuscript-toggle-label',
+            text: 'Append SceneId to each TOC entry',
+        });
+        this.sceneIdInTocToggle = new ToggleComponent(sceneIdTocRow)
+            .setValue(this.includeSceneIdInToc)
+            .onChange((value) => {
+                this.includeSceneIdInToc = value;
+                this.updateSceneIdToggleAvailability();
+                this.updateTemplateActionButtonState();
+            });
+        this.sceneIdInTocRow = sceneIdTocRow;
+        this.tocCard.createDiv({
+            cls: 'ert-sub-card-note',
+            text: 'Useful when sending exports to AI reviewers — gives the model a stable scene reference.',
+        });
+
+        const sceneIdHeadingRow = this.tocCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        sceneIdHeadingRow.createSpan({
+            cls: 'ert-manuscript-toggle-label',
+            text: 'Also append SceneId to each scene heading',
+        });
+        this.sceneIdInHeadingToggle = new ToggleComponent(sceneIdHeadingRow)
+            .setValue(this.includeSceneIdInHeading)
+            .onChange((value) => {
+                this.includeSceneIdInHeading = value;
+                this.updateTemplateActionButtonState();
+            });
+        this.sceneIdInHeadingRow = sceneIdHeadingRow;
+        this.tocCard.createDiv({
+            cls: 'ert-sub-card-note',
+            text: 'Belt-and-suspenders: keeps SceneIds with each scene if the TOC is cropped from the prompt.',
+        });
+
         this.syncTocPills();
+        this.updateSceneIdToggleAvailability();
 
         // G) PDF EXPORT CONTROLS
         this.publishingCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
@@ -831,6 +879,8 @@ export class ManuscriptOptionsModal extends Modal {
             subplot: this.subplot,
             outlinePreset: this.outlinePreset,
             tocMode: this.tocMode,
+            includeSceneIdInToc: this.includeSceneIdInToc,
+            includeSceneIdInHeading: this.includeSceneIdInHeading,
             includeMatter: this.includeMatterUserChoice,
             includeSynopsis: this.includeSynopsisUserChoice,
             updateWordCounts: this.updateWordCounts,
@@ -1116,6 +1166,8 @@ export class ManuscriptOptionsModal extends Modal {
             exportType: this.exportType,
             outlinePreset: this.outlinePreset,
             tocMode: mode.showToc ? this.tocMode : 'none',
+            includeSceneIdInToc: mode.showToc ? this.includeSceneIdInToc : false,
+            includeSceneIdInHeading: this.includeSceneIdInHeading,
             includeMatter: mode.showIncludeMatter ? this.includeMatterUserChoice : false,
             includeSynopsis: mode.isOutline ? this.includeSynopsisUserChoice : false,
             updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
@@ -1147,6 +1199,8 @@ export class ManuscriptOptionsModal extends Modal {
             exportType: template.exportType,
             outlinePreset: template.outlinePreset,
             tocMode: template.tocMode,
+            includeSceneIdInToc: template.includeSceneIdInToc,
+            includeSceneIdInHeading: template.includeSceneIdInHeading,
             includeMatter: template.includeMatter,
             includeSynopsis: template.includeSynopsis,
             updateWordCounts: template.updateWordCounts,
@@ -1276,6 +1330,11 @@ export class ManuscriptOptionsModal extends Modal {
         this.outlinePreset = template.outlinePreset || 'beat-sheet';
         this.outputFormat = template.outputFormat;
         this.tocMode = template.tocMode || 'none';
+        this.includeSceneIdInToc = template.includeSceneIdInToc ?? this.includeSceneIdInToc;
+        this.includeSceneIdInHeading = template.includeSceneIdInHeading ?? this.includeSceneIdInHeading;
+        this.sceneIdInTocToggle?.setValue(this.includeSceneIdInToc);
+        this.sceneIdInHeadingToggle?.setValue(this.includeSceneIdInHeading);
+        this.updateSceneIdToggleAvailability();
         this.order = template.order;
         this.subplot = template.subplot || 'All Subplots';
         this.updateWordCounts = !!template.updateWordCounts;
@@ -1365,6 +1424,18 @@ export class ManuscriptOptionsModal extends Modal {
                 ? 1
                 : 2;
         this.updatePills(this.tocActionsEl, activeIndex);
+    }
+
+    private updateSceneIdToggleAvailability(): void {
+        // The "append SceneId to TOC" toggle is meaningless when no TOC is rendered.
+        const tocActive = this.tocMode !== 'none';
+        if (this.sceneIdInTocRow) {
+            this.sceneIdInTocRow.toggleClass('is-disabled', !tocActive);
+        }
+        if (this.sceneIdInTocToggle) {
+            this.sceneIdInTocToggle.setDisabled(!tocActive);
+        }
+        // Heading toggle stays available regardless of TOC mode — it modifies scene bodies, not the TOC.
     }
 
     private createOrderPill(parent: HTMLElement, label: string, order: ManuscriptOrder): void {
@@ -2492,6 +2563,8 @@ Sarah stood at the window, watching the world wake up.`;
             const outcome = await this.onSubmit({
                 order: submissionOrder,
                 tocMode,
+                includeSceneIdInToc: tocMode !== 'none' ? this.includeSceneIdInToc : false,
+                includeSceneIdInHeading: this.includeSceneIdInHeading,
                 rangeStart: submissionRangeStart,
                 rangeEnd: submissionRangeEnd,
                 subplot: submissionSubplot,

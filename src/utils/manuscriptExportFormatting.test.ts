@@ -192,3 +192,123 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('Scene body.');
     });
 });
+
+describe('assembleManuscript SceneId surfacing', () => {
+    it('appends SceneId to each TOC entry when includeSceneIdInToc is on', async () => {
+        const a = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const b = makeFile('Scenes/2 Hallway.md', '2 Hallway');
+        const c = makeFile('Scenes/3 Therapist.md', '3 Therapist');
+        const vault = makeVault({
+            [a.path]: '---\nClass: Scene\nSceneId: scn_a1b2c3\n---\n\nA body.',
+            [b.path]: '---\nClass: Scene\nSceneId: scn_d4e5f6\n---\n\nB body.',
+            [c.path]: '---\nClass: Scene\n---\n\nC body.', // no SceneId
+        });
+
+        const assembled = await assembleManuscript(
+            [a, b, c],
+            vault,
+            undefined,
+            false, // useObsidianLinks → plain text TOC
+            undefined,
+            true, // includeToc
+            undefined,
+            undefined,
+            { includeSceneIdInToc: true }
+        );
+
+        expect(assembled.text).toContain('# TABLE OF CONTENTS');
+        expect(assembled.text).toMatch(/1\.\s.*\(\d+ words\)\s+`scn_a1b2c3`/);
+        expect(assembled.text).toMatch(/2\.\s.*\(\d+ words\)\s+`scn_d4e5f6`/);
+        expect(assembled.text).toMatch(/3\.\s.*\(\d+ words\)\s+`\(no SceneId\)`/);
+    });
+
+    it('omits SceneId from TOC when includeSceneIdInToc is off', async () => {
+        const a = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const vault = makeVault({
+            [a.path]: '---\nClass: Scene\nSceneId: scn_a1b2c3\n---\n\nBody.',
+        });
+
+        const assembled = await assembleManuscript(
+            [a],
+            vault,
+            undefined,
+            false,
+            undefined,
+            true,
+            undefined,
+            undefined,
+            { includeSceneIdInToc: false }
+        );
+
+        // Backtick-wrapped SceneId is only emitted by the TOC formatter.
+        // (extractBodyText leaves raw frontmatter inside the body, so a bare-string assertion
+        // would false-positive on the literal "SceneId: scn_..." line.)
+        expect(assembled.text).not.toContain('`scn_a1b2c3`');
+    });
+
+    it('appends SceneId to scene heading body when includeSceneIdInHeading is on', async () => {
+        const a = makeFile('Scenes/6 Trisan Therapist.md', '6 Trisan Therapist');
+        const vault = makeVault({
+            [a.path]: '---\nClass: Scene\nSceneId: scn_xyz789\n---\n\nScene body.',
+        });
+
+        const assembled = await assembleManuscript(
+            [a],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            { includeSceneIdInHeading: true }
+        );
+
+        expect(assembled.text).toContain('## 6 Trisan Therapist `scn_xyz789`');
+    });
+
+    it('does not append SceneId to scene heading when missing from frontmatter', async () => {
+        const a = makeFile('Scenes/6 Trisan Therapist.md', '6 Trisan Therapist');
+        const vault = makeVault({
+            [a.path]: '---\nClass: Scene\n---\n\nBody.',
+        });
+
+        const assembled = await assembleManuscript(
+            [a],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            { includeSceneIdInHeading: true }
+        );
+
+        // No backtick suffix when SceneId is absent.
+        expect(assembled.text).toContain('## 6 Trisan Therapist\n');
+        expect(assembled.text).not.toMatch(/Therapist\s+`/);
+    });
+
+    it('keeps SceneIds in TOC out of scene body headings by default', async () => {
+        const a = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const vault = makeVault({
+            [a.path]: '---\nClass: Scene\nSceneId: scn_a1b2c3\n---\n\nBody.',
+        });
+
+        const assembled = await assembleManuscript(
+            [a],
+            vault,
+            undefined,
+            false,
+            undefined,
+            true,
+            undefined,
+            undefined,
+            { includeSceneIdInToc: true /* heading default off */ }
+        );
+
+        expect(assembled.text).toContain('`scn_a1b2c3`'); // in TOC
+        expect(assembled.text).toContain('## 1 Opening\n'); // heading clean
+    });
+});

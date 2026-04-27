@@ -2771,6 +2771,7 @@ export class InquiryRunnerService implements InquiryRunner {
         if (response.aiStatus === 'success' && response.success) {
             trace.failureStage = undefined;
             this.recordOutputProfileSample(trace, response);
+            this.recordInputProfileSample(trace, response);
             return;
         }
         trace.failureStage = executionState === 'blocked_before_send'
@@ -2793,6 +2794,30 @@ export class InquiryRunnerService implements InquiryRunner {
             modelId,
             inputTokens,
             outputTokens: usage.outputTokens,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Record (estimated, actual) input pairs so InputProfileStore can compute
+     * a per-model bias correction for future estimates. Skipped silently when
+     * either side is missing so we never poison the store with garbage.
+     */
+    private recordInputProfileSample(trace: InquiryRunTrace, response: ProviderResult): void {
+        const usage = trace.usage;
+        const actualInputTokens = typeof usage?.inputTokens === 'number' ? usage.inputTokens : 0;
+        const estimatedInputTokens = trace.tokenEstimate?.inputTokens ?? 0;
+        if (actualInputTokens <= 0 || estimatedInputTokens <= 0) return;
+        const provider = response.aiProvider ?? response.provider;
+        const modelId = response.aiModelResolved ?? response.aiModelRequested ?? response.modelId;
+        if (!provider || !modelId) return;
+        const method = trace.tokenEstimate?.estimationMethod ?? 'heuristic_chars';
+        void this.plugin.getInputProfileStore().record({
+            provider,
+            modelId,
+            estimatedInputTokens,
+            actualInputTokens,
+            method,
             timestamp: Date.now()
         });
     }

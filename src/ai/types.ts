@@ -349,7 +349,7 @@ export interface AIRunRequest {
     bypassProviderReuse?: boolean;
 }
 
-export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count';
+export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count' | 'google_count' | 'openai_count';
 export type TokenCountSource = 'provider_count' | 'estimate';
 export type RTCorpusEstimateMethod =
     | 'rt_chars_heuristic'

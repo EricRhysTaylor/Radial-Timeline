@@ -57,7 +57,8 @@ describe('computeEstimateStateKey', () => {
         provider: 'anthropic' as const,
         modelId: 'claude-sonnet-4-20250514',
         overrideClassCount: 0,
-        overrideItemCount: 0
+        overrideItemCount: 0,
+        citationsEnabled: true
     };
 
     it('produces a stable key for identical inputs', () => {
@@ -121,6 +122,12 @@ describe('computeEstimateStateKey', () => {
         expect(key1).not.toBe(key2);
     });
 
+    it('invalidates when citationsEnabled changes', () => {
+        const key1 = computeEstimateStateKey(baseParams);
+        const key2 = computeEstimateStateKey({ ...baseParams, citationsEnabled: false });
+        expect(key1).not.toBe(key2);
+    });
+
     // ── Exclusions: things that should NOT change the key ──
 
     it('excludes mode — changing mode does not change the key', () => {
@@ -151,8 +158,8 @@ describe('computeEstimateStateKey', () => {
     it('uses pipe delimiters', () => {
         const key = computeEstimateStateKey(baseParams);
         expect(key).toContain('|');
-        // 7 components → 6 pipes
-        expect(key.split('|').length).toBe(7);
+        // 8 components → 7 pipes
+        expect(key.split('|').length).toBe(8);
     });
 });
 
@@ -283,7 +290,8 @@ describe('buildInquiryEstimateSnapshot', () => {
                 crossScopeUsage: 'conflict-only'
             },
             mode: 'flow',
-            selectionMode: 'discover'
+            selectionMode: 'discover',
+            citationsEnabled: true
         });
 
         expect(snapshot.corpus.sceneCount).toBe(53);
@@ -354,7 +362,8 @@ describe('buildInquiryEstimateSnapshot', () => {
                 crossScopeUsage: 'conflict-only'
             },
             mode: 'flow',
-            selectionMode: 'discover'
+            selectionMode: 'discover',
+            citationsEnabled: true
         });
 
         expect(snapshot.estimate.estimatedInputTokens).toBe(18432);

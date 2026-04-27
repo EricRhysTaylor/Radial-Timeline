@@ -17,6 +17,7 @@ import { InquiryView } from './inquiry/InquiryView';
 import { InquiryService } from './inquiry/InquiryService';
 import { InquiryEstimateService } from './inquiry/services/inquiryEstimateService';
 import { OutputProfileStore } from './ai/cost/outputProfile';
+import { InputProfileStore } from './ai/cost/inputProfile';
 import { INQUIRY_VIEW_TYPE } from './inquiry/constants';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
@@ -122,6 +123,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private inquiryService!: InquiryService;
     private inquiryEstimateService!: InquiryEstimateService;
     private outputProfileStore!: OutputProfileStore;
+    private inputProfileStore!: InputProfileStore;
     private sceneDataService!: SceneDataService;
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
@@ -347,6 +349,8 @@ export default class RadialTimelinePlugin extends Plugin {
         this.inquiryEstimateService = new InquiryEstimateService();
         this.outputProfileStore = new OutputProfileStore(this);
         void this.outputProfileStore.ensureLoaded();
+        this.inputProfileStore = new InputProfileStore(this);
+        void this.inputProfileStore.ensureLoaded();
         this.sceneDataService = new SceneDataService(this.app, this.settings);
         const { SearchService } = await import('./services/SearchService');
         const { FileTrackingService } = await import('./services/FileTrackingService');
@@ -444,6 +448,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public getInquiryService(): InquiryService { return this.inquiryService; }
     public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
     public getOutputProfileStore(): OutputProfileStore { return this.outputProfileStore; }
+    public getInputProfileStore(): InputProfileStore { return this.inputProfileStore; }
     public getPublishingValidationService(): PublishingValidationService { return this.publishingValidationService; }
     public openManuscriptExportModal(): void { this.commandRegistrar.openManuscriptExportModal(); }
 

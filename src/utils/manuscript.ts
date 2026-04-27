@@ -15,6 +15,7 @@ export interface SceneContent {
   title: string;
   bodyText: string;
   wordCount: number;
+  sceneId?: string;
 }
 
 export interface AssembledManuscript {
@@ -65,6 +66,10 @@ export interface AssembleManuscriptOptions {
   modernClassicStructure?: ModernClassicStructureOptions;
   suppressMatterPageChrome?: boolean;
   chapterMarkersByScenePath?: Record<string, TimelineChapterMarker[]>;
+  /** When true, append each scene's SceneId to its TOC entry (default off in core; UI default on). */
+  includeSceneIdInToc?: boolean;
+  /** When true, append each scene's SceneId to its body heading. Default off — adds visual chrome to manuscript proper. */
+  includeSceneIdInHeading?: boolean;
 }
 
 let matterOrderIgnoredWarned = false;
@@ -811,7 +816,8 @@ function generateTableOfContents(
   scenes: SceneContent[],
   totalWords: number,
   useObsidianLinks = false,
-  sortOrder?: string
+  sortOrder?: string,
+  includeSceneIdInToc = false
 ): string {
   const tocLines: string[] = [
     '# TABLE OF CONTENTS',
@@ -830,12 +836,15 @@ function generateTableOfContents(
 
   scenes.forEach((scene, index) => {
     const sceneNum = index + 1;
+    const sceneIdSuffix = includeSceneIdInToc
+      ? ` ${scene.sceneId ? '`' + scene.sceneId + '`' : '`(no SceneId)`'}`
+      : '';
     if (useObsidianLinks) {
       // Obsidian internal link format - clickable in reading mode
-      tocLines.push(`${sceneNum}. [[#${scene.title}]] (${scene.wordCount.toLocaleString()} words)`);
+      tocLines.push(`${sceneNum}. [[#${scene.title}]] (${scene.wordCount.toLocaleString()} words)${sceneIdSuffix}`);
     } else {
       // Plain text format - better for AI processing
-      tocLines.push(`${sceneNum}. ${scene.title} (${scene.wordCount.toLocaleString()} words)`);
+      tocLines.push(`${sceneNum}. ${scene.title} (${scene.wordCount.toLocaleString()} words)${sceneIdSuffix}`);
     }
   });
 
@@ -870,6 +879,8 @@ export async function assembleManuscript(
   const sceneHeadingRenderMode = options?.sceneHeadingRenderMode || 'markdown-h2';
   const suppressMatterPageChrome = options?.suppressMatterPageChrome === true;
   const chapterMarkersByScenePath = options?.chapterMarkersByScenePath ?? {};
+  const includeSceneIdInToc = options?.includeSceneIdInToc === true;
+  const includeSceneIdInHeading = options?.includeSceneIdInHeading === true;
   const matterDiagnostics: Array<{
     filePath: string;
     side: 'front' | 'back';
@@ -932,6 +943,10 @@ export async function assembleManuscript(
       const bodyMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
       const role = matterMeta?.role;
       const usesBookMeta = matterMeta?.usesBookMeta === true;
+      const sceneFrontmatter = extractFrontmatterObject(content);
+      const sceneId = sceneFrontmatter
+        ? getFirstFrontmatterString(sceneFrontmatter, ['SceneId', 'Scene Id', 'Scene_Id', 'Scene-Id'])
+        : undefined;
 
       if (isMatterNote) {
         matterDiagnostics.push({
@@ -950,12 +965,12 @@ export async function assembleManuscript(
 
       if (renderedFromBookMeta !== null) {
         const wordCount = countWords(countableBodyText);
-        scenes.push({ title, bodyText: renderedFromBookMeta, wordCount });
+        scenes.push({ title, bodyText: renderedFromBookMeta, wordCount, sceneId });
         totalWords += wordCount;
         textParts.push(`${renderedFromBookMeta}\n\n`);
       } else if (isMatterNote && bodyMode === 'latex') {
         const wordCount = countWords(countableBodyText);
-        scenes.push({ title, bodyText, wordCount });
+        scenes.push({ title, bodyText, wordCount, sceneId });
         totalWords += wordCount;
         textParts.push(`${bodyText}\n\n`);
       } else {
@@ -1000,7 +1015,7 @@ export async function assembleManuscript(
             textParts.push(buildRawLatexBlock('\\rtSceneSep'));
           }
 
-          scenes.push({ title, bodyText, wordCount });
+          scenes.push({ title, bodyText, wordCount, sceneId });
           totalWords += wordCount;
           textParts.push(`${bodyText}\n\n`);
           modernClassicState.emittedSceneCount += 1;
@@ -1014,7 +1029,7 @@ export async function assembleManuscript(
 
           const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);
 
-          scenes.push({ title: heading, bodyText, wordCount });
+          scenes.push({ title: heading, bodyText, wordCount, sceneId });
           totalWords += wordCount;
 
           if (sceneHeadingRenderMode === 'latex-section-starred') {
@@ -1022,7 +1037,10 @@ export async function assembleManuscript(
             // Force header/footer suppression on scene-opener pages.
             textParts.push(`\\section*{${latexHeading}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
           } else {
-            textParts.push(`## ${heading}\n\n${bodyText}\n\n`);
+            const headingSuffix = includeSceneIdInHeading
+              ? sceneId ? ` \`${sceneId}\`` : ''
+              : '';
+            textParts.push(`## ${heading}${headingSuffix}\n\n${bodyText}\n\n`);
           }
         }
       }
@@ -1049,7 +1067,7 @@ export async function assembleManuscript(
   }
 
   // Generate TOC and prepend to manuscript
-  const toc = includeToc ? generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder) : '';
+  const toc = includeToc ? generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder, includeSceneIdInToc) : '';
   const manuscriptText = toc + textParts.join('');
 
   return {

@@ -1151,6 +1151,7 @@ export class InquiryView extends ItemView {
     public getCurrentCorpusContext(): InquiryCurrentCorpusContext {
         const manifest = this.buildCorpusManifest('estimate-snapshot');
         const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        const currentCitationsEnabled = this.getCanonicalAiSettings().citationsEnabled !== false;
         // Scope/book match is the precondition for any reuse from the snapshot.
         const sameScope = !!snapshot
             && snapshot.scope === this.state.scope
@@ -1159,12 +1160,14 @@ export class InquiryView extends ItemView {
         // as long as the corpus content fingerprint matches.
         const corpusMatches = sameScope
             && snapshot.corpus.corpusOnlyFingerprint === manifest.corpusOnlyFingerprint;
-        // Request envelope tokens / pass count / ceilings are model-specific — only
-        // reuse them when the full state matches (model included).
+        // Request envelope tokens / pass count / ceilings depend on every dimension
+        // that affects bytes-on-the-wire — model AND citations toggle. Reuse only
+        // when the full state matches.
         const requestMatches = sameScope
             && snapshot.estimate.estimatedInputTokens > 0
             && snapshot.resolvedEngine.modelId === this.getResolvedEngine().modelId
-            && snapshot.corpus.corpusFingerprint === manifest.fingerprint;
+            && snapshot.corpus.corpusFingerprint === manifest.fingerprint
+            && snapshot.citationsEnabled === currentCitationsEnabled;
         this._currentCorpusContext = {
             scope: this.state.scope,
             activeBookId: this.getCanonicalActiveBookId(),
@@ -3646,9 +3649,15 @@ export class InquiryView extends ItemView {
     /** Called externally (e.g. from Settings) when AI strategy changes. */
     onAiSettingsChanged(): void {
         this._resolvedEngine = null;
+        this._currentCorpusContext = null;
         this.updateEngineBadge();
         this.refreshEnginePanel();
         this.updateMinimapPressureGauge();
+        // The estimate snapshot may be stale: provider, model, citations, or
+        // tier could have changed. The service keys on these dimensions, so
+        // requesting again will hit cache when nothing material changed and
+        // rebuild when it did.
+        void this.requestEstimateSnapshot();
     }
 
     /** Called externally when Inquiry prompt settings change. */
@@ -9097,6 +9106,7 @@ export class InquiryView extends ItemView {
         const overrides = this.getCorpusOverrideSummary();
         const manifest = this.buildCorpusManifest('estimate-snapshot');
         const targetSceneIds = this.getActiveTargetSceneIds();
+        const citationsEnabled = this.getCanonicalAiSettings().citationsEnabled !== false;
 
         this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
 
@@ -9122,6 +9132,7 @@ export class InquiryView extends ItemView {
             rules: this.getEvidenceRules(),
             mode: this.state.mode,
             selectionMode: this.getSelectionMode(targetSceneIds),
+            citationsEnabled,
         });
 
         if (!snapshot) {

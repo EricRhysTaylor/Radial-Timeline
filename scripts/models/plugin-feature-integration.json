@@ -182,9 +182,11 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "complete",
-      "implementationNotes": "Anthropic count_tokens now normalizes to the canonical TokenCountResult at the provider seam. estimateInputTokens uses it as the authoritative Anthropic counting path with explicit heuristic fallback, aiClient threads anthropic_count through prepared estimates, and Inquiry forecast/snapshot/log surfaces consume that method without provider-specific logic in the view layer.",
+      "implementationNotes": "Provider-counted token estimation runs through estimateInputTokens, which dispatches to each provider's authoritative tokenizer: Anthropic /v1/messages/count_tokens, Google models/{id}:countTokens, and OpenAI's open-source tiktoken (o200k_base) running locally via js-tiktoken. All paths normalize to the canonical TokenCountResult. Heuristic fallback is explicit on every failure path (missing key, network error, malformed response, tokenizer crash). aiClient threads the resulting method through prepared estimates, and Inquiry forecast/snapshot/log surfaces consume it without provider-specific logic in the view layer.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
+        "src/api/geminiApi.ts",
+        "src/api/openaiTokenizer.ts",
         "src/ai/types.ts",
         "src/ai/tokens/inputTokenEstimate.ts",
         "src/ai/runtime/aiClient.ts",
@@ -211,14 +213,16 @@
           ]
         },
         {
-          "label": "Canonical runtime estimation prefers Anthropic provider counts and keeps heuristic fallback explicit",
+          "label": "Canonical runtime estimation dispatches to provider tokenizers with explicit heuristic fallback",
           "sourceFiles": [
             "src/ai/tokens/inputTokenEstimate.ts",
             "src/ai/runtime/aiClient.ts"
           ],
           "allOf": [
             "countAnthropicTokens",
-            "result\\.source === 'provider_count' \\? 'anthropic_count'",
+            "countGeminiTokens",
+            "countOpenaiTokens",
+            "result\\.source === 'provider_count'",
             "return fallback\\(",
             "tokenEstimateMethod:\\s*estimate\\.tokenEstimateMethod"
           ]

@@ -6,7 +6,7 @@ vi.mock('obsidian', () => ({
 
 import * as obsidian from 'obsidian';
 
-import { callGeminiApi, extractGeminiGroundingCitations } from './geminiApi';
+import { callGeminiApi, countGeminiTokens, extractGeminiGroundingCitations } from './geminiApi';
 
 const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
 
@@ -132,6 +132,74 @@ describe('gemini grounding citation extraction', () => {
         const parsed = JSON.parse(request.body ?? '{}') as { tools?: Array<Record<string, unknown>> };
 
         expect(parsed.tools).toEqual([{ google_search: {} }]);
+    });
+
+    it('countGeminiTokens posts to the countTokens endpoint and returns the canonical TokenCountResult', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            text: '',
+            json: { totalTokens: 4242 }
+        } as never);
+
+        const result = await countGeminiTokens(
+            'test-key',
+            'models/gemini-3.1-pro-preview',
+            'You are precise.',
+            'Count this prompt please.'
+        );
+
+        expect(result).toEqual({
+            provider: 'google',
+            modelId: 'gemini-3.1-pro-preview',
+            inputTokens: 4242,
+            source: 'provider_count'
+        });
+
+        const request = mockedRequestUrl.mock.calls[0]?.[0] as { url?: string; body?: string; method?: string };
+        expect(request.method).toBe('POST');
+        expect(request.url).toContain(':countTokens?key=test-key');
+        expect(request.url).toContain('gemini-3.1-pro-preview');
+        const parsed = JSON.parse(request.body ?? '{}');
+        expect(parsed.contents).toEqual([{ role: 'user', parts: [{ text: 'Count this prompt please.' }] }]);
+        expect(parsed.systemInstruction).toEqual({ parts: [{ text: 'You are precise.' }] });
+    });
+
+    it('countGeminiTokens omits systemInstruction when no system prompt is provided', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            text: '',
+            json: { totalTokens: 7 }
+        } as never);
+
+        await countGeminiTokens('test-key', 'gemini-2.5-pro', null, 'hi');
+
+        const request = mockedRequestUrl.mock.calls[0]?.[0] as { body?: string };
+        const parsed = JSON.parse(request.body ?? '{}');
+        expect(parsed.systemInstruction).toBeUndefined();
+    });
+
+    it('countGeminiTokens throws on API errors so callers can fall back to heuristic', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 400,
+            text: '',
+            json: { error: { message: 'invalid model' } }
+        } as never);
+
+        await expect(
+            countGeminiTokens('test-key', 'bad-model', null, 'hi')
+        ).rejects.toThrow(/invalid model/);
+    });
+
+    it('countGeminiTokens throws on malformed responses missing totalTokens', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            text: '',
+            json: { somethingElse: 'oops' }
+        } as never);
+
+        await expect(
+            countGeminiTokens('test-key', 'gemini-2.5-pro', null, 'hi')
+        ).rejects.toThrow(/Invalid token count response/);
     });
 
     it('returns the exact Gemini request payload used for the run', async () => {

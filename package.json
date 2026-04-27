@@ -47,6 +47,8 @@
 	"license": "SEE LICENSE IN LICENSE",
 	"devDependencies": {
 		"@types/node": "^20.10.5",
+		"@typescript-eslint/eslint-plugin": "^6.21.0",
+		"@typescript-eslint/parser": "^6.21.0",
 		"@vitest/coverage-v8": "^4.0.16",
 		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.25.10",
@@ -55,8 +57,6 @@
 		"husky": "^9.1.7",
 		"lint-staged": "^15.5.0",
 		"obsidian": "^1.4.11",
-		"@typescript-eslint/eslint-plugin": "^6.21.0",
-		"@typescript-eslint/parser": "^6.21.0",
 		"typescript": "5.3.3",
 		"vitest": "^4.0.16"
 	},
@@ -64,5 +64,8 @@
 		"src/**/*.{js,ts}": [
 			"node code-quality-check.mjs"
 		]
+	},
+	"dependencies": {
+		"js-tiktoken": "^1.0.21"
 	}
 }

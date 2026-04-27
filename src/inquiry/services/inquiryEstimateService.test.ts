@@ -32,6 +32,7 @@ function makeSnapshot(overrides?: Partial<InquiryEstimateSnapshot>): InquiryEsti
         computedAt: Date.now(),
         scope: 'book',
         activeBookId: 'book-1',
+        citationsEnabled: true,
         resolvedEngine: {
             provider: 'anthropic',
             modelId: 'claude-sonnet-4-20250514',
@@ -80,6 +81,7 @@ function makeParams(overrides?: Partial<{
     modelId: string;
     overrideClassCount: number;
     overrideItemCount: number;
+    citationsEnabled: boolean;
 }>): EstimateSnapshotParams {
     return {
         scope: (overrides?.scope ?? 'book') as 'book' | 'saga',
@@ -125,7 +127,8 @@ function makeParams(overrides?: Partial<{
         },
         rules: {} as any,
         mode: 'flow',
-        selectionMode: 'all'
+        selectionMode: 'all',
+        citationsEnabled: overrides?.citationsEnabled ?? true
     };
 }
 
@@ -166,6 +169,31 @@ describe('InquiryEstimateService', () => {
         const cached = await service.requestSnapshot(makeParams());
         expect(cached).toBe(expected);
         expect(mockBuild).toHaveBeenCalledTimes(1); // Not called again
+    });
+
+    it('rebuilds when citationsEnabled toggle changes (different state key)', async () => {
+        const snapshotCitationsOn = makeSnapshot({ stateKey: 'key-cite-on' });
+        const snapshotCitationsOff = makeSnapshot({
+            stateKey: 'key-cite-off',
+            estimate: {
+                estimatedInputTokens: 30000,
+                effectiveInputCeiling: 180000,
+                maxOutputTokens: 16384,
+                expectedPassCount: 1,
+                estimationMethod: 'anthropic_count',
+                uncertaintyTokens: 256
+            }
+        });
+        mockBuild
+            .mockResolvedValueOnce(snapshotCitationsOn)
+            .mockResolvedValueOnce(snapshotCitationsOff);
+
+        await service.requestSnapshot(makeParams({ citationsEnabled: true }));
+        expect(service.getSnapshot()?.estimate.estimatedInputTokens).toBe(50000);
+
+        await service.requestSnapshot(makeParams({ citationsEnabled: false }));
+        expect(service.getSnapshot()?.estimate.estimatedInputTokens).toBe(30000);
+        expect(mockBuild).toHaveBeenCalledTimes(2);
     });
 
     it('rebuilds when state key changes', async () => {
