@@ -1,4 +1,5 @@
 import { addTooltipData } from '../../utils/tooltip';
+import { t } from '../../i18n';
 import type { CorpusCcEntry, CorpusCcSlot, CorpusCcStats } from '../types/inquiryViewTypes';
 import type { SynopsisQuality } from '../../sceneAnalysis/synopsisQuality';
 import {
@@ -135,10 +136,10 @@ function getInquiryCorpusSynopsisTier(
 }
 
 function getInquiryCorpusTierLabel(tier: CorpusSubstanceTier): string {
-    if (tier === 'empty') return 'Empty';
-    if (tier === 'sketchy') return 'Sketchy';
-    if (tier === 'medium') return 'Medium';
-    return 'Substantive';
+    if (tier === 'empty') return t('settings.inquiry.corpusTier.empty');
+    if (tier === 'sketchy') return t('settings.inquiry.corpusTier.sketchy');
+    if (tier === 'medium') return t('settings.inquiry.corpusTier.medium');
+    return t('settings.inquiry.corpusTier.substantive');
 }
 
 function buildInquiryCorpusCcTooltip(args: {
@@ -155,28 +156,32 @@ function buildInquiryCorpusCcTooltip(args: {
 
     if (args.sceneStatus) {
         const statusLabel = args.sceneStatus === 'overdue'
-            ? 'Overdue'
-            : `${args.sceneStatus.charAt(0).toUpperCase()}${args.sceneStatus.slice(1)}`;
+            ? t('inquiry.corpus.statusOverdueLabel')
+            : args.sceneStatus === 'todo'
+                ? t('inquiry.corpus.statusTodoLabel')
+                : args.sceneStatus === 'working'
+                    ? t('inquiry.corpus.statusWorkingLabel')
+                    : t('inquiry.corpus.statusCompleteLabel');
         const statusBorderNote = args.sceneStatus === 'todo'
-            ? ' (dashed border)'
+            ? t('inquiry.corpus.tooltipStatusTodo')
             : args.sceneStatus === 'working'
-                ? ''
+                ? t('inquiry.corpus.tooltipStatusWorking')
                 : args.sceneStatus === 'overdue'
-                    ? ' (red border)'
-                    : ' (solid border)';
+                    ? t('inquiry.corpus.tooltipStatusOverdue')
+                    : t('inquiry.corpus.tooltipStatusComplete');
         conditions.push(`Status: ${statusLabel}${statusBorderNote}`);
     }
 
     if (args.entry.mode === 'excluded') {
-        conditions.push('Mode: Exclude');
+        conditions.push(t('inquiry.corpus.tooltipModeExclude'));
     }
 
     if (args.entry.isTarget) {
-        conditions.push('Target Scene: Active');
+        conditions.push(t('inquiry.corpus.tooltipTargetActive'));
     }
 
     const tierLabel = getInquiryCorpusTierLabel(args.tier);
-    const wordsLabel = `${args.wordCount.toLocaleString()} words`;
+    const wordsLabel = t('inquiry.corpus.tooltipWordsLabel', { count: args.wordCount.toLocaleString() });
     if (args.isLowSubstance) {
         conditions.push(`${tierLabel}: ${wordsLabel} (X)`);
     } else {

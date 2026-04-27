@@ -1,4 +1,5 @@
 import type { Capability } from '../../ai/types';
+import { t } from '../../i18n';
 
 export const INQUIRY_CONTEXT_CLASSES = new Set(['character', 'place', 'power']);
 
@@ -52,37 +53,14 @@ export const INQUIRY_VIEW_LINKS = {
     guidanceDocUrl: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Inquiry'
 } as const;
 
-export const INQUIRY_HELP_TEXT = {
-    tooltip: 'How Inquiry Works',
-    configTooltip: [
-        'Inquiry is not configured yet.',
-        'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
-        'Then explicitly check which classes to include for the selected scope.'
-    ].join('\n'),
-    noScenesTooltip: [
-        'No scenes found for the current scope.',
-        'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
-        'Then explicitly check which classes to include for the selected scope.'
-    ].join('\n'),
-    corpusTooltip: [
-        'Corpus disabled.',
-        'Enable corpus scopes in the Corpus strip to run Inquiry.'
-    ].join('\n'),
-    resultsTooltip: [
-        'Review material citations for granular feedback in the minimap.',
-        'View the Brief for full details.'
-    ].join('\n'),
-    runningTooltip: [
-        'Inquiry is processing an API run.',
-        'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.'
-    ].join('\n'),
-    runningSingleTooltip: [
-        'Inquiry is processing this question now.',
-        'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
-        'If you cancel this run, you must start over from the beginning. There is no resume.'
-    ].join('\n'),
-    onboardingTooltip: 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.'
-} as const;
+export const getInquiryHelpTooltip = (): string => t('inquiry.help.tooltip');
+export const getInquiryHelpConfigTooltip = (): string => t('inquiry.help.configTooltip');
+export const getInquiryHelpNoScenesTooltip = (): string => t('inquiry.help.noScenesTooltip');
+export const getInquiryHelpCorpusTooltip = (): string => t('inquiry.help.corpusTooltip');
+export const getInquiryHelpResultsTooltip = (): string => t('inquiry.help.resultsTooltip');
+export const getInquiryHelpRunningTooltip = (): string => t('inquiry.help.runningTooltip');
+export const getInquiryHelpRunningSingleTooltip = (): string => t('inquiry.help.runningSingleTooltip');
+export const getInquiryHelpOnboardingTooltip = (): string => t('inquiry.help.onboardingTooltip');
 
 export const INQUIRY_REQUIRED_CAPABILITIES: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
 
@@ -95,12 +73,4 @@ export const REHYDRATE_HIGHLIGHT_MS = INQUIRY_VIEW_TIMING.rehydrateHighlightMs;
 export const BRIEFING_HIDE_DELAY_MS = INQUIRY_VIEW_TIMING.briefingHideDelayMs;
 export const INQUIRY_NOTES_MAX = INQUIRY_VIEW_LIMITS.notesMax;
 export const INQUIRY_GUIDANCE_DOC_URL = INQUIRY_VIEW_LINKS.guidanceDocUrl;
-export const INQUIRY_HELP_TOOLTIP = INQUIRY_HELP_TEXT.tooltip;
-export const INQUIRY_HELP_CONFIG_TOOLTIP = INQUIRY_HELP_TEXT.configTooltip;
-export const INQUIRY_HELP_NO_SCENES_TOOLTIP = INQUIRY_HELP_TEXT.noScenesTooltip;
-export const INQUIRY_HELP_CORPUS_TOOLTIP = INQUIRY_HELP_TEXT.corpusTooltip;
-export const INQUIRY_HELP_RESULTS_TOOLTIP = INQUIRY_HELP_TEXT.resultsTooltip;
-export const INQUIRY_HELP_RUNNING_TOOLTIP = INQUIRY_HELP_TEXT.runningTooltip;
-export const INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP = INQUIRY_HELP_TEXT.runningSingleTooltip;
-export const INQUIRY_HELP_ONBOARDING_TOOLTIP = INQUIRY_HELP_TEXT.onboardingTooltip;
 export const INQUIRY_PROMPT_OVERHEAD_CHARS = INQUIRY_VIEW_LIMITS.promptOverheadChars;

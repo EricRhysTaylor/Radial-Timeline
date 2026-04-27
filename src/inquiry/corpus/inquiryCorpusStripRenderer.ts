@@ -1,4 +1,5 @@
 import type { SceneInclusion } from '../../types/settings';
+import { t } from '../../i18n';
 import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
 import {
     CC_BOTTOM_MARGIN,
@@ -128,10 +129,10 @@ function buildCorpusLegendPanel(
 
     const sections: { title: string; rows: LegendRow[] }[] = [
         {
-            title: 'CLICK KEYS',
+            title: t('inquiry.corpus.legendClickKeysTitle'),
             rows: [
                 {
-                    label: 'Click — cycle scope',
+                    label: t('inquiry.corpus.legendClickCycle'),
                     buildIcon: (g, cx, cy) => {
                         const icon = createIconUse('mouse-pointer-click', cx - clickIconSize / 2, cy - clickIconSize / 2, clickIconSize);
                         icon.classList.add('ert-inquiry-cc-legend-click-icon');
@@ -139,7 +140,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Shift + Click — toggle targeting',
+                    label: t('inquiry.corpus.legendShiftClickToggle'),
                     buildIcon: (g, cx, cy) => {
                         const icon = createIconUse('arrow-big-up-dash', cx - clickIconSize / 2, cy - clickIconSize / 2, clickIconSize);
                         icon.classList.add('ert-inquiry-cc-legend-click-icon');
@@ -147,7 +148,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Right + Click — open menu',
+                    label: t('inquiry.corpus.legendRightClickMenu'),
                     buildIcon: (g, cx, cy) => {
                         const mouseW = clickIconSize * 0.5;
                         const mouseH = clickIconSize * 0.72;
@@ -198,10 +199,10 @@ function buildCorpusLegendPanel(
             ]
         },
         {
-            title: 'MODE (icon + color)',
+            title: t('inquiry.corpus.legendModeTitle'),
             rows: [
                 {
-                    label: 'Full — solid disc (green)',
+                    label: t('inquiry.corpus.legendModeFull'),
                     buildIcon: (g, cx, cy) => {
                         const c = createSvgElement('circle');
                         c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
@@ -211,7 +212,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Summary — ring + dot (blue)',
+                    label: t('inquiry.corpus.legendModeSummary'),
                     buildIcon: (g, cx, cy) => {
                         const outer = createSvgElement('circle');
                         outer.setAttribute('cx', String(cx)); outer.setAttribute('cy', String(cy));
@@ -226,7 +227,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Exclude — empty ring (red)',
+                    label: t('inquiry.corpus.legendModeExclude'),
                     buildIcon: (g, cx, cy) => {
                         const c = createSvgElement('circle');
                         c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
@@ -238,16 +239,16 @@ function buildCorpusLegendPanel(
             ]
         },
         {
-            title: 'STATUS (border)',
+            title: t('inquiry.corpus.legendStatusTitle'),
             rows: [
                 {
-                    label: 'Complete — solid border',
+                    label: t('inquiry.corpus.legendStatusComplete'),
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                     }
                 },
                 {
-                    label: 'Working — dotted border',
+                    label: t('inquiry.corpus.legendStatusWorking'),
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, {
                             stroke: 'var(--text-muted)', strokeWidth: '1.8',
@@ -256,7 +257,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Todo — dashed border',
+                    label: t('inquiry.corpus.legendStatusTodo'),
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, {
                             stroke: 'var(--text-muted)', strokeWidth: '1.2',
@@ -265,7 +266,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Overdue — red border',
+                    label: t('inquiry.corpus.legendStatusOverdue'),
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, {
                             stroke: '#ff4d4f', strokeWidth: '1.6', corner: noteCorner
@@ -275,10 +276,10 @@ function buildCorpusLegendPanel(
             ]
         },
         {
-            title: 'TIER (fill level)',
+            title: t('inquiry.corpus.legendTierTitle'),
             rows: [
                 {
-                    label: 'Substantive — full fill',
+                    label: t('inquiry.corpus.legendTierSubstantive'),
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                         const f = createSvgElement('rect');
@@ -290,7 +291,7 @@ function buildCorpusLegendPanel(
                     }
                 },
                 {
-                    label: 'Medium — partial fill',
+                    label: t('inquiry.corpus.legendTierMedium'),
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                         const fillH = Math.round((noteH - yInset * 2) * 0.55);

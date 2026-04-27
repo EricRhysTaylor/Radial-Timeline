@@ -57,7 +57,10 @@ describe('InquiryRunnerService execution integrity', () => {
 
     it('uses planning-budget wording for single-pass rejection while preserving legacy detection', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
-        expect(source).toContain('This request exceeds the single-pass planning budget.');
+        const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
+        // The user-visible single-pass rejection wording lives in the i18n catalog,
+        // and the legacy substring detection lives in the runner module itself.
+        expect(enLocale).toContain('This request exceeds the single-pass planning budget.');
         expect(source).toContain("normalized.includes('single-pass planning budget')");
         expect(source).toContain("normalized.includes('safe limit for a single pass')");
     });
@@ -77,8 +80,8 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(buildTokenEstimateBlock).toContain('prepareInquiryRunEstimate');
         // Must NOT contain heuristic fallback via estimateTokensFromChars
         expect(buildTokenEstimateBlock).not.toContain('estimateTokensFromChars');
-        // Must throw when prepared is null
-        expect(buildTokenEstimateBlock).toContain("throw new Error('Token estimate unavailable");
+        // Must throw when prepared is null (i18n key resolves to "Token estimate unavailable…")
+        expect(buildTokenEstimateBlock).toContain("throw new Error(t('inquiry.runner.tokenEstimateUnavailable'))");
     });
 
     it('buildTokenEstimate reads all fields from prepared estimate without defaults', () => {

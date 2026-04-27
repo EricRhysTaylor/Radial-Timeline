@@ -14,6 +14,7 @@ import {
     normalizePath
 } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { t } from '../i18n';
 import {
     INQUIRY_MAX_OUTPUT_TOKENS,
     INQUIRY_SCHEMA_VERSION,
@@ -277,14 +278,6 @@ import {
     FLOW_ICON_PATHS,
     INQUIRY_CONTEXT_CLASSES,
     INQUIRY_GUIDANCE_DOC_URL,
-    INQUIRY_HELP_CONFIG_TOOLTIP,
-    INQUIRY_HELP_CORPUS_TOOLTIP,
-    INQUIRY_HELP_NO_SCENES_TOOLTIP,
-    INQUIRY_HELP_ONBOARDING_TOOLTIP,
-    INQUIRY_HELP_RESULTS_TOOLTIP,
-    INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP,
-    INQUIRY_HELP_RUNNING_TOOLTIP,
-    INQUIRY_HELP_TOOLTIP,
     INQUIRY_NOTES_MAX,
     INQUIRY_PROMPT_OVERHEAD_CHARS,
     INQUIRY_REQUIRED_CAPABILITIES,
@@ -704,15 +697,15 @@ export class InquiryView extends ItemView {
     // Shell Composition
     private renderMobileGate(): void {
         const wrapper = this.contentEl.createDiv({ cls: 'ert-inquiry-mobile ert-ui' });
-        wrapper.createDiv({ cls: 'ert-inquiry-mobile-title', text: 'Desktop required' });
+        wrapper.createDiv({ cls: 'ert-inquiry-mobile-title', text: t('inquiry.mobile.title') });
         wrapper.createDiv({
             cls: 'ert-inquiry-mobile-subtitle',
-            text: 'Inquiry is available on desktop only. Briefs remain readable on mobile.'
+            text: t('inquiry.mobile.subtitle')
         });
 
         const actions = wrapper.createDiv({ cls: 'ert-inquiry-mobile-actions' });
-        const openFolderBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'Open Briefs folder' });
-        const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'View most recent Brief' });
+        const openFolderBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: t('inquiry.mobile.openBriefs') });
+        const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: t('inquiry.mobile.viewLatest') });
 
         bindInquiryMobileGateEvents({
             registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
@@ -911,7 +904,7 @@ export class InquiryView extends ItemView {
             }
         });
 
-        this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.', undefined, undefined, { hideEmpty: true });
+        this.updatePromptPreview('setup', this.state.mode, t('inquiry.preview.hoverPreview'), undefined, undefined, { hideEmpty: true });
         this.hidePromptPreview(true);
     }
 
@@ -1472,7 +1465,7 @@ export class InquiryView extends ItemView {
                 if (pendingEditsApplied) return;
                 if (status === 'error') return;
                 if (pendingEditsEmpty) {
-                    this.notifyInteraction('No action items met the writeback threshold.');
+                    this.notifyInteraction(t('inquiry.interaction.noActionItemsThreshold'));
                     return;
                 }
                 void this.handleBriefingPendingEditsClick(session);
@@ -1621,7 +1614,7 @@ export class InquiryView extends ItemView {
     }
 
     private formatPendingEditsSuccessMessage(labels: string[]): string {
-        if (!labels.length) return 'Pending Edits updated successfully.';
+        if (!labels.length) return t('inquiry.interaction.pendingEditsUpdatedDefault');
         return `Pending Edits updated for ${labels.join(', ')}.`;
     }
 
@@ -1744,12 +1737,12 @@ export class InquiryView extends ItemView {
     private async handleBriefingPendingEditsClick(session: InquirySession): Promise<void> {
         if (this.isInquiryBlocked()) return;
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         if (this.syncPendingEditsAppliedState(session)) {
             const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-            this.notifyInteraction(`${fieldLabel} already updated for this session.`);
+            this.notifyInteraction(t('inquiry.interaction.fieldAlreadyUpdated', { fieldLabel }));
             return;
         }
         await this.writeInquiryPendingEdits(session, session.result, { notify: true });
@@ -1757,7 +1750,7 @@ export class InquiryView extends ItemView {
 
     private handleBriefingClearClick(): void {
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait to clear recent sessions.');
+            this.notifyInteraction(t('inquiry.interaction.runningWaitClear'));
             return;
         }
         this.sessionStore.clearSessions();
@@ -1767,29 +1760,29 @@ export class InquiryView extends ItemView {
 
     private handleBriefingResetCorpusClick(): void {
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait to reset corpus overrides.');
+            this.notifyInteraction(t('inquiry.interaction.runningWaitReset'));
             return;
         }
         if (!this.hasCorpusOverrides()) {
-            this.notifyInteraction('Corpus overrides already match settings.');
+            this.notifyInteraction(t('inquiry.interaction.corpusOverridesAlreadyMatch'));
             return;
         }
         this.resetCorpusOverrides();
-        this.notifyInteraction('Corpus overrides reset to settings; sessions, logs, and briefs untouched.');
+        this.notifyInteraction(t('inquiry.interaction.corpusOverridesReset'));
     }
 
     private async handleBriefingPurgeClick(): Promise<void> {
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         if (!this.corpus) {
-            this.notifyInteraction('No corpus available.');
+            this.notifyInteraction(t('inquiry.interaction.noCorpusAvailable'));
             return;
         }
         const scenes = this.corpus.scenes ?? [];
         if (!scenes.length) {
-            this.notifyInteraction('No scenes found in current scope.');
+            this.notifyInteraction(t('inquiry.interaction.noScenesInScope'));
             return;
         }
         const scopeBookLabel = this.getActiveBookTitleForMessages() || this.getActiveBookLabel();
@@ -1800,7 +1793,7 @@ export class InquiryView extends ItemView {
         this.briefingPurgeScanPending = false;
         this.updateBriefingFooterActionStates();
         if (!affectedScenes.length) {
-            this.notifyInteraction('No Inquiry action items found to purge.');
+            this.notifyInteraction(t('inquiry.interaction.noActionItemsToPurge'));
             return;
         }
         const modal = new InquiryPurgeConfirmationModal(
@@ -1824,9 +1817,17 @@ export class InquiryView extends ItemView {
                     const rearmSuffix = rearmedSessions > 0
                         ? ` Re-armed ${rearmedSessions} session${rearmedSessions !== 1 ? 's' : ''} for fresh writeback.`
                         : '';
-                    new Notice(`Purged Inquiry action items from ${result.purgedCount} scene${result.purgedCount !== 1 ? 's' : ''}.${rearmSuffix}`);
+                    const sceneWord = result.purgedCount !== 1 ? 'scenes' : 'scene';
+                    if (rearmSuffix) {
+                        const rearmMatch = rearmSuffix.match(/Re-armed (\d+) session/);
+                        const rearmCount = rearmMatch ? Number(rearmMatch[1]) : 0;
+                        const sessionWord = rearmCount !== 1 ? 'sessions' : 'session';
+                        new Notice(t('inquiry.notice.purgedScenesWithRearm', { count: result.purgedCount, sceneWord, rearmCount, sessionWord }));
+                    } else {
+                        new Notice(t('inquiry.notice.purgedScenes', { count: result.purgedCount, sceneWord }));
+                    }
                 } else {
-                    new Notice('No Inquiry action items found to purge.');
+                    new Notice(t('inquiry.notice.purgedNothing'));
                 }
             }
         );
@@ -1935,7 +1936,7 @@ export class InquiryView extends ItemView {
         }
 
         if (refusedCount > 0) {
-            new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
+            new Notice(t('inquiry.notice.pendingEditsBroken'), 7000);
         }
 
         return { purgedCount, totalScenes: scenes.length };
@@ -1969,7 +1970,7 @@ export class InquiryView extends ItemView {
         if (!session.briefPath) return;
         const file = this.app.vault.getAbstractFileByPath(session.briefPath);
         if (!(file instanceof TFile)) {
-            new Notice('Brief not found. It may have been moved or deleted.');
+            new Notice(t('inquiry.notice.briefNotFound'));
             return;
         }
         if (!anchorId) {
@@ -3181,7 +3182,7 @@ export class InquiryView extends ItemView {
             onPromptSelect: (zone, promptId, event) => {
                 if (this.isInquiryRunDisabled()) return;
                 if (this.state.isRunning) {
-                    this.notifyInteraction('Inquiry running. Please wait.');
+                    this.notifyInteraction(t('inquiry.interaction.running'));
                     return;
                 }
                 const prompt = this.getPromptOptions(zone)
@@ -3195,13 +3196,13 @@ export class InquiryView extends ItemView {
                 if (prompt) {
                     void this.handleQuestionClick(prompt, { forceRerun: event?.shiftKey });
                 } else {
-                    this.notifyInteraction('No question configured for this slot.');
+                    this.notifyInteraction(t('inquiry.interaction.noQuestionForSlot'));
                 }
             },
             onPromptContextMenu: (zone, promptId, event) => {
                 const prompt = this.getPromptOptions(zone).find(item => item.id === promptId);
                 if (!prompt) {
-                    this.notifyInteraction('No question configured for this slot.');
+                    this.notifyInteraction(t('inquiry.interaction.noQuestionForSlot'));
                     return;
                 }
                 this.showQuestionRunMenu(prompt, event);
@@ -3251,12 +3252,12 @@ export class InquiryView extends ItemView {
     private handlePromptClick(zone: InquiryZone, event?: MouseEvent): void {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         const options = this.getPromptOptions(zone);
         if (!options.length) {
-            this.notifyInteraction('No questions configured for this zone.');
+            this.notifyInteraction(t('inquiry.interaction.noQuestionsForZone'));
             return;
         }
         const currentId = this.state.selectedPromptIds[zone];
@@ -3266,7 +3267,7 @@ export class InquiryView extends ItemView {
             : (currentIdx >= 0 ? currentIdx : 0);
         const nextPrompt = options[nextIdx] ?? options[0];
         if (!nextPrompt) {
-            this.notifyInteraction('No questions configured for this zone.');
+            this.notifyInteraction(t('inquiry.interaction.noQuestionsForZone'));
             return;
         }
         if (!event?.shiftKey && this.isErrorState() && this.state.activeResult?.questionId === nextPrompt.id) {
@@ -3284,9 +3285,9 @@ export class InquiryView extends ItemView {
         const menu = new Menu();
         const current = this.state.promptFormOverrides[question.id] ?? 'auto';
         const options: Array<{ label: string; value: InquiryPromptFormOverride }> = [
-            { label: 'Auto', value: 'auto' },
-            { label: 'Standard', value: 'standard' },
-            { label: 'Focused', value: 'focused' }
+            { label: t('inquiry.menu.optionDefaultRun'), value: 'auto' },
+            { label: t('inquiry.menu.optionStandard'), value: 'standard' },
+            { label: t('inquiry.menu.optionFocused'), value: 'focused' }
         ];
         for (const opt of options) {
             menu.addItem(item => {
@@ -3298,7 +3299,7 @@ export class InquiryView extends ItemView {
         }
         menu.addSeparator();
         menu.addItem(item => {
-            item.setTitle('Force Re-run');
+            item.setTitle(t('inquiry.menu.forceRerun'));
             item.onClick(() => {
                 this.setSelectedPrompt(question.zone, question.id);
                 void this.handleQuestionClick(question, { forceRerun: true });
@@ -3358,7 +3359,8 @@ export class InquiryView extends ItemView {
                     if (this.isInquiryRunDisabled()) return;
                     const prompt = this.getActivePrompt(zone.id);
                     if (!prompt) {
-                        this.notifyInteraction('No questions configured for this zone.');
+                        this.notifyInteraction(t('inquiry.interaction.noQuestionsForZone'));
+
                         return;
                     }
                     this.showQuestionRunMenu(prompt, event);
@@ -3443,7 +3445,7 @@ export class InquiryView extends ItemView {
             });
         });
 
-        const label = createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
+        const label = createSvgText(debugGroup, 'ert-inquiry-debug-label', t('inquiry.debug.origin'), 0, 0);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
     }
@@ -3582,8 +3584,8 @@ export class InquiryView extends ItemView {
         bg.setAttribute('ry', '22');
         findingsGroup.appendChild(bg);
 
-        this.findingsTitleEl = createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
-        this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
+        this.findingsTitleEl = createSvgText(findingsGroup, 'ert-inquiry-findings-title', t('inquiry.findings.findings'), 24, 36);
+        this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', t('inquiry.details.toggle'), 'ert-inquiry-details-toggle');
         this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
         bindInquiryDetailsToggleEvent({
             registerSvgEvent: this.registerSvgEvent.bind(this),
@@ -3593,12 +3595,12 @@ export class InquiryView extends ItemView {
 
         this.detailsEl = createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
         this.detailRows = [
-            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Corpus fingerprint: not available', 0, 0),
-            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Recent inquiry sessions: not available', 0, 20)
+            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', t('inquiry.findings.corpusFingerprintNotAvailable'), 0, 0),
+            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', t('inquiry.findings.recentSessionsNotAvailable'), 0, 20)
         ];
 
-        this.summaryEl = createSvgText(findingsGroup, 'ert-inquiry-summary', 'No inquiry run yet.', 24, 120);
-        this.verdictEl = createSvgText(findingsGroup, 'ert-inquiry-verdict', 'Run an inquiry to see verdicts.', 24, 144);
+        this.summaryEl = createSvgText(findingsGroup, 'ert-inquiry-summary', t('inquiry.findings.noInquiryRun'), 24, 120);
+        this.verdictEl = createSvgText(findingsGroup, 'ert-inquiry-verdict', t('inquiry.findings.runToSeeVerdicts'), 24, 144);
 
         this.findingsListEl = createSvgGroup(findingsGroup, 'ert-inquiry-findings-list', 24, 176);
 
@@ -4067,7 +4069,7 @@ export class InquiryView extends ItemView {
                 this.clearResultPreview();
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
-                    this.notifyInteraction('Inquiry running. Please wait.');
+                    this.notifyInteraction(t('inquiry.interaction.running'));
                     return;
                 }
                 if (this.state.scope === 'book') {
@@ -4075,12 +4077,12 @@ export class InquiryView extends ItemView {
                         if (item.sceneId) {
                             const canFocus = await this.isFocusableTargetSceneItem(item);
                             if (!canFocus) {
-                                this.notifyInteraction('Empty scenes cannot be Target Scenes.');
+                                this.notifyInteraction(t('inquiry.interaction.emptyScenesCannotTarget'));
                                 return;
                             }
                             this.toggleTargetScene(item.sceneId, { announce: true });
                         } else {
-                            this.notifyInteraction('Only scene ticks can be targeted.');
+                            this.notifyInteraction(t('inquiry.interaction.onlySceneTicksTargetable'));
                         }
                         return;
                     }
@@ -4500,7 +4502,7 @@ export class InquiryView extends ItemView {
     private toggleTargetScene(sceneId: string, options?: { announce?: boolean }): void {
         if (this.state.scope !== 'book') {
             if (options?.announce) {
-                this.notifyInteraction('Target Scenes are available only in Book scope.');
+                this.notifyInteraction(t('inquiry.interaction.targetScenesBookOnly'));
             }
             return;
         }
@@ -4531,14 +4533,14 @@ export class InquiryView extends ItemView {
     private clearAllTargetScenes(options?: { announce?: boolean }): void {
         if (this.state.scope !== 'book') {
             if (options?.announce) {
-                this.notifyInteraction('Target Scenes are available only in Book scope.');
+                this.notifyInteraction(t('inquiry.interaction.targetScenesBookOnly'));
             }
             return;
         }
 
         if (!this.state.targetSceneIds.length) {
             if (options?.announce) {
-                this.notifyInteraction('No Target Scenes to clear.');
+                this.notifyInteraction(t('inquiry.interaction.noTargetScenesToClear'));
             }
             return;
         }
@@ -4555,7 +4557,7 @@ export class InquiryView extends ItemView {
         this.refreshUI();
 
         if (options?.announce) {
-            this.notifyInteraction('Cleared all Target Scenes.');
+            this.notifyInteraction(t('inquiry.interaction.clearedAllTargetScenes'));
         }
     }
 
@@ -4597,7 +4599,7 @@ export class InquiryView extends ItemView {
     }): void {
         const menu = new Menu();
         menu.addItem(menuItem => {
-            const sceneTitle = options.hasCitation ? 'Open Scene' : this.menuTitleWithKeys('Open Scene', ['Click']);
+            const sceneTitle = options.hasCitation ? t('inquiry.menu.openScene') : this.menuTitleWithKeys(t('inquiry.menu.openScene'), ['Click']);
             menuItem.setTitle(sceneTitle);
             menuItem.onClick(() => {
                 const file = this.app.vault.getAbstractFileByPath(options.filePath);
@@ -4608,13 +4610,13 @@ export class InquiryView extends ItemView {
         });
         if (options.hasCitation) {
             menu.addItem(menuItem => {
-                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Briefing Article', ['⌥', 'Click']));
+                menuItem.setTitle(this.menuTitleWithKeys(t('inquiry.menu.openCitationBriefing'), ['⌥', 'Click']));
                 menuItem.onClick(() => {
                     this.openActiveBriefArticleForItem(options.item);
                 });
             });
             menu.addItem(menuItem => {
-                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Markdown Brief', ['Click']));
+                menuItem.setTitle(this.menuTitleWithKeys(t('inquiry.menu.openCitationMarkdown'), ['Click']));
                 menuItem.onClick(() => {
                     void this.openActiveBriefForItem(options.item);
                 });
@@ -4622,7 +4624,7 @@ export class InquiryView extends ItemView {
         }
         menu.addSeparator();
         menu.addItem(menuItem => {
-            const focusLabel = options.isTarget ? 'Remove Focus' : 'Set Focus';
+            const focusLabel = options.isTarget ? t('inquiry.menu.removeFocus') : t('inquiry.menu.setFocus');
             menuItem.setTitle(this.menuTitleWithKeys(focusLabel, ['⇧', 'Click']));
             if (!options.item.sceneId) {
                 menuItem.setDisabled(true);
@@ -4642,7 +4644,7 @@ export class InquiryView extends ItemView {
     }): void {
         const menu = new Menu();
         menu.addItem(item => {
-            item.setTitle(options.sceneId ? 'Open Scene' : 'Open Note');
+            item.setTitle(options.sceneId ? t('inquiry.menu.openScene') : t('inquiry.menu.openNote'));
             item.onClick(() => {
                 const file = this.app.vault.getAbstractFileByPath(options.filePath);
                 if (file && this.isTFile(file)) {
@@ -4652,9 +4654,9 @@ export class InquiryView extends ItemView {
         });
         menu.addSeparator();
         ([
-            ['excluded', 'Exclude'],
-            ['summary', 'Summary'],
-            ['full', 'Full Scene']
+            ['excluded', t('inquiry.menu.corpusExclude')],
+            ['summary', t('inquiry.menu.corpusSummary')],
+            ['full', t('inquiry.menu.corpusFullScene')]
         ] as const).forEach(([mode, title]) => {
             menu.addItem(item => {
                 item.setTitle(this.menuTitleWithKeys(title, ['Click']));
@@ -4664,7 +4666,7 @@ export class InquiryView extends ItemView {
         menu.addSeparator();
         menu.addItem(item => {
             const bookOnly = this.state.scope !== 'book';
-            const targetLabel = options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes';
+            const targetLabel = options.isTarget ? t('inquiry.menu.removeFromTargetScenes') : t('inquiry.menu.addToTargetScenes');
             item.setTitle(this.menuTitleWithKeys(targetLabel, ['⇧', 'Click']));
             if (bookOnly || !options.sceneId) {
                 item.setDisabled(true);
@@ -4709,7 +4711,7 @@ export class InquiryView extends ItemView {
 
         const menu = new Menu();
         menu.addItem(item => {
-            item.setTitle('Cancel all targeting');
+            item.setTitle(t('inquiry.menu.cancelTargeting'));
             if (this.state.scope !== 'book' || this.getActiveTargetSceneIds().length === 0) {
                 item.setDisabled(true);
                 return;
@@ -4757,7 +4759,7 @@ export class InquiryView extends ItemView {
     private handleEmptyCorpusRun(): void {
         this.corpusWarningActive = true;
         this.updateGuidanceHelpTooltip(this.guidanceState);
-        this.notifyInteraction('Corpus disabled. Enable corpus to run Inquiry.');
+        this.notifyInteraction(t('inquiry.interaction.corpusDisabled'));
     }
 
     private getCorpusCcModeMeta(mode: SceneInclusion): {
@@ -5461,7 +5463,7 @@ export class InquiryView extends ItemView {
             findings: [{
                 refId: '',
                 kind: 'error',
-                headline: 'Inquiry citations could not be matched to this corpus.',
+                headline: t('inquiry.runner.citationsCouldNotBeMatched'),
                 bullets: [message],
                 related: [],
                 evidenceType: 'mixed',
@@ -5539,7 +5541,7 @@ export class InquiryView extends ItemView {
         this.pulseZonePrompt(question.zone, question.id);
         this.pulseRehydrateButton(question.zone);
         this.highlightRehydrateSession(sessionKey);
-        this.notifyInteraction('Inquiry already run. Open Recent Inquiry Sessions to reopen.');
+        this.notifyInteraction(t('inquiry.interaction.inquiryAlreadyRun'));
     }
 
     private showErrorPreview(result: InquiryResult): void {
@@ -5557,7 +5559,7 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.remove('is-locked', 'is-results');
         this.setPreviewRunningNoteText('');
         this.resetPreviewRowLabels();
-        this.setPreviewFooterText('Open Inquiry Log for detailed error report.');
+        this.setPreviewFooterText(t('inquiry.preview.footerOpenLog'));
         this.updatePromptPreview(zone, this.state.mode, hero, emptyRows, meta, { hideEmpty: true });
         this.minimap.showErrorState(this.getStyleSource());
     }
@@ -5604,10 +5606,10 @@ export class InquiryView extends ItemView {
         const nextBook = hasNext ? books[current + 1] : undefined;
         const prevTooltip = prevBook
             ? `Previous book: ${this.getBookTitleForId(prevBook.id) || prevBook.displayLabel || 'Book'}`
-            : 'No previous book.';
+            : t('inquiry.nav.noPreviousBook');
         const nextTooltip = nextBook
             ? `Next book: ${this.getBookTitleForId(nextBook.id) || nextBook.displayLabel || 'Book'}`
-            : 'No next book.';
+            : t('inquiry.nav.noNextBook');
 
         addTooltipData(this.navPrevButton, balanceTooltipText(prevTooltip), 'top');
         addTooltipData(this.navNextButton, balanceTooltipText(nextTooltip), 'top');
@@ -5616,11 +5618,11 @@ export class InquiryView extends ItemView {
     private updateNavSessionLabel(): void {
         if (!this.navSessionLabel) return;
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
-            this.setTextIfChanged(this.navSessionLabel, 'Book scope unresolved. Check Inquiry sources.', 'hudTextWrites');
+            this.setTextIfChanged(this.navSessionLabel, t('inquiry.nav.bookUnresolved'), 'hudTextWrites');
             return;
         }
         if (this.state.isRunning) {
-            this.setTextIfChanged(this.navSessionLabel, this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.', 'hudTextWrites');
+            this.setTextIfChanged(this.navSessionLabel, this.buildRunningStageLabel(this.currentRunProgress) || t('inquiry.nav.waitingForProvider'), 'hudTextWrites');
             return;
         }
         const sessionId = this.state.activeSessionId;
@@ -5706,8 +5708,9 @@ export class InquiryView extends ItemView {
     private buildWelcomeNavLabel(date: Date = new Date()): string {
         const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
         const month = date.toLocaleDateString(undefined, { month: 'long' });
-        const day = `${date.getDate()}${this.getOrdinalSuffix(date.getDate())}`;
-        return `Welcome to Inquiry. ${weekday} ${month} ${day}.`;
+        const day = String(date.getDate());
+        const ordinal = this.getOrdinalSuffix(date.getDate());
+        return t('inquiry.nav.welcome', { weekday, month, day, ordinal });
     }
 
     private getOrdinalSuffix(day: number): string {
@@ -5873,7 +5876,7 @@ export class InquiryView extends ItemView {
         }
 
         const guidanceLines = state === 'not-configured'
-            ? ['Inquiry is not configured.', 'Set scan roots and class scope in Settings → Radial Timeline → Inquiry.']
+            ? [t('inquiry.preview.inquiryNotConfiguredHero'), t('inquiry.preview.inquiryNotConfiguredHelp')]
             : ['No Scenes Found', 'Check scan roots and class scope in Settings → Radial Timeline → Inquiry.'];
         const lineHeight = isAlert
             ? (isNoScenes ? GUIDANCE_ALERT_LINE_HEIGHT + 14 : GUIDANCE_ALERT_LINE_HEIGHT)
@@ -5934,13 +5937,13 @@ export class InquiryView extends ItemView {
         const isRunning = state === 'running';
         const tooltip = isRunning
             ? (this.activeInquiryRunToken
-                ? INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP
-                : INQUIRY_HELP_RUNNING_TOOLTIP)
+                ? t('inquiry.help.runningSingleTooltip')
+                : t('inquiry.help.runningTooltip'))
             : (corpusAlert
-                ? INQUIRY_HELP_CORPUS_TOOLTIP
+                ? t('inquiry.help.corpusTooltip')
                 : (isAlert
-                    ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
-                    : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP))));
+                    ? (state === 'not-configured' ? t('inquiry.help.configTooltip') : t('inquiry.help.noScenesTooltip'))
+                    : (isResults ? t('inquiry.help.resultsTooltip') : (hasSessions ? t('inquiry.help.tooltip') : t('inquiry.help.onboardingTooltip')))));
         const balancedTooltip = balanceTooltipText(tooltip);
 
         this.helpToggleButton.removeAttribute('aria-pressed');
@@ -6027,7 +6030,7 @@ export class InquiryView extends ItemView {
         if (!scope || scope === this.state.scope) return;
         this.state.scope = scope;
         if (scope === 'saga' && this.state.targetSceneIds.length) {
-            this.notifyInteraction('Target Scenes are book-only. They remain saved and become inactive in Saga scope.');
+            this.notifyInteraction(t('inquiry.interaction.targetScenesBookOnlySaga'));
         }
         if (this.state.activeResult) {
             this.clearActiveResultState();
@@ -6068,14 +6071,14 @@ export class InquiryView extends ItemView {
         if (this.isInquiryGuidanceLockout()) return;
         this.clearErrorStateForAction();
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         if (mode === this.state.mode) {
             if (this.isResultsState() && this.state.activeResult) {
                 this.showResultsPreview(this.state.activeResult);
             }
-            this.notifyInteraction(`${mode === 'flow' ? 'Flow' : 'Depth'} lens already active.`);
+            this.notifyInteraction(t('inquiry.interaction.lensAlreadyActive', { lens: mode === 'flow' ? 'Flow' : 'Depth' }));
             return;
         }
         this.setActiveLens(mode);
@@ -6083,7 +6086,7 @@ export class InquiryView extends ItemView {
 
     private handleModeIconToggleClick(): void {
         if (this.state.activeResult && !this.hasDistinctLensSummaries(this.state.activeResult)) {
-            this.notifyInteraction('Only one summary lens available for this run.');
+            this.notifyInteraction(t('inquiry.interaction.onlyOneSummaryLens'));
             return;
         }
         const nextMode: InquiryLens = this.state.mode === 'flow' ? 'depth' : 'flow';
@@ -6105,7 +6108,7 @@ export class InquiryView extends ItemView {
         if (this.isInquiryGuidanceLockout()) return;
         this.clearErrorStateForAction();
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         if (this.state.scope === 'saga') {
@@ -6139,7 +6142,7 @@ export class InquiryView extends ItemView {
         if (!this.state.isRunning) return;
         const token = this.activeInquiryRunToken;
         if (!token) {
-            this.notifyInteraction('This run cannot be cancelled from the preview panel.');
+            this.notifyInteraction(t('inquiry.interaction.cannotCancelFromPreview'));
             return;
         }
         this.cancelledInquiryRunTokens.add(token);
@@ -6152,13 +6155,13 @@ export class InquiryView extends ItemView {
         this.unlockPromptPreview();
         this.setApiStatus('idle');
         this.refreshUI({ skipCorpus: true });
-        this.notifyInteraction('Inquiry cancel requested. Inquiry will stop after the current pass returns. The active provider request may still complete.');
+        this.notifyInteraction(t('inquiry.interaction.cancelRequested'));
     }
 
     private async openInquiryErrorLog(): Promise<void> {
         const opened = await this.openLatestInquiryLogForContext();
         if (!opened) {
-            new Notice('No Inquiry log found for this run.');
+            new Notice(t('inquiry.notice.logNotFound'));
         }
     }
 
@@ -6179,11 +6182,11 @@ export class InquiryView extends ItemView {
     ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
-            this.notifyInteraction('Book scope unresolved. Configure a book in settings before running Inquiry.');
+            this.notifyInteraction(t('inquiry.interaction.bookScopeUnresolved'));
             return;
         }
         this.clearErrorStateForAction();
@@ -6290,7 +6293,7 @@ export class InquiryView extends ItemView {
         this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
         let runTrace: InquiryRunTrace | null = null;
-        new Notice('Inquiry: contacting AI provider.');
+        new Notice(t('inquiry.runner.contactingProvider'));
         const submittedAt = new Date();
         const simulationProvider: Exclude<AIProviderId, 'none'> = engineSelection.provider === 'none'
             ? 'openai'
@@ -6480,7 +6483,7 @@ export class InquiryView extends ItemView {
 
     public async runOmnibusPass(): Promise<void> {
         if (Platform.isMobile) { // SAFE: Platform imported from obsidian at top of file
-            new Notice('Inquiry omnibus pass is available on desktop only.');
+            new Notice(t('inquiry.notice.omnibusMobileOnly'));
             return;
         }
 
@@ -6512,7 +6515,7 @@ export class InquiryView extends ItemView {
         if (!plan) return;
 
         if (this.state.isRunning) {
-            new Notice('Inquiry running. Please wait.');
+            new Notice(t('inquiry.notice.running'));
             return;
         }
 
@@ -6524,15 +6527,15 @@ export class InquiryView extends ItemView {
         this.guidanceState = this.resolveGuidanceState();
         if (this.isInquiryRunDisabled()) {
             const message = this.isInquiryBlocked()
-                ? 'Inquiry is not configured yet.'
-                : 'No scenes available for Inquiry.';
+                ? t('inquiry.runner.inquiryNotConfigured')
+                : t('inquiry.runner.noScenesAvailable');
             new Notice(message);
             return;
         }
 
         let nextQuestions = this.getOmnibusQuestions();
         if (!nextQuestions.length) {
-            new Notice('No enabled Inquiry questions found.');
+            new Notice(t('inquiry.notice.noEnabledQuestions'));
             return;
         }
 
@@ -6541,7 +6544,7 @@ export class InquiryView extends ItemView {
             const completed = new Set(priorProgress.completedQuestionIds);
             nextQuestions = nextQuestions.filter(q => !completed.has(q.id));
             if (!nextQuestions.length) {
-                new Notice('All questions already completed. Nothing to resume.');
+                new Notice(t('inquiry.notice.omnibusResumeNothing'));
                 return;
             }
         } else {
@@ -6552,7 +6555,7 @@ export class InquiryView extends ItemView {
         const nextProviderPlan = this.buildOmnibusProviderPlan();
         if (!nextProviderPlan.choice) {
             const reason = nextProviderPlan.disabledReason || 'Provider unavailable';
-            new Notice(`Omnibus unavailable: ${reason}.`);
+            new Notice(t('inquiry.notice.omnibusUnavailable', { reason }));
             return;
         }
 
@@ -6697,7 +6700,7 @@ export class InquiryView extends ItemView {
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            new Notice(`Inquiry omnibus failed: ${message}`);
+            new Notice(t('inquiry.notice.omnibusFailed', { message }));
         } finally {
             const indexPath = (createIndex && briefPaths.length > 1)
                 ? await this.saveOmnibusIndexNote(briefPaths, scopeLabel)
@@ -7071,26 +7074,26 @@ export class InquiryView extends ItemView {
         providerPlan: OmnibusProviderPlan
     ): { available: boolean; reason?: string } {
         if (prior.completedQuestionIds.length >= prior.totalQuestions) {
-            return { available: false, reason: 'Previous run already completed.' };
+            return { available: false, reason: t('inquiry.runner.previousRunCompleted') };
         }
         if (prior.scope !== this.state.scope) {
-            return { available: false, reason: 'Scope changed since last run.' };
+            return { available: false, reason: t('inquiry.runner.scopeChanged') };
         }
         const currentIds = currentQuestions.map(q => q.id).sort().join(',');
         const priorIds = [...prior.questionIds].sort().join(',');
         if (currentIds !== priorIds) {
-            return { available: false, reason: 'Question set changed since last run.' };
+            return { available: false, reason: t('inquiry.runner.questionSetChanged') };
         }
         const currentFingerprint = this.buildCorpusSettingsFingerprint();
         if (currentFingerprint !== prior.corpusSettingsFingerprint) {
-            return { available: false, reason: 'Corpus contribution settings changed.' };
+            return { available: false, reason: t('inquiry.runner.corpusContributionChanged') };
         }
         if (providerPlan.choice && providerPlan.choice.useOmnibus !== prior.useOmnibus) {
             // Allow sequential fallback from combined, but not the reverse
             if (prior.useOmnibus && !providerPlan.choice.useOmnibus) {
                 // OK: falling back to sequential
             } else {
-                return { available: false, reason: 'Provider strategy changed.' };
+                return { available: false, reason: t('inquiry.runner.providerStrategyChanged') };
             }
         }
         return { available: true };
@@ -7128,7 +7131,7 @@ export class InquiryView extends ItemView {
         if (engine.provider === 'none' || engine.blocked) {
             return {
                 choice: null,
-                summary: engine.blockReason || 'Inquiry AI is unavailable.',
+                summary: engine.blockReason || t('inquiry.runner.inquiryAiUnavailable'),
                 label: 'Unavailable',
                 disabledReason: engine.blockReason || 'Canonical Inquiry engine unavailable'
             };
@@ -7151,10 +7154,10 @@ export class InquiryView extends ItemView {
     }
 
     private getOmnibusRunDisabledReason(questions: InquiryQuestion[], providerPlan: OmnibusProviderPlan): string | null {
-        if (this.state.isRunning) return 'Inquiry is already running.';
-        if (this.isInquiryBlocked()) return 'Inquiry is not configured yet.';
-        if (this.guidanceState === 'no-scenes') return 'No scenes available for Inquiry.';
-        if (!questions.length) return 'No enabled Inquiry questions found.';
+        if (this.state.isRunning) return t('inquiry.runner.inquiryAlreadyRunning');
+        if (this.isInquiryBlocked()) return t('inquiry.runner.inquiryNotConfigured');
+        if (this.guidanceState === 'no-scenes') return t('inquiry.runner.noScenesAvailable');
+        if (!questions.length) return t('inquiry.runner.noEnabledQuestions');
         if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable';
         return null;
     }
@@ -7400,7 +7403,7 @@ export class InquiryView extends ItemView {
         if (session.status === 'simulated' || result.aiReason === 'simulated') {
             if (options?.notify) {
                 const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-                this.notifyInteraction(`${fieldLabel} writeback is disabled for simulated runs.`);
+                this.notifyInteraction(t('inquiry.interaction.writebackDisabledSimulated', { fieldLabel }));
             }
             return false;
         }
@@ -7455,7 +7458,7 @@ export class InquiryView extends ItemView {
             }
         }
         if (refusedAny) {
-            new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
+            new Notice(t('inquiry.notice.pendingEditsBroken'), 7000);
         }
         return applied;
     }
@@ -7754,11 +7757,11 @@ export class InquiryView extends ItemView {
     private startApiSimulation(): void {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
-            this.notifyInteraction('Book scope unresolved. Configure a book in settings before running Inquiry.');
+            this.notifyInteraction(t('inquiry.interaction.bookScopeUnresolved'));
             return;
         }
         this.clearErrorStateForAction();
@@ -8263,12 +8266,12 @@ export class InquiryView extends ItemView {
     private async openActiveBrief(anchorId?: string): Promise<void> {
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
-            new Notice('No active inquiry brief.');
+            new Notice(t('inquiry.notice.noBriefActive'));
             return;
         }
         const session = this.sessionStore.peekSession(sessionId);
         if (!session?.briefPath) {
-            new Notice('No brief saved for the active inquiry.');
+            new Notice(t('inquiry.notice.briefNotSaved'));
             return;
         }
         await this.openBriefFromSession(session, anchorId);
@@ -8280,7 +8283,7 @@ export class InquiryView extends ItemView {
             await openOrRevealFile(this.app, file);
             return;
         }
-        new Notice('Scene file not found.');
+        new Notice(t('inquiry.notice.sceneNotFound'));
     }
 
     private async openActiveBriefForItem(item: InquiryCorpusItem): Promise<void> {
@@ -8292,17 +8295,17 @@ export class InquiryView extends ItemView {
     private openActiveBriefArticleForItem(item: InquiryCorpusItem): void {
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
-            new Notice('No active inquiry brief.');
+            new Notice(t('inquiry.notice.noBriefActive'));
             return;
         }
         const session = this.sessionStore.peekSession(sessionId);
         if (!session?.briefPath) {
-            new Notice('No brief saved for the active inquiry.');
+            new Notice(t('inquiry.notice.briefNotSaved'));
             return;
         }
         const file = this.app.vault.getAbstractFileByPath(session.briefPath);
         if (!(file instanceof TFile)) {
-            new Notice('Brief not found. It may have been moved or deleted.');
+            new Notice(t('inquiry.notice.briefNotFound'));
             return;
         }
         const anchorSource = this.getMinimapItemFilePath(item) || item.id || item.displayLabel;
@@ -8352,7 +8355,7 @@ export class InquiryView extends ItemView {
 
     private shiftFocus(delta: number): void {
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait.');
+            this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
         this.clearErrorStateForAction();
@@ -9369,8 +9372,8 @@ export class InquiryView extends ItemView {
     private buildRunningStageLabel(progress: InquiryRunProgressEvent | null): string {
         if (!progress) return '';
         if (progress.detail?.trim()) return progress.detail.trim();
-        if (progress.phase === 'finalizing') return 'Finalizing the result.';
-        return 'Waiting for the provider response.';
+        if (progress.phase === 'finalizing') return t('inquiry.runner.finalizing');
+        return t('inquiry.runner.waiting');
     }
 
     private cachedRunningStatusStatic?: string;
@@ -9381,7 +9384,7 @@ export class InquiryView extends ItemView {
             const estimate = this.estimateRunDurationRange(questionText);
             const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
             const evidenceMode = this.describeRunEvidenceMode();
-            this.cachedRunningStatusStatic = `Running now (${evidenceMode}). Rough ETA ${estimateLabel}.`;
+            this.cachedRunningStatusStatic = t('inquiry.runner.running', { evidenceMode, estimateLabel });
             this.cachedRunningStatusQuestion = questionText;
         }
 
@@ -9803,7 +9806,7 @@ export class InquiryView extends ItemView {
     private async handleRunningPreviewCancelClick(): Promise<void> {
         if (!this.state.isRunning) return;
         if (!this.activeInquiryRunToken) {
-            this.notifyInteraction('Cancel is available for active single-question Inquiry runs.');
+            this.notifyInteraction(t('inquiry.interaction.cancelOnlySingleQuestion'));
             return;
         }
         const questionText = this.previewLast?.question
@@ -9892,7 +9895,7 @@ export class InquiryView extends ItemView {
         this.setPreviewHeroNormalizationTooltip(result);
         const scopeTypeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
         const resultScopeLabel = result.scopeLabel || this.getScopeLabel();
-        this.setPreviewFooterText(`${scopeTypeLabel} ${resultScopeLabel} · Click to dismiss.`);
+        this.setPreviewFooterText(t('inquiry.findings.previewFooterDismiss', { scopeTypeLabel, resultScopeLabel }));
         this.updateResultsFooterPosition();
     }
 
@@ -9902,7 +9905,7 @@ export class InquiryView extends ItemView {
         if (existing) existing.remove();
         if ((result.refNormalizationCount ?? 0) > 0) {
             const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-            title.textContent = 'Some scene references were normalized.';
+            title.textContent = t('inquiry.findings.referencesNormalized');
             this.previewHero.appendChild(title);
         }
     }
@@ -10037,15 +10040,15 @@ export class InquiryView extends ItemView {
             const activeTargetCount = this.getActiveTargetSceneIds().length;
             const storedTargetCount = this.state.targetSceneIds.length;
             const focusedCount = this.state.scope === 'book' ? activeTargetCount : storedTargetCount;
-            const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
-            this.findingsTitleEl.textContent = focusedCount > 0 ? `Findings · ${targetCountLabel}` : 'Findings';
+            const targetCountLabel = focusedCount === 1 ? t('inquiry.findings.oneTargetScene') : t('inquiry.findings.multipleTargetScenes', { count: focusedCount });
+            this.findingsTitleEl.textContent = focusedCount > 0 ? t('inquiry.findings.findingsWithCount', { label: targetCountLabel }) : t('inquiry.findings.findings');
             this.findingsTitleEl.classList.remove('is-role-validation-warning');
             this.summaryEl.classList.remove('is-role-validation-warning');
             this.verdictEl.classList.remove('is-role-validation-warning');
-            this.summaryEl.textContent = 'No inquiry run yet.';
+            this.summaryEl.textContent = t('inquiry.findings.noInquiryRun');
             this.verdictEl.textContent = this.state.scope === 'saga' && storedTargetCount > 0
-                ? `${targetCountLabel} saved for Book scope. Switch to Book to use focused inquiry.`
-                : 'Run an inquiry to see verdicts.';
+                ? t('inquiry.findings.verdictBookScoped', { label: targetCountLabel })
+                : t('inquiry.findings.runToSeeVerdicts');
             return;
         }
 
@@ -10053,10 +10056,10 @@ export class InquiryView extends ItemView {
         const roleValidation = this.getResultRoleValidation(result);
         const persistedTargetSceneIds = this.getPersistedResultTargetSceneIds(result);
         const focusedCount = persistedTargetSceneIds.length;
-        const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
+        const targetCountLabel = focusedCount === 1 ? t('inquiry.findings.oneTargetScene') : t('inquiry.findings.multipleTargetScenes', { count: focusedCount });
         this.findingsTitleEl.textContent = selectionMode === 'focused'
-            ? `Findings · ${targetCountLabel}`
-            : 'Findings';
+            ? t('inquiry.findings.findingsWithCount', { label: targetCountLabel })
+            : t('inquiry.findings.findings');
         this.findingsTitleEl.classList.toggle('is-role-validation-warning', roleValidation === 'missing-target-roles');
         this.summaryEl.classList.toggle('is-role-validation-warning', roleValidation === 'missing-target-roles');
         this.verdictEl.classList.toggle('is-role-validation-warning', roleValidation === 'missing-target-roles');
@@ -10067,19 +10070,20 @@ export class InquiryView extends ItemView {
 
         this.summaryEl.textContent = this.buildResultsHeroText(result, this.state.mode);
         const selectionText = selectionMode === 'focused'
-            ? `Selection Mode · Focused · ${targetFindings.length} target · ${contextFindings.length} context`
-            : 'Selection Mode · Discover';
+            ? t('inquiry.findings.selectionFocused', { targetCount: targetFindings.length, contextCount: contextFindings.length })
+            : t('inquiry.findings.selectionDiscover');
         const validationNote = roleValidation === 'missing-target-roles'
-            ? ' · Warning: Focused run returned no target-specific findings.'
+            ? ` · ${t('inquiry.findings.validationMissingTargetRoles')}`
             : '';
         const scopeNote = this.state.scope === 'saga' && this.state.targetSceneIds.length > 0
-            ? ' · Target Scenes are book-only and inactive in Saga scope.'
+            ? ` · ${t('inquiry.findings.scopeNoteTargetBookOnly')}`
             : '';
         const integrity = computeCitationIntegritySummary(result);
+        const citationWord = integrity.unverifiedCount === 1 ? 'citation' : 'citations';
         const integrityNote = integrity.evidenceCompromised
-            ? ` · ⚠ Evidence compromised — no verified findings; ${integrity.unverifiedCount} AI citation${integrity.unverifiedCount === 1 ? '' : 's'} could not be matched to your manuscript.`
+            ? ` · ${t('inquiry.findings.integrityCompromised', { count: integrity.unverifiedCount, citationWord })}`
             : integrity.unverifiedCount > 0
-                ? ` · ⚠ ${integrity.unverifiedCount} AI citation${integrity.unverifiedCount === 1 ? '' : 's'} could not be matched to your manuscript.`
+                ? ` · ${t('inquiry.findings.integrityWarning', { count: integrity.unverifiedCount, citationWord })}`
                 : '';
         this.verdictEl.textContent = `${selectionText}${validationNote}${scopeNote}${integrityNote}`;
         this.verdictEl.classList.toggle('is-citation-integrity-warning', integrity.unverifiedCount > 0 && !integrity.evidenceCompromised);
@@ -10090,7 +10094,7 @@ export class InquiryView extends ItemView {
             createSvgText(findingsListEl, 'ert-inquiry-finding-section', title, 0, cursorY);
             cursorY += 18;
             if (!findings.length) {
-                createSvgText(findingsListEl, 'ert-inquiry-finding-meta', 'None.', 0, cursorY);
+                createSvgText(findingsListEl, 'ert-inquiry-finding-meta', t('inquiry.findings.empty'), 0, cursorY);
                 cursorY += 18;
                 return;
             }
@@ -10111,7 +10115,7 @@ export class InquiryView extends ItemView {
                 createSvgText(
                     findingsListEl,
                     'ert-inquiry-finding-meta',
-                    `Lens ${lensLabel}`,
+                    t('inquiry.findings.lens', { label: lensLabel }),
                     0,
                     cursorY
                 );
@@ -10124,8 +10128,8 @@ export class InquiryView extends ItemView {
             });
         };
 
-        renderSection('Target Findings', targetFindings);
-        renderSection('Context Findings', contextFindings);
+        renderSection(t('inquiry.findings.targetSection'), targetFindings);
+        renderSection(t('inquiry.findings.contextSection'), contextFindings);
 
         const unverifiedFindings = result.unverifiedFindings || [];
         if (unverifiedFindings.length) {
@@ -10135,7 +10139,7 @@ export class InquiryView extends ItemView {
             createSvgText(
                 findingsListEl,
                 `ert-inquiry-finding-section ${severityClass}`,
-                `⚠ Unverified AI Citations (${unverifiedFindings.length})`,
+                t('inquiry.findings.unverifiedSection', { count: unverifiedFindings.length }),
                 0,
                 cursorY
             );
@@ -10143,7 +10147,7 @@ export class InquiryView extends ItemView {
             createSvgText(
                 findingsListEl,
                 `ert-inquiry-finding-meta ${severityClass}`,
-                'These citations are unverified and should not be trusted as evidence.',
+                t('inquiry.findings.unverifiedWarning'),
                 0,
                 cursorY
             );
@@ -10152,7 +10156,7 @@ export class InquiryView extends ItemView {
                 createSvgText(
                     findingsListEl,
                     `ert-inquiry-finding-head ${severityClass}`,
-                    `[Unverified] ${normalizeInquiryHeadline(item.headline)}`,
+                    `${t('inquiry.findings.unverifiedHeadlinePrefix')}${normalizeInquiryHeadline(item.headline)}`,
                     0,
                     cursorY
                 );
@@ -10161,7 +10165,7 @@ export class InquiryView extends ItemView {
                 createSvgText(
                     findingsListEl,
                     `ert-inquiry-finding-meta ${severityClass}`,
-                    `Cited: ${rawDescriptor}`,
+                    t('inquiry.findings.citedAs', { descriptor: rawDescriptor }),
                     0,
                     cursorY
                 );
@@ -11131,37 +11135,37 @@ export class InquiryView extends ItemView {
         return [
             {
                 element: this.scopeToggleButton,
-                text: 'Toggle between Book and Saga scope.',
+                text: t('inquiry.navTooltip.scopeToggle'),
                 placement: 'bottom'
             },
             {
                 element: this.flowRingHit,
-                text: 'Switch to Flow lens.',
+                text: t('inquiry.navTooltip.flowLens'),
                 placement: 'top'
             },
             {
                 element: this.depthRingHit,
-                text: 'Switch to Depth lens.',
+                text: t('inquiry.navTooltip.depthLens'),
                 placement: 'top'
             },
             {
                 element: this.modeIconToggleHit,
-                text: 'Toggle flow and depth lens.',
+                text: t('inquiry.navTooltip.modeIconToggle'),
                 placement: 'top'
             },
             {
                 element: this.glyphHit,
-                text: 'Toggle focus ring expansion.',
+                text: t('inquiry.navTooltip.focusRingToggle'),
                 placement: 'top'
             },
             {
                 element: this.navPrevButton,
-                text: 'Previous book.',
+                text: t('inquiry.navTooltip.previousBook'),
                 placement: 'top'
             },
             {
                 element: this.navNextButton,
-                text: 'Next book.',
+                text: t('inquiry.navTooltip.nextBook'),
                 placement: 'top'
             }
         ];
@@ -11169,7 +11173,7 @@ export class InquiryView extends ItemView {
 
     private openReportPreview(): void {
         if (!this.state.activeResult) {
-            new Notice('Run an inquiry before previewing a report.');
+            new Notice(t('inquiry.notice.noRunForPreview'));
             return;
         }
         this.state.reportPreviewOpen = true;
@@ -11179,7 +11183,7 @@ export class InquiryView extends ItemView {
     private async saveArtifact(): Promise<void> {
         const result = this.state.activeResult;
         if (!result) {
-            new Notice('Run an inquiry before saving a brief.');
+            new Notice(t('inquiry.notice.noRunForSave'));
             return;
         }
         await this.saveBrief(result, {
@@ -11203,7 +11207,7 @@ export class InquiryView extends ItemView {
         const folder = await ensureInquiryArtifactFolder(this.app);
         if (!folder) {
             if (!options.silent) {
-                new Notice('Unable to create brief folder.');
+                new Notice(t('inquiry.notice.briefFolderFailed'));
             }
             return null;
         }
@@ -11226,7 +11230,7 @@ export class InquiryView extends ItemView {
                 });
             }
             if (!options.silent) {
-                new Notice('Inquiry brief saved.');
+                new Notice(t('inquiry.notice.briefSaved'));
             }
             if (options.sessionKey) {
                 this.sessionStore.updateSession(options.sessionKey, {
@@ -11240,7 +11244,7 @@ export class InquiryView extends ItemView {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             if (!options.silent) {
-                new Notice(`Unable to save brief: ${message}`);
+                new Notice(t('inquiry.notice.briefSaveFailed', { message }));
             }
             return null;
         }
@@ -11294,7 +11298,7 @@ export class InquiryView extends ItemView {
         const silent = options?.silent ?? true;
         if (!folder) {
             if (!silent) {
-                new Notice('Unable to create log folder.');
+                new Notice(t('inquiry.notice.logFolderFailed'));
             }
             return null;
         }
@@ -11316,7 +11320,7 @@ export class InquiryView extends ItemView {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             if (!silent) {
-                new Notice(`Unable to save inquiry log: ${message}`);
+                new Notice(t('inquiry.notice.logSaveFailed', { message }));
             }
         }
 
@@ -11339,7 +11343,7 @@ export class InquiryView extends ItemView {
         const folder = await ensureInquiryContentLogFolder(this.app);
         if (!folder) {
             if (!silent) {
-                new Notice('Unable to create inquiry content log folder.');
+                new Notice(t('inquiry.notice.logContentFolderFailed'));
             }
             return;
         }
@@ -11353,7 +11357,7 @@ export class InquiryView extends ItemView {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             if (!silent) {
-                new Notice(`Unable to save inquiry content log: ${message}`);
+                new Notice(t('inquiry.notice.logContentSaveFailed', { message }));
             }
         }
     }
@@ -12006,7 +12010,7 @@ export class InquiryView extends ItemView {
         const folderPath = resolveInquiryArtifactFolder();
         const folder = await ensureInquiryArtifactFolder(this.app);
         if (!folder) {
-            new Notice(`Unable to access folder: ${folderPath}`);
+            new Notice(t('inquiry.notice.folderAccessFailed', { folderPath }));
             return;
         }
         this.revealInFileExplorer(folder);
@@ -12015,7 +12019,7 @@ export class InquiryView extends ItemView {
     private async openMostRecentArtifact(): Promise<void> {
         const file = getMostRecentArtifactFile(this.app);
         if (!file) {
-            new Notice('No briefs found.');
+            new Notice(t('inquiry.notice.noBriefs'));
             return;
         }
         await openOrRevealFile(this.app, file);
@@ -12024,12 +12028,12 @@ export class InquiryView extends ItemView {
     private revealInFileExplorer(file: TAbstractFile): void {
         const explorerLeaf = this.app.workspace.getLeavesOfType('file-explorer')[0];
         if (!explorerLeaf?.view) {
-            new Notice('File explorer not available.');
+            new Notice(t('inquiry.notice.fileExplorerUnavailable'));
             return;
         }
         const explorerView = explorerLeaf.view as unknown as { revealInFolder?: (target: TAbstractFile) => void };
         if (!explorerView.revealInFolder) {
-            new Notice('Unable to reveal folder.');
+            new Notice(t('inquiry.notice.revealFolderFailed'));
             return;
         }
         explorerView.revealInFolder(file);

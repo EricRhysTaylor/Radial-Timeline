@@ -1,5 +1,6 @@
 import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { t } from '../i18n';
 import { INQUIRY_VIEW_TYPE } from './constants';
 import { InquiryView } from './InquiryView';
 import type { InquiryCurrentCorpusContext } from './types';
@@ -49,7 +50,7 @@ export class InquiryService {
 
     async activateView(): Promise<void> {
         if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
-            new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');
+            new Notice(t('inquiry.notice.aiDisabledInSettings'));
             return;
         }
 
@@ -69,13 +70,13 @@ export class InquiryService {
 
     async runOmnibusPass(): Promise<void> {
         if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
-            new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');
+            new Notice(t('inquiry.notice.aiDisabledInSettings'));
             return;
         }
         await this.activateView();
         const view = this.getInquiryViews()[0];
         if (!view) {
-            new Notice('Unable to open Inquiry view for omnibus pass.');
+            new Notice(t('inquiry.notice.omnibusViewFailed'));
             return;
         }
         await view.runOmnibusPass();

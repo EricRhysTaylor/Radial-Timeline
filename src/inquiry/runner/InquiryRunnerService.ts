@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian';
 import type { MetadataCache, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import { t } from '../../i18n';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
@@ -36,8 +37,6 @@ import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
-const SINGLE_PASS_PLANNING_BUDGET_ERROR =
-    'This request exceeds the single-pass planning budget. Switch Execution Preference to Automatic, or reduce scope.';
 
 function isSinglePassPlanningBudgetError(message: string): boolean {
     const normalized = message.toLowerCase();
@@ -71,8 +70,8 @@ function decideExecutionPlan(precheck: {
         return { path: 'one_pass', reason: '' };
     }
     const reason = precheck.onePassFit === 'overflows'
-        ? `Estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}.`
-        : 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass analysis.';
+        ? t('inquiry.runner.singlePassFitFailedWithBudget', { inputTokens: Math.round(precheck.inputTokens).toLocaleString(), safeInputTokens: Math.round(precheck.safeInputTokens).toLocaleString() })
+        : t('inquiry.runner.singlePassFitFailedUnknown');
     return { path: 'multi_pass', reason };
 }
 
@@ -291,7 +290,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 phase: 'finalizing',
                 currentPass: finalPassCount,
                 totalPasses: finalPassCount,
-                detail: 'Provider response received. Finalizing the result.'
+                detail: t('inquiry.runner.finalizing')
             });
 
             try {
@@ -555,7 +554,7 @@ export class InquiryRunnerService implements InquiryRunner {
         });
 
         if (!dedupedBlocks.length) {
-            dedupedBlocks.push({ label: 'Evidence', content: 'No evidence available for the selected scope.' });
+            dedupedBlocks.push({ label: 'Evidence', content: t('inquiry.runner.noEvidenceForScope') });
         }
 
         // Hard guard: Inquiry corpus must never include Synopsis-sourced content.
@@ -966,7 +965,7 @@ export class InquiryRunnerService implements InquiryRunner {
             providerReuseKey
         });
         if (!executionPrecheck.ok) {
-            const reason = `Unable to prepare an authoritative provider execution estimate. ${executionPrecheck.reason}`.trim();
+            const reason = t('inquiry.runner.executionPrecheckFailed', { reason: executionPrecheck.reason }).trim();
             return this.buildMultiPassFailedResult(
                 ai,
                 reason,
@@ -1022,7 +1021,7 @@ export class InquiryRunnerService implements InquiryRunner {
             phase: 'one_pass',
             currentPass: 1,
             totalPasses: 1,
-            detail: 'Waiting for the provider response.'
+            detail: t('inquiry.runner.waiting')
         });
         this.throwIfAborted(executionOptions?.shouldAbort);
         let run = await this.runInquiryRequest(aiClient, {
@@ -1627,7 +1626,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private throwIfAborted(shouldAbort?: (() => boolean) | undefined): void {
         if (shouldAbort?.()) {
-            throw new Error('Inquiry run aborted.');
+            throw new Error(t('inquiry.runner.runAborted'));
         }
     }
 
@@ -1886,7 +1885,7 @@ export class InquiryRunnerService implements InquiryRunner {
     private parseJsonFromContent<T>(content: string): T {
         const jsonText = this.extractJson(content);
         if (!jsonText) {
-            throw new Error('Unable to locate JSON in AI response.');
+            throw new Error(t('inquiry.runner.jsonNotFound'));
         }
         return JSON.parse(jsonText) as T;
     }
@@ -1980,13 +1979,13 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const summaryFlow = parsed.summaryFlow
             ? String(parsed.summaryFlow)
-            : (parsed.summary ? String(parsed.summary) : 'No summary provided.');
+            : (parsed.summary ? String(parsed.summary) : t('inquiry.runner.noSummaryProvided'));
         const summaryDepth = parsed.summaryDepth
             ? String(parsed.summaryDepth)
             : (parsed.summary ? String(parsed.summary) : summaryFlow);
         const summary = parsed.summary
             ? String(parsed.summary)
-            : (summaryFlow || summaryDepth || 'No summary provided.');
+            : (summaryFlow || summaryDepth || t('inquiry.runner.noSummaryProvided'));
 
         const result: InquiryResult = {
             runId: `run-${Date.now()}`,
@@ -2332,13 +2331,13 @@ export class InquiryRunnerService implements InquiryRunner {
     ): InquiryResult {
         const message = error instanceof Error ? error.message : error ? String(error) : '';
         const summary = this.buildStubSummary(aiMeta.aiStatus, aiMeta.aiReason, message);
-        const bullets = message ? [`Runner note: ${message}`] : ['Deterministic placeholder result.'];
+        const bullets = message ? [t('inquiry.findings.stubBulletNote', { message })] : [t('inquiry.findings.stubBulletPlaceholder')];
         const fallbackRefId = this.resolveFindingFallbackRefId(input);
 
         const findings: InquiryFinding[] = [{
             refId: fallbackRefId,
             kind: 'unclear',
-            headline: 'Inquiry stub result.',
+            headline: t('inquiry.findings.stubInquiryHeadline'),
             bullets,
             related: [],
             evidenceType: 'mixed',
@@ -2407,27 +2406,27 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {
         if (aiStatus === 'degraded') {
-            return 'AI response recovered from invalid structured output.';
+            return t('inquiry.runner.aiResponseRecovered');
         }
         if (aiStatus === 'rejected' && aiReason === 'unsupported_param') {
-            return 'AI request rejected: unsupported parameter.';
+            return t('inquiry.runner.aiUnsupportedParameter');
         }
         if (aiStatus === 'rejected') {
-            return 'AI request rejected.';
+            return t('inquiry.runner.aiRequestRejected');
         }
         if (aiStatus === 'auth') {
-            return 'AI request failed: authentication error.';
+            return t('inquiry.runner.aiAuthError');
         }
         if (aiStatus === 'timeout') {
-            return 'AI request timed out.';
+            return t('inquiry.runner.aiTimedOut');
         }
         if (aiStatus === 'rate_limit') {
-            return 'AI request rate limited.';
+            return t('inquiry.runner.aiRateLimited');
         }
         if (aiStatus === 'unavailable') {
-            return 'Stub result returned (AI unavailable).';
+            return t('inquiry.runner.stubResultUnavailable');
         }
-        return message ? 'Stub result returned (AI unavailable).' : 'Preview result for inquiry.';
+        return message ? t('inquiry.runner.stubResultUnavailable') : t('inquiry.runner.stubResultPreview');
     }
 
     private normalizeScore(value: unknown): number {
@@ -2560,7 +2559,7 @@ export class InquiryRunnerService implements InquiryRunner {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             notes.push(`Evidence build error: ${message}`);
-            evidenceBlocks = [{ label: 'Evidence', content: 'Unable to build evidence blocks.' }];
+            evidenceBlocks = [{ label: 'Evidence', content: t('inquiry.runner.unableToBuildEvidence') }];
         }
 
         const { systemPrompt, userPrompt, evidenceText, instructionPrompt, cacheableUserInput } = this.buildPrompt(input, evidenceBlocks);
@@ -2617,7 +2616,7 @@ export class InquiryRunnerService implements InquiryRunner {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             notes.push(`Evidence build error: ${message}`);
-            evidenceBlocks = [{ label: 'Evidence', content: 'Unable to build evidence blocks.' }];
+            evidenceBlocks = [{ label: 'Evidence', content: t('inquiry.runner.unableToBuildEvidence') }];
         }
 
         notes.push(`Omnibus run: ${input.questions.length} questions.`);
@@ -2685,7 +2684,7 @@ export class InquiryRunnerService implements InquiryRunner {
             providerReuseKey
         });
         if (!prepared) {
-            throw new Error('Token estimate unavailable — AI client returned no estimate');
+            throw new Error(t('inquiry.runner.tokenEstimateUnavailable'));
         }
         const tokenEstimate: InquiryRunTrace['tokenEstimate'] = {
             inputTokens: prepared.tokenEstimateInput,
