@@ -349,6 +349,9 @@ Configure the AI assistant for narrative analysis.
 *   **Log AI interactions to file**: When enabled, saves detailed JSON logs for each AI request in the AI output folder.
 
 > [!NOTE]
+> Local/OpenAI-compatible setup is documented separately in [Local LLM](Local-LLM). For Pulse, use the hosted providers documented in [AI Pulse Triplet Analysis](AI-Pulse-Analysis).
+
+> [!NOTE]
 > Learn how to interpret the analysis in [AI Pulse Triplet Analysis](AI-Pulse-Analysis).
 
 ---

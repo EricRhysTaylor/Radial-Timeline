@@ -15,6 +15,7 @@
         *   [Inquiry](Settings#inquiry)
         *   [Publishing](Settings#publishing)
         *   [AI](Settings#ai)
+        *   [Local LLM](Local-LLM)
         *   [Advanced](Settings#advanced)
         *   [PRO](Settings#pro)
 *   **Radial Timeline View**

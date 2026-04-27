@@ -1866,6 +1866,62 @@
   color: var(--text-muted);
 }
 
+/* Omnibus: status row (provider + cache pills) */
+.ert-ui.ert-scope--modal .ert-omnibus-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-xs);
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill .ert-omnibus-cache-pill-label {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill .ert-omnibus-cache-pill-detail {
+  opacity: 0.95;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill.is-pending {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill.is-primed {
+  background-color: rgba(245, 188, 66, 0.18);
+  color: rgb(196, 134, 21);
+  border: 1px solid rgba(245, 188, 66, 0.45);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill.is-confirmed {
+  background-color: rgba(46, 160, 67, 0.20);
+  color: rgb(35, 134, 54);
+  border: 1px solid rgba(46, 160, 67, 0.55);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill.is-miss {
+  background-color: rgba(207, 34, 46, 0.18);
+  color: rgb(176, 30, 40);
+  border: 1px solid rgba(207, 34, 46, 0.50);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-cache-pill.is-none {
+  background-color: var(--background-modifier-border);
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+}
+
 /* Omnibus: result panel */
 .ert-ui.ert-scope--modal .ert-omnibus-result-panel {
   padding: var(--ert-gap-lg) var(--ert-gap-md);

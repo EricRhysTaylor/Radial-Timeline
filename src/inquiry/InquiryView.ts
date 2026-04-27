@@ -6646,6 +6646,8 @@ export class InquiryView extends ItemView {
             traceForLogs = runOutput.trace;
             if (modal) {
                 modal.setAiAdvancedContext(this.getEffectiveReuseAdvancedContext());
+                // Combined path is a single provider call; report cache once for the whole run.
+                modal.notePassResult(1, 1, traceForLogs?.usage ?? null);
             }
             const completedAt = new Date();
             const questionsById = new Map(questions.map(question => [question.id, question]));
@@ -6846,7 +6848,10 @@ export class InquiryView extends ItemView {
                     trace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
                 }
 
-                if (modal) modal.updateProgress(questionIndex, total, zoneLabel, question.label, 'Writing brief/log...');
+                if (modal) {
+                    modal.notePassResult(questionIndex, total, trace?.usage ?? null);
+                    modal.updateProgress(questionIndex, total, zoneLabel, question.label, 'Writing brief/log...');
+                }
 
                 const completedAt = new Date();
                 const persisted = await this.persistOmnibusResult({

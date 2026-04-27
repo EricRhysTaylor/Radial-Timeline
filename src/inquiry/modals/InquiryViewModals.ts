@@ -6,6 +6,7 @@ import {
     setTooltip
 } from 'obsidian';
 import type { AIRunAdvancedContext } from '../../ai/types';
+import type { TokenUsage } from '../../ai/usage/providerUsage';
 import { redactSensitiveValue } from '../../ai/credentials/redactSensitive';
 import { SIGMA_CHAR } from '../constants/inquiryUi';
 import type {
@@ -15,6 +16,11 @@ import type {
     InquiryQuestion
 } from '../types/inquiryViewTypes';
 import type { InquiryScope, InquiryZone } from '../state';
+
+function formatCacheTokens(tokens: number): string {
+    if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;
+    return String(tokens);
+}
 
 export class InquiryPurgeConfirmationModal extends Modal {
     constructor(
@@ -186,6 +192,11 @@ export class InquiryOmnibusModal extends Modal {
     private resultEl?: HTMLDivElement;
     private aiAdvancedPreEl?: HTMLPreElement;
     private aiAdvancedContext: AIRunAdvancedContext | null = null;
+    private cachePillEl?: HTMLSpanElement;
+    private cachePillDetailEl?: HTMLSpanElement;
+    private cacheReadCumulative = 0;
+    private cacheCreatedCumulative = 0;
+    private cacheMissCount = 0;
 
     constructor(
         app: App,
@@ -427,6 +438,19 @@ export class InquiryOmnibusModal extends Modal {
             this.setHidden(this.progressEl, false);
             this.progressEl.empty();
             this.progressEl.createDiv({ cls: 'ert-omnibus-progress-title', text: 'Running Omnibus Pass...' });
+
+            const statusRow = this.progressEl.createDiv({ cls: 'ert-omnibus-status-row ert-inline' });
+            statusRow.createSpan({
+                cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill',
+                text: this.options.providerLabel
+            });
+            this.cachePillEl = statusRow.createSpan({
+                cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-cache-pill is-pending'
+            });
+            this.cachePillEl.createSpan({ cls: 'ert-omnibus-cache-pill-label', text: 'Cache' });
+            this.cachePillDetailEl = this.cachePillEl.createSpan({ cls: 'ert-omnibus-cache-pill-detail', text: 'pending' });
+            setTooltip(this.cachePillEl, 'Cache reuse is confirmed only when the provider reports cache_read tokens. Pass 1 primes the cache; pass 2+ should report a read.');
+
             this.progressTextEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-text' });
             this.progressTextEl.setText('Preparing...');
             this.progressMicroEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-micro ert-field-note' });
@@ -460,6 +484,54 @@ export class InquiryOmnibusModal extends Modal {
     setAiAdvancedContext(context: AIRunAdvancedContext | null): void {
         this.aiAdvancedContext = context;
         this.renderAiAdvancedContext();
+    }
+
+    notePassResult(passIndex: number, total: number, usage: TokenUsage | null | undefined): void {
+        if (!this.cachePillEl || !this.cachePillDetailEl) return;
+
+        const cacheRead = usage?.cacheReadInputTokens ?? 0;
+        const cacheCreated = (usage?.cacheCreationInputTokens ?? 0)
+            + (usage?.cacheCreation5mInputTokens ?? 0)
+            + (usage?.cacheCreation1hInputTokens ?? 0);
+        const hasAnyCacheField = !!usage && (
+            typeof usage.cacheReadInputTokens === 'number'
+            || typeof usage.cacheCreationInputTokens === 'number'
+            || typeof usage.cacheCreation5mInputTokens === 'number'
+            || typeof usage.cacheCreation1hInputTokens === 'number'
+        );
+
+        this.cacheReadCumulative += cacheRead;
+        this.cacheCreatedCumulative += cacheCreated;
+
+        const setState = (state: 'pending' | 'primed' | 'confirmed' | 'miss' | 'none', detail: string): void => {
+            if (!this.cachePillEl || !this.cachePillDetailEl) return;
+            this.cachePillEl.classList.remove('is-pending', 'is-primed', 'is-confirmed', 'is-miss', 'is-none');
+            this.cachePillEl.classList.add(`is-${state}`);
+            this.cachePillDetailEl.setText(detail);
+        };
+
+        if (!usage) {
+            setState('pending', `pass ${passIndex}/${total} · usage unknown`);
+            return;
+        }
+        if (!hasAnyCacheField) {
+            setState('none', 'not used by provider');
+            return;
+        }
+        if (cacheRead > 0) {
+            setState('confirmed', `confirmed · read ${formatCacheTokens(this.cacheReadCumulative)} tok (pass ${passIndex}/${total})`);
+            return;
+        }
+        if (passIndex <= 1 && cacheCreated > 0) {
+            setState('primed', `primed · wrote ${formatCacheTokens(cacheCreated)} tok (pass 1)`);
+            return;
+        }
+        if (passIndex >= 2) {
+            this.cacheMissCount += 1;
+            setState('miss', `miss on pass ${passIndex} · ${this.cacheMissCount} miss${this.cacheMissCount === 1 ? '' : 'es'} so far`);
+            return;
+        }
+        setState('pending', `pass ${passIndex}/${total} · no cache activity`);
     }
 
     private renderAiAdvancedContext(): void {
