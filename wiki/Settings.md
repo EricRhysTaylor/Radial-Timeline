@@ -55,7 +55,7 @@ Target dates are validated to ensure proper stage ordering. Overdue dates are hi
 * Staleness colors: fresh (<= 7d, normal), warn (8-10d, orange), late (11-20d, red), stalled (>20d or no pace/insufficient samples, red "?"). Geometry is frozen until new completions update the pace.
 
 > [!NOTE]
-> Learn more about workflows in [[Core-Workflows]].
+> Learn more in [Workflow Overview](Core-Workflows).
 
 <a name="runtime-estimation"></a>
 ### Runtime estimation (Pro)
@@ -82,7 +82,7 @@ Calculate screen time, audiobook duration, and manuscript length estimates.
 *   **Runtime arc cap default**: Controls Chronologue Runtime sub-mode arc scaling. Lower values emphasize shorter scenes.
 
 > [!NOTE]
-> See [[Pro]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime sub-mode visualization.
+> See [Pro](Pro) for full Pro feature documentation and [Runtime](Chronologue-Mode#runtime-mode-pro) for the Runtime visualization.
 
 <a name="story-beats"></a>
 ### Story beats system
@@ -95,7 +95,7 @@ Configure the structural pacing guide for your story.
     *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
 *   **Create sets**: Generate beat set notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
 *   **Beat filename numbering**: Generated beat notes use decimal minor prefixes (for example, `7.01 Midpoint.md`) so scene integer slots remain canonical.
-*   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [[Beat-Audit-Heal]] for details.
+*   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [Beat Audit + Heal](Beat-Audit-Heal) for details.
 *   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
 *   **Saved sets**: Save and switch between multiple custom beat systems. Each system stores its beat list, Beat properties editor fields, and hover metadata selections.
 
@@ -103,7 +103,7 @@ Configure the structural pacing guide for your story.
 > Custom beat properties use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat properties editor to extend this with your own fields.
 
 > [!NOTE]
-> Learn more about using beats in [[Gossamer-Mode]].
+> Learn more about using beats in [Gossamer Mode](Gossamer-Mode).
 
 <a name="acts"></a>
 ### Acts
@@ -113,7 +113,7 @@ Configure the high-level structure of your narrative ring.
 *   **Show act labels**: Toggle to hide labels and show only act numbers.
 
 > [!NOTE]
-> See [[Narrative-Mode]] for details on the act structure.
+> See [Narrative Mode](Narrative-Mode) for details on the act structure.
 
 <a name="yaml-templates"></a>
 ### Scene properties & remapping
@@ -122,8 +122,8 @@ Manage how Radial Timeline reads and writes metadata.
 *   **Scene properties editor**: Enable this to customize the advanced scene properties, add optional fields, and control hover metadata icons/order.
 
 > [!NOTE]
-> *   For scene property customization: [[YAML-Frontmatter#advanced-yaml-editor]]
-> *   For a full list of keys: [[YAML-Frontmatter|Scene Properties]]
+> *   For scene property customization: [Scene Properties Editor](YAML-Frontmatter#advanced-yaml-editor)
+> *   For a full list of keys: [Scene Properties](YAML-Frontmatter)
 
 <a name="chronologue"></a>
 ### Chronologue mode settings
@@ -132,7 +132,7 @@ Configure the time-based visualization of your story.
 *   **Discontinuity gap threshold**: Controls the sensitivity of the Shift sub-mode (time gaps). When the gap between scenes exceeds this threshold, an infinity symbol appears. Default is auto-calculated (3x median gap).
 
 > [!NOTE]
-> Read more about [[Chronologue-Mode]].
+> Read more about [Chronologue Mode](Chronologue-Mode).
 
 <a name="pov"></a>
 ### Point of view
@@ -141,7 +141,7 @@ Control how narrative perspective is visualized.
 *   **Scene level YAML overrides**: You can override the global default on a per-scene basis using the `POV` YAML key.
 
 > [!NOTE]
-> See [[YAML-Frontmatter#pov-keywords]] for configuration details and supported keywords.
+> See [POV Keywords](YAML-Frontmatter#pov-keywords) for configuration details and supported keywords.
 
 <a name="planetary-time"></a>
 ### Planetary Time
@@ -151,7 +151,7 @@ Configure custom calendars for sci-fi and fantasy worlds.
 *   **Profiles**: Create and edit profiles. Define day length, year length, epoch offsets, and custom month/day names.
 
 > [!NOTE]
-> See [[Chronologue-Mode#planetary-time]] for usage details.
+> See [Planetary Time](Chronologue-Mode#planetary-time) for usage details.
 
 <a name="backdrop"></a>
 ### Backdrop & Micro-backdrops
@@ -160,7 +160,7 @@ Configure the Chronologue backdrop ring and micro-backdrop rings.
 *   **Micro backdrops**: Create micro-backdrop rings — thin colored ring segments with a title, color, and date range — to highlight eras, seasons, or historical milestones without creating full backdrop note files.
 
 > [!NOTE]
-> See [[Chronologue-Mode#backdrop-notes--micro-backdrop-rings]] for full details on both backdrop types.
+> See [Backdrop](Chronologue-Mode#backdrop-notes-and-micro-backdrop-rings) for full details on both backdrop types.
 
 <a name="progress-stage-colors"></a>
 ### Progress stage colors
@@ -180,7 +180,7 @@ Configure the Chronologue backdrop ring and micro-backdrop rings.
 Generate shareable, spoiler-safe progress graphics for social media, crowdfunding campaigns, and newsletters.
 
 > [!NOTE]
-> For detailed information about how APR works, see [[Author-Progress-Report]].
+> For detailed information about how APR works, see [Author Progress Report](Author-Progress-Report).
 
 #### Progress Tracking
 *   **Stage Tracking**: Track one stage at a time using a scene goal. Choose the stage, then set a target scene count when you want a fixed denominator for that stage. This is especially useful in Zero when you want to draft toward a known scene total.
@@ -207,7 +207,7 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 <a name="social-media-publishing"></a>
 #### Sharing & Automation
 *   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
-*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
+*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Radial Timeline View (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
 *   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/book/apr-default-manual-medium.svg`.
 *   **Auto-update embed paths**: When size or schedule changes, update default and campaign embed paths if they still match the default pattern.
 
@@ -254,12 +254,12 @@ Create multiple APR configurations for different platforms (Kickstarter, Patreon
 ## Inquiry Tab
 
 ### Inquiry
-Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for full feature documentation.
+Configure how Inquiry scans, stores, and annotates briefings. See [Inquiry](Inquiry) for full feature documentation.
 
-**Artifacts & auto-save:**
-*   **Artifact folder**: Where Inquiry briefs are stored when auto-save is enabled (default `Radial Timeline/Inquiry/Briefing`).
-*   **Embed JSON payload in Artifacts**: Includes the validated Inquiry JSON payload in the Artifact file.
-*   **Auto-save Inquiry briefs**: Save a brief automatically after each successful Inquiry run.
+**Briefings & auto-save:**
+*   **Briefing folder**: Where Inquiry markdown briefings are stored when auto-save is enabled (default `Radial Timeline/Inquiry/Briefing`).
+*   **Embed JSON payload in briefings**: Includes the validated Inquiry JSON payload in the saved briefing.
+*   **Auto-save Inquiry briefings**: Save a briefing automatically after each successful Inquiry run.
 
 **Action notes:**
 *   **Write Inquiry action notes to scenes**: Append Inquiry action notes to the target YAML field on hit scenes.
@@ -322,7 +322,7 @@ Everything you need to go from draft to finished manuscript.
 *   **Novel Manuscript** — Standard submission format for prose
 
 > [!NOTE]
-> Publishing exports are a Pro feature. See [[Publishing]] for the full guide — template catalog, the `Chapter:` field, how Parts are generated from Acts, Modern Classic setup, act epigraphs, and scene opener heading options. Pro-tier summary at [[Pro#publishing-exports]]. For the core manuscript export workflow (Markdown, outlines, index cards), see [[Core-Workflows#exporting-a-manuscript]].
+> Publishing exports are a Pro feature. See [Publishing](Publishing) for the full guide — template catalog, the `Chapter:` field, how Parts are generated from Acts, Modern Classic setup, act epigraphs, and scene opener heading options. Pro-tier summary at [Publishing Exports](Pro#publishing-exports). For the core manuscript export workflow (Markdown, outlines, index cards), see [Export Workflow](Core-Workflows#exporting-a-manuscript).
 
 ---
 
@@ -349,7 +349,7 @@ Configure the AI assistant for narrative analysis.
 *   **Log AI interactions to file**: When enabled, saves detailed JSON logs for each AI request in the AI output folder.
 
 > [!NOTE]
-> Learn how to interpret the analysis in [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]].
+> Learn how to interpret the analysis in [AI Pulse Triplet Analysis](AI-Pulse-Analysis).
 
 ---
 
@@ -383,4 +383,4 @@ Pro Mode extends Radial Timeline with advanced workflows for authors who want mo
 *   **Website Exclusives** — Template vaults and guided demonstrations
 
 > [!NOTE]
-> See [[Pro]] for full Pro feature documentation.
+> See [Pro](Pro) for full Pro feature documentation.

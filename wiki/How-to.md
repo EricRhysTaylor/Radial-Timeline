@@ -106,7 +106,7 @@ This is especially helpful after reorganizing your B/C plots — you no longer h
 
 You can filter scenes by searching for text content across multiple fields. Search requires a minimum of **3 characters**.
 
-*   **Trigger**: Use the command palette (`Cmd/Ctrl + P`) → **Radial Timeline: Search timeline**.
+*   **Trigger**: Use the command palette (`Cmd + P` on Mac, `Ctrl + P` on Windows/Linux) → **Radial Timeline: Search timeline**.
 *   **Matches**: Searches case-insensitive text in:
 
 | Field | Examples |

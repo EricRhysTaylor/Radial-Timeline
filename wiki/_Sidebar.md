@@ -6,33 +6,9 @@
     *   [Fresh Vault Onboarding](Fresh-Vault-Onboarding)
     *   [Existing Vault Onboarding](Existing-Vault-Onboarding)
     *   [Migrating from Scrivener & Other Apps](Migrating-from-Other-Apps)
-*   **Timeline Modes**
-    *   [Progress Mode](Progress-Mode)
-    *   [Narrative Mode](Narrative-Mode)
-    *   [Chronologue Mode](Chronologue-Mode)
-    *   [Gossamer Mode](Gossamer-Mode)
-*   **Workflows**
     *   [Workflow Overview](Core-Workflows)
     *   [How to](How-to)
-*   **Commands**
-    *   [Command Palette](Commands)
-    *   [Book Designer](Book-Designer)
-*   **Inquiry**
-    *   [Inquiry](Inquiry)
-*   **Publishing**
-    *   [Publishing Overview](Publishing)
-    *   [Modern Classic Setup](Publishing#setting-up-modern-classic)
-    *   [Export Workflow](Core-Workflows#exporting-a-manuscript)
-*   **Author Progress Report**
-    *   [Author Progress Report](Author-Progress-Report)
-*   **AI**
-    *   [AI Pulse Triplet Analysis](AI-Pulse-Analysis)
-    *   [Gossamer AI Evaluation](Gossamer-Mode#ai-analysis)
-*   **Pro**
-    *   [Pro](Pro)
-*   **Reference**
-    *   [Scene Properties (Core + Advanced)](YAML-Frontmatter)
-    *   [Beat Audit + Heal](Beat-Audit-Heal)
+*   **Settings**
     *   [Settings](Settings)
         *   [Core](Settings#core)
         *   [Social](Settings#social)
@@ -41,6 +17,42 @@
         *   [AI](Settings#ai)
         *   [Advanced](Settings#advanced)
         *   [PRO](Settings#pro)
+*   **Radial Timeline View**
+    *   [Overview](Radial-Timeline-View)
+    *   [Progress Mode](Progress-Mode)
+    *   [Narrative Mode](Narrative-Mode)
+    *   [Chronologue Mode](Chronologue-Mode)
+        *   [Discontinuity & Time Gaps](Chronologue-Mode#shift-sub-mode)
+        *   [Planetary Calendar](Chronologue-Mode#alt-sub-mode)
+        *   [Runtime](Chronologue-Mode#runtime-sub-mode)
+        *   [Backdrop](Chronologue-Mode#backdrop-notes-and-micro-backdrop-rings)
+    *   [Gossamer Mode](Gossamer-Mode)
+        *   [Signals](Gossamer-Mode#signals)
+        *   [Manual Entry](Gossamer-Mode#manual-entry)
+        *   [AI Analysis](Gossamer-Mode#ai-analysis)
+        *   [Story Beats Configuration](Gossamer-Mode#story-beats-configuration)
+    *   [AI Pulse Triplet Analysis](AI-Pulse-Analysis)
+*   **Inquiry View**
+    *   [Overview](Inquiry-View)
+    *   [Inquiry](Inquiry)
+        *   [Overview](Inquiry#overview)
+        *   [Inquiry Glyph](Inquiry#inquiry-glyph)
+        *   [Minimap](Inquiry#minimap)
+        *   [Corpus Manager](Inquiry#corpus-manager)
+        *   [Briefing Manager](Inquiry#briefing-manager)
+        *   [AI Engine Popover](Inquiry#ai-engine-popover)
+        *   [Running an Inquiry](Inquiry#running-an-inquiry)
+        *   [Briefings](Inquiry#briefings)
+        *   [Briefing Articles](Inquiry#briefing-articles)
+        *   [Action Notes](Inquiry#action-notes)
+        *   [Prompts](Inquiry#prompts)
+        *   [Scan Folders & Class Scope](Inquiry#scan-folders-and-class-scope)
+*   **Commands**
+    *   [Command Palette](Commands)
+    *   [Book Designer](Book-Designer)
+*   **Reference**
+    *   [Scene Properties (Core + Advanced)](YAML-Frontmatter)
+    *   [Beat Audit + Heal](Beat-Audit-Heal)
 *   **Support & Legal**
     *   [FAQ](FAQ)
     *   [Acknowledgments](Acknowledgments)

@@ -1,10 +1,13 @@
-Inquiry is one of two [[Views]] in Radial Timeline — a dedicated visual interface for corpus-level story analysis. While the Timeline view and its [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] evaluate individual scenes in triplets, Inquiry takes a higher-altitude perspective — scanning your entire manuscript (or multi-book saga) and world building to surface structural signals, loose ends, continuity issues, inconsistent or conflicting characterization and more.
+# Inquiry
+
+Inquiry is the main operating guide for the Inquiry View. While the [Radial Timeline View](Radial-Timeline-View) focuses on scene-level work, Inquiry takes a higher-altitude perspective — scanning your manuscript corpus and worldbuilding to surface structural signals, loose ends, continuity issues, and pressure gaps across a book or saga.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/inquiry-view.png" alt="The Inquiry visual interface with Flow and Depth rings" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Inquiry view — visual glyph with Flow and Depth analysis rings</div>
 </div>
 
+<a name="overview"></a>
 ## Overview
 
 Inquiry sends your manuscript corpus to an AI provider and asks structured questions organized into three narrative zones. The AI returns findings with severity ratings, confidence levels, and scene citations that are visualized in the Inquiry glyph.
@@ -13,7 +16,7 @@ Inquiry sends your manuscript corpus to an AI provider and asks structured quest
 *   `Open Inquiry` — Opens the Inquiry view
 *   `Inquiry Omnibus Pass` — Runs all enabled questions in a single batch
 
-**Settings**: [[Settings#inquiry]]
+**Settings**: [Inquiry settings](Settings#inquiry)
 
 ---
 
@@ -45,6 +48,7 @@ The Inquiry glyph visualizes both scores as concentric rings, giving you a snaps
 
 ---
 
+<a name="inquiry-glyph"></a>
 ## The Inquiry Glyph
 
 The visual interface centers on a radial glyph:
@@ -56,8 +60,51 @@ The visual interface centers on a radial glyph:
 
 Click zone segments or findings to drill into specific analysis results.
 
+<a name="minimap"></a>
+### Minimap
+
+The Minimap gives you a compact view of where findings land in the scanned corpus. It helps you see clustering, sparse coverage, and the relationship between current findings and the underlying manuscript.
+
+Use the Minimap to:
+
+*   spot where issues concentrate
+*   jump from a finding back to source material
+*   compare the currently scanned corpus against the active result
+
 ---
 
+<a name="corpus-manager"></a>
+## Corpus Manager
+
+Corpus Manager is the in-view scope manager for Inquiry. It lets you control which material participates in the current run and apply corpus overrides without leaving the view.
+
+Use Corpus Manager to:
+
+*   switch between **Book** and **Saga** scope
+*   apply in-view corpus overrides
+*   narrow the active material before a single question or Omnibus run
+
+Any Corpus Manager overrides applied in the view affect the current Inquiry session and are respected by Omnibus runs.
+
+---
+
+<a name="ai-engine-popover"></a>
+## AI Engine Popover
+
+The AI Engine Popover shows the current Inquiry engine context for the active run.
+
+Use it to check:
+
+*   which AI engine is currently resolved
+*   readiness and run constraints
+*   request-size and corpus context
+*   whether you need to open **Settings → AI** before running
+
+Inquiry works with all supported AI providers, including Anthropic, OpenAI, Gemini, and Local LLM configurations.
+
+---
+
+<a name="running-an-inquiry"></a>
 ## Running an Inquiry
 
 ### Single Question
@@ -86,7 +133,7 @@ Inquiry builds a "corpus" from your manuscript files before sending them to the 
 | **Summary** | `Summary` field only | Lower token usage while preserving high-level context |
 | **None** | Excluded entirely | Reference notes, worldbuilding docs you want to skip |
 
-Configure per-class material modes in [[Settings#inquiry-sources]].
+Configure per-class material modes in [Inquiry sources](Settings#inquiry-sources).
 
 ### Corpus Content (CC) Thresholds
 
@@ -99,7 +146,7 @@ The Corpus system classifies notes by word count to help you spot thin content:
 | Medium | ≥ 300 words |
 | Substantive | ≥ 1,000 words |
 
-When **Highlight completed docs with low substance** is enabled, completed notes that remain Empty or Sketchy are flagged. Adjust thresholds in [[Settings#inquiry-corpus]].
+When **Highlight completed docs with low substance** is enabled, completed notes that remain Empty or Sketchy are flagged. Adjust thresholds in [Corpus (CC)](Settings#inquiry-corpus).
 
 ---
 
@@ -123,24 +170,48 @@ Each finding includes:
 
 ---
 
-## Briefings & Artifacts
+<a name="briefing-manager"></a>
+## Briefing Manager
 
-*   **Auto-save**: When enabled, Inquiry saves a brief after each successful run to your configured Artifact folder (default `Radial Timeline/Inquiry/Briefing`).
-*   **Embed JSON payload**: Optionally includes the raw validated JSON response in the artifact file.
-*   **Inquire session history**: This does not affect Inquiry Briefs. It only controls Inquiry View rehydration via the Session Manager Popover, bounded by your "Remember up to" setting (max 100 sessions).
+Briefing Manager is the Inquiry popover for recent briefing sessions and related actions.
+
+Use Briefing Manager to:
+
+*   reopen recent Inquiry sessions
+*   clear or reset corpus-related state
+*   purge Inquiry-generated action notes when needed
+*   review saved briefing history tied to the current view context
+
+**Inquire session history** does not affect the content of saved briefings. It controls Inquiry View rehydration via the Session Manager Popover, bounded by your **Remember up to** setting.
+
+<a name="briefings"></a>
+## Briefings
+
+Inquiry can save results as markdown briefings for later review.
+
+*   **Auto-save**: When enabled, Inquiry saves a markdown briefing after each successful run.
+*   **Folder**: Briefings are stored in your configured Inquiry briefing folder (default `Radial Timeline/Inquiry/Briefing`).
+*   **Embed JSON payload**: Optionally includes the validated Inquiry JSON payload in the saved briefing.
+
+<a name="briefing-articles"></a>
+## Briefing Articles
+
+Inquiry can also produce **Briefing Articles** — HTML-formatted presentation output for reading or sharing in a more polished layout than the markdown briefing.
 
 ---
 
+<a name="action-notes"></a>
 ## Action Notes
 
 Inquiry can write findings directly into your scene frontmatter:
 
-*   **Enable**: Toggle **Write Inquiry action notes to scenes** in [[Settings#inquiry]].
+*   **Enable**: Toggle **Write Inquiry action notes to scenes** in [Inquiry settings](Settings#inquiry).
 *   **Target field**: Findings are appended to the configured YAML field (default `Pending Edits`).
 *   **Purge**: Use the purge function in the Inquiry view to remove all Inquiry-generated action notes from scenes.
 
 ---
 
+<a name="prompts"></a>
 ## Prompts
 
 Inquiry comes with built-in prompt questions for each zone. You can also add custom questions:
@@ -151,10 +222,11 @@ Inquiry comes with built-in prompt questions for each zone. You can also add cus
 *   Toggle individual questions on/off.
 *   Reset to built-in defaults using the restore button.
 
-Configure prompts in [[Settings#inquiry-prompts]].
+Configure prompts in [Inquiry prompts](Settings#inquiry-prompts).
 
 ---
 
+<a name="scan-folders-and-class-scope"></a>
 ## Scan Folders & Class Scope
 
 Control which vault content Inquiry can access:
@@ -163,7 +235,7 @@ Control which vault content Inquiry can access:
 *   **Class scope**: Filter which YAML `Class` values are scanned. Use `/` to allow all classes.
 *   **Presets**: Choose Default (recommended), Light (fast, lower token usage), or Deep (comprehensive, higher token usage).
 
-Configure sources in [[Settings#inquiry-sources]].
+Configure sources in [Inquiry sources](Settings#inquiry-sources).
 
 ---
 
@@ -172,5 +244,5 @@ Configure sources in [[Settings#inquiry-sources]].
 *   Start with **Book** scope and a single question to calibrate before running an Omnibus Pass.
 *   Use **Summary** material mode for large manuscripts to reduce token usage while maintaining context.
 *   Review the **token estimate** indicator before running — amber and red tiers indicate high token consumption.
-*   Combine Inquiry findings with [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] for both macro and micro-level feedback.
-*   Inquiry works with all supported AI providers (Anthropic, OpenAI, Gemini, Local LLM).
+*   Combine Inquiry findings with [AI Pulse Triplet Analysis](AI-Pulse-Analysis) for both macro and micro-level feedback.
+*   Inquiry works best when you calibrate scope, corpus, and prompt count before running larger passes.

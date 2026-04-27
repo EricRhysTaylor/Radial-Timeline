@@ -1,37 +1,30 @@
-Radial Timeline registers two co-equal **views** in Obsidian, each with its own tab in the workspace. You can have both open side by side or switch between them like any Obsidian pane.
+# Views
 
-## Timeline View
+Radial Timeline has two co-equal views in Obsidian. You can open both as separate tabs and move between them depending on whether you are working scene-by-scene or evaluating the manuscript at a higher level.
 
-The Timeline view is the primary visual workspace. It renders your manuscript as a radial layout and supports four **modes** that each answer a different creative question. See the overview below and [[Timeline Modes]] for full details.
+## Radial Timeline View
+
+The Radial Timeline View is the primary visual workspace for scenes, structure, chronology, and beat-level analysis.
 
 **Open**: Command palette → **Radial Timeline: Open**, or click the shell icon in the ribbon.
 
+**Full guide**: [Radial Timeline View](Radial-Timeline-View)
+
 ## Inquiry View
 
-The Inquiry view is a dedicated analysis workspace for corpus-level story evaluation. Instead of looking at individual scenes, Inquiry scans your entire manuscript (or multi-book saga) and uses AI to surface structural signals, loose ends, continuity issues, and narrative gaps.
-
-Inquiry organizes its analysis into three narrative zones (Setup, Pressure, Payoff) and produces two complementary scores — **Flow** (narrative momentum) and **Depth** (thematic substance) — visualized in a radial glyph. See [[Inquiry]] for full details.
+The Inquiry View is the manuscript-level analysis workspace. It focuses on corpus scope, briefings, citations, and higher-level structural questions across a book or saga.
 
 **Open**: Command palette → **Radial Timeline: Open Inquiry**, or click the waves icon in the ribbon.
 
-## Timeline Modes (Overview)
-
-| Mode | Key | Focus |
-| :--- | :--- | :--- |
-| **Progress** | `1` | Writing status and revision stages — Todo/Working/Overdue, progress-stage colors |
-| **Narrative** | `2` | Manuscript reading order — subplot colors, story beats, scene reordering |
-| **Chronologue** | `3` | Story-world chronology — when events happen, elapsed time, duration arcs |
-| **Gossamer** | `4` | Beat-level scoring — Momentum, Tension, Activity, Interiority, and saved runs |
-
-Chronologue mode also provides three **sub-modes** (Shift, Alt, Runtime) for deeper temporal analysis. See [[Timeline Modes]] for full details.
+**Full guide**: [Inquiry View](Inquiry-View)
 
 ## Working with Both Views
 
 The two views complement each other at different altitudes:
 
-*   **Timeline view** — Scene-level work: writing, ordering, tracking status, and running [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] on individual scenes.
-*   **Inquiry view** — Manuscript-level analysis: evaluating how scenes, subplots, and books work together as a system.
+*   **Radial Timeline View** — Scene-level work: writing, ordering, tracking status, chronology, beats, and [AI Pulse Triplet Analysis](AI-Pulse-Analysis).
+*   **Inquiry View** — Manuscript-level work: corpus controls, briefings, scene citations, and structural analysis across one book or a saga.
 
-A typical workflow might be: draft and arrange scenes in the Timeline view, then open Inquiry to check the structural health of your manuscript. Findings from Inquiry can write action notes directly into your scene frontmatter, creating a feedback loop between the two views.
+A typical workflow might be: draft and arrange scenes in the Radial Timeline View, then open Inquiry View to check the structural health of your manuscript.
 
-Both views share the same AI provider configuration (Settings → AI) and the same source path, so they always analyze the same manuscript.
+Both views share the same AI provider configuration (**Settings → AI**) and the same source path, so they always analyze the same manuscript.

@@ -17,7 +17,7 @@ Use it when you want a clean starting structure without building dozens of notes
 ## Open Book Designer
 
 You can open Book Designer in two ways:
-1.  **Command Palette**: Open the Command Palette (`Cmd/Ctrl + P`) and search for **`Radial Timeline: Book designer`**.
+1.  **Command Palette**: Open the Command Palette (`Cmd + P` on Mac, `Ctrl + P` on Windows/Linux) and search for **`Radial Timeline: Book designer`**.
 2.  **Welcome Screen**: If your timeline is empty, click the **Book Designer** button on the welcome screen.
 
 <div style="text-align: center; margin: 20px 0;">
@@ -67,7 +67,7 @@ If your writing methodology uses fields beyond the built-in keys (for example St
 3.  Add your custom keys to the list.
 4.  In Book Designer, select **Advanced properties**.
 
-> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in properties. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter|Scene Properties]] for the full list of built-in fields.
+> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in properties. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [Scene Properties](YAML-Frontmatter) for the full list of built-in fields.
 
 ## Custom Beat Systems
 

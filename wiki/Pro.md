@@ -42,7 +42,7 @@ Runtime Estimation analyzes your scenes to calculate realistic duration estimate
 - `(runtime: 3m)`
 - `(allow 5 minutes)` — for demos, podcasts, presentations
 
-> **Settings**: [[Settings#runtime-estimation]]
+> **Settings**: [Runtime estimation](Settings#runtime-estimation)
 
 ---
 
@@ -62,8 +62,8 @@ Export your manuscript in professional formats using customizable Pandoc templat
 - Custom LaTeX templates per format
 - Output to your export folder alongside analysis files
 
-> **Full guide**: [[Publishing]] — template catalog, Modern Classic setup, Chapters, Parts, act epigraphs.
-> **Settings**: [[Settings#publishing]]
+> **Full guide**: [Publishing](Publishing) — template catalog, Modern Classic setup, Chapters, Parts, act epigraphs.
+> **Settings**: [Publishing](Settings#publishing)
 
 ---
 
@@ -80,7 +80,7 @@ Campaign Manager lets you manage multiple APR configurations for different platf
 - **Manual reveal options** - Toggle acts, subplots, status colors, and percent display when Teaser Reveal is disabled
 - **Teaser Reveal presets** - Slow (15/40/70), Standard (10/30/60), Fast (5/20/45), or custom thresholds
 
-> **Settings**: [[Settings#social]]
+> **Settings**: [Social](Settings#social)
 
 ---
 
@@ -98,11 +98,11 @@ The Runtime sub-mode is one of three sub-modes within Chronologue mode. It repla
 
 **Usage:**
 1. Enable Runtime Estimation in Settings → PRO
-2. Switch to Chronologue mode (keyboard **3**)
-3. Click the **RT** button to enter the Runtime sub-mode
+2. Switch to Chronologue mode (`3`)
+3. Click the `RT` button to enter the Runtime sub-mode
 4. Adjust the cap slider to tune visualization
 
-> **Sub-mode details**: [[Chronologue-Mode#runtime-mode-pro]]
+> **Sub-mode details**: [Runtime](Chronologue-Mode#runtime-mode-pro)
 
 ---
 

@@ -128,7 +128,7 @@ Backdrop notes can be extended using the **Backdrop properties editor** in Setti
 *   **Beat properties editor**: Customize beat note fields and beat hover metadata.
 *   **Custom Metadata Mapping**: Map your existing keys to Radial Timeline keys without rewriting your files.
 
-See [[Settings#yaml-templates]] and [[Settings#story-beats]] for configuration details.
+See [Scene properties & remapping](Settings#yaml-templates) and [Story beats system](Settings#story-beats) for configuration details.
 
 ## Custom Metadata Mapping
 

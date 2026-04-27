@@ -10,12 +10,12 @@
   </p>
 </a>
 
-Chronologue is one of four modes within the Timeline view. It is essential for constructing and visualizing the chronological backbone of your story — particularly valuable for non-linear narratives, mysteries, thrillers, or any story where **when events happen** differs from **when you reveal them**. The palette matches Narrative mode (subplot colors only) so the timing comparisons stay clean while Progress mode retains the Todo/Working/Overdue and progress-stage overlays.
+Chronologue is one of four modes within the Radial Timeline View. It is essential for constructing and visualizing the chronological backbone of your story — particularly valuable for non-linear narratives, mysteries, thrillers, or any story where **when events happen** differs from **when you reveal them**. The palette matches Narrative mode (subplot colors only) so the timing comparisons stay clean while Progress mode retains the Todo/Working/Overdue and progress-stage overlays.
 
 ### Core Workflow
 1.  **Add chronological metadata**: As you create scenes, fill in the `When` field (YYYY-MM-DD HH:MM) and `Duration` field (e.g., "2 hours", "3 days", "1 week").
-2.  **Switch to Chronologue mode** (keyboard **3** or top-right navigation): Scenes rearrange to show story-world event order across the full 360° circle.
-3.  **Activate the Shift sub-mode** (keyboard **Shift** or click shift button or use Caps Lock): See the bones of your story's temporal structure for all scenes and subplots.
+2.  **Switch to Chronologue mode** (press `3` or use the top-right navigation): Scenes rearrange to show story-world event order across the full 360° circle.
+3.  **Activate the Shift sub-mode** (press `Shift`, use `Caps Lock`, or click the Shift button): See the bones of your story's temporal structure for all scenes and subplots.
 4.  **Compare elapsed time**: In the Shift sub-mode, click two scenes to see the elapsed story-time between them with the duration arc. Keep clicking more scenes as needed.
 5.  **Analyze time gaps**: Also in the Shift sub-mode, discontinuities (large time jumps) appear with an infinity symbol — identify gaps that might need bridging scenes.
 
@@ -30,8 +30,8 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 *   Timeline consistency problems
 *   Missing transition scenes
 
-**Mode**: Chronologue (key **3**)
-**Sub-modes**: Shift (key **Shift**), Alt (key **Alt**), Runtime ✦ (click **RT**)
+**Mode**: Chronologue (key `3`)
+**Sub-modes**: Shift (key `Shift`), Alt (key `Alt`), Runtime ✦ (click `RT`)
 **Settings**: Duration arc cap, Discontinuity gap threshold (Chronologue section)
 
 <div style="text-align: center; margin: 20px 0;">
@@ -50,8 +50,9 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 
 Chronologue mode includes three sub-modes, each rendering a distinct wireframe overlay. Only one sub-mode can be active at a time.
 
+<a name="shift-sub-mode"></a>
 ### Shift sub-mode (bones view)
-- Toggle with **Shift** (or Caps Lock) to strip the overlays and see the raw chronological scaffold.
+- Toggle with `Shift` (or `Caps Lock`) to strip the overlays and see the raw chronological scaffold.
 - Gray wireframe. Click any two scenes to measure elapsed story time; keep clicking to update the arc.
 - Discontinuities (infinity gaps) stay visible so you can spot missing bridges fast.
 
@@ -60,9 +61,10 @@ Chronologue mode includes three sub-modes, each rendering a distinct wireframe o
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Shift sub-mode — gray wireframe view</div>
 </div>
 
+<a name="alt-sub-mode"></a>
 ### Alt sub-mode (alien/planetary overlay)
-- Use **Alt** to enter the planetary wireframe for your active local time profile.
-- Alt+Shift mirrors the Shift sub-mode but tinted red for alien time — great for comparing Earth vs local calendars.
+- Use `Alt` to enter the planetary wireframe for your active local time profile.
+- `Alt + Shift` mirrors the Shift sub-mode but tinted red for alien time — great for comparing Earth vs local calendars.
 - All scene timings still derive from Earth timestamps; the overlay is a translation layer.
 
 <div style="text-align: center; margin: 20px 0;">
@@ -70,12 +72,13 @@ Chronologue mode includes three sub-modes, each rendering a distinct wireframe o
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Alt sub-mode — planetary wireframe overlay</div>
 </div>
 
+<a name="runtime-sub-mode"></a>
 <a name="runtime-mode-pro"></a>
 ### Runtime sub-mode ✦ Pro
 
 The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** — showing how long each scene takes to read or perform rather than how much story time passes.
 
-- Toggle with the **RT** button in Chronologue mode (requires Runtime Estimation enabled in Settings → PRO)
+- Toggle with the `RT` button in Chronologue mode (requires Runtime Estimation enabled in Settings → PRO)
 - Blue wireframe overlay distinguishes it from Shift (gray) and Alt (red)
 - Duration arcs scale to show relative scene runtime — longer scenes have larger arcs
 - Use the **runtime cap slider** to adjust maximum arc size, emphasizing shorter or longer scenes
@@ -94,15 +97,16 @@ The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** 
 **How to use:**
 1. Enable Runtime Estimation in **Settings → PRO**
 2. Configure a runtime profile matching your content type (Novel or Screenplay)
-3. Switch to Chronologue mode (keyboard **3**)
-4. Click the **RT** button to enter the Runtime sub-mode
+3. Switch to Chronologue mode (`3`)
+4. Click the `RT` button to enter the Runtime sub-mode
 5. Adjust the cap slider to tune the visualization
 
 > [!NOTE]
-> Runtime estimates appear in scene hover tooltips when Runtime Estimation is enabled. See [[Settings#runtime-estimation]] for configuration and [[Pro]] for full Pro documentation.
+> Runtime estimates appear in scene hover tooltips when Runtime Estimation is enabled. See [Settings → Runtime estimation](Settings#runtime-estimation) for configuration and [Pro](Pro) for full Pro documentation.
 
 ---
 
+<a name="backdrop-notes-and-micro-backdrop-rings"></a>
 ## Backdrop Notes & Micro-backdrop Rings
 
 Chronologue mode offers two ways to layer contextual information behind your scenes.
@@ -126,6 +130,7 @@ For lighter-weight context that doesn't need its own note file, **micro-backdrop
 
 ---
 
+<a name="planetary-time"></a>
 ### Planetary Time
 
 For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** system. While Radial Timeline requires Earth time (Gregorian calendar) for its internal logic and physics, you can create custom "Local Time" profiles to translate these dates into your world's calendar.
@@ -138,13 +143,13 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
     *   **Epoch Offset**: Shift the start date of your calendar relative to Earth's Unix Epoch (1970-01-01).
     *   **Custom Labels**: Define custom names for months and days of the week.
 *   **Synopsis Hover**: In Chronologue mode, hover over a scene to see its date converted to your active planetary profile.
-*   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time calculator"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
+*   **Calculator**: Use the command palette (`Cmd + P` on Mac, `Ctrl + P` on Windows/Linux) and search for **"Radial Timeline: Planetary time calculator"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/planetary-calculator.png" alt="Planetary Time calculator converting Earth dates to alien calendars" style="width: 400px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time calculator — convert Earth dates to your world's calendar</div>
 </div>
-*   **Alt sub-mode**: The Alt+Shift red-tinted wireframe reveals the alien timeline and elapsed time between scenes — a mirror of the standard Shift sub-mode for your alien location.
+*   **Alt sub-mode**: The `Alt + Shift` red-tinted wireframe reveals the alien timeline and elapsed time between scenes — a mirror of the standard Shift sub-mode for your alien location.
 *   **Active profile**: The selected profile in Settings controls which calendar is used for hover and conversion outputs.
 
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.

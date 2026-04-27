@@ -36,4 +36,4 @@ Obsidian’s File Explorer can be sorted by name, modified time, or created time
 Obsidian stores note metadata in properties (YAML frontmatter). Radial Timeline uses these fields for scene order, dates, subplots, and more. Unlike Scrivener, this metadata is visible at the top of the note and can be edited directly.
 
 *   [Properties](https://help.obsidian.md/properties)
-*   [[YAML-Frontmatter|Scene Properties (Core + Advanced)]]
+*   [Scene Properties (Core + Advanced)](YAML-Frontmatter)

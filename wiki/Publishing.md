@@ -9,7 +9,7 @@ This page covers:
 - Act epigraphs, scene opener headings
 - Exporting
 
-> **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [[Core-Workflows#setting-up-pandoc-export|Setting Up Pandoc Export]] for the one-time install.
+> **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [Setting Up Pandoc Export](Core-Workflows#setting-up-pandoc-export) for the one-time install.
 
 ---
 
@@ -136,7 +136,7 @@ If you used **Book Designer** to scaffold your manuscript, this is already done.
 - Each scene has a `Beat:` field pointing to a beat name.
 - Each beat note has an `Act:` field (`1`, `2`, `3`, …).
 
-See [[YAML-Frontmatter|Scene Properties]] for the full frontmatter schema.
+See [Scene Properties](YAML-Frontmatter) for the full frontmatter schema.
 
 ### Step 4 — Add `Chapter:` markers
 
@@ -214,7 +214,7 @@ The export modal lets you:
 
 Files land in `Radial Timeline/Export/` unless you've set a custom export folder.
 
-For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX issues), see [[Core-Workflows#exporting-a-manuscript|Export Workflow]].
+For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX issues), see [Export Workflow](Core-Workflows#exporting-a-manuscript).
 
 ---
 
@@ -224,7 +224,7 @@ For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX is
 
 **Parts don't appear in my Modern Classic export.** Parts only emit when scenes cross an act boundary. Check that your scenes have `Beat:` fields, those beats have `Act:` fields, and your Act count is >1.
 
-**Chapter numbering is wrong.** The exporter numbers chapters by the order `Chapter:` values appear in the timeline. If a `Chapter:` value appears out of order, renumbering will reflect that. Check narrative order via [[Timeline-Modes]].
+**Chapter numbering is wrong.** The exporter numbers chapters by the order `Chapter:` values appear in the timeline. If a `Chapter:` value appears out of order, renumbering will reflect that. Check narrative order via [Timeline Modes](Timeline-Modes).
 
 **Duplicated template looks different from the original.** If you're on an older plugin build, duplicates lost their preview card due to a bug. Update to the latest build — duplicates now render with the same preview card as the original and can be edited in place.
 

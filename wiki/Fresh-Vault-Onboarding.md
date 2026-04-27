@@ -7,7 +7,7 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 - Single vault with a dedicated Manuscript folder. Keeps research notes separate.
 - Multi-book vault with one folder per book. Best when you are planning a series.
 
-This page covers the fresh vault flow. If you already have scenes, jump to [[Existing-Vault-Onboarding|Existing Vault Onboarding]].
+This page covers the fresh vault flow. If you already have scenes, jump to [Existing Vault Onboarding](Existing-Vault-Onboarding).
 
 > **YAML (friendly definition)**: YAML does not refer to camels. It stands for **Yet Another Markup Language**. It is human-readable, designed to help, and gives you full control over the information you track in each note (scene, beat, backdrop, etc). It can feel intimidating at first, but most writers get comfortable quickly and appreciate the power it provides.
 

@@ -10,7 +10,7 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 
 **Timeline mode**: Gossamer (key **4**)
 **Command**: `Gossamer score manager`
-**Settings**: [[Settings#story-beats|Story beats system]]
+**Settings**: [Story beats system](Settings#story-beats)
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400; max-width: 100%;" />
@@ -33,6 +33,7 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual entry for the active signal</div>
 </div>
 
+<a name="signals"></a>
 ## Signals
 
 *   **Momentum**: How strongly the story pulls the reader toward what happens next.
@@ -40,14 +41,17 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 *   **Activity**: How much is physically or visibly happening on the page.
 *   **Interiority**: How intense the character's inner experience is on the page.
 
+<a name="manual-entry"></a>
 ## Manual Entry
 
 Use **Gossamer score manager** to enter scores for the active signal. This is a manual workflow by design — you can score purely by your own judgment, or use an external AI tool to help draft scores and justifications, then paste those results into the modal.
 
+<a name="ai-analysis"></a>
 ## AI Analysis
 
 Use **Gossamer analysis** to run the built-in AI evaluation for the active signal. The AI run intentionally **does not receive ideal range guidance** in its payload/instructions, so the result is a fresh read rather than a range-constrained score.
 
+<a name="story-beats-configuration"></a>
 ## Story Beats Configuration
 
 You can configure the underlying system that powers Gossamer Mode in **Settings → Story beats system**.

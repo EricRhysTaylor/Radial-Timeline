@@ -17,12 +17,12 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Open** | Opens the main Timeline view. | [[Home#getting-started]] |
-| **Search timeline** | Opens the search bar in the Timeline view to filter scenes by text across multiple fields. | [[How-to#search]] |
-| **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [[How-to#manage-subplots-in-bulk]] |
+| **Open** | Opens the main Radial Timeline View. | [Radial Timeline View](Radial-Timeline-View) |
+| **Search timeline** | Opens the search bar in the Radial Timeline View to filter scenes by text across multiple fields. | [Search](How-to#search) |
+| **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [Manage Subplots in Bulk](How-to#manage-subplots-in-bulk) |
 | **Book designer** | Opens Book Designer to generate a manuscript set with acts, subplots, and beats. | [Book Designer](Book-Designer) |
 | **Timeline order** | Opens the Timeline Repair wizard to fix chronological ordering, sync patterns, and repair frontmatter. | — |
-| **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [[Chronologue Mode#planetary-time]] |
+| **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [Planetary Time](Chronologue-Mode#planetary-time) |
 
 ### Scene Creation
 
@@ -40,25 +40,25 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Scene pulse analysis (manuscript order)** | Runs AI analysis on all scenes sequentially in narrative order. Requires AI features enabled. | [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] |
-| **Scene pulse analysis (subplot order)** | Runs AI analysis on scenes within a selected subplot. Requires AI features enabled. | [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] |
-| **Summary refresh** | Generates AI summaries for Inquiry (target length set in settings, default ≈200–300 words) with optional Synopsis updates for hovers. Requires AI features enabled. | [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] |
-| **Gossamer score manager** | Opens the score entry modal for manual Gossamer scoring on the active signal. | [[Gossamer-Mode#manual-entry|Gossamer Mode]] |
-| **Gossamer analysis** | Runs AI evaluation for the active Gossamer signal. Requires AI features enabled. | [[Gossamer-Mode#ai-analysis|Gossamer Mode]] |
+| **Scene pulse analysis (manuscript order)** | Runs AI analysis on all scenes sequentially in narrative order. Requires AI features enabled. | [AI Pulse Triplet Analysis](AI-Pulse-Analysis) |
+| **Scene pulse analysis (subplot order)** | Runs AI analysis on scenes within a selected subplot. Requires AI features enabled. | [AI Pulse Triplet Analysis](AI-Pulse-Analysis) |
+| **Summary refresh** | Generates AI summaries for Inquiry (target length set in settings, default ≈200–300 words) with optional Synopsis updates for hovers. Requires AI features enabled. | [AI Pulse Triplet Analysis](AI-Pulse-Analysis) |
+| **Gossamer score manager** | Opens the score entry modal for manual Gossamer scoring on the active signal. | [Manual Entry](Gossamer-Mode#manual-entry) |
+| **Gossamer analysis** | Runs AI evaluation for the active Gossamer signal. Requires AI features enabled. | [AI Analysis](Gossamer-Mode#ai-analysis) |
 
 ### Inquiry
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Open Inquiry** | Opens the Inquiry view — the second of two views in Radial Timeline — for corpus-level story analysis. | [[Inquiry]] |
-| **Inquiry Omnibus Pass** | Runs all enabled Inquiry questions across configured scopes in a single batch. | [[Inquiry]] |
+| **Open Inquiry** | Opens the Inquiry View for corpus-level story analysis. | [Inquiry View](Inquiry-View) |
+| **Inquiry Omnibus Pass** | Runs all enabled Inquiry questions across configured scopes in a single batch. | [Inquiry](Inquiry) |
 
 ### Pro & Social
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Runtime estimator** | Opens the runtime estimation modal for screenplay, audiobook, or novel duration analysis. Requires Pro. | [[Pro#runtime-estimation]] |
-| **Author progress report** | Opens the Author Progress Report modal for generating shareable progress graphics. | [[Author Progress Report]] |
+| **Runtime estimator** | Opens the runtime estimation modal for screenplay, audiobook, or novel duration analysis. Requires Pro. | [Runtime Estimation](Pro#runtime-estimation) |
+| **Author progress report** | Opens the Author Progress Report modal for generating shareable progress graphics. | [Author Progress Report](Author-Progress-Report) |
 
 ## Conditional Commands
 
