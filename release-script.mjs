@@ -421,9 +421,12 @@ async function performBuildAndUpload(version, isDraft = false) {
 
     // 3. Verify (build + checks)
     runCommand("npm run verify", "Verifying release (build + checks)");
+
+    // 4. Build release-only assets with beta commands removed.
+    runCommand("RT_RELEASE_BUILD=1 node esbuild.config.mjs production", "Building release-gated assets");
     injectEmbeddedFontsIntoReleaseCss();
 
-    // 4. Upload Assets
+    // 5. Upload Assets
     console.log(`\n📤 Uploading assets to release ${version}...`);
     const assets = "release/main.js release/manifest.json release/styles.css";
     runCommand(`gh release upload ${version} ${assets} --clobber`, "Uploading assets", false, true);

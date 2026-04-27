@@ -14,6 +14,7 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = process.argv[2] === "production";
 const isCI = process.env.CI === 'true';
+const isReleaseBuild = process.env.RT_RELEASE_BUILD === '1';
 
 // --- Read README content --- START ---
 const readmePath = path.resolve('README.md'); // Get absolute path to README
@@ -71,6 +72,8 @@ function verifyWritableDir(dir) {
 // Use a relative output directory when running in CI
 if (isCI) {
 	destDirs = [{ path: "./build", name: "build" }];
+} else if (isReleaseBuild) {
+	destDirs = [{ path: "./release", name: "release" }];
 } else {
 	// Local development paths
 	destDirs = [
@@ -216,7 +219,8 @@ const context = await esbuild.context({
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
 		// 'EMBEDDED_RELEASE_NOTES': // REMOVED: Managed via direct import in code
 		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development'),
-		'__RT_DEV__': String(!prod)  // false for production, true for dev
+		'__RT_DEV__': String(!prod),  // false for production, true for dev
+		'__RT_RELEASE__': String(isReleaseBuild)
 	}
 });
 

@@ -89,13 +89,15 @@ export class CommandRegistrar {
                 this.plugin.getInquiryService().activateView();
             },
         });
-        this.plugin.addCommand({
-            id: 'inquiry-omnibus-pass',
-            name: t('commands.inquiryOmnibusPass'),
-            callback: async () => {
-                await this.plugin.getInquiryService().runOmnibusPass();
-            },
-        });
+        if (!__RT_RELEASE__) {
+            this.plugin.addCommand({
+                id: 'inquiry-omnibus-pass',
+                name: t('commands.inquiryOmnibusPass'),
+                callback: async () => {
+                    await this.plugin.getInquiryService().runOmnibusPass();
+                },
+            });
+        }
 
         this.plugin.addCommand({
             id: 'search-timeline',
@@ -129,21 +131,23 @@ export class CommandRegistrar {
             }
         });
 
-        this.plugin.addCommand({
-            id: 'timeline-order',
-            name: t('commands.timelineOrder'),
-            callback: () => {
-                new TimelineRepairModal(this.app, this.plugin).open();
-            }
-        });
+        if (!__RT_RELEASE__) {
+            this.plugin.addCommand({
+                id: 'timeline-order',
+                name: t('commands.timelineOrder'),
+                callback: () => {
+                    new TimelineRepairModal(this.app, this.plugin).open();
+                }
+            });
 
-        this.plugin.addCommand({
-            id: 'timeline-audit',
-            name: t('commands.timelineAudit'),
-            callback: () => {
-                new TimelineAuditModal(this.app, this.plugin).open();
-            }
-        });
+            this.plugin.addCommand({
+                id: 'timeline-audit',
+                name: t('commands.timelineAudit'),
+                callback: () => {
+                    new TimelineAuditModal(this.app, this.plugin).open();
+                }
+            });
+        }
 
         this.plugin.addCommand({
             id: 'manuscript-export',

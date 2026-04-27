@@ -225,7 +225,7 @@ export class TimelineRepairModal extends Modal {
 
     private buildConfigBadgeText(): string {
         const scenesWithWhen = this.scenes.filter(s => s.when instanceof Date).length;
-        return `${t('timelineRepairModal.config.badge')}: ${this.scenes.length} scenes • ${scenesWithWhen} When dates`;
+        return `Beta · ${t('timelineRepairModal.config.badge')}: ${this.scenes.length} scenes • ${scenesWithWhen} When dates`;
     }
 
     // ========================================================================

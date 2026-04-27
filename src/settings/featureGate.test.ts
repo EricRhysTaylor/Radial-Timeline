@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasProFeatureAccess } from './featureGate';
+import { areBetaCommandsVisible, hasProFeatureAccess } from './featureGate';
 
 describe('hasProFeatureAccess', () => {
     it('uses Pro entitlement as the single feature access source', () => {
@@ -26,5 +26,15 @@ describe('hasProFeatureAccess', () => {
                 proAccessEnabled: false
             }
         } as any)).toBe(false);
+    });
+});
+
+describe('areBetaCommandsVisible', () => {
+    it('keeps beta commands visible outside release builds', () => {
+        expect(areBetaCommandsVisible({ releaseBuild: false })).toBe(true);
+    });
+
+    it('hides beta commands in release builds', () => {
+        expect(areBetaCommandsVisible({ releaseBuild: true })).toBe(false);
     });
 });

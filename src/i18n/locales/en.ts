@@ -1710,7 +1710,7 @@ export const en: TranslationKeys = {
             textCuesDesc: 'Detect simple phrases like "next morning" or "three days later".',
         },
         analyzing: {
-            badge: 'Quick Scaffold',
+            badge: 'Beta · Quick Scaffold',
             title: 'Scaffolding When dates...',
             statusApplying: 'Applying pattern spacing...',
             preparing: 'Preparing...',
@@ -1721,7 +1721,7 @@ export const en: TranslationKeys = {
             phaseComplete: 'Scaffold ready',
         },
         review: {
-            badge: 'Quick Scaffold',
+            badge: 'Beta · Quick Scaffold',
             title: 'Review scaffolded dates',
             subtitle: 'Adjust the scaffold before writing YAML. Review each proposed When value, use the filters to focus attention, and nudge days or swap time buckets where the scaffold misses intent. Ripple Mode shifts downstream scenes to preserve spacing; turn it off to edit a scene independently. J/K navigates the list, and [ and ] shift days.',
             filterNeedsReview: 'Needs Review',
@@ -1753,7 +1753,7 @@ export const en: TranslationKeys = {
     },
     timelineAuditModal: {
         header: {
-            badge: 'Timeline Audit',
+            badge: 'Beta · Timeline Audit',
             title: 'Evidence-based timeline diagnosis',
             subtitle: 'Use this when you already have `When` dates and want to find problems or inconsistencies. Timeline Audit checks each scene’s `When` value, summary, synopsis, and body text, then compares scenes in chronological order to flag missing or invalid `When` values, time-of-day mismatches, suspicious jumps, and places where the written sequence disagrees with chronology. Direct text evidence counts more than inference, and AI remains optional.',
             aiEnhancedBadge: 'AI-enhanced',
