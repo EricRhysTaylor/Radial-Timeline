@@ -4,6 +4,11 @@
 
 Use it when you want a full Inquiry sweep across the current scope instead of running one question at a time.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/Inquiry omnibus.png" alt="Inquiry omnibus modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Inquiry omnibus pass — run the full enabled Inquiry set across the current scope</div>
+</div>
+
 ## What It Does
 
 The omnibus pass executes enabled questions across the Inquiry zones and returns a combined set of findings for the current corpus.
@@ -19,4 +24,3 @@ Depending on provider and engine path, the run may execute as a combined omnibus
 
 *   [Inquiry](Inquiry#running-an-inquiry)
 *   [Inquiry View](Inquiry-View)
-

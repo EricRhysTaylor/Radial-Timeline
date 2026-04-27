@@ -5,7 +5,7 @@
 Use it when you want to convert Earth dates into the currently selected local planetary calendar.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/planetary-calculator.png" alt="Planetary time calculator modal" style="width: 440px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Planetary time calculator.png" alt="Planetary time calculator modal" style="width: 440px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary time calculator — convert Earth dates to the active local profile</div>
 </div>
 
@@ -23,4 +23,3 @@ If no planetary profile exists or no active profile is selected, the calculator 
 
 *   [Planetary Time](Chronologue-Mode#planetary-time)
 *   [Planetary Calendar](Chronologue-Mode#alt-sub-mode)
-

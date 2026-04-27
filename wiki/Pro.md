@@ -20,7 +20,7 @@ Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaig
 ## Runtime Estimation
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/runtime-estimator-modal.png" alt="Runtime Estimator modal with mode selection and progress" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Runtime estimator.png" alt="Runtime Estimator modal with mode selection and progress" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Runtime Estimator — select mode and scope for duration analysis</div>
 </div>
 

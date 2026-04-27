@@ -4,6 +4,11 @@
 
 Use it when you want a diagnostic pass over the manuscript timeline rather than a repair workflow.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/Timeline audit.png" alt="Timeline audit modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline audit — inspect contradictions, missing dates, and continuity findings</div>
+</div>
+
 ## What It Checks
 
 Timeline audit can surface:
@@ -36,4 +41,3 @@ From the audit modal, you can:
 
 *   [Timeline order](Timeline-Order)
 *   [Chronologue Mode](Chronologue-Mode)
-

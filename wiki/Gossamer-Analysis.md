@@ -4,6 +4,11 @@
 
 Use it when you want AI-generated beat scoring for the currently selected signal rather than manual entry.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/Gossamer analysis.png" alt="Gossamer analysis modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer analysis — run built-in AI evaluation for the active signal</div>
+</div>
+
 ## What It Evaluates
 
 Gossamer analysis works against the active beat system and the active signal:
@@ -19,4 +24,3 @@ The AI run intentionally does **not** receive ideal-range guidance in its scorin
 
 *   [Gossamer Mode](Gossamer-Mode#ai-analysis)
 *   [Beat Systems](Gossamer-Mode#story-beats-configuration)
-

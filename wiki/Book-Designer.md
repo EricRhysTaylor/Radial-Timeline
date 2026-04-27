@@ -21,7 +21,7 @@ You can open Book Designer in two ways:
 2.  **Welcome Screen**: If your timeline is empty, click the **Book Designer** button on the welcome screen.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/book-designer-modal.png" alt="Book Designer modal with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Book designer.png" alt="Book Designer modal with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and scene properties with live preview</div>
 </div>
 

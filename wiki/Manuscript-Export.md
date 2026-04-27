@@ -5,7 +5,7 @@
 Use it when you want to assemble your notes into a deliverable artifact instead of working scene-by-scene in the timeline.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/manuscript-export-modal.png" alt="Manuscript export modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Manuscript export.png" alt="Manuscript export modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Manuscript export — filtering, ordering, range, and output controls</div>
 </div>
 
@@ -24,4 +24,3 @@ The modal supports ordering, selection range, output presets, and publishing-ori
 
 *   [Publishing](Publishing)
 *   [Workflow Overview](Core-Workflows#exporting-a-manuscript)
-

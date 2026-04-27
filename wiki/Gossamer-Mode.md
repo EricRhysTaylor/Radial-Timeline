@@ -29,7 +29,7 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/gossamer-score-modal.png" alt="Gossamer score entry modal for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Gossamer score manager.png" alt="Gossamer score entry modal for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual entry for the active signal</div>
 </div>
 

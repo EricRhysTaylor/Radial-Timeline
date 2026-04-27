@@ -4,6 +4,11 @@
 
 Use it when you want to create the right note type without remembering YAML, filenames, or folder conventions by hand.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/Create note.png" alt="Create note modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Create note — guided picker for scene, matter, and story-world note types</div>
+</div>
+
 ## What It Creates
 
 The picker is organized into three families:
@@ -27,4 +32,3 @@ Scene creation includes built-in scaffolds:
 
 *   [Workflow Overview](Core-Workflows#creating-scenes)
 *   [Scene Properties (Core + Advanced)](YAML-Frontmatter)
-
