@@ -204,7 +204,7 @@ import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
 import { applyInquiryCorpusCcSlotViewModel, buildInquiryCorpusCcSlotViewModel } from './corpus/inquiryCorpusStripSlotRenderer';
 import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './render/inquiryDossierRenderer';
 import { createInquiryEngineActionButtons } from './engine/inquiryEngineDom';
-import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip } from './engine/inquiryEngineRenderer';
+import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip, type EngineRecentRunSnapshot } from './engine/inquiryEngineRenderer';
 import { buildInquiryEngineCorpusSummary } from './engine/inquiryEngineViewModel';
 import {
     renderInquiryPromptPreviewLayout,
@@ -1040,7 +1040,9 @@ export class InquiryView extends ItemView {
             readinessCause: readinessUi.readiness.cause,
             readinessReason: readinessUi.reason,
             runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel),
-            cacheTtlLabel: this.getProviderCacheTtlLabel(engine.provider)
+            cacheTtlLabel: this.getProviderCacheTtlLabel(engine.provider),
+            citationsRequested: this.getCanonicalAiSettings().citationsEnabled !== false,
+            recentRun: this.buildEngineRecentRunSnapshot()
         });
 
         // ── Guard (error/failure guidance) ──
@@ -3644,6 +3646,23 @@ export class InquiryView extends ItemView {
             case 'google': return '24h';
             default: return '';
         }
+    }
+
+    /**
+     * Build a snapshot of the most recent successful run for the engine
+     * popover pills (cache reuse %, citations confirmed/missing). Returns
+     * undefined when there is no successful prior run, so the renderer can
+     * show a "pending" state cleanly.
+     */
+    private buildEngineRecentRunSnapshot(): EngineRecentRunSnapshot | undefined {
+        const result = this.state.activeResult;
+        if (!result || this.isErrorResult(result)) return undefined;
+        const citationsRequested = this.getCanonicalAiSettings().citationsEnabled !== false;
+        return {
+            citationsRequested,
+            citationCount: result.citations?.length ?? 0,
+            tokenUsage: result.tokenUsage
+        };
     }
 
     /** Called externally (e.g. from Settings) when AI strategy changes. */

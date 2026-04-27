@@ -1,4 +1,5 @@
 import type { SourceCitation } from '../ai/types';
+import type { TokenUsage } from '../ai/usage/providerUsage';
 import type { InquiryQuestionPromptForm } from './questions/resolveQuestionPrompt';
 
 export type InquiryScope = 'book' | 'saga';
@@ -183,6 +184,13 @@ export interface InquiryResult {
     aiErrorDetail?: string;
     tokenUsageKnown?: boolean;
     tokenUsageScope?: InquiryTokenUsageScope;
+    /**
+     * Provider-reported token usage from the run. Includes cache_read /
+     * cache_creation breakdown when the provider exposes it. Drives the
+     * "Cache" pill in the engine popover so the user can see whether the
+     * last run actually hit the prompt cache.
+     */
+    tokenUsage?: TokenUsage;
     tokenEstimateInput?: number;
     tokenEstimateTier?: 'normal' | 'amber' | 'red';
     submittedAt?: string;

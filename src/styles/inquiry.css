@@ -2852,6 +2852,60 @@ body.rt-modal-open .ert-inquiry-svg {
   gap: 8px;
 }
 
+/* ── Engine post-run pills (cache reuse, citations) ──────────────────── */
+
+.ert-inquiry-engine-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ert-inquiry-engine-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78em;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  cursor: help;
+}
+
+.ert-inquiry-engine-pill.is-primed {
+  background-color: rgba(245, 188, 66, 0.18);
+  color: rgb(196, 134, 21);
+  border-color: rgba(245, 188, 66, 0.45);
+}
+
+.ert-inquiry-engine-pill.is-confirmed,
+.ert-inquiry-engine-pill.is-on-confirmed {
+  background-color: rgba(46, 160, 67, 0.20);
+  color: rgb(35, 134, 54);
+  border-color: rgba(46, 160, 67, 0.55);
+}
+
+.ert-inquiry-engine-pill.is-miss,
+.ert-inquiry-engine-pill.is-on-missing {
+  background-color: rgba(207, 34, 46, 0.18);
+  color: rgb(176, 30, 40);
+  border-color: rgba(207, 34, 46, 0.50);
+}
+
+.ert-inquiry-engine-pill.is-on-pending {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-muted);
+  border-color: var(--background-modifier-border);
+}
+
+.ert-inquiry-engine-pill.is-off {
+  background-color: var(--background-modifier-border);
+  color: var(--text-muted);
+  border-color: var(--background-modifier-border);
+}
+
 .ert-inquiry-engine-action-button {
   appearance: none;
   flex: 1;

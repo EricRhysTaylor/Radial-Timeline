@@ -295,7 +295,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
             try {
                 const parsed = this.parseResponse(response.content);
-                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response), response.citations, evidenceDocMeta), trace };
+                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response), response.citations, evidenceDocMeta, trace.usage), trace };
             } catch (parseError) {
                 const message = parseError instanceof Error ? parseError.message : String(parseError);
                 trace.notes.push(`Parse error: ${message}`);
@@ -1966,7 +1966,8 @@ export class InquiryRunnerService implements InquiryRunner {
         parsed: RawInquiryResponse,
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
         citations?: InquiryCitation[],
-        evidenceDocumentMeta?: EvidenceDocumentMeta[]
+        evidenceDocumentMeta?: EvidenceDocumentMeta[],
+        tokenUsage?: InquiryRunTrace['usage']
     ): InquiryResult {
         const verdict = parsed.verdict || {};
         const flow = this.normalizeScore(verdict.flow);
@@ -2009,6 +2010,7 @@ export class InquiryRunnerService implements InquiryRunner {
             corpusFingerprint: input.corpus.fingerprint,
             cacheReuseFingerprint: input.corpus.cacheReuseFingerprint,
             ...aiMeta,
+            ...(tokenUsage ? { tokenUsage } : {}),
             ...(partition.unverified.length ? { unverifiedFindings: partition.unverified } : {}),
             ...(partition.warnings.length ? { citationIntegrityWarnings: partition.warnings } : {}),
             ...(citations?.length ? { citations } : {}),
@@ -2057,7 +2059,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 built.push(this.buildOmnibusMissingResult(questionInput, aiMeta));
                 return;
             }
-            built.push(this.buildResult(questionInput, raw, aiMeta, citations, evidenceDocumentMeta));
+            built.push(this.buildResult(questionInput, raw, aiMeta, citations, evidenceDocumentMeta, trace.usage));
         });
 
         return built;
