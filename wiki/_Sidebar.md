@@ -6,7 +6,6 @@
     *   [Fresh Vault Onboarding](Fresh-Vault-Onboarding)
     *   [Existing Vault Onboarding](Existing-Vault-Onboarding)
     *   [Migrating from Scrivener & Other Apps](Migrating-from-Other-Apps)
-    *   [Commands](Commands)
 *   **Timeline Modes**
     *   [Progress Mode](Progress-Mode)
     *   [Narrative Mode](Narrative-Mode)
@@ -15,7 +14,8 @@
 *   **Workflows**
     *   [Workflow Overview](Core-Workflows)
     *   [How to](How-to)
-*   **Tools & Panels**
+*   **Commands**
+    *   [Command Palette](Commands)
     *   [Book Designer](Book-Designer)
 *   **Inquiry**
     *   [Inquiry](Inquiry)
