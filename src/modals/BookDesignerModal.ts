@@ -775,7 +775,7 @@ export class BookDesignerModal extends Modal {
         this.heroModeMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail ert-book-designer-badge-mode ert-meta-auto', text: 'Auto mode' });
         const wikiLink = heroBadge.createEl('a', {
             href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Book-Designer',
-            cls: 'ert-book-designer-badge-wiki',
+            cls: 'ert-modal-badge__wikiLink',
             attr: {
                 'aria-label': 'Read more in the Wiki',
                 'target': '_blank',

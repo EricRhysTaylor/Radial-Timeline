@@ -20,7 +20,7 @@ Type "Radial Timeline" to filter the list.
 | **Open** | Opens the main Timeline view. | [[Home#getting-started]] |
 | **Search timeline** | Opens the search bar in the Timeline view to filter scenes by text across multiple fields. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [[How-to#manage-subplots-in-bulk]] |
-| **Book designer** | Opens the Book Designer to generate a manuscript set with acts, subplots, and beats. | [[Book Designer]] |
+| **Book designer** | Opens Book Designer to generate a manuscript set with acts, subplots, and beats. | [Book Designer](Book-Designer) |
 | **Timeline order** | Opens the Timeline Repair wizard to fix chronological ordering, sync patterns, and repair frontmatter. | — |
 | **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [[Chronologue Mode#planetary-time]] |
 
@@ -28,13 +28,13 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Create note…** | Opens a guided picker for Scene, Manuscript matter, Story world, and Metadata notes, then creates the selected subtype. | [[Core Workflows#creating-scenes]] |
+| **Create note…** | Opens a guided picker for Scene, Manuscript matter, Story world, and Metadata notes, then creates the selected subtype. | [Workflow Overview](Core-Workflows#creating-scenes) |
 
 ### Export
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Manuscript export** | Compiles your scenes into a single manuscript or outline file with subplot filtering, ordering, and range selection. | [[Core Workflows#exporting-a-manuscript]] |
+| **Manuscript export** | Compiles your scenes into a single manuscript or outline file with subplot filtering, ordering, and range selection. | [Workflow Overview](Core-Workflows#exporting-a-manuscript) |
 
 ### AI & Analysis
 

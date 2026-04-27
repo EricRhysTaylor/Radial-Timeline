@@ -137,7 +137,7 @@ export function renderAiSection(params: {
     badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.ai.hero.badgeText') });
     const badgeWikiLink = badge.createEl('a', {
         href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#ai',
-        cls: 'ert-badgePill__inlineLink',
+        cls: ERT_CLASSES.BADGE_PILL_WIKI,
         attr: {
             'aria-label': t('settings.ai.hero.wikiAriaLabel'),
             'target': '_blank',

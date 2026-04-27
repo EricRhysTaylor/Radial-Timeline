@@ -6,6 +6,7 @@
 // --- Imports and constants added for standalone module ---
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
+import { t } from '../i18n';
 import { escapeRegExp } from '../utils/regex';
 import type { TimelineItem } from '../types';
 import { SceneNumberInfo } from '../utils/constants';
@@ -477,7 +478,7 @@ export class RadialTimelineView extends ItemView {
                 // Full render
                 const loadingEl = container.createEl("div", {
                     cls: "rt-loading-message",
-                    text: "Loading timeline data..."
+                    text: t('timeline.loadingData')
                 });
                 
                 // Clear container for full render
@@ -930,7 +931,7 @@ export class RadialTimelineView extends ItemView {
         } catch (error) {
             console.error("Error rendering timeline:", error);
             container.createEl("div", {
-                text: "Error rendering timeline. Check console for details."
+                text: t('timeline.renderError')
             });
         }
     }

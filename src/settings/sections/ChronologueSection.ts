@@ -195,6 +195,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
 
     const discontinuitySetting = new Settings(stackEl)
         .setName('Discontinuity gap threshold');
+    discontinuitySetting.settingEl.addClass('ert-setting-two-row', 'ert-chronologue-discontinuity-setting');
 
     // Declare the text component reference first (before updateDescriptionAndPlaceholder uses it)
     let discontinuityText: any; // SAFE: any type used for Obsidian TextComponent reference (library limitation)
@@ -222,7 +223,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         const currentValue = plugin.settings.discontinuityThreshold || '';
         text.setPlaceholder('Calculating…')
             .setValue(currentValue);
-        text.inputEl.addClass('ert-input--full');
+        text.inputEl.addClass('ert-input--md');
 
         void calculateAutoThreshold(false).then(autoThreshold => {
             text.setPlaceholder(`${autoThreshold.display} (auto)`);

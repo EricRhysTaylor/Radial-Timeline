@@ -112,9 +112,40 @@ export const ja: DeepPartial<TranslationKeys> = {
             act1: '第一幕',
             act2: '第二幕',
             act3: '第三幕',
+            actFallback: '第{{number}}幕',
         },
         /** @deprecated No longer used — book title comes from Book Profiles. */
         workInProgress: '無題の原稿',
+        defaultBookTitle: '無題の原稿',
+        loading: 'タイムラインを読み込み中...',
+        loadingData: 'タイムラインデータを読み込み中...',
+        renderError: 'タイムラインの描画でエラーが発生しました。詳細はコンソールを確認してください。',
+        overdue: '期限超過: {{date}}',
+        modes: {
+            narrative: { name: '叙事', acronym: '叙事' },
+            progress: { name: '進捗', acronym: '進捗' },
+            chronologue: { name: '年代記', acronym: '年代' },
+            gossamer: { name: 'ゴッサマー', acronym: 'ゴサ' },
+        },
+        subplotRing: {
+            allScenes: '全シーン',
+            mainPlot: 'メインプロット',
+            chronologue: '年代記',
+        },
+        grid: {
+            statusHeader: {
+                todo: '予定',
+                working: '進行',
+                completed: '完了',
+                due: '期日',
+            },
+            stageHeader: {
+                zero: '零',
+                author: '著',
+                house: '社',
+                press: '刊',
+            },
+        },
     },
     common: {
         yes: 'はい',

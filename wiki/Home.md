@@ -88,6 +88,6 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 *   **[[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]**: Start from scratch with Book Designer and beats.
 *   **[[Existing-Vault-Onboarding|Existing Vault Onboarding]]**: Connect an existing manuscript to Radial Timeline.
 *   **[[Migrating-from-Other-Apps|Migrating from Scrivener & Other Apps]]**: How Obsidian’s markdown workflow differs from traditional writing tools.
-*   **[[Book Designer]]**: Instantly generate a manuscript set with acts, subplots, and beats.
-*   **[[Core Workflows]]**: Learn the basics of Radial Timeline.
+*   **[Book Designer](Book-Designer)**: Instantly generate a manuscript set with acts, subplots, and beats.
+*   **[Workflow Overview](Core-Workflows)**: Learn the main Radial Timeline working loop.
 *   **[[Timeline-Modes|Timeline Modes]]**: Compare Progress, Narrative, Chronologue, and Gossamer at a glance.

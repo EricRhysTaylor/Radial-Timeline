@@ -136,7 +136,7 @@ If you used **Book Designer** to scaffold your manuscript, this is already done.
 - Each scene has a `Beat:` field pointing to a beat name.
 - Each beat note has an `Act:` field (`1`, `2`, `3`, …).
 
-See [[YAML-Frontmatter|Scene YAML]] for the full frontmatter schema.
+See [[YAML-Frontmatter|Scene Properties]] for the full frontmatter schema.
 
 ### Step 4 — Add `Chapter:` markers
 

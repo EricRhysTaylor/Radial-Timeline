@@ -1,4 +1,5 @@
 import { formatRuntimeValue } from '../../utils/runtimeEstimator';
+import { t } from '../../i18n';
 
 export function renderCenterGrid(params: {
   statusesForGrid: string[];
@@ -128,7 +129,10 @@ export function renderCenterGrid(params: {
   const header = `
     <g class="color-key-center">
       ${statusesForGrid.map((status, c) => {
-        const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
+        const label = status === 'Todo' ? t('timeline.grid.statusHeader.todo')
+          : status === 'Working' ? t('timeline.grid.statusHeader.working')
+          : status === 'Completed' ? t('timeline.grid.statusHeader.completed')
+          : t('timeline.grid.statusHeader.due');
         const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
         const y = headerY;
         const tip = params.statusTooltips[status] || status;
@@ -172,7 +176,7 @@ export function renderCenterGrid(params: {
     const stageKey = stage.toLowerCase();
     const stageHeader = `
       <g class="stage-header rt-tooltip-target" data-tooltip="${stageTip}" data-tooltip-placement="right">
-        <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text stage-header-letter" data-stage="${stageKey}">${stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P'}</text>
+        <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text stage-header-letter" data-stage="${stageKey}">${stage === 'Zero' ? t('timeline.grid.stageHeader.zero') : stage === 'Author' ? t('timeline.grid.stageHeader.author') : stage === 'House' ? t('timeline.grid.stageHeader.house') : t('timeline.grid.stageHeader.press')}</text>
         <rect x="${xh - 14}" y="${yh - 14}" width="28" height="28" fill="transparent" pointer-events="all" />
       </g>
     `;

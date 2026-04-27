@@ -102,7 +102,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Right Icon (Wiki Link) - Manually constructed for ERT styling
     const wikiLink = badge.createEl('a', {
         href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
-        cls: 'ert-badgePill__rightIcon',
+        cls: ERT_CLASSES.BADGE_PILL_WIKI,
         attr: {
             'aria-label': t('settings.authorProgress.hero.wikiAriaLabel'),
             'target': '_blank',

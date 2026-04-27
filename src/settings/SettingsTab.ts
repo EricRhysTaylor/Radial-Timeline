@@ -581,7 +581,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Place wiki link inline with the badge label, not far right
         const wikiLink = badge.createEl('a', {
             href: options.wikiHref,
-            cls: 'ert-badgePill__inlineLink',
+            cls: ERT_CLASSES.BADGE_PILL_WIKI,
             attr: {
                 'aria-label': 'Read more in the Wiki',
                 'target': '_blank',

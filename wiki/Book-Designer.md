@@ -1,6 +1,8 @@
-The **Book Designer** is a powerful setup utility that generates a complete manuscript skeleton tailored to your specifications. It creates scene files with pre-configured properties, distributes them across acts and subplots, and can even generate story beat sets.
+# Book Designer
 
-This tool is perfect for starting a new project or rapidly prototyping a story structure.
+Book Designer is the guided setup panel behind the **`Book designer`** command. It generates a manuscript scaffold tailored to your project: scene files, act distribution, subplot rotation, characters, and optional beat notes.
+
+Use it when you want a clean starting structure without building dozens of notes by hand.
 
 <a href="https://youtu.be/0vkLaI_LewM?si=-02Gem1HQwbI0E9E" target="_blank" rel="noopener">
   <p align="center">
@@ -12,20 +14,20 @@ This tool is perfect for starting a new project or rapidly prototyping a story s
   </p>
 </a>
 
-## Accessing the Book Designer
+## Open Book Designer
 
-You can open the Book Designer in two ways:
-1.  **Command Palette**: Open the Command Palette (`Cmd/Ctrl + P`) and search for "Radial Timeline: Book designer".
-2.  **Welcome Screen**: If your timeline is empty, click the "Book Designer" button on the Radial Timeline Welcome Screen.
+You can open Book Designer in two ways:
+1.  **Command Palette**: Open the Command Palette (`Cmd/Ctrl + P`) and search for **`Radial Timeline: Book designer`**.
+2.  **Welcome Screen**: If your timeline is empty, click the **Book Designer** button on the welcome screen.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/book-designer-modal.png" alt="Book Designer modal with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and sets with live preview</div>
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and scene properties with live preview</div>
 </div>
 
 ## Workflow
 
-The Book Designer modal guides you through three key configuration sections:
+The panel is organized into three main sections:
 
 ### 1. Location & Structure
 *   **Target location**: The folder path where your new book files will be created (e.g., `Book 1`). The folder will be created if it doesn't exist. Otherwise root of the vault will be used.
@@ -37,14 +39,14 @@ The Book Designer modal guides you through three key configuration sections:
 *   **Subplots**: Enter your subplots, one per line. Scenes will be assigned to these subplots in a round-robin fashion. Each scene will belong to only one subplot.
 *   **Characters**: Enter your main characters, one per line. These will be added to the YAML frontmatter of the generated scenes.
 
-### 3. Scene Sets & Extras
-*   **Scene set**: Choose between **Base Scene Set** (minimal) and **Advanced Scene Set**. These sets are defined in the Radial Timeline settings. The Advanced Scene Set can be customized.
+### 3. Scene Properties & Extras
+*   **Scene properties**: Choose between **Core properties** (minimal) and **Advanced properties**. The advanced properties profile can be customized in settings.
 *   **Generate Beats**: Optionally generate beat sheet files based on your selected beat system (e.g., Save the Cat, configured in Settings).
 
 ## Visual Preview
-As you adjust the settings, the **Preview** donut chart updates in real-time to show you how your scenes will be distributed across acts and subplots. This helps you visualize the structure before generating any files. After generation, if you don't like what you get, open the Book designer and regenerate. 
+As you adjust the settings, the **Preview** donut chart updates in real time to show how scenes will be distributed across acts and subplots. This lets you inspect the structure before any files are generated. If you want a different shape afterward, reopen Book Designer and regenerate.
 
-## Generating Your Book
+## Generate the Manuscript Scaffold
 Once configured, click **Create Book**. The plugin will:
 1.  Create the target folder.
 2.  Generate individual markdown files for each scene, populated with the correct YAML frontmatter (scene number, act, subplot, characters, date).
@@ -52,24 +54,24 @@ Once configured, click **Create Book**. The plugin will:
 
 You'll see a notification confirming the number of scenes and files created. Your Radial Timeline will immediately update to display your new story structure.
 
-## Customizing Scene Sets
+## Customizing Scene Properties
 
-The Book Designer uses one of two scene sets:
-1.  **Base Scene Set**: A minimal set with only the essential fields required for Radial Timeline.
-2.  **Advanced Scene Set**: A richer set with analysis fields, stats, and more.
+Book Designer supports two built-in scene property profiles:
+1.  **Core properties**: A minimal profile with the essential fields required for Radial Timeline.
+2.  **Advanced properties**: A richer profile with analysis, stats, and additional workflow fields.
 
 ### Adding Custom Properties
-If your writing methodology uses fields beyond the built-in keys (e.g., Story Grid values, Dramatica signposts), you can add them to the Advanced Scene Set:
-1.  Go to **Settings → Scene sets & remapping**.
+If your writing methodology uses fields beyond the built-in keys (for example Story Grid values or Dramatica signposts), you can add them to the advanced scene properties:
+1.  Go to **Settings → Scene properties & remapping**.
 2.  Enable **Scene properties editor**.
 3.  Add your custom keys to the list.
-4.  In the Book Designer, select **Advanced** as your scene set type.
+4.  In Book Designer, select **Advanced properties**.
 
-> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in sets. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter]] for the full list of built-in fields.
+> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in properties. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter|Scene Properties]] for the full list of built-in fields.
 
 ## Custom Beat Systems
 
-If you use a story structure not listed in the standard options (like 7 Point Story Structure):
+If you use a story structure not listed in the standard options:
 1.  Go to **Settings → Story beats system** and select **Custom**.
 2.  Name your beat system and add beats in the **Custom story beat system editor**. Assign each beat to an act.
 3.  In the Book Designer, enable **Generate Beats** to automatically generate beat notes for your custom system.
@@ -91,9 +93,9 @@ You can also create custom beat notes manually:
 
 ## Advanced Metadata
 
-Some writing methodologies rely on tracking complex properties rather than just linear beats. You can accommodate this using the **Advanced Scene Set**:
+Some writing methodologies rely on tracking complex properties rather than just linear beats. You can accommodate this using **Advanced properties**:
 
-1.  Go to **Settings > Scene sets & remapping**.
+1.  Go to **Settings > Scene properties & remapping**.
 2.  Enable **Scene properties editor**.
 3.  Add custom keys for your methodology.
 4.  When you generate or edit scenes, these properties will be preserved, allowing you to use the plugin's timeline to visualize your story while maintaining your specific data structure in the notes.

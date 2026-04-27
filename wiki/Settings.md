@@ -116,14 +116,14 @@ Configure the high-level structure of your narrative ring.
 > See [[Narrative-Mode]] for details on the act structure.
 
 <a name="yaml-templates"></a>
-### Scene sets & remapping
+### Scene properties & remapping
 Manage how Radial Timeline reads and writes metadata.
 *   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (e.g., `story_date`) to the system keys (e.g., `When`) without changing your files.
-*   **Scene properties editor**: Enable this to customize the Advanced Scene Set, add optional fields, and control hover metadata icons/order.
+*   **Scene properties editor**: Enable this to customize the advanced scene properties, add optional fields, and control hover metadata icons/order.
 
 > [!NOTE]
-> *   For scene set customization: [[YAML-Frontmatter#advanced-yaml-editor]]
-> *   For a full list of keys: [[YAML-Frontmatter]]
+> *   For scene property customization: [[YAML-Frontmatter#advanced-yaml-editor]]
+> *   For a full list of keys: [[YAML-Frontmatter|Scene Properties]]
 
 <a name="chronologue"></a>
 ### Chronologue mode settings

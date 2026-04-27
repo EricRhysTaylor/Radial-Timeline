@@ -1,38 +1,39 @@
-*   [[Home]]
+*   [Home](Home)
 *   **Quick Start**
-    *   [[Welcome]]
-    *   [[Views]]
-    *   [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]
-    *   [[Existing-Vault-Onboarding|Existing Vault Onboarding]]
-    *   [[Migrating-from-Other-Apps|Migrating from Scrivener & Other Apps]]
-    *   [[Commands]]
+    *   [Welcome](Welcome)
+    *   [Views](Views)
+    *   [Scenes, Structure, and the Timeline](Scenes-Structure-Timeline)
+    *   [Fresh Vault Onboarding](Fresh-Vault-Onboarding)
+    *   [Existing Vault Onboarding](Existing-Vault-Onboarding)
+    *   [Migrating from Scrivener & Other Apps](Migrating-from-Other-Apps)
+    *   [Commands](Commands)
 *   **Timeline Modes**
-    *   [[Progress-Mode|Progress Mode]]
-    *   [[Narrative-Mode|Narrative Mode]]
-    *   [[Chronologue-Mode|Chronologue Mode]]
-    *   [[Gossamer-Mode|Gossamer Mode]]
-*   **Core Workflows**
-    *   [[Core-Workflows|Core Workflows]]
-    *   [[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]
-    *   [[Book-Designer|Book Designer]]
-    *   [[How-to]]
+    *   [Progress Mode](Progress-Mode)
+    *   [Narrative Mode](Narrative-Mode)
+    *   [Chronologue Mode](Chronologue-Mode)
+    *   [Gossamer Mode](Gossamer-Mode)
+*   **Workflows**
+    *   [Workflow Overview](Core-Workflows)
+    *   [How to](How-to)
+*   **Tools & Panels**
+    *   [Book Designer](Book-Designer)
 *   **Inquiry**
-    *   [[Inquiry]]
+    *   [Inquiry](Inquiry)
 *   **Publishing**
-    *   [[Publishing|Publishing Overview]]
-    *   [[Publishing#setting-up-modern-classic|Modern Classic Setup]]
-    *   [[Core-Workflows#exporting-a-manuscript|Export Workflow]]
+    *   [Publishing Overview](Publishing)
+    *   [Modern Classic Setup](Publishing#setting-up-modern-classic)
+    *   [Export Workflow](Core-Workflows#exporting-a-manuscript)
 *   **Author Progress Report**
-    *   [[Author-Progress-Report|Author Progress Report]]
+    *   [Author Progress Report](Author-Progress-Report)
 *   **AI**
-    *   [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]]
-    *   [[Gossamer-Mode#ai-analysis|Gossamer AI Evaluation]]
+    *   [AI Pulse Triplet Analysis](AI-Pulse-Analysis)
+    *   [Gossamer AI Evaluation](Gossamer-Mode#ai-analysis)
 *   **Pro**
-    *   [[Pro]]
+    *   [Pro](Pro)
 *   **Reference**
-    *   [[YAML-Frontmatter|Scene YAML (Basic + Advanced)]]
-    *   [[Beat-Audit-Heal|Beat Audit + Heal]]
-    *   [[Settings]]
+    *   [Scene Properties (Core + Advanced)](YAML-Frontmatter)
+    *   [Beat Audit + Heal](Beat-Audit-Heal)
+    *   [Settings](Settings)
         *   [Core](Settings#core)
         *   [Social](Settings#social)
         *   [Inquiry](Settings#inquiry)
@@ -41,7 +42,7 @@
         *   [Advanced](Settings#advanced)
         *   [PRO](Settings#pro)
 *   **Support & Legal**
-    *   [[FAQ]]
-    *   [[Acknowledgments]]
-    *   [[License]]
-    *   [[Notice]]
+    *   [FAQ](FAQ)
+    *   [Acknowledgments](Acknowledgments)
+    *   [License](License)
+    *   [Notice](Notice)

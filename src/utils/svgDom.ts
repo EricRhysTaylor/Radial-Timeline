@@ -2,6 +2,8 @@
  * SVG mounting helpers for rendering serialized markup safely into the DOM.
  */
 
+import { t } from '../i18n';
+
 type CleanupRegistrar = (cleanup: () => void) => void;
 
 export function renderSvgFromString(
@@ -117,7 +119,7 @@ function buildFallbackSvg(
                     loadingText.setAttribute('class', 'loading-message');
                     loadingText.setAttribute('font-size', '24');
                     loadingText.setAttribute('text-anchor', 'middle');
-                    loadingText.textContent = 'Loading timeline...';
+                    loadingText.textContent = t('timeline.loading');
                     fallbackSvg.appendChild(loadingText);
 
                     container.appendChild(wrapInFragment(fallbackSvg));

@@ -1,4 +1,5 @@
 import type { RadialTimelineSettings } from '../types';
+import { t } from '../i18n';
 
 const MIN_ACTS = 3;
 
@@ -24,7 +25,7 @@ export function resolveActLabel(
     labels: string[]
 ): string {
     const label = labels[actIndex];
-    return label && label.length > 0 ? label : `Act ${actIndex + 1}`;
+    return label && label.length > 0 ? label : t('timeline.acts.actFallback', { number: actIndex + 1 });
 }
 
 export function clampActNumber(actNumber: number | undefined, actCount: number): number {

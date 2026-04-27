@@ -10,6 +10,26 @@ import {
     MODE_TITLE_POS_Y
 } from '../../renderer/layout/LayoutConstants';
 import type { RadialTimelineSettings } from '../../types';
+import { t } from '../../i18n';
+
+/**
+ * Resolve translated mode label by mode id. Falls back to mode.name from definition.
+ */
+function getModeLabel(modeId: string, fallback: string): string {
+    const key = `timeline.modes.${modeId}.name`;
+    const value = t(key);
+    return value && !value.startsWith('[missing:') ? value : fallback;
+}
+
+/**
+ * Resolve translated mode acronym by mode id. Falls back to definition acronym
+ * (or first 4 chars of name uppercased).
+ */
+function getModeAcronym(modeId: string, fallback: string): string {
+    const key = `timeline.modes.${modeId}.acronym`;
+    const value = t(key);
+    return value && !value.startsWith('[missing:') ? value : fallback;
+}
 
 interface ModeToggleView {
     currentMode?: string;
@@ -24,13 +44,17 @@ interface ModeToggleView {
 }
 
 // Build MODE_OPTIONS dynamically from mode registry - SINGLE SOURCE OF TRUTH
+// label/acronym are resolved via t() at render time (so locale changes are honored)
 function buildModeOptions() {
-    return getToggleableModes().map(mode => ({
-        id: mode.id,
-        label: mode.name,
-        acronym: mode.ui.acronym || mode.name.substring(0, 4).toUpperCase(),
-        order: mode.ui.order
-    }));
+    return getToggleableModes().map(mode => {
+        const fallbackAcronym = mode.ui.acronym || mode.name.substring(0, 4).toUpperCase();
+        return {
+            id: mode.id,
+            get label() { return getModeLabel(mode.id, mode.name); },
+            get acronym() { return getModeAcronym(mode.id, fallbackAcronym); },
+            order: mode.ui.order
+        };
+    });
 }
 
 const MODE_OPTIONS = buildModeOptions();

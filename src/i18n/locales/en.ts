@@ -490,9 +490,42 @@ export interface TranslationKeys {
             act1: string;
             act2: string;
             act3: string;
+            /** Fallback label shown when no custom act label is configured. {{number}} is substituted with 1-based act index. */
+            actFallback: string;
         };
         /** @deprecated Kept for structural compat; use DEFAULT_BOOK_TITLE instead. */
         workInProgress: string;
+        defaultBookTitle: string;
+        loading: string;
+        loadingData: string;
+        renderError: string;
+        /** Synopsis hover label for past-due dates. {{date}} is substituted with the formatted date string. */
+        overdue: string;
+        modes: {
+            narrative: { name: string; acronym: string };
+            progress: { name: string; acronym: string };
+            chronologue: { name: string; acronym: string };
+            gossamer: { name: string; acronym: string };
+        };
+        subplotRing: {
+            allScenes: string;
+            mainPlot: string;
+            chronologue: string;
+        };
+        grid: {
+            statusHeader: {
+                todo: string;
+                working: string;
+                completed: string;
+                due: string;
+            };
+            stageHeader: {
+                zero: string;
+                author: string;
+                house: string;
+                press: string;
+            };
+        };
     };
     commands: {
         openTimeline: string;
@@ -1561,9 +1594,40 @@ export const en: TranslationKeys = {
             act1: 'ACT I',
             act2: 'ACT II',
             act3: 'ACT III',
+            actFallback: 'Act {{number}}',
         },
         /** @deprecated No longer used — book title comes from Book Profiles. */
         workInProgress: 'Untitled Manuscript',
+        defaultBookTitle: 'Untitled Manuscript',
+        loading: 'Loading timeline...',
+        loadingData: 'Loading timeline data...',
+        renderError: 'Error rendering timeline. Check console for details.',
+        overdue: 'Overdue: {{date}}',
+        modes: {
+            narrative: { name: 'Narrative', acronym: 'NARR' },
+            progress: { name: 'Progress', acronym: 'PROG' },
+            chronologue: { name: 'Chronologue', acronym: 'CHRO' },
+            gossamer: { name: 'Gossamer', acronym: 'GOSS' },
+        },
+        subplotRing: {
+            allScenes: 'ALL SCENES',
+            mainPlot: 'MAIN PLOT',
+            chronologue: 'CHRONOLOGUE',
+        },
+        grid: {
+            statusHeader: {
+                todo: 'Tdo',
+                working: 'Wrk',
+                completed: 'Cmt',
+                due: 'Due',
+            },
+            stageHeader: {
+                zero: 'Z',
+                author: 'A',
+                house: 'H',
+                press: 'P',
+            },
+        },
     },
     commands: {
         openTimeline: 'Open',

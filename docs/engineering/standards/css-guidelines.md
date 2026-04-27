@@ -30,9 +30,10 @@ Do not mix settings-root selectors and modal-root selectors casually. They are s
   Legacy islands and extracted migration selectors.
 
 ## Current Naming Reality
-- **Current**: shared shell work is `ert-*`.
-- **Current**: `rt-ui.css` must not grow new `.rt-*` selectors.
-- **Legacy / tolerated**: `.rt-*` still exists outside `rt-ui.css`, especially in domain islands and legacy files.
+- **Standard**: the codebase has fully migrated to `ert-*` for all UI classes. New CSS classes MUST use the `ert-` prefix.
+- **Do not introduce new `.rt-*` classes** anywhere — not in `rt-ui.css`, not in domain islands, not in legacy files. There is no compelling reason to add to the `rt-` set; we have standardized on `ert-`.
+- **Legacy / tolerated**: existing `.rt-*` classes still exist in domain islands and legacy files. Leave them alone unless touching that code for other reasons; if you do touch it, prefer migrating to `ert-`.
+- **Rule of thumb**: if you find yourself writing `.rt-` for a new selector, stop and use `.ert-` instead.
 
 ## Surface Treatment Doctrine
 

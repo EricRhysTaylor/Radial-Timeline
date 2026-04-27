@@ -1,4 +1,4 @@
-# Scene YAML (Basic + Advanced)
+# Scene Properties (Core + Advanced)
 
 This page covers scene metadata (basic and advanced), beat notes, and backdrop notes. Radial Timeline reads metadata from **Obsidian properties** (YAML frontmatter) at the top of each note. If you prefer to keep things light, you can start with only the minimal fields and fill the rest later.
 
@@ -49,9 +49,9 @@ Obsidian links are supported in properties. Use the double-bracket wikilink form
 You can control how POV is displayed in **Settings → Point of view**.
 
 <a name="advanced-scene-template"></a>
-## Advanced Scene Set
+## Advanced Scene Properties
 
-The Advanced Scene Set adds optional fields for deeper workflows (Story Grid, Dramatica, custom analysis, and more). This set is **customizable**.
+Advanced scene properties add optional fields for deeper workflows (Story Grid, Dramatica, custom analysis, and more). This profile is **customizable**.
 
 ```yaml
 Class: Scene
@@ -86,9 +86,9 @@ Summary Update:
 <a name="advanced-yaml-editor"></a>
 ### Scene Properties Editor
 
-The Scene properties editor lets you tailor the Advanced Scene Set while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow.
+The Scene properties editor lets you tailor the advanced scene properties while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow.
 
-*   Enable **Settings → Scene sets & remapping → Scene properties editor**.
+*   Enable **Settings → Scene properties & remapping → Scene properties editor**.
 *   Required base keys stay locked and auto-included in order.
 *   Optional keys can be drag-reordered, renamed, deleted, or added.
 *   Use the restore icon to revert to the shipped defaults.
@@ -124,7 +124,7 @@ Backdrop notes can be extended using the **Backdrop properties editor** in Setti
 
 ## YAML Managers in Settings
 
-*   **Scene properties editor**: Customize the Advanced Scene Set (optional fields and hover metadata).
+*   **Scene properties editor**: Customize the advanced scene properties (optional fields and hover metadata).
 *   **Beat properties editor**: Customize beat note fields and beat hover metadata.
 *   **Custom Metadata Mapping**: Map your existing keys to Radial Timeline keys without rewriting your files.
 
@@ -148,4 +148,4 @@ The plugin automatically recognizes legacy field names, so you don't need to upd
 
 Beat notes do not use `When:` — they are ordered structurally by Act and filename prefix. Recommended format: fixed-width decimal minors (`1.01`, `1.02`, ...).
 
-Existing notes with old field names will continue to work. Only new notes created from sets will use the current field names.
+Existing notes with old field names will continue to work. Only new notes created from the built-in property profiles will use the current field names.

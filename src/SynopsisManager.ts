@@ -1181,7 +1181,7 @@ export default class SynopsisManager {
     // Compute Due/Overdue state (YYYY-MM-DD expected)
     const dueString = scene.due;
     if (dueString && isOverdueAndIncomplete(scene)) {
-      appendInfoLine('rt-info-text rt-title-text-secondary rt-overdue-text', `Overdue: ${dueString}`);
+      appendInfoLine('rt-info-text rt-title-text-secondary rt-overdue-text', t('timeline.overdue', { date: dueString }));
     }
 
     // Pending Edits line if non-empty (notes for next revision)

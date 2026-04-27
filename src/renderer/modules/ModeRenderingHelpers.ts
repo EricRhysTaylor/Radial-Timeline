@@ -13,6 +13,7 @@
 import { TimelineMode } from '../../modes/ModeDefinition';
 import { getModeDefinition } from '../../modes/ModeRegistry';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { t } from '../../i18n';
 
 // Type alias for compatibility
 type PluginFacade = PluginRendererFacade;
@@ -95,13 +96,13 @@ export function getSubplotLabelText(plugin: PluginFacade, subplot: string, isOut
     
     // Check outer ring content type
     if (modeDef.rendering.outerRingContent === 'narrative') {
-        return 'ALL SCENES';
+        return t('timeline.subplotRing.allScenes');
     } else if (modeDef.rendering.outerRingContent === 'subplot-only') {
-        return 'MAIN PLOT';
+        return t('timeline.subplotRing.mainPlot');
     } else if (modeDef.rendering.outerRingContent === 'chronologue') {
-        return 'CHRONOLOGUE';
+        return t('timeline.subplotRing.chronologue');
     }
-    
+
     return subplot.toUpperCase();
 }
 

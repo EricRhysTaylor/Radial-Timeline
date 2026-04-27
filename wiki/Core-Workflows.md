@@ -1,102 +1,42 @@
-Core workflows are a reference for ongoing use. For first-time setup, see [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]] or [[Existing-Vault-Onboarding|Existing Vault Onboarding]].
+# Workflow Overview
 
-### Planning Your Novel
-*   **Act Structure**: Scenes are organized by act (default 3 acts, configurable in **Settings → Acts**). Acts come from the scene frontmatter `Act:` field.
-*   **Subplot Tracking**: Each ring represents a different subplot. Keep scenes in a single subplot or spread them across multiple subplots to capture common themes, topics, characters, etc.
-*   **Story Beats**: Use story beat systems (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the momentum scaffolding. Custom systems let you name beats, assign them to acts, reorder via drag-and-drop, and merge changes into existing files. See [[Settings#story-beats]].
-*   **Backdrop & Micro-backdrops**: Mark major plot backdrop events using the special context ring placed below the outer ring in Chronologue mode. For lighter-weight context — eras, seasons, or historical milestones — use **micro-backdrop rings** configured in Settings with a title, color, and date range.
+This page stays intentionally short. It outlines the main Radial Timeline workflow and points to the deeper pages when you need detail.
 
-### Creating Scenes
+For first-time setup, start with [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]] or [[Existing-Vault-Onboarding|Existing Vault Onboarding]].
 
-*   **Book Designer**: Use [[Book Designer]] to generate a full manuscript scaffold (acts, subplots, optional beat notes).
-*   **Create note…**: Command palette → **Radial Timeline: Create note…**.
-*   **Scene options**: In the picker, choose **Scene** and then **Basic scene** or **Advanced scene**. Screenplay and podcast scene types are also available in the same flow.
+## Planning Your Novel
 
-### Progress Mode and Tracking Progress
-*   **Scene Status Colors**: In Progress Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = progress stage color. In Narrative and Chronologue modes, scenes display their subplot color.
-*   **Progress Stages**: Track manuscript through Zero → Author → House → Press.
-*   **Completion Estimate Mark**: The timeline can estimate completion based on recent pace in the active stage. This is separate from [[Author-Progress-Report|APR]], which can track Stage Tracking, Full Manuscript, or Date Goal.
-*   **Author Progress Report**: Use [[Author-Progress-Report|Author Progress Report]] when you want a public, spoiler-safe progress graphic instead of an internal workflow view.
+*   Use [[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]] if you want the conceptual model first.
+*   Organize the manuscript around **Acts**, **Subplots**, and an optional **story beat system**.
+*   Use [[Book-Designer|Book Designer]] when you want a guided scaffold instead of creating every note by hand.
+*   Configure structure in [[Settings#acts|Settings → Acts]] and [[Settings#story-beats|Settings → Story beats system]].
 
-**Mode**: [[Progress-Mode|Progress Mode]] (`1`)
-**Settings**: [[Settings#progress-stage-colors|Progress stage colors]]
+## Creating Scenes
 
-### Exporting a Manuscript
+*   Use **`Radial Timeline: Create note…`** to create scenes, manuscript matter, story world notes, and metadata notes.
+*   Choose **Scene** and then **Basic scene** or **Advanced scene** depending on how much frontmatter you want up front.
+*   Use [[How-to|How to]] for task-based help such as reordering scenes, managing subplots, rotating the timeline, and search.
 
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/manuscript-export-modal.png" alt="Manuscript export modal with ordering and range options" style="width: 500px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Manuscript export — filter, order, and select a range of scenes</div>
-</div>
+## Reviewing Structure and Time
 
-When you're ready to read through your work or send it to an editor, use the **`Manuscript export`** command.
+*   Use [[Narrative-Mode|Narrative Mode]] to work in manuscript order.
+*   Use [[Chronologue-Mode|Chronologue Mode]] to review story-world chronology, duration, and time gaps.
+*   Use [[Gossamer-Mode|Gossamer Mode]] for beat-level scoring, and [[Inquiry]] for corpus-level analysis.
 
-1.  Open the command palette (`Cmd/Ctrl + P`) and select **`Radial Timeline: Manuscript export`**.
-2.  **Subplot Filter**: Optionally filter to compile only scenes from a specific subplot.
-3.  **Order**: Choose from Narrative, Chronological, Reverse Narrative, or Reverse Chronological ordering.
-4.  **TOC**: Select Markdown, Plain Text, or No Table of Contents.
-5.  **Range**: Use the drag-bar slider to visually select a specific range of scenes to include (useful for generating a single act or particular range of scenes).
-6.  **Output**: A new file is created in the Export folder (default `Radial Timeline/Export`) containing the compiled text of all selected scenes.
+## Progress Mode and Tracking Progress
 
-#### Export Options Reference
+*   Use [[Progress-Mode|Progress Mode]] for daily drafting status and revision-stage tracking.
+*   Use [[Author-Progress-Report|Author Progress Report]] when you want a public, spoiler-safe progress graphic instead of an internal workflow view.
+*   Use **Zero Draft mode** if you want to capture revision notes without breaking drafting flow. See [[Settings#zero-draft-mode|Settings → Zero draft mode]].
 
-The export modal offers two categories: **Manuscripts** (full scene content) and **Outlines** (YAML metadata only).
+## Exporting a Manuscript
 
-| Type | Preset | Formats | Works Out of Box? | Setup Required |
-|------|--------|---------|-------------------|----------------|
-| Manuscript | **Novel** | MD, PDF | ✅ Markdown | Pandoc for PDF |
-| Manuscript | **Screenplay** | MD, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
-| Manuscript | **Podcast** | MD, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
-| Outline | **Beat Sheet** | MD | ✅ Yes | None |
-| Outline | **Episode Rundown** | MD | ✅ Yes | None |
-| Outline | **Shooting Schedule** | MD | ✅ Yes | None |
-| Outline | **Index Cards** | CSV, JSON | ✅ Yes | None |
+*   Use **`Radial Timeline: Manuscript export`** when you're ready to compile scenes into Markdown, outline formats, or PDF-ready output.
+*   Use [[Publishing]] for template selection, Modern Classic setup, chapter handling, and publishing-specific options.
+*   Use [[Commands]] if you only need the command reference.
 
-**Manuscript exports** read the full body content of your scene files — the actual prose, dialogue, or script. They strip YAML frontmatter and Obsidian comments, then assemble everything under scene headings with a table of contents. Markdown export works immediately. PDF requires [Pandoc](https://pandoc.org) (and LaTeX for PDF).
+### Setting Up Pandoc Export
 
-**Outline exports** read only YAML metadata — `When`, `Subplot`, `Runtime`, `Words`, `Synopsis`. They never touch the body text. All outline formats work out of the box with no external tools.
-
-#### Scene Formatting Requirements
-
-**Novel preset:** Works with any prose. No special formatting needed — just write your scenes.
-
-**Screenplay preset:** Scenes must already use screenplay formatting conventions:
-```
-INT. COFFEE SHOP - DAY
-
-JANE enters, scans the room.
-
-                    MIKE
-          You must be Jane.
-```
-
-**Podcast preset:** Scenes must already use podcast script formatting:
-```
-[SEGMENT: INTRODUCTION - 0:00]
-
-HOST: Welcome back to the show.
-
-[SFX: Theme music fades]
-
-GUEST: Thanks for having me.
-```
-
-**All outline presets:** No body formatting required — they export structured metadata only.
-
-#### Setting Up Pandoc Export
-
-For PDF output:
-
-1.  **Install Pandoc** — download from [pandoc.org](https://pandoc.org/installing.html)
-2.  **Install LaTeX** (for PDF) — [MacTeX](https://www.tug.org/mactex/) on macOS, [MiKTeX](https://miktex.org/) on Windows
-3.  **Auto-detect:** Go to **Settings → Publishing → Export & Pandoc** and click **Scan** to find installations automatically
-4.  **Generate samples:** Click **Generate Samples** to create sample scene files and LaTeX templates in `Radial Timeline/Export/Templates/`. Template paths are auto-configured.
-
-### Zero Draft Mode
-Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progressing to new scenes instead of endlessly revising. See the **[Settings](Settings#zero-draft-mode)** for details.
-
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/zero-draft-modal.png" alt="Zero Draft modal for capturing pending edits" style="width: 400px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Zero Draft modal — capture edit ideas without breaking flow</div>
-</div>
-
-**Settings**: → Radial Timeline → Zero draft mode
+1.  Install [Pandoc](https://pandoc.org/installing.html).
+2.  Install a LaTeX distribution if you want PDF output.
+3.  Open **Settings → Publishing** and configure paths, templates, or bundled styles as needed.
