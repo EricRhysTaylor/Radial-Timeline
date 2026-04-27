@@ -7495,6 +7495,10 @@
   backdrop-filter: var(--ert-modal-blur);
   -webkit-backdrop-filter: var(--ert-modal-blur);
   padding: var(--ert-gap-sm);
+  /* Safety net: modals without an explicit size class must never span the viewport.
+     Ultrawide displays were yielding modals 3000+px wide. Modals that need more
+     room set their own width via --sm/--md/per-modal selectors, which override this. */
+  width: min(600px, 92vw);
 }
 
 .ert-ui.ert-scope--modal,
@@ -8815,8 +8819,12 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 360px;
   overflow: hidden;
+}
+
+/* Min-height only applies when the modal hosts a scrollable results panel */
+.ert-ui.ert-scope--modal .ert-search-modal:has(.ert-template-search-results) {
+  min-height: 360px;
 }
 
 .ert-ui.ert-scope--modal .ert-template-search-results {
@@ -9209,7 +9217,7 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
-.ert-ui.ert-scope--modal .ert-search-input[class*="rt-input-error"] {
+.ert-ui.ert-scope--modal .ert-search-input.ert-input-error {
   border-color: var(--text-error);
   background: rgba(255, 0, 0, 0.08);
 }

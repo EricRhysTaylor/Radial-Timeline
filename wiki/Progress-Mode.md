@@ -12,7 +12,8 @@ Progress Mode isolates each subplot into its own radial pass, removing the combi
 *   **Act Structure**: Like Narrative Mode, scenes are distributed across your configured act count (default 3). Each act spans an equal segment of the 360° circle.
 *   **Cleaner View**: Removes story beats to reduce visual noise while you focus on workflow.
 
-## Workflow Visualization
+<a name="inner-status-and-stage-grid"></a>
+## Inner Status & Stage Grid
 
 Unlike Narrative Mode, this mode replaces subplot colors with your workflow status:
 
@@ -26,4 +27,9 @@ Unlike Narrative Mode, this mode replaces subplot colors with your workflow stat
     *   Once a scene is "Complete", it displays the color of its current stage (Zero Draft, Author's Draft, House Edit, Press Ready).
     *   These colors can be customized in [Progress stage colors](Settings#progress-stage-colors).
 
-This mode effectively becomes your project management dashboard, highlighting what needs to be written, what is overdue, and what is ready for the next stage of editing.
+Think of this as the Progress Mode status grammar:
+
+*   **Inner status** answers: what is happening with this scene right now?
+*   **Stage grid** answers: which draft or editing stage has this scene reached?
+
+Together they turn the radial view into a project-management dashboard, highlighting what needs to be written, what is overdue, and what is ready for the next stage of editing.

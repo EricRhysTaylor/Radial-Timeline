@@ -1151,9 +1151,19 @@ export class InquiryView extends ItemView {
     public getCurrentCorpusContext(): InquiryCurrentCorpusContext {
         const manifest = this.buildCorpusManifest('estimate-snapshot');
         const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        const snapshotMatches = !!snapshot
+        // Scope/book match is the precondition for any reuse from the snapshot.
+        const sameScope = !!snapshot
             && snapshot.scope === this.state.scope
-            && snapshot.activeBookId === this.getCanonicalActiveBookId()
+            && snapshot.activeBookId === this.getCanonicalActiveBookId();
+        // Corpus chars are provider-independent — reuse them across model switches
+        // as long as the corpus content fingerprint matches.
+        const corpusMatches = sameScope
+            && snapshot.corpus.corpusOnlyFingerprint === manifest.corpusOnlyFingerprint;
+        // Request envelope tokens / pass count / ceilings are model-specific — only
+        // reuse them when the full state matches (model included).
+        const requestMatches = sameScope
+            && snapshot.estimate.estimatedInputTokens > 0
+            && snapshot.resolvedEngine.modelId === this.getResolvedEngine().modelId
             && snapshot.corpus.corpusFingerprint === manifest.fingerprint;
         this._currentCorpusContext = {
             scope: this.state.scope,
@@ -1161,13 +1171,13 @@ export class InquiryView extends ItemView {
             scopeLabel: this.getScopeLabel(),
             corpusFingerprint: manifest.fingerprint,
             cacheReuseFingerprint: manifest.cacheReuseFingerprint,
-            corpus: snapshotMatches
+            corpus: corpusMatches
                 ? snapshot.corpus.estimate
                 : buildPendingCorpusEstimateFromManifestEntries(manifest.entries),
-            requestTokens: snapshotMatches ? snapshot.estimate.estimatedInputTokens : 0,
-            requestEstimateMethod: snapshotMatches ? snapshot.estimate.estimationMethod : undefined,
-            expectedPassCount: snapshotMatches ? snapshot.estimate.expectedPassCount : 1,
-            safeInputBudget: snapshotMatches ? snapshot.estimate.effectiveInputCeiling : 0,
+            requestTokens: requestMatches ? snapshot.estimate.estimatedInputTokens : 0,
+            requestEstimateMethod: requestMatches ? snapshot.estimate.estimationMethod : undefined,
+            expectedPassCount: requestMatches ? snapshot.estimate.expectedPassCount : 1,
+            safeInputBudget: requestMatches ? snapshot.estimate.effectiveInputCeiling : 0,
             manifestEntries: manifest.entries.map(entry => ({ ...entry }))
         };
         return this._currentCorpusContext;

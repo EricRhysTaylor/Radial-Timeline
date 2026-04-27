@@ -607,6 +607,8 @@ export function renderAiSection(params: {
         promptBreakdown?: PromptRequestBreakdown;
         providerExecutionTokens?: number;
         expectedPassCount?: number;
+        provider?: AIProviderId;
+        modelId?: string;
     }): Array<{ title: string; items: CapacityItem[] }> => {
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
@@ -657,14 +659,25 @@ export function renderAiSection(params: {
                     const overheadTokens = (totalTokens && visibleTokens && totalTokens > visibleTokens)
                         ? totalTokens - visibleTokens
                         : null;
+                    // Citation wrappers are only emitted by Anthropic Inquiry runs
+                    // when citations are enabled and the active model does not have
+                    // the cache-vs-citations exclusive constraint. OpenAI / Google /
+                    // Ollama never wrap evidence in citation wrappers.
                     const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
-                    const overheadLabel = citationsOn
+                    const activeModel = (counts?.provider && counts?.modelId)
+                        ? BUILTIN_MODELS.find(m => m.provider === counts.provider && m.id === counts.modelId)
+                        : undefined;
+                    const exclusive = activeModel?.constraints?.cacheVsCitationsExclusive === true;
+                    const usesCitationWrappers = counts?.provider === 'anthropic'
+                        && citationsOn
+                        && !exclusive;
+                    const overheadLabel = usesCitationWrappers
                         ? 'Citation wrappers + provider overhead'
                         : 'Provider overhead';
                     const overheadText = buildTokenCapacityLine(overheadLabel, overheadTokens);
                     return [
                         `Execution: ${passCount} ${passCount === 1 ? 'pass' : 'passes'}`,
-                        citationsOn
+                        usesCitationWrappers
                             ? { text: overheadText, extraCls: 'ert-ai-capacity-item--citation-active' }
                             : overheadText,
                         { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
@@ -2326,7 +2339,9 @@ export function renderAiSection(params: {
                     breakdown: forecasts.inquiry.breakdown,
                     promptBreakdown: forecasts.inquiry.promptBreakdown,
                     providerExecutionTokens: forecasts.inquiry.providerExecutionTokens,
-                    expectedPassCount: forecasts.inquiry.expectedPassCount
+                    expectedPassCount: forecasts.inquiry.expectedPassCount,
+                    provider,
+                    modelId: estimate.model.id
                 }));
             } else {
                 capacityInquiryToken.setText('Unavailable');

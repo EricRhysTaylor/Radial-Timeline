@@ -1,69 +1,45 @@
-Radial Timeline provides commands accessible via the Obsidian Command Palette.
+# Command Palette
+
+Radial Timeline provides commands through the Obsidian Command Palette.
 
 To open the Command Palette:
 *   **Mac**: `Cmd + P`
 *   **Windows/Linux**: `Ctrl + P`
 
-Type "Radial Timeline" to filter the list.
+Type `Radial Timeline` to filter the list.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/commands.png" alt="Radial Timeline Commands" style="max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Radial Timeline Commands in the palette</div>
 </div>
 
-## Command Reference
+## Commands
 
-### Core Commands
+These are the main command-palette entries, listed in the same order as the palette screenshot:
 
-| Command | Description | Documentation |
-| :--- | :--- | :--- |
-| **Open** | Opens the main Radial Timeline View. | [Radial Timeline View](Radial-Timeline-View) |
-| **Search timeline** | Opens the search bar in the Radial Timeline View to filter scenes by text across multiple fields. | [Search](How-to#search) |
-| **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [Manage Subplots in Bulk](How-to#manage-subplots-in-bulk) |
-| **Book designer** | Opens Book Designer to generate a manuscript set with acts, subplots, and beats. | [Book Designer](Book-Designer) |
-| **Timeline order** | Opens the Timeline Repair wizard to fix chronological ordering, sync patterns, and repair frontmatter. | — |
-| **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [Planetary Time](Chronologue-Mode#planetary-time) |
-
-### Scene Creation
-
-| Command | Description | Documentation |
-| :--- | :--- | :--- |
-| **Create note…** | Opens a guided picker for Scene, Manuscript matter, Story world, and Metadata notes, then creates the selected subtype. | [Workflow Overview](Core-Workflows#creating-scenes) |
-
-### Export
-
-| Command | Description | Documentation |
-| :--- | :--- | :--- |
-| **Manuscript export** | Compiles your scenes into a single manuscript or outline file with subplot filtering, ordering, and range selection. | [Workflow Overview](Core-Workflows#exporting-a-manuscript) |
-
-### AI & Analysis
-
-| Command | Description | Documentation |
-| :--- | :--- | :--- |
-| **Scene pulse analysis (manuscript order)** | Runs AI analysis on all scenes sequentially in narrative order. Requires AI features enabled. | [AI Pulse Triplet Analysis](AI-Pulse-Analysis) |
-| **Scene pulse analysis (subplot order)** | Runs AI analysis on scenes within a selected subplot. Requires AI features enabled. | [AI Pulse Triplet Analysis](AI-Pulse-Analysis) |
-| **Summary refresh** | Generates AI summaries for Inquiry (target length set in settings, default ≈200–300 words) with optional Synopsis updates for hovers. Requires AI features enabled. | [AI Pulse Triplet Analysis](AI-Pulse-Analysis) |
-| **Gossamer score manager** | Opens the score entry modal for manual Gossamer scoring on the active signal. | [Manual Entry](Gossamer-Mode#manual-entry) |
-| **Gossamer analysis** | Runs AI evaluation for the active Gossamer signal. Requires AI features enabled. | [AI Analysis](Gossamer-Mode#ai-analysis) |
-
-### Inquiry
-
-| Command | Description | Documentation |
-| :--- | :--- | :--- |
-| **Open Inquiry** | Opens the Inquiry View for corpus-level story analysis. | [Inquiry View](Inquiry-View) |
-| **Inquiry Omnibus Pass** | Runs all enabled Inquiry questions across configured scopes in a single batch. | [Inquiry](Inquiry) |
-
-### Pro & Social
-
-| Command | Description | Documentation |
-| :--- | :--- | :--- |
-| **Runtime estimator** | Opens the runtime estimation modal for screenplay, audiobook, or novel duration analysis. Requires Pro. | [Runtime Estimation](Pro#runtime-estimation) |
-| **Author progress report** | Opens the Author Progress Report modal for generating shareable progress graphics. | [Author Progress Report](Author-Progress-Report) |
+1. [Open](Radial-Timeline-View)
+2. [Create note…](Create-Note)
+3. [Open inquiry](Inquiry-View)
+4. [Book Designer](Book-Designer)
+5. [Timeline order](Timeline-Order)
+6. [Timeline audit](Timeline-Audit)
+7. [Manage subplots](Manage-Subplots)
+8. [Summary refresh](Summary-Refresh)
+9. [Search timeline](Search-Timeline)
+10. [Gossamer analysis](Gossamer-Analysis)
+11. [Runtime estimator](Runtime-Estimator)
+12. [Manuscript export](Manuscript-Export)
+13. [Inquiry omnibus pass](Inquiry-Omnibus-Pass)
+14. [Gossamer score manager](Gossamer-Score-Manager)
+15. [Planetary time calculator](Planetary-Time-Calculator)
+16. [Author progress report (APR)](Author-Progress-Report)
+17. [Scene pulse analysis (subplot order)](Scene-Pulse-Analysis-Subplot-Order)
+18. [Scene pulse analysis (manuscript order)](Scene-Pulse-Analysis-Manuscript-Order)
 
 ## Conditional Commands
 
 Some commands only appear in the Command Palette when their required feature is enabled:
 
-*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis): Require **AI LLM features** to be enabled in Settings → AI.
+*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis, Inquiry omnibus pass): Require **AI LLM features** to be enabled in Settings → AI.
 *   **Runtime estimator**: Requires **Pro** to be active in Settings → PRO.
 *   **Planetary time calculator**: Requires **Planetary time** to be enabled in Settings → Core.

@@ -38,10 +38,10 @@ export class SearchService {
         const validateInput = (): boolean => {
             const term = searchInput.getValue().trim();
             if (term.length > 0 && term.length < 3) {
-                searchInput.inputEl.classList.add('rt-input-error');
+                searchInput.inputEl.classList.add('ert-input-error');
                 return false;
             } else {
-                searchInput.inputEl.classList.remove('rt-input-error');
+                searchInput.inputEl.classList.remove('ert-input-error');
                 return true;
             }
         };
@@ -59,27 +59,27 @@ export class SearchService {
             .onClick(() => {
                 const term = searchInput.getValue().trim();
                 if (term.length >= 3) { 
-                    searchInput.inputEl.classList.remove('rt-input-error');
+                    searchInput.inputEl.classList.remove('ert-input-error');
                     this.performSearch(term); 
                     modal.close(); 
                 } else { 
-                    searchInput.inputEl.classList.add('rt-input-error');
+                    searchInput.inputEl.classList.add('ert-input-error');
                     new Notice('Please enter at least 3 letters to search'); 
                 }
             });
         new ButtonComponent(buttonContainer)
             .setButtonText('Reset')
-            .onClick(() => { searchInput.setValue(''); searchInput.inputEl.classList.remove('rt-input-error'); this.clearSearch(); modal.close(); });
+            .onClick(() => { searchInput.setValue(''); searchInput.inputEl.classList.remove('ert-input-error'); this.clearSearch(); modal.close(); });
         // SAFE: Modal classes don't have registerDomEvent; cleanup via DOM removal on modal close
         searchInput.inputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 const term = searchInput.getValue().trim();
                 if (term.length >= 3) { 
-                    searchInput.inputEl.classList.remove('rt-input-error');
+                    searchInput.inputEl.classList.remove('ert-input-error');
                     this.performSearch(term); 
                     modal.close(); 
                 } else { 
-                    searchInput.inputEl.classList.add('rt-input-error');
+                    searchInput.inputEl.classList.add('ert-input-error');
                     new Notice('Please enter at least 3 letters to search'); 
                 }
             }

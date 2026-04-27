@@ -709,19 +709,6 @@ body.rt-modal-open .radial-timeline-container * {
   pointer-events: none;
 }
 
-/* APR branding text measurement node (HTML span) */
-.rt-apr-measure-text {
-  font-family: var(--rt-apr-measure-font-family, sans-serif);
-  font-size: var(--rt-apr-measure-font-size, 18px);
-  font-weight: var(--rt-apr-measure-font-weight, 400);
-  font-style: var(--rt-apr-measure-font-style, normal);
-  letter-spacing: var(--rt-apr-measure-letter-spacing, 0em);
-  visibility: hidden;
-  position: absolute;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
 /* Generic scene-path styling - excludes backdrop segments which have their own rules */
 .radial-timeline-container .rt-scene-path:not(.rt-backdrop-segment) {
   cursor: pointer;
@@ -776,20 +763,6 @@ body.rt-modal-open .radial-timeline-container * {
   pointer-events: none;
 }
 
-/* Layout containers */
-.rt-flex-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 15px;
-}
-
-/* Button styles */
-.rt-action-button {
-  padding: 10px;
-  margin-top: 20px;
-}
-
 /* Dynamic positioning */
 .radial-timeline-container .dynamic-position {
   position: absolute;
@@ -820,15 +793,6 @@ body.rt-modal-open .radial-timeline-container * {
   opacity: 0;
 }
 
-/* Button Container Styles */
-.rt-button-container {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  align-items: center;
-  /* Align items vertically */
-}
-
 /* Info container styles */
 .rt-info-container {
   cursor: pointer;
@@ -853,53 +817,6 @@ body.rt-modal-open .radial-timeline-container * {
   color: var(--text-muted);
 }
 
-/* Badge with icon (inline-flex for alignment) */
-.rt-badge-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Pill variant - rounded ends */
-.rt-badge-pill {
-  border-radius: 999px;
-}
-
-/* Hero badge variant - for prominent headers */
-.rt-badge-hero {
-  font-size: 0.65rem;
-  padding: 4px 12px;
-  border-radius: 999px;
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text-normal);
-}
-
-/* Meta item - inline info block */
-.rt-meta-item {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-/* Meta item with icon */
-.rt-meta-item-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Warning meta item variant */
-.rt-meta-item-warning {
-  color: var(--text-warning);
-  border-color: rgba(255, 165, 0, 0.2);
-}
-
 /* Chip - compact stat/label display */
 .rt-chip {
   padding: 8px 12px;
@@ -909,19 +826,6 @@ body.rt-modal-open .radial-timeline-container * {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.rt-chip-label {
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.rt-chip-value {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-normal);
 }
 
 /* ==========================================================================
@@ -937,15 +841,6 @@ body.rt-modal-open .radial-timeline-container * {
   margin-top: 20px;
 }
 
-.rt-actions-inline {
-  justify-content: space-between;
-  align-items: center;
-}
-
-.rt-actions-wrap {
-  flex-wrap: wrap;
-}
-
 /* ==========================================================================
    FLAT LAYOUT UTILITIES
    Simple, reusable patterns for settings and modal layouts
@@ -956,10 +851,6 @@ body.rt-modal-open .radial-timeline-container * {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.rt-row-tight {
-  gap: 6px;
 }
 
 .rt-row-loose {
@@ -974,10 +865,6 @@ body.rt-modal-open .radial-timeline-container * {
   justify-content: space-between;
 }
 
-.rt-row-end {
-  justify-content: flex-end;
-}
-
 /* Flex stack - vertical layout */
 .rt-stack {
   display: flex;
@@ -989,21 +876,12 @@ body.rt-modal-open .radial-timeline-container * {
   gap: 6px;
 }
 
-.rt-stack-loose {
-  gap: 16px;
-}
-
 /* Card container - for grouped content areas */
 .rt-card {
   padding: 12px 14px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
-}
-
-.rt-card-flat {
-  background: transparent;
-  border-style: dashed;
 }
 
 /* Glass card - for modals with dark theme */
@@ -1032,9 +910,8 @@ body.rt-modal-open .radial-timeline-container * {
   border-bottom-color: var(--ert-pro-border);
 }
 
-/* Icon button - consistent sizing (includes rt-template-icon-btn for settings) */
-.rt-icon-btn,
-.rt-template-icon-btn {
+/* Icon button - consistent sizing */
+.rt-icon-btn {
   width: 34px;
   height: 34px;
   display: inline-flex;
@@ -1047,24 +924,20 @@ body.rt-modal-open .radial-timeline-container * {
   border-radius: 8px;
 }
 
-.rt-icon-btn svg,
-.rt-template-icon-btn svg {
+.rt-icon-btn svg {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
-.rt-icon-btn.rt-mod-cta,
-.rt-template-icon-btn.rt-mod-cta {
+.rt-icon-btn.rt-mod-cta {
   background-color: var(--interactive-accent);
   border-color: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
 .rt-icon-btn.rt-mod-cta svg,
-.rt-icon-btn.rt-mod-cta svg *,
-.rt-template-icon-btn.rt-mod-cta svg,
-.rt-template-icon-btn.rt-mod-cta svg * {
+.rt-icon-btn.rt-mod-cta svg * {
   stroke: var(--text-on-accent);
 }
 
@@ -1079,9 +952,8 @@ body.rt-modal-open .radial-timeline-container * {
   color: var(--text-muted);
 }
 
-/* Form input base (shared styling - includes rt-template-input for settings) */
-.rt-input,
-.rt-template-input {
+/* Form input base */
+.rt-input {
   height: 36px;
   padding: 8px 10px;
   border-radius: 6px;
@@ -1090,7 +962,6 @@ body.rt-modal-open .radial-timeline-container * {
   color: var(--text-normal);
 }
 
-.rt-input:focus,
-.rt-template-input:focus {
+.rt-input:focus {
   outline: 1px solid var(--interactive-accent);
 }

@@ -1,0 +1,22 @@
+# Inquiry omnibus pass
+
+`Inquiry omnibus pass` runs all enabled Inquiry questions in one batch.
+
+Use it when you want a full Inquiry sweep across the current scope instead of running one question at a time.
+
+## What It Does
+
+The omnibus pass executes enabled questions across the Inquiry zones and returns a combined set of findings for the current corpus.
+
+It works with the active Inquiry scope, such as:
+
+*   Book
+*   Saga
+
+Depending on provider and engine path, the run may execute as a combined omnibus flow or as sequential provider calls behind the scenes.
+
+## Related Docs
+
+*   [Inquiry](Inquiry#running-an-inquiry)
+*   [Inquiry View](Inquiry-View)
+

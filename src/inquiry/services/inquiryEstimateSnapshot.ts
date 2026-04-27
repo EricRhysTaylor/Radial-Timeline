@@ -65,7 +65,13 @@ export interface InquiryEstimateSnapshot {
         readonly outlineCount: number;
         readonly referenceCount: number;
         readonly evidenceChars: number;
+        // Full manifest fingerprint (includes modelId). Compared against
+        // result.corpusFingerprint persisted by completed runs.
         readonly corpusFingerprint: string;
+        // Model-free fingerprint of the corpus contents alone. Used to reuse the
+        // corpus estimate across model switches (corpus chars are provider-
+        // independent — only request envelope tokens depend on the model).
+        readonly corpusOnlyFingerprint: string;
         readonly estimate: RTCorpusTokenEstimate;
     };
 
@@ -250,6 +256,7 @@ export async function buildInquiryEstimateSnapshot(
             referenceCount: corpusEstimate.referenceCount,
             evidenceChars: corpusEstimate.evidenceChars,
             corpusFingerprint: params.manifest.fingerprint,
+            corpusOnlyFingerprint: params.manifest.corpusOnlyFingerprint,
             estimate: corpusEstimate,
         },
 

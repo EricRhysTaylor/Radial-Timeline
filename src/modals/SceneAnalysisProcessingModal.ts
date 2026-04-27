@@ -638,7 +638,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         // Mode selection
-        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes ert-glass-card' });
+        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes' });
 
         if (this.taskType === 'synopsis') {
             this.createModeOption(

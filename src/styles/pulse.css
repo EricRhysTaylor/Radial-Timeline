@@ -987,6 +987,7 @@
 
 .rt-pulse-count {
   margin-top: 18px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;

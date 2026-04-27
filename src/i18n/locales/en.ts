@@ -1890,7 +1890,7 @@ export const en: TranslationKeys = {
     commands: {
         openTimeline: 'Open',
         openInquiry: 'Open inquiry',
-        inquiryOmnibusPass: 'Inquiry omnibus pass',
+        inquiryOmnibusPass: 'Inquiry omnibus',
         searchTimeline: 'Search timeline',
         createNote: 'Create note\u2026',
         manageSubplots: 'Manage subplots',
