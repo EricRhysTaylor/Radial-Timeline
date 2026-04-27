@@ -11,7 +11,6 @@
   --ert-gap-lg: 16px;
   --ert-gap-roomy: 18px;
   --ert-gap-xl: 20px;
-  --ert-gap-md: 12px;
   --ert-row-gap: var(--ert-gap-sm);
   --ert-row-pad: var(--ert-pad-md);
   --ert-group-gap: var(--ert-row-gap);
@@ -221,13 +220,13 @@
     transparent 82%
   );
   --ert-modal-glow: 0 4px 16px color-mix(in srgb, var(--ert-accent) 10%, transparent);
-  --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
-  --ert-input-width-2digit: var(--rt-input-width-2digit, 4.75ch);
-  --ert-input-width-3digit: var(--rt-input-width-3digit, 5.75ch);
-  --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
-  --ert-input-width-md: var(--rt-input-width-md, 18ch);
-  --ert-input-width-lg: var(--rt-input-width-lg, 24ch);
-  --ert-input-width-xl: var(--rt-input-width-xl, 48ch);
+  --ert-input-width-xs: 6ch;
+  --ert-input-width-2digit: 4.75ch;
+  --ert-input-width-3digit: 5.75ch;
+  --ert-input-width-sm: 10ch;
+  --ert-input-width-md: 18ch;
+  --ert-input-width-lg: 24ch;
+  --ert-input-width-xl: 48ch;
   --ert-settings-select-width-wide: 250px;
 
   /* Layout */
@@ -1837,8 +1836,8 @@
 .ert-ui.ert-scope--settings .ert-skin--social,
 .ert-ui.ert-skin--apr,
 .ert-ui .ert-skin--apr {
-  --ert-accent: var(--rt-social-color, #ffd41d);
-  --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
+  --ert-accent: var(--ert-social-accent-color-base);
+  --ert-accent-rgb: var(--ert-social-accent-rgb-base);
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--ert-accent) 8%);
   --ert-border-hero: color-mix(in srgb, var(--ert-accent) 25%, transparent);
   --ert-shadow-hero: 0 4px 12px color-mix(in srgb, var(--ert-accent) 12%, transparent);
@@ -2235,16 +2234,14 @@
 /* Nested Pro skin inside Social (keep Pro identity) */
 .ert-ui.ert-scope--settings.ert-skin--social .ert-skin--pro,
 .ert-ui.ert-scope--settings .ert-skin--social .ert-skin--pro {
-  --ert-pro-accent: var(--rt-pro-color, #d946ef);
-  --ert-pro-accent-rgb: var(--rt-pro-color-rgb, 217, 70, 239);
-  --ert-accent: var(--ert-pro-accent);
-  --ert-accent-rgb: var(--ert-pro-accent-rgb);
-  --ert-pro-border: color-mix(in srgb, var(--ert-pro-accent) 28%, transparent);
-  --ert-pro-surface-bg: radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-pro-accent) 16%, transparent) 0%, transparent 52%),
-    radial-gradient(circle at 86% 78%, color-mix(in srgb, var(--ert-pro-accent) 8%, transparent) 0%, transparent 55%),
-    linear-gradient(135deg, color-mix(in srgb, var(--ert-pro-accent) 6%, transparent) 0%, color-mix(in srgb, var(--ert-pro-accent) 2%, transparent) 100%),
-    color-mix(in srgb, var(--background-primary) 94%, var(--ert-pro-accent) 4%);
-  --ert-pro-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-pro-accent) 8%);
+  --ert-accent: var(--ert-pro-accent-color);
+  --ert-accent-rgb: var(--ert-pro-accent-rgb-base);
+  --ert-pro-border: color-mix(in srgb, var(--ert-accent) 28%, transparent);
+  --ert-pro-surface-bg: radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-accent) 16%, transparent) 0%, transparent 52%),
+    radial-gradient(circle at 86% 78%, color-mix(in srgb, var(--ert-accent) 8%, transparent) 0%, transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ert-accent) 6%, transparent) 0%, color-mix(in srgb, var(--ert-accent) 2%, transparent) 100%),
+    color-mix(in srgb, var(--background-primary) 94%, var(--ert-accent) 4%);
+  --ert-pro-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-accent) 8%);
   --ert-pro-glow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -2259,7 +2256,7 @@
 
 .ert-ui.ert-scope--settings.ert-skin--social .ert-skin--pro .ert-chip,
 .ert-ui.ert-scope--settings .ert-skin--social .ert-skin--pro .ert-chip {
-  background: color-mix(in srgb, var(--ert-pro-accent) 12%, var(--background-secondary) 78%);
+  background: color-mix(in srgb, var(--ert-accent) 12%, var(--background-secondary) 78%);
 }
 
 
@@ -2344,7 +2341,7 @@
 
 
 .ert-ui [data-ert-role="inquiry-setting:scan-roots"] {
-  --rt-input-width-sm: 12ch;
+  --ert-input-width-sm: 12ch;
 }
 
 .ert-ui :is(input, select).ert-input--hex {

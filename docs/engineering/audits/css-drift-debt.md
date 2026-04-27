@@ -1,6 +1,6 @@
 # CSS Drift Debt
 
-Generated: 2026-04-26T21:52:37.532Z
+Generated: 2026-04-26T23:41:10.645Z
 
 Snapshot of every WARN-level drift hit at the time of baseline reset. Work through these to ratchet the baseline down. After fixing a batch, run `npm run css-drift -- --maintenance --update-baseline` to lock in the new lower ceiling.
 
@@ -48,12 +48,12 @@ _No hits. 🎉_
 ### src/styles/modal.css (8)
 
 ```
-src/styles/modal.css:1428: color: var(--text-normal);
+src/styles/modal.css:1427: color: var(--text-normal);
   font-weight: 700;
 }
 
 .rt-gossamer-score-label {
-src/styles/modal.css:1433: font-size: 1.1rem;
+src/styles/modal.css:1432: font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -61,33 +61,33 @@ src/styles/modal.css:1433: font-size: 1.1rem;
 }
 
 .rt-gossamer-score-value {
-src/styles/modal.css:1441: font-size: 1.1rem;
+src/styles/modal.css:1440: font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-normal);
 }
 
 .rt-gossamer-score-line {
-src/styles/modal.css:1447: display: flex;
+src/styles/modal.css:1446: display: flex;
   align-items: center;
   gap: var(--ert-gap-sm);
   margin: var(--ert-gap-xs) 0;
 }
 
 .rt-gossamer-score-line svg {
-src/styles/modal.css:1454: width: 24px;
+src/styles/modal.css:1453: width: 24px;
   height: 24px;
 }
 
 .rt-gossamer-score-line text {
-src/styles/modal.css:1459: fill: var(--text-normal);
+src/styles/modal.css:1458: fill: var(--text-normal);
 }
 
 .rt-gossamer-score-line .rt-gossamer-score-value {
-src/styles/modal.css:1463: margin-left: auto;
+src/styles/modal.css:1462: margin-left: auto;
 }
 
 .rt-gossamer-score-line [data-item-type=title] {
-src/styles/modal.css:1467: fill: var(--rt-max-publish-stage-color);
+src/styles/modal.css:1466: fill: var(--rt-max-publish-stage-color);
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
@@ -109,7 +109,7 @@ src/styles/modal.css:1467: fill: var(--rt-max-publish-stage-color);
 ### src/styles/legacy/rt-ui-legacy.css (1)
 
 ```
-src/styles/legacy/rt-ui-legacy.css:169: max-height: 200px;
+src/styles/legacy/rt-ui-legacy.css:163: max-height: 200px;
   overflow-y: auto;
   margin-top: 12px;
 }

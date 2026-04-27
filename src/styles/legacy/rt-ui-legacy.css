@@ -16,12 +16,6 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-pro-accent-color) 20%, transparent);
 }
 
-/* Legacy settings aliases */
-.ert-settings-root {
-  --ert-settings-pro-color: var(--ert-pro-accent-color);
-  --ert-settings-social-color: var(--ert-social-accent-color-base);
-}
-
 /* -------------------------------------------------------------------------- */
 /* MIGRATED FROM settings.css (legacy selectors)                              */
 /* -------------------------------------------------------------------------- */
@@ -145,7 +139,7 @@
 
 .ert-runtime-number {
   font-weight: 600;
-  color: var(--ert-settings-pro-color);
+  color: var(--ert-pro-accent-color);
 }
 
 .ert-runtime-hint {
@@ -294,7 +288,7 @@
 }
 
 .ert-runtime-accordion-header:hover {
-  color: var(--ert-settings-pro-color);
+  color: var(--ert-pro-accent-color);
 }
 
 .ert-runtime-accordion-icon {

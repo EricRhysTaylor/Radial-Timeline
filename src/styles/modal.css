@@ -84,13 +84,12 @@
 
 /* Pro badge styling - used in manuscript modal and runtime modal */
 .ert-runtime-modal-shell .ert-modal-badge {
-  --ert-modal-pro-accent: var(--ert-pro-accent-color);
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-tight);
   background: rgba(var(--ert-pro-accent-rgb-base), 0.15);
   border-color: rgba(var(--ert-pro-accent-rgb-base), 0.3);
-  color: var(--ert-modal-pro-accent);
+  color: var(--ert-pro-accent-color);
 }
 
 .ert-runtime-modal-shell .ert-modal-badge-icon {
@@ -102,7 +101,7 @@
 .ert-runtime-modal-shell .ert-modal-badge-icon svg {
   width: 14px;
   height: 14px;
-  stroke: var(--ert-modal-pro-accent);
+  stroke: var(--ert-pro-accent-color);
   stroke-width: 2;
   fill: none;
 }
