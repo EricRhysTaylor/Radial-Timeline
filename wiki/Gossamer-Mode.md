@@ -60,7 +60,6 @@ You can configure the underlying system that powers Gossamer Mode in **Settings 
 Choose a preset structure:
 *   **Save The Cat** (15 beats)
 *   **Hero's Journey** (12 beats)
-*   **Story Grid** (5 Commandments)
 *   **Custom**: Define your own structure.
 
 ### 2. Custom Beat System

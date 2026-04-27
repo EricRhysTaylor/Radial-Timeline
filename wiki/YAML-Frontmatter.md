@@ -51,7 +51,7 @@ You can control how POV is displayed in **Settings → Point of view**.
 <a name="advanced-scene-template"></a>
 ## Advanced Scene Properties
 
-Advanced scene properties add optional fields for deeper workflows (Story Grid, Dramatica, custom analysis, and more). This profile is **customizable**.
+Advanced scene properties add optional fields for deeper workflows (Dramatica, custom analysis, and more). This profile is **customizable**.
 
 ```yaml
 Class: Scene
@@ -71,8 +71,8 @@ Publish Stage: Zero
 Due:
 Pending Edits:
 Iteration:                            # Edit iteration count (deprecated: was "Revision")
-Type:                                 # Story Grid: Scene type (Inciting Incident, Progressive Complication, Crisis, Climax, Resolution)
-Shift:                                # Story Grid: Value shift (e.g. Life to Death, Hope to Despair)
+Type:                                 # Optional scene role or classification
+Shift:                                # Optional value shift or polarity change
 Questions:                            # Analysis Block
 Reader Emotion:
 Internal: How do the characters change?

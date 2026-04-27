@@ -87,7 +87,7 @@ Calculate screen time, audiobook duration, and manuscript length estimates.
 <a name="story-beats"></a>
 ### Story beats system
 Configure the structural pacing guide for your story.
-*   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
+*   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**) or choose **Custom**.
 *   **Custom story beat system editor**: (Visible when "Custom" is selected) Name your beat system, then add beats. Assign each beat to an act and drag to reorder. Row colors show sync status at a glance:
     *   **Green** — beat note exists and Act matches.
     *   **Orange** — beat note exists but Act is wrong. Use **Repair** to update frontmatter.

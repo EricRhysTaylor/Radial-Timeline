@@ -66,7 +66,7 @@ Pending Edits:
 
 ### Advanced Scene with AI Beats
 
-Full scene with AI triplet analysis, Story Grid fields, and tracking metadata:
+Full scene with AI triplet analysis, optional analysis fields, and tracking metadata:
 
 ```yaml
 ---
@@ -95,9 +95,9 @@ Due: 2026-01-31
 Pending Edits:
 Iteration:
 
-# Story Grid Analysis
-Type:     # revelation / turning point / confrontation / decision / setup / payoff / inciting incident / deepening
-Shift:    # Polarity change: + / - (or +/- if it flips both ways)
+# Optional analysis fields
+Type:     # Optional scene role or classification
+Shift:    # Optional value shift or polarity change
 Questions:     # What is the reader wondering?
 Reader Emotion:     # curious / shocked / uneasy / hopeful / betrayed / triumphant
 Internal:     # How do the character change? (e.g., from trusting → suspicious)
@@ -332,10 +332,10 @@ Book project label for multi-book series.
 
 ---
 
-## Story Grid Fields
+## Optional Analysis Fields
 
 ### Type
-Scene type classification:
+Optional scene role or classification:
 - revelation
 - turning point
 - confrontation
@@ -348,7 +348,7 @@ Scene type classification:
 ---
 
 ### Shift
-Polarity change: `+`, `-`, or `+/-` (if it flips both ways)
+Optional value shift or polarity change: `+`, `-`, or `+/-` (if it flips both ways)
 
 ---
 
@@ -488,7 +488,6 @@ In Gossamer Mode, historical runs display in their stage color with saturation g
 The story beat system this beat belongs to:
 - Save The Cat
 - Hero's Journey
-- Story Grid
 - Custom
 
 ---

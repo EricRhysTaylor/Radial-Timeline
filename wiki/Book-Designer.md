@@ -61,7 +61,7 @@ Book Designer supports two built-in scene property profiles:
 2.  **Advanced properties**: A richer profile with analysis, stats, and additional workflow fields.
 
 ### Adding Custom Properties
-If your writing methodology uses fields beyond the built-in keys (for example Story Grid values or Dramatica signposts), you can add them to the advanced scene properties:
+If your writing methodology uses fields beyond the built-in keys (for example Dramatica signposts or your own custom labels), you can add them to the advanced scene properties:
 1.  Go to **Settings → Scene properties & remapping**.
 2.  Enable **Scene properties editor**.
 3.  Add your custom keys to the list.

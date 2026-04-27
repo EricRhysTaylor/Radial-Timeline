@@ -22,7 +22,7 @@ This page covers the fresh vault flow. If you already have scenes, jump to [Exis
 3. Click Create to generate your scene notes and optional beat notes.
 
 ## 3. Choose a beats system (or skip for now)
-- Pick Save the Cat, Hero's Journey, Story Grid, or Custom in Settings -> Core -> Story beats system.
+- Pick Save the Cat, Hero's Journey, or Custom in Settings -> Core -> Story beats system.
 - For Custom: name your system, add beats, assign to acts, and drag to reorder.
 - If you skipped beats in Book Designer, use **Create** to generate beat set notes later. Use **Merge** to realign files after reordering or renaming.
 
