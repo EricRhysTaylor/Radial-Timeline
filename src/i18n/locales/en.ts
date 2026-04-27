@@ -663,6 +663,264 @@ export interface TranslationKeys {
         synopsis: { prefix: string; };
         tooltip: { altHint: string; };
     };
+    inquiry: {
+        help: {
+            tooltip: string;
+            configTooltip: string;
+            noScenesTooltip: string;
+            corpusTooltip: string;
+            resultsTooltip: string;
+            runningTooltip: string;
+            runningSingleTooltip: string;
+            onboardingTooltip: string;
+        };
+        mobile: {
+            title: string;
+            subtitle: string;
+            openBriefs: string;
+            viewLatest: string;
+        };
+        nav: {
+            bookUnresolved: string;
+            waitingForProvider: string;
+            welcome: string;
+            previousBook: string;
+            nextBook: string;
+            noPreviousBook: string;
+            noNextBook: string;
+        };
+        navTooltip: {
+            scopeToggle: string;
+            flowLens: string;
+            depthLens: string;
+            modeIconToggle: string;
+            focusRingToggle: string;
+            previousBook: string;
+            nextBook: string;
+        };
+        runner: {
+            contactingProvider: string;
+            running: string;
+            cancelRequested: string;
+            finalizing: string;
+            waiting: string;
+            singlePassExceeded: string;
+            singlePassFitFailedWithBudget: string;
+            singlePassFitFailedUnknown: string;
+            multiPassNotComplete: string;
+            multiPassUnknownNotComplete: string;
+            multiPassNotCompleteFallback: string;
+            executionPrecheckFailed: string;
+            multiPassFailureGeneric: string;
+            runAborted: string;
+            tokenEstimateUnavailable: string;
+            jsonNotFound: string;
+            inquiryAiUnavailable: string;
+            omnibusReservedForGoogle: string;
+            inquiryAlreadyRunning: string;
+            inquiryNotConfigured: string;
+            noScenesAvailable: string;
+            noEnabledQuestions: string;
+            scopeChanged: string;
+            questionSetChanged: string;
+            corpusContributionChanged: string;
+            providerStrategyChanged: string;
+            previousRunCompleted: string;
+            stubResultGeneric: string;
+            stubResultPreview: string;
+            aiResponseRecovered: string;
+            aiUnsupportedParameter: string;
+            aiRequestRejected: string;
+            aiAuthError: string;
+            aiTimedOut: string;
+            aiRateLimited: string;
+            stubResultUnavailable: string;
+            integrityNoVerified: string;
+            integrityUnverified: string;
+            unableToBuildEvidence: string;
+            noEvidenceForScope: string;
+            citationsCouldNotBeMatched: string;
+            noSummaryProvided: string;
+            multiPassTriggerReason: string;
+            inquiryRunFooter: string;
+        };
+        notice: {
+            aiDisabledInSettings: string;
+            omnibusViewFailed: string;
+            omnibusMobileOnly: string;
+            omnibusResumeNothing: string;
+            omnibusUnavailable: string;
+            omnibusFailed: string;
+            running: string;
+            noEnabledQuestions: string;
+            logNotFound: string;
+            pendingEditsBroken: string;
+            briefNotFound: string;
+            briefSaved: string;
+            briefSaveFailed: string;
+            briefFolderFailed: string;
+            briefNotSaved: string;
+            noBriefActive: string;
+            sceneNotFound: string;
+            noRunForPreview: string;
+            noRunForSave: string;
+            logFolderFailed: string;
+            logSaveFailed: string;
+            logContentFolderFailed: string;
+            logContentSaveFailed: string;
+            folderAccessFailed: string;
+            noBriefs: string;
+            fileExplorerUnavailable: string;
+            revealFolderFailed: string;
+            purgedNothing: string;
+            purgedScenes: string;
+            purgedScenesWithRearm: string;
+            coreSetLoaded: string;
+        };
+        interaction: {
+            running: string;
+            fieldAlreadyUpdated: string;
+            runningWaitClear: string;
+            runningWaitReset: string;
+            corpusOverridesAlreadyMatch: string;
+            corpusOverridesReset: string;
+            noCorpusAvailable: string;
+            noScenesInScope: string;
+            noActionItemsToPurge: string;
+            noQuestionForSlot: string;
+            noQuestionsForZone: string;
+            emptyScenesCannotTarget: string;
+            onlySceneTicksTargetable: string;
+            targetScenesBookOnly: string;
+            targetSceneAdded: string;
+            targetSceneRemoved: string;
+            noTargetScenesToClear: string;
+            clearedAllTargetScenes: string;
+            corpusDisabled: string;
+            inquiryAlreadyRun: string;
+            targetScenesBookOnlySaga: string;
+            lensAlreadyActive: string;
+            onlyOneSummaryLens: string;
+            cannotCancelFromPreview: string;
+            cancelRequested: string;
+            bookScopeUnresolved: string;
+            writebackDisabledSimulated: string;
+            noActionItemsThreshold: string;
+            cancelOnlySingleQuestion: string;
+            pendingEditsUpdatedDefault: string;
+        };
+        menu: {
+            forceRerun: string;
+            openCitationBriefing: string;
+            openCitationMarkdown: string;
+            openScene: string;
+            openNote: string;
+            cancelTargeting: string;
+            optionDefaultRun: string;
+            optionStandard: string;
+            optionFocused: string;
+            setFocus: string;
+            removeFocus: string;
+            addToTargetScenes: string;
+            removeFromTargetScenes: string;
+            corpusExclude: string;
+            corpusSummary: string;
+            corpusFullScene: string;
+        };
+        findings: {
+            findings: string;
+            findingsWithCount: string;
+            oneTargetScene: string;
+            multipleTargetScenes: string;
+            noInquiryRun: string;
+            runToSeeVerdicts: string;
+            verdictBookScoped: string;
+            selectionFocused: string;
+            selectionDiscover: string;
+            validationMissingTargetRoles: string;
+            scopeNoteTargetBookOnly: string;
+            integrityCompromised: string;
+            integrityWarning: string;
+            targetSection: string;
+            contextSection: string;
+            unverifiedSection: string;
+            unverifiedWarning: string;
+            empty: string;
+            lens: string;
+            unverifiedHeadlinePrefix: string;
+            citedAs: string;
+            referencesNormalized: string;
+            corpusFingerprintNotAvailable: string;
+            recentSessionsNotAvailable: string;
+            stubInquiryHeadline: string;
+            stubBulletNote: string;
+            stubBulletPlaceholder: string;
+            previewFooterDismiss: string;
+        };
+        preview: {
+            footerOpenLog: string;
+            hoverPreview: string;
+            inquiryNotConfiguredHero: string;
+            inquiryNotConfiguredHelp: string;
+            noScenesHero: string;
+        };
+        details: {
+            toggle: string;
+        };
+        debug: {
+            origin: string;
+        };
+        corpus: {
+            disabled: string;
+            legendClickKeysTitle: string;
+            legendClickCycle: string;
+            legendShiftClickToggle: string;
+            legendRightClickMenu: string;
+            legendModeTitle: string;
+            legendModeFull: string;
+            legendModeSummary: string;
+            legendModeExclude: string;
+            legendStatusTitle: string;
+            legendStatusComplete: string;
+            legendStatusWorking: string;
+            legendStatusTodo: string;
+            legendStatusOverdue: string;
+            legendTierTitle: string;
+            legendTierSubstantive: string;
+            legendTierMedium: string;
+            tooltipStatusOverdue: string;
+            tooltipStatusComplete: string;
+            tooltipStatusTodo: string;
+            tooltipStatusWorking: string;
+            tooltipModeExclude: string;
+            tooltipTargetActive: string;
+            tooltipWordsLabel: string;
+            statusOverdueLabel: string;
+            statusTodoLabel: string;
+            statusWorkingLabel: string;
+            statusCompleteLabel: string;
+        };
+        settingsExtra: {
+            autopopulateName: string;
+            autopopulateDesc: string;
+            replaceQuestionsTitle: string;
+            replaceCustomizedQuestionsTitle: string;
+            replaceQuestionsConfirm: string;
+            replaceCustomTitle: string;
+            replaceCustomSubtitle: string;
+            replaceCustomWarningOne: string;
+            replaceCustomWarningMany: string;
+            replaceCustomConfirm: string;
+            replaceCanonicalTitle: string;
+            replaceCanonicalSubtitle: string;
+            loadCanonicalSubtitleCustomized: string;
+            loadCanonicalSubtitleCurrent: string;
+            coreQuestionsLabel: string;
+            fullProSetLabel: string;
+            collapse: string;
+            expand: string;
+        };
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1774,5 +2032,263 @@ export const en: TranslationKeys = {
         },
         synopsis: { prefix: 'Local: ' },
         tooltip: { altHint: 'Hold Alt/Option to show local time.' },
+    },
+    inquiry: {
+        help: {
+            tooltip: 'How Inquiry Works',
+            configTooltip: 'Inquiry is not configured yet.\nPlease configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).\nThen explicitly check which classes to include for the selected scope.',
+            noScenesTooltip: 'No scenes found for the current scope.\nPlease configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).\nThen explicitly check which classes to include for the selected scope.',
+            corpusTooltip: 'Corpus disabled.\nEnable corpus scopes in the Corpus strip to run Inquiry.',
+            resultsTooltip: 'Review material citations for granular feedback in the minimap.\nView the Brief for full details.',
+            runningTooltip: 'Inquiry is processing an API run.\nYou can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
+            runningSingleTooltip: 'Inquiry is processing this question now.\nYou can switch to another note and keep working while it runs, but leave this Inquiry tab open.\nIf you cancel this run, you must start over from the beginning. There is no resume.',
+            onboardingTooltip: 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.',
+        },
+        mobile: {
+            title: 'Desktop required',
+            subtitle: 'Inquiry is available on desktop only. Briefs remain readable on mobile.',
+            openBriefs: 'Open Briefs folder',
+            viewLatest: 'View most recent Brief',
+        },
+        nav: {
+            bookUnresolved: 'Book scope unresolved. Check Inquiry sources.',
+            waitingForProvider: 'Waiting for the provider response.',
+            welcome: 'Welcome to Inquiry. {{weekday}} {{month}} {{day}}{{ordinal}}.',
+            previousBook: 'Previous book.',
+            nextBook: 'Next book.',
+            noPreviousBook: 'No previous book.',
+            noNextBook: 'No next book.',
+        },
+        navTooltip: {
+            scopeToggle: 'Toggle between Book and Saga scope.',
+            flowLens: 'Switch to Flow lens.',
+            depthLens: 'Switch to Depth lens.',
+            modeIconToggle: 'Toggle flow and depth lens.',
+            focusRingToggle: 'Toggle focus ring expansion.',
+            previousBook: 'Previous book.',
+            nextBook: 'Next book.',
+        },
+        runner: {
+            contactingProvider: 'Inquiry: contacting AI provider.',
+            running: 'Running now ({{evidenceMode}}). Rough ETA {{estimateLabel}}.',
+            cancelRequested: 'Inquiry cancel requested. Inquiry will stop after the current pass returns. The active provider request may still complete.',
+            finalizing: 'Provider response received. Finalizing the result.',
+            waiting: 'Waiting for the provider response.',
+            singlePassExceeded: 'This request exceeds the single-pass planning budget. Switch Execution Preference to Automatic, or reduce scope.',
+            singlePassFitFailedWithBudget: 'Estimated input {{inputTokens}} exceeded safe input budget {{safeInputTokens}}.',
+            singlePassFitFailedUnknown: 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass analysis.',
+            multiPassNotComplete: 'Automatic mode routed to multi-pass because estimated input {{inputTokens}} exceeded safe input budget {{safeInputTokens}}, but chunking/synthesis did not complete.',
+            multiPassUnknownNotComplete: 'Automatic mode preferred multi-pass because one-pass fit was unknown, but chunking/synthesis did not complete.',
+            multiPassNotCompleteFallback: 'Single-pass response was truncated, and fallback multi-pass analysis did not complete. {{reason}}',
+            executionPrecheckFailed: 'Unable to prepare an authoritative provider execution estimate. {{reason}}',
+            multiPassFailureGeneric: 'The run failed during multi-pass {{stageLabel}}. RT did not receive valid structured output for a required pass. This is a multi-pass/parsing failure in the current Inquiry path. Open Inquiry Log for details.',
+            runAborted: 'Inquiry run aborted.',
+            tokenEstimateUnavailable: 'Token estimate unavailable — AI client returned no estimate',
+            jsonNotFound: 'Unable to locate JSON in AI response.',
+            inquiryAiUnavailable: 'Inquiry AI is unavailable.',
+            omnibusReservedForGoogle: 'Combined omnibus is reserved for the canonical Google Inquiry path.',
+            inquiryAlreadyRunning: 'Inquiry is already running.',
+            inquiryNotConfigured: 'Inquiry is not configured yet.',
+            noScenesAvailable: 'No scenes available for Inquiry.',
+            noEnabledQuestions: 'No enabled Inquiry questions found.',
+            scopeChanged: 'Scope changed since last run.',
+            questionSetChanged: 'Question set changed since last run.',
+            corpusContributionChanged: 'Corpus contribution settings changed.',
+            providerStrategyChanged: 'Provider strategy changed.',
+            previousRunCompleted: 'Previous run already completed.',
+            stubResultGeneric: 'Deterministic placeholder result.',
+            stubResultPreview: 'Preview result for inquiry.',
+            aiResponseRecovered: 'AI response recovered from invalid structured output.',
+            aiUnsupportedParameter: 'AI request rejected: unsupported parameter.',
+            aiRequestRejected: 'AI request rejected.',
+            aiAuthError: 'AI request failed: authentication error.',
+            aiTimedOut: 'AI request timed out.',
+            aiRateLimited: 'AI request rate limited.',
+            stubResultUnavailable: 'Stub result returned (AI unavailable).',
+            integrityNoVerified: 'AI citation "{{ref}}" could not be matched to a scene in the active corpus.',
+            integrityUnverified: 'AI citation "{{ref}}" could not be matched to the active corpus.',
+            unableToBuildEvidence: 'Unable to build evidence blocks.',
+            noEvidenceForScope: 'No evidence available for the selected scope.',
+            citationsCouldNotBeMatched: 'Inquiry citations could not be matched to this corpus.',
+            noSummaryProvided: 'No summary provided.',
+            multiPassTriggerReason: 'Single-pass request exceeded the planning budget, so structured multi-pass analysis and synthesis were used.',
+            inquiryRunFooter: 'Inquiry chunked execution used {{count}} chunks before synthesis.',
+        },
+        notice: {
+            aiDisabledInSettings: 'Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.',
+            omnibusViewFailed: 'Unable to open Inquiry view for omnibus pass.',
+            omnibusMobileOnly: 'Inquiry omnibus pass is available on desktop only.',
+            omnibusResumeNothing: 'All questions already completed. Nothing to resume.',
+            omnibusUnavailable: 'Omnibus unavailable: {{reason}}.',
+            omnibusFailed: 'Inquiry omnibus failed: {{message}}',
+            running: 'Inquiry running. Please wait.',
+            noEnabledQuestions: 'No enabled Inquiry questions found.',
+            logNotFound: 'No Inquiry log found for this run.',
+            pendingEditsBroken: 'Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.',
+            briefNotFound: 'Brief not found. It may have been moved or deleted.',
+            briefSaved: 'Inquiry brief saved.',
+            briefSaveFailed: 'Unable to save brief: {{message}}',
+            briefFolderFailed: 'Unable to create brief folder.',
+            briefNotSaved: 'No brief saved for the active inquiry.',
+            noBriefActive: 'No active inquiry brief.',
+            sceneNotFound: 'Scene file not found.',
+            noRunForPreview: 'Run an inquiry before previewing a report.',
+            noRunForSave: 'Run an inquiry before saving a brief.',
+            logFolderFailed: 'Unable to create log folder.',
+            logSaveFailed: 'Unable to save inquiry log: {{message}}',
+            logContentFolderFailed: 'Unable to create inquiry content log folder.',
+            logContentSaveFailed: 'Unable to save inquiry content log: {{message}}',
+            folderAccessFailed: 'Unable to access folder: {{folderPath}}',
+            noBriefs: 'No briefs found.',
+            fileExplorerUnavailable: 'File explorer not available.',
+            revealFolderFailed: 'Unable to reveal folder.',
+            purgedNothing: 'No Inquiry action items found to purge.',
+            purgedScenes: 'Purged Inquiry action items from {{count}} {{sceneWord}}.',
+            purgedScenesWithRearm: 'Purged Inquiry action items from {{count}} {{sceneWord}}. Re-armed {{rearmCount}} {{sessionWord}}.',
+            coreSetLoaded: '{{label}} loaded.',
+        },
+        interaction: {
+            running: 'Inquiry running. Please wait.',
+            fieldAlreadyUpdated: '{{fieldLabel}} already updated for this session.',
+            runningWaitClear: 'Inquiry running. Please wait to clear recent sessions.',
+            runningWaitReset: 'Inquiry running. Please wait to reset corpus overrides.',
+            corpusOverridesAlreadyMatch: 'Corpus overrides already match settings.',
+            corpusOverridesReset: 'Corpus overrides reset to settings; sessions, logs, and briefs untouched.',
+            noCorpusAvailable: 'No corpus available.',
+            noScenesInScope: 'No scenes found in current scope.',
+            noActionItemsToPurge: 'No Inquiry action items found to purge.',
+            noQuestionForSlot: 'No question configured for this slot.',
+            noQuestionsForZone: 'No questions configured for this zone.',
+            emptyScenesCannotTarget: 'Empty scenes cannot be Target Scenes.',
+            onlySceneTicksTargetable: 'Only scene ticks can be targeted.',
+            targetScenesBookOnly: 'Target Scenes are available only in Book scope.',
+            targetSceneAdded: 'Added to Target Scenes.',
+            targetSceneRemoved: 'Removed from Target Scenes.',
+            noTargetScenesToClear: 'No Target Scenes to clear.',
+            clearedAllTargetScenes: 'Cleared all Target Scenes.',
+            corpusDisabled: 'Corpus disabled. Enable corpus to run Inquiry.',
+            inquiryAlreadyRun: 'Inquiry already run. Open Recent Inquiry Sessions to reopen.',
+            targetScenesBookOnlySaga: 'Target Scenes are book-only. They remain saved and become inactive in Saga scope.',
+            lensAlreadyActive: '{{lens}} lens already active.',
+            onlyOneSummaryLens: 'Only one summary lens available for this run.',
+            cannotCancelFromPreview: 'This run cannot be cancelled from the preview panel.',
+            cancelRequested: 'Inquiry cancel requested. Inquiry will stop after the current pass returns. The active provider request may still complete.',
+            bookScopeUnresolved: 'Book scope unresolved. Configure a book in settings before running Inquiry.',
+            writebackDisabledSimulated: '{{fieldLabel}} writeback is disabled for simulated runs.',
+            noActionItemsThreshold: 'No action items met the writeback threshold.',
+            cancelOnlySingleQuestion: 'Cancel is available for active single-question Inquiry runs.',
+            pendingEditsUpdatedDefault: 'Pending Edits updated successfully.',
+        },
+        menu: {
+            forceRerun: 'Force Re-run',
+            openCitationBriefing: 'Open Citation in Briefing Article',
+            openCitationMarkdown: 'Open Citation in Markdown Brief',
+            openScene: 'Open Scene',
+            openNote: 'Open Note',
+            cancelTargeting: 'Cancel all targeting',
+            optionDefaultRun: 'Auto',
+            optionStandard: 'Standard',
+            optionFocused: 'Focused',
+            setFocus: 'Set Focus',
+            removeFocus: 'Remove Focus',
+            addToTargetScenes: 'Add to Target Scenes',
+            removeFromTargetScenes: 'Remove from Target Scenes',
+            corpusExclude: 'Exclude',
+            corpusSummary: 'Summary',
+            corpusFullScene: 'Full Scene',
+        },
+        findings: {
+            findings: 'Findings',
+            findingsWithCount: 'Findings · {{label}}',
+            oneTargetScene: '1 Target Scene',
+            multipleTargetScenes: '{{count}} Target Scenes',
+            noInquiryRun: 'No inquiry run yet.',
+            runToSeeVerdicts: 'Run an inquiry to see verdicts.',
+            verdictBookScoped: '{{label}} saved for Book scope. Switch to Book to use focused inquiry.',
+            selectionFocused: 'Selection Mode · Focused · {{targetCount}} target · {{contextCount}} context',
+            selectionDiscover: 'Selection Mode · Discover',
+            validationMissingTargetRoles: 'Warning: Focused run returned no target-specific findings.',
+            scopeNoteTargetBookOnly: 'Target Scenes are book-only and inactive in Saga scope.',
+            integrityCompromised: '⚠ Evidence compromised — no verified findings; {{count}} AI {{citationWord}} could not be matched to your manuscript.',
+            integrityWarning: '⚠ {{count}} AI {{citationWord}} could not be matched to your manuscript.',
+            targetSection: 'Target Findings',
+            contextSection: 'Context Findings',
+            unverifiedSection: '⚠ Unverified AI Citations ({{count}})',
+            unverifiedWarning: 'These citations are unverified and should not be trusted as evidence.',
+            empty: 'None.',
+            lens: 'Lens {{label}}',
+            unverifiedHeadlinePrefix: '[Unverified] ',
+            citedAs: 'Cited: {{descriptor}}',
+            referencesNormalized: 'Some scene references were normalized.',
+            corpusFingerprintNotAvailable: 'Corpus fingerprint: not available',
+            recentSessionsNotAvailable: 'Recent inquiry sessions: not available',
+            stubInquiryHeadline: 'Inquiry stub result.',
+            stubBulletNote: 'Runner note: {{message}}',
+            stubBulletPlaceholder: 'Deterministic placeholder result.',
+            previewFooterDismiss: '{{scopeTypeLabel}} {{resultScopeLabel}} · Click to dismiss.',
+        },
+        preview: {
+            footerOpenLog: 'Open Inquiry Log for detailed error report.',
+            hoverPreview: 'Hover a question to preview its payload.',
+            inquiryNotConfiguredHero: 'Inquiry is not configured.',
+            inquiryNotConfiguredHelp: 'Set scan roots and class scope in Settings → Radial Timeline → Inquiry.',
+            noScenesHero: 'No scenes available for Inquiry.',
+        },
+        details: {
+            toggle: 'Toggle details',
+        },
+        debug: {
+            origin: 'ORIGIN',
+        },
+        corpus: {
+            disabled: 'Corpus disabled. Enable corpus to run Inquiry.',
+            legendClickKeysTitle: 'CLICK KEYS',
+            legendClickCycle: 'Click — cycle scope',
+            legendShiftClickToggle: 'Shift + Click — toggle targeting',
+            legendRightClickMenu: 'Right + Click — open menu',
+            legendModeTitle: 'MODE (icon + color)',
+            legendModeFull: 'Full — solid disc (green)',
+            legendModeSummary: 'Summary — ring + dot (blue)',
+            legendModeExclude: 'Exclude — empty ring (red)',
+            legendStatusTitle: 'STATUS (border)',
+            legendStatusComplete: 'Complete — solid border',
+            legendStatusWorking: 'Working — dotted border',
+            legendStatusTodo: 'Todo — dashed border',
+            legendStatusOverdue: 'Overdue — red border',
+            legendTierTitle: 'TIER (fill level)',
+            legendTierSubstantive: 'Substantive — full fill',
+            legendTierMedium: 'Medium — partial fill',
+            tooltipStatusOverdue: ' (red border)',
+            tooltipStatusComplete: ' (solid border)',
+            tooltipStatusTodo: ' (dashed border)',
+            tooltipStatusWorking: '',
+            tooltipModeExclude: 'Mode: Exclude',
+            tooltipTargetActive: 'Target Scene: Active',
+            tooltipWordsLabel: '{{count}} words',
+            statusOverdueLabel: 'Overdue',
+            statusTodoLabel: 'Todo',
+            statusWorkingLabel: 'Working',
+            statusCompleteLabel: 'Complete',
+        },
+        settingsExtra: {
+            autopopulateName: 'Auto-populate Pending Edits',
+            autopopulateDesc: 'Automatically write action notes to the Pending Edits yaml field after each Inquiry run. When off, use Recent Inquiry Sessions to write manually.',
+            replaceQuestionsTitle: 'Replace current questions?',
+            replaceCustomizedQuestionsTitle: 'Replace customized questions?',
+            replaceQuestionsConfirm: 'Replace questions',
+            replaceCustomTitle: 'Replace custom question?',
+            replaceCustomSubtitle: 'Replace this slot with "{{label}}".',
+            replaceCustomWarningOne: 'This custom question will be replaced and cannot be recovered.',
+            replaceCustomWarningMany: 'Custom questions will be replaced and cannot be recovered.',
+            replaceCustomConfirm: 'Replace question',
+            replaceCanonicalTitle: 'Replace canonical question?',
+            replaceCanonicalSubtitle: 'Replace this slot with "{{label}}".',
+            loadCanonicalSubtitleCustomized: 'Load the {{label}}. Existing questions in every zone will be replaced.',
+            loadCanonicalSubtitleCurrent: 'Load the {{label}}. Current questions in every zone will be replaced.',
+            coreQuestionsLabel: 'Core Questions',
+            fullProSetLabel: 'Full Pro Set',
+            collapse: 'Collapse',
+            expand: 'Expand',
+        },
     },
 };

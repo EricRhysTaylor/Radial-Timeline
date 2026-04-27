@@ -19,9 +19,12 @@ describe('InquiryView payload accounting', () => {
 
     it('persists focused role validation separately from selection mode truth', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
         expect(source.includes("return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';")).toBe(true);
         expect(source.includes("const roleValidation = this.getResultRoleValidation(result);")).toBe(true);
-        expect(source.includes('Warning: Focused run returned no target-specific findings.')).toBe(true);
+        // The validation copy lives in the i18n catalog now.
+        expect(source.includes("t('inquiry.findings.validationMissingTargetRoles')")).toBe(true);
+        expect(enLocale.includes('Warning: Focused run returned no target-specific findings.')).toBe(true);
     });
 
     it('matches latest saved inquiry seeds on book scope and normalized target selection', () => {
@@ -33,7 +36,7 @@ describe('InquiryView payload accounting', () => {
 
     it('makes saga-scope minimap target authoring explicit instead of silently returning', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
-        expect(source.includes("this.notifyInteraction('Target Scenes are available only in Book scope.')")).toBe(true);
+        expect(source.includes("this.notifyInteraction(t('inquiry.interaction.targetScenesBookOnly'))")).toBe(true);
     });
 
     it('renders degraded focused target markers as amber F states in the minimap source', () => {
@@ -79,9 +82,10 @@ describe('InquiryView payload accounting', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('resolveQuestionPromptForRun(question, selectionMode')).toBe(true);
         expect(viewSource.includes('resolveQuestionPromptFormForRun(question, selectionMode')).toBe(true);
-        expect(viewSource.includes("{ label: 'Auto', value: 'auto' }")).toBe(true);
-        expect(viewSource.includes("{ label: 'Standard', value: 'standard' }")).toBe(true);
-        expect(viewSource.includes("{ label: 'Focused', value: 'focused' }")).toBe(true);
+        // Labels are now sourced from the i18n catalog.
+        expect(viewSource.includes("{ label: t('inquiry.menu.optionDefaultRun'), value: 'auto' }")).toBe(true);
+        expect(viewSource.includes("{ label: t('inquiry.menu.optionStandard'), value: 'standard' }")).toBe(true);
+        expect(viewSource.includes("{ label: t('inquiry.menu.optionFocused'), value: 'focused' }")).toBe(true);
         expect(viewSource.includes('this.setPromptFormOverride(question.id, opt.value)')).toBe(true);
         expect(viewSource.includes('standardPrompt:')).toBe(true);
         expect(viewSource.includes('focusedPrompt:')).toBe(true);
@@ -100,8 +104,9 @@ describe('InquiryView payload accounting', () => {
     it('offers a corpus-level cancel all targeting action in the global corpus context menu', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const corpusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/corpus/inquiryCorpusStripRenderer.ts'), 'utf8');
-        expect(viewSource.includes("item.setTitle('Cancel all targeting')")).toBe(true);
-        expect(viewSource.includes("this.notifyInteraction('Cleared all Target Scenes.')")).toBe(true);
+        // Menu titles flow through the i18n catalog now.
+        expect(viewSource.includes("item.setTitle(t('inquiry.menu.cancelTargeting'))")).toBe(true);
+        expect(viewSource.includes("this.notifyInteraction(t('inquiry.interaction.clearedAllTargetScenes'))")).toBe(true);
         expect(corpusSource.includes('onGlobalContextMenu')).toBe(true);
         expect(corpusSource.includes('args.onGlobalContextMenu(event)')).toBe(true);
     });
@@ -120,7 +125,10 @@ describe('InquiryView payload accounting', () => {
 
     it('uses a dated welcome label and suppresses persisted target focus until the user acts', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
-        expect(viewSource.includes('Welcome to Inquiry. ${weekday} ${month} ${day}.')).toBe(true);
+        const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
+        // Welcome label string lives in i18n catalog and is composed via t() at render time.
+        expect(enLocale.includes('Welcome to Inquiry. {{weekday}} {{month}} {{day}}{{ordinal}}.')).toBe(true);
+        expect(viewSource.includes("t('inquiry.nav.welcome'")).toBe(true);
         expect(viewSource.includes("this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');")).toBe(true);
         expect(viewSource.includes("this.state.targetSceneIds = this.getVisibleTargetSceneIdsForBook(book.id);")).toBe(true);
         expect(viewSource.includes('...this.getVisibleTargetSceneIdsForBook(bookId),')).toBe(true);

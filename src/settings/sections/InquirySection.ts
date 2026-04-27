@@ -1137,18 +1137,18 @@ export function renderInquirySection(params: SectionParams): void {
                 .filter(slot => getInquiryPromptSlotState(slot) === 'customized')
                 .length;
             const subtitle = customizedCount > 0
-                ? `Load the ${nextLabel}. Existing questions in every zone will be replaced.`
-                : `Load the ${nextLabel}. Current questions in every zone will be replaced.`;
+                ? t('inquiry.settingsExtra.loadCanonicalSubtitleCustomized', { label: nextLabel })
+                : t('inquiry.settingsExtra.loadCanonicalSubtitleCurrent', { label: nextLabel });
             const warning = customizedCount === 1
-                ? 'This custom question will be replaced and cannot be recovered.'
+                ? t('inquiry.settingsExtra.replaceCustomWarningOne')
                 : customizedCount > 1
-                    ? 'Custom questions will be replaced and cannot be recovered.'
+                    ? t('inquiry.settingsExtra.replaceCustomWarningMany')
                     : undefined;
             return openReplacementConfirm({
-                title: customizedCount > 0 ? 'Replace customized questions?' : 'Replace current questions?',
+                title: customizedCount > 0 ? t('inquiry.settingsExtra.replaceCustomizedQuestionsTitle') : t('inquiry.settingsExtra.replaceQuestionsTitle'),
                 subtitle,
                 warning,
-                confirmText: 'Replace questions'
+                confirmText: t('inquiry.settingsExtra.replaceQuestionsConfirm')
             });
         };
 
@@ -1160,16 +1160,16 @@ export function renderInquirySection(params: SectionParams): void {
             if (slotState === 'empty') return true;
             if (slotState === 'customized') {
                 return openReplacementConfirm({
-                    title: 'Replace custom question?',
-                    subtitle: `Replace this slot with "${nextQuestion.label}".`,
-                    warning: 'This custom question will be replaced and cannot be recovered.',
-                    confirmText: 'Replace question'
+                    title: t('inquiry.settingsExtra.replaceCustomTitle'),
+                    subtitle: t('inquiry.settingsExtra.replaceCustomSubtitle', { label: nextQuestion.label }),
+                    warning: t('inquiry.settingsExtra.replaceCustomWarningOne'),
+                    confirmText: t('inquiry.settingsExtra.replaceCustomConfirm')
                 });
             }
             return openReplacementConfirm({
-                title: 'Replace canonical question?',
-                subtitle: `Replace this slot with "${nextQuestion.label}".`,
-                confirmText: 'Replace question'
+                title: t('inquiry.settingsExtra.replaceCanonicalTitle'),
+                subtitle: t('inquiry.settingsExtra.replaceCanonicalSubtitle', { label: nextQuestion.label }),
+                confirmText: t('inquiry.settingsExtra.replaceCustomConfirm')
             });
         };
 
@@ -1214,11 +1214,11 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const loadCanonicalSet = async (loadout: 'core' | 'full-signature') => {
-            const nextLabel = loadout === 'core' ? 'Core Questions' : 'Full Pro Set';
+            const nextLabel = loadout === 'core' ? t('inquiry.settingsExtra.coreQuestionsLabel') : t('inquiry.settingsExtra.fullProSetLabel');
             const confirmed = await confirmCanonicalReplacement(nextLabel);
             if (!confirmed) return;
             await savePromptConfig(replaceCanonicalPromptSlots(promptConfig, loadout));
-            new Notice(`${nextLabel} loaded.`);
+            new Notice(t('inquiry.notice.coreSetLoaded', { label: nextLabel }));
             render();
         };
 
@@ -1526,7 +1526,7 @@ export function renderInquirySection(params: SectionParams): void {
             const refreshToggle = () => {
                 const expanded = zoneExpanded[zone];
                 setIcon(toggleButton, expanded ? 'chevron-down' : 'chevron-right');
-                setTooltip(toggleButton, expanded ? 'Collapse' : 'Expand');
+                setTooltip(toggleButton, expanded ? t('inquiry.settingsExtra.collapse') : t('inquiry.settingsExtra.expand'));
                 listCard.toggleClass('ert-settings-hidden', !expanded);
             };
             refreshToggle();
@@ -1820,8 +1820,8 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     new Settings(configBody)
-        .setName('Auto-populate Pending Edits')
-        .setDesc('Automatically write action notes to the Pending Edits yaml field after each Inquiry run. When off, use Recent Inquiry Sessions to write manually.')
+        .setName(t('inquiry.settingsExtra.autopopulateName'))
+        .setDesc(t('inquiry.settingsExtra.autopopulateDesc'))
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryActionNotesAutoPopulate ?? false);
             toggle.onChange(async (value) => {
