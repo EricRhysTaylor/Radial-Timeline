@@ -17,10 +17,16 @@ export function renderEstimatedDateElements(params: {
   const labelText = estimate.labelText;
   const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
   const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric' });
-  const dateDisplay = labelText ?? dateFormatter.format(displayDate);
-  
+  const formattedDate = dateFormatter.format(displayDate);
+  // Append 2-digit year suffix when the estimate falls in a different year than today
+  // (e.g., today 2026-04-28, estimate 2027-03-08 → "Mar 8 '27")
+  const yearSuffix = estimateDate !== null && estimateDate.getFullYear() !== new Date().getFullYear()
+    ? ` '${String(estimateDate.getFullYear() % 100).padStart(2, '0')}`
+    : '';
+  const dateDisplay = labelText ?? `${formattedDate}${yearSuffix}`;
+
   // Build tooltip text (escaped for use in data attribute)
-  const tooltipText = labelText === '?' 
+  const tooltipText = labelText === '?'
     ? 'Estimated completion: insufficient data'
     : `Estimated completion: ${dateDisplay}`;
   const escapedTooltip = escapeXml(tooltipText);
