@@ -92,6 +92,7 @@ type RawInquiryFinding = {
     lens?: string;
     headline?: string;
     bullets?: string[];
+    evidence_quote?: string;
     role?: string;
 };
 
@@ -843,6 +844,7 @@ export class InquiryRunnerService implements InquiryRunner {
             '          "lens": "flow|depth|both|",',
             '          "headline": "short line",',
             '          "bullets": ["specific", "supporting points"],',
+            '          "evidence_quote": "verbatim sentence or phrase from the cited scene (empty string if no quotable prose)",',
             '          "role": "target|context|"',
             '        }',
             '      ]',
@@ -2152,6 +2154,9 @@ export class InquiryRunnerService implements InquiryRunner {
             const bullets = Array.isArray(raw.bullets)
                 ? raw.bullets.map(value => String(value)).filter(Boolean)
                 : [];
+            const evidenceQuote = typeof raw.evidence_quote === 'string'
+                ? raw.evidence_quote.trim()
+                : '';
 
             if (normalized.unresolved) {
                 const offendingRef = rawRefId || rawRefLabel || rawRefPath || '(missing ref)';
@@ -2191,7 +2196,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 related: [],
                 evidenceType: 'mixed',
                 lens,
-                role
+                role,
+                ...(evidenceQuote ? { evidenceQuote } : {})
             };
             if (rescued && (rawRefId || rawRefLabel || rawRefPath)) {
                 finding.rawRef = {
@@ -2775,7 +2781,6 @@ export class InquiryRunnerService implements InquiryRunner {
         if (response.aiStatus === 'success' && response.success) {
             trace.failureStage = undefined;
             this.recordOutputProfileSample(trace, response);
-            this.recordInputProfileSample(trace, response);
             return;
         }
         trace.failureStage = executionState === 'blocked_before_send'
@@ -2798,30 +2803,6 @@ export class InquiryRunnerService implements InquiryRunner {
             modelId,
             inputTokens,
             outputTokens: usage.outputTokens,
-            timestamp: Date.now()
-        });
-    }
-
-    /**
-     * Record (estimated, actual) input pairs so InputProfileStore can compute
-     * a per-model bias correction for future estimates. Skipped silently when
-     * either side is missing so we never poison the store with garbage.
-     */
-    private recordInputProfileSample(trace: InquiryRunTrace, response: ProviderResult): void {
-        const usage = trace.usage;
-        const actualInputTokens = typeof usage?.inputTokens === 'number' ? usage.inputTokens : 0;
-        const estimatedInputTokens = trace.tokenEstimate?.inputTokens ?? 0;
-        if (actualInputTokens <= 0 || estimatedInputTokens <= 0) return;
-        const provider = response.aiProvider ?? response.provider;
-        const modelId = response.aiModelResolved ?? response.aiModelRequested ?? response.modelId;
-        if (!provider || !modelId) return;
-        const method = trace.tokenEstimate?.estimationMethod ?? 'heuristic_chars';
-        void this.plugin.getInputProfileStore().record({
-            provider,
-            modelId,
-            estimatedInputTokens,
-            actualInputTokens,
-            method,
             timestamp: Date.now()
         });
     }

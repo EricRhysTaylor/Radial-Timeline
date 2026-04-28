@@ -94,13 +94,13 @@ describe('computeCitationPillState', () => {
         expect(pill.label).toBe('Citations · 7');
     });
 
-    it('uses singular wording in the tooltip when only one citation came back', () => {
+    it('uses singular wording in the tooltip when only one anchored source came back', () => {
         const pill = computeCitationPillState(true, {
             citationsRequested: true,
             citationCount: 1,
             tokenUsage: { inputTokens: 100 }
         });
-        expect(pill.tooltip).toContain('1 citation anchor.');
+        expect(pill.tooltip).toContain('1 anchored source');
     });
 
     it('reports missing-warning when citations were requested but none came back', () => {
@@ -111,7 +111,7 @@ describe('computeCitationPillState', () => {
         });
         expect(pill.state).toBe('on-missing');
         expect(pill.label).toBe('Citations missing');
-        expect(pill.tooltip).toContain('zero citation anchors');
+        expect(pill.tooltip).toContain('no anchored sources came back');
     });
 });
 

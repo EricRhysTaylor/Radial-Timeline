@@ -28,9 +28,10 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                         lens: { type: 'string' },
                         headline: { type: 'string' },
                         bullets: { type: 'array', items: { type: 'string' } },
+                        evidence_quote: { type: 'string' },
                         role: { type: 'string' }
                     },
-                    required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'role']
+                    required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'evidence_quote', 'role']
                 }
             }
         },
@@ -75,9 +76,10 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                                     lens: { type: 'string' },
                                     headline: { type: 'string' },
                                     bullets: { type: 'array', items: { type: 'string' } },
+                                    evidence_quote: { type: 'string' },
                                     role: { type: 'string' }
                                 },
-                                required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'role']
+                                required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'evidence_quote', 'role']
                             }
                         }
                     },

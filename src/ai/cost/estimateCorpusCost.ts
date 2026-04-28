@@ -1,4 +1,4 @@
-import type { AIProviderId } from '../types';
+import type { AIProviderId, AnthropicCacheTtl } from '../types';
 import { resolveProviderModelPricing, isPromoActive, type PromoPricing, type ResolvedProviderModelPricing } from './providerPricing';
 import type { TokenUsage } from '../usage/providerUsage';
 
@@ -34,6 +34,15 @@ export interface UsageCostEstimate {
 export interface EstimateCorpusCostOptions {
     /** 0-1 fraction of input expected to be served from provider cache on repeat/multi-pass execution. */
     cacheReuseRatio?: number;
+    /**
+     * Which TTL the run will request when priming the provider cache.
+     * Anthropic charges 1h writes at ~2× input price and 5m writes at ~1.25×;
+     * picking the wrong one produces a ~33% under- or over-estimate on the
+     * priming pass. Defaults to '5m' to preserve the historical conservative
+     * estimate for non-Anthropic-Inquiry callers; Inquiry-on-Anthropic must
+     * pass '1h' to match ANTHROPIC_REQUESTED_CACHE_TTL.
+     */
+    cacheWriteTtl?: AnthropicCacheTtl;
 }
 
 const TOKENS_PER_MILLION = 1_000_000;
@@ -59,6 +68,21 @@ function hasExplicitCacheWritePricing(pricing: ResolvedProviderModelPricing): bo
         || (typeof pricing.cacheWrite1hPer1M === 'number' && Number.isFinite(pricing.cacheWrite1hPer1M));
 }
 
+/**
+ * Pick the per-1M cache-write rate that matches the run's requested TTL.
+ * Falls back to the other TTL when the requested one is missing from the
+ * pricing table — better an off-by-1.6× estimate than no estimate at all.
+ */
+function resolveCacheWriteRatePer1M(
+    pricing: ResolvedProviderModelPricing,
+    cacheWriteTtl: AnthropicCacheTtl
+): number | undefined {
+    if (cacheWriteTtl === '1h') {
+        return pricing.cacheWrite1hPer1M ?? pricing.cacheWrite5mPer1M;
+    }
+    return pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M;
+}
+
 export function resolveEstimatedCacheReuseRatio(
     expectedPasses: number,
     override?: number
@@ -78,6 +102,7 @@ function buildEstimatedInputCostUSD(params: {
     expectedPasses: number;
     cacheReuseRatio: number;
     scenario: 'fresh' | 'cached';
+    cacheWriteTtl: AnthropicCacheTtl;
 }): number | undefined {
     const pricing = resolveProviderModelPricing(params.provider, params.modelId, params.inputTokens);
     const reusedInputTokens = Math.max(0, Math.floor(params.inputTokens * params.cacheReuseRatio));
@@ -96,7 +121,7 @@ function buildEstimatedInputCostUSD(params: {
                 toUsd(uncachedInputTokens, pricing.inputPer1M)
                 + toUsd(
                     reusedInputTokens,
-                    pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M
+                    resolveCacheWriteRatePer1M(pricing, params.cacheWriteTtl)
                 )
             )
             : toUsd(params.inputTokens, pricing.inputPer1M));
@@ -116,6 +141,7 @@ export function estimateCorpusCost(
     const outputTokens = Math.max(0, Math.floor(expectedOutputTokens));
     const passes = Math.max(1, Math.floor(expectedPasses));
     const cacheReuseRatio = resolveEstimatedCacheReuseRatio(passes, options?.cacheReuseRatio);
+    const cacheWriteTtl: AnthropicCacheTtl = options?.cacheWriteTtl ?? '5m';
     const freshCostUSD = buildEstimatedInputCostUSD({
         provider,
         modelId,
@@ -123,7 +149,8 @@ export function estimateCorpusCost(
         outputTokens,
         expectedPasses: passes,
         cacheReuseRatio,
-        scenario: 'fresh'
+        scenario: 'fresh',
+        cacheWriteTtl
     });
     if (typeof freshCostUSD !== 'number' || !Number.isFinite(freshCostUSD)) {
         throw new Error(`Fresh cost estimate unavailable for ${provider}:${modelId}`);
@@ -135,7 +162,8 @@ export function estimateCorpusCost(
         outputTokens,
         expectedPasses: passes,
         cacheReuseRatio,
-        scenario: 'cached'
+        scenario: 'cached',
+        cacheWriteTtl
     });
 
     const pricing = resolveProviderModelPricing(provider, modelId, inputTokens);

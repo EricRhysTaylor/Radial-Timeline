@@ -29,6 +29,22 @@ describe('buildInquirySourcesViewModel', () => {
         expect(vm.items[0].excerpt).toContain('Longer cited excerpt');
     });
 
+    it('renders direct manuscript quotes at full length without ellipsis (no truncation)', () => {
+        // 800-char verbatim quote — far longer than the legacy 120-char cap.
+        const longQuote = 'A'.repeat(400) + ' ' + 'B'.repeat(399);
+        const citations: InquiryCitation[] = [
+            { citedText: longQuote, documentIndex: 0 }
+        ];
+        const docs: EvidenceDocumentMeta[] = [
+            { title: 'Scene One', path: 'Scenes/One.md', sceneId: 'S1', evidenceClass: 'scene' }
+        ];
+
+        const vm = buildInquirySourcesViewModel(citations, docs);
+        expect(vm.items[0].excerpt).toBe(longQuote);
+        expect(vm.items[0].excerpt.endsWith('…')).toBe(false);
+        expect(vm.items[0].excerpt.length).toBe(longQuote.length);
+    });
+
     it('renders OpenAI-style external attribution when no manuscript document metadata exists', () => {
         const citations: InquiryCitation[] = [
             {
@@ -85,7 +101,7 @@ describe('buildInquirySourcesViewModel', () => {
         });
     });
 
-    it('derives limited scene anchors from finding refs when provider citations are absent', () => {
+    it('derives scene anchors from finding refs using verbatim evidence_quote', () => {
         const docs: EvidenceDocumentMeta[] = [
             {
                 title: 'The Departure',
@@ -107,6 +123,7 @@ describe('buildInquirySourcesViewModel', () => {
                 kind: 'continuity',
                 headline: 'The emotional turn arrives before enough setup.',
                 bullets: ['Pressure advances faster than the underlying motive.'],
+                evidenceQuote: 'She turned away before he could speak again.',
                 related: [],
                 evidenceType: 'scene'
             },
@@ -115,6 +132,7 @@ describe('buildInquirySourcesViewModel', () => {
                 kind: 'escalation',
                 headline: 'The beat lands but the plateau is underwritten.',
                 bullets: [],
+                evidenceQuote: '',
                 related: [],
                 evidenceType: 'scene'
             },
@@ -134,9 +152,41 @@ describe('buildInquirySourcesViewModel', () => {
             attributionType: 'scene_anchor',
             title: 'The Departure',
             path: 'Scenes/The Departure.md',
-            classLabel: 'Scene Anchor',
+            classLabel: 'Scene',
             citationCount: 2
         });
-        expect(vm.items[0].excerpt).toContain('The emotional turn arrives before enough setup');
+        expect(vm.items[0].excerpt).toBe('She turned away before he could speak again.');
+        expect(vm.items[0].excerpt.endsWith('…')).toBe(false);
+    });
+
+    it('omits scene-anchor excerpt entirely when no finding emits an evidence_quote', () => {
+        const docs: EvidenceDocumentMeta[] = [
+            {
+                title: 'Authorial Notes Scene',
+                path: 'Scenes/Notes.md',
+                sceneId: 'scn_notes001',
+                evidenceClass: 'scene'
+            }
+        ];
+
+        const vm = buildInquirySourcesViewModel(undefined, docs, [
+            {
+                refId: 'scn_notes001',
+                kind: 'unclear',
+                headline: 'Scene exists only as authorial notes.',
+                bullets: ['No prose to cite.'],
+                related: [],
+                evidenceType: 'scene'
+            }
+        ]);
+
+        expect(vm.hasContent).toBe(true);
+        expect(vm.items[0]).toMatchObject({
+            attributionType: 'scene_anchor',
+            title: 'Authorial Notes Scene',
+            classLabel: 'Scene Reference',
+            citationCount: 1
+        });
+        expect(vm.items[0].excerpt).toBe('');
     });
 });

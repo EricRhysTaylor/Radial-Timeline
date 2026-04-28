@@ -1914,15 +1914,25 @@ export function renderAiSection(params: {
                 model.modelId,
                 executionEstimate.estimatedTokens,
                 Math.min(predictedOutput, executionEstimate.maxOutputTokens),
-                executionEstimate.expectedPassCount
+                executionEstimate.expectedPassCount,
+                // Anthropic Inquiry runs always request 1h cache (per
+                // ANTHROPIC_REQUESTED_CACHE_TTL). Without this, the cost
+                // panel would price the priming pass at the 5m rate and
+                // under-estimate by ~33% on the first run.
+                model.provider === 'anthropic' ? { cacheWriteTtl: '1h' } : undefined
             );
             const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
             const promoLabel = cost.promo?.label;
             const ttlLabel = getProviderCacheTtlLabel(model.provider);
             const cachedSuffix = ttlLabel && typeof cost.cachedCostUSD === 'number' ? ` (${ttlLabel})` : '';
+            // Anthropic Inquiry primes the cache on the first run, so the
+            // "Fresh Run" estimate includes the 1h cache-write surcharge.
+            // Mirror the cached-run TTL suffix so the price label is honest
+            // about what's baked in.
+            const freshSuffix = model.provider === 'anthropic' && ttlLabel ? ` (${ttlLabel})` : '';
             return {
                 model,
-                freshText: formatUsdCost(cost.freshCostUSD),
+                freshText: `${formatUsdCost(cost.freshCostUSD)}${freshSuffix}`,
                 cachedText: typeof cost.cachedCostUSD === 'number'
                     ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`
                     : '—',

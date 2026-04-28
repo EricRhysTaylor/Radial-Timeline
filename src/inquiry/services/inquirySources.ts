@@ -44,7 +44,13 @@ export interface InquirySourcesViewModel {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const MAX_EXCERPT_LENGTH = 120;
+/**
+ * Cap for synthesized commentary excerpts (scene_anchor fallback) and external-tool
+ * source labels. Real manuscript citations (Anthropic-style cited_text) render at
+ * full length — they are verbatim quotes from the source documents and the author
+ * needs the whole span to evaluate the model's claim.
+ */
+const MAX_EXCERPT_LENGTH = 600;
 const INITIAL_SHOW_COUNT = 2;
 
 // ── Builder ────────────────────────────────────────────────────────────────
@@ -85,7 +91,8 @@ export function buildInquirySourcesViewModel(
         for (const [docIndex, docCitations] of byIndex) {
             const meta = evidenceDocumentMeta[docIndex];
             if (!meta) continue;
-            const excerpt = bestExcerpt(docCitations);
+            // Real manuscript quotes (Anthropic cited_text) render full — no truncation.
+            const excerpt = bestQuoteFull(docCitations);
             items.push({
                 attributionType: 'direct_manuscript',
                 title: meta.title,
@@ -130,6 +137,11 @@ export function buildInquirySourcesViewModel(
         }
     }
 
+    // Scene-anchor fallback: when the provider returns no inline citations
+    // (Anthropic strict-JSON tool_use cannot attach inline citations to tool
+    // input), surface the per-finding `evidence_quote` the model emitted as
+    // the verbatim source span. Never synthesize a "quote" from headline or
+    // bullets — that text is the AI's commentary, not a citation.
     if (!items.length && evidenceDocumentMeta?.length && findings?.length) {
         const byScene = new Map<string, { meta: EvidenceDocumentMeta; findings: InquiryFinding[] }>();
         for (const finding of findings) {
@@ -147,18 +159,14 @@ export function buildInquirySourcesViewModel(
         }
 
         for (const grouped of byScene.values()) {
-            const exemplar = grouped.findings[0];
-            const excerpt = truncateExcerpt(
-                [exemplar.headline, ...(exemplar.bullets || []).filter(Boolean)].join(' '),
-                MAX_EXCERPT_LENGTH
-            );
+            const quote = pickEvidenceQuote(grouped.findings);
             items.push({
                 attributionType: 'scene_anchor',
                 title: grouped.meta.title,
-                excerpt,
+                excerpt: quote,
                 path: grouped.meta.path,
                 sceneId: grouped.meta.sceneId,
-                classLabel: 'Scene Anchor',
+                classLabel: quote ? 'Scene' : 'Scene Reference',
                 citationCount: grouped.findings.length
             });
         }
@@ -193,6 +201,30 @@ function bestExcerpt(citations: Array<{ citedText?: string }>): string {
     return truncateExcerpt(best?.citedText ?? '', MAX_EXCERPT_LENGTH);
 }
 
+/**
+ * Pick the best citation and return the full cited text without truncation.
+ * Used for direct manuscript citations — real verbatim quotes deserve full display.
+ */
+function bestQuoteFull(citations: Array<{ citedText?: string }>): string {
+    const best = citations
+        .filter(citation => citation.citedText?.trim())
+        .sort((a, b) => (b.citedText?.length ?? 0) - (a.citedText?.length ?? 0))[0];
+    return (best?.citedText ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Pick the longest non-empty evidence_quote from a group of findings on the
+ * same scene. Returns empty string when no finding emitted a quote — callers
+ * should render the source without an excerpt rather than fake one.
+ */
+function pickEvidenceQuote(findings: InquiryFinding[]): string {
+    const quotes = findings
+        .map(finding => (finding.evidenceQuote ?? '').trim())
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length);
+    return (quotes[0] ?? '').replace(/\s+/g, ' ').trim();
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /** Truncate excerpt to maxLength, breaking at a word boundary, and append ellipsis. */
@@ -221,6 +253,6 @@ function formatAttributionClassLabel(attributionType: InquirySourceItem['attribu
     if (attributionType === 'tool_file') return 'Tool File';
     if (attributionType === 'tool_url') return 'Tool URL';
     if (attributionType === 'grounded') return 'Grounded Source';
-    if (attributionType === 'scene_anchor') return 'Scene Anchor';
+    if (attributionType === 'scene_anchor') return 'Scene Commentary';
     return 'Reference';
 }

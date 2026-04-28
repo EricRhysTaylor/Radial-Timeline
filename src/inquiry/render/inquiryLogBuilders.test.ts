@@ -42,6 +42,7 @@ describe('buildInquiryLogContent', () => {
                     {
                         headline: 'Underwritten setup beats',
                         bullets: ['Arrival beat lands softly before social tension locks in.'],
+                        evidenceQuote: 'Bingley walked in without ceremony, scarcely glancing at the crowd.',
                         refId: 'scn_a1b2c3d4',
                         severity: 'medium'
                     }
@@ -79,10 +80,10 @@ describe('buildInquiryLogContent', () => {
         });
 
         expect(content).toContain('- Citation support: Sources · Limited implementation');
-        expect(content).toContain('- Source results: 1 item · scene anchor=1');
+        expect(content).toContain('- Source results: 1 item · scene=1');
         expect(content).toContain('- Cache: warm · status=hit · prefix=100% · tokens=164k · read=164k');
         expect(content.indexOf('- Citation support: Sources · Limited implementation')).toBeGreaterThan(content.indexOf('## Run Summary'));
-        expect(content.indexOf('- Source results: 1 item · scene anchor=1')).toBeLessThan(content.indexOf('## Corpus Summary'));
+        expect(content.indexOf('- Source results: 1 item · scene=1')).toBeLessThan(content.indexOf('## Corpus Summary'));
         expect(content.indexOf('- Cache: warm')).toBeGreaterThan(content.indexOf('## Run Summary'));
         expect(content.indexOf('- Cache: warm')).toBeLessThan(content.indexOf('## Corpus Summary'));
         expect(content.indexOf('## Corpus TOC')).toBeGreaterThan(content.indexOf('## Suggested Fixes'));

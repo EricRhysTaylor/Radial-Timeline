@@ -151,7 +151,12 @@ export function formatUsageCostBreakdownLines(
                 estimateInput.executionInputTokens,
                 estimateInput.expectedOutputTokens,
                 estimateInput.expectedPasses,
-                { cacheReuseRatio: estimateInput.cacheReuseRatio }
+                {
+                    cacheReuseRatio: estimateInput.cacheReuseRatio,
+                    // Match the priming-pass TTL the run actually requested
+                    // (Anthropic Inquiry runs always use 1h).
+                    ...(pricingProvider === 'anthropic' ? { cacheWriteTtl: '1h' as const } : {})
+                }
             );
         } catch {
             estimate = null;

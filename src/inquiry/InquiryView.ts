@@ -131,9 +131,14 @@ import { getModelDisplayName } from '../utils/modelResolver';
 import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
 import { buildInquirySourcesViewModel } from './services/inquirySources';
 import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
-import { detectCrossRunCacheMiss, describeCacheMissDetection } from './services/cacheMissDetection';
-import { detectCitationReceipt, describeCitationReceiptDetection } from './services/citationReceiptDetection';
-import { getModelUiSignals } from '../ai/caps/engineCapabilities';
+import {
+    blendSampleRate,
+    computeSampleRate,
+    computeTimingHistoryKey,
+    normalizeEvidenceModeKey,
+    predictTimingFromEntry,
+    type EvidenceModeKey
+} from './services/inquiryTimingPrediction';
 import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
 import { scopeEntriesToActiveInquiryTarget } from './services/canonicalInquiryCorpus';
 import type {
@@ -3657,14 +3662,27 @@ export class InquiryView extends ItemView {
      * popover pills (cache reuse %, citations confirmed/missing). Returns
      * undefined when there is no successful prior run, so the renderer can
      * show a "pending" state cleanly.
+     *
+     * Citation count uses the unified Sources ViewModel rather than raw
+     * `result.citations` because Anthropic's tool_use path (used whenever
+     * we send a strict JSON schema) returns no text content blocks for
+     * inline citation annotations to attach to. The findings still carry
+     * scene-anchored ref_ids, and the user has working source attribution.
+     * Counting only inline blocks would falsely flag every strict-JSON
+     * Anthropic run as "Citations missing".
      */
     private buildEngineRecentRunSnapshot(): EngineRecentRunSnapshot | undefined {
         const result = this.state.activeResult;
         if (!result || this.isErrorResult(result)) return undefined;
         const citationsRequested = this.getCanonicalAiSettings().citationsEnabled !== false;
+        const sourcesVM = buildInquirySourcesViewModel(
+            result.citations,
+            result.evidenceDocumentMeta,
+            result.findings
+        );
         return {
             citationsRequested,
-            citationCount: result.citations?.length ?? 0,
+            citationCount: sourcesVM.totalCount,
             tokenUsage: result.tokenUsage
         };
     }
@@ -6480,18 +6498,6 @@ export class InquiryView extends ItemView {
                         ? Math.max(0, Math.floor(result.tokenEstimateInput))
                         : undefined));
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
-            // Cross-run cache miss detection: query the prior active session
-            // BEFORE setSession, so we compare against the previous run, not
-            // the one we are about to write. Surface a Notice + trace note
-            // when the conditions for reuse were met but cache_read came
-            // back zero — the engine pill already turns red, this raises
-            // visibility and persists the warning in the run log.
-            this.surfaceCrossRunCacheMissIfAny(result, runTrace);
-            // Citation receipt verification: warn if citations were enabled
-            // and the active model supports them but the response carried
-            // zero anchors. Skips silently for unsupported models so we
-            // never raise a false alarm.
-            this.surfaceCitationReceiptWarningIfAny(result, runTrace);
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
@@ -9287,91 +9293,100 @@ export class InquiryView extends ItemView {
         this.previewShimmerGroup.setAttribute('display', 'none');
     }
 
-    private getInquiryTimingHistoryKey(provider?: string, model?: string): string | null {
-        const providerKey = provider?.trim().toLowerCase();
-        const modelKey = model?.trim().toLowerCase();
-        if (!providerKey || !modelKey) return null;
-        return `${providerKey}::${modelKey}`;
+    /**
+     * Build the deterministic timing-history key for the current run.
+     * Keyed by (provider, model, evidenceMode) — see inquiryTimingPrediction
+     * for the rationale on why mode must be in the key.
+     */
+    private getInquiryTimingHistoryKey(
+        provider?: string,
+        model?: string,
+        evidenceMode?: EvidenceModeKey
+    ): string | null {
+        const mode = evidenceMode ?? this.getCurrentEvidenceModeKey();
+        return computeTimingHistoryKey(provider, model, mode);
     }
 
-    private getInquiryTimingHistoryEntry(provider?: string, model?: string): InquiryTimingHistoryEntry | null {
-        const key = this.getInquiryTimingHistoryKey(provider, model);
+    /** Normalized evidence-mode key for the current corpus configuration. */
+    private getCurrentEvidenceModeKey(): EvidenceModeKey {
+        return normalizeEvidenceModeKey(this.describeRunEvidenceMode());
+    }
+
+    private getInquiryTimingHistoryEntry(
+        provider?: string,
+        model?: string,
+        evidenceMode?: EvidenceModeKey
+    ): InquiryTimingHistoryEntry | null {
+        const key = this.getInquiryTimingHistoryKey(provider, model, evidenceMode);
         if (!key) return null;
         return this.plugin.settings.inquiryTimingHistory?.[key] ?? null;
     }
 
+    /**
+     * Predict a duration range from stored history. Pure computation lives
+     * in `predictTimingFromEntry`; this wrapper just routes the lookup.
+     */
     private buildTimingEstimateFromHistory(
         estimatedInputTokens: number,
         provider?: string,
         model?: string,
-        options?: { preferLatestSample?: boolean }
+        evidenceMode?: EvidenceModeKey
     ): { minSeconds: number; maxSeconds: number } | null {
-        const entry = this.getInquiryTimingHistoryEntry(provider, model);
-        if (!entry || !Number.isFinite(entry.avgMsPerInputToken) || entry.avgMsPerInputToken <= 0) {
-            return null;
-        }
-        const avgPredictedMs = Math.max(4000, estimatedInputTokens * entry.avgMsPerInputToken);
-        const lastPredictedMs = Number.isFinite(entry.lastDurationMs)
-            && entry.lastDurationMs > 0
-            && Number.isFinite(entry.lastInputTokens)
-            && entry.lastInputTokens > 0
-            ? Math.max(4000, estimatedInputTokens * (entry.lastDurationMs / entry.lastInputTokens))
-            : null;
-        const preferLatestSample = options?.preferLatestSample !== false && typeof lastPredictedMs === 'number';
-        const predictedMs = typeof lastPredictedMs === 'number'
-            ? (preferLatestSample
-                ? lastPredictedMs
-                : ((avgPredictedMs * 0.35) + (lastPredictedMs * 0.65)))
-            : avgPredictedMs;
-        return {
-            minSeconds: Math.max(4, (predictedMs * (preferLatestSample ? 0.85 : 0.75)) / 1000),
-            maxSeconds: Math.max(6, (predictedMs * (preferLatestSample ? 1.1 : 1.25)) / 1000)
-        };
+        const entry = this.getInquiryTimingHistoryEntry(provider, model, evidenceMode);
+        return predictTimingFromEntry(entry, estimatedInputTokens);
     }
 
+    /**
+     * Record one (durationMs, fresh-input-tokens) sample for the current
+     * (provider, model, evidenceMode) bucket.
+     *
+     * Three rules baked in to prevent the contamination that produced the
+     * "ROUGH ETA 4-6 SECONDS" lie on a 301k-token cold run:
+     *   1. Cache-heavy runs (cache_read share above CACHE_POISON_THRESHOLD)
+     *      are SKIPPED entirely — the model barely worked, the rate would
+     *      teach future fresh runs that they will also fly. See
+     *      computeSampleRate in inquiryTimingPrediction.ts.
+     *   2. Tokens used in the rate denominator are the fresh portion
+     *      (raw input + cache_creation), not the pre-run estimate.
+     *   3. Bucket key includes evidence mode, so summary-mode samples
+     *      cannot poison full-corpus rates.
+     */
     private async recordInquiryTimingSample(result: InquiryResult, trace: InquiryRunTrace | null | undefined): Promise<void> {
         if (!result || result.aiReason === 'simulated' || result.aiReason === 'stub') return;
         const provider = result.aiProvider?.trim();
         const model = (result.aiModelResolved || result.aiModelRequested || '').trim();
-        const key = this.getInquiryTimingHistoryKey(provider, model);
+        const evidenceMode = this.getCurrentEvidenceModeKey();
+        const key = this.getInquiryTimingHistoryKey(provider, model, evidenceMode);
         if (!key) return;
         const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
             ? result.roundTripMs
             : null;
-        if (!durationMs || durationMs <= 0) return;
 
-        // Use the pre-run estimate token count, matching what estimateRunDurationRange uses
-        // for prediction. This keeps record and predict on the same basis regardless of
-        // multi-pass aggregation or partial API usage reporting.
-        const inputTokens = (() => {
-            if (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput) && result.tokenEstimateInput > 0) {
-                return result.tokenEstimateInput;
-            }
-            const usage = trace?.usage
-                ?? (trace?.response?.responseData && provider
-                    ? extractTokenUsage(provider, trace.response.responseData)
-                    : null);
-            if (typeof usage?.inputTokens === 'number' && Number.isFinite(usage.inputTokens) && usage.inputTokens > 0) {
-                return usage.inputTokens;
-            }
-            return null;
-        })();
-        if (!inputTokens) return;
+        const usage = trace?.usage
+            ?? (trace?.response?.responseData && provider
+                ? extractTokenUsage(provider, trace.response.responseData)
+                : null);
+
+        const sampleRate = computeSampleRate({
+            usage: usage ?? undefined,
+            fallbackEstimate: result.tokenEstimateInput,
+            durationMs
+        });
+        if (!sampleRate) return;
 
         const history = this.plugin.settings.inquiryTimingHistory ?? {};
         const previous = history[key];
-        const sampleRate = durationMs / inputTokens;
-        const previousSamples = Math.min(previous?.samples ?? 0, 19);
-        const samples = previousSamples + 1;
-        const avgMsPerInputToken = previous
-            ? ((previous.avgMsPerInputToken * 0.25) + (sampleRate * 0.75))
-            : sampleRate;
+        const blended = blendSampleRate({
+            previousAvg: previous?.avgMsPerInputToken,
+            previousSampleCount: previous?.samples,
+            newRate: sampleRate.msPerInputToken
+        });
 
         history[key] = {
-            samples,
-            avgMsPerInputToken,
-            lastDurationMs: durationMs,
-            lastInputTokens: inputTokens,
+            samples: blended.samples,
+            avgMsPerInputToken: blended.avgMsPerInputToken,
+            lastDurationMs: durationMs!,
+            lastInputTokens: sampleRate.freshInputTokens,
             updatedAt: new Date().toISOString()
         };
         this.plugin.settings.inquiryTimingHistory = history;
@@ -9438,14 +9453,14 @@ export class InquiryView extends ItemView {
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
         const readinessUi = this.buildReadinessUiState();
         const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
-        const preferLatestSample = true;
 
-        // If we have history for this model, trust it directly.
+        // If we have history for this (provider, model, evidenceMode) bucket,
+        // trust it. The blended prediction guards against single-sample
+        // outliers; see predictTimingFromEntry in inquiryTimingPrediction.ts.
         const timingEstimate = this.buildTimingEstimateFromHistory(
             estimatedTokens,
             readinessUi.provider,
-            readinessUi.model?.id,
-            { preferLatestSample }
+            readinessUi.model?.id
         );
         if (timingEstimate) {
             return timingEstimate;
@@ -9593,64 +9608,6 @@ export class InquiryView extends ItemView {
                 : Math.max(5, windows.openaiInMemoryWindowMinutes) * 60 * 1000;
         }
         return null;
-    }
-
-    /**
-     * Detect "citations enabled but zero anchors came back" and surface as
-     * a Notice + trace note. Silent when citations are off OR the model
-     * does not support citation anchoring (e.g. heuristic-only providers).
-     * Pure side effects — the engine pill already shows the state.
-     */
-    private surfaceCitationReceiptWarningIfAny(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {
-        if (this.isErrorResult(result)) return;
-        const citationsRequested = this.getCanonicalAiSettings().citationsEnabled !== false;
-        const provider = (result.aiProvider ?? '').trim();
-        const modelId = (result.aiModelResolved || result.aiModelRequested || '').trim();
-        if (!provider || !modelId) return;
-        const model = BUILTIN_MODELS.find(m => m.provider === provider && m.id === modelId);
-        if (!model) return;
-        const modelSupportsCitations = !!getModelUiSignals(model).citationLabel;
-        const detection = detectCitationReceipt({
-            citationsRequested,
-            modelSupportsCitations,
-            citationCount: result.citations?.length ?? 0,
-            modelLabel: model.label
-        });
-        const message = describeCitationReceiptDetection(detection);
-        if (!message) return;
-        if (trace?.notes) trace.notes.push(message);
-        new Notice(message, 8000);
-    }
-
-    /**
-     * Detect "should-have-hit-cache but didn't" against the most recent
-     * still-warm session and surface it as a Notice + trace note. Silent
-     * for every non-miss outcome (no prior session, expired window, etc.)
-     * so we never spam the user with non-events. Pure side effects only —
-     * the engine pill already reflects the state of the just-completed run.
-     */
-    private surfaceCrossRunCacheMissIfAny(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {
-        const provider = (result.aiProvider ?? '').trim().toLowerCase();
-        const modelId = (result.aiModelResolved || result.aiModelRequested || '').trim();
-        const fingerprint = (result.cacheReuseFingerprint ?? '').trim();
-        if (!provider || !modelId || !fingerprint) return;
-        const priorActiveSession = this.sessionStore.getLatestActiveCacheSessionForEngine(
-            provider,
-            modelId,
-            { cacheReuseFingerprint: fingerprint }
-        );
-        const detection = detectCrossRunCacheMiss({
-            currentUsage: trace?.usage,
-            currentFingerprint: fingerprint,
-            priorActiveSession
-        });
-        if (detection.kind !== 'expected_reuse_missed') return;
-        const message = describeCacheMissDetection(detection);
-        if (!message) return;
-        // Persist to run log so the warning survives across sessions.
-        if (trace?.notes) trace.notes.push(message);
-        // Notice stays up for 8s — long enough to read but auto-clears.
-        new Notice(message, 8000);
     }
 
     private resolveCacheWindowExpiry(result: InquiryResult, trace?: InquiryRunTrace | null): number | null {
@@ -11135,7 +11092,10 @@ export class InquiryView extends ItemView {
                 engine.modelId,
                 snapshot.estimate.estimatedInputTokens,
                 Math.min(expectedOutputTokens, snapshot.estimate.maxOutputTokens),
-                snapshot.estimate.expectedPassCount
+                snapshot.estimate.expectedPassCount,
+                // Inquiry on Anthropic always primes a 1h cache; pass the
+                // matching write rate so the priming pass isn't priced as 5m.
+                engine.provider === 'anthropic' ? { cacheWriteTtl: '1h' } : undefined
             );
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);
             const cachedLabel = typeof cost.cachedCostUSD === 'number'

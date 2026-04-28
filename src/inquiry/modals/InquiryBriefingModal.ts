@@ -528,12 +528,30 @@ export class InquiryBriefingModal extends Modal {
             document.title = previousTitle;
             stage();
             window.removeEventListener('afterprint', restore);
+            printMedia?.removeEventListener?.('change', mediaListener);
+        };
+
+        // Drive restoration off the print media query (fires when the print
+        // dialog closes, whether the user prints or cancels). The previous
+        // unconditional setTimeout was racing the browser's print pipeline
+        // and reverting staged styles before pages were rasterised — the
+        // resulting PDF was empty.
+        const printMedia = typeof window.matchMedia === 'function'
+            ? window.matchMedia('print')
+            : null;
+        const mediaListener = (event: MediaQueryListEvent): void => {
+            if (!event.matches) restore();
         };
 
         document.title = nextTitle;
         window.addEventListener('afterprint', restore, { once: true });
-        window.print();
-        window.setTimeout(restore, 1500);
+        printMedia?.addEventListener?.('change', mediaListener);
+        // Defer print() so layout settles after the staging styles are applied.
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                window.print();
+            });
+        });
     }
 
     private stageForPrint(): () => void {

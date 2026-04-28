@@ -166,8 +166,7 @@ export class ManuscriptOptionsModal extends Modal {
 
     private order: ManuscriptOrder = 'narrative';
     private tocMode: TocMode = 'markdown';
-    private includeSceneIdInToc: boolean = true;
-    private includeSceneIdInHeading: boolean = false;
+    private includeSceneId: boolean = true;
     private subplot: string = 'All Subplots';
     private exportType: ExportType = 'manuscript';
     private manuscriptPreset: ManuscriptPreset = 'novel';
@@ -223,10 +222,7 @@ export class ManuscriptOptionsModal extends Modal {
     private manuscriptPresetDropdown?: DropdownComponent;
     private outlinePresetDropdown?: DropdownComponent;
     private tocCard?: HTMLElement;
-    private sceneIdInTocRow?: HTMLElement;
-    private sceneIdInTocToggle?: ToggleComponent;
-    private sceneIdInHeadingRow?: HTMLElement;
-    private sceneIdInHeadingToggle?: ToggleComponent;
+    private sceneIdToggle?: ToggleComponent;
     private manuscriptOptionsCard?: HTMLElement;
     private outlineOptionsCard?: HTMLElement;
     private wordCountCard?: HTMLElement;
@@ -649,60 +645,21 @@ export class ManuscriptOptionsModal extends Modal {
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
             this.tocMode = 'markdown';
             this.updatePills(tocActions, 0);
-            this.updateSceneIdToggleAvailability();
         });
         this.createPill(tocActions, t('manuscriptModal.tocPlain'), this.tocMode === 'plain', () => {
             this.tocMode = 'plain';
             this.updatePills(tocActions, 1);
-            this.updateSceneIdToggleAvailability();
         });
         this.createPill(tocActions, t('manuscriptModal.tocNone'), this.tocMode === 'none', () => {
             this.tocMode = 'none';
             this.updatePills(tocActions, 2);
-            this.updateSceneIdToggleAvailability();
         });
         this.tocCard.createDiv({
             cls: 'ert-sub-card-note',
             text: t('manuscriptModal.tocNote')
         });
 
-        const sceneIdTocRow = this.tocCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        sceneIdTocRow.createSpan({
-            cls: 'ert-manuscript-toggle-label',
-            text: 'Append SceneId to each TOC entry',
-        });
-        this.sceneIdInTocToggle = new ToggleComponent(sceneIdTocRow)
-            .setValue(this.includeSceneIdInToc)
-            .onChange((value) => {
-                this.includeSceneIdInToc = value;
-                this.updateSceneIdToggleAvailability();
-                this.updateTemplateActionButtonState();
-            });
-        this.sceneIdInTocRow = sceneIdTocRow;
-        this.tocCard.createDiv({
-            cls: 'ert-sub-card-note',
-            text: 'Useful when sending exports to AI reviewers — gives the model a stable scene reference.',
-        });
-
-        const sceneIdHeadingRow = this.tocCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        sceneIdHeadingRow.createSpan({
-            cls: 'ert-manuscript-toggle-label',
-            text: 'Also append SceneId to each scene heading',
-        });
-        this.sceneIdInHeadingToggle = new ToggleComponent(sceneIdHeadingRow)
-            .setValue(this.includeSceneIdInHeading)
-            .onChange((value) => {
-                this.includeSceneIdInHeading = value;
-                this.updateTemplateActionButtonState();
-            });
-        this.sceneIdInHeadingRow = sceneIdHeadingRow;
-        this.tocCard.createDiv({
-            cls: 'ert-sub-card-note',
-            text: 'Belt-and-suspenders: keeps SceneIds with each scene if the TOC is cropped from the prompt.',
-        });
-
         this.syncTocPills();
-        this.updateSceneIdToggleAvailability();
 
         // G) PDF EXPORT CONTROLS
         this.publishingCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
@@ -744,6 +701,24 @@ export class ManuscriptOptionsModal extends Modal {
             cls: 'ert-sub-card-note',
             text: 'Saves compiled and sanitized Markdown artifacts alongside the PDF.'
         });
+
+        const sceneIdCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--cleanup' });
+        this.createSectionHeading(sceneIdCard, 'Scene ID');
+        sceneIdCard.createDiv({
+            cls: 'ert-sub-card-note',
+            text: 'Controls inclusion of SceneID to identify scenes for use with editorial analysis AI tools. See Editorialist plugin.'
+        });
+        const sceneIdRow = sceneIdCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        sceneIdRow.createSpan({
+            cls: 'ert-manuscript-toggle-label',
+            text: 'Append SceneID to TOC entries and scene headings',
+        });
+        this.sceneIdToggle = new ToggleComponent(sceneIdRow)
+            .setValue(this.includeSceneId)
+            .onChange((value) => {
+                this.includeSceneId = value;
+                this.updateTemplateActionButtonState();
+            });
 
         this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--cleanup' });
         this.createSectionHeading(this.exportCleanupCard, 'Export Cleanup');
@@ -879,8 +854,8 @@ export class ManuscriptOptionsModal extends Modal {
             subplot: this.subplot,
             outlinePreset: this.outlinePreset,
             tocMode: this.tocMode,
-            includeSceneIdInToc: this.includeSceneIdInToc,
-            includeSceneIdInHeading: this.includeSceneIdInHeading,
+            includeSceneIdInToc: this.includeSceneId,
+            includeSceneIdInHeading: this.includeSceneId,
             includeMatter: this.includeMatterUserChoice,
             includeSynopsis: this.includeSynopsisUserChoice,
             updateWordCounts: this.updateWordCounts,
@@ -1166,8 +1141,8 @@ export class ManuscriptOptionsModal extends Modal {
             exportType: this.exportType,
             outlinePreset: this.outlinePreset,
             tocMode: mode.showToc ? this.tocMode : 'none',
-            includeSceneIdInToc: mode.showToc ? this.includeSceneIdInToc : false,
-            includeSceneIdInHeading: this.includeSceneIdInHeading,
+            includeSceneIdInToc: mode.showToc ? this.includeSceneId : false,
+            includeSceneIdInHeading: this.includeSceneId,
             includeMatter: mode.showIncludeMatter ? this.includeMatterUserChoice : false,
             includeSynopsis: mode.isOutline ? this.includeSynopsisUserChoice : false,
             updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
@@ -1330,11 +1305,13 @@ export class ManuscriptOptionsModal extends Modal {
         this.outlinePreset = template.outlinePreset || 'beat-sheet';
         this.outputFormat = template.outputFormat;
         this.tocMode = template.tocMode || 'none';
-        this.includeSceneIdInToc = template.includeSceneIdInToc ?? this.includeSceneIdInToc;
-        this.includeSceneIdInHeading = template.includeSceneIdInHeading ?? this.includeSceneIdInHeading;
-        this.sceneIdInTocToggle?.setValue(this.includeSceneIdInToc);
-        this.sceneIdInHeadingToggle?.setValue(this.includeSceneIdInHeading);
-        this.updateSceneIdToggleAvailability();
+        // Saved presets may store either flag (legacy two-toggle UI) or both.
+        // Either being true implies the consolidated SceneId toggle is on.
+        const fromTemplate = template.includeSceneIdInToc ?? template.includeSceneIdInHeading;
+        if (typeof fromTemplate === 'boolean') {
+            this.includeSceneId = fromTemplate;
+        }
+        this.sceneIdToggle?.setValue(this.includeSceneId);
         this.order = template.order;
         this.subplot = template.subplot || 'All Subplots';
         this.updateWordCounts = !!template.updateWordCounts;
@@ -1426,17 +1403,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.updatePills(this.tocActionsEl, activeIndex);
     }
 
-    private updateSceneIdToggleAvailability(): void {
-        // The "append SceneId to TOC" toggle is meaningless when no TOC is rendered.
-        const tocActive = this.tocMode !== 'none';
-        if (this.sceneIdInTocRow) {
-            this.sceneIdInTocRow.toggleClass('is-disabled', !tocActive);
-        }
-        if (this.sceneIdInTocToggle) {
-            this.sceneIdInTocToggle.setDisabled(!tocActive);
-        }
-        // Heading toggle stays available regardless of TOC mode — it modifies scene bodies, not the TOC.
-    }
 
     private createOrderPill(parent: HTMLElement, label: string, order: ManuscriptOrder): void {
         const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
@@ -2493,7 +2459,7 @@ Sarah stood at the window, watching the world wake up.`;
         const firstCard = this.rangeCardContainer.createDiv({ cls: 'ert-manuscript-range-card' });
         firstCard.toggleClass('is-muted', this.rangeStart > 1);
         firstCard.createDiv({ cls: 'ert-manuscript-range-label', text: t('manuscriptModal.rangeFirst') });
-        firstCard.createDiv({ cls: 'ert-manuscript-range-title', text: this.formatCardTitle(0) });
+        firstCard.createDiv({ cls: 'ert-manuscript-range-title', text: this.formatCardTitle(this.rangeStart - 1) });
 
         const selectedCard = this.rangeCardContainer.createDiv({ cls: 'ert-manuscript-range-card ert-manuscript-range-card-active' });
         const isFullRange = this.rangeStart === 1 && this.rangeEnd === this.totalScenes;
@@ -2510,7 +2476,7 @@ Sarah stood at the window, watching the world wake up.`;
         const lastCard = this.rangeCardContainer.createDiv({ cls: 'ert-manuscript-range-card' });
         lastCard.toggleClass('is-muted', this.rangeEnd < this.totalScenes);
         lastCard.createDiv({ cls: 'ert-manuscript-range-label', text: t('manuscriptModal.rangeLast') });
-        lastCard.createDiv({ cls: 'ert-manuscript-range-title', text: this.formatCardTitle(this.totalScenes - 1) });
+        lastCard.createDiv({ cls: 'ert-manuscript-range-title', text: this.formatCardTitle(this.rangeEnd - 1) });
     }
 
     // Submission -------------------------------------------------------------
@@ -2563,8 +2529,8 @@ Sarah stood at the window, watching the world wake up.`;
             const outcome = await this.onSubmit({
                 order: submissionOrder,
                 tocMode,
-                includeSceneIdInToc: tocMode !== 'none' ? this.includeSceneIdInToc : false,
-                includeSceneIdInHeading: this.includeSceneIdInHeading,
+                includeSceneIdInToc: tocMode !== 'none' ? this.includeSceneId : false,
+                includeSceneIdInHeading: this.includeSceneId,
                 rangeStart: submissionRangeStart,
                 rangeEnd: submissionRangeEnd,
                 subplot: submissionSubplot,

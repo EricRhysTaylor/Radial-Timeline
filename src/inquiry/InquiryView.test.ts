@@ -252,13 +252,23 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("this.sessionStore.updateSession(session.key, { pendingEditsApplied: false });")).toBe(true);
     });
 
-    it('uses the latest same-model timing sample and cached next-run cost when available', () => {
+    it('routes timing prediction through inquiryTimingPrediction (cache-poison guard, mode-keyed history, blended prediction)', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
-        expect(viewSource.includes('options?: { preferLatestSample?: boolean }')).toBe(true);
-        expect(viewSource.includes('const preferLatestSample = options?.preferLatestSample !== false')).toBe(true);
-        expect(viewSource.includes('const preferLatestSample = true;')).toBe(true);
-        expect(viewSource.includes('((previous.avgMsPerInputToken * 0.25) + (sampleRate * 0.75))')).toBe(true);
+        // Pure module is imported and used — no more inline EWMA math in InquiryView.
+        expect(viewSource.includes("from './services/inquiryTimingPrediction'")).toBe(true);
+        expect(viewSource.includes('computeSampleRate({')).toBe(true);
+        expect(viewSource.includes('blendSampleRate({')).toBe(true);
+        expect(viewSource.includes('predictTimingFromEntry(entry, estimatedInputTokens)')).toBe(true);
+        // Mode is part of the history key.
+        expect(viewSource.includes('this.getCurrentEvidenceModeKey()')).toBe(true);
+        expect(viewSource.includes('computeTimingHistoryKey(provider, model, mode)')).toBe(true);
+        // The discredited preferLatestSample shortcut is gone for good.
+        expect(viewSource.includes('const preferLatestSample = true;')).toBe(false);
+        expect(viewSource.includes('options?: { preferLatestSample?: boolean }')).toBe(false);
+        // The HUD still refreshes after a sample is recorded.
         expect(viewSource.includes('this.refreshEstimateDisplays();')).toBe(true);
+        // Unrelated assertions from the original guardian — kept since they
+        // still apply to the cached-cost label path.
         expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
         expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
     });

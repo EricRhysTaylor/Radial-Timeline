@@ -56,6 +56,13 @@ export interface InquiryFinding {
     kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error' | 'strength';
     headline: string;
     bullets: string[];
+    /**
+     * Verbatim sentence/phrase from the cited scene that grounds this finding.
+     * Empty string when the cited scene is authorial notes/placeholder with no
+     * quotable prose. Surfaced in the Sources block as the truthful quote — never
+     * synthesized from the AI's headline or bullets.
+     */
+    evidenceQuote?: string;
     related: string[];
     evidenceType: 'scene' | 'outline' | 'mixed';
     lens?: 'flow' | 'depth' | 'both';

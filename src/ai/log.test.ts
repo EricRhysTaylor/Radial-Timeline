@@ -64,7 +64,12 @@ describe('buildUsageCostBreakdown', () => {
         expect(lines).toContain('- Cache read: ~120,000 tokens');
         expect(lines).toContain('- Cache write: ~12,000 tokens');
         expect(lines).toContain('- Output: ~18,523 tokens');
-        expect(lines).toContain('- Estimated fresh: $0.94');
+        // The "Estimated fresh" line now reflects the 1h cache-write
+        // surcharge that Anthropic Inquiry runs actually pay on the
+        // priming pass. The old $0.94 value used the 5m rate and
+        // under-estimated by ~33%; $1.25 matches the actual 1h pricing
+        // that the live run is billed at.
+        expect(lines).toContain('- Estimated fresh: $1.25');
         expect(lines).toContain('- Estimated cached: $0.46');
         expect(lines).toContain('- Effective cost: $0.52');
         expect(lines).toContain('## Cost Accuracy');

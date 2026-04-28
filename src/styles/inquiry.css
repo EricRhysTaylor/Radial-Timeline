@@ -2330,6 +2330,12 @@ body.rt-modal-open .ert-inquiry-svg {
   top: 18px;
   right: auto;
   width: 260px;
+  /* Keep the popover within the viewport so its inner list scrolls instead
+     of pushing the underlying Inquiry view. The 36px buffer covers the
+     panel's 18px top offset plus a small bottom gap. */
+  max-height: calc(100vh - 36px);
+  display: flex;
+  flex-direction: column;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 16px;
@@ -2341,6 +2347,7 @@ body.rt-modal-open .ert-inquiry-svg {
   transform: translateY(0);
   transition: opacity 140ms ease, transform 140ms ease;
   will-change: transform, opacity;
+  overscroll-behavior: contain;
 }
 
 .ert-inquiry-briefing-panel.ert-hidden {
@@ -2354,6 +2361,7 @@ body.rt-modal-open .ert-inquiry-svg {
   top: 18px;
   left: auto;
   width: 320px;
+  max-height: calc(100vh - 36px);
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 16px;
@@ -2367,6 +2375,8 @@ body.rt-modal-open .ert-inquiry-svg {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   will-change: transform, opacity;
 }
 
@@ -2962,6 +2972,13 @@ body.rt-modal-open .ert-inquiry-svg {
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
+  /* Allow the recent-sessions list to scroll inside the panel rather than
+     stretching the panel beyond the viewport. flex-1 + min-height:0 is the
+     standard pattern for a scrollable child inside a column flex layout. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .ert-inquiry-briefing-group {

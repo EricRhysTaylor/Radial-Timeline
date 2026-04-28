@@ -151,4 +151,84 @@ describe('estimateCorpusCost', () => {
             1
         )).toThrowError(/Missing provider pricing/);
     });
+
+    // ── cacheWriteTtl parameter — the screenshot bug ─────────────────────
+
+    it('defaults the priming-pass cache write to the 5m rate when no TTL is specified', () => {
+        // Backward compatibility: callers that do not opt in keep the old
+        // conservative 5m pricing. Sonnet 4.6: cacheWrite5m = $3.75/1M.
+        // 200k tokens × 0.5 reuse = 100k uncached @ $3 + 100k cache write @ $3.75
+        // + 10k output @ $15 = $0.30 + $0.375 + $0.15 = $0.825.
+        const result = estimateCorpusCost(
+            'anthropic',
+            'claude-sonnet-4-6',
+            200_000,
+            10_000,
+            1,
+            { cacheReuseRatio: 0.5 }
+        );
+        expect(result.freshCostUSD).toBeCloseTo(0.825, 6);
+    });
+
+    it('prices the priming pass at the 1h rate when cacheWriteTtl=1h (the actual Inquiry-on-Anthropic case)', () => {
+        // This is the screenshot bug: Inquiry primes a 1h cache, but the
+        // panel was using 5m pricing — under-estimated by ~33% on the
+        // priming pass. Sonnet 4.6: cacheWrite1h = $6.00/1M.
+        // 200k × 0.5 reuse = 100k uncached @ $3 + 100k cache write @ $6.00
+        // + 10k output @ $15 = $0.30 + $0.60 + $0.15 = $1.05.
+        const result = estimateCorpusCost(
+            'anthropic',
+            'claude-sonnet-4-6',
+            200_000,
+            10_000,
+            1,
+            { cacheReuseRatio: 0.5, cacheWriteTtl: '1h' }
+        );
+        expect(result.freshCostUSD).toBeCloseTo(1.05, 6);
+    });
+
+    it('reproduces the user-reported 29% delta when the TTL choice matters', () => {
+        // Screenshot scenario, simplified: 300k tokens, 75% cache reuse on
+        // the priming pass, ~3.5k output. Pricing 5m vs 1h should produce
+        // a noticeable gap that matches the 29% under-estimate the user saw.
+        const fiveMinute = estimateCorpusCost(
+            'anthropic',
+            'claude-sonnet-4-6',
+            300_000,
+            3_500,
+            1,
+            { cacheReuseRatio: 0.75 }
+        );
+        const oneHour = estimateCorpusCost(
+            'anthropic',
+            'claude-sonnet-4-6',
+            300_000,
+            3_500,
+            1,
+            { cacheReuseRatio: 0.75, cacheWriteTtl: '1h' }
+        );
+        // 1h estimate must be meaningfully higher than 5m. Don't pin an
+        // exact percentage (output token ratio dilutes), but sanity-check
+        // that the gap is at least 25% — the original 29% delta would be
+        // closed if the panel used 1h.
+        const ratio = oneHour.freshCostUSD / fiveMinute.freshCostUSD;
+        expect(ratio).toBeGreaterThan(1.25);
+        expect(ratio).toBeLessThan(1.50);
+    });
+
+    it('falls back to the other TTL rate when the requested one is missing from the pricing table', () => {
+        // OpenAI's GPT-5.4 has no cacheWrite1hPer1M field. Asking for 1h
+        // should not throw — it should fall back to whatever cache write
+        // rate is available so we never produce undefined.
+        const result = estimateCorpusCost(
+            'openai',
+            'gpt-5.4',
+            61_600,
+            8_000,
+            1,
+            { cacheReuseRatio: 0.5, cacheWriteTtl: '1h' }
+        );
+        expect(Number.isFinite(result.freshCostUSD)).toBe(true);
+        expect(result.freshCostUSD).toBeGreaterThan(0);
+    });
 });

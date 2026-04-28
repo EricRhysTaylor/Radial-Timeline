@@ -217,13 +217,13 @@ export function computeCitationPillState(
         return {
             label: `Citations · ${recentRun.citationCount}`,
             state: 'on-confirmed',
-            tooltip: `Last run returned ${recentRun.citationCount} citation anchor${recentRun.citationCount === 1 ? '' : 's'}.`
+            tooltip: `Last run produced ${recentRun.citationCount} anchored source${recentRun.citationCount === 1 ? '' : 's'} (inline citation blocks plus scene-anchored findings).`
         };
     }
     return {
         label: 'Citations missing',
         state: 'on-missing',
-        tooltip: 'Citations were enabled but the model returned zero citation anchors. Check provider/model support or the request payload.'
+        tooltip: 'Citations were enabled but no anchored sources came back — neither inline citation blocks nor findings with valid scene refs. Check provider/model support or the request payload.'
     };
 }
 

@@ -9,7 +9,6 @@ import type {
 } from '../types';
 import { countAnthropicTokens } from '../../api/anthropicApi';
 import { countGeminiTokens } from '../../api/geminiApi';
-import { countOpenaiTokens } from '../../api/openaiTokenizer';
 
 export const DEFAULT_CHARS_PER_TOKEN = 4;
 
@@ -51,7 +50,7 @@ function normalizeProvider(provider: EstimateInputTokensRequest['provider']): AI
 }
 
 export function tokenEstimateSourceFromMethod(method: TokenEstimateMethod): TokenCountSource {
-    return method === 'anthropic_count' || method === 'google_count' || method === 'openai_count'
+    return method === 'anthropic_count' || method === 'google_count'
         ? 'provider_count'
         : 'estimate';
 }
@@ -59,7 +58,6 @@ export function tokenEstimateSourceFromMethod(method: TokenEstimateMethod): Toke
 export function describeTokenEstimateMethod(method: TokenEstimateMethod): string {
     if (method === 'anthropic_count') return 'Anthropic provider count';
     if (method === 'google_count') return 'Gemini provider count';
-    if (method === 'openai_count') return 'OpenAI provider count';
     return 'Heuristic estimate';
 }
 
@@ -77,7 +75,7 @@ export function estimateTokensFromText(text: string, charsPerToken = DEFAULT_CHA
 
 export function estimateUncertaintyTokens(method: TokenEstimateMethod, safeInputBudget?: number): number {
     const budget = Number.isFinite(safeInputBudget) ? Math.max(0, Math.floor(safeInputBudget as number)) : 0;
-    if (method === 'anthropic_count' || method === 'google_count' || method === 'openai_count') {
+    if (method === 'anthropic_count' || method === 'google_count') {
         return Math.max(PROVIDER_COUNT_UNCERTAINTY_MIN, Math.floor(budget * PROVIDER_COUNT_UNCERTAINTY_RATIO));
     }
     return Math.max(HEURISTIC_UNCERTAINTY_MIN, Math.floor(budget * HEURISTIC_UNCERTAINTY_RATIO));
@@ -89,9 +87,7 @@ function toCountedEstimate(
 ): InputTokenEstimate {
     let method: TokenEstimateMethod;
     if (result.source === 'provider_count') {
-        if (result.provider === 'google') method = 'google_count';
-        else if (result.provider === 'openai') method = 'openai_count';
-        else method = 'anthropic_count';
+        method = result.provider === 'google' ? 'google_count' : 'anthropic_count';
     } else {
         method = 'heuristic_chars';
     }
@@ -108,14 +104,15 @@ function toCountedEstimate(
  * Dispatches to the provider's authoritative tokenizer when available:
  *   - anthropic: HTTP /v1/messages/count_tokens (knows document blocks + citations)
  *   - google:    HTTP models/{id}:countTokens   (free, no quota cost)
- *   - openai:    Local js-tiktoken (o200k_base) — the same BPE the API runs.
- *                No HTTP call. OpenAI does not expose a free pre-flight
- *                count endpoint, but their tokenizer is open-source.
+ *   - openai:    Falls through to chars/4 heuristic. OpenAI does not expose
+ *                a free pre-flight count endpoint, and shipping a local
+ *                tokenizer (tiktoken) was determined not to be worth ~2 MB
+ *                of bundle for the cost-estimate accuracy gain.
  *   - ollama:    No remote tokenizer; falls through to heuristic.
  *
- * On any failure (missing key, network error, malformed response, tokenizer
- * crash) returns the heuristic with the error attached so the UI can surface
- * "Heuristic estimate — {reason}" rather than silently lying.
+ * On any failure (missing key, network error, malformed response) returns
+ * the heuristic with the error attached so the UI can surface "Heuristic
+ * estimate — {reason}" rather than silently lying.
  */
 export async function estimateInputTokens(request: EstimateInputTokensRequest): Promise<InputTokenEstimate> {
     const combinedPrompt = `${request.systemPrompt || ''}${request.userPrompt || ''}`;
@@ -171,20 +168,6 @@ export async function estimateInputTokens(request: EstimateInputTokensRequest): 
             // runner before this point. Just count system + user.
             const counted = await countGeminiTokens(
                 apiKey,
-                request.modelId,
-                request.systemPrompt ?? null,
-                request.userPrompt
-            );
-            return toCountedEstimate(counted, request.safeInputBudget);
-        } catch (error) {
-            return fallback(error instanceof Error ? error.message : String(error));
-        }
-    }
-
-    if (provider === 'openai') {
-        try {
-            // No API key needed — local tokenizer.
-            const counted = await countOpenaiTokens(
                 request.modelId,
                 request.systemPrompt ?? null,
                 request.userPrompt

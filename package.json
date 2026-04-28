@@ -64,8 +64,5 @@
 		"src/**/*.{js,ts}": [
 			"node code-quality-check.mjs"
 		]
-	},
-	"dependencies": {
-		"js-tiktoken": "^1.0.21"
 	}
 }
