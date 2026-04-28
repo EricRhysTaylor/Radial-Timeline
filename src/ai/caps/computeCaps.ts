@@ -72,20 +72,38 @@ function resolveThinkingBudget(
 }
 
 /** Citations resolver.
- *  First ship: Anthropic + Inquiry only.
- *  Note: citations are API-incompatible with Anthropic structured outputs
- *  (output_config.format). Today Inquiry uses text prompting with JSON instructions,
- *  so this is safe. If structured JSON output is ever added for Anthropic, this
- *  resolver must also gate on that. */
+ *
+ *  TEMPORARILY DISABLED ACROSS ALL PROVIDERS.
+ *
+ *  Citations are structurally incompatible with strict-JSON output on every
+ *  provider we use:
+ *    - Anthropic: citations attach only to text content blocks; tool_use returns
+ *      tool_use.input with no text blocks, so citations have nowhere to anchor.
+ *    - OpenAI: no document-citation API for Inquiry (file_citation/url_citation
+ *      annotations require the Responses API's File Search / Web Search tools,
+ *      which we do not invoke here).
+ *    - Gemini: no per-document citation metadata exposed for our path.
+ *
+ *  Dropping forced tool_use to make Anthropic citations work introduced its
+ *  own cascade of failures (extended thinking activated, parse-retry path
+ *  stripped evidence and silently hallucinated). The complexity wasn't worth
+ *  the result.
+ *
+ *  Sources still surface verbatim quotes via the per-finding `evidence_quote`
+ *  schema field — the model self-attributes a quote per finding under strict
+ *  JSON enforcement. That gives the same end-user experience without the
+ *  provider-side gymnastics.
+ *
+ *  All downstream code (sanitizers, document-block emission, citation
+ *  extraction, Sources rendering) is intact. To re-enable, restore the
+ *  earlier provider/feature gate below — no other code path needs to change.
+ */
 function resolveCitationsEnabled(
-    provider: AIProviderId,
-    feature: string,
-    userCitationsEnabled?: boolean
+    _provider: AIProviderId,
+    _feature: string,
+    _userCitationsEnabled?: boolean
 ): boolean {
-    if (userCitationsEnabled === false) return false;
-    if (provider !== 'anthropic' && provider !== 'google') return false;
-    if (!feature.toLowerCase().includes('inquiry')) return false;
-    return true;
+    return false;
 }
 
 function resolveDefaultTemperature(feature: string, reasoningDepth?: 'standard' | 'deep'): number {

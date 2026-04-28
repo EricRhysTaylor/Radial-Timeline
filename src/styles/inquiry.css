@@ -2933,6 +2933,17 @@ body.rt-modal-open .ert-inquiry-svg {
   border-color: var(--background-modifier-border);
 }
 
+/* Provider lacks structural support for citations (e.g. OpenAI inquiry runs).
+   Informational, not a warning — the advisor card already routes the user
+   toward a citation-capable provider. Distinct from "Citations missing"
+   (red) so a structural limit doesn't read as a runtime failure. */
+.ert-inquiry-engine-pill.is-on-unavailable {
+  background-color: var(--background-modifier-border);
+  color: var(--text-muted);
+  border-color: var(--background-modifier-border);
+  opacity: 0.85;
+}
+
 .ert-inquiry-engine-pill.is-off {
   background-color: var(--background-modifier-border);
   color: var(--text-muted);

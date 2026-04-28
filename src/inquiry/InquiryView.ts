@@ -39,6 +39,7 @@ import {
 } from './state';
 import { replayTransientClass } from '../utils/domClassEffects';
 import { ANTHROPIC_REQUESTED_CACHE_TTL } from '../ai/settings/aiSettings';
+import { providerSupportsCitations } from '../api/providerCapabilities';
 import type {
     InquiryCanonicalQuestionTier,
     InquiryClassConfig,
@@ -1050,6 +1051,9 @@ export class InquiryView extends ItemView {
             runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel),
             cacheTtlLabel: this.getProviderCacheTtlLabel(engine.provider),
             citationsRequested: this.getCanonicalAiSettings().citationsEnabled !== false,
+            providerSupportsCitations: engine.provider !== 'none' && engine.provider !== 'ollama'
+                ? providerSupportsCitations(engine.provider)
+                : false,
             recentRun: this.buildEngineRecentRunSnapshot(),
             cacheWindow: this.buildEngineCacheWindowSnapshot()
         });

@@ -1170,8 +1170,8 @@ export const en: TranslationKeys = {
             },
             config: {
                 inquiryTitle: 'Inquiry',
-                citationsName: 'Enable citations',
-                citationsDesc: 'Anchor findings to specific passages. Cost impact varies by provider — substantial on Anthropic Claude (native document blocks) and Gemini (disables prompt cache reuse); minimal on OpenAI (lighter post-response annotations). Toggle has no effect on local Ollama. See the cost table for details.',
+                citationsName: 'Enable citations (temporarily unavailable)',
+                citationsDesc: 'Provider-level inline citations are temporarily disabled across all providers — they are structurally incompatible with strict-JSON output (Anthropic, OpenAI, Gemini). Findings still surface a verbatim quote per scene via the per-finding evidence_quote field, which appears in the Sources block.',
                 timelineDisplayTitle: 'Timeline Display',
                 pulseContextName: 'Pulse context',
                 pulseContextDesc: 'Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)',

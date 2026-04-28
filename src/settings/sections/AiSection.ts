@@ -3578,13 +3578,18 @@ export function renderAiSection(params: {
         title: t('settings.ai.config.citationsName'),
         description: t('settings.ai.config.citationsDesc'),
         control: (setting) => {
-            setting.addToggle(toggle => toggle
-                .setValue(ensureCanonicalAiSettings().citationsEnabled !== false)
-                .onChange(async (value) => {
-                    ensureCanonicalAiSettings().citationsEnabled = value;
-                    await persistCanonical();
-                    void refreshRoutingUi();
-                }));
+            // Provider-level inline citations are temporarily disabled across all
+            // providers — they're structurally incompatible with strict-JSON output.
+            // Toggle stays present so the persisted setting remains visible, but
+            // it's locked off; per-finding evidence_quote field still surfaces a
+            // verbatim quote per finding in the Sources block.
+            setting.addToggle(toggle => {
+                toggle.setValue(false).setDisabled(true);
+                toggle.toggleEl.setAttr(
+                    'title',
+                    'Temporarily disabled — provider citations conflict with strict-JSON output across all providers. Findings still surface verbatim quotes via the per-finding evidence_quote field.'
+                );
+            });
         }
     });
 

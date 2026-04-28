@@ -26,7 +26,13 @@ function buildResolvedEngine(model: ModelInfo, providerLabel?: string): Resolved
 }
 
 describe('computeInquiryAdvisoryContext', () => {
-    it('prioritizes sources recommendation over single-pass option', () => {
+    it('does not surface sources_preferred recommendation while inline citations are paused', () => {
+        // Inline provider-level citations are temporarily disabled across all
+        // providers (see resolveCitationsEnabled). The advisor used to nudge
+        // OpenAI users toward Anthropic for citation-backed analysis; with
+        // citations off everywhere, that nudge would mislead. The advisor
+        // should suppress the sources_preferred branch and fall through to
+        // other reason codes (or return null).
         const currentModel = getModel('gpt-5.1-chat-latest');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
@@ -39,11 +45,9 @@ describe('computeInquiryAdvisoryContext', () => {
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
 
-        expect(advisory).not.toBeNull();
-        expect(advisory?.recommendation.reasonCode).toBe('sources_preferred');
-        expect(advisory?.recommendation.provider).toBe('anthropic');
-        expect(advisory?.recommendation.options).toHaveLength(1);
-        expect(advisory?.recommendation.message).toBe('Citation-backed alternative:');
+        if (advisory) {
+            expect(advisory.recommendation.reasonCode).not.toBe('sources_preferred');
+        }
     });
 
     it('returns null when the current engine already has sources and fits in one pass', () => {
@@ -143,14 +147,18 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('keeps createdAt stable when advisory identity does not change', () => {
-        const currentModel = getModel('gpt-5.2-chat-latest');
+        // Need a scenario that fires a still-active reason code. gpt-5.1
+        // (200k context) forced multi-pass on a 300k-token corpus while
+        // Anthropic Sonnet 4.6 (1M context) handles it in one pass — that
+        // triggers single_pass_preferred consistently across re-runs.
+        const currentModel = getModel('gpt-5.1-chat-latest');
         const first = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
             currentModel,
             models: BUILTIN_MODELS,
-            estimatedInputTokens: 40000,
+            estimatedInputTokens: 600000,
             corpusFingerprint: 'fp-4',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
@@ -163,7 +171,7 @@ describe('computeInquiryAdvisoryContext', () => {
             resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
             currentModel,
             models: BUILTIN_MODELS,
-            estimatedInputTokens: 40000,
+            estimatedInputTokens: 600000,
             corpusFingerprint: 'fp-4',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
             previousContext: first,

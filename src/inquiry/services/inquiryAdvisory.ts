@@ -333,14 +333,11 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
     let reasonCode: InquiryAdvisoryReasonCode | null = null;
     let suggestions: AdvisoryCandidate[] = [];
 
-    if (currentCandidate.directManuscriptCitationsStatus !== 'available') {
-        suggestions = sortedAlternatives.filter(
-            candidate => candidate.directManuscriptCitationsStatus === 'available'
-        );
-        if (suggestions.length) {
-            reasonCode = 'sources_preferred';
-        }
-    }
+    // Citation-backed alternative recommendations are paused while inline
+    // provider citations are disabled (see resolveCitationsEnabled). No
+    // current provider would deliver a different result on this axis, so the
+    // suggestion would just confuse the user. Re-enable alongside the
+    // citations resolver when the path is restored.
 
     if (!reasonCode && currentPassCount > MIN_COMPELLING_SINGLE_PASS_GAIN) {
         suggestions = sortedAlternatives.filter(candidate =>

@@ -113,6 +113,26 @@ describe('computeCitationPillState', () => {
         expect(pill.label).toBe('Citations missing');
         expect(pill.tooltip).toContain('no anchored sources came back');
     });
+
+    it('reports unavailable (informational, not warning) when the provider does not support citations', () => {
+        // OpenAI / Gemini have no document-citation path for Inquiry.
+        // The pill should distinguish this structural limit from a runtime
+        // failure so the user reads it as "switch providers" rather than
+        // "the system is broken".
+        const pill = computeCitationPillState(true, undefined, false);
+        expect(pill.state).toBe('on-unavailable');
+        expect(pill.label).toBe('Citations unavailable');
+        expect(pill.tooltip).toContain('does not return inline document citations');
+    });
+
+    it('still reports unavailable even after a recent run when the provider does not support citations', () => {
+        const pill = computeCitationPillState(true, {
+            citationsRequested: true,
+            citationCount: 0,
+            tokenUsage: { inputTokens: 100 }
+        }, false);
+        expect(pill.state).toBe('on-unavailable');
+    });
 });
 
 describe('computeTtlPillState', () => {

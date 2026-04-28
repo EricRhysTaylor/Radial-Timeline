@@ -56,6 +56,10 @@ export function renderInquiryEngineReadinessStrip(args: {
     cacheTtlLabel?: string;
     /** Citations toggle state from settings — drives the static "Citations" pill. */
     citationsRequested: boolean;
+    /** Whether the active provider can return inline document citations at all.
+     *  When false, citationsRequested becomes "Citations unavailable" rather than
+     *  the post-run "missing" warning — the limit is structural, not a failure. */
+    providerSupportsCitations?: boolean;
     /** Outcome data from the most recent run; drives dynamic pill states. */
     recentRun?: EngineRecentRunSnapshot;
     /** Active provider cache window for the current corpus, if any. Drives the TTL countdown pill. */
@@ -118,6 +122,7 @@ export function renderInquiryEngineReadinessStrip(args: {
     args.readinessActionsEl.empty();
     renderEnginePostRunPills(args.readinessActionsEl, {
         citationsRequested: args.citationsRequested,
+        providerSupportsCitations: args.providerSupportsCitations,
         recentRun: args.recentRun,
         cacheWindow: args.cacheWindow,
         now: args.now ?? Date.now()
@@ -133,7 +138,7 @@ type CachePillState = {
 
 type CitationPillState = {
     label: string;
-    state: 'off' | 'on-pending' | 'on-confirmed' | 'on-missing';
+    state: 'off' | 'on-pending' | 'on-confirmed' | 'on-missing' | 'on-unavailable';
     tooltip: string;
 };
 
@@ -190,6 +195,9 @@ export function computeCachePillState(usage: TokenUsage | undefined): CachePillS
  *
  * Rules:
  *   - toggle off → "Citations off" muted (informational)
+ *   - toggle on, provider can't deliver them → "Citations unavailable" muted
+ *     (informational — distinguishes a provider limit from a runtime failure;
+ *     the advisor card already nudges the user toward a citation-capable model)
  *   - toggle on, no run yet → "Citations on" pending
  *   - toggle on, last run had citations → "Citations · N" confirmed
  *   - toggle on, last run had ZERO citations → "Citations missing" warning
@@ -197,13 +205,21 @@ export function computeCachePillState(usage: TokenUsage | undefined): CachePillS
  */
 export function computeCitationPillState(
     citationsRequested: boolean,
-    recentRun: EngineRecentRunSnapshot | undefined
+    recentRun: EngineRecentRunSnapshot | undefined,
+    providerSupportsCitations: boolean = true
 ): CitationPillState {
     if (!citationsRequested) {
         return {
             label: 'Citations off',
             state: 'off',
             tooltip: 'Findings will not be anchored to specific source passages.'
+        };
+    }
+    if (!providerSupportsCitations) {
+        return {
+            label: 'Citations unavailable',
+            state: 'on-unavailable',
+            tooltip: 'The selected provider does not return inline document citations for Inquiry. Switch providers (see the Inquiry Advisor) to get verbatim source quotes.'
         };
     }
     if (!recentRun) {
@@ -280,6 +296,7 @@ function renderEnginePostRunPills(
     container: HTMLElement,
     args: {
         citationsRequested: boolean;
+        providerSupportsCitations?: boolean;
         recentRun?: EngineRecentRunSnapshot;
         cacheWindow?: EngineCacheWindowSnapshot;
         now: number;
@@ -305,7 +322,11 @@ function renderEnginePostRunPills(
         el.setAttr('title', ttlPill.tooltip);
     }
 
-    const citationPill = computeCitationPillState(args.citationsRequested, args.recentRun);
+    const citationPill = computeCitationPillState(
+        args.citationsRequested,
+        args.recentRun,
+        args.providerSupportsCitations ?? true
+    );
     const citationEl = pillRow.createSpan({
         cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--citations is-${citationPill.state}`,
         text: citationPill.label
