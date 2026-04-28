@@ -2105,7 +2105,8 @@ export class InquiryRunnerService implements InquiryRunner {
             questionZone: question.zone,
             corpus: input.corpus,
             rules: input.rules,
-            ai: input.ai
+            ai: input.ai,
+            citationsEnabled: input.citationsEnabled
         };
     }
 
@@ -2613,7 +2614,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 questionZone: 'setup',
                 corpus: input.corpus,
                 rules: input.rules,
-                ai: input.ai
+                ai: input.ai,
+                citationsEnabled: input.citationsEnabled
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

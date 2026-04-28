@@ -131,6 +131,9 @@ import { getModelDisplayName } from '../utils/modelResolver';
 import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
 import { buildInquirySourcesViewModel } from './services/inquirySources';
 import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
+import { detectCrossRunCacheMiss, describeCacheMissDetection } from './services/cacheMissDetection';
+import { detectCitationReceipt, describeCitationReceiptDetection } from './services/citationReceiptDetection';
+import { getModelUiSignals } from '../ai/caps/engineCapabilities';
 import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
 import { scopeEntriesToActiveInquiryTarget } from './services/canonicalInquiryCorpus';
 import type {
@@ -204,7 +207,7 @@ import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
 import { applyInquiryCorpusCcSlotViewModel, buildInquiryCorpusCcSlotViewModel } from './corpus/inquiryCorpusStripSlotRenderer';
 import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './render/inquiryDossierRenderer';
 import { createInquiryEngineActionButtons } from './engine/inquiryEngineDom';
-import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip, type EngineRecentRunSnapshot } from './engine/inquiryEngineRenderer';
+import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip, type EngineRecentRunSnapshot, type EngineCacheWindowSnapshot } from './engine/inquiryEngineRenderer';
 import { buildInquiryEngineCorpusSummary } from './engine/inquiryEngineViewModel';
 import {
     renderInquiryPromptPreviewLayout,
@@ -1042,7 +1045,8 @@ export class InquiryView extends ItemView {
             runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel),
             cacheTtlLabel: this.getProviderCacheTtlLabel(engine.provider),
             citationsRequested: this.getCanonicalAiSettings().citationsEnabled !== false,
-            recentRun: this.buildEngineRecentRunSnapshot()
+            recentRun: this.buildEngineRecentRunSnapshot(),
+            cacheWindow: this.buildEngineCacheWindowSnapshot()
         });
 
         // ── Guard (error/failure guidance) ──
@@ -3662,6 +3666,35 @@ export class InquiryView extends ItemView {
             citationsRequested,
             citationCount: result.citations?.length ?? 0,
             tokenUsage: result.tokenUsage
+        };
+    }
+
+    /**
+     * Find the latest still-warm provider cache window for the current
+     * engine + corpus. Drives the "Cache: Xm left" countdown pill in the
+     * engine popover. Returns undefined when no active window exists, so
+     * the renderer skips the pill cleanly.
+     *
+     * Re-evaluated on every engine panel refresh — no live timer is
+     * scheduled, so the displayed minutes lag refresh cadence. Adequate
+     * for a coarse "fresh / soon / expiring" indicator; a per-second
+     * countdown would imply more precision than we have anyway.
+     */
+    private buildEngineCacheWindowSnapshot(): EngineCacheWindowSnapshot | undefined {
+        const engine = this.getResolvedEngine();
+        if (!engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') return undefined;
+        const session = this.sessionStore.getLatestActiveCacheSessionForEngine(
+            engine.provider,
+            engine.modelId,
+            { cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined }
+        );
+        if (!session?.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= Date.now()) return undefined;
+        const cachedTokens = typeof session.cachedStableTokens === 'number' && Number.isFinite(session.cachedStableTokens)
+            ? Math.max(0, Math.floor(session.cachedStableTokens))
+            : undefined;
+        return {
+            expiresAt: session.cacheWindowExpiresAt,
+            cachedTokens
         };
     }
 
@@ -6353,7 +6386,8 @@ export class InquiryView extends ItemView {
                 provider: simulationProvider,
                 modelId: engineSelection.modelId,
                 modelLabel: engineSelection.modelLabel
-            }
+            },
+            citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
         };
         const runToken = this.beginInquiryRunToken();
         try {
@@ -6446,6 +6480,18 @@ export class InquiryView extends ItemView {
                         ? Math.max(0, Math.floor(result.tokenEstimateInput))
                         : undefined));
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
+            // Cross-run cache miss detection: query the prior active session
+            // BEFORE setSession, so we compare against the previous run, not
+            // the one we are about to write. Surface a Notice + trace note
+            // when the conditions for reuse were met but cache_read came
+            // back zero — the engine pill already turns red, this raises
+            // visibility and persists the warning in the run log.
+            this.surfaceCrossRunCacheMissIfAny(result, runTrace);
+            // Citation receipt verification: warn if citations were enabled
+            // and the active model supports them but the response carried
+            // zero anchors. Skips silently for unsupported models so we
+            // never raise a false alarm.
+            this.surfaceCitationReceiptWarningIfAny(result, runTrace);
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
@@ -6663,7 +6709,8 @@ export class InquiryView extends ItemView {
                 provider: providerChoice.provider,
                 modelId: providerChoice.modelId,
                 modelLabel: providerChoice.modelLabel
-            }
+            },
+            citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
         };
 
         this.state.isRunning = true;
@@ -6717,7 +6764,8 @@ export class InquiryView extends ItemView {
                     questionZone: question.zone,
                     corpus: questionManifest,
                     rules: this.getEvidenceRules(),
-                    ai: omnibusInput.ai
+                    ai: omnibusInput.ai,
+                    citationsEnabled: omnibusInput.citationsEnabled
                 }, 'Omnibus trace unavailable; log created without prompt capture.');
 
                 const persisted = await this.persistOmnibusResult({
@@ -6861,7 +6909,8 @@ export class InquiryView extends ItemView {
                         provider: providerChoice.provider,
                         modelId: providerChoice.modelId,
                         modelLabel: providerChoice.modelLabel
-                    }
+                    },
+                    citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
                 };
                 const submittedAt = new Date();
                 let result: InquiryResult;
@@ -7873,7 +7922,8 @@ export class InquiryView extends ItemView {
                 provider: simulationProvider,
                 modelId: resolvedEngine.modelId,
                 modelLabel: resolvedEngine.modelLabel
-            }
+            },
+            citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
         };
         const submittedAt = new Date();
         this.state.isRunning = true;
@@ -9543,6 +9593,64 @@ export class InquiryView extends ItemView {
                 : Math.max(5, windows.openaiInMemoryWindowMinutes) * 60 * 1000;
         }
         return null;
+    }
+
+    /**
+     * Detect "citations enabled but zero anchors came back" and surface as
+     * a Notice + trace note. Silent when citations are off OR the model
+     * does not support citation anchoring (e.g. heuristic-only providers).
+     * Pure side effects — the engine pill already shows the state.
+     */
+    private surfaceCitationReceiptWarningIfAny(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {
+        if (this.isErrorResult(result)) return;
+        const citationsRequested = this.getCanonicalAiSettings().citationsEnabled !== false;
+        const provider = (result.aiProvider ?? '').trim();
+        const modelId = (result.aiModelResolved || result.aiModelRequested || '').trim();
+        if (!provider || !modelId) return;
+        const model = BUILTIN_MODELS.find(m => m.provider === provider && m.id === modelId);
+        if (!model) return;
+        const modelSupportsCitations = !!getModelUiSignals(model).citationLabel;
+        const detection = detectCitationReceipt({
+            citationsRequested,
+            modelSupportsCitations,
+            citationCount: result.citations?.length ?? 0,
+            modelLabel: model.label
+        });
+        const message = describeCitationReceiptDetection(detection);
+        if (!message) return;
+        if (trace?.notes) trace.notes.push(message);
+        new Notice(message, 8000);
+    }
+
+    /**
+     * Detect "should-have-hit-cache but didn't" against the most recent
+     * still-warm session and surface it as a Notice + trace note. Silent
+     * for every non-miss outcome (no prior session, expired window, etc.)
+     * so we never spam the user with non-events. Pure side effects only —
+     * the engine pill already reflects the state of the just-completed run.
+     */
+    private surfaceCrossRunCacheMissIfAny(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {
+        const provider = (result.aiProvider ?? '').trim().toLowerCase();
+        const modelId = (result.aiModelResolved || result.aiModelRequested || '').trim();
+        const fingerprint = (result.cacheReuseFingerprint ?? '').trim();
+        if (!provider || !modelId || !fingerprint) return;
+        const priorActiveSession = this.sessionStore.getLatestActiveCacheSessionForEngine(
+            provider,
+            modelId,
+            { cacheReuseFingerprint: fingerprint }
+        );
+        const detection = detectCrossRunCacheMiss({
+            currentUsage: trace?.usage,
+            currentFingerprint: fingerprint,
+            priorActiveSession
+        });
+        if (detection.kind !== 'expected_reuse_missed') return;
+        const message = describeCacheMissDetection(detection);
+        if (!message) return;
+        // Persist to run log so the warning survives across sessions.
+        if (trace?.notes) trace.notes.push(message);
+        // Notice stays up for 8s — long enough to read but auto-clears.
+        new Notice(message, 8000);
     }
 
     private resolveCacheWindowExpiry(result: InquiryResult, trace?: InquiryRunTrace | null): number | null {

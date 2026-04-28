@@ -237,7 +237,8 @@ export async function buildInquiryEstimateSnapshot(
             provider: params.engine.provider === 'none' ? 'openai' : params.engine.provider,
             modelId: params.engine.modelId,
             modelLabel: params.engine.modelLabel
-        }
+        },
+        citationsEnabled: params.citationsEnabled
     };
 
     const trace = await buildInquiryEstimateTrace(params.runner, runnerInput);

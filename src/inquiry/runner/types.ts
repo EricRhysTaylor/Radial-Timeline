@@ -87,6 +87,12 @@ export interface InquiryRunnerInput {
     corpus: CorpusManifest;
     rules: EvidenceParticipationRules;
     ai: InquiryAiEngineInfo;
+    /**
+     * Whether citation source-anchoring should be requested for this run.
+     * Snapshot at construction time so a setting change mid-run does not
+     * flip what we asked for vs what we report.
+     */
+    citationsEnabled: boolean;
 }
 
 export interface InquiryOmnibusInput {
@@ -101,6 +107,8 @@ export interface InquiryOmnibusInput {
     corpus: CorpusManifest;
     rules: EvidenceParticipationRules;
     ai: InquiryAiEngineInfo;
+    /** See InquiryRunnerInput.citationsEnabled — same semantics. */
+    citationsEnabled: boolean;
 }
 
 export type InquiryRunProgressEvent = {

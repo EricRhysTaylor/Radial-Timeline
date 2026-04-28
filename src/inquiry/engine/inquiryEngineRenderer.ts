@@ -11,6 +11,13 @@ export type EngineRecentRunSnapshot = {
     tokenUsage?: TokenUsage;
 };
 
+export type EngineCacheWindowSnapshot = {
+    /** Wall-clock ms when the provider cache window expires. */
+    expiresAt: number;
+    /** Tokens primed in the cache (so the user knows how much reuse is at stake). */
+    cachedTokens?: number;
+};
+
 export function renderInquiryEngineAdvisoryCard(
     container: HTMLElement,
     advisory: InquiryAdvisoryContext
@@ -51,6 +58,10 @@ export function renderInquiryEngineReadinessStrip(args: {
     citationsRequested: boolean;
     /** Outcome data from the most recent run; drives dynamic pill states. */
     recentRun?: EngineRecentRunSnapshot;
+    /** Active provider cache window for the current corpus, if any. Drives the TTL countdown pill. */
+    cacheWindow?: EngineCacheWindowSnapshot;
+    /** Wall-clock for testability. Defaults to Date.now() when omitted. */
+    now?: number;
 }): void {
     if (!args.readinessEl
         || !args.readinessStatusEl
@@ -107,7 +118,9 @@ export function renderInquiryEngineReadinessStrip(args: {
     args.readinessActionsEl.empty();
     renderEnginePostRunPills(args.readinessActionsEl, {
         citationsRequested: args.citationsRequested,
-        recentRun: args.recentRun
+        recentRun: args.recentRun,
+        cacheWindow: args.cacheWindow,
+        now: args.now ?? Date.now()
     });
 }
 
@@ -121,6 +134,13 @@ type CachePillState = {
 type CitationPillState = {
     label: string;
     state: 'off' | 'on-pending' | 'on-confirmed' | 'on-missing';
+    tooltip: string;
+};
+
+type TtlPillState = {
+    label: string;
+    /** 'fresh' for >2m, 'soon' for 30s..2m, 'expiring' for <30s. */
+    state: 'fresh' | 'soon' | 'expiring';
     tooltip: string;
 };
 
@@ -207,9 +227,63 @@ export function computeCitationPillState(
     };
 }
 
+/**
+ * Compute the TTL countdown pill from an active cache window.
+ *
+ * Returns null when:
+ *   - no active cache window exists for this corpus
+ *   - the window already expired (in which case the cache pill on the next
+ *     run will report "miss" — no need for a stale countdown)
+ *
+ * Coarse buckets (s / m / h) match the rendering cadence — the engine panel
+ * re-renders on state changes, not on a per-second timer, so finer
+ * granularity would just lie about precision.
+ */
+export function computeTtlPillState(
+    cacheWindow: EngineCacheWindowSnapshot | undefined,
+    now: number
+): TtlPillState | null {
+    if (!cacheWindow) return null;
+    const remainingMs = cacheWindow.expiresAt - now;
+    if (remainingMs <= 0) return null;
+
+    const remainingSeconds = Math.floor(remainingMs / 1000);
+    let label: string;
+    let state: TtlPillState['state'];
+
+    if (remainingSeconds < 30) {
+        label = `Cache: ${remainingSeconds}s left`;
+        state = 'expiring';
+    } else if (remainingSeconds < 120) {
+        label = `Cache: ${remainingSeconds}s left`;
+        state = 'soon';
+    } else if (remainingSeconds < 3600) {
+        const minutes = Math.floor(remainingSeconds / 60);
+        label = `Cache: ${minutes}m left`;
+        state = 'fresh';
+    } else {
+        const hours = Math.floor(remainingSeconds / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        label = minutes > 0 ? `Cache: ${hours}h ${minutes}m left` : `Cache: ${hours}h left`;
+        state = 'fresh';
+    }
+
+    const cachedDetail = cacheWindow.cachedTokens && cacheWindow.cachedTokens > 0
+        ? ` (${cacheWindow.cachedTokens.toLocaleString()} tokens primed)`
+        : '';
+    const tooltip = `Provider cache window expires in ${label.replace('Cache: ', '').replace(' left', '')}${cachedDetail}. A run started before that window expires should benefit from cache reuse.`;
+
+    return { label, state, tooltip };
+}
+
 function renderEnginePostRunPills(
     container: HTMLElement,
-    args: { citationsRequested: boolean; recentRun?: EngineRecentRunSnapshot }
+    args: {
+        citationsRequested: boolean;
+        recentRun?: EngineRecentRunSnapshot;
+        cacheWindow?: EngineCacheWindowSnapshot;
+        now: number;
+    }
 ): void {
     const pillRow = container.createDiv({ cls: 'ert-inquiry-engine-pill-row' });
 
@@ -220,6 +294,15 @@ function renderEnginePostRunPills(
             text: cachePill.label
         });
         el.setAttr('title', cachePill.tooltip);
+    }
+
+    const ttlPill = computeTtlPillState(args.cacheWindow, args.now);
+    if (ttlPill) {
+        const el = pillRow.createSpan({
+            cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--ttl is-ttl-${ttlPill.state}`,
+            text: ttlPill.label
+        });
+        el.setAttr('title', ttlPill.tooltip);
     }
 
     const citationPill = computeCitationPillState(args.citationsRequested, args.recentRun);

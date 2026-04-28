@@ -45,6 +45,14 @@ type CanonicalExecutionEstimateParams = {
     vault: Vault;
     metadataCache: MetadataCache;
     frontmatterMappings?: Record<string, string>;
+    /**
+     * Whether the run will request citation source-anchoring. Controls
+     * which provider request shape is built (Anthropic document blocks vs
+     * plain text), which in turn affects the count_tokens result.
+     * Defaults to true to match the historical behavior; callers should
+     * pass the user's actual setting when they have it.
+     */
+    citationsEnabled?: boolean;
 };
 
 type CanonicalGossamerExecutionEstimateParams = {
@@ -312,7 +320,8 @@ export const buildCanonicalExecutionEstimate = async (
             provider,
             modelId: params.modelId,
             modelLabel: params.modelId
-        }
+        },
+        citationsEnabled: params.citationsEnabled ?? true
     });
     const estimatedTokens = trace.tokenEstimate.inputTokens;
     const chunkPlanPassCount = runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
@@ -551,7 +560,8 @@ export async function estimateInquiryTokens(params: {
                 manifestEntries,
                 vault: params.vault,
                 metadataCache: params.metadataCache,
-                frontmatterMappings: params.frontmatterMappings
+                frontmatterMappings: params.frontmatterMappings,
+                citationsEnabled: params.plugin.settings?.aiSettings?.citationsEnabled !== false
             });
         } catch {
             // Keep heuristic execution estimate when canonical execution estimate cannot be prepared.

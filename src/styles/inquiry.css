@@ -2906,6 +2906,25 @@ body.rt-modal-open .ert-inquiry-svg {
   border-color: var(--background-modifier-border);
 }
 
+/* TTL countdown gradient: fresh (calm blue) → soon (amber) → expiring (red). */
+.ert-inquiry-engine-pill.is-ttl-fresh {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: rgb(37, 99, 175);
+  border-color: rgba(59, 130, 246, 0.40);
+}
+
+.ert-inquiry-engine-pill.is-ttl-soon {
+  background-color: rgba(245, 188, 66, 0.18);
+  color: rgb(196, 134, 21);
+  border-color: rgba(245, 188, 66, 0.45);
+}
+
+.ert-inquiry-engine-pill.is-ttl-expiring {
+  background-color: rgba(207, 34, 46, 0.18);
+  color: rgb(176, 30, 40);
+  border-color: rgba(207, 34, 46, 0.50);
+}
+
 .ert-inquiry-engine-action-button {
   appearance: none;
   flex: 1;

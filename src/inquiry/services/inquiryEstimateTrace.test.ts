@@ -34,11 +34,14 @@ describe('buildInquiryEstimateTrace', () => {
         const input: InquiryRunnerInput = {
             scope: 'book',
             scopeLabel: 'B1',
+            targetSceneIds: [],
+            selectionMode: 'discover',
             questionId: 'estimate-snapshot',
             questionText: 'Analyze corpus-level flow and depth quality.',
             questionPromptForm: 'standard',
             questionZone: 'setup',
             mode: 'flow',
+            citationsEnabled: true,
             corpus: {
                 entries: [{
                     path: 'Book 1/Scene 1.md',

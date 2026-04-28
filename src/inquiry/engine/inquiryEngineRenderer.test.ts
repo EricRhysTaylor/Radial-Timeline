@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { computeCachePillState, computeCitationPillState } from './inquiryEngineRenderer';
+import { computeCachePillState, computeCitationPillState, computeTtlPillState } from './inquiryEngineRenderer';
 
 describe('inquiryEngineRenderer wording', () => {
     it('uses eligible/validation wording for blocked Local LLM Inquiry state', () => {
@@ -112,5 +112,63 @@ describe('computeCitationPillState', () => {
         expect(pill.state).toBe('on-missing');
         expect(pill.label).toBe('Citations missing');
         expect(pill.tooltip).toContain('zero citation anchors');
+    });
+});
+
+describe('computeTtlPillState', () => {
+    const NOW = 1_700_000_000_000;
+    const SECOND = 1000;
+    const MINUTE = 60 * SECOND;
+    const HOUR = 60 * MINUTE;
+
+    it('returns null when no cache window exists', () => {
+        expect(computeTtlPillState(undefined, NOW)).toBeNull();
+    });
+
+    it('returns null when the cache window has already expired', () => {
+        expect(computeTtlPillState({ expiresAt: NOW - SECOND }, NOW)).toBeNull();
+    });
+
+    it('returns null when expiresAt equals now (boundary — no useful time left)', () => {
+        expect(computeTtlPillState({ expiresAt: NOW }, NOW)).toBeNull();
+    });
+
+    it('reports "expiring" with seconds when under 30 seconds remain', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + 12 * SECOND }, NOW);
+        expect(pill?.state).toBe('expiring');
+        expect(pill?.label).toBe('Cache: 12s left');
+    });
+
+    it('reports "soon" with seconds when between 30s and 2m remain', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + 90 * SECOND }, NOW);
+        expect(pill?.state).toBe('soon');
+        expect(pill?.label).toBe('Cache: 90s left');
+    });
+
+    it('reports "fresh" with minutes between 2m and 1h', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + 23 * MINUTE }, NOW);
+        expect(pill?.state).toBe('fresh');
+        expect(pill?.label).toBe('Cache: 23m left');
+    });
+
+    it('reports "fresh" with hours+minutes when over an hour remains', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + (2 * HOUR) + (15 * MINUTE) }, NOW);
+        expect(pill?.state).toBe('fresh');
+        expect(pill?.label).toBe('Cache: 2h 15m left');
+    });
+
+    it('omits the minutes term when only whole hours remain', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + 3 * HOUR }, NOW);
+        expect(pill?.label).toBe('Cache: 3h left');
+    });
+
+    it('embeds primed token count in the tooltip when known', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + 5 * MINUTE, cachedTokens: 95_000 }, NOW);
+        expect(pill?.tooltip).toContain('95,000 tokens primed');
+    });
+
+    it('omits the token detail from the tooltip when no cached count is known', () => {
+        const pill = computeTtlPillState({ expiresAt: NOW + 5 * MINUTE }, NOW);
+        expect(pill?.tooltip).not.toContain('tokens primed');
     });
 });

@@ -1783,7 +1783,8 @@ export function renderAiSection(params: {
             manifestEntries: currentCorpus.manifestEntries,
             vault: app.vault,
             metadataCache: app.metadataCache,
-            frontmatterMappings: getActiveFrontmatterMappings(plugin.settings)
+            frontmatterMappings: getActiveFrontmatterMappings(plugin.settings),
+            citationsEnabled: ensureCanonicalAiSettings().citationsEnabled !== false
         });
     };
 
