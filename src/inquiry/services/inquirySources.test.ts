@@ -153,13 +153,16 @@ describe('buildInquirySourcesViewModel', () => {
             title: 'The Departure',
             path: 'Scenes/The Departure.md',
             classLabel: 'Scene',
-            citationCount: 2
+            citationCount: 1
         });
         expect(vm.items[0].excerpt).toBe('She turned away before he could speak again.');
         expect(vm.items[0].excerpt.endsWith('…')).toBe(false);
     });
 
-    it('omits scene-anchor excerpt entirely when no finding emits an evidence_quote', () => {
+    it('omits scene-anchor entries entirely when no finding emits an evidence_quote', () => {
+        // Sources is for verifiable quotes. A finding without an evidence_quote
+        // is commentary, not a citation — it must NOT appear here under a fake
+        // "1 citation" label. The finding still surfaces in scene notes.
         const docs: EvidenceDocumentMeta[] = [
             {
                 title: 'Authorial Notes Scene',
@@ -180,13 +183,43 @@ describe('buildInquirySourcesViewModel', () => {
             }
         ]);
 
-        expect(vm.hasContent).toBe(true);
+        expect(vm.hasContent).toBe(false);
+        expect(vm.items).toHaveLength(0);
+    });
+
+    it('keeps only findings that emit a verbatim evidence_quote and drops the rest', () => {
+        const docs: EvidenceDocumentMeta[] = [
+            { title: 'Quoted Scene', path: 'Scenes/Quoted.md', sceneId: 'scn_quoted01', evidenceClass: 'scene' },
+            { title: 'Empty Scene',  path: 'Scenes/Empty.md',  sceneId: 'scn_empty001', evidenceClass: 'scene' }
+        ];
+
+        const vm = buildInquirySourcesViewModel(undefined, docs, [
+            {
+                refId: 'scn_quoted01',
+                kind: 'continuity',
+                headline: 'Real ground.',
+                bullets: [],
+                evidenceQuote: 'He pressed his palm flat against the cold glass.',
+                related: [],
+                evidenceType: 'scene'
+            },
+            {
+                refId: 'scn_empty001',
+                kind: 'unclear',
+                headline: 'Just commentary.',
+                bullets: [],
+                evidenceQuote: '',
+                related: [],
+                evidenceType: 'scene'
+            }
+        ]);
+
+        expect(vm.totalCount).toBe(1);
         expect(vm.items[0]).toMatchObject({
             attributionType: 'scene_anchor',
-            title: 'Authorial Notes Scene',
-            classLabel: 'Scene Reference',
-            citationCount: 1
+            title: 'Quoted Scene',
+            classLabel: 'Scene'
         });
-        expect(vm.items[0].excerpt).toBe('');
+        expect(vm.items[0].excerpt).toBe('He pressed his palm flat against the cold glass.');
     });
 });

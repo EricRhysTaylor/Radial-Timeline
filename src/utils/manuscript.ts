@@ -10,6 +10,7 @@ import { normalizeMatterBodyMode, parseMatterMetaFromFrontmatter, type MatterBod
 import { normalizeFrontmatterKeys } from './frontmatter';
 import { groupTimelineChapterMarkersByScenePath, resolveTimelineChapterMarkers, type TimelineChapterMarker } from './timelineChapters';
 import { cleanEvidenceBody } from '../inquiry/utils/evidenceCleaning';
+import { readSceneId } from './sceneIds';
 
 export interface SceneContent {
   title: string;
@@ -944,9 +945,7 @@ export async function assembleManuscript(
       const role = matterMeta?.role;
       const usesBookMeta = matterMeta?.usesBookMeta === true;
       const sceneFrontmatter = extractFrontmatterObject(content);
-      const sceneId = sceneFrontmatter
-        ? getFirstFrontmatterString(sceneFrontmatter, ['SceneId', 'Scene Id', 'Scene_Id', 'Scene-Id'])
-        : undefined;
+      const sceneId = readSceneId(sceneFrontmatter);
 
       if (isMatterNote) {
         matterDiagnostics.push({

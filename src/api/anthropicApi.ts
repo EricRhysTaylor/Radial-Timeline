@@ -281,7 +281,17 @@ function buildAnthropicMessageRequestBody(
     requestBody.system = [{ type: 'text', text: input.systemPrompt }];
   }
 
-  const forceStructuredTool = !!input.jsonSchema && Object.keys(input.jsonSchema).length > 0;
+  // Citations and structured outputs are mutually exclusive on Anthropic:
+  // citations attach only to text content blocks, but a forced tool call
+  // returns its payload as `tool_use.input` with no text blocks for the
+  // citation metadata to anchor to. When citations are enabled we therefore
+  // skip the tool wrapper entirely and rely on the in-prompt schema instructions
+  // (the runner already injects a verbatim schema example into the user prompt).
+  // Anthropic docs:
+  //   https://platform.claude.com/docs/en/docs/build-with-claude/citations
+  //   ("Citations and Structured Outputs are incompatible.")
+  const hasJsonSchema = !!input.jsonSchema && Object.keys(input.jsonSchema).length > 0;
+  const forceStructuredTool = hasJsonSchema && !input.citationsEnabled;
   if (forceStructuredTool) {
     requestBody.tools = [{
       name: 'record_structured_response',
@@ -301,8 +311,15 @@ function buildAnthropicMessageRequestBody(
   const thinkingBudget = typeof input.thinkingBudgetTokens === 'number'
     ? input.thinkingBudgetTokens
     : 0;
-  const thinkingEnabled = !forceStructuredTool
-    && thinkingBudget >= 1024;
+  // Thinking is gated on the absence of any JSON-output path, not on tool_use
+  // specifically. Two reasons:
+  //   1. Mixing extended thinking with structured output (tool_use OR text-mode
+  //      JSON for citations) made one citation run take ~3× the estimate and
+  //      collide with the parse-retry path. Pre-Option-A behavior was "thinking
+  //      off whenever JSON is requested" — preserve that contract.
+  //   2. Citations + thinking has no documented compatibility guarantee from
+  //      Anthropic; keep the surface narrow until empirically validated.
+  const thinkingEnabled = !hasJsonSchema && thinkingBudget >= 1024;
   const baseMaxTokens = typeof input.maxTokens === 'number' ? input.maxTokens : 4000;
 
   requestBody.max_tokens = thinkingEnabled

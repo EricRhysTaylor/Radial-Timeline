@@ -25,14 +25,27 @@ export function generateSceneId(hexLength: number = DEFAULT_HEX_LENGTH): string 
     return `${SCENE_ID_PREFIX}${hex}`;
 }
 
+/**
+ * Lookup keys for scene-id frontmatter, in priority order.
+ * - `id` / `ID` — canonical (what new writes use)
+ * - `SceneId` / `Scene Id` / `Scene_Id` / `Scene-Id` — legacy variants present
+ *   in scene files written before the canonical key was introduced. Without
+ *   these, manuscript exports and Inquiry runs would silently lose scene
+ *   anchoring on every legacy file.
+ */
+const SCENE_ID_LOOKUP_KEYS = [SCENE_ID_KEY, 'sceneid', 'scene id', 'scene_id', 'scene-id'];
+
 export function readSceneId(frontmatter: Record<string, unknown> | null | undefined): string | undefined {
     if (!frontmatter || typeof frontmatter !== 'object') return undefined;
-    const key = findCaseInsensitiveKey(frontmatter, SCENE_ID_KEY);
-    if (!key) return undefined;
-    const value = frontmatter[key];
-    if (typeof value !== 'string') return undefined;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
+    for (const candidate of SCENE_ID_LOOKUP_KEYS) {
+        const key = findCaseInsensitiveKey(frontmatter, candidate);
+        if (!key) continue;
+        const value = frontmatter[key];
+        if (typeof value !== 'string') continue;
+        const trimmed = value.trim();
+        if (trimmed.length > 0) return trimmed;
+    }
+    return undefined;
 }
 
 export const readReferenceId = readSceneId;

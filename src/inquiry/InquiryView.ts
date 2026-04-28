@@ -4252,9 +4252,12 @@ export class InquiryView extends ItemView {
     private updateMinimapPressureGauge(): void {
         const readinessUi = this.buildReadinessUiState();
         // While the estimate is pending, reset the gauge — never show stale data.
+        // Force reuse state to idle so endcaps aren't painted green from a persisted
+        // cache session whose fingerprint hasn't yet been validated against the
+        // freshly-loaded corpus. The post-settle update will paint the real state.
         if (readinessUi.pending) {
             this.minimap.resetPressureGauge();
-            this.updateMinimapReuseStatus();
+            this.minimap.updateReuseStatus(null);
             return;
         }
         const basePassPlan = this.getCurrentPassPlan(readinessUi);
@@ -9651,13 +9654,19 @@ export class InquiryView extends ItemView {
     } | null {
         const usage = trace?.usage;
         if (!usage) return null;
-        const cachedTokens = Math.max(
-            0,
-            usage.cacheReadInputTokens
-            ?? usage.cacheCreationInputTokens
-            ?? ((usage.cacheCreation5mInputTokens ?? 0) + (usage.cacheCreation1hInputTokens ?? 0))
-            ?? 0
-        );
+        // Cache-CREATE runs report cacheReadInputTokens=0; cache-HIT runs report
+        // cacheCreationInputTokens=0. `??` short-circuits at 0, so we'd lose the
+        // creation-side count on the first run that primes the cache. Prefer the
+        // larger of the two so either path populates the persisted metric.
+        const readTokens = typeof usage.cacheReadInputTokens === 'number'
+            && Number.isFinite(usage.cacheReadInputTokens) && usage.cacheReadInputTokens > 0
+            ? usage.cacheReadInputTokens
+            : 0;
+        const creationTokens = typeof usage.cacheCreationInputTokens === 'number'
+            && Number.isFinite(usage.cacheCreationInputTokens) && usage.cacheCreationInputTokens > 0
+            ? usage.cacheCreationInputTokens
+            : ((usage.cacheCreation5mInputTokens ?? 0) + (usage.cacheCreation1hInputTokens ?? 0));
+        const cachedTokens = Math.max(readTokens, creationTokens);
         const totalInputTokens = typeof usage.inputTokens === 'number' && Number.isFinite(usage.inputTokens)
             ? Math.max(0, Math.floor(usage.inputTokens))
             : 0;

@@ -140,13 +140,21 @@ export function buildInquirySourcesViewModel(
     // Scene-anchor fallback: when the provider returns no inline citations
     // (Anthropic strict-JSON tool_use cannot attach inline citations to tool
     // input), surface the per-finding `evidence_quote` the model emitted as
-    // the verbatim source span. Never synthesize a "quote" from headline or
-    // bullets — that text is the AI's commentary, not a citation.
+    // the verbatim source span.
+    //
+    // Sources is for verifiable quotes, not commentary. A finding without an
+    // `evidence_quote` is not a citation — it is the AI's analysis of the
+    // scene. We drop those entries entirely rather than render a misleading
+    // "1 citation" pill with no quoted text. The finding still appears in the
+    // per-scene notes section; only the Sources block enforces "show me what
+    // the AI is grounding its claim on."
     if (!items.length && evidenceDocumentMeta?.length && findings?.length) {
         const byScene = new Map<string, { meta: EvidenceDocumentMeta; findings: InquiryFinding[] }>();
         for (const finding of findings) {
             const refId = finding.refId?.trim();
             if (!refId) continue;
+            const quote = (finding.evidenceQuote ?? '').trim();
+            if (!quote) continue;
             const meta = evidenceDocumentMeta.find(doc => doc.sceneId?.trim() === refId);
             if (!meta) continue;
             const key = `${meta.sceneId ?? ''}|${meta.path ?? ''}|${meta.title}`;
@@ -160,13 +168,14 @@ export function buildInquirySourcesViewModel(
 
         for (const grouped of byScene.values()) {
             const quote = pickEvidenceQuote(grouped.findings);
+            if (!quote) continue;
             items.push({
                 attributionType: 'scene_anchor',
                 title: grouped.meta.title,
                 excerpt: quote,
                 path: grouped.meta.path,
                 sceneId: grouped.meta.sceneId,
-                classLabel: quote ? 'Scene' : 'Scene Reference',
+                classLabel: 'Scene',
                 citationCount: grouped.findings.length
             });
         }
@@ -253,6 +262,6 @@ function formatAttributionClassLabel(attributionType: InquirySourceItem['attribu
     if (attributionType === 'tool_file') return 'Tool File';
     if (attributionType === 'tool_url') return 'Tool URL';
     if (attributionType === 'grounded') return 'Grounded Source';
-    if (attributionType === 'scene_anchor') return 'Scene Commentary';
+    if (attributionType === 'scene_anchor') return 'Scene';
     return 'Reference';
 }

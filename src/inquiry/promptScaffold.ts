@@ -104,7 +104,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Use role: "target" for author-selected target scenes and role: "context" for supporting context when helpful. Use an empty string when role is not needed.',
         'Set lens to flow, depth, or both when helpful. Use an empty string when no lens tag is needed.',
         'Always return bullets as an array. Use [] when one short headline is sufficient.',
-        'evidence_quote MUST be a verbatim sentence or phrase copied directly from the cited scene\'s prose — never paraphrased, summarized, or invented. It is the exact span that grounds your headline/bullets. Keep it short (one or two sentences max). If the cited scene contains no quotable prose (placeholder, summary, or authorial notes only), return an empty string.',
+        'evidence_quote is REQUIRED for every finding and MUST be a verbatim sentence or phrase copied character-for-character from the cited scene. Do not paraphrase, summarize, translate, or compose new prose. Pick the exact span that most directly grounds your headline. Keep it short (one or two sentences). evidence_quote may only be the empty string when the cited scene has zero prose at all (it is purely a placeholder, a header, or an authorial note like "TODO write this"). If you cannot produce a verbatim quote because no quotable prose exists, omit the finding instead of returning an empty quote — the Sources block exists to surface verifiable spans, not commentary.',
         ...(normalized.selectionMode === 'focused'
             ? [
                 'Focused selection mode: treat target scenes as the primary subject of analysis.',

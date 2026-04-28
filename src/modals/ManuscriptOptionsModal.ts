@@ -399,6 +399,7 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     onClose(): void {
+        void this.persistCurrentSnapshot();
         this.detachPointerEvents();
         this.contentEl.empty();
     }
@@ -670,7 +671,8 @@ export class ManuscriptOptionsModal extends Modal {
         const exportControlsCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
 
         this.wordCountCard = exportControlsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        this.wordCountCard.createSpan({ cls: 'ert-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
+        const wordCountLabel = this.wordCountCard.createSpan({ cls: 'ert-manuscript-toggle-label' });
+        this.appendInlineCodeText(wordCountLabel, t('manuscriptModal.wordCountToggle'));
         new ToggleComponent(this.wordCountCard)
             .setValue(this.updateWordCounts)
             .onChange((value) => {
@@ -751,10 +753,8 @@ export class ManuscriptOptionsModal extends Modal {
             this.setActiveCleanupOption('stripBlockIds', value);
         });
 
-        this.exportCleanupCard.createDiv({
-            cls: 'ert-sub-card-note',
-            text: 'YAML frontmatter is always removed from manuscript exports.'
-        });
+        const yamlFrontmatterNote = this.exportCleanupCard.createDiv({ cls: 'ert-sub-card-note' });
+        this.appendInlineCodeText(yamlFrontmatterNote, '`YAML` frontmatter is always removed from manuscript exports.');
 
         // H) EXPORT TEMPLATES
         this.templateCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card ert-layout-templates-card' });
@@ -1353,6 +1353,13 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private async restoreLastUsedTemplate(): Promise<void> {
+        const activePreferences = this.getActiveBookPublishingPreferences();
+        const snapshot = activePreferences?.lastUsedExportProfileSnapshot;
+        if (snapshot) {
+            const modalSnapshot = buildModalExportProfile(snapshot, this.templateProfiles);
+            await this.applyTemplate(modalSnapshot, { showNotice: false });
+            return;
+        }
         const lastUsed = this.lastUsedExportProfileId || this.plugin.settings.lastUsedManuscriptExportTemplateId;
         if (!lastUsed) {
             this.refreshTemplateDropdown();
@@ -1369,7 +1376,66 @@ export class ManuscriptOptionsModal extends Modal {
         await this.applyTemplate(template, { showNotice: false });
     }
 
+    private buildCurrentSnapshot(): ExportProfile {
+        const transient = buildTransientModalExportProfile({
+            id: '__last_used_snapshot__',
+            name: 'Last used',
+            usageContext: this.manuscriptPreset,
+            exportType: this.exportType,
+            outputFormat: this.outputFormat,
+            order: this.order,
+            subplot: this.subplot,
+            outlinePreset: this.outlinePreset,
+            tocMode: this.tocMode,
+            includeSceneIdInToc: this.includeSceneId,
+            includeSceneIdInHeading: this.includeSceneId,
+            includeMatter: this.includeMatterUserChoice,
+            includeSynopsis: this.includeSynopsisUserChoice,
+            updateWordCounts: this.updateWordCounts,
+            saveMarkdownArtifact: this.saveMarkdownArtifact,
+            cleanup: this.getActiveCleanupOptions(),
+            splitMode: this.splitMode,
+            splitParts: this.splitParts,
+            selectedLayoutId: this.selectedLayoutId,
+            templateProfiles: this.templateProfiles,
+        });
+        return buildPersistedExportProfileFromModalExportProfile(transient);
+    }
+
+    private async persistCurrentSnapshot(): Promise<void> {
+        const activeBook = getActiveBook(this.plugin.settings);
+        if (!activeBook) return;
+        const snapshot = this.buildCurrentSnapshot();
+        const preferences = Array.isArray(this.plugin.settings.bookPublishingPreferences)
+            ? [...this.plugin.settings.bookPublishingPreferences]
+            : [];
+        const index = preferences.findIndex(entry => entry.bookId === activeBook.id);
+        if (index >= 0) {
+            preferences[index] = {
+                ...preferences[index],
+                lastUsedExportProfileSnapshot: snapshot,
+            };
+        } else {
+            preferences.push({
+                bookId: activeBook.id,
+                lastUsedExportProfileSnapshot: snapshot,
+            });
+        }
+        this.plugin.settings.bookPublishingPreferences = preferences;
+        await this.plugin.saveSettings();
+    }
+
     // Interaction helpers ----------------------------------------------------
+    private appendInlineCodeText(target: HTMLElement, text: string): void {
+        text.split(/(`[^`]+`)/g).filter(Boolean).forEach(part => {
+            if (part.startsWith('`') && part.endsWith('`')) {
+                target.createEl('code', { text: part.slice(1, -1) });
+            } else {
+                target.appendText(part);
+            }
+        });
+    }
+
     private createPill(parent: HTMLElement, label: string, active: boolean, onClick: () => void): void {
         const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
         pill.setText(label);

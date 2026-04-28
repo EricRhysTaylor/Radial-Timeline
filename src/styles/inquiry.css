@@ -586,6 +586,29 @@
   opacity: 1;
 }
 
+/* ── Cache-armed signal ──────────────────────────────────────────────
+   When a provider cache window is active (eligible or warm) and the
+   user is staged for a reuse run, paint the token-cap end ticks and
+   "0" / "810k" labels in the same success-green as the cached overlay.
+   The whole bar then reads as "ready for a cache run."
+
+   Suppressed automatically when reuseState returns to "idle" (corpus
+   change, cache window expired, fingerprint mismatch) — the default
+   muted styles take over again. Capacity-warning and over-capacity
+   classes win against this rule (red/amber must keep their meaning).
+*/
+.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-endcap:not(.is-over-capacity):not(.is-warning-capacity),
+.ert-inquiry-minimap[data-reuse-state="eligible"] .ert-inquiry-minimap-tokencap-endcap:not(.is-over-capacity):not(.is-warning-capacity) {
+  fill: var(--ert-inquiry-ai-success);
+  opacity: 0.85;
+}
+
+.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-label,
+.ert-inquiry-minimap[data-reuse-state="eligible"] .ert-inquiry-minimap-tokencap-label {
+  fill: var(--ert-inquiry-ai-success);
+  opacity: 0.75;
+}
+
 /* Stub state — honest compact indicator when cache is armed but no hit ratio is proven yet */
 .ert-inquiry-minimap-tokencap-cached.is-stub {
   fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 96%, #eaffef 4%);

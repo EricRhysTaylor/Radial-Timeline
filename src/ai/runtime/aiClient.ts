@@ -856,13 +856,19 @@ export class AIClient {
         }
 
         if (!bypassProviderReuse && provider === 'anthropic') {
-            const anthropicCachedTokens = Math.max(
-                0,
-                actualUsage?.cacheReadInputTokens
-                ?? actualUsage?.cacheCreationInputTokens
-                ?? ((actualUsage?.cacheCreation5mInputTokens ?? 0) + (actualUsage?.cacheCreation1hInputTokens ?? 0))
-                ?? 0
-            );
+            // Cache-CREATE runs report cacheReadInputTokens=0 and cacheCreationInputTokens>0;
+            // cache-HIT runs report the inverse. Take the max so both paths populate the
+            // cached-prefix metric. (`??` short-circuits at 0 — read=0 would otherwise
+            // suppress the creation tokens and leave the cached-overlay metric undefined.)
+            const anthropicReadTokens = typeof actualUsage?.cacheReadInputTokens === 'number'
+                && Number.isFinite(actualUsage.cacheReadInputTokens) && actualUsage.cacheReadInputTokens > 0
+                ? actualUsage.cacheReadInputTokens
+                : 0;
+            const anthropicCreationTokens = typeof actualUsage?.cacheCreationInputTokens === 'number'
+                && Number.isFinite(actualUsage.cacheCreationInputTokens) && actualUsage.cacheCreationInputTokens > 0
+                ? actualUsage.cacheCreationInputTokens
+                : ((actualUsage?.cacheCreation5mInputTokens ?? 0) + (actualUsage?.cacheCreation1hInputTokens ?? 0));
+            const anthropicCachedTokens = Math.max(anthropicReadTokens, anthropicCreationTokens);
             const anthropicTotalInputTokens = actualUsage?.inputTokens ?? tokenEstimateInput;
             if (anthropicCachedTokens > 0 && anthropicTotalInputTokens > 0) {
                 advancedContext.cachedStableTokens = anthropicCachedTokens;
@@ -948,15 +954,25 @@ export class AIClient {
             const validation = validateJsonResponse(execution.content, request.responseSchema, provider);
             if (!validation.ok) {
                 if (caps.retryPolicy.retryMalformedJson && caps.retryPolicy.maxAttempts > 0) {
+                    // Mirror the original dispatch so the retry sees the same corpus
+                    // and capability flags. Stripping evidenceDocuments here once
+                    // produced silent hallucinations: the retry succeeded against
+                    // a 6.5k-token prompt with no manuscript context, while the
+                    // first call had been built on the full ~300k-token corpus.
                     const retry = await this.execute(providerClient, {
                         modelId: modelSelection.model.id,
                         systemPrompt,
                         userPrompt,
+                        promptCacheKey: !bypassProviderReuse ? estimate.providerReuseKey : undefined,
                         maxOutputTokens: caps.maxOutputTokens,
                         temperature: caps.temperature,
                         topP: estimate.topP,
                         jsonSchema: request.responseSchema,
-                        jsonStrict: estimate.jsonStrict
+                        jsonStrict: estimate.jsonStrict,
+                        thinkingBudgetTokens: caps.thinkingBudgetTokens,
+                        citationsEnabled: caps.citationsEnabled,
+                        bypassProviderReuse,
+                        evidenceDocuments: estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined
                     }, request.returnType, caps, modelSelection.model.constraints);
                     providerCallReturnedAt = new Date();
 

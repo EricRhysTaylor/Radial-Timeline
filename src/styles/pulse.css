@@ -448,6 +448,17 @@
   color: var(--text-normal);
 }
 
+.ert-manuscript-toggle-label code,
+.ert-sub-card-note code {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-secondary));
+  color: var(--interactive-accent);
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+
 .ert-manuscript-scope-row {
   display: flex;
   align-items: center;

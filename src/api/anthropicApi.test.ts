@@ -109,6 +109,46 @@ describe('anthropic token counting', () => {
         });
     });
 
+    it('omits the structured tool schema when citations are enabled (citations + tool_use are mutually exclusive on Anthropic)', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            text: '',
+            json: {
+                input_tokens: 1024
+            }
+        } as never);
+
+        await countAnthropicTokens(
+            'test-key',
+            'claude-sonnet-4-6',
+            'System rules',
+            'Return JSON per the schema in the prompt.',
+            true,
+            undefined,
+            undefined,
+            {
+                type: 'object',
+                properties: {
+                    answer: { type: 'string' }
+                },
+                required: ['answer'],
+                additionalProperties: false
+            }
+        );
+
+        const request = mockedRequestUrl.mock.calls[0]?.[0] as { body?: string };
+        const body = JSON.parse(request.body ?? '{}') as {
+            tools?: unknown;
+            tool_choice?: unknown;
+        };
+
+        // Citations attach only to text content blocks. Forcing a tool call
+        // produces a tool_use block with no text — citations would have nowhere
+        // to anchor. Anthropic's docs make this incompatibility explicit.
+        expect(body.tools).toBeUndefined();
+        expect(body.tool_choice).toBeUndefined();
+    });
+
     it('rejects token count responses that omit input_tokens', () => {
         expect(normalizeAnthropicTokenCountResponse({
             total_tokens: 987

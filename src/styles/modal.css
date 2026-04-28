@@ -1634,10 +1634,17 @@
   --ert-accent-rgb: var(--ert-social-accent-rgb-base);
 }
 
-/* ── Core export toggles — native theme buttons, only active ring added ── */
+/* ── Core export toggles — native theme buttons with stronger active state ── */
 .ert-ui.ert-scope--modal [data-ert-toggle].is-active {
+  color: var(--interactive-accent);
   border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+
+.ert-ui.ert-scope--modal [data-ert-toggle].is-active:hover:not(:disabled) {
+  color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 24%, var(--background-secondary));
 }
 
 .ert-ui.ert-scope--modal .ert-export-pill-icon {

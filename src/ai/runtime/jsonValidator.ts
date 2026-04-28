@@ -13,14 +13,42 @@ function getRequired(schema?: Record<string, unknown>): string[] {
     return required.filter(item => typeof item === 'string') as string[];
 }
 
+/**
+ * Pull the JSON payload out of a model response.
+ *
+ * Anthropic's text-mode JSON path (used when citations are enabled — citations
+ * are incompatible with forced tool_use) sometimes returns the JSON wrapped in
+ * a markdown code fence or with a leading "Here is the JSON:" line. The legacy
+ * tool_use path always returned bare JSON, so this function is a no-op for it.
+ *
+ * Strategy:
+ *   1. Strip a fenced ```json … ``` block if present (use its inner contents).
+ *   2. Otherwise slice from the first `{` to the last `}` — handles both
+ *      bare JSON and JSON with leading/trailing prose.
+ *   3. Fall back to the raw string for the parser to surface the original error.
+ */
+function extractJsonPayload(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed) return trimmed;
+    const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) return fenceMatch[1].trim();
+    const firstBrace = trimmed.indexOf('{');
+    const lastBrace = trimmed.lastIndexOf('}');
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+        return trimmed.slice(firstBrace, lastBrace + 1);
+    }
+    return trimmed;
+}
+
 export function validateJsonResponse<T = unknown>(
     raw: string,
     schema?: Record<string, unknown>,
     provider?: string
 ): JsonValidationResult<T> {
+    const payload = extractJsonPayload(raw);
     let parsed: unknown;
     try {
-        parsed = JSON.parse(raw);
+        parsed = JSON.parse(payload);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {

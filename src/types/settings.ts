@@ -156,6 +156,8 @@ export interface BookPublishingPreferences {
     bookId: string;
     defaultExportProfileId?: string;
     lastUsedExportProfileId?: string;
+    /** Snapshot of modal state from the last close, including ad-hoc tweaks made on top of any selected preset. */
+    lastUsedExportProfileSnapshot?: ExportProfile;
     preferredTemplateProfileIdByContext?: Partial<Record<UsageContext, string>>;
     profileOverrides?: Record<string, {
         sceneHeadingMode?: ManuscriptSceneHeadingMode;
