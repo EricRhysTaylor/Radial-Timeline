@@ -44,3 +44,51 @@
 .ert-wiki-link:hover {
   opacity: 1;
 }
+
+/* Path chips — clickable folder shortcuts shown opposite a setting's title */
+.ert-path-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ert-path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-ui-smaller, 0.8em);
+  line-height: 1.4;
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.ert-path-chip:hover,
+.ert-path-chip:focus-visible {
+  color: var(--text-accent);
+  background: var(--background-modifier-active-hover);
+  border-color: var(--interactive-accent);
+  text-decoration: none;
+}
+
+.ert-path-chip__icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ert-path-chip__icon .svg-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.ert-path-chip__label {
+  font-family: var(--font-monospace, monospace);
+}

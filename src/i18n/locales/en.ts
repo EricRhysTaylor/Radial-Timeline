@@ -978,12 +978,12 @@ export const en: TranslationKeys = {
             heading: 'Configuration',
             aiOutputFolder: {
                 name: 'Logs',
-                desc: 'Runtime logs, archives, snapshots, and move history are stored in Radial Timeline/Logs.',
+                desc: 'Runtime logs, archives, snapshots, and move history.',
                 placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
                 name: 'Export folder',
-                desc: 'Manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards) are stored in Radial Timeline/Export.',
+                desc: 'Manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards).',
                 placeholder: 'Radial Timeline/Export',
             },
             outlineOutputFolder: {

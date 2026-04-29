@@ -1,0 +1,72 @@
+import { App, Notice, Setting, TAbstractFile, TFolder, normalizePath, setIcon } from 'obsidian';
+
+const VAULT_ROOT_PREFIX = 'Radial Timeline/';
+
+function shortenVaultPath(vaultPath: string): string {
+    const normalized = vaultPath.replace(/^\/+/, '');
+    if (normalized.startsWith(VAULT_ROOT_PREFIX)) {
+        return normalized.slice(VAULT_ROOT_PREFIX.length);
+    }
+    return normalized;
+}
+
+function revealFolderInExplorer(app: App, vaultPath: string): void {
+    const normalized = normalizePath(vaultPath);
+    const folder: TAbstractFile | null = app.vault.getAbstractFileByPath(normalized);
+    if (!folder) {
+        new Notice(`Folder not found yet: ${normalized}`);
+        return;
+    }
+    if (!(folder instanceof TFolder)) {
+        new Notice(`Path is not a folder: ${normalized}`);
+        return;
+    }
+    const explorerLeaf = app.workspace.getLeavesOfType('file-explorer')[0];
+    if (!explorerLeaf?.view) {
+        new Notice('File explorer is not available.');
+        return;
+    }
+    const explorerView = explorerLeaf.view as unknown as { revealInFolder?: (target: TAbstractFile) => void };
+    if (!explorerView.revealInFolder) {
+        new Notice('Could not reveal folder.');
+        return;
+    }
+    explorerView.revealInFolder(folder);
+    app.workspace.revealLeaf(explorerLeaf);
+}
+
+function getOrCreateChipContainer(setting: Setting): HTMLElement {
+    const existing = setting.controlEl.querySelector(':scope > .ert-path-chips') as HTMLElement | null;
+    if (existing) return existing;
+    const container = createDiv({ cls: 'ert-path-chips' });
+    setting.controlEl.insertBefore(container, setting.controlEl.firstChild);
+    return container;
+}
+
+/**
+ * Appends a clickable folder-path chip to a Setting's control area.
+ * Click reveals the folder in Obsidian's file explorer. Multiple chips
+ * on the same row sit side-by-side (and wrap if the row is narrow).
+ * Chips are kept in their own container that is inserted before any
+ * other control (toggle, dropdown, etc.) regardless of call order.
+ */
+export function addPathChip(setting: Setting, app: App, vaultPath: string, label?: string): void {
+    const display = label ?? shortenVaultPath(vaultPath);
+    const container = getOrCreateChipContainer(setting);
+    const chip = container.createEl('a', {
+        cls: 'ert-path-chip',
+        attr: {
+            href: '#',
+            role: 'button',
+            'aria-label': `Reveal ${vaultPath} in file explorer`,
+            title: vaultPath
+        }
+    });
+    const iconEl = chip.createSpan({ cls: 'ert-path-chip__icon' });
+    setIcon(iconEl, 'folder');
+    chip.createSpan({ cls: 'ert-path-chip__label', text: display });
+    chip.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        revealFolderInExplorer(app, vaultPath);
+    });
+}

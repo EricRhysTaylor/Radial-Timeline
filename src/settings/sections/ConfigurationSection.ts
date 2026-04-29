@@ -4,6 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { addPathChip } from '../pathChip';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { countContentLogFiles, resolveContentLogsRoot, resolveLogsRoot } from '../../ai/log';
@@ -52,23 +53,27 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     const logsContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
     logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
 
+    const outputFolder = resolveLogsRoot();
+    const contentFolder = resolveContentLogsRoot();
+    const exportFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
+
     // Logs
-    createDenseRow(logsContainer, {
+    const logsRow = createDenseRow(logsContainer, {
         title: t('settings.configuration.aiOutputFolder.name'),
         description: t('settings.configuration.aiOutputFolder.desc'),
         control: () => {}
     });
+    addPathChip(logsRow, app, outputFolder);
 
     // Export folder is no longer user-configurable — shown here as an
     // informational readout so users know where exports land.
-    createDenseRow(logsContainer, {
+    const exportRow = createDenseRow(logsContainer, {
         title: t('settings.configuration.manuscriptOutputFolder.name'),
         description: t('settings.configuration.manuscriptOutputFolder.desc'),
         control: () => {}
     });
+    addPathChip(exportRow, app, exportFolder);
 
-    const outputFolder = resolveLogsRoot();
-    const contentFolder = resolveContentLogsRoot();
     const formatLogCount = (fileCount: number | null): string => {
         if (fileCount === null) return 'Counting content logs...';
         return fileCount === 0
@@ -79,7 +84,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `Full prompt and payload logs are stored in "${contentFolder}". Concise logs, archives, snapshots, and move history are always written to "${outputFolder}". When enabled, content logs containing full prompts, materials, and API responses are written to "${contentFolder}" (${countText}).`;
+        return `When enabled, full prompts, materials, and API responses are written as content logs (${countText}). Concise logs, archives, snapshots, and move history are always written regardless of this toggle.`;
     };
 
     const apiLoggingSetting = createDenseRow(logsContainer, {
@@ -94,6 +99,8 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 }));
         }
     });
+    addPathChip(apiLoggingSetting, app, contentFolder);
+    addPathChip(apiLoggingSetting, app, outputFolder);
 
     const scheduleLogCount = () => {
         const runCount = () => {
