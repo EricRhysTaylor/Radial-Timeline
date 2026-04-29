@@ -123,6 +123,8 @@ export function buildTransientModalExportProfile(params: {
     splitParts: number;
     selectedLayoutId?: string;
     templateProfiles: TemplateProfile[];
+    rangeStart?: number;
+    rangeEnd?: number;
 }): ModalExportProfile {
     const templateProfileId = resolveTemplateProfileId(params.selectedLayoutId, params.usageContext, params.templateProfiles);
     return buildModalExportProfile({
@@ -147,6 +149,8 @@ export function buildTransientModalExportProfile(params: {
         splitMode: params.splitMode,
         splitParts: params.splitParts,
         selectionPolicy: getSelectionPolicy(params.outputFormat, params.exportType),
+        rangeStart: params.rangeStart,
+        rangeEnd: params.rangeEnd,
     }, params.templateProfiles);
 }
 

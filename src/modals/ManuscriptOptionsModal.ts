@@ -1344,6 +1344,17 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.syncExportUi();
         await this.loadScenesForOrder();
+        // loadScenesForOrder resets range to the full book; restore the
+        // template's saved range (if any), clamped to the current scene count.
+        if (typeof template.rangeStart === 'number' && typeof template.rangeEnd === 'number' && this.totalScenes > 0) {
+            const total = Math.max(1, this.totalScenes);
+            const savedStart = Math.max(1, Math.min(Math.floor(template.rangeStart), total));
+            const savedEnd = Math.max(savedStart, Math.min(Math.floor(template.rangeEnd), total));
+            this.rangeStart = savedStart;
+            this.rangeEnd = savedEnd;
+            this.updateRangeUI();
+            this.updateBadgeSceneCount();
+        }
         this.refreshTemplateDropdown();
         this.updateExportProfileSummary();
 
@@ -1398,6 +1409,8 @@ export class ManuscriptOptionsModal extends Modal {
             splitParts: this.splitParts,
             selectedLayoutId: this.selectedLayoutId,
             templateProfiles: this.templateProfiles,
+            rangeStart: this.rangeStart,
+            rangeEnd: this.rangeEnd,
         });
         return buildPersistedExportProfileFromModalExportProfile(transient);
     }

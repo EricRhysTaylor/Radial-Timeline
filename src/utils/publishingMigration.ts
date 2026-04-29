@@ -89,6 +89,12 @@ export function normalizeExportProfile(profile: Partial<ExportProfile>): ExportP
         splitMode: profile.splitMode || 'single',
         splitParts: Math.max(1, Math.floor(profile.splitParts || 1)),
         selectionPolicy: profile.selectionPolicy || 'manual-range',
+        rangeStart: typeof profile.rangeStart === 'number' && Number.isFinite(profile.rangeStart) && profile.rangeStart >= 1
+            ? Math.floor(profile.rangeStart)
+            : undefined,
+        rangeEnd: typeof profile.rangeEnd === 'number' && Number.isFinite(profile.rangeEnd) && profile.rangeEnd >= 1
+            ? Math.floor(profile.rangeEnd)
+            : undefined,
     };
 }
 
