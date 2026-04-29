@@ -266,6 +266,7 @@
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
   fill: var(--text-on-accent);
+  stroke: none;
   font-size: 14px;
   font-weight: 300;
   letter-spacing: 0.1em;
@@ -273,6 +274,7 @@
 
 .rt-mode-option .rt-active.rt-mode-number-label {
   fill: var(--text-on-accent);
+  stroke: none;
   font-size: 14px;
   font-weight: 300;
 

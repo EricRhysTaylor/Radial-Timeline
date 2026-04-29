@@ -183,7 +183,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                     clearFontMetricsCaches(); // Clear cached measurements for new scale
                     plugin.onSettingChanged(IMPACT_FULL); // Tier 3: font sizes/spacing change across entire timeline
                 });
-                drop.selectEl.addClass('ert-setting-dropdown');
+                drop.selectEl.addClass('ert-input', 'ert-input--sm', 'ert-setting-dropdown');
             });
         }
     });

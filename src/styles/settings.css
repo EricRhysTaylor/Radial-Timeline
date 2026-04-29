@@ -70,6 +70,11 @@
   gap: 8px;
 }
 
+.ert-control--with-chips:has(> *:not(.ert-path-chips)) > * {
+  align-self: flex-end;
+  margin-left: auto;
+}
+
 .ert-path-chip {
   display: inline-flex;
   align-items: center;

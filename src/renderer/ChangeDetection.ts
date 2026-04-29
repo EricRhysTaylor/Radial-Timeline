@@ -61,6 +61,8 @@ export interface TimelineSnapshot {
     povMode: string;
     activeBookId: string;
     activeBookTitle: string;
+    readabilityScale: string;
+    showChapterMarkers: boolean;
     
     // Gossamer
     gossamerRunExists: boolean;
@@ -214,6 +216,8 @@ export function createSnapshot(
         povMode: settings.globalPovMode ?? 'off',
         activeBookId: settings.activeBookId ?? '',
         activeBookTitle: getActiveBookTitle(settings, DEFAULT_BOOK_TITLE),
+        readabilityScale: settings.readabilityScale ?? 'normal',
+        showChapterMarkers: settings.showChapterMarkers ?? false,
         gossamerRunExists: !!gossamerRun,
         gossamerRunHash,
         updateAvailable: getVersionCheckService()?.isUpdateAvailable() ?? false,
@@ -274,7 +278,9 @@ export function detectChanges(
         prev.subplotColorsHash !== current.subplotColorsHash ||
         prev.povMode !== current.povMode ||
         prev.activeBookId !== current.activeBookId ||
-        prev.activeBookTitle !== current.activeBookTitle) {
+        prev.activeBookTitle !== current.activeBookTitle ||
+        prev.readabilityScale !== current.readabilityScale ||
+        prev.showChapterMarkers !== current.showChapterMarkers) {
         changeTypes.add(ChangeType.SETTINGS);
     }
     

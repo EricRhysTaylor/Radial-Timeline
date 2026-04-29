@@ -1146,16 +1146,16 @@ export default class SynopsisManager {
       rect.style.stroke = titleColor; // Use scene publish stage color for border too
 
       // Compute approximate size immediately (getBBox fails when hidden)
-      const charWidth = 7.5;
+      const charWidth = 7.5 * fontScale;
       const estWidth = text.length * charWidth + indentX;
-      const estHeight = 15;
+      const estHeight = 15 * fontScale;
       const padX = 6;
-      const padY = 2;
+      const padY = 2 * fontScale;
 
       // Border starts at x=0 like other text lines (parent group handles positioning)
       // Note: y position is overridden by positionRowColumns using PLANETARY_RECT_Y_OFFSET
       rect.setAttribute('x', '0');
-      rect.setAttribute('y', String(y - SynopsisManager.PLANETARY_RECT_Y_OFFSET));
+      rect.setAttribute('y', String(y - SynopsisManager.PLANETARY_RECT_Y_OFFSET * fontScale));
       rect.setAttribute('width', String(estWidth + padX));
       rect.setAttribute('height', String(estHeight + padY * 2));
       rect.setAttribute('rx', '6');
@@ -2183,6 +2183,7 @@ export default class SynopsisManager {
       return;
     }
 
+    const fontScale = this.getReadabilityScale();
     const hasMetadata = rowElements.length > 1;
 
     if (isRightAligned) {
@@ -2209,7 +2210,7 @@ export default class SynopsisManager {
           } catch (e) { /* ignore */ }
 
           prev.setAttribute('x', String(targetX - currentWidth));
-          prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET));
+          prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET * fontScale));
           textEl.setAttribute('dx', '-6');
         }
 
@@ -2239,7 +2240,7 @@ export default class SynopsisManager {
           } catch (e) { /* ignore */ }
 
           prev.setAttribute('x', String(x));
-          prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET));
+          prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET * fontScale));
           textEl.setAttribute('dx', '6');
         }
 
