@@ -549,6 +549,7 @@ export class RuntimeProcessingModal extends Modal {
         this.abortController = new AbortController();
         this.processedCount = 0;
         this.runningTotalSeconds = 0;
+        this.aiAdvancedContext = null;
 
         this.showProgressView();
 
@@ -575,6 +576,7 @@ export class RuntimeProcessingModal extends Modal {
     private showProgressView(): void {
         const { contentEl } = this;
         contentEl.empty();
+        this.aiAdvancedPreEl = undefined;
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -608,10 +610,12 @@ export class RuntimeProcessingModal extends Modal {
         // Queue container
         this.queueContainer = progressCard.createDiv({ cls: 'ert-runtime-queue' });
 
-        const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
-        advancedDetails.createEl('summary', { text: 'AI prompt & context' });
-        this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
-        this.renderAiAdvancedContext();
+        if (this.selectedMode === 'ai') {
+            const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
+            advancedDetails.createEl('summary', { text: 'AI prompt & context' });
+            this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
+            this.renderAiAdvancedContext();
+        }
 
         // Action buttons
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
