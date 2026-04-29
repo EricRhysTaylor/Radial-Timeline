@@ -74,22 +74,9 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     });
     addPathChip(exportRow, app, exportFolder);
 
-    const formatLogCount = (fileCount: number | null): string => {
-        if (fileCount === null) return 'Counting content logs...';
-        return fileCount === 0
-            ? 'No content logs yet'
-            : fileCount === 1
-                ? '1 content log'
-                : `${fileCount} content logs`;
-    };
-    const getLoggingDesc = (fileCount: number | null): string => {
-        const countText = formatLogCount(fileCount);
-        return `When enabled, full prompts, materials, and API responses are written as content logs (${countText}). Concise logs, archives, snapshots, and move history are always written regardless of this toggle.`;
-    };
-
     const apiLoggingSetting = createDenseRow(logsContainer, {
         title: 'Enable AI content logs',
-        description: getLoggingDesc(null),
+        description: 'When enabled, full prompts, materials, and API responses are written as content logs. Concise logs, archives, snapshots, and move history are always written regardless of this toggle.',
         control: (setting) => {
             setting.addToggle(toggle => toggle
                 .setValue(plugin.settings.logApiInteractions)
@@ -99,13 +86,13 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 }));
         }
     });
-    addPathChip(apiLoggingSetting, app, contentFolder);
+    const contentChip = addPathChip(apiLoggingSetting, app, contentFolder);
     addPathChip(apiLoggingSetting, app, outputFolder);
 
     const scheduleLogCount = () => {
         const runCount = () => {
             const fileCount = countContentLogFiles(plugin);
-            apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
+            contentChip.setCount(fileCount);
         };
         const requestIdleCallback = (window as Window & {
             requestIdleCallback?: (cb: () => void) => void;

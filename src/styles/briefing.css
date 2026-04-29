@@ -595,9 +595,27 @@ a.rt-briefing-scene-ref {
   word-break: break-word;
 }
 
+.rt-briefing-print-root {
+  position: fixed;
+  top: 0;
+  left: -200vw;
+  width: min(1180px, calc(100vw - 48px));
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
 @media print {
   @page {
     margin: 0.5in;
+  }
+
+  .rt-briefing-print-root {
+    position: static;
+    width: auto;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: auto;
   }
 
   .rt-briefing-modal {

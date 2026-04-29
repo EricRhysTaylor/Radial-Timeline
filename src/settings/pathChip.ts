@@ -40,7 +40,12 @@ function getOrCreateChipContainer(setting: Setting): HTMLElement {
     if (existing) return existing;
     const container = createDiv({ cls: 'ert-path-chips' });
     setting.controlEl.insertBefore(container, setting.controlEl.firstChild);
+    setting.controlEl.classList.add('ert-control--with-chips');
     return container;
+}
+
+export interface PathChipHandle {
+    setCount(count: string | number | null): void;
 }
 
 /**
@@ -49,9 +54,17 @@ function getOrCreateChipContainer(setting: Setting): HTMLElement {
  * on the same row sit side-by-side (and wrap if the row is narrow).
  * Chips are kept in their own container that is inserted before any
  * other control (toggle, dropdown, etc.) regardless of call order.
+ *
+ * Returns a handle for updating an optional count badge that renders
+ * before the folder icon (useful for live counts like "38 content logs").
  */
-export function addPathChip(setting: Setting, app: App, vaultPath: string, label?: string): void {
-    const display = label ?? shortenVaultPath(vaultPath);
+export function addPathChip(
+    setting: Setting,
+    app: App,
+    vaultPath: string,
+    options?: { label?: string; count?: string | number | null }
+): PathChipHandle {
+    const display = options?.label ?? shortenVaultPath(vaultPath);
     const container = getOrCreateChipContainer(setting);
     const chip = container.createEl('a', {
         cls: 'ert-path-chip',
@@ -62,6 +75,7 @@ export function addPathChip(setting: Setting, app: App, vaultPath: string, label
             title: vaultPath
         }
     });
+    const countEl = chip.createSpan({ cls: 'ert-path-chip__count' });
     const iconEl = chip.createSpan({ cls: 'ert-path-chip__icon' });
     setIcon(iconEl, 'folder');
     chip.createSpan({ cls: 'ert-path-chip__label', text: display });
@@ -69,4 +83,17 @@ export function addPathChip(setting: Setting, app: App, vaultPath: string, label
         evt.preventDefault();
         revealFolderInExplorer(app, vaultPath);
     });
+
+    const setCount = (count: string | number | null): void => {
+        if (count === null || count === '') {
+            countEl.textContent = '';
+            countEl.classList.remove('is-visible');
+            return;
+        }
+        countEl.textContent = String(count);
+        countEl.classList.add('is-visible');
+    };
+    setCount(options?.count ?? null);
+
+    return { setCount };
 }

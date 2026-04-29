@@ -520,22 +520,17 @@ export class InquiryBriefingModal extends Modal {
     private printBriefing(): void {
         const previousTitle = document.title;
         const nextTitle = this.resolvePrintTitle();
-        const stage = this.stageForPrint();
+        const printHost = this.createPrintHost();
         let restored = false;
         const restore = (): void => {
             if (restored) return;
             restored = true;
             document.title = previousTitle;
-            stage();
+            printHost.remove();
             window.removeEventListener('afterprint', restore);
             printMedia?.removeEventListener?.('change', mediaListener);
         };
 
-        // Drive restoration off the print media query (fires when the print
-        // dialog closes, whether the user prints or cancels). The previous
-        // unconditional setTimeout was racing the browser's print pipeline
-        // and reverting staged styles before pages were rasterised — the
-        // resulting PDF was empty.
         const printMedia = typeof window.matchMedia === 'function'
             ? window.matchMedia('print')
             : null;
@@ -544,9 +539,9 @@ export class InquiryBriefingModal extends Modal {
         };
 
         document.title = nextTitle;
+        document.body.appendChild(printHost);
         window.addEventListener('afterprint', restore, { once: true });
         printMedia?.addEventListener?.('change', mediaListener);
-        // Defer print() so layout settles after the staging styles are applied.
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
                 window.print();
@@ -554,58 +549,14 @@ export class InquiryBriefingModal extends Modal {
         });
     }
 
-    private stageForPrint(): () => void {
-        const modalContainer = this.modalEl.closest('.modal-container') as HTMLElement | null;
-        const modalBg = modalContainer?.querySelector('.modal-bg') as HTMLElement | null;
-        const modalContent = this.modalEl.querySelector('.modal-content') as HTMLElement | null;
-        const hiddenSiblings: Array<{ el: HTMLElement; prev: string }> = [];
-        const saved: Array<{ el: HTMLElement; prev: string }> = [];
+    private createPrintHost(): HTMLElement {
+        const host = document.createElement('div');
+        host.className = 'print rt-briefing-print-root';
+        host.setAttribute('aria-hidden', 'true');
 
-        const save = (el: HTMLElement | null | undefined): void => {
-            if (!el) return;
-            saved.push({ el, prev: el.getAttribute('style') || '' });
-        };
-
-        save(document.documentElement as unknown as HTMLElement);
-        save(document.body);
-        save(modalContainer);
-        save(modalBg);
-        save(this.modalEl);
-        save(modalContent);
-        save(this.contentEl);
-
-        Array.from(document.body.children).forEach(child => {
-            if (!(child instanceof HTMLElement)) return;
-            if (child === modalContainer) return;
-            hiddenSiblings.push({ el: child, prev: child.getAttribute('style') || '' });
-            child.style.display = 'none'; // SAFE: inline style used for print staging to hide Obsidian chrome without stylesheet !important
-        });
-
-        const reset = 'position:static !important;inset:auto !important;transform:none !important;margin:0 !important;';
-        document.documentElement.style.cssText += ';background:#fff;height:auto;overflow:visible;';
-        document.body.style.cssText += ';background:#fff;height:auto;overflow:visible;';
-        if (modalContainer) {
-            modalContainer.style.cssText = `${reset}width:100%;height:auto;background:transparent;display:block;`;
-        }
-        if (modalBg) {
-            modalBg.style.display = 'none'; // SAFE: inline style used for print staging to hide modal backdrop without stylesheet !important
-        }
-        this.modalEl.style.cssText = `${reset}width:100%;max-width:100%;height:auto;max-height:none;overflow:visible;padding:0;border:none;box-shadow:none;background:#fff;`;
-        if (modalContent) {
-            modalContent.style.cssText = 'overflow:visible;max-height:none;height:auto;padding:0;';
-        }
-        this.contentEl.style.cssText = 'overflow:visible;max-height:none;height:auto;';
-
-        return () => {
-            hiddenSiblings.forEach(({ el, prev }) => {
-                if (prev) el.setAttribute('style', prev);
-                else el.removeAttribute('style');
-            });
-            saved.forEach(({ el, prev }) => {
-                if (prev) el.setAttribute('style', prev);
-                else el.removeAttribute('style');
-            });
-        };
+        const article = this.contentEl.cloneNode(true) as HTMLElement;
+        host.appendChild(article);
+        return host;
     }
 
     private async openFileAndClose(file: TFile): Promise<void> {
