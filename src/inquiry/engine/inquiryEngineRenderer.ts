@@ -322,14 +322,25 @@ function renderEnginePostRunPills(
         el.setAttr('title', ttlPill.tooltip);
     }
 
-    const citationPill = computeCitationPillState(
-        args.citationsRequested,
-        args.recentRun,
-        args.providerSupportsCitations ?? true
-    );
-    const citationEl = pillRow.createSpan({
-        cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--citations is-${citationPill.state}`,
-        text: citationPill.label
-    });
-    citationEl.setAttr('title', citationPill.tooltip);
+    // Citation pill is hard-disabled while inline provider citations are
+    // paused (see resolveCitationsEnabled in computeCaps.ts). The pill cannot
+    // be derived from `citationsRequested` alone because that field reads the
+    // persisted user toggle — which may still be `true` for users who had it
+    // on before the pause. The runtime resolver always returns false, but the
+    // pill render runs from settings, not from resolved caps. Hard-flip until
+    // the resolver is restored. computeCitationPillState() is preserved (with
+    // its full state machine) for direct callers, tests, and future restore.
+    const RENDER_CITATION_PILL = false;
+    if (RENDER_CITATION_PILL) {
+        const citationPill = computeCitationPillState(
+            args.citationsRequested,
+            args.recentRun,
+            args.providerSupportsCitations ?? true
+        );
+        const citationEl = pillRow.createSpan({
+            cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--citations is-${citationPill.state}`,
+            text: citationPill.label
+        });
+        citationEl.setAttr('title', citationPill.tooltip);
+    }
 }

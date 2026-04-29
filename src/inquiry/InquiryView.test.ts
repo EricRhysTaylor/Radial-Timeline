@@ -134,13 +134,21 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('...this.getVisibleTargetSceneIdsForBook(bookId),')).toBe(true);
     });
 
-    it('uses a single plus for predicted multi-pass and shares token-cap fill with endcaps', () => {
+    it('uses a single plus for predicted multi-pass and lets CSS own the token-cap endcap fill', () => {
         const readinessSource = readFileSync(resolve(process.cwd(), 'src/inquiry/services/readiness.ts'), 'utf8');
         const minimapSource = readFileSync(resolve(process.cwd(), 'src/inquiry/minimap/InquiryMinimapRenderer.ts'), 'utf8');
         expect(readinessSource.includes("marks: '+'")).toBe(true);
         expect(readinessSource.includes('const visibleCount = 1;')).toBe(true);
-        expect(minimapSource.includes("this.minimapTokenCapStartCap?.style.setProperty('fill', tokenCapColor);")).toBe(true);
-        expect(minimapSource.includes("this.minimapTokenCapEndCap?.style.setProperty('fill', tokenCapColor);")).toBe(true);
+        // Endcap fill is now driven by CSS (over-capacity / warning-capacity
+        // classes + the [data-reuse-state] cache-armed rule). The renderer
+        // must NOT set an inline `fill` on the endcaps — inline styles beat
+        // class selectors and would freeze the endcap color regardless of
+        // capacity / cache state. Renderer should explicitly remove any
+        // previous inline fill so the CSS chain wins.
+        expect(minimapSource.includes("this.minimapTokenCapStartCap?.style.removeProperty('fill');")).toBe(true);
+        expect(minimapSource.includes("this.minimapTokenCapEndCap?.style.removeProperty('fill');")).toBe(true);
+        expect(minimapSource.includes("this.minimapTokenCapStartCap?.style.setProperty('fill'")).toBe(false);
+        expect(minimapSource.includes("this.minimapTokenCapEndCap?.style.setProperty('fill'")).toBe(false);
     });
 
     it('turns clear recent sessions into a full Inquiry reset and mutes the button once empty', () => {

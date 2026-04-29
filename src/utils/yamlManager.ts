@@ -64,6 +64,13 @@ export interface ReorderOptions {
     files: TFile[];
     /** Canonical key order (base + custom keys in template order). */
     canonicalOrder: string[];
+    /**
+     * Predicate identifying RT-known dynamic keys (Gossamer, scene analysis,
+     * Pulse timestamps, etc.) — keys RT manages but does not place in
+     * `canonicalOrder`. Required to distinguish RT-known dynamic keys from
+     * foreign / unmanaged keys, which anchor to their preceding key.
+     */
+    isDynamic: (key: string) => boolean;
     /** Pre-computed safety results per file. */
     safetyResults?: Map<TFile, FrontmatterSafetyResult>;
     onProgress?: (current: number, total: number, filename: string) => void;
@@ -230,18 +237,6 @@ export async function runYamlDeleteFields(
     return result;
 }
 
-/**
- * Delete empty extra fields — convenience wrapper around runYamlDeleteFields.
- *
- * Targets only fields that are: (a) in `extraKeys`, (b) truly empty,
- * and (c) not in the protected template key set.
- */
-export async function runYamlDeleteEmptyExtraFields(
-    options: Omit<DeleteFieldsOptions, 'onlyEmpty'>
-): Promise<DeleteResult> {
-    return runYamlDeleteFields({ ...options, onlyEmpty: true });
-}
-
 // ─── Canonical reorder ──────────────────────────────────────────────────
 
 /**
@@ -267,6 +262,7 @@ export async function runYamlReorder(
         app,
         files,
         canonicalOrder,
+        isDynamic,
         safetyResults,
         onProgress,
         abortSignal,
@@ -310,7 +306,7 @@ export async function runYamlReorder(
         }
 
         try {
-            const didReorder = await reorderSingleFile(app, file, canonicalOrder);
+            const didReorder = await reorderSingleFile(app, file, canonicalOrder, isDynamic);
             if (didReorder) {
                 result.reordered++;
             } else {
@@ -334,7 +330,8 @@ export async function runYamlReorder(
 async function reorderSingleFile(
     app: App,
     file: TFile,
-    canonicalOrder: string[]
+    canonicalOrder: string[],
+    isDynamic: (key: string) => boolean
 ): Promise<boolean> {
     const content = await app.vault.read(file);
     const prepared = prepareFrontmatterRewrite(content);
@@ -349,7 +346,7 @@ async function reorderSingleFile(
     const normalizedFrontmatter = normalizeFrontmatterKeys(rawFrontmatter);
     const currentKeys = Object.keys(rawFrontmatter);
     const normalizedCurrentKeys = Object.keys(normalizedFrontmatter);
-    const orderedKeys = buildOrderedKeyList(normalizedCurrentKeys, canonicalOrder);
+    const orderedKeys = buildOrderedKeyList(normalizedCurrentKeys, canonicalOrder, isDynamic);
 
     // Check if order or canonical casing actually changed
     if (arraysEqual(currentKeys, orderedKeys)) {
@@ -383,39 +380,68 @@ async function reorderSingleFile(
 /**
  * Build the final key list given the current keys and the canonical order.
  *
- * Strategy:
- * 1. **Template zone** – Keys that appear in `canonicalOrder`, placed in that order.
- * 2. **Dynamic suffix zone** – Remaining keys NOT in `canonicalOrder`, preserved in
- *    their original relative order and appended after the template keys.
+ * Each input key is classified as one of three kinds:
  *
- * The "dynamic suffix zone" is where AI-generated and plugin-injected fields
- * (Gossamer scores, scene analysis, Pulse timestamps, etc.) naturally reside.
- * Because these keys are never part of the canonical template order, they are
- * always placed at the end and their internal ordering is never disturbed.
- * This contract is critical: callers (delete, reorder, audit) must never
- * include dynamic/excluded keys in `canonicalOrder` to preserve this guarantee.
+ * - **canonical** — appears in `canonicalOrder` (RT template-defined).
+ * - **dynamic** — `isDynamic(key)` is true. RT-known but not template-ordered
+ *   (Gossamer, scene analysis, repair metadata, etc.). Preserved in original
+ *   relative order and placed after the canonical zone.
+ * - **foreign** — neither canonical nor dynamic. Keys owned by other plugins
+ *   or casual author additions. RT does not own them, so they MUST NOT be
+ *   moved to a global "end" zone — instead they anchor to the immediately
+ *   preceding non-foreign key in the input and travel with it. Foreign keys
+ *   appearing before any non-foreign key form the "head" zone and remain at
+ *   the top of the document.
+ *
+ * Layout:
+ *   [head foreigns]
+ *   [canonical key A]  [foreigns whose anchor was A]
+ *   [canonical key B]  [foreigns whose anchor was B]
+ *   ...
+ *   [dynamic key X]    [foreigns whose anchor was X]
+ *   [dynamic key Y]    [foreigns whose anchor was Y]
  */
-function buildOrderedKeyList(
+export function buildOrderedKeyList(
     currentKeys: string[],
-    canonicalOrder: string[]
+    canonicalOrder: string[],
+    isDynamic: (key: string) => boolean
 ): string[] {
-    const currentSet = new Set(currentKeys);
-    const ordered: string[] = [];
-    const placed = new Set<string>();
+    const canonicalSet = new Set(canonicalOrder);
+    const isForeign = (key: string) => !canonicalSet.has(key) && !isDynamic(key);
 
-    // Phase 1: canonical keys that exist in the file
-    for (const key of canonicalOrder) {
-        if (currentSet.has(key)) {
-            ordered.push(key);
-            placed.add(key);
+    const headForeigns: string[] = [];
+    const trailingForeigns = new Map<string, string[]>();
+    let lastNonForeign: string | null = null;
+
+    for (const key of currentKeys) {
+        if (isForeign(key)) {
+            if (lastNonForeign === null) {
+                headForeigns.push(key);
+            } else {
+                const list = trailingForeigns.get(lastNonForeign) ?? [];
+                list.push(key);
+                trailingForeigns.set(lastNonForeign, list);
+            }
+        } else {
+            lastNonForeign = key;
         }
     }
 
-    // Phase 2: remaining keys in their original order
+    const ordered: string[] = [...headForeigns];
+    const currentSet = new Set(currentKeys);
+
+    for (const key of canonicalOrder) {
+        if (!currentSet.has(key)) continue;
+        ordered.push(key);
+        const trailing = trailingForeigns.get(key);
+        if (trailing) ordered.push(...trailing);
+    }
+
     for (const key of currentKeys) {
-        if (!placed.has(key)) {
-            ordered.push(key);
-        }
+        if (canonicalSet.has(key) || isForeign(key)) continue;
+        ordered.push(key);
+        const trailing = trailingForeigns.get(key);
+        if (trailing) ordered.push(...trailing);
     }
 
     return ordered;
@@ -478,7 +504,8 @@ export function previewDeleteFields(
 export function previewReorder(
     app: App,
     file: TFile,
-    canonicalOrder: string[]
+    canonicalOrder: string[],
+    isDynamic: (key: string) => boolean
 ): { before: string[]; after: string[] } | null {
     const cache = app.metadataCache.getFileCache(file);
     if (!cache?.frontmatter) return null;
@@ -488,7 +515,7 @@ export function previewReorder(
     const normalizedFrontmatter = normalizeFrontmatterKeys(
         Object.fromEntries(Object.entries(fm).filter(([key]) => key !== 'position'))
     );
-    const orderedKeys = buildOrderedKeyList(Object.keys(normalizedFrontmatter), canonicalOrder);
+    const orderedKeys = buildOrderedKeyList(Object.keys(normalizedFrontmatter), canonicalOrder, isDynamic);
 
     if (arraysEqual(currentKeys, orderedKeys)) return null;
     return { before: currentKeys, after: orderedKeys };

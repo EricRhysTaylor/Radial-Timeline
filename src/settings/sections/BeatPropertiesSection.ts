@@ -53,7 +53,7 @@ import { scheduleFocusAfterPaint } from '../../utils/domFocus';
 import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
-import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
+import { runYamlDeleteFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
 import { SHARED_CHAPTER_FIELD_KEY } from '../../utils/timelineChapters';
 import { IMPACT_FULL } from '../SettingImpact';
@@ -4114,17 +4114,6 @@ export function renderBeatPropertiesSection(params: {
         };
 
         type DeletePreviewDetail = { fields: string[]; values: Record<string, unknown> };
-        const applySceneAiOffDeletePolicy = (protectedKeys: Set<string>): void => {
-            if (noteType !== 'Scene') return;
-            if (plugin.settings.enableAiSceneAnalysis ?? true) return;
-
-            const aiKeysLower = new Set(SCENE_AI_SCHEMA_KEYS.map((key) => key.toLowerCase()));
-            for (const key of [...protectedKeys]) {
-                if (aiKeysLower.has(key.toLowerCase())) {
-                    protectedKeys.delete(key);
-                }
-            }
-        };
         const ensureVaultFolder = async (folderPath: string): Promise<string> => {
             const normalized = normalizePath(folderPath.trim());
             if (!normalized) return '';
@@ -4143,7 +4132,7 @@ export function renderBeatPropertiesSection(params: {
             return normalized;
         };
         const writeDeletionSnapshot = async (params: {
-            operation: 'delete_extra' | 'delete_advanced';
+            operation: 'delete_advanced';
             preview: Map<TFile, DeletePreviewDetail>;
             scopeSummary: string;
         }): Promise<string | null> => {
@@ -4267,17 +4256,6 @@ export function renderBeatPropertiesSection(params: {
             migrateDeprecatedBtn.classList.add('ert-settings-hidden');
         });
 
-        // Delete extra fields button (hidden until audit finds extra keys)
-        let deleteExtraBtn: HTMLButtonElement | undefined;
-        auditSetting.addButton(button => {
-            button
-                .setButtonText(t('settings.beats.audit.removeUnusedText'))
-                .setTooltip(t('settings.beats.audit.removeUnusedTooltip'))
-                .onClick(() => void handleDeleteExtraFields());
-            deleteExtraBtn = button.buttonEl;
-            deleteExtraBtn.classList.add('ert-settings-hidden');
-        });
-
         // Delete custom fields button (hidden until custom template has keys)
         let deleteAdvancedBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
@@ -4364,7 +4342,6 @@ export function renderBeatPropertiesSection(params: {
             fixDuplicateIdsBtn?.classList.add('ert-settings-hidden');
             fillEmptyBtn?.classList.add('ert-settings-hidden');
             migrateDeprecatedBtn?.classList.add('ert-settings-hidden');
-            deleteExtraBtn?.classList.add('ert-settings-hidden');
             deleteAdvancedBtn?.classList.add('ert-settings-hidden');
             reorderBtn?.classList.add('ert-settings-hidden');
             updateAuditPrimaryAction();
@@ -4453,20 +4430,6 @@ export function renderBeatPropertiesSection(params: {
                 );
             } else {
                 migrateDeprecatedBtn?.classList.add('ert-settings-hidden');
-            }
-
-            // Show delete-extra button when audit finds extra keys (and not all files are unsafe)
-            const safeExtraNotes = auditResult.notes.filter(n =>
-                n.extraKeys.length > 0 && n.safetyResult?.status !== 'dangerous'
-            );
-            if (safeExtraNotes.length > 0) {
-                deleteExtraBtn?.classList.remove('ert-settings-hidden');
-                deleteExtraBtn?.setAttribute(
-                    'aria-label',
-                    `Remove unused fields from ${safeExtraNotes.length} note${safeExtraNotes.length !== 1 ? 's' : ''}`
-                );
-            } else {
-                deleteExtraBtn?.classList.add('ert-settings-hidden');
             }
 
             // Show delete-custom button when a custom template exists and
@@ -4717,7 +4680,7 @@ export function renderBeatPropertiesSection(params: {
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'suspicious') },
                 { label: 'Missing properties', count: s.notesWithMissing, kind: 'missing',
                   entries: auditResult.notes.filter(n => n.missingFields.length > 0) },
-                { label: 'Unused fields', count: s.notesWithExtra, kind: 'extra',
+                { label: 'Other plugin keys (read-only)', count: s.notesWithExtra, kind: 'extra',
                   entries: auditResult.notes.filter(n => n.extraKeys.length > 0) },
                 { label: 'Layout cleanup', count: s.notesWithDrift, kind: 'drift',
                   entries: auditResult.notes.filter(n => n.orderDrift) },
@@ -4784,7 +4747,7 @@ export function renderBeatPropertiesSection(params: {
                             reason = entry.missingFields.join(', ');
                             break;
                         case 'extra':
-                            reason = entry.extraKeys.join(', ');
+                            reason = `Not managed by Radial Timeline: ${entry.extraKeys.join(', ')}`;
                             break;
                         case 'warning':
                             reason = entry.semanticWarnings.join(' | ');
@@ -5208,336 +5171,6 @@ export function renderBeatPropertiesSection(params: {
             setTimeout(() => runAudit(), 750);
         };
 
-        // ─── Delete extra fields action ─────────────────────────────────
-        const handleDeleteExtraFields = async () => {
-            if (!auditResult) return;
-
-            const activeBeatSystemKey = resolveBeatAuditSystemKey();
-            const notesWithExtra = auditResult.notes.filter(n =>
-                n.extraKeys.length > 0 && n.safetyResult?.status !== 'dangerous'
-            );
-            if (notesWithExtra.length === 0) return;
-
-            const templateParts = getTemplateParts(noteType, plugin.settings, activeBeatSystemKey);
-            const mergedKeys = sharedExtractKeysInOrder(templateParts.merged);
-            const isExcluded = getExcludeKeyPredicate(noteType, plugin.settings);
-            const protectedKeys = new Set([
-                ...mergedKeys,
-                ...RESERVED_OBSIDIAN_KEYS,
-            ]);
-            applySceneAiOffDeletePolicy(protectedKeys);
-
-            const allExtraKeys = new Set<string>();
-            for (const n of notesWithExtra) {
-                for (const k of n.extraKeys) {
-                    if (!isExcluded(k) && !RESERVED_OBSIDIAN_KEYS.has(k)) {
-                        allExtraKeys.add(k);
-                    }
-                }
-            }
-            if (noteType === 'Scene' && !(plugin.settings.enableAiSceneAnalysis ?? true)) {
-                const aiSchemaKeysLower = new Set(SCENE_AI_SCHEMA_KEYS.map((key) => key.toLowerCase()));
-                for (const file of notesWithExtra.map((note) => note.file)) {
-                    const cache = app.metadataCache.getFileCache(file);
-                    const rawFm = cache?.frontmatter as Record<string, unknown> | undefined;
-                    if (!rawFm) continue;
-                    for (const rawKey of Object.keys(rawFm)) {
-                        if (rawKey === 'position' || RESERVED_OBSIDIAN_KEYS.has(rawKey)) continue;
-                        const normalized = normalizeFrontmatterKeys({ [rawKey]: rawFm[rawKey] });
-                        const canonical = Object.keys(normalized)[0];
-                        if (canonical && aiSchemaKeysLower.has(canonical.toLowerCase())) {
-                            allExtraKeys.add(rawKey);
-                        }
-                    }
-                }
-            }
-            if (allExtraKeys.size === 0) return;
-
-            const isBeatDescriptionFlow = noteType === 'Beat' && allExtraKeys.has('Description');
-            const primaryDeleteKeys = [...allExtraKeys].filter((key) => !(isBeatDescriptionFlow && key === 'Description'));
-            const targetFiles = notesWithExtra.map(n => n.file);
-
-            const descMigrationTargets: TFile[] = [];
-            let descPreservedCount = 0;
-            if (isBeatDescriptionFlow) {
-                const mappings = getActiveFrontmatterMappings(plugin.settings);
-                for (const file of targetFiles) {
-                    const cache = app.metadataCache.getFileCache(file);
-                    if (!cache?.frontmatter) continue;
-                    const raw = cache.frontmatter as Record<string, unknown>;
-                    const normalized = mappings ? normalizeFrontmatterKeys(raw, mappings) : raw;
-                    const desc = typeof normalized['Description'] === 'string' ? normalized['Description'].trim() : '';
-                    const purpose = typeof normalized['Purpose'] === 'string' ? normalized['Purpose'].trim() : '';
-                    if (desc.length === 0) continue;
-                    if (purpose.length === 0) {
-                        descMigrationTargets.push(file);
-                    } else {
-                        descPreservedCount += 1;
-                    }
-                }
-            }
-
-            const previewPrimary = previewDeleteFields(
-                app, targetFiles, primaryDeleteKeys, protectedKeys
-            );
-            const previewDescriptionEmpty = isBeatDescriptionFlow
-                ? previewDeleteFields(app, targetFiles, ['Description'], protectedKeys, true)
-                : new Map<TFile, { fields: string[]; values: Record<string, unknown> }>();
-
-            const preview = new Map<TFile, { fields: string[]; values: Record<string, unknown> }>();
-            for (const [file, detail] of previewPrimary.entries()) {
-                preview.set(file, { fields: [...detail.fields], values: { ...detail.values } });
-            }
-            for (const [file, detail] of previewDescriptionEmpty.entries()) {
-                const existing = preview.get(file);
-                if (existing) {
-                    for (const field of detail.fields) {
-                        if (!existing.fields.includes(field)) existing.fields.push(field);
-                        existing.values[field] = detail.values[field];
-                    }
-                } else {
-                    preview.set(file, { fields: [...detail.fields], values: { ...detail.values } });
-                }
-            }
-
-            if (preview.size === 0 && descMigrationTargets.length === 0) {
-                new Notice('No deletable extra fields found.');
-                return;
-            }
-
-            const descriptionKeysHandledByMigration = isBeatDescriptionFlow ? descMigrationTargets.length : 0;
-            const fieldsToDeleteList = new Set<string>([
-                ...primaryDeleteKeys,
-                ...(isBeatDescriptionFlow && (previewDescriptionEmpty.size > 0 || descriptionKeysHandledByMigration > 0) ? ['Description'] : [])
-            ]);
-
-            let emptyFieldCount = 0;
-            let valuedFieldCount = 0;
-            const valuedFieldSamples: { key: string; value: string }[] = [];
-            for (const [, detail] of preview) {
-                for (const field of detail.fields) {
-                    const val = detail.values[field];
-                    const isEmpty = val === undefined || val === null
-                        || (typeof val === 'string' && val.trim() === '')
-                        || (Array.isArray(val) && val.length === 0);
-                    if (isEmpty) {
-                        emptyFieldCount++;
-                    } else {
-                        valuedFieldCount++;
-                        if (valuedFieldSamples.length < 8) {
-                            const valStr = Array.isArray(val) ? val.join(', ') : String(val);
-                            valuedFieldSamples.push({ key: field, value: valStr.length > 60 ? valStr.slice(0, 57) + '...' : valStr });
-                        }
-                    }
-                }
-            }
-
-            const totalFieldCount = emptyFieldCount + valuedFieldCount + descriptionKeysHandledByMigration;
-            const hasValuedFields = valuedFieldCount > 0;
-            const deletePhrase = `DELETE ${valuedFieldCount}`;
-            const unsafeSkippedCount = auditResult.notes.filter(n =>
-                n.extraKeys.length > 0 && n.safetyResult?.status === 'dangerous'
-            ).length;
-
-            const confirmed = await new Promise<boolean>((resolve) => {
-                const modal = new Modal(app);
-                modal.titleEl.setText('');
-                modal.contentEl.empty();
-                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
-
-                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
-                header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Remove unused fields' });
-                header.createDiv({
-                    cls: 'ert-modal-subtitle',
-                    text: `Remove ${totalFieldCount} unused field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`
-                });
-
-                if (unsafeSkippedCount > 0) {
-                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });
-                    banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });
-                }
-
-                const suspiciousCount = notesWithExtra.filter(n => n.safetyResult?.status === 'suspicious').length;
-                if (suspiciousCount > 0) {
-                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });
-                }
-
-                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
-                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
-
-                if (noteType === 'Beat' && descMigrationTargets.length > 0) {
-                    body.createDiv({
-                        text: `${descMigrationTargets.length} Description value${descMigrationTargets.length !== 1 ? 's' : ''} will be migrated to Purpose before cleanup.`
-                    });
-                }
-                if (noteType === 'Beat' && descPreservedCount > 0) {
-                    body.createDiv({
-                        text: `${descPreservedCount} Description value${descPreservedCount !== 1 ? 's' : ''} already have Purpose and will be preserved (not auto-deleted).`
-                    });
-                }
-
-                if (emptyFieldCount > 0) {
-                    body.createDiv({ text: `${emptyFieldCount} empty field${emptyFieldCount !== 1 ? 's' : ''} will be removed (no data loss).` });
-                }
-
-                if (hasValuedFields) {
-                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    warningEl.createDiv({
-                        text: `${valuedFieldCount} field${valuedFieldCount !== 1 ? 's' : ''} contain values that will be permanently deleted:`
-                    });
-                    const sampleList = warningEl.createEl('ul');
-                    for (const sample of valuedFieldSamples) {
-                        sampleList.createEl('li', { text: `${sample.key}: ${sample.value}` });
-                    }
-                    if (valuedFieldCount > valuedFieldSamples.length) {
-                        sampleList.createEl('li', { text: `... and ${valuedFieldCount - valuedFieldSamples.length} more` });
-                    }
-                    body.createDiv({
-                        text: 'A deletion snapshot file will be created before this destructive step.'
-                    });
-                }
-
-                const fieldListEl = body.createDiv();
-                fieldListEl.createDiv({ text: 'Fields to delete:', cls: 'ert-modal-subtitle' });
-                const ul = fieldListEl.createEl('ul');
-                for (const key of fieldsToDeleteList) {
-                    ul.createEl('li', { text: key });
-                }
-
-                let confirmInput: HTMLInputElement | undefined;
-                let acknowledgeInput: HTMLInputElement | undefined;
-                if (hasValuedFields) {
-                    const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                    confirmEl.createDiv({ text: `Type ${deletePhrase} to confirm:`, cls: 'ert-modal-subtitle' });
-                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: deletePhrase } });
-                    const acknowledgeEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                    const acknowledgeLabel = acknowledgeEl.createEl('label');
-                    acknowledgeInput = acknowledgeLabel.createEl('input', { type: 'checkbox' });
-                    acknowledgeLabel.appendText(' I understand non-empty values will be permanently deleted.');
-                }
-
-                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
-                const deleteBtn = new ButtonComponent(footer)
-                    .setButtonText('Remove unused fields')
-                    .setWarning()
-                    .onClick(() => {
-                        if (hasValuedFields) {
-                            if (confirmInput?.value.trim() !== deletePhrase) {
-                                confirmInput?.classList.add('ert-input-error');
-                                confirmInput?.focus();
-                                return;
-                            }
-                            if (!acknowledgeInput?.checked) {
-                                return;
-                            }
-                        }
-                        resolve(true);
-                        modal.close();
-                    });
-                if (hasValuedFields) {
-                    deleteBtn.setDisabled(true);
-                    const updateDeleteState = () => {
-                        const confirmedPhrase = confirmInput?.value.trim() === deletePhrase;
-                        const acknowledged = !!acknowledgeInput?.checked;
-                        deleteBtn.setDisabled(!(confirmedPhrase && acknowledged));
-                        confirmInput?.classList.remove('ert-input-error');
-                    };
-                    confirmInput?.addEventListener('input', updateDeleteState);
-                    acknowledgeInput?.addEventListener('change', updateDeleteState);
-                }
-                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
-
-                modal.onClose = () => resolve(false);
-                modal.open();
-            });
-
-            if (!confirmed) return;
-
-            let deletionSnapshotPath: string | null = null;
-            if (hasValuedFields) {
-                try {
-                    deletionSnapshotPath = await writeDeletionSnapshot({
-                        operation: 'delete_extra',
-                        preview,
-                        scopeSummary: auditScopeSummary
-                    });
-                } catch (error) {
-                    console.error('[YamlManager] yaml_delete_extra_snapshot_failed', error);
-                    new Notice('Delete cancelled: could not create deletion snapshot.');
-                    return;
-                }
-                if (!deletionSnapshotPath) {
-                    new Notice('Delete cancelled: no valued deletion snapshot was generated.');
-                    return;
-                }
-            }
-
-            let migratedToPurpose = 0;
-            let removedDescriptionByMigration = 0;
-            if (isBeatDescriptionFlow && descMigrationTargets.length > 0) {
-                const migrated = await runBeatDescriptionToPurposeMigration({
-                    app,
-                    files: descMigrationTargets
-                });
-                migratedToPurpose = migrated.movedToPurpose;
-                removedDescriptionByMigration = migrated.removedDescription;
-            }
-
-            let primaryResult: DeleteResult | null = null;
-            if (primaryDeleteKeys.length > 0) {
-                primaryResult = await runYamlDeleteFields({
-                    app,
-                    files: targetFiles,
-                    fieldsToDelete: primaryDeleteKeys,
-                    protectedKeys,
-                    safetyResults: auditResult.safetyResults,
-                });
-            }
-
-            let descriptionEmptyResult: DeleteResult | null = null;
-            if (isBeatDescriptionFlow) {
-                descriptionEmptyResult = await runYamlDeleteFields({
-                    app,
-                    files: targetFiles,
-                    fieldsToDelete: ['Description'],
-                    protectedKeys,
-                    safetyResults: auditResult.safetyResults,
-                    onlyEmpty: true,
-                });
-            }
-
-            const deletedPaths = new Set<string>();
-            const addDeleted = (result: DeleteResult | null) => {
-                if (!result) return;
-                for (const entry of result.deletedFields) deletedPaths.add(entry.file.path);
-            };
-            addDeleted(primaryResult);
-            addDeleted(descriptionEmptyResult);
-
-            const failed = (primaryResult?.failed ?? 0) + (descriptionEmptyResult?.failed ?? 0);
-            const safetySkipped = Math.max(primaryResult?.safetySkipped ?? 0, descriptionEmptyResult?.safetySkipped ?? 0);
-            const removedEmptyDescription = descriptionEmptyResult?.deletedFields.reduce((sum, entry) => (
-                sum + entry.fields.filter(field => field === 'Description').length
-            ), 0) ?? 0;
-
-            const parts: string[] = [];
-            if (migratedToPurpose > 0) parts.push(`Migrated ${migratedToPurpose} Description→Purpose`);
-            if (removedDescriptionByMigration + removedEmptyDescription > 0) {
-                const totalRemovedDescription = removedDescriptionByMigration + removedEmptyDescription;
-                parts.push(`Removed ${totalRemovedDescription} Description key${totalRemovedDescription !== 1 ? 's' : ''}`);
-            }
-            if (deletedPaths.size > 0) parts.push(`Cleaned ${deletedPaths.size} note${deletedPaths.size !== 1 ? 's' : ''}`);
-            if (deletionSnapshotPath) parts.push(`Snapshot: ${deletionSnapshotPath}`);
-            if (safetySkipped > 0) parts.push(`${safetySkipped} skipped (unsafe)`);
-            if (failed > 0) parts.push(`${failed} failed`);
-            new Notice(parts.join(', ') || 'No changes made.');
-
-            setTimeout(() => runAudit(), 750);
-        };
-
         // ─── Delete custom fields action ────────────────────────────────
         const handleDeleteAdvancedFields = async () => {
             if (!auditResult) return;
@@ -5774,10 +5407,11 @@ export function renderBeatPropertiesSection(params: {
             if (notesWithDrift.length === 0) return;
 
             const canonicalOrder = computeCanonicalOrder(noteType, plugin.settings, activeBeatSystemKey);
+            const isDynamic = getExcludeKeyPredicate(noteType, plugin.settings);
 
             // Build a before/after preview from the first affected file
             const previewNote = notesWithDrift[0];
-            const reorderPreview = previewReorder(app, previewNote.file, canonicalOrder);
+            const reorderPreview = previewReorder(app, previewNote.file, canonicalOrder, isDynamic);
 
             const unsafeSkippedCount = auditResult.notes.filter(n =>
                 n.orderDrift && n.safetyResult?.status === 'dangerous'
@@ -5872,6 +5506,7 @@ export function renderBeatPropertiesSection(params: {
                 app,
                 files: notesWithDrift.map(n => n.file),
                 canonicalOrder,
+                isDynamic,
                 safetyResults: auditResult.safetyResults,
             });
 

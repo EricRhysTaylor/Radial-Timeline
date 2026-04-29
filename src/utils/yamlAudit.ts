@@ -35,6 +35,14 @@ export interface NoteAuditEntry {
     missingFields: string[];
     missingReferenceId: boolean;
     duplicateReferenceId?: string;
+    /**
+     * Frontmatter keys present in the note that are NOT under Radial Timeline's
+     * authority — neither template-defined (canonical) nor RT-known dynamic
+     * (Gossamer, scene analysis, repair metadata, legacy aliases). These keys
+     * belong to other plugins or to the author. RT reports them for visibility
+     * but never offers to delete them; cleanup must be done by hand or by the
+     * owning plugin.
+     */
     extraKeys: string[];
     orderDrift: boolean;
     semanticWarnings: string[];

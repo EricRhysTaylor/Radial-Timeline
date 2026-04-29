@@ -2603,6 +2603,20 @@
   box-shadow: none;
 }
 
+/* Settings row marked as "feature paused" — heavily muted so it reads as
+   inactive at a glance, not an active toggle the user might interact with.
+   Applied via .ert-settingRow--disabled-feature on the row element. */
+.ert-settingRow.ert-settingRow--disabled-feature {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
+
+.ert-settingRow.ert-settingRow--disabled-feature .setting-item-name,
+.ert-settingRow.ert-settingRow--disabled-feature .setting-item-description {
+  color: var(--text-faint);
+}
+
 
 .ert-ui.ert-modal--social,
 .ert-ui .ert-modal--social {

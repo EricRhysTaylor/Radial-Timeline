@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TFile } from 'obsidian';
 import { createInMemoryApp, type InMemoryApp } from '../../tests/helpers/inMemoryObsidian';
-import { previewReorder, runYamlReorder } from './yamlManager';
+import { buildOrderedKeyList, previewReorder, runYamlReorder } from './yamlManager';
 
 const BACKDROP_CANONICAL_ORDER = ['ID', 'Class', 'When', 'End', 'Context'];
+const noDynamic = (_key: string): boolean => false;
 
 async function readFile(app: InMemoryApp, path: string): Promise<string> {
     const file = app.vault.getAbstractFileByPath(path);
@@ -32,6 +33,7 @@ describe('yamlManager reorder', () => {
             app: app as never,
             files: [file],
             canonicalOrder: BACKDROP_CANONICAL_ORDER,
+            isDynamic: noDynamic,
         });
 
         expect(result.reordered).toBe(1);
@@ -65,7 +67,7 @@ describe('yamlManager reorder', () => {
         });
         const file = app.vault.getMarkdownFiles()[0];
 
-        expect(previewReorder(app as never, file, BACKDROP_CANONICAL_ORDER)).toEqual({
+        expect(previewReorder(app as never, file, BACKDROP_CANONICAL_ORDER, noDynamic)).toEqual({
             before: ['ID', 'When', 'End', 'Context', 'Test Field 1', 'class'],
             after: ['ID', 'Class', 'When', 'End', 'Context', 'Test Field 1'],
         });
@@ -89,6 +91,7 @@ describe('yamlManager reorder', () => {
             app: app as never,
             files: [file],
             canonicalOrder: BACKDROP_CANONICAL_ORDER,
+            isDynamic: noDynamic,
         });
 
         expect(result.reordered).toBe(0);
@@ -96,5 +99,43 @@ describe('yamlManager reorder', () => {
         expect(result.errors[0]?.error).toContain('duplicate canonical aliases');
         expect(await readFile(app, 'Books/BookA/Backdrop.md')).toContain('Description: Legacy value');
         expect(await readFile(app, 'Books/BookA/Backdrop.md')).toContain('Purpose: New value');
+    });
+});
+
+describe('buildOrderedKeyList', () => {
+    const canonical = ['ID', 'Class', 'Beat Model', 'Purpose'];
+    const isGossamer = (key: string) => /^Gossamer/i.test(key);
+
+    it('anchors a foreign key to its preceding canonical key when canonical zone is reordered', () => {
+        // Author has Editorial wedged between Class and Beat Model in source order.
+        // After reorder, ID must come first per canonical order; Editorial must
+        // travel with its anchor (Class), not be flushed to the end.
+        const current = ['Class', 'Editorial', 'Beat Model', 'ID', 'Purpose'];
+        expect(buildOrderedKeyList(current, canonical, isGossamer)).toEqual([
+            'ID', 'Class', 'Editorial', 'Beat Model', 'Purpose',
+        ]);
+    });
+
+    it('keeps foreign keys at the head when no non-foreign predecessor exists', () => {
+        const current = ['Editorial', 'Class', 'ID'];
+        expect(buildOrderedKeyList(current, canonical, isGossamer)).toEqual([
+            'Editorial', 'ID', 'Class',
+        ]);
+    });
+
+    it('places dynamic keys after canonical zone in original relative order, with their own anchored foreigns', () => {
+        const current = ['ID', 'Class', 'Beat Model', 'Purpose', 'Gossamer1', 'Editorial', 'GossamerStage1'];
+        expect(buildOrderedKeyList(current, canonical, isGossamer)).toEqual([
+            'ID', 'Class', 'Beat Model', 'Purpose', 'Gossamer1', 'Editorial', 'GossamerStage1',
+        ]);
+    });
+
+    it('does not move foreign keys to the global end (the old append-at-end behavior)', () => {
+        // Editorial was directly after ID in the source; it must remain after ID,
+        // not be shoved to the bottom alongside dynamic keys.
+        const current = ['ID', 'Editorial', 'Class', 'Gossamer1'];
+        expect(buildOrderedKeyList(current, canonical, isGossamer)).toEqual([
+            'ID', 'Editorial', 'Class', 'Gossamer1',
+        ]);
     });
 });

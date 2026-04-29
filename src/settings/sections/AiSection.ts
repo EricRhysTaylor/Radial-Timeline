@@ -942,28 +942,14 @@ export function renderAiSection(params: {
     ] as const;
     const MAX_PREVIEW_SIGNALS = 4;
 
-    const resolvePreviewCitationSignal = (model: ModelInfo): PreviewPill | null => {
-        const signals = getModelUiSignals(model);
-        if (!signals.citationLabel) return null;
-        const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
-        if (/^Sources\s*·\s*/i.test(signals.citationLabel)) {
-            return {
-                text: signals.citationLabel,
-                extraCls: citationsOn ? 'ert-ai-pill--active' : 'ert-ai-pill--muted'
-            };
-        }
-        // For models with the citations/cache mutex, keep the pill compact
-        // (the separate Cache pill already carries the exclusivity story).
-        if (model.constraints?.cacheVsCitationsExclusive === true) {
-            return citationsOn
-                ? { text: 'Citations on', extraCls: 'ert-ai-pill--active' }
-                : { text: 'Citations off', extraCls: 'ert-ai-pill--muted' };
-        }
-        // Non-exclusive providers keep the mechanism suffix (useful context).
-        const mechanism = signals.citationLabel.replace(/^Citation\s*·\s*/i, '');
-        return citationsOn
-            ? { text: `Citations on · ${mechanism}`, extraCls: 'ert-ai-pill--active' }
-            : { text: `Citations off · ${mechanism}`, extraCls: 'ert-ai-pill--muted' };
+    const resolvePreviewCitationSignal = (_model: ModelInfo): PreviewPill | null => {
+        // Citation/sources/annotation pills are suppressed in the preview card
+        // while inline provider citations are paused (see resolveCitationsEnabled
+        // in computeCaps.ts). The pill would only confuse the user — every
+        // model would show "Citations off" or a muted mechanism label that has
+        // no operational meaning. Restoring this requires re-enabling the
+        // resolver. Original implementation is preserved in git history.
+        return null;
     };
 
     const resolvePreviewReuseSignal = (model: ModelInfo): PreviewPill | null => {
@@ -3574,7 +3560,7 @@ export function renderAiSection(params: {
     const inquiryGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
     inquiryGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.inquiryTitle') });
 
-    aiConfigCreateRow(inquiryGroup, {
+    const citationsRow = aiConfigCreateRow(inquiryGroup, {
         title: t('settings.ai.config.citationsName'),
         description: t('settings.ai.config.citationsDesc'),
         control: (setting) => {
@@ -3592,6 +3578,10 @@ export function renderAiSection(params: {
             });
         }
     });
+    // Visually mute the entire row (title, description, toggle) so it reads
+    // as "feature paused" at a glance, not "active setting you might want
+    // to flip". Removed alongside the resolver flip when citations are restored.
+    citationsRow.settingEl.addClass('ert-settingRow--disabled-feature');
 
     const aiDisplayGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
     aiDisplayGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.timelineDisplayTitle') });

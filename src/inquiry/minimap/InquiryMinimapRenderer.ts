@@ -810,8 +810,11 @@ export class InquiryMinimapRenderer {
         const neutralColor = getExecutionColorValue(styleSource, '--rt-ai-neutral', '#ffffff');
         const tokenCapColor = isOverCapacity ? overCapacityColor : neutralColor;
         this.minimapTokenCapBar.style.fill = tokenCapColor;
-        this.minimapTokenCapStartCap?.style.setProperty('fill', tokenCapColor);
-        this.minimapTokenCapEndCap?.style.setProperty('fill', tokenCapColor);
+        // Endcap fill is owned by CSS — over-capacity / warning-capacity classes
+        // paint red/amber, the [data-reuse-state] rule paints green when primed,
+        // default is muted. Setting an inline fill here would beat all of those.
+        this.minimapTokenCapStartCap?.style.removeProperty('fill');
+        this.minimapTokenCapEndCap?.style.removeProperty('fill');
 
         const endcapStateClass = overCapacityTone === 'amber' ? 'is-warning-capacity' : 'is-over-capacity';
         const inverseStateClass = overCapacityTone === 'amber' ? 'is-over-capacity' : 'is-warning-capacity';

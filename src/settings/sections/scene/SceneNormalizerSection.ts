@@ -7,14 +7,12 @@ import { collectFilesForAuditWithScope, formatAuditReport, type NoteAuditEntry, 
 import {
     previewDeleteFields,
     previewReorder,
-    type DeleteResult,
     type ReorderResult,
 } from '../../../utils/yamlManager';
 import { buildScenePropertyDefinitions } from '../../../sceneProperties/scenePropertyAdapter';
 import {
     analyzeScenes,
     deleteAdvancedSceneFields,
-    deleteExtraSceneFields,
     ensureSceneIds,
     fixDuplicateSceneIds,
     insertMissingAdvancedFields,
@@ -23,7 +21,7 @@ import {
 } from '../../../sceneProperties/sceneNormalizer';
 import type { SceneNormalizationAudit } from '../../../sceneProperties/types';
 import { resolveSceneExpectedKeys, resolveScenePropertyPolicy } from '../../../sceneProperties/scenePropertyPolicy';
-import { RESERVED_OBSIDIAN_KEYS } from '../../../utils/yamlTemplateNormalize';
+import { getExcludeKeyPredicate, RESERVED_OBSIDIAN_KEYS } from '../../../utils/yamlTemplateNormalize';
 import { formatSafetyIssues } from '../../../utils/yamlSafety';
 import { openOrRevealFile } from '../../../utils/fileUtils';
 import { getAdvancedMode, shouldEnableRemoveAdvanced } from '../../../scenes/core/scenePropertyState';
@@ -122,7 +120,7 @@ async function ensureVaultFolder(app: App, folderPath: string): Promise<string> 
 }
 
 async function writeDeletionSnapshot(app: App, plugin: RadialTimelinePlugin, params: {
-    operation: 'delete_extra' | 'delete_advanced';
+    operation: 'delete_advanced';
     preview: Map<TFile, DeletePreviewDetail>;
     scopeSummary: string;
 }): Promise<string | null> {
@@ -183,11 +181,6 @@ export function renderSceneNormalizerSection(params: {
     const buildPolicyBadge = (): string => (
         getAdvancedMode(plugin.settings) === 'enabled' ? 'Core + advanced' : 'Core only'
     );
-    const buildUnusedFieldsTooltip = (): string => (
-        (getAdvancedMode(plugin.settings) === 'enabled')
-            ? 'Remove fields not defined in the current scene property rules.'
-            : 'Remove unused non-advanced fields. Advanced fields are preserved.'
-    );
 
     const headerRow = new Settings(parentEl)
         .setName('Scene note maintenance');
@@ -211,9 +204,6 @@ export function renderSceneNormalizerSection(params: {
     };
     const refreshMaintenanceCopy = () => {
         policyBadgeEl.querySelector('.ert-badgePill__text')?.replaceChildren(document.createTextNode(buildPolicyBadge()));
-        if (removeUnusedBtn) {
-            setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
-        }
         updateButtons();
         if (auditResult && sceneAudit) renderResults();
     };
@@ -229,7 +219,6 @@ export function renderSceneNormalizerSection(params: {
     let addAdvancedBtn: ButtonComponent | undefined;
     let addIdsBtn: ButtonComponent | undefined;
     let reorderBtn: ButtonComponent | undefined;
-    let removeUnusedBtn: ButtonComponent | undefined;
     let removeAdvancedBtn: ButtonComponent | undefined;
     let fixDuplicateBtn: ButtonComponent | undefined;
 
@@ -246,19 +235,14 @@ export function renderSceneNormalizerSection(params: {
         });
 
         // Operations that actively skip dangerous notes (see yamlManager.ts):
-        // reorder, remove unused, remove advanced. Count only what those
-        // operations would actually touch so the button mutes once the
-        // non-dangerous work is done.
+        // reorder and remove advanced. Count only what those operations
+        // would actually touch so the button mutes once the non-dangerous
+        // work is done.
         const isSafe = (note: typeof notes[number]) => note.safetyResult?.status !== 'dangerous';
         const actionableDrift = notes.filter((n) => n.orderDrift && isSafe(n)).length;
-        const actionableExtra = notes.filter((n) => n.extraKeys.length > 0 && isSafe(n)).length;
         const driftBlockedByUnsafe = (summary?.scenesWithDrift ?? 0) - actionableDrift;
-        const extraBlockedByUnsafe = (summary?.scenesWithExtra ?? 0) - actionableExtra;
         const driftBlockedSuffix = driftBlockedByUnsafe > 0
             ? ` (${driftBlockedByUnsafe} UNSAFE note${driftBlockedByUnsafe !== 1 ? 's' : ''} blocked — review manually)`
-            : '';
-        const extraBlockedSuffix = extraBlockedByUnsafe > 0
-            ? ` (${extraBlockedByUnsafe} UNSAFE note${extraBlockedByUnsafe !== 1 ? 's' : ''} blocked — review manually)`
             : '';
 
         const uncheckedHint = hasCheckedScenes
@@ -293,12 +277,6 @@ export function renderSceneNormalizerSection(params: {
             !summary || actionableDrift === 0,
             uncheckedHint || `Scene property order already matches the current layout.${driftBlockedSuffix}`,
             `Reorder properties in ${plural(actionableDrift, 'scene')}.${driftBlockedSuffix}`
-        );
-        setButtonDisabled(
-            removeUnusedBtn,
-            !summary || actionableExtra === 0,
-            uncheckedHint || `${buildUnusedFieldsTooltip()}${extraBlockedSuffix}`,
-            `Remove unused fields from ${plural(actionableExtra, 'scene')}.${extraBlockedSuffix}`
         );
         setButtonDisabled(
             removeAdvancedBtn,
@@ -378,7 +356,7 @@ export function renderSceneNormalizerSection(params: {
             { label: 'Unsafe', kind: 'unsafe', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'dangerous') },
             { label: 'Needs review', kind: 'suspicious', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'suspicious') },
             { label: advancedEnabled ? 'Missing properties' : 'Missing core properties', kind: 'missing', entries: auditResult.notes.filter((note) => note.missingFields.length > 0) },
-            { label: advancedEnabled ? 'Unused fields' : 'Unused fields (advanced not enforced)', kind: 'extra', entries: auditResult.notes.filter((note) => note.extraKeys.length > 0) },
+            { label: 'Other plugin keys (read-only)', kind: 'extra', entries: auditResult.notes.filter((note) => note.extraKeys.length > 0) },
             { label: 'Layout cleanup', kind: 'drift', entries: auditResult.notes.filter((note) => note.orderDrift) },
             { label: 'Warnings', kind: 'warning', entries: auditResult.notes.filter((note) => note.semanticWarnings.length > 0) },
         ] satisfies Array<{
@@ -430,7 +408,7 @@ export function renderSceneNormalizerSection(params: {
             for (const entry of pageEntries) {
                 let reason = entry.reason;
                 if (activeChip.kind === 'extra') {
-                    reason = entry.extraKeys.join(', ');
+                    reason = `Not managed by Radial Timeline: ${entry.extraKeys.join(', ')}`;
                 } else if (activeChip.kind === 'drift') {
                     reason = 'Property order differs from the current scene layout';
                 } else if (activeChip.kind === 'critical') {
@@ -581,12 +559,16 @@ export function renderSceneNormalizerSection(params: {
             const notesWithDrift = sceneAudit.notes.filter((note) => note.orderDrift && note.safetyResult?.status !== 'dangerous');
             if (notesWithDrift.length === 0) return;
 
-            const canonicalOrder = resolveSceneExpectedKeys(
+            const expectedKeys = resolveSceneExpectedKeys(
                 plugin.settings,
                 buildScenePropertyDefinitions(plugin.settings),
                 resolveScenePropertyPolicy(plugin.settings)
-            ).canonicalOrder;
-            const preview = previewReorder(app, notesWithDrift[0].file, canonicalOrder);
+            );
+            const canonicalOrder = expectedKeys.canonicalOrder;
+            const baseDynamic = getExcludeKeyPredicate('Scene', plugin.settings);
+            const inactiveAdvancedSet = new Set(expectedKeys.toleratedInactiveKeys);
+            const isDynamic = (key: string) => baseDynamic(key) || inactiveAdvancedSet.has(key);
+            const preview = previewReorder(app, notesWithDrift[0].file, canonicalOrder, isDynamic);
 
             const confirmed = await new Promise<boolean>((resolve) => {
                 const modal = new Modal(app);
@@ -630,46 +612,6 @@ export function renderSceneNormalizerSection(params: {
             new Notice(result.reordered > 0 ? `Reordered ${result.reordered} scene${result.reordered !== 1 ? 's' : ''}.` : 'No changes made.');
             setTimeout(() => { void runCheckScenes(); }, 750);
         });
-
-    removeUnusedBtn = new ButtonComponent(cleanupGroup)
-        .setButtonText('Remove Unused Fields')
-        .setWarning()
-        .onClick(async () => {
-            if (!sceneAudit || !auditResult) return;
-            const notesWithExtra = sceneAudit.notes.filter((note) => note.extraKeys.length > 0 && note.safetyResult?.status !== 'dangerous');
-            if (notesWithExtra.length === 0) return;
-            const targetFiles = notesWithExtra.map((note) => note.file);
-            const fieldsToDelete = [...new Set(notesWithExtra.flatMap((note) => note.extraKeys))];
-            const protectedKeys = new Set([
-                ...buildScenePropertyDefinitions(plugin.settings).core.map((definition) => definition.key),
-                ...buildScenePropertyDefinitions(plugin.settings).advanced.map((definition) => definition.key),
-                ...RESERVED_OBSIDIAN_KEYS,
-            ]);
-            const preview = previewDeleteFields(app, targetFiles, fieldsToDelete, protectedKeys);
-            let deletionSnapshotPath: string | null = null;
-            for (const [, detail] of preview.entries()) {
-                if (detail.fields.some((field) => !isEmptyValue(detail.values[field]))) {
-                    deletionSnapshotPath = await writeDeletionSnapshot(app, plugin, {
-                        operation: 'delete_extra',
-                        preview,
-                        scopeSummary: auditScopeSummary,
-                    });
-                    break;
-                }
-            }
-            const result: DeleteResult = await deleteExtraSceneFields({
-                app,
-                settings: plugin.settings,
-                files: targetFiles,
-                audit: sceneAudit,
-            });
-            const parts = [];
-            if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} scene${result.deleted !== 1 ? 's' : ''}`);
-            if (deletionSnapshotPath) parts.push(`Snapshot: ${deletionSnapshotPath}`);
-            new Notice(parts.join(', ') || 'No changes made.');
-            setTimeout(() => { void runCheckScenes(); }, 750);
-        });
-    setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
 
     removeAdvancedBtn = new ButtonComponent(cleanupGroup)
         .setButtonText('Remove advanced properties')

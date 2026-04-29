@@ -346,6 +346,9 @@ export function getExcludeKeyPredicate(
                 if (/^Gossamer/i.test(key)) return true;
                 // Legacy base field (removed from template but may exist in older notes)
                 if (key === 'When') return true;
+                // Legacy narrative field — RT-managed; migrated to Purpose via the
+                // dedicated "Migrate deprecated fields" action.
+                if (key === 'Description') return true;
                 // Obsidian-internal keys
                 if (RESERVED_OBSIDIAN_KEYS.has(key)) return true;
                 return false;

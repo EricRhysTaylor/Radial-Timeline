@@ -254,35 +254,19 @@ export async function reorderSceneFields(
         .filter((note) => note.orderDrift && note.safetyResult?.status !== 'dangerous')
         .map((note) => note.file);
 
+    // RT authority for Scene reorder includes the standard exclude predicate
+    // (id, scene analysis, repair metadata, etc.) plus any tolerated-inactive
+    // advanced keys when advanced mode is disabled. These remain RT-managed
+    // and are placed in the dynamic suffix zone — they are NOT foreign.
+    const baseDynamic = getExcludeKeyPredicate('Scene', ctx.settings);
+    const inactiveAdvancedSet = new Set(expected.toleratedInactiveKeys);
+    const isDynamic = (key: string) => baseDynamic(key) || inactiveAdvancedSet.has(key);
+
     return runYamlReorder({
         app: ctx.app,
         files,
         canonicalOrder: expected.canonicalOrder,
-        safetyResults: audit.safetyResults,
-        onProgress: ctx.onProgress,
-        abortSignal: ctx.abortSignal,
-    });
-}
-
-export async function deleteExtraSceneFields(
-    ctx: SceneNormalizerContext & { audit?: SceneNormalizationAudit }
-): Promise<DeleteResult> {
-    const audit = ctx.audit ?? await analyzeScenes(ctx);
-    const files = audit.notes
-        .filter((note) => note.extraKeys.length > 0)
-        .map((note) => note.file);
-    const fieldsToDelete = [...new Set(audit.notes.flatMap((note) => note.extraKeys))];
-    const protectedKeys = new Set([
-        ...buildScenePropertyDefinitions(ctx.settings).core.map((definition) => definition.key),
-        ...buildScenePropertyDefinitions(ctx.settings).advanced.map((definition) => definition.key),
-        ...RESERVED_OBSIDIAN_KEYS,
-    ]);
-
-    return runYamlDeleteFields({
-        app: ctx.app,
-        files,
-        fieldsToDelete,
-        protectedKeys,
+        isDynamic,
         safetyResults: audit.safetyResults,
         onProgress: ctx.onProgress,
         abortSignal: ctx.abortSignal,
