@@ -84,7 +84,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                 if (scoreText) scoreText.classList.add('rt-hover');
                 // Hide range values for this beat
                 const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
-                rangeValues.forEach(rv => rv.classList.add('rt-hidden'));
+                rangeValues.forEach(rv => rv.classList.add('ert-hidden'));
                 
                 g.classList.add('rt-gossamer-hover');
             }
@@ -149,7 +149,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                 if (scoreText) scoreText.classList.remove('rt-hover');
                 // Restore range values for this beat
                 const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
-                rangeValues.forEach(rv => rv.classList.remove('rt-hidden'));
+                rangeValues.forEach(rv => rv.classList.remove('ert-hidden'));
                 
                 currentGroup.classList.remove('rt-gossamer-hover');
             }
@@ -179,7 +179,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             if (beatOutline) beatOutline.classList.add('rt-hover');
             // Hide range values for this beat
             const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
-            rangeValues.forEach(rv => rv.classList.add('rt-hidden'));
+            rangeValues.forEach(rv => rv.classList.add('ert-hidden'));
         }
         
         // Find and highlight the beat slice (both have encoded paths now)
@@ -265,8 +265,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => {
             hd.classList.remove('rt-hover');
         });
-        svg.querySelectorAll('.rt-gossamer-range-value.rt-hidden').forEach(rv => {
-            rv.classList.remove('rt-hidden');
+        svg.querySelectorAll('.rt-gossamer-range-value.ert-hidden').forEach(rv => {
+            rv.classList.remove('ert-hidden');
         });
     };
 

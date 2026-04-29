@@ -302,38 +302,38 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.queueItems = [];
 
         if (this.queueData.length === 0) {
-            this.queueTrackEl.createSpan({ cls: 'rt-pulse-ruler-empty', text: 'Queue builds once eligible scenes are found...' });
+            this.queueTrackEl.createSpan({ cls: 'ert-pulse-ruler-empty', text: 'Queue builds once eligible scenes are found...' });
             return;
         }
 
         for (const item of this.queueData) {
-            const entry = this.queueTrackEl.createDiv({ cls: 'rt-pulse-ruler-item' });
+            const entry = this.queueTrackEl.createDiv({ cls: 'ert-pulse-ruler-item' });
             entry.setAttr('data-queue-id', item.id);
 
             // Background icon container (for grade-based icons or synopsis icons)
-            const iconBg = entry.createDiv({ cls: 'rt-pulse-card-icon-bg' });
+            const iconBg = entry.createDiv({ cls: 'ert-pulse-card-icon-bg' });
             iconBg.setAttr('aria-hidden', 'true');
 
             // For synopsis mode, add "?" icon for unprocessed scenes
             if (this.taskType === 'synopsis') {
                 setIcon(iconBg, 'help-circle');
-                entry.addClass('rt-synopsis-pending');
+                entry.addClass('ert-synopsis-pending');
             }
 
             // Content wrapper to sit above the background
-            const content = entry.createDiv({ cls: 'rt-pulse-card-content' });
+            const content = entry.createDiv({ cls: 'ert-pulse-card-content' });
 
             const primaryLabel = item.label?.trim() || '—';
-            content.createSpan({ cls: 'rt-pulse-ruler-value', text: primaryLabel });
+            content.createSpan({ cls: 'ert-pulse-ruler-value', text: primaryLabel });
 
             const secondary = item.detail?.trim();
             if (secondary && secondary !== primaryLabel) {
-                content.createSpan({ cls: 'rt-pulse-ruler-label', text: secondary });
+                content.createSpan({ cls: 'ert-pulse-ruler-label', text: secondary });
             }
 
             // Grade placeholder - always present to reserve space, prevents resize when grade arrives (pulse mode only)
             if (this.taskType !== 'synopsis') {
-                const gradePlaceholder = content.createDiv({ cls: 'rt-pulse-grade rt-pulse-grade-placeholder' });
+                const gradePlaceholder = content.createDiv({ cls: 'ert-pulse-grade ert-pulse-grade-placeholder' });
                 gradePlaceholder.setAttr('aria-hidden', 'true');
             }
 
@@ -362,8 +362,8 @@ export class SceneAnalysisProcessingModal extends Modal {
             : -1;
 
         this.queueItems.forEach((itemEl, index) => {
-            itemEl.toggleClass('rt-is-active', index === activeIndex);
-            itemEl.toggleClass('rt-is-complete', activeIndex !== -1 && index < activeIndex);
+            itemEl.toggleClass('ert-is-active', index === activeIndex);
+            itemEl.toggleClass('ert-is-complete', activeIndex !== -1 && index < activeIndex);
         });
 
         if (activeIndex >= 0) {
@@ -399,12 +399,12 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error', grade?: 'A' | 'B' | 'C'): void {
         // Remove old status classes
-        entry.removeClass('rt-status-success', 'rt-status-error', 'rt-grade-a', 'rt-grade-b', 'rt-grade-c', 'rt-synopsis-pending', 'rt-synopsis-complete');
+        entry.removeClass('ert-status-success', 'ert-status-error', 'ert-grade-a', 'ert-grade-b', 'ert-grade-c', 'ert-synopsis-pending', 'ert-synopsis-complete');
 
         // For errors only (API failures), apply error styling
         if (status === 'error') {
-            entry.addClass('rt-status-error');
-            const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');
+            entry.addClass('ert-status-error');
+            const iconBg = entry.querySelector('.ert-pulse-card-icon-bg');
             if (iconBg) {
                 iconBg.empty();
                 setIcon(iconBg as HTMLElement, 'x-circle');
@@ -414,10 +414,10 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Summary-refresh mode uses completion state instead of Pulse grades.
         if (this.taskType === 'synopsis') {
-            entry.addClass('rt-synopsis-complete');
+            entry.addClass('ert-synopsis-complete');
 
             // Add checkmark icon in background
-            const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');
+            const iconBg = entry.querySelector('.ert-pulse-card-icon-bg');
             if (iconBg) {
                 iconBg.empty();
                 setIcon(iconBg as HTMLElement, 'check');
@@ -427,19 +427,19 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Pulse mode: style by grade
         if (grade) {
-            entry.addClass(`rt-grade-${grade.toLowerCase()}`);
+            entry.addClass(`ert-grade-${grade.toLowerCase()}`);
 
             // Find existing grade placeholder and update it (don't create new element to prevent resize)
-            const gradeEl = entry.querySelector('.rt-pulse-grade') as HTMLElement;
+            const gradeEl = entry.querySelector('.ert-pulse-grade') as HTMLElement;
             if (gradeEl) {
                 gradeEl.setText(grade);
-                gradeEl.removeClass('rt-pulse-grade-placeholder');
-                gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
+                gradeEl.removeClass('ert-pulse-grade-placeholder');
+                gradeEl.addClass(`ert-pulse-grade-${grade.toLowerCase()}`);
                 gradeEl.removeAttribute('aria-hidden');
             }
 
             // Add background icon based on grade
-            const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');
+            const iconBg = entry.querySelector('.ert-pulse-card-icon-bg');
             if (iconBg) {
                 iconBg.empty();
                 const iconName = grade === 'A' ? 'rainbow' : grade === 'B' ? 'mountain' : 'recycle';
@@ -460,9 +460,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         ];
 
         for (const chip of chips) {
-            const chipEl = this.queueNoteEl.createSpan({ cls: 'rt-pulse-ruler-chip' });
-            chipEl.createSpan({ cls: 'rt-pulse-ruler-chip-label', text: chip.label });
-            chipEl.createSpan({ cls: 'rt-pulse-ruler-chip-value', text: this.formatTripletValue(chip.value, chip.fallback) });
+            const chipEl = this.queueNoteEl.createSpan({ cls: 'ert-pulse-ruler-chip' });
+            chipEl.createSpan({ cls: 'ert-pulse-ruler-chip-label', text: chip.label });
+            chipEl.createSpan({ cls: 'ert-pulse-ruler-chip-value', text: this.formatTripletValue(chip.value, chip.fallback) });
         }
     }
 
@@ -581,7 +581,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Optional write-through to the legacy Synopsis key.
             const synopsisControl = controlsCard.createDiv({ cls: 'ert-synopsis-control ert-synopsis-control--row' });
             let synopsisWordLimit = getSynopsisGenerationWordLimit(this.plugin.settings);
-            const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
+            const synopsisCheckboxId = `ert-synopsis-update-toggle-${Date.now()}`;
             const synopsisInfo = synopsisControl.createDiv({ cls: 'ert-synopsis-control-info' });
             synopsisInfo.createEl('label', {
                 text: 'Also update Synopsis',
@@ -638,7 +638,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         // Mode selection
-        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes' });
+        const modesSection = contentEl.createDiv({ cls: 'ert-pulse-modes' });
 
         if (this.taskType === 'synopsis') {
             this.createModeOption(
@@ -702,8 +702,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         // Scene count display
-        const countSection = contentEl.createDiv({ cls: 'rt-pulse-count ert-glass-card' });
-        const countEl = countSection.createDiv({ cls: 'rt-pulse-count-number' });
+        const countSection = contentEl.createDiv({ cls: 'ert-pulse-count ert-glass-card' });
+        const countEl = countSection.createDiv({ cls: 'ert-pulse-count-number' });
 
         // Show loading state initially
         countEl.setText('Calculating...');
@@ -721,16 +721,16 @@ export class SceneAnalysisProcessingModal extends Modal {
                 const estimatedMinutes = Math.ceil(count * 0.1);
                 countEl.empty();
 
-                const countText = countEl.createDiv({ cls: 'rt-pulse-count-text' });
-                countText.createSpan({ text: 'Scenes to process: ', cls: 'rt-pulse-label' });
-                countText.createSpan({ text: `${count}`, cls: 'rt-pulse-number' });
+                const countText = countEl.createDiv({ cls: 'ert-pulse-count-text' });
+                countText.createSpan({ text: 'Scenes to process: ', cls: 'ert-pulse-label' });
+                countText.createSpan({ text: `${count}`, cls: 'ert-pulse-number' });
 
-                const timeText = countEl.createDiv({ cls: 'rt-pulse-time-text' });
-                timeText.createSpan({ text: 'Estimated time: ', cls: 'rt-pulse-label' });
-                timeText.createSpan({ text: `~${estimatedMinutes} minutes`, cls: 'rt-pulse-number' });
+                const timeText = countEl.createDiv({ cls: 'ert-pulse-time-text' });
+                timeText.createSpan({ text: 'Estimated time: ', cls: 'ert-pulse-label' });
+                timeText.createSpan({ text: `~${estimatedMinutes} minutes`, cls: 'ert-pulse-number' });
 
                 if (count > 50) {
-                    const warning = countEl.createDiv({ cls: 'rt-pulse-warning' });
+                    const warning = countEl.createDiv({ cls: 'ert-pulse-warning' });
                     warning.setText('Large batch processing may take significant time and API costs.');
                 }
             } catch (error) {
@@ -832,7 +832,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         description: string,
         isDefault: boolean
     ): HTMLInputElement {
-        const optionEl = container.createDiv({ cls: 'rt-pulse-mode-option' });
+        const optionEl = container.createDiv({ cls: 'ert-pulse-mode-option' });
 
         const radioEl = optionEl.createEl('input', {
             type: 'radio',
@@ -848,11 +848,11 @@ export class SceneAnalysisProcessingModal extends Modal {
             }
         });
 
-        const labelContainer = optionEl.createDiv({ cls: 'rt-pulse-mode-label' });
-        const titleEl = labelContainer.createDiv({ cls: 'rt-pulse-mode-title' });
+        const labelContainer = optionEl.createDiv({ cls: 'ert-pulse-mode-label' });
+        const titleEl = labelContainer.createDiv({ cls: 'ert-pulse-mode-title' });
         titleEl.setText(title);
 
-        const descEl = labelContainer.createDiv({ cls: 'rt-pulse-mode-desc' });
+        const descEl = labelContainer.createDiv({ cls: 'ert-pulse-mode-desc' });
         descEl.setText(description);
 
         // Make the entire option clickable
@@ -937,16 +937,16 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.progressTextEl = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         this.progressTextEl.setText(this.progressSnapshotText);
 
-        this.statusTextEl = progressCard.createDiv({ cls: 'rt-pulse-status-text' });
+        this.statusTextEl = progressCard.createDiv({ cls: 'ert-pulse-status-text' });
         this.statusTextEl.setText(this.statusSnapshotText);
 
-        const rulerBlock = progressCard.createDiv({ cls: 'rt-pulse-ruler-block' });
-        rulerBlock.createDiv({ cls: 'rt-pulse-ruler-title', text: 'Scene queue' });
-        this.queueScrollEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-scroll mod-styled-scrollbar' });
-        this.queueTrackEl = this.queueScrollEl.createDiv({ cls: 'rt-pulse-ruler-track' });
+        const rulerBlock = progressCard.createDiv({ cls: 'ert-pulse-ruler-block' });
+        rulerBlock.createDiv({ cls: 'ert-pulse-ruler-title', text: 'Scene queue' });
+        this.queueScrollEl = rulerBlock.createDiv({ cls: 'ert-pulse-ruler-scroll mod-styled-scrollbar' });
+        this.queueTrackEl = this.queueScrollEl.createDiv({ cls: 'ert-pulse-ruler-track' });
         this.queueItems = [];
         this.renderQueueItems();
-        this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-note' });
+        this.queueNoteEl = rulerBlock.createDiv({ cls: 'ert-pulse-ruler-note' });
         if (this.taskType === 'synopsis') {
             this.queueNoteEl.setText('Processing scenes to generate or update summaries based on scene content.');
         } else {
@@ -990,14 +990,14 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Use the hero status area for the preview - single line with inline label
         this.heroStatusEl.empty();
-        const previewLine = this.heroStatusEl.createDiv({ cls: 'rt-synopsis-preview-line' });
+        const previewLine = this.heroStatusEl.createDiv({ cls: 'ert-synopsis-preview-line' });
 
         // "Previous Summary:" label inline
-        previewLine.createSpan({ cls: 'rt-synopsis-preview-label', text: 'Previous Summary: ' });
+        previewLine.createSpan({ cls: 'ert-synopsis-preview-label', text: 'Previous Summary: ' });
 
         // Old summary in italics (only show if there's a new summary, not during "Generating...")
         if (newSynopsis !== 'Generating...') {
-            const oldText = previewLine.createSpan({ cls: 'rt-synopsis-preview-old' });
+            const oldText = previewLine.createSpan({ cls: 'ert-synopsis-preview-old' });
             oldText.setText(oldSynopsis || '(No summary)');
         }
     }
@@ -1027,9 +1027,9 @@ export class SceneAnalysisProcessingModal extends Modal {
             subtitle: `Review and apply changes`
         });
 
-        const card = contentEl.createDiv({ cls: 'ert-glass-card rt-apply-card' });
+        const card = contentEl.createDiv({ cls: 'ert-glass-card ert-apply-card' });
         card.createDiv({
-            cls: 'rt-apply-message',
+            cls: 'ert-apply-message',
             text: `Processing complete. ${results.size} scenes have new summaries ready to apply, and applying will replace existing Summary values in frontmatter.`
         });
 
@@ -1325,14 +1325,14 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('ert-hidden')) {
             this.errorListEl.removeClass('ert-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
+            const header = this.errorListEl.createDiv({ cls: 'ert-pulse-error-header' });
             header.setText(this.isProcessing ? 'Issues encountered (processing continues):' : 'Issues encountered:');
         }
 
-        const errorItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item' });
+        const errorItem = this.errorListEl.createDiv({ cls: 'ert-pulse-error-item' });
         errorItem.setText(normalizedMessage);
         if (hint) {
-            errorItem.createDiv({ cls: 'rt-pulse-error-hint', text: hint });
+            errorItem.createDiv({ cls: 'ert-pulse-error-hint', text: hint });
         }
     }
 
@@ -1399,11 +1399,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('ert-hidden')) {
             this.errorListEl.removeClass('ert-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
+            const header = this.errorListEl.createDiv({ cls: 'ert-pulse-error-header' });
             header.setText(this.isProcessing ? 'Issues encountered (processing continues):' : 'Issues encountered:');
         }
 
-        const warningItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item rt-pulse-warning-item' });
+        const warningItem = this.errorListEl.createDiv({ cls: 'ert-pulse-error-item ert-pulse-warning-item' });
         warningItem.setText(message);
     }
 
@@ -1447,12 +1447,12 @@ export class SceneAnalysisProcessingModal extends Modal {
             const statusText = statusParts.join(' | ');
             this.statusSnapshotText = statusText;
             this.statusTextEl.setText(this.statusSnapshotText);
-            this.statusTextEl.removeClass('rt-error-text', 'rt-warning-text', 'rt-success-text');
+            this.statusTextEl.removeClass('ert-error-text', 'ert-warning-text', 'ert-success-text');
             if (statusText) {
                 if (hasErrors && successCount === 0) {
-                    this.statusTextEl.addClass('rt-error-text');
+                    this.statusTextEl.addClass('ert-error-text');
                 } else {
-                    this.statusTextEl.addClass('rt-warning-text');
+                    this.statusTextEl.addClass('ert-warning-text');
                 }
             }
         }
@@ -1466,39 +1466,39 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.errorListEl.empty();
         }
 
-        contentEl.querySelectorAll('.rt-pulse-summary').forEach(el => el.remove());
+        contentEl.querySelectorAll('.ert-pulse-summary').forEach(el => el.remove());
         if (hasIssues) {
-            const summaryContainer = contentEl.createDiv({ cls: 'rt-pulse-summary ert-glass-card' });
-            summaryContainer.createEl('h3', { text: 'Processing details', cls: 'rt-pulse-summary-title' });
-            const summaryStats = summaryContainer.createDiv({ cls: 'rt-pulse-summary-stats' });
+            const summaryContainer = contentEl.createDiv({ cls: 'ert-pulse-summary ert-glass-card' });
+            summaryContainer.createEl('h3', { text: 'Processing details', cls: 'ert-pulse-summary-title' });
+            const summaryStats = summaryContainer.createDiv({ cls: 'ert-pulse-summary-stats' });
             if (hasErrors) {
                 summaryStats.createDiv({
-                    cls: 'rt-pulse-summary-row rt-pulse-summary-error',
+                    cls: 'ert-pulse-summary-row ert-pulse-summary-error',
                     text: `Errors: ${this.errorCount}`
                 });
             }
             if (hasWarnings) {
                 summaryStats.createDiv({
-                    cls: 'rt-pulse-summary-row rt-pulse-summary-warning',
+                    cls: 'ert-pulse-summary-row ert-pulse-summary-warning',
                     text: `Warnings: ${this.warningCount} (skipped due to validation)`
                 });
             }
 
             if (hasErrors && this.errorMessages.length > 0) {
-                const errorDetails = summaryContainer.createDiv({ cls: 'rt-pulse-summary-list' });
+                const errorDetails = summaryContainer.createDiv({ cls: 'ert-pulse-summary-list' });
                 this.errorMessages.forEach(({ message, hint }) => {
-                    const item = errorDetails.createDiv({ cls: 'rt-pulse-summary-item rt-pulse-summary-item-error' });
+                    const item = errorDetails.createDiv({ cls: 'ert-pulse-summary-item ert-pulse-summary-item-error' });
                     item.createSpan({ text: message });
                     if (hint) {
-                        item.createDiv({ cls: 'rt-pulse-summary-hint', text: `Possible fix: ${hint}` });
+                        item.createDiv({ cls: 'ert-pulse-summary-hint', text: `Possible fix: ${hint}` });
                     }
                 });
             }
 
             if (hasWarnings && this.warningMessages.length > 0) {
-                const warningDetails = summaryContainer.createDiv({ cls: 'rt-pulse-summary-list' });
+                const warningDetails = summaryContainer.createDiv({ cls: 'ert-pulse-summary-list' });
                 this.warningMessages.forEach((warning) => {
-                    const item = warningDetails.createDiv({ cls: 'rt-pulse-summary-item rt-pulse-summary-item-warning' });
+                    const item = warningDetails.createDiv({ cls: 'ert-pulse-summary-item ert-pulse-summary-item-warning' });
                     item.createSpan({ text: warning });
                 });
             }
@@ -1527,12 +1527,12 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Summary-refresh mode with staged results: show Apply/Discard actions.
             if (this.taskType === 'synopsis' && this.hasPendingSynopsisResults && this.processedResults.size > 0) {
                 // Render apply confirmation card above the action row.
-                contentEl.querySelectorAll('.rt-synopsis-apply-card').forEach(el => el.remove());
-                const applyCard = contentEl.createDiv({ cls: 'ert-glass-card rt-synopsis-apply-card' });
+                contentEl.querySelectorAll('.ert-synopsis-apply-card').forEach(el => el.remove());
+                const applyCard = contentEl.createDiv({ cls: 'ert-glass-card ert-synopsis-apply-card' });
                 const hasSynopsisToo = this.processedSynopsisResults.size > 0;
                 const artifactLabel = hasSynopsisToo ? 'summaries and synopses' : 'summaries';
                 applyCard.createDiv({
-                    cls: 'rt-apply-message',
+                    cls: 'ert-apply-message',
                     text: hasSynopsisToo
                         ? `Processing complete. ${this.processedResults.size} scenes have new ${artifactLabel} ready to apply, and applying will replace existing Summary and Synopsis values in frontmatter.`
                         : `Processing complete. ${this.processedResults.size} scenes have new ${artifactLabel} ready to apply, and applying will replace existing Summary values in frontmatter.`

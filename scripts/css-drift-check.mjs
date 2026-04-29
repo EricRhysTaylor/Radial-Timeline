@@ -8,6 +8,9 @@ const FILES = [
   "src/styles/rt-ui.css",
   "src/styles/settings.css",
   "src/styles/modal.css",
+  "src/styles/timeline-audit.css",
+  "src/styles/timeline-repair.css",
+  "src/styles/book-designer.css",
   "src/styles/legacy/apr-legacy.css",
   "src/styles/legacy/rt-ui-legacy.css",
   "styles.css", // optional: if your bundler emits this
@@ -407,6 +410,24 @@ if (LOOSE_MODE && !WRITE_BASELINE) {
       "warn budget",
       "warn-budget"
     );
+  } else if (MAINTENANCE_MODE) {
+    const regressions = ["raw-hex", "spacing-px", "shadow-rgba", "rt-legacy"]
+      .map((key) => {
+        const currentCount = warnSummary.byRule[key] ?? 0;
+        const baselineCount = baseline.warningsByRule?.[key] ?? 0;
+        return { key, currentCount, baselineCount, delta: currentCount - baselineCount };
+      })
+      .filter((entry) => entry.delta > 0);
+    if (regressions.length > 0) {
+      regressions.forEach(({ key, currentCount, baselineCount, delta }) => {
+        addFail(
+          BASELINE_PATH,
+          `Maintenance regression for ${key}: ${currentCount} > ${baselineCount}.`,
+          `${key} +${delta}`,
+          "warn-budget"
+        );
+      });
+    }
   }
 }
 

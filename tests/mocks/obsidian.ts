@@ -149,6 +149,25 @@ export class Notice {
   }
 }
 
+export class MenuItem {
+  setTitle(_title: string): this { return this; }
+  setIcon(_icon: string): this { return this; }
+  setDisabled(_disabled: boolean): this { return this; }
+  onClick(_callback: () => void): this { return this; }
+}
+
+export class Menu {
+  items: MenuItem[] = [];
+  addItem(callback: (item: MenuItem) => void): this {
+    const item = new MenuItem();
+    callback(item);
+    this.items.push(item);
+    return this;
+  }
+  addSeparator(): this { return this; }
+  showAtMouseEvent(_event: MouseEvent): this { return this; }
+}
+
 // Request URL stub
 export async function requestUrl(options: unknown): Promise<{ status: number; json: unknown; text: string }> {
   if (process.env.RT_USE_LIVE_OBSIDIAN_REQUEST === '1') {

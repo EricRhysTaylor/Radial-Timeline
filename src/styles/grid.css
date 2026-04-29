@@ -148,8 +148,8 @@
 }
 
 
-/* Hide range values when JavaScript adds rt-hidden class on hover */
-.rt-gossamer-range-value.rt-hidden {
+/* Hide range values when JavaScript adds ert-hidden class on hover */
+.rt-gossamer-range-value.ert-hidden {
   opacity: 0.7;
 }
 
@@ -251,7 +251,7 @@
 .radial-timeline-svg.gossamer-hover .rt-gossamer-dot-center:not(.rt-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-dot-historical:not(.rt-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-score-text:not(.rt-hover),
-.radial-timeline-svg.gossamer-hover .rt-gossamer-range-value:not(.rt-hidden) {
+.radial-timeline-svg.gossamer-hover .rt-gossamer-range-value:not(.ert-hidden) {
   opacity: 0.3;
 }
 .radial-timeline-svg[data-shift-mode="active"] .rt-gossamer-grid-spoke.rt-act-boundary {

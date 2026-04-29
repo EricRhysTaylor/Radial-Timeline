@@ -81,7 +81,7 @@ If you want the “how-to” details (setup, sets, properties, reordering, advan
 
 ### YouTube Video Suite
 
-Full series on the [Radial Timeline YouTube channel](https://www.youtube.com/@RadialTimeline):
+Ongoing series on the [Radial Timeline YouTube channel](https://www.youtube.com/@RadialTimeline):
 
 - **Volume 1 — Intro**: [Original home page intro video](https://youtu.be/7noTSFaj8Eo)
 - **Volume 2 — Chronologue Mode**: [Chronologue Mode Volume 2](https://youtu.be/XKWq32LB0d0?si=VF6S1OELNKIAB-h-)

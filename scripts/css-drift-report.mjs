@@ -13,6 +13,9 @@ const FILES = [
   "src/styles/rt-ui.css",
   "src/styles/settings.css",
   "src/styles/modal.css",
+  "src/styles/timeline-audit.css",
+  "src/styles/timeline-repair.css",
+  "src/styles/book-designer.css",
   "src/styles/legacy/apr-legacy.css",
   "src/styles/legacy/rt-ui-legacy.css",
 ].map((p) => path.join(ROOT, p));

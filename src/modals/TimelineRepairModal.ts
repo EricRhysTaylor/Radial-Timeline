@@ -122,13 +122,13 @@ export class TimelineRepairModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'rt-timeline-repair-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-timeline-repair-modal-shell');
             modalEl.style.width = '900px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '95vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-timeline-repair-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-timeline-repair-modal');
 
         // Load scene data
         await this.loadSceneData();
@@ -253,50 +253,50 @@ export class TimelineRepairModal extends Modal {
             });
 
         // Setup configuration
-        const setupCard = this.contentEl.createDiv({ cls: 'ert-glass-card rt-timeline-repair-setup-card' });
-        const setupGrid = setupCard.createDiv({ cls: 'rt-timeline-repair-setup-grid' });
-        const leftCol = setupGrid.createDiv({ cls: 'rt-timeline-repair-config-column' });
-        const rightCol = setupGrid.createDiv({ cls: 'rt-timeline-repair-config-column' });
+        const setupCard = this.contentEl.createDiv({ cls: 'ert-glass-card ert-timeline-repair-setup-card' });
+        const setupGrid = setupCard.createDiv({ cls: 'ert-timeline-repair-setup-grid' });
+        const leftCol = setupGrid.createDiv({ cls: 'ert-timeline-repair-config-column' });
+        const rightCol = setupGrid.createDiv({ cls: 'ert-timeline-repair-config-column' });
 
-        const anchorSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
-        anchorSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: t('timelineRepairModal.anchor.name'), cls: 'rt-timeline-repair-block-title' });
+        const anchorSection = leftCol.createDiv({ cls: 'ert-timeline-repair-config-block' });
+        anchorSection.createDiv({ cls: 'ert-timeline-repair-block-header' })
+            .createEl('h5', { text: t('timelineRepairModal.anchor.name'), cls: 'ert-timeline-repair-block-title' });
         anchorSection.createDiv({
-            cls: 'rt-timeline-repair-section-desc',
+            cls: 'ert-timeline-repair-section-desc',
             text: t('timelineRepairModal.anchor.desc')
         });
 
-        const anchorRow = anchorSection.createDiv({ cls: 'rt-timeline-repair-anchor-row' });
+        const anchorRow = anchorSection.createDiv({ cls: 'ert-timeline-repair-anchor-row' });
 
         // Date input
-        const dateInputContainer = anchorRow.createDiv({ cls: 'rt-timeline-repair-input-group' });
-        dateInputContainer.createEl('label', { text: t('timelineRepairModal.anchor.dateLabel'), cls: 'rt-timeline-repair-label' });
+        const dateInputContainer = anchorRow.createDiv({ cls: 'ert-timeline-repair-input-group' });
+        dateInputContainer.createEl('label', { text: t('timelineRepairModal.anchor.dateLabel'), cls: 'ert-timeline-repair-label' });
         const dateInput = dateInputContainer.createEl('input', {
             type: 'date',
-            cls: 'rt-timeline-repair-date-input ert-input ert-input--full'
+            cls: 'ert-timeline-repair-date-input ert-input ert-input--full'
         });
 
         const defaultAnchorWhen = this.getDefaultAnchorWhen();
         dateInput.value = `${defaultAnchorWhen.getFullYear()}-${String(defaultAnchorWhen.getMonth() + 1).padStart(2, '0')}-${String(defaultAnchorWhen.getDate()).padStart(2, '0')}`;
 
         // Time input
-        const timeInputContainer = anchorRow.createDiv({ cls: 'rt-timeline-repair-input-group' });
-        timeInputContainer.createEl('label', { text: t('timelineRepairModal.anchor.timeLabel'), cls: 'rt-timeline-repair-label' });
+        const timeInputContainer = anchorRow.createDiv({ cls: 'ert-timeline-repair-input-group' });
+        timeInputContainer.createEl('label', { text: t('timelineRepairModal.anchor.timeLabel'), cls: 'ert-timeline-repair-label' });
         const timeInput = timeInputContainer.createEl('input', {
             type: 'time',
-            cls: 'rt-timeline-repair-time-input ert-input ert-input--full'
+            cls: 'ert-timeline-repair-time-input ert-input ert-input--full'
         });
         timeInput.value = `${String(defaultAnchorWhen.getHours()).padStart(2, '0')}:${String(defaultAnchorWhen.getMinutes()).padStart(2, '0')}`;
 
         let selectedPattern: PatternPresetId = 'beats2';
 
-        const previewSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block rt-timeline-repair-preview-section' });
-        previewSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: t('timelineRepairModal.preview.name'), cls: 'rt-timeline-repair-block-title' });
-        const previewPanel = previewSection.createDiv({ cls: 'rt-timeline-repair-preview-panel' });
-        const previewStart = previewPanel.createDiv({ cls: 'rt-timeline-repair-preview-start' });
-        const previewStrip = previewPanel.createDiv({ cls: 'rt-timeline-repair-preview-strip' });
-        const previewHelper = previewSection.createDiv({ cls: 'rt-timeline-repair-preview-helper' });
+        const previewSection = leftCol.createDiv({ cls: 'ert-timeline-repair-config-block ert-timeline-repair-preview-section' });
+        previewSection.createDiv({ cls: 'ert-timeline-repair-block-header' })
+            .createEl('h5', { text: t('timelineRepairModal.preview.name'), cls: 'ert-timeline-repair-block-title' });
+        const previewPanel = previewSection.createDiv({ cls: 'ert-timeline-repair-preview-panel' });
+        const previewStart = previewPanel.createDiv({ cls: 'ert-timeline-repair-preview-start' });
+        const previewStrip = previewPanel.createDiv({ cls: 'ert-timeline-repair-preview-strip' });
+        const previewHelper = previewSection.createDiv({ cls: 'ert-timeline-repair-preview-helper' });
 
         const updateScaffoldPreview = (): void => {
             const anchorWhen = this.parseAnchorWhenFromInputs(dateInput.value, timeInput.value, defaultAnchorWhen);
@@ -306,12 +306,12 @@ export class TimelineRepairModal extends Modal {
             previewStrip.empty();
 
             preview.steps.forEach((step, index) => {
-                const stepEl = previewStrip.createDiv({ cls: 'rt-timeline-repair-preview-step' });
-                stepEl.createDiv({ cls: 'rt-timeline-repair-preview-scene', text: step.sceneLabel });
-                stepEl.createDiv({ cls: 'rt-timeline-repair-preview-label', text: step.spacingLabel });
+                const stepEl = previewStrip.createDiv({ cls: 'ert-timeline-repair-preview-step' });
+                stepEl.createDiv({ cls: 'ert-timeline-repair-preview-scene', text: step.sceneLabel });
+                stepEl.createDiv({ cls: 'ert-timeline-repair-preview-label', text: step.spacingLabel });
 
                 if (index < preview.steps.length - 1) {
-                    previewStrip.createSpan({ cls: 'rt-timeline-repair-preview-arrow', text: '→' });
+                    previewStrip.createSpan({ cls: 'ert-timeline-repair-preview-arrow', text: '→' });
                 }
             });
         };
@@ -320,34 +320,34 @@ export class TimelineRepairModal extends Modal {
         timeInput.addEventListener('input', updateScaffoldPreview);
 
         // Pattern selection
-        const patternSection = rightCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
-        patternSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: t('timelineRepairModal.pattern.name'), cls: 'rt-timeline-repair-block-title' });
+        const patternSection = rightCol.createDiv({ cls: 'ert-timeline-repair-config-block' });
+        patternSection.createDiv({ cls: 'ert-timeline-repair-block-header' })
+            .createEl('h5', { text: t('timelineRepairModal.pattern.name'), cls: 'ert-timeline-repair-block-title' });
         patternSection.createDiv({
-            cls: 'rt-timeline-repair-section-desc',
+            cls: 'ert-timeline-repair-section-desc',
             text: t('timelineRepairModal.pattern.desc')
         });
 
-        const patternRow = patternSection.createDiv({ cls: 'rt-timeline-repair-pattern-grid' });
+        const patternRow = patternSection.createDiv({ cls: 'ert-timeline-repair-pattern-grid' });
 
         for (const preset of Object.values(SCAFFOLD_PATTERNS)) {
-            const option = patternRow.createEl('label', { cls: 'rt-timeline-repair-pattern-option' });
+            const option = patternRow.createEl('label', { cls: 'ert-timeline-repair-pattern-option' });
             const radio = option.createEl('input', {
                 type: 'radio',
-                cls: 'rt-timeline-repair-pattern-radio',
-                attr: { name: 'rt-timeline-repair-pattern' }
+                cls: 'ert-timeline-repair-pattern-radio',
+                attr: { name: 'ert-timeline-repair-pattern' }
             });
             radio.checked = preset.id === selectedPattern;
-            option.toggleClass('rt-is-active', radio.checked);
+            option.toggleClass('ert-is-active', radio.checked);
 
-            const optionText = option.createDiv({ cls: 'rt-timeline-repair-pattern-text' });
-            optionText.createDiv({ text: preset.label, cls: 'rt-timeline-repair-pattern-label' });
-            optionText.createDiv({ text: preset.description, cls: 'rt-timeline-repair-pattern-desc' });
+            const optionText = option.createDiv({ cls: 'ert-timeline-repair-pattern-text' });
+            optionText.createDiv({ text: preset.label, cls: 'ert-timeline-repair-pattern-label' });
+            optionText.createDiv({ text: preset.description, cls: 'ert-timeline-repair-pattern-desc' });
 
             radio.addEventListener('change', () => {
                 if (!radio.checked) return;
-                patternRow.querySelectorAll('.rt-timeline-repair-pattern-option').forEach(p => {
-                    p.toggleClass('rt-is-active', p === option);
+                patternRow.querySelectorAll('.ert-timeline-repair-pattern-option').forEach(p => {
+                    p.toggleClass('ert-is-active', p === option);
                 });
                 selectedPattern = preset.id;
                 updateScaffoldPreview();
@@ -356,21 +356,21 @@ export class TimelineRepairModal extends Modal {
 
         updateScaffoldPreview();
 
-        const optionsSection = rightCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
-        optionsSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: t('timelineRepairModal.refinements.name'), cls: 'rt-timeline-repair-block-title' });
+        const optionsSection = rightCol.createDiv({ cls: 'ert-timeline-repair-config-block' });
+        optionsSection.createDiv({ cls: 'ert-timeline-repair-block-header' })
+            .createEl('h5', { text: t('timelineRepairModal.refinements.name'), cls: 'ert-timeline-repair-block-title' });
         optionsSection.createDiv({
-            cls: 'rt-timeline-repair-section-desc',
+            cls: 'ert-timeline-repair-section-desc',
             text: t('timelineRepairModal.refinements.desc')
         });
 
         let useTextCues = true;
 
-        const baseRow = optionsSection.createDiv({ cls: 'rt-timeline-repair-option-row rt-is-static' });
-        const baseText = baseRow.createDiv({ cls: 'rt-timeline-repair-level-text' });
-        baseText.createDiv({ cls: 'rt-timeline-repair-level-title', text: t('timelineRepairModal.refinements.baseScaffoldTitle') });
-        baseText.createDiv({ cls: 'rt-timeline-repair-level-desc', text: t('timelineRepairModal.refinements.baseScaffoldDesc') });
-        baseRow.createSpan({ cls: 'rt-timeline-repair-status-pill', text: t('timelineRepairModal.refinements.alwaysOn') });
+        const baseRow = optionsSection.createDiv({ cls: 'ert-timeline-repair-option-row ert-is-static' });
+        const baseText = baseRow.createDiv({ cls: 'ert-timeline-repair-level-text' });
+        baseText.createDiv({ cls: 'ert-timeline-repair-level-title', text: t('timelineRepairModal.refinements.baseScaffoldTitle') });
+        baseText.createDiv({ cls: 'ert-timeline-repair-level-desc', text: t('timelineRepairModal.refinements.baseScaffoldDesc') });
+        baseRow.createSpan({ cls: 'ert-timeline-repair-status-pill', text: t('timelineRepairModal.refinements.alwaysOn') });
 
         this.createLevelToggle(
             optionsSection,
@@ -413,11 +413,11 @@ export class TimelineRepairModal extends Modal {
         disabled: boolean,
         onChange?: (value: boolean) => void
     ): HTMLElement {
-        const row = container.createDiv({ cls: 'rt-timeline-repair-option-row' });
+        const row = container.createDiv({ cls: 'ert-timeline-repair-option-row' });
 
-        const textContainer = row.createDiv({ cls: 'rt-timeline-repair-level-text' });
-        textContainer.createDiv({ cls: 'rt-timeline-repair-level-title', text: title });
-        textContainer.createDiv({ cls: 'rt-timeline-repair-level-desc', text: description });
+        const textContainer = row.createDiv({ cls: 'ert-timeline-repair-level-text' });
+        textContainer.createDiv({ cls: 'ert-timeline-repair-level-title', text: title });
+        textContainer.createDiv({ cls: 'ert-timeline-repair-level-desc', text: description });
 
         const toggle = new ToggleComponent(row);
         toggle.setValue(initialValue);
@@ -524,8 +524,8 @@ export class TimelineRepairModal extends Modal {
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
 
         // Badge row: Quick Scaffold + status counts
-        const badgeRow = header.createDiv({ cls: 'rt-timeline-repair-badge-row' });
-        this.summaryBarEl = badgeRow.createSpan({ cls: 'ert-modal-badge rt-timeline-repair-review-badge' });
+        const badgeRow = header.createDiv({ cls: 'ert-timeline-repair-badge-row' });
+        this.summaryBarEl = badgeRow.createSpan({ cls: 'ert-modal-badge ert-timeline-repair-review-badge' });
         this.updateSummaryBar();
 
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.review.title') });
@@ -535,7 +535,7 @@ export class TimelineRepairModal extends Modal {
         });
 
         // Filter toggles
-        const filterRow = this.contentEl.createDiv({ cls: 'rt-timeline-repair-filter-row' });
+        const filterRow = this.contentEl.createDiv({ cls: 'ert-timeline-repair-filter-row' });
 
         this.createFilterPill(filterRow, t('timelineRepairModal.review.filterNeedsReview'), this.filterNeedsReview, (val) => {
             this.filterNeedsReview = val;
@@ -550,10 +550,10 @@ export class TimelineRepairModal extends Modal {
         }
 
         // Ripple mode toggle
-        const rippleContainer = filterRow.createDiv({ cls: 'rt-timeline-repair-ripple-toggle' });
+        const rippleContainer = filterRow.createDiv({ cls: 'ert-timeline-repair-ripple-toggle' });
         rippleContainer.createSpan({ text: t('timelineRepairModal.review.rippleMode') });
 
-        const rippleHelp = rippleContainer.createSpan({ cls: 'rt-timeline-repair-ripple-help' });
+        const rippleHelp = rippleContainer.createSpan({ cls: 'ert-timeline-repair-ripple-help' });
         setIcon(rippleHelp, 'help-circle');
         rippleHelp.setAttribute('title', t('timelineRepairModal.review.rippleModeHelp'));
         rippleHelp.setAttribute('aria-label',
@@ -570,7 +570,7 @@ export class TimelineRepairModal extends Modal {
         });
 
         // Scene list container
-        this.sceneListEl = this.contentEl.createDiv({ cls: 'rt-timeline-repair-scene-list' });
+        this.sceneListEl = this.contentEl.createDiv({ cls: 'ert-timeline-repair-scene-list' });
         this.renderSceneList();
 
         // Action buttons
@@ -604,7 +604,7 @@ export class TimelineRepairModal extends Modal {
             });
 
         // Spacer
-        buttonRow.createDiv({ cls: 'rt-timeline-repair-button-spacer' });
+        buttonRow.createDiv({ cls: 'ert-timeline-repair-button-spacer' });
 
         new ButtonComponent(buttonRow)
             .setButtonText(t('timelineRepairModal.review.backButton'))
@@ -630,7 +630,7 @@ export class TimelineRepairModal extends Modal {
             parts.push(t('timelineRepairModal.review.summaryNeedReview', { count: reviewCount }).toUpperCase());
         }
         this.summaryBarEl.setText(parts.join(' • '));
-        this.summaryBarEl.toggleClass('rt-has-warnings', reviewCount > 0);
+        this.summaryBarEl.toggleClass('ert-has-warnings', reviewCount > 0);
     }
 
     private createFilterPill(
@@ -639,13 +639,13 @@ export class TimelineRepairModal extends Modal {
         active: boolean,
         onChange: (value: boolean) => void
     ): void {
-        const pill = container.createDiv({ cls: 'rt-timeline-repair-filter-pill' });
-        if (active) pill.addClass('rt-is-active');
+        const pill = container.createDiv({ cls: 'ert-timeline-repair-filter-pill' });
+        if (active) pill.addClass('ert-is-active');
         pill.setText(label);
 
         pill.addEventListener('click', () => {
-            const newActive = !pill.hasClass('rt-is-active');
-            pill.toggleClass('rt-is-active', newActive);
+            const newActive = !pill.hasClass('ert-is-active');
+            pill.toggleClass('ert-is-active', newActive);
             onChange(newActive);
         });
     }
@@ -667,7 +667,7 @@ export class TimelineRepairModal extends Modal {
 
         if (entries.length === 0) {
             this.sceneListEl.createDiv({
-                cls: 'rt-timeline-repair-empty',
+                cls: 'ert-timeline-repair-empty',
                 text: t('timelineRepairModal.review.emptyFilter')
             });
             return;
@@ -687,13 +687,13 @@ export class TimelineRepairModal extends Modal {
         const isSelected = this.selectedIndices.has(idx);
         const currentBucket = detectTimeBucket(effectiveWhen);
 
-        const card = this.sceneListEl.createDiv({ cls: 'rt-timeline-repair-scene-card' });
-        if (isSelected) card.addClass('rt-is-selected');
-        if (entry.needsReview) card.addClass('rt-needs-review');
-        if (entry.hasBackwardTime) card.addClass('rt-has-backward-time');
+        const card = this.sceneListEl.createDiv({ cls: 'ert-timeline-repair-scene-card' });
+        if (isSelected) card.addClass('ert-is-selected');
+        if (entry.needsReview) card.addClass('ert-needs-review');
+        if (entry.hasBackwardTime) card.addClass('ert-has-backward-time');
 
         // Selection checkbox
-        const checkbox = card.createEl('input', { type: 'checkbox', cls: 'rt-timeline-repair-checkbox' });
+        const checkbox = card.createEl('input', { type: 'checkbox', cls: 'ert-timeline-repair-checkbox' });
         checkbox.checked = isSelected;
         checkbox.addEventListener('change', () => {
             if (checkbox.checked) {
@@ -701,29 +701,29 @@ export class TimelineRepairModal extends Modal {
             } else {
                 this.selectedIndices.delete(idx);
             }
-            card.toggleClass('rt-is-selected', checkbox.checked);
+            card.toggleClass('ert-is-selected', checkbox.checked);
             this.updateSummaryBar();
         });
 
         // Two-line content area
-        const contentArea = card.createDiv({ cls: 'rt-timeline-repair-card-content' });
+        const contentArea = card.createDiv({ cls: 'ert-timeline-repair-card-content' });
 
         // LINE 1: identity + signal
-        const line1 = contentArea.createDiv({ cls: 'rt-timeline-repair-line1' });
+        const line1 = contentArea.createDiv({ cls: 'ert-timeline-repair-line1' });
 
         line1.createSpan({
             text: `#${idx + 1}`,
-            cls: 'rt-timeline-repair-scene-number'
+            cls: 'ert-timeline-repair-scene-number'
         });
         line1.createSpan({
             text: entry.scene.title || t('timelineRepairModal.review.untitled'),
-            cls: 'rt-timeline-repair-scene-title'
+            cls: 'ert-timeline-repair-scene-title'
         });
 
         // Cue chips (blue keyword badges, linked to note origin)
         if (entry.source === 'keyword' && entry.cues?.length) {
             for (const cue of entry.cues) {
-                const cueChip = line1.createEl('a', { cls: 'rt-timeline-repair-cue-chip' });
+                const cueChip = line1.createEl('a', { cls: 'ert-timeline-repair-cue-chip' });
                 cueChip.setText(`"${cue.match}"`);
                 cueChip.setAttribute('aria-label', `Open note and search for "${cue.match}"`);
                 cueChip.addEventListener('click', (e) => {
@@ -737,12 +737,12 @@ export class TimelineRepairModal extends Modal {
 
         // Warning badges
         if (entry.hasBackwardTime) {
-            const warningBadge = line1.createSpan({ cls: 'rt-timeline-repair-warning-badge' });
+            const warningBadge = line1.createSpan({ cls: 'ert-timeline-repair-warning-badge' });
             setIcon(warningBadge, 'alert-triangle');
             warningBadge.setAttribute('aria-label', t('timelineRepairModal.review.warningBackwardTime'));
         }
         if (entry.hasLargeGap) {
-            const gapBadge = line1.createSpan({ cls: 'rt-timeline-repair-gap-badge' });
+            const gapBadge = line1.createSpan({ cls: 'ert-timeline-repair-gap-badge' });
             setIcon(gapBadge, 'clock');
             gapBadge.setAttribute('aria-label', t('timelineRepairModal.review.warningLargeGap'));
         }
@@ -750,26 +750,26 @@ export class TimelineRepairModal extends Modal {
         // Pattern compliance chip
         const complianceLabel = this.getComplianceLabel(entry);
         const complianceChip = line1.createSpan({
-            cls: 'rt-timeline-repair-compliance-chip'
+            cls: 'ert-timeline-repair-compliance-chip'
         });
-        complianceChip.addClass(`rt-compliance-${complianceLabel.replace(/\s+/g, '-')}`);
+        complianceChip.addClass(`ert-compliance-${complianceLabel.replace(/\s+/g, '-')}`);
         complianceChip.setText(complianceLabel);
 
         // LINE 2: timeline + actions
-        const line2 = contentArea.createDiv({ cls: 'rt-timeline-repair-line2' });
+        const line2 = contentArea.createDiv({ cls: 'ert-timeline-repair-line2' });
 
         // Left: proposed + comparison
-        const whenArea = line2.createDiv({ cls: 'rt-timeline-repair-when-area' });
+        const whenArea = line2.createDiv({ cls: 'ert-timeline-repair-when-area' });
 
         // Proposed When (primary, prominent)
-        const proposedLine = whenArea.createDiv({ cls: 'rt-timeline-repair-proposed-when' });
+        const proposedLine = whenArea.createDiv({ cls: 'ert-timeline-repair-proposed-when' });
         proposedLine.createSpan({
             text: formatWhenForDisplay(effectiveWhen),
-            cls: 'rt-timeline-repair-proposed-date'
+            cls: 'ert-timeline-repair-proposed-date'
         });
         proposedLine.createSpan({
             text: ` · ${TIME_BUCKET_LABELS[currentBucket]}`,
-            cls: 'rt-timeline-repair-proposed-bucket'
+            cls: 'ert-timeline-repair-proposed-bucket'
         });
 
         // Current When comparison (secondary, smaller) — only if different
@@ -779,42 +779,42 @@ export class TimelineRepairModal extends Modal {
             const originalBucket = detectTimeBucket(entry.originalWhen);
 
             if (originalDisplay !== proposedDisplay || originalBucket !== currentBucket) {
-                const comparisonLine = whenArea.createDiv({ cls: 'rt-timeline-repair-original-when' });
+                const comparisonLine = whenArea.createDiv({ cls: 'ert-timeline-repair-original-when' });
                 comparisonLine.setText(`was ${originalDisplay} · ${TIME_BUCKET_LABELS[originalBucket]}`);
             }
         }
 
         // Right: controls
-        const controlsArea = line2.createDiv({ cls: 'rt-timeline-repair-controls' });
+        const controlsArea = line2.createDiv({ cls: 'ert-timeline-repair-controls' });
 
         // Day controls
-        const dayRow = controlsArea.createDiv({ cls: 'rt-timeline-repair-day-controls' });
+        const dayRow = controlsArea.createDiv({ cls: 'ert-timeline-repair-day-controls' });
 
-        const dayMinusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayMinus') });
+        const dayMinusBtn = dayRow.createEl('button', { cls: 'ert-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayMinus') });
         dayMinusBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleDayShift(idx, -1);
         });
 
-        const dayPlusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayPlus') });
+        const dayPlusBtn = dayRow.createEl('button', { cls: 'ert-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayPlus') });
         dayPlusBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleDayShift(idx, 1);
         });
 
         // Time bucket pills
-        const bucketRow = controlsArea.createDiv({ cls: 'rt-timeline-repair-bucket-controls' });
+        const bucketRow = controlsArea.createDiv({ cls: 'ert-timeline-repair-bucket-controls' });
 
         const buckets: TimeBucket[] = ['morning', 'afternoon', 'evening', 'night'];
         for (const bucket of buckets) {
             const pill = bucketRow.createEl('button', {
-                cls: 'rt-timeline-repair-bucket-pill',
+                cls: 'ert-timeline-repair-bucket-pill',
                 text: bucket.charAt(0).toUpperCase()
             });
             pill.setAttribute('aria-label', TIME_BUCKET_LABELS[bucket]);
 
             if (bucket === currentBucket) {
-                pill.addClass('rt-is-active');
+                pill.addClass('ert-is-active');
             }
 
             pill.addEventListener('click', (e) => {
@@ -880,10 +880,10 @@ export class TimelineRepairModal extends Modal {
     private navigateScene(delta: number): boolean {
         if (this.phase !== 'review' || !this.sceneListEl) return false;
 
-        const cards = this.sceneListEl.querySelectorAll('.rt-timeline-repair-scene-card');
+        const cards = this.sceneListEl.querySelectorAll('.ert-timeline-repair-scene-card');
         if (cards.length === 0) return false;
 
-        const focused = this.sceneListEl.querySelector('.rt-timeline-repair-scene-card:focus');
+        const focused = this.sceneListEl.querySelector('.ert-timeline-repair-scene-card:focus');
         let currentIdx = focused ? Array.from(cards).indexOf(focused as HTMLElement) : -1;
 
         const newIdx = Math.max(0, Math.min(cards.length - 1, currentIdx + delta));
@@ -895,10 +895,10 @@ export class TimelineRepairModal extends Modal {
     private shiftFocusedScene(days: number): boolean {
         if (this.phase !== 'review' || !this.sceneListEl || !this.session) return false;
 
-        const focused = this.sceneListEl.querySelector('.rt-timeline-repair-scene-card:focus');
+        const focused = this.sceneListEl.querySelector('.ert-timeline-repair-scene-card:focus');
         if (!focused) return false;
 
-        const cards = Array.from(this.sceneListEl.querySelectorAll('.rt-timeline-repair-scene-card'));
+        const cards = Array.from(this.sceneListEl.querySelectorAll('.ert-timeline-repair-scene-card'));
         const cardIdx = cards.indexOf(focused as HTMLElement);
 
         // Get the scene index from the filtered list
@@ -975,7 +975,7 @@ export class TimelineRepairModal extends Modal {
             });
             modal.contentEl.createDiv({
                 text: t('timelineRepairModal.confirm.warning'),
-                cls: 'rt-timeline-repair-confirm-warning'
+                cls: 'ert-timeline-repair-confirm-warning'
             });
 
             const buttonRow = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });

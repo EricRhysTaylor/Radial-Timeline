@@ -1429,7 +1429,7 @@
   font-weight: 700;
 }
 
-.rt-gossamer-score-label {
+.ert-gossamer-score-label {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1437,34 +1437,34 @@
   color: var(--text-normal);
 }
 
-.rt-gossamer-score-value {
+.ert-gossamer-score-value {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-normal);
 }
 
-.rt-gossamer-score-line {
+.ert-gossamer-score-line {
   display: flex;
   align-items: center;
   gap: var(--ert-gap-sm);
   margin: var(--ert-gap-xs) 0;
 }
 
-.rt-gossamer-score-line svg {
+.ert-gossamer-score-line svg {
   width: 24px;
   height: 24px;
 }
 
-.rt-gossamer-score-line text {
+.ert-gossamer-score-line text {
   fill: var(--text-normal);
 }
 
-.rt-gossamer-score-line .rt-gossamer-score-value {
+.ert-gossamer-score-line .ert-gossamer-score-value {
   margin-left: auto;
 }
 
-.rt-gossamer-score-line [data-item-type=title] {
-  fill: var(--rt-max-publish-stage-color);
+.ert-gossamer-score-line [data-item-type=title] {
+  fill: var(--ert-max-publish-stage-color);
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;

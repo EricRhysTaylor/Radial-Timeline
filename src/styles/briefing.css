@@ -623,6 +623,11 @@ a.rt-briefing-scene-ref {
     max-width: none;
   }
 
+  .rt-briefing-header {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
   .rt-briefing-shell {
     min-height: auto;
     padding: 0;
@@ -640,12 +645,28 @@ a.rt-briefing-scene-ref {
   }
 
   .rt-briefing-section,
+  .rt-briefing-group,
   .rt-briefing-block,
   .rt-briefing-note,
-  .rt-briefing-finding,
-  .rt-briefing-group {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .rt-briefing-finding {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .rt-briefing-section-label,
+  .rt-briefing-group-label,
+  .rt-briefing-summary-label,
+  .rt-briefing-finding-title,
+  .rt-briefing-note-label-row {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .rt-briefing-paragraph,
+  .rt-briefing-summary-text,
+  .rt-briefing-action-list li {
+    orphans: 3;
+    widows: 3;
   }
 }
 

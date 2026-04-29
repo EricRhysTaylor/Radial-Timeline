@@ -13,6 +13,7 @@ import { handleDominantSubplotSelection } from '../interactions/DominantSubplotH
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
+import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -51,6 +52,8 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
 
     // Scene click interactions (will delegate to shift mode if active)
     setupSceneClickInteractions(view, svg);
+
+    setupSceneContextMenu(view as any, svg);
 }
 
 /**

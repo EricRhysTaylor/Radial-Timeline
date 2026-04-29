@@ -167,7 +167,7 @@ export class RuntimeProcessingModal extends Modal {
             modeIconSvg.style.cssText = `
                 width: 14px;
                 height: 14px;
-                stroke: var(--ert-modal-pro-accent, var(--rt-pro-color));
+                stroke: var(--ert-modal-pro-accent, var(--ert-pro-accent-color));
                 stroke-width: 2;
                 fill: none;
             `;
@@ -178,19 +178,19 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        const scopeLayout = scopeCard.createDiv({ cls: 'rt-row rt-row-wrap rt-row-between' });
-        const scopeInfo = scopeLayout.createDiv({ cls: 'rt-stack rt-stack-tight' });
-        scopeInfo.createEl('h4', { text: 'Scope', cls: 'rt-section-title' });
+        const scopeLayout = scopeCard.createDiv({ cls: 'ert-row ert-row-wrap ert-row-between' });
+        const scopeInfo = scopeLayout.createDiv({ cls: 'ert-stack ert-stack-tight' });
+        scopeInfo.createEl('h4', { text: 'Scope', cls: 'ert-section-title' });
         scopeInfo.createDiv({ cls: 'ert-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
 
-        const scopeControls = scopeLayout.createDiv({ cls: 'rt-stack' });
+        const scopeControls = scopeLayout.createDiv({ cls: 'ert-stack' });
         
         // Subplot label row (shown only when subplot scope is selected)
         this.subplotLabelContainer = scopeControls.createDiv({ cls: 'ert-hidden' });
         this.subplotLabelContainer.createEl('label', { text: 'Subplot:', cls: 'ert-runtime-label' });
         
         // Dropdowns row - both dropdowns aligned horizontally
-        const scopeRow = scopeControls.createDiv({ cls: 'rt-row rt-row-wrap' });
+        const scopeRow = scopeControls.createDiv({ cls: 'ert-row ert-row-wrap' });
         
         // Scope dropdown
         const scopeDropdownContainer = scopeRow.createDiv({ cls: 'ert-runtime-dropdown-container' });
@@ -233,10 +233,10 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== STATUS FILTERS SECTION =====
         const statusCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'rt-section-title' });
+        statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'ert-section-title' });
         statusCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'Only scenes with the selected status will be processed.' });
 
-        const statusRow = statusCard.createDiv({ cls: 'rt-row rt-row-loose rt-row-wrap' });
+        const statusRow = statusCard.createDiv({ cls: 'ert-row ert-row-loose ert-row-wrap' });
 
         this.createStatusCheckbox(statusRow, 'Todo', 'includeTodo', this.statusFilters.includeTodo);
         this.createStatusCheckbox(statusRow, 'Working', 'includeWorking', this.statusFilters.includeWorking);
@@ -244,10 +244,10 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== OVERRIDE SECTION =====
         const overrideCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        overrideCard.createEl('h4', { text: 'Override', cls: 'rt-section-title' });
+        overrideCard.createEl('h4', { text: 'Override', cls: 'ert-section-title' });
         overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'By default, only scenes without a Runtime field are processed.' });
 
-        const overrideRow = overrideCard.createDiv({ cls: 'rt-row' });
+        const overrideRow = overrideCard.createDiv({ cls: 'ert-row' });
         
         const checkbox = overrideRow.createEl('input', { type: 'checkbox' });
         checkbox.checked = this.overrideExisting;
@@ -285,10 +285,10 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== MODE SELECTION =====
         const modeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'rt-section-title' });
+        modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'ert-section-title' });
         this.modeDescEl = modeCard.createDiv({ cls: 'ert-runtime-section-desc' });
 
-        const modeRow = modeCard.createDiv({ cls: 'rt-row' });
+        const modeRow = modeCard.createDiv({ cls: 'ert-row' });
         const modeDropdownContainer = modeRow.createDiv({ cls: 'ert-runtime-dropdown-container' });
         const modeDropdown = new DropdownComponent(modeDropdownContainer);
         modeDropdown
@@ -304,7 +304,7 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCENE COUNT SECTION =====
         const countCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        countCard.createEl('h4', { text: 'Summary', cls: 'rt-section-title' });
+        countCard.createEl('h4', { text: 'Summary', cls: 'ert-section-title' });
         this.countEl = countCard.createDiv({ cls: 'ert-runtime-count' });
         this.countEl.setText('Calculating...');
 

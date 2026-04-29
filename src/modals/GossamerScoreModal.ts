@@ -563,7 +563,7 @@ export class GossamerScoreModal extends Modal {
     // Group 1: Maintenance (bordered container — demoted, rarely used)
     const maintenanceGroup = footer.createDiv({ cls: 'ert-gossamer-footer__group ert-gossamer-footer__group--maintenance' });
     maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'ert-gossamer-footer__group-label' });
-    const maintenanceRow = maintenanceGroup.createDiv({ cls: 'rt-row' });
+    const maintenanceRow = maintenanceGroup.createDiv({ cls: 'ert-row' });
     const hasNormalizationWork = this.collectNormalizationIssues().length > 0;
     const normalizeBtn = new ButtonComponent(maintenanceRow)
       .setButtonText('Normalize history')
@@ -587,7 +587,7 @@ export class GossamerScoreModal extends Modal {
     // actions live here so Copy → Paste reads as one continuous workflow.)
     const aiGroup = footer.createDiv({ cls: 'ert-gossamer-footer__group ert-gossamer-footer__group--ai' });
     aiGroup.createEl('span', { text: 'AI workflow', cls: 'ert-gossamer-footer__group-label' });
-    const aiRow = aiGroup.createDiv({ cls: 'rt-row' });
+    const aiRow = aiGroup.createDiv({ cls: 'ert-row' });
     // Neither Copy nor Paste use setCta(): the CTA class forces taller padding
     // than regular footer buttons, visually "distorting" them relative to Save
     // scores / Cancel. The bordered AI workflow container already signals that

@@ -500,13 +500,13 @@ export class OuterRingDragController {
             this.dropTick.setAttribute('d', '');
             this.dropTick.removeAttribute('stroke');
             this.dropTick.style.removeProperty('--rt-drag-stroke-color');
-            this.dropTick.classList.add('rt-hidden');
+            this.dropTick.classList.add('ert-hidden');
         }
         if (this.dropArc) {
             this.dropArc.setAttribute('d', '');
             this.dropArc.removeAttribute('stroke');
             this.dropArc.style.removeProperty('--rt-drag-stroke-color');
-            this.dropArc.classList.add('rt-hidden');
+            this.dropArc.classList.add('ert-hidden');
         }
     }
 
@@ -602,14 +602,14 @@ export class OuterRingDragController {
         const existing = this.svg.querySelector<SVGPathElement>('.rt-drop-target-tick');
         if (existing) {
             // Reset existing element to hidden state
-            existing.classList.add('rt-hidden');
+            existing.classList.add('ert-hidden');
             existing.setAttribute('d', '');
             existing.removeAttribute('stroke');
             this.dropTick = existing;
             return existing;
         }
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.classList.add('rt-drop-target-tick', 'rt-hidden');
+        path.classList.add('rt-drop-target-tick', 'ert-hidden');
         path.setAttribute('d', '');
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
         if (overlays) overlays.appendChild(path); else this.svg.appendChild(path);
@@ -622,14 +622,14 @@ export class OuterRingDragController {
         const existing = this.svg.querySelector<SVGPathElement>('.rt-drop-target-arc');
         if (existing) {
             // Reset existing element to hidden state
-            existing.classList.add('rt-hidden');
+            existing.classList.add('ert-hidden');
             existing.setAttribute('d', '');
             existing.removeAttribute('stroke');
             this.dropArc = existing;
             return existing;
         }
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.classList.add('rt-drop-target-arc', 'rt-hidden');
+        path.classList.add('rt-drop-target-arc', 'ert-hidden');
         path.setAttribute('d', '');
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
         if (overlays) overlays.appendChild(path); else this.svg.appendChild(path);
@@ -647,7 +647,7 @@ export class OuterRingDragController {
         const x2 = r2 * Math.cos(angle);
         const y2 = r2 * Math.sin(angle);
         const tick = this.ensureDropTick();
-        tick.classList.remove('rt-hidden');
+        tick.classList.remove('ert-hidden');
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
         if (color) {
             tick.style.setProperty('--rt-drag-stroke-color', color);
@@ -660,7 +660,7 @@ export class OuterRingDragController {
 
     private updateDropArc(startAngle: number, endAngle: number, color?: string): void {
         const arc = this.ensureDropArc();
-        arc.classList.remove('rt-hidden');
+        arc.classList.remove('ert-hidden');
         const rArc = DRAG_DROP_ARC_RADIUS;
 
         // Apply rotation offset so the arc matches the visual scene positions

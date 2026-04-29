@@ -45,8 +45,8 @@ export class ManageSubplotsModal extends Modal {
         hero.createDiv({ text: 'Rename or remove subplots across the timeline. Orphaned scenes will be moved to Main Plot.', cls: 'ert-modal-subtitle' });
 
         // Single card container (avoid extra nesting)
-        const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card ert-glass-card' });
-        this.listContainer = card.createDiv({ cls: 'rt-manage-subplots-list' });
+        const card = contentEl.createDiv({ cls: 'ert-manage-subplots-card ert-glass-card' });
+        this.listContainer = card.createDiv({ cls: 'ert-manage-subplots-list' });
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(actions)
@@ -77,26 +77,26 @@ export class ManageSubplotsModal extends Modal {
         this.listContainer.empty();
         
         // Header
-        const header = this.listContainer.createDiv({ cls: 'rt-manage-subplots-header' });
+        const header = this.listContainer.createDiv({ cls: 'ert-manage-subplots-header' });
         header.setText(`Active Subplots · ${sorted.length}`);
 
         // List Scroll Area
-        const scrollArea = this.listContainer.createDiv({ cls: 'rt-manage-subplots-scroll' });
+        const scrollArea = this.listContainer.createDiv({ cls: 'ert-manage-subplots-scroll' });
 
         sorted.forEach(subplot => {
-            const row = scrollArea.createDiv({ cls: 'rt-manage-subplots-row' });
+            const row = scrollArea.createDiv({ cls: 'ert-manage-subplots-row' });
             
             // Left: Name and Count
-            const info = row.createDiv({ cls: 'rt-manage-subplots-info' });
+            const info = row.createDiv({ cls: 'ert-manage-subplots-info' });
             
-            const nameEl = info.createDiv({ cls: 'rt-manage-subplots-name' });
+            const nameEl = info.createDiv({ cls: 'ert-manage-subplots-name' });
             nameEl.setText(subplot.name);
 
-            const countEl = info.createDiv({ cls: 'rt-manage-subplots-count' });
+            const countEl = info.createDiv({ cls: 'ert-manage-subplots-count' });
             countEl.setText(`${subplot.count} scenes`);
 
             // Right: Actions
-            const actions = row.createDiv({ cls: 'rt-manage-subplots-actions' });
+            const actions = row.createDiv({ cls: 'ert-manage-subplots-actions' });
 
             // Rename Button
             const renameBtn = new ButtonComponent(actions)
@@ -109,7 +109,7 @@ export class ManageSubplotsModal extends Modal {
             pencilIcon.innerHTML = PENCIL_ICON; // SAFE: innerHTML used for SVG icon
             renameBtn.buttonEl.appendChild(pencilIcon);
             
-            renameBtn.buttonEl.classList.add('rt-pulse-icon-button', 'rt-manage-subplots-btn');
+            renameBtn.buttonEl.classList.add('ert-pulse-icon-button', 'ert-manage-subplots-btn');
 
             // Delete Button (Disable for Main Plot)
             const isMainPlot = subplot.name === "Main Plot";
@@ -122,11 +122,11 @@ export class ManageSubplotsModal extends Modal {
             eraserIcon.innerHTML = ERASER_ICON; // SAFE: innerHTML used for SVG icon
             deleteBtn.buttonEl.appendChild(eraserIcon);
 
-            deleteBtn.buttonEl.classList.add('rt-pulse-icon-button', 'rt-manage-subplots-btn', 'rt-manage-subplots-delete-btn');
+            deleteBtn.buttonEl.classList.add('ert-pulse-icon-button', 'ert-manage-subplots-btn', 'ert-manage-subplots-delete-btn');
             
             if (isMainPlot) {
-                deleteBtn.buttonEl.classList.add('rt-manage-subplots-disabled');
-                renameBtn.buttonEl.classList.add('rt-manage-subplots-disabled');
+                deleteBtn.buttonEl.classList.add('ert-manage-subplots-disabled');
+                renameBtn.buttonEl.classList.add('ert-manage-subplots-disabled');
             }
         });
     }
@@ -188,7 +188,7 @@ class SubplotDeletionConfirmModal extends Modal {
 
         // Warning card
         const card = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass' });
-        const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
+        const warningEl = card.createDiv({ cls: 'ert-pulse-warning' });
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the timeline?`);
 
         // Actions

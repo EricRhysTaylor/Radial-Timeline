@@ -126,14 +126,14 @@
   color: var(--text-accent);
 }
 
-.rt-welcome-keycaps {
+.ert-welcome-keycaps {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   vertical-align: baseline;
 }
 
-.rt-welcome-keycap {
+.ert-welcome-keycap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -155,7 +155,7 @@
   box-shadow: 0 1px 0 color-mix(in srgb, var(--background-primary) 60%, transparent);
 }
 
-.rt-welcome-keycaps-sep {
+.ert-welcome-keycaps-sep {
   color: var(--text-muted);
   font-size: 0.9em;
 }

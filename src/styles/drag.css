@@ -7,8 +7,8 @@
 }
 
 /* Hide arc/tick when not in use - use visibility for SVG */
-.rt-drop-target-arc.rt-hidden,
-.rt-drop-target-tick.rt-hidden {
+.rt-drop-target-arc.ert-hidden,
+.rt-drop-target-tick.ert-hidden {
   visibility: hidden;
   stroke: none;
   opacity: 0;

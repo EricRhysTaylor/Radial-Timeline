@@ -159,7 +159,7 @@ export class GossamerProcessingModal extends Modal {
 
         // Manuscript info section (will be populated by caller)
         const infoSection = card.createDiv({ cls: 'ert-gossamer-proc-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-section-title' });
+        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'ert-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
@@ -171,7 +171,7 @@ export class GossamerProcessingModal extends Modal {
             getCredential(this.plugin, activeProvider).then(key => {
                 if (!key) {
                     const name = CANONICAL_PROVIDER_LABELS[activeProvider];
-                    const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
+                    const warningEl = card.createDiv({ cls: 'ert-pulse-warning' });
                     warningEl.setText(`⚠️ ${name} saved key not configured. Please set your key in Settings → AI.`);
                 }
             });
@@ -215,7 +215,7 @@ export class GossamerProcessingModal extends Modal {
 
         // Manuscript info section (reusing existing styles but inside the card)
         const infoSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-section-title' });
+        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'ert-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
 
@@ -227,7 +227,7 @@ export class GossamerProcessingModal extends Modal {
 
         // Status section
         const statusSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-status-section' });
-        statusSection.createEl('h3', { text: 'Status', cls: 'rt-section-title' });
+        statusSection.createEl('h3', { text: 'Status', cls: 'ert-section-title' });
         this.statusTextEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 

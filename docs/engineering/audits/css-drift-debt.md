@@ -1,6 +1,6 @@
 # CSS Drift Debt
 
-Generated: 2026-04-26T23:41:10.645Z
+Generated: 2026-04-29T16:09:33.181Z
 
 Snapshot of every WARN-level drift hit at the time of baseline reset. Work through these to ratchet the baseline down. After fixing a batch, run `npm run css-drift -- --maintenance --update-baseline` to lock in the new lower ceiling.
 
@@ -10,11 +10,11 @@ Regenerate this report anytime with: `node scripts/css-drift-report.mjs`.
 
 ## Totals
 
-- **Total WARN hits:** 9
+- **Total WARN hits:** 0
 - `spacing-px`: 0
 - `raw-hex`: 0
 - `shadow-rgba`: 0
-- `rt-legacy`: 9
+- `rt-legacy`: 0
 
 ## How to work a rule
 
@@ -42,78 +42,6 @@ _No hits. 🎉_
 
 _No hits. 🎉_
 
-## `rt-legacy` (9)
+## `rt-legacy` (0)
 
-
-### src/styles/modal.css (8)
-
-```
-src/styles/modal.css:1427: color: var(--text-normal);
-  font-weight: 700;
-}
-
-.rt-gossamer-score-label {
-src/styles/modal.css:1432: font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text-normal);
-}
-
-.rt-gossamer-score-value {
-src/styles/modal.css:1440: font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.rt-gossamer-score-line {
-src/styles/modal.css:1446: display: flex;
-  align-items: center;
-  gap: var(--ert-gap-sm);
-  margin: var(--ert-gap-xs) 0;
-}
-
-.rt-gossamer-score-line svg {
-src/styles/modal.css:1453: width: 24px;
-  height: 24px;
-}
-
-.rt-gossamer-score-line text {
-src/styles/modal.css:1458: fill: var(--text-normal);
-}
-
-.rt-gossamer-score-line .rt-gossamer-score-value {
-src/styles/modal.css:1462: margin-left: auto;
-}
-
-.rt-gossamer-score-line [data-item-type=title] {
-src/styles/modal.css:1466: fill: var(--rt-max-publish-stage-color);
-  stroke: white;
-  stroke-width: 0.07em;
-  paint-order: stroke;
-  font-size: 40px;
-  font-weight: 700;
-}
-
-/* -------------------------------------------------------------------------- */
-/* AUTHOR PROGRESS REPORT (APR) MODAL                                          */
-/* -------------------------------------------------------------------------- */
-
-/* APR Modal uses standard ert-modal-shell + ert-modal-container pattern */
-/* Sizing handled via inline styles in the modal class */
-
-/* APR Badge - social media theme */
-.ert-apr-badge {
-```
-
-### src/styles/legacy/rt-ui-legacy.css (1)
-
-```
-src/styles/legacy/rt-ui-legacy.css:163: max-height: 200px;
-  overflow-y: auto;
-  margin-top: 12px;
-}
-
-/* Utility class for hiding elements */
-.rt-hidden {
-```
+_No hits. 🎉_

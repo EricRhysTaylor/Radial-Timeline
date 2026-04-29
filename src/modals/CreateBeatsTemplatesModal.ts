@@ -36,7 +36,7 @@ export class CreateBeatSetModal extends Modal {
       modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
     contentEl.addClass('ert-modal-container', 'ert-stack');
-    contentEl.addClass('rt-create-plot-templates-modal');
+    contentEl.addClass('ert-create-plot-templates-modal');
 
     // Header
     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -67,7 +67,7 @@ export class CreateBeatSetModal extends Modal {
       }
     }
 
-    const exampleCode = card.createEl('pre', { cls: 'rt-code-block' });
+    const exampleCode = card.createEl('pre', { cls: 'ert-code-block' });
     exampleCode.textContent = `---\n${previewYaml}\n---`;
 
     const sourcePath = this.plugin.settings.sourcePath.trim();

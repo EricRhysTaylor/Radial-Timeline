@@ -49,7 +49,7 @@
 .ert-path-chips {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--ert-gap-tight);
   align-items: center;
   justify-content: flex-end;
 }
@@ -67,7 +67,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: var(--ert-gap-sm);
 }
 
 .ert-control--with-chips:has(> *:not(.ert-path-chips)) > * {
@@ -78,8 +78,8 @@
 .ert-path-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-gap-2xs) var(--ert-pad-xs);
   border-radius: 999px;
   font-size: var(--font-ui-smaller, 0.8em);
   line-height: 1.4;

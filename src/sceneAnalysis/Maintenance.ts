@@ -234,7 +234,7 @@ class PurgeConfirmationModal extends Modal {
         hero.createDiv({ text: 'Confirm purge beats', cls: 'ert-modal-title' });
         hero.createDiv({ text: 'RT will archive removed scene-analysis fields before cleanup.', cls: 'ert-modal-subtitle' });
 
-        const card = contentEl.createDiv({ cls: 'rt-glass-card ert-purge-confirm-card' });
+        const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
 
         const messageEl = card.createDiv({ cls: 'ert-purge-message' });
         messageEl.setText(this.message);

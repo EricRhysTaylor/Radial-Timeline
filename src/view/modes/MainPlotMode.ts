@@ -3,6 +3,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
+import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
 
 interface ViewLike {
     plugin: {
@@ -29,6 +30,7 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     // Keep manager enabled in this mode and read the user setting live at hover-time.
     // This allows toggling auto-expand without reopening the timeline view.
     manager.setTitleExpansionEnabled(true);
+    setupSceneContextMenu(view as any, svg);
 
     let currentGroup: Element | null = null;
     let currentSceneId: string | null = null;

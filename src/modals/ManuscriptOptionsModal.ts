@@ -1,7 +1,8 @@
 /*
  * Manuscript Options Modal
  */
-import { App, ButtonComponent, DropdownComponent, Modal, Notice, Platform, setIcon, TAbstractFile, TFile, ToggleComponent } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, FileSystemAdapter, Modal, Notice, Platform, setIcon, TAbstractFile, TFile, ToggleComponent, normalizePath } from 'obsidian';
+import * as path from 'path'; // SAFE: Node path needed to build absolute paths for native Finder reveal
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
@@ -239,6 +240,8 @@ export class ManuscriptOptionsModal extends Modal {
     private includeMatterToggle?: ToggleComponent;
     private exportCleanupCard?: HTMLElement;
     private synopsisRow?: HTMLElement;
+    private synopsisToggle?: ToggleComponent;
+    private updateWordCountsToggle?: ToggleComponent;
     private cleanupCommentsToggle?: ToggleComponent;
     private cleanupLinksToggle?: ToggleComponent;
     private cleanupCalloutsToggle?: ToggleComponent;
@@ -522,7 +525,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateOutlinePresetDescription();
         this.synopsisRow = this.outlineOptionsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
         this.synopsisRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: t('manuscriptModal.includeSynopsis') });
-        new ToggleComponent(this.synopsisRow)
+        this.synopsisToggle = new ToggleComponent(this.synopsisRow)
             .setValue(this.includeSynopsisUserChoice)
             .onChange((value) => {
                 this.includeSynopsisUserChoice = value;
@@ -673,7 +676,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.wordCountCard = exportControlsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
         const wordCountLabel = this.wordCountCard.createSpan({ cls: 'ert-manuscript-toggle-label' });
         this.appendInlineCodeText(wordCountLabel, t('manuscriptModal.wordCountToggle'));
-        new ToggleComponent(this.wordCountCard)
+        this.updateWordCountsToggle = new ToggleComponent(this.wordCountCard)
             .setValue(this.updateWordCounts)
             .onChange((value) => {
                 this.updateWordCounts = value;
@@ -1334,6 +1337,9 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.manuscriptPresetDropdown?.setValue(this.manuscriptPreset);
         this.outlinePresetDropdown?.setValue(this.outlinePreset);
+        this.synopsisToggle?.setValue(this.includeSynopsisUserChoice);
+        this.updateWordCountsToggle?.setValue(this.updateWordCounts);
+        this.syncExportTypePills();
 
         const subplotOptions = Array.from(this.subplotDropdown?.selectEl.options || []);
         const subplotExists = subplotOptions.some(option => option.value === this.subplot);
@@ -1497,6 +1503,13 @@ export class ManuscriptOptionsModal extends Modal {
             pill.addClass('is-active');
             this.order = order;
             await this.loadScenesForOrder();
+        });
+    }
+
+    /** Re-apply `is-active` to whichever pill matches `this.exportType`. Used after applyTemplate restores state. */
+    private syncExportTypePills(): void {
+        this.exportTypePills.forEach(p => {
+            p.el.toggleClass('is-active', p.type === this.exportType);
         });
     }
 
@@ -2265,19 +2278,69 @@ Sarah stood at the window, watching the world wake up.`;
         return true;
     }
 
-    private openOutcomeFolder(): void {
+    /**
+     * Resolve a vault-relative path to an absolute filesystem path. Returns null
+     * on platforms without filesystem access (mobile).
+     */
+    private resolveAbsolutePath(vaultPath: string): string | null {
+        const adapter = this.app.vault.adapter; // SAFE: adapter required to compute absolute path for native Finder reveal
+        if (adapter instanceof FileSystemAdapter) {
+            return path.join(adapter.getBasePath(), normalizePath(vaultPath));
+        }
+        return null;
+    }
+
+    /**
+     * Reveal a file (or folder) in the OS file manager (Finder on macOS, Explorer
+     * on Windows, default file manager on Linux). Falls back to Obsidian's in-app
+     * file explorer on mobile or when electron is unavailable.
+     */
+    private async revealInSystemFileManager(vaultPath: string, kind: 'file' | 'folder'): Promise<boolean> {
+        const absolute = this.resolveAbsolutePath(vaultPath);
+        if (!absolute) return false;
+        try {
+            // electron.shell is available in the desktop renderer process
+            const electron = (window as unknown as { require?: (name: string) => { shell?: { showItemInFolder: (p: string) => void; openPath: (p: string) => Promise<string> } } }).require?.('electron');
+            const shell = electron?.shell;
+            if (!shell) return false;
+            if (kind === 'file') {
+                shell.showItemInFolder(absolute);
+            } else {
+                const result = await shell.openPath(absolute);
+                if (typeof result === 'string' && result.length > 0) {
+                    // openPath resolves to an error message string on failure
+                    return false;
+                }
+            }
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private async openOutcomeFolder(): Promise<void> {
+        // Prefer revealing the actual exported file (so Finder highlights it) and
+        // fall back to opening just the folder if no file path is available.
+        const filePath = this.getOutcomeFilePath();
         const folderPath = this.getOutcomeFolderPath();
-        if (!folderPath) {
-            new Notice('No output folder to reveal yet.');
+        if (!filePath && !folderPath) {
+            new Notice('No output to reveal yet.');
             return;
         }
-        const abstract = this.app.vault.getAbstractFileByPath(folderPath);
+
+        if (filePath && await this.revealInSystemFileManager(filePath, 'file')) return;
+        if (folderPath && await this.revealInSystemFileManager(folderPath, 'folder')) return;
+
+        // Fallback: in-app file explorer (mobile / no electron)
+        const target = folderPath || filePath;
+        if (!target) return;
+        const abstract = this.app.vault.getAbstractFileByPath(target);
         if (!abstract) {
-            new Notice(`Folder not found: ${folderPath}`);
+            new Notice(`Path not found: ${target}`);
             return;
         }
         if (!this.revealInFileExplorer(abstract)) {
-            new Notice('Unable to reveal folder in file explorer.');
+            new Notice('Unable to reveal in file explorer.');
         }
     }
 

@@ -340,7 +340,7 @@ export default class SynopsisManager {
       // Match row spacing logic used during layout
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
-        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isGossamerLine = currentEl.classList.contains('ert-gossamer-score-line');
         const isBeatsText = currentEl.classList.contains('pulse-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
@@ -461,7 +461,7 @@ export default class SynopsisManager {
 
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
-        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isGossamerLine = currentEl.classList.contains('ert-gossamer-score-line');
         const isBeatsText = currentEl.classList.contains('pulse-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
@@ -588,7 +588,7 @@ export default class SynopsisManager {
       // Match row spacing logic used during layout
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
-        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isGossamerLine = currentEl.classList.contains('ert-gossamer-score-line');
         const isBeatsText = currentEl.classList.contains('pulse-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
@@ -704,7 +704,7 @@ export default class SynopsisManager {
 
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
-        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isGossamerLine = currentEl.classList.contains('ert-gossamer-score-line');
         const isBeatsText = currentEl.classList.contains('pulse-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
@@ -1227,7 +1227,7 @@ export default class SynopsisManager {
         // The lineY increment will create the gap for the next line
       } else if (isGossamerLine) {
         // Apply title styling for Gossamer lines
-        synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-main rt-gossamer-score-line");
+        synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-main ert-gossamer-score-line");
         synopsisLineElement.setAttribute("x", "0");
         synopsisLineElement.setAttribute("y", String(lineY));
 
@@ -2064,7 +2064,7 @@ export default class SynopsisManager {
       // Calculate absolute position for this row with variable line heights
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
-        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isGossamerLine = currentEl.classList.contains('ert-gossamer-score-line');
         const isBeatsText = currentEl.classList.contains('pulse-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
@@ -2360,7 +2360,7 @@ export default class SynopsisManager {
         const rowElements = rows[rowIndex];
         if (rowIndex > 0) {
           const currentEl = rowElements[0];
-          const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+          const isGossamerLine = currentEl.classList.contains('ert-gossamer-score-line');
           const isBeatsText = currentEl.classList.contains('pulse-text');
           const prevEl = rows[rowIndex - 1][0];
           const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');

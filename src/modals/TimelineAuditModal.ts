@@ -63,13 +63,13 @@ export class TimelineAuditModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'rt-timeline-audit-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-timeline-audit-modal-shell');
             modalEl.style.width = '960px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-timeline-audit-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-timeline-audit-modal');
         this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
         this.unsubscribeAiState = this.plugin.subscribe<TimelineAuditAiJobState>(
             TIMELINE_AUDIT_AI_STATE_EVENT,
@@ -204,16 +204,16 @@ export class TimelineAuditModal extends Modal {
 
         if (this.aiState.status === 'completed') {
             header.createDiv({
-                cls: 'rt-timeline-audit-ai-header-badge',
+                cls: 'ert-timeline-audit-ai-header-badge',
                 text: t('timelineAuditModal.header.aiEnhancedBadge')
             });
         }
 
         if (this.running) {
-            const loadingCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-loading' });
-            loadingCard.createDiv({ cls: 'rt-timeline-audit-loading-title', text: t('timelineAuditModal.loading.title') });
+            const loadingCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-loading' });
+            loadingCard.createDiv({ cls: 'ert-timeline-audit-loading-title', text: t('timelineAuditModal.loading.title') });
             loadingCard.createDiv({
-                cls: 'rt-timeline-audit-loading-copy',
+                cls: 'ert-timeline-audit-loading-copy',
                 text: t('timelineAuditModal.loading.description')
             });
 
@@ -231,7 +231,7 @@ export class TimelineAuditModal extends Modal {
 
         const displayedResult = this.getDisplayedResult();
         if (!displayedResult) {
-            const emptyCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-loading' });
+            const emptyCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-loading' });
             emptyCard.createDiv({ text: t('timelineAuditModal.empty.noResults') });
             return;
         }
@@ -240,18 +240,18 @@ export class TimelineAuditModal extends Modal {
         this.syncExpandedFinding(findings);
 
         const book = this.plugin.getActiveBook();
-        const statsCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-stats' });
-        const scopeRow = statsCard.createDiv({ cls: 'rt-timeline-audit-scope' });
+        const statsCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-stats' });
+        const scopeRow = statsCard.createDiv({ cls: 'ert-timeline-audit-scope' });
         scopeRow.createSpan({
-            cls: 'rt-timeline-audit-scope-book',
+            cls: 'ert-timeline-audit-scope-book',
             text: this.plugin.getActiveBookTitle()
         });
         scopeRow.createSpan({
-            cls: 'rt-timeline-audit-scope-path',
+            cls: 'ert-timeline-audit-scope-path',
             text: t('timelineAuditModal.scope.activeScope', { path: book?.sourceFolder?.trim() || this.plugin.settings.sourcePath || t('timelineAuditModal.scope.entireVault') })
         });
 
-        const statsGrid = statsCard.createDiv({ cls: 'rt-timeline-audit-stats-grid' });
+        const statsGrid = statsCard.createDiv({ cls: 'ert-timeline-audit-stats-grid' });
         this.createStat(statsGrid, t('timelineAuditModal.stats.totalScenes'), String(displayedResult.stats.totalScenes));
         this.createStat(statsGrid, t('timelineAuditModal.stats.aligned'), String(displayedResult.stats.aligned));
         this.createStat(statsGrid, t('timelineAuditModal.stats.warnings'), String(displayedResult.stats.warnings));
@@ -261,7 +261,7 @@ export class TimelineAuditModal extends Modal {
         this.renderTimelineOverview(contentEl, findings);
         this.renderAuditActions(contentEl);
 
-        const filterRow = contentEl.createDiv({ cls: 'rt-timeline-audit-filter-row' });
+        const filterRow = contentEl.createDiv({ cls: 'ert-timeline-audit-filter-row' });
         this.createFilterPill(filterRow, t('timelineAuditModal.filters.all'), 'all');
         this.createFilterPill(filterRow, t('timelineAuditModal.filters.contradictions'), 'contradictions');
         this.createFilterPill(filterRow, t('timelineAuditModal.filters.missingWhen'), 'missing_when');
@@ -270,11 +270,11 @@ export class TimelineAuditModal extends Modal {
         this.createFilterPill(filterRow, t('timelineAuditModal.filters.aiSuggested'), 'ai_suggested');
         this.createFilterPill(filterRow, t('timelineAuditModal.filters.unresolved'), 'unresolved');
 
-        const findingsList = contentEl.createDiv({ cls: 'rt-timeline-audit-findings' });
+        const findingsList = contentEl.createDiv({ cls: 'ert-timeline-audit-findings' });
         this.findingCardEls.clear();
 
         if (findings.length === 0) {
-            const emptyState = findingsList.createDiv({ cls: 'rt-timeline-audit-empty ert-panel ert-panel--glass' });
+            const emptyState = findingsList.createDiv({ cls: 'ert-timeline-audit-empty ert-panel ert-panel--glass' });
             emptyState.createDiv({ text: t('timelineAuditModal.empty.noFindings') });
         } else {
             for (const finding of findings) {
@@ -302,72 +302,72 @@ export class TimelineAuditModal extends Modal {
     }
 
     private renderAuditActions(container: HTMLElement): void {
-        const actionsSection = container.createDiv({ cls: 'rt-timeline-audit-controls' });
-        actionsSection.createDiv({ cls: 'rt-timeline-audit-controls-title', text: t('timelineAuditModal.controls.title') });
+        const actionsSection = container.createDiv({ cls: 'ert-timeline-audit-controls' });
+        actionsSection.createDiv({ cls: 'ert-timeline-audit-controls-title', text: t('timelineAuditModal.controls.title') });
 
-        const cards = actionsSection.createDiv({ cls: 'rt-timeline-audit-actions-grid' });
+        const cards = actionsSection.createDiv({ cls: 'ert-timeline-audit-actions-grid' });
 
-        const instantCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-action-card' });
-        instantCard.createDiv({ cls: 'rt-timeline-audit-action-card-title', text: t('timelineAuditModal.instantCard.title') });
+        const instantCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-action-card' });
+        instantCard.createDiv({ cls: 'ert-timeline-audit-action-card-title', text: t('timelineAuditModal.instantCard.title') });
         instantCard.createDiv({
-            cls: 'rt-timeline-audit-action-card-copy',
+            cls: 'ert-timeline-audit-action-card-copy',
             text: t('timelineAuditModal.instantCard.description')
         });
         instantCard.createDiv({
-            cls: 'rt-timeline-audit-action-card-status',
+            cls: 'ert-timeline-audit-action-card-status',
             text: t('timelineAuditModal.instantCard.status')
         });
 
-        const controlsRow = instantCard.createDiv({ cls: 'rt-timeline-audit-toggle-row' });
+        const controlsRow = instantCard.createDiv({ cls: 'ert-timeline-audit-toggle-row' });
         this.createToggle(controlsRow, t('timelineAuditModal.instantCard.continuityPassToggle'), this.runContinuityPass, (value) => {
             this.runContinuityPass = value;
             this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
             this.render();
         });
         instantCard.createDiv({
-            cls: 'rt-timeline-audit-actions-copy',
+            cls: 'ert-timeline-audit-actions-copy',
             text: t('timelineAuditModal.instantCard.continuityPassDesc')
         });
 
-        const aiCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-action-card' });
-        const aiHeader = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-card-header' });
-        aiHeader.createDiv({ cls: 'rt-timeline-audit-action-card-title', text: t('timelineAuditModal.aiCard.title') });
+        const aiCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-action-card' });
+        const aiHeader = aiCard.createDiv({ cls: 'ert-timeline-audit-ai-card-header' });
+        aiHeader.createDiv({ cls: 'ert-timeline-audit-action-card-title', text: t('timelineAuditModal.aiCard.title') });
         if (this.aiState.status === 'completed') {
-            aiHeader.createDiv({ cls: 'rt-timeline-audit-ai-header-badge', text: t('timelineAuditModal.aiCard.aiEnhancedBadge') });
+            aiHeader.createDiv({ cls: 'ert-timeline-audit-ai-header-badge', text: t('timelineAuditModal.aiCard.aiEnhancedBadge') });
         }
         aiCard.createDiv({
-            cls: 'rt-timeline-audit-action-card-copy',
+            cls: 'ert-timeline-audit-action-card-copy',
             text: t('timelineAuditModal.aiCard.description')
         });
 
-        const statusCol = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-status' });
+        const statusCol = aiCard.createDiv({ cls: 'ert-timeline-audit-ai-status' });
         statusCol.createDiv({
-            cls: 'rt-timeline-audit-ai-status-title',
+            cls: 'ert-timeline-audit-ai-status-title',
             text: this.getAiStatusLabel()
         });
 
         const meta = this.getAiStatusMeta();
         if (meta) {
             statusCol.createDiv({
-                cls: 'rt-timeline-audit-ai-status-meta',
+                cls: 'ert-timeline-audit-ai-status-meta',
                 text: meta
             });
         }
 
         if (this.aiState.status === 'running') {
-            const progressWrap = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-progress' });
-            const progressBar = progressWrap.createDiv({ cls: 'rt-timeline-audit-ai-progress-bar' });
+            const progressWrap = aiCard.createDiv({ cls: 'ert-timeline-audit-ai-progress' });
+            const progressBar = progressWrap.createDiv({ cls: 'ert-timeline-audit-ai-progress-bar' });
             const hasProgress = this.aiState.progressTotal > 0 && this.aiState.progressCurrent > 0;
             const progressWidth = hasProgress
                 ? `${Math.max(8, Math.round((this.aiState.progressCurrent / this.aiState.progressTotal) * 100))}%`
                 : '22%';
             progressBar.style.width = progressWidth; // SAFE: inline style used for lightweight AI progress width in modal UI
             if (!hasProgress) {
-                progressBar.addClass('rt-is-indeterminate');
+                progressBar.addClass('ert-is-indeterminate');
             }
         }
 
-        const aiRow = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-action-row' });
+        const aiRow = aiCard.createDiv({ cls: 'ert-timeline-audit-ai-action-row' });
         const aiButton = new ButtonComponent(aiRow);
         aiButton.setButtonText(this.getAiActionLabel());
         if (this.aiState.status === 'running') {
@@ -437,9 +437,9 @@ export class TimelineAuditModal extends Modal {
     }
 
     private createStat(container: HTMLElement, label: string, value: string): void {
-        const item = container.createDiv({ cls: 'rt-timeline-audit-stat' });
-        item.createDiv({ cls: 'rt-timeline-audit-stat-value', text: value });
-        item.createDiv({ cls: 'rt-timeline-audit-stat-label', text: label });
+        const item = container.createDiv({ cls: 'ert-timeline-audit-stat' });
+        item.createDiv({ cls: 'ert-timeline-audit-stat-value', text: value });
+        item.createDiv({ cls: 'ert-timeline-audit-stat-label', text: label });
     }
 
     private createToggle(
@@ -448,17 +448,17 @@ export class TimelineAuditModal extends Modal {
         value: boolean,
         onChange: (value: boolean) => void
     ): void {
-        const row = container.createDiv({ cls: 'rt-timeline-audit-toggle' });
-        row.createSpan({ cls: 'rt-timeline-audit-toggle-label', text: label });
+        const row = container.createDiv({ cls: 'ert-timeline-audit-toggle' });
+        row.createSpan({ cls: 'ert-timeline-audit-toggle-label', text: label });
         const toggle = new ToggleComponent(row);
         toggle.setValue(value);
         toggle.onChange(onChange);
     }
 
     private createFilterPill(container: HTMLElement, label: string, value: FindingFilter): void {
-        const pill = container.createDiv({ cls: 'rt-timeline-audit-filter-pill' });
+        const pill = container.createDiv({ cls: 'ert-timeline-audit-filter-pill' });
         if (this.filter === value) {
-            pill.addClass('rt-is-active');
+            pill.addClass('ert-is-active');
         }
         pill.setText(label);
         pill.addEventListener('click', () => {
@@ -468,27 +468,27 @@ export class TimelineAuditModal extends Modal {
     }
 
     private renderTimelineOverview(container: HTMLElement, findings: TimelineAuditFinding[]): void {
-        const overviewCard = container.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-overview' });
-        overviewCard.createDiv({ cls: 'rt-timeline-audit-overview-title', text: t('timelineAuditModal.overview.title') });
+        const overviewCard = container.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-overview' });
+        overviewCard.createDiv({ cls: 'ert-timeline-audit-overview-title', text: t('timelineAuditModal.overview.title') });
 
         if (findings.length === 0) {
             overviewCard.createDiv({
-                cls: 'rt-timeline-audit-overview-empty',
+                cls: 'ert-timeline-audit-overview-empty',
                 text: t('timelineAuditModal.empty.noFindings')
             });
             return;
         }
 
-        const strip = overviewCard.createDiv({ cls: 'rt-timeline-audit-overview-strip' });
+        const strip = overviewCard.createDiv({ cls: 'ert-timeline-audit-overview-strip' });
         for (const entry of buildTimelineOverviewEntries(findings)) {
             const sceneLabel = `Scene ${entry.finding.manuscriptOrderIndex + 1}`;
             const sceneTitle = getAuditDisplayTitle(entry.finding.title);
             const block = strip.createEl('button', {
-                cls: `rt-timeline-audit-overview-block rt-timeline-audit-overview-block--${entry.severity}`,
+                cls: `ert-timeline-audit-overview-block ert-timeline-audit-overview-block--${entry.severity}`,
                 text: `S${entry.finding.manuscriptOrderIndex + 1}`
             });
             if (entry.finding.path === this.expandedFindingPath) {
-                block.addClass('rt-is-active');
+                block.addClass('ert-is-active');
             }
             block.type = 'button';
             block.setAttr('aria-label', `${sceneLabel}, ${sceneTitle}. ${entry.issueSummary}`);
@@ -528,103 +528,103 @@ export class TimelineAuditModal extends Modal {
     }
 
     private renderFindingListItem(container: HTMLElement, finding: TimelineAuditFinding): void {
-        const shell = container.createDiv({ cls: 'rt-timeline-audit-finding-shell' });
-        shell.addClass(`rt-timeline-audit-finding-shell--${finding.status}`);
+        const shell = container.createDiv({ cls: 'ert-timeline-audit-finding-shell' });
+        shell.addClass(`ert-timeline-audit-finding-shell--${finding.status}`);
         if (finding.path === this.expandedFindingPath) {
-            shell.addClass('rt-is-expanded');
+            shell.addClass('ert-is-expanded');
         }
         shell.tabIndex = -1;
         this.findingCardEls.set(finding.path, shell);
 
         const row = shell.createEl('button', {
-            cls: `rt-timeline-audit-row rt-timeline-audit-row--${finding.status}`,
+            cls: `ert-timeline-audit-row ert-timeline-audit-row--${finding.status}`,
             attr: { type: 'button' }
         });
         if (finding.path === this.expandedFindingPath) {
-            row.addClass('rt-is-expanded');
+            row.addClass('ert-is-expanded');
         }
         row.addEventListener('click', () => this.toggleFindingExpansion(finding.path));
 
-        const left = row.createDiv({ cls: 'rt-timeline-audit-row-left' });
-        const titleRow = left.createDiv({ cls: 'rt-timeline-audit-row-title-row' });
+        const left = row.createDiv({ cls: 'ert-timeline-audit-row-left' });
+        const titleRow = left.createDiv({ cls: 'ert-timeline-audit-row-title-row' });
         titleRow.createSpan({
-            cls: 'rt-timeline-audit-row-index',
+            cls: 'ert-timeline-audit-row-index',
             text: `#${finding.manuscriptOrderIndex + 1}`
         });
         titleRow.createSpan({
-            cls: 'rt-timeline-audit-row-title',
+            cls: 'ert-timeline-audit-row-title',
             text: getAuditDisplayTitle(finding.title)
         });
 
         const preview = getAuditFindingPreviewSnippet(finding);
         if (preview) {
             left.createDiv({
-                cls: 'rt-timeline-audit-row-snippet',
+                cls: 'ert-timeline-audit-row-snippet',
                 text: preview
             });
         }
 
-        const middle = row.createDiv({ cls: 'rt-timeline-audit-row-middle' });
+        const middle = row.createDiv({ cls: 'ert-timeline-audit-row-middle' });
         for (const label of getAuditFindingBadgeLabels(finding)) {
             middle.createSpan({
-                cls: 'rt-timeline-audit-row-issue',
+                cls: 'ert-timeline-audit-row-issue',
                 text: label
             });
         }
 
-        const right = row.createDiv({ cls: 'rt-timeline-audit-row-right' });
+        const right = row.createDiv({ cls: 'ert-timeline-audit-row-right' });
         right.createSpan({
-            cls: `rt-timeline-audit-row-status rt-timeline-audit-row-status--${finding.status}`,
+            cls: `ert-timeline-audit-row-status ert-timeline-audit-row-status--${finding.status}`,
             text: formatAuditStatusLabel(finding.status)
         });
         right.createSpan({
-            cls: 'rt-timeline-audit-row-chevron',
+            cls: 'ert-timeline-audit-row-chevron',
             text: finding.path === this.expandedFindingPath ? '▾' : '▸'
         });
 
         if (finding.path === this.expandedFindingPath) {
-            const detailWrap = shell.createDiv({ cls: 'rt-timeline-audit-detail-wrap' });
+            const detailWrap = shell.createDiv({ cls: 'ert-timeline-audit-detail-wrap' });
             this.renderFindingDetail(detailWrap, finding);
         }
     }
 
     private renderFindingDetail(container: HTMLElement, finding: TimelineAuditFinding): void {
-        const card = container.createDiv({ cls: 'rt-timeline-audit-card' });
-        card.addClass(`rt-timeline-audit-card--${finding.status}`);
+        const card = container.createDiv({ cls: 'ert-timeline-audit-card' });
+        card.addClass(`ert-timeline-audit-card--${finding.status}`);
 
-        const titleRow = card.createDiv({ cls: 'rt-timeline-audit-card-title-row' });
+        const titleRow = card.createDiv({ cls: 'ert-timeline-audit-card-title-row' });
         titleRow.createDiv({
-            cls: 'rt-timeline-audit-card-title',
+            cls: 'ert-timeline-audit-card-title',
             text: `#${finding.manuscriptOrderIndex + 1} ${getAuditDisplayTitle(finding.title)}`
         });
         titleRow.createDiv({
-            cls: 'rt-timeline-audit-card-status',
+            cls: 'ert-timeline-audit-card-status',
             text: formatAuditStatusLabel(finding.status)
         });
 
-        const issueRow = card.createDiv({ cls: 'rt-timeline-audit-badge-row' });
+        const issueRow = card.createDiv({ cls: 'ert-timeline-audit-badge-row' });
         for (const issue of finding.issues.filter((candidate, index, issues) =>
             issues.findIndex((entry) => entry.type === candidate.type) === index
         )) {
             issueRow.createSpan({
-                cls: `rt-timeline-audit-badge rt-timeline-audit-badge--${issue.severity}`,
+                cls: `ert-timeline-audit-badge ert-timeline-audit-badge--${issue.severity}`,
                 text: formatAuditIssueLabel(issue.type)
             });
         }
 
-        const sourceRow = card.createDiv({ cls: 'rt-timeline-audit-badge-row' });
+        const sourceRow = card.createDiv({ cls: 'ert-timeline-audit-badge-row' });
         const detectionSources = Array.from(new Set([
             ...finding.issues.map((issue) => issue.detectionSource),
             ...finding.evidence.map((evidence) => evidence.detectionSource)
         ]));
         detectionSources.forEach((source) => {
             sourceRow.createSpan({
-                cls: 'rt-timeline-audit-source-badge',
+                cls: 'ert-timeline-audit-source-badge',
                 text: this.formatDetectionSource(source)
             });
         });
 
-        const qaGrid = card.createDiv({ cls: 'rt-timeline-audit-qa-grid' });
+        const qaGrid = card.createDiv({ cls: 'ert-timeline-audit-qa-grid' });
         this.createQuestionBlock(qaGrid, t('timelineAuditModal.detail.whatYamlSays'), [
             this.describeCurrentWhen(finding),
             t('timelineAuditModal.detail.chronologyPosition', { position: finding.expectedChronologyPosition ?? t('timelineAuditModal.detail.chronologyNotPlaced') })
@@ -640,24 +640,24 @@ export class TimelineAuditModal extends Modal {
                 : t('timelineAuditModal.detail.actionIneligible')
         ]);
 
-        const evidenceList = card.createDiv({ cls: 'rt-timeline-audit-evidence-list' });
+        const evidenceList = card.createDiv({ cls: 'ert-timeline-audit-evidence-list' });
         if (finding.evidence.length === 0) {
-            evidenceList.createDiv({ cls: 'rt-timeline-audit-evidence-empty', text: t('timelineAuditModal.detail.noEvidence') });
+            evidenceList.createDiv({ cls: 'ert-timeline-audit-evidence-empty', text: t('timelineAuditModal.detail.noEvidence') });
         } else {
             for (const evidence of finding.evidence.slice(0, 4)) {
-                const evidenceItem = evidenceList.createDiv({ cls: 'rt-timeline-audit-evidence-item' });
+                const evidenceItem = evidenceList.createDiv({ cls: 'ert-timeline-audit-evidence-item' });
                 evidenceItem.createSpan({
-                    cls: 'rt-timeline-audit-evidence-label',
+                    cls: 'ert-timeline-audit-evidence-label',
                     text: t('timelineAuditModal.detail.evidenceLabel', { source: this.formatEvidenceSource(evidence.source), tier: this.formatEvidenceTier(evidence.tier) })
                 });
                 evidenceItem.createSpan({
-                    cls: 'rt-timeline-audit-evidence-snippet',
+                    cls: 'ert-timeline-audit-evidence-snippet',
                     text: evidence.snippet
                 });
             }
         }
 
-        const actionRow = card.createDiv({ cls: 'rt-timeline-audit-card-actions' });
+        const actionRow = card.createDiv({ cls: 'ert-timeline-audit-card-actions' });
         const applyButton = new ButtonComponent(actionRow)
             .setButtonText(t('timelineAuditModal.detail.applyButton'))
             .setDisabled(!finding.safeApplyEligible)
@@ -694,10 +694,10 @@ export class TimelineAuditModal extends Modal {
     }
 
     private createQuestionBlock(container: HTMLElement, title: string, lines: string[]): void {
-        const block = container.createDiv({ cls: 'rt-timeline-audit-question-block' });
-        block.createDiv({ cls: 'rt-timeline-audit-question-title', text: title });
+        const block = container.createDiv({ cls: 'ert-timeline-audit-question-block' });
+        block.createDiv({ cls: 'ert-timeline-audit-question-title', text: title });
         for (const line of lines) {
-            block.createDiv({ cls: 'rt-timeline-audit-question-copy', text: line });
+            block.createDiv({ cls: 'ert-timeline-audit-question-copy', text: line });
         }
     }
 

@@ -33,6 +33,7 @@
   --rt-publishStageColors-Press: var(--rt-color-press);
   /* most-common stage (used for ACT labels &c.) */
   --rt-max-publish-stage-color: var(--rt-publishStageColors-Zero);
+  --ert-max-publish-stage-color: var(--rt-max-publish-stage-color);
 
   /* Status Colors */
   --rt-color-due: #d05e5e;

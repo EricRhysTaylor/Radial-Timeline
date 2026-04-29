@@ -6,6 +6,7 @@ import { SceneInteractionManager } from '../interactions/SceneInteractionManager
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { OuterRingDragController, isDragInProgress, isDragInteractionActive, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
+import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
 
 export interface AllScenesView {
     currentMode: string;
@@ -89,6 +90,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     // Keep manager enabled in this mode and read the user setting live at hover-time.
     // This allows toggling auto-expand without reopening the timeline view.
     manager.setTitleExpansionEnabled(true);
+    setupSceneContextMenu(view as any, svg);
 
     let currentGroup: Element | null = null;
     let currentSceneId: string | null = null;
