@@ -69,8 +69,8 @@
 
 /* Runtime Estimator Modal sizing */
 .ert-runtime-modal-shell.modal {
-  width: 720px;
-  max-width: 92vw;
+  width: 860px;
+  max-width: 94vw;
   max-height: 92vh;
 }
 
@@ -278,7 +278,6 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 6px;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
   contain: paint;

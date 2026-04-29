@@ -178,23 +178,24 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        const scopeLayout = scopeCard.createDiv({ cls: 'ert-row ert-row-wrap ert-row-between' });
+        const scopeLayout = scopeCard.createDiv({ cls: 'ert-runtime-section-top' });
         const scopeInfo = scopeLayout.createDiv({ cls: 'ert-stack ert-stack-tight' });
         scopeInfo.createEl('h4', { text: 'Scope', cls: 'ert-section-title' });
         scopeInfo.createDiv({ cls: 'ert-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
 
-        const scopeControls = scopeLayout.createDiv({ cls: 'ert-stack' });
+        const scopeControls = scopeLayout.createDiv({ cls: 'ert-runtime-scope-controls' });
         
         // Subplot label row (shown only when subplot scope is selected)
         this.subplotLabelContainer = scopeControls.createDiv({ cls: 'ert-hidden' });
         this.subplotLabelContainer.createEl('label', { text: 'Subplot:', cls: 'ert-runtime-label' });
         
         // Dropdowns row - both dropdowns aligned horizontally
-        const scopeRow = scopeControls.createDiv({ cls: 'ert-row ert-row-wrap' });
+        const scopeRow = scopeControls.createDiv({ cls: 'ert-runtime-scope-row' });
         
         // Scope dropdown
         const scopeDropdownContainer = scopeRow.createDiv({ cls: 'ert-runtime-dropdown-container' });
         this.scopeDropdown = new DropdownComponent(scopeDropdownContainer);
+        this.scopeDropdown.selectEl.addClass('ert-input', 'ert-input--md');
         this.scopeDropdown
             .addOption('current', 'Current scene')
             .addOption('subplot', 'Subplot scenes')
@@ -209,6 +210,7 @@ export class RuntimeProcessingModal extends Modal {
         // Subplot dropdown (disabled when not in subplot scope)
         this.subplotDropdownContainer = scopeRow.createDiv({ cls: 'ert-runtime-dropdown-container ert-runtime-dropdown-disabled' });
         this.subplotDropdown = new DropdownComponent(this.subplotDropdownContainer);
+        this.subplotDropdown.selectEl.addClass('ert-input', 'ert-input--md');
         this.subplotDropdown.setDisabled(true);
         
         // Populate subplot dropdown
@@ -236,7 +238,7 @@ export class RuntimeProcessingModal extends Modal {
         statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'ert-section-title' });
         statusCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'Only scenes with the selected status will be processed.' });
 
-        const statusRow = statusCard.createDiv({ cls: 'ert-row ert-row-loose ert-row-wrap' });
+        const statusRow = statusCard.createDiv({ cls: 'ert-runtime-status-row' });
 
         this.createStatusCheckbox(statusRow, 'Todo', 'includeTodo', this.statusFilters.includeTodo);
         this.createStatusCheckbox(statusRow, 'Working', 'includeWorking', this.statusFilters.includeWorking);
@@ -247,7 +249,7 @@ export class RuntimeProcessingModal extends Modal {
         overrideCard.createEl('h4', { text: 'Override', cls: 'ert-section-title' });
         overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'By default, only scenes without a Runtime field are processed.' });
 
-        const overrideRow = overrideCard.createDiv({ cls: 'ert-row' });
+        const overrideRow = overrideCard.createDiv({ cls: 'ert-runtime-override-row' });
         
         const checkbox = overrideRow.createEl('input', { type: 'checkbox' });
         checkbox.checked = this.overrideExisting;
@@ -288,9 +290,10 @@ export class RuntimeProcessingModal extends Modal {
         modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'ert-section-title' });
         this.modeDescEl = modeCard.createDiv({ cls: 'ert-runtime-section-desc' });
 
-        const modeRow = modeCard.createDiv({ cls: 'ert-row' });
+        const modeRow = modeCard.createDiv({ cls: 'ert-runtime-mode-row' });
         const modeDropdownContainer = modeRow.createDiv({ cls: 'ert-runtime-dropdown-container' });
         const modeDropdown = new DropdownComponent(modeDropdownContainer);
+        modeDropdown.selectEl.addClass('ert-input', 'ert-input--md');
         modeDropdown
             .addOption('local', 'Local')
             .addOption('ai', 'AI')

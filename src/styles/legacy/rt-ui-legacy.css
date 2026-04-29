@@ -193,17 +193,30 @@
   margin-bottom: 12px;
 }
 
-/* runtime scope layout uses the shared row/stack utilities in base.css */
-
-.ert-runtime-dropdown-container {
+.ert-runtime-section-top,
+.ert-runtime-scope-controls {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-xs);
-  min-width: 180px;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-runtime-scope-row,
+.ert-runtime-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-runtime-dropdown-container {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .ert-runtime-dropdown-container .dropdown {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 .ert-runtime-dropdown-disabled {
@@ -241,13 +254,19 @@
   font-style: italic;
 }
 
-/* runtime status row uses the shared loose row / wrap utilities in base.css */
+.ert-runtime-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ert-gap-sm) var(--ert-gap-lg);
+}
 
 .ert-runtime-status-checkbox {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-sm);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .ert-runtime-status-checkbox input[type="checkbox"] {
@@ -262,8 +281,20 @@
   cursor: pointer;
 }
 
+.ert-runtime-override-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-runtime-override-row input[type="checkbox"] {
+  margin: var(--ert-gap-2xs) 0 0;
+  flex: 0 0 auto;
+}
+
 .ert-runtime-override-label {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .ert-runtime-override-label span {

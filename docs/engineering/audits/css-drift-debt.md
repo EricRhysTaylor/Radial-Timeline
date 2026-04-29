@@ -1,6 +1,6 @@
 # CSS Drift Debt
 
-Generated: 2026-04-29T16:09:33.181Z
+Generated: 2026-04-29T20:20:50.651Z
 
 Snapshot of every WARN-level drift hit at the time of baseline reset. Work through these to ratchet the baseline down. After fixing a batch, run `npm run css-drift -- --maintenance --update-baseline` to lock in the new lower ceiling.
 
@@ -10,8 +10,8 @@ Regenerate this report anytime with: `node scripts/css-drift-report.mjs`.
 
 ## Totals
 
-- **Total WARN hits:** 0
-- `spacing-px`: 0
+- **Total WARN hits:** 1
+- `spacing-px`: 1
 - `raw-hex`: 0
 - `shadow-rgba`: 0
 - `rt-legacy`: 0
@@ -30,9 +30,14 @@ Regenerate this report anytime with: `node scripts/css-drift-report.mjs`.
 - `shadow-rgba` — replace raw `rgba(...)` in `box-shadow` with `color-mix(in srgb, var(--...) N%, transparent)` or an ERT shadow token.
 - `rt-legacy` — rename `.rt-*` selector to `.ert-*` (and update TS class usage) or relocate to `src/styles/legacy/rt-ui-legacy.css`. Note: `legacy/rt-ui-legacy.css` is itself scanned, so renaming beats relocating long-term.
 
-## `spacing-px` (0)
+## `spacing-px` (1)
 
-_No hits. 🎉_
+
+### src/styles/legacy/rt-ui-legacy.css (1)
+
+```
+src/styles/legacy/rt-ui-legacy.css:291: margin: 2px
+```
 
 ## `raw-hex` (0)
 
