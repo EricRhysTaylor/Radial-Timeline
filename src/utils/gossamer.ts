@@ -4,6 +4,7 @@
 
 import { parseRange, isScoreInRange } from './rangeValidation';
 import { STAGE_ORDER } from './constants';
+import { buildProgressSnapshot } from '../progress/progressSnapshot';
 import { normalizeBeatSetNameInput, toBeatMatchKey, toBeatModelMatchKey } from './beatsInputNormalize';
 import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from '../types/gossamerSignals';
@@ -283,41 +284,8 @@ const BUILTIN_BEAT_MODEL_KEYS = new Set<string>([
 export function detectDominantStage(
   scenes: { itemType?: string; status?: string | string[]; "Publish Stage"?: string }[]
 ): typeof STAGE_ORDER[number] {
-  // Filter to scene notes only (exclude Beat/Plot/Backdrop)
-  const sceneNotes = scenes.filter(s => s.itemType === 'Scene');
-  
-  if (sceneNotes.length === 0) {
-    return 'Zero';
-  }
-  
-  // Helper to check if a status indicates completion
-  const isCompleted = (status: string | string[] | undefined): boolean => {
-    const val = Array.isArray(status) ? status[0] : status;
-    const normalized = (val ?? '').toString().trim().toLowerCase();
-    return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
-  };
-  
-  // Check stages in reverse order (most advanced first): Press -> House -> Author
-  // Zero is the default fallback
-  for (const stage of ['Press', 'House', 'Author'] as const) {
-    const stageIndex = STAGE_ORDER.indexOf(stage);
-    
-    // Check if ALL scenes have completed this stage
-    const allCompleted = sceneNotes.every(scene => {
-      const sceneStage = scene['Publish Stage'] || 'Zero';
-      const sceneStageIndex = STAGE_ORDER.indexOf(sceneStage as typeof STAGE_ORDER[number]);
-      
-      // Scene must be AT or BEYOND this stage AND marked complete
-      return sceneStageIndex >= stageIndex && isCompleted(scene.status);
-    });
-    
-    if (allCompleted) {
-      return stage;
-    }
-  }
-  
-  // Default: Zero stage (always available)
-  return 'Zero';
+  const snapshot = buildProgressSnapshot(scenes as any);
+  return snapshot.highestCompletedStage ?? 'Zero';
 }
 
 /**

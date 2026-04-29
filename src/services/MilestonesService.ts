@@ -1,7 +1,6 @@
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
-import { isNonSceneItem } from '../utils/sceneHelpers';
-import { STAGE_ORDER } from '../utils/constants';
+import { buildProgressSnapshot } from '../progress/progressSnapshot';
 import type { MilestoneInfo } from '../renderer/components/MilestoneIndicator';
 
 /**
@@ -33,10 +32,10 @@ export class MilestonesService {
      * Detect milestones for celebration or encouragement.
      * 
      * Milestone detection logic:
-     * 1. Find the highest stage that has ANY scenes
-     * 2. Check if ALL scenes at that highest stage are complete
-     *    AND no scenes remain at lower stages (must be promoted up)
-     * 3. If yes → celebrate that stage completion (Zero/Author/House/Press)
+     * 1. Build the shared progress snapshot.
+     * 2. Find the highest stage every scene has cleared.
+     *    A scene clears a stage when it is complete at that stage or promoted above it.
+     * 3. If any stage is cleared → celebrate that stage completion (Zero/Author/House/Press)
      * 4. If no completion → check for staleness warnings (author getting behind)
      * 
      * Priority: Book complete > Stage complete > Staleness encouragement
@@ -45,56 +44,23 @@ export class MilestonesService {
      * For progress tracking, see TimelineMetricsService.calculateCompletionEstimate()
      */
     public detectMilestone(scenes: TimelineItem[]): MilestoneInfo | null {
-        const sceneNotesOnly = scenes.filter(scene => !isNonSceneItem(scene));
-        if (sceneNotesOnly.length === 0) return null;
+        const snapshot = buildProgressSnapshot(scenes);
+        if (snapshot.totalScenes === 0) return null;
 
-        const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
-            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
-            const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
-            return match ?? 'Zero';
-        };
+        const completedStage = snapshot.highestCompletedStage;
 
-        const isCompleted = (status: unknown): boolean => {
-            const val = Array.isArray(status) ? status[0] : status;
-            const normalized = (val ?? '').toString().trim().toLowerCase();
-            return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
-        };
-
-        // STEP 1: Check for stage completions
-        // Find the highest stage that has any scenes
-        const highestStageWithScenes = [...STAGE_ORDER].reverse().find(stage =>
-            sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage)
-        );
-        
-        if (!highestStageWithScenes) return null;
-        
-        const highestStageIndex = STAGE_ORDER.indexOf(highestStageWithScenes);
-        const hasLowerStageScenes = sceneNotesOnly.some(scene => {
-            const sceneStageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
-            return sceneStageIndex < highestStageIndex;
-        });
-
-        // Check if ALL scenes at the highest stage are complete
-        // AND there are no scenes still at lower stages.
-        // This is what triggers the hero card celebrations in ProgressSection
-        const scenesAtHighestStage = sceneNotesOnly.filter(scene => 
-            normalizeStage(scene['Publish Stage']) === highestStageWithScenes
-        );
-        const allComplete = scenesAtHighestStage.length > 0 && 
-            scenesAtHighestStage.every(scene => isCompleted(scene.status));
-        
-        if (allComplete && !hasLowerStageScenes) {
+        if (completedStage) {
             // Stage is completely done → show celebration milestone
             // This syncs with the hero cards in ProgressSection (Zero/Author/House/Press complete)
-            if (highestStageWithScenes === 'Press') {
+            if (completedStage === 'Press') {
                 // Final celebration state (not a publish stage): all Press scenes complete = book complete.
-                return { type: 'book-complete', stage: highestStageWithScenes };
-            } else if (highestStageWithScenes === 'House') {
-                return { type: 'stage-house-complete', stage: highestStageWithScenes };
-            } else if (highestStageWithScenes === 'Author') {
-                return { type: 'stage-author-complete', stage: highestStageWithScenes };
-            } else if (highestStageWithScenes === 'Zero') {
-                return { type: 'stage-zero-complete', stage: highestStageWithScenes };
+                return { type: 'book-complete', stage: completedStage };
+            } else if (completedStage === 'House') {
+                return { type: 'stage-house-complete', stage: completedStage };
+            } else if (completedStage === 'Author') {
+                return { type: 'stage-author-complete', stage: completedStage };
+            } else if (completedStage === 'Zero') {
+                return { type: 'stage-zero-complete', stage: completedStage };
             }
         }
 

@@ -3,6 +3,7 @@ import type { TimelineItem } from '../types';
 import { isBeatNote } from '../utils/sceneHelpers';
 import { STAGE_ORDER } from '../utils/constants';
 import { parseSceneTitle } from '../utils/text';
+import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
 
 export interface CompletionEstimate {
     date: Date | null;
@@ -59,15 +60,11 @@ export class TimelineMetricsService {
         const windowStartTime = todayTime - windowDays * 24 * 60 * 60 * 1000;
 
         const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
-            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
-            const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
-            return match ?? 'Zero';
+            return normalizePublishStage(raw);
         };
 
         const isCompleted = (status: TimelineItem['status']): boolean => {
-            const val = Array.isArray(status) ? status[0] : status;
-            const normalized = (val ?? '').toString().trim().toLowerCase();
-            return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+            return isCompleteStatus(status);
         };
 
         // Count recent completions per stage within the rolling window to detect active working stage

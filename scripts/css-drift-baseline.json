@@ -1,13 +1,13 @@
 {
   "maintenance": {
-    "totalWarnings": 1555,
+    "totalWarnings": 1160,
     "warningsByRule": {
-      "rt-legacy": 1023,
       "raw-hex": 176,
-      "spacing-px": 329,
-      "shadow-rgba": 27
+      "rt-legacy": 729,
+      "spacing-px": 233,
+      "shadow-rgba": 22
     },
-    "updatedAt": "2026-04-26T23:00:31.840Z",
+    "updatedAt": "2026-04-29T17:33:47.786Z",
     "mode": "maintenance"
   },
   "migration": {

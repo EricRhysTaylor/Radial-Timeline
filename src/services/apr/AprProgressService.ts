@@ -4,6 +4,7 @@ import type { AuthorProgressDefaults, AprTrackedStage } from '../../types/settin
 import type { TimelineItem } from '../../types/timeline';
 import { isBeatNote } from '../../utils/sceneHelpers';
 import { STAGE_ORDER } from '../../utils/constants';
+import { isCompleteStatus, normalizePublishStage } from '../../progress/progressSnapshot';
 
 export type AprResolvedProgressMode = NonNullable<AuthorProgressDefaults['aprProgressMode']>;
 
@@ -44,16 +45,11 @@ function normalizeTargetSceneCount(value: unknown): number | undefined {
 }
 
 function isCompleted(status: TimelineItem['status']): boolean {
-    const value = Array.isArray(status) ? status[0] : status;
-    const normalized = (value ?? '').toString().trim().toLowerCase();
-    return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+    return isCompleteStatus(status);
 }
 
 function normalizeStage(raw: unknown): AprTrackedStage {
-    const value = Array.isArray(raw) ? raw[0] : raw;
-    const normalized = (value ?? '').toString().trim().toLowerCase();
-    const match = STAGE_ORDER.find(stage => stage.toLowerCase() === normalized);
-    return normalizeTrackedStage(match);
+    return normalizeTrackedStage(normalizePublishStage(raw));
 }
 
 export class AprProgressService {

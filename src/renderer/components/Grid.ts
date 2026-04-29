@@ -1,11 +1,14 @@
 import { formatRuntimeValue } from '../../utils/runtimeEstimator';
 import { t } from '../../i18n';
+import type { ProgressStageState } from '../../progress/progressSnapshot';
 
 export function renderCenterGrid(params: {
   statusesForGrid: string[];
   stagesForGrid: string[];
   gridCounts: Record<string, Record<string, number>>;
   gridSceneNames: Record<string, Record<string, string[]>>;
+  gridStageStates: Record<string, ProgressStageState>;
+  isBookComplete: boolean;
   PUBLISH_STAGE_COLORS: Record<string, string>;
   currentYearLabel: string;
   estimatedTotalScenes: number;
@@ -26,6 +29,8 @@ export function renderCenterGrid(params: {
     stagesForGrid,
     gridCounts,
     gridSceneNames,
+    gridStageStates,
+    isBookComplete,
     PUBLISH_STAGE_COLORS,
     currentYearLabel,
     estimatedTotalScenes,
@@ -42,50 +47,6 @@ export function renderCenterGrid(params: {
 
   const gridWidth = statusesForGrid.length * cellWidth + (statusesForGrid.length - 1) * cellGapX;
   const gridHeight = stagesForGrid.length * cellHeight + (stagesForGrid.length - 1) * cellGapY;
-
-  const isStageCompleteForGridRow = (rowIndex: number, gridCountsIn: typeof gridCounts, stages: string[]): boolean => {
-    const stage = stages[rowIndex];
-    const rc = gridCountsIn[stage];
-    const rowTotal = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0) + (rc.Completed || 0);
-    const maxStageIdxForGrid = stages.reduce((acc, s, idx) => {
-      const counts = gridCountsIn[s];
-      const total = (counts.Todo || 0) + (counts.Working || 0) + (counts.Due || 0) + (counts.Completed || 0);
-      return total > 0 ? Math.max(acc, idx) : acc;
-    }, -1);
-    
-    // A row is complete if:
-    // 1. It has no scenes (surpassed by a later stage)
-    if (rowTotal === 0 && maxStageIdxForGrid > rowIndex) {
-      return true;
-    }
-    
-    // 2. OR it's the most advanced stage AND all scenes in this stage are completed 
-    //    AND all previous stages are also complete (final stage completion)
-    if (rowIndex === maxStageIdxForGrid) {
-      const completed = rc.Completed || 0;
-      const incomplete = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0);
-      const thisStageComplete = completed > 0 && incomplete === 0;
-      
-      if (!thisStageComplete) return false;
-      
-      // Check that all previous stages are also complete
-      for (let i = 0; i < rowIndex; i++) {
-        const prevStage = stages[i];
-        const prevCounts = gridCountsIn[prevStage];
-        const prevTotal = (prevCounts.Todo || 0) + (prevCounts.Working || 0) + (prevCounts.Due || 0) + (prevCounts.Completed || 0);
-        const prevIncomplete = (prevCounts.Todo || 0) + (prevCounts.Working || 0) + (prevCounts.Due || 0);
-        
-        // Previous stage must either have no scenes (surpassed) or have all completed
-        if (prevTotal > 0 && prevIncomplete > 0) {
-          return false; // Previous stage still has incomplete work
-        }
-      }
-      
-      return true;
-    }
-    
-    return false;
-  };
 
   const renderGridCell = (stage: string, status: string, x: number, y: number, count: number, sceneNames: string[]): string => {
     let fillAttr = '';
@@ -153,22 +114,6 @@ export function renderCenterGrid(params: {
       <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
     `;
 
-  // Check if the final Press stage is complete (all Press scenes completed)
-  const isPressStageComplete = (() => {
-    const mostAdvancedStageIdx = stagesForGrid.reduce((acc, s, idx) => {
-      const counts = gridCounts[s];
-      const total = (counts.Todo || 0) + (counts.Working || 0) + (counts.Due || 0) + (counts.Completed || 0);
-      return total > 0 ? Math.max(acc, idx) : acc;
-    }, -1);
-    if (mostAdvancedStageIdx === -1) return false;
-    const finalStage = stagesForGrid[mostAdvancedStageIdx];
-    if (finalStage !== 'Press') return false;
-    const pressCounts = gridCounts['Press'];
-    const pressCompleted = pressCounts.Completed || 0;
-    const pressIncomplete = (pressCounts.Todo || 0) + (pressCounts.Working || 0) + (pressCounts.Due || 0);
-    return pressCompleted > 0 && pressIncomplete === 0;
-  })();
-
   const rows = stagesForGrid.map((stage, r) => {
     const xh = startXGrid - 12;
     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
@@ -185,19 +130,14 @@ export function renderCenterGrid(params: {
       const sceneNames = gridSceneNames[stage]?.[status] || [];
       const x = startXGrid + c * (cellWidth + cellGapX);
       const y = startYGrid + r * (cellHeight + cellGapY);
-      const completeRow = isStageCompleteForGridRow(r, gridCounts, stagesForGrid);
+      const completeRow = gridStageStates[stage]?.isComplete ?? false;
       if (completeRow) {
-        const mostAdvancedStageIdx = stagesForGrid.reduce((acc, s, idx) => {
-          const counts = gridCounts[s];
-          const total = (counts.Todo || 0) + (counts.Working || 0) + (counts.Due || 0) + (counts.Completed || 0);
-          return total > 0 ? Math.max(acc, idx) : acc;
-        }, -1);
-        const mostStage = stagesForGrid[Math.max(0, mostAdvancedStageIdx)];
-        const solid = (PUBLISH_STAGE_COLORS[mostStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+        const fillStage = isBookComplete ? 'Press' : stage;
+        const solid = (PUBLISH_STAGE_COLORS[fillStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
         
         // Use smile face for ALL rows when final book completion is reached
-        const iconId = isPressStageComplete ? 'icon-smile' : 'icon-bookmark-check';
-        const completedTooltip = isPressStageComplete ? 'Book Complete! 🎉' : `${stage} stage complete`;
+        const iconId = isBookComplete ? 'icon-smile' : 'icon-bookmark-check';
+        const completedTooltip = isBookComplete ? 'Book Complete!' : `${stage} stage complete`;
         
         return `
           <g transform="translate(${x}, ${y})" class="rt-tooltip-target rt-grid-cell-complete" data-tooltip="${completedTooltip}" data-tooltip-placement="bottom">
@@ -222,7 +162,7 @@ export function renderCenterGrid(params: {
       // Only show arrows for rows up to and including the most advanced stage
       if (r > maxStageIdxForGrid) return '';
       
-      const isComplete = isStageCompleteForGridRow(r, gridCounts, stagesForGrid);
+      const isComplete = gridStageStates[stage]?.isComplete ?? false;
       const ax = startXGrid + gridWidth + 4;
       const ay = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2);
       
