@@ -210,7 +210,7 @@ export class RuntimeProcessingModal extends Modal {
         // Subplot dropdown (disabled when not in subplot scope)
         this.subplotDropdownContainer = scopeRow.createDiv({ cls: 'ert-runtime-dropdown-container ert-runtime-dropdown-disabled' });
         this.subplotDropdown = new DropdownComponent(this.subplotDropdownContainer);
-        this.subplotDropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        this.subplotDropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         this.subplotDropdown.setDisabled(true);
         
         // Populate subplot dropdown
@@ -247,7 +247,7 @@ export class RuntimeProcessingModal extends Modal {
         // ===== OVERRIDE SECTION =====
         const overrideCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         overrideCard.createEl('h4', { text: 'Override', cls: 'ert-section-title' });
-        overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'By default, only scenes without a Runtime field are processed.' });
+        overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'By default, only scenes without a Runtime value are processed.' });
 
         const overrideRow = overrideCard.createDiv({ cls: 'ert-runtime-override-row' });
         

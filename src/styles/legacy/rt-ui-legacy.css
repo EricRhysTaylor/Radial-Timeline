@@ -214,7 +214,7 @@
   min-width: 0;
 }
 
-.ert-runtime-dropdown-container .dropdown {
+.ert-runtime-dropdown-container .dropdown:not([class*="ert-input--"]) {
   width: auto;
   max-width: 100%;
 }
@@ -350,7 +350,7 @@
 
 .ert-runtime-accordion-content {
   padding: var(--ert-pad-sm) 0 0 calc(var(--ert-pad-lg) + var(--ert-gap-sm));
-  border-top: 1px solid var(--background-modifier-border);
+  border-top: 1px solid color-mix(in srgb, var(--ert-pro-border) 78%, transparent);
   margin-top: 8px;
 }
 
@@ -379,7 +379,7 @@
   letter-spacing: 0.05em;
   margin: var(--ert-pad-sm) 0 var(--ert-gap-sm) 0;
   padding-top: 8px;
-  border-top: 1px solid var(--background-modifier-border);
+  border-top: 1px solid color-mix(in srgb, var(--ert-pro-border) 78%, transparent);
 }
 
 .ert-runtime-settings-hint {

@@ -275,10 +275,11 @@
 
 .ert-book-designer-modal .ert-card-stack {
   flex: 1 1 auto;
+  width: 100%;
+  align-self: stretch;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   contain: paint;
 }
