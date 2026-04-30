@@ -5,6 +5,7 @@ import {
     convertLegacyManuscriptExportTemplateToExportProfile,
     deriveBookPublishingPreferences,
     migratePublishingModelState,
+    normalizeBookPublishingPreferences,
     normalizeExportProfile,
 } from './publishingMigration';
 
@@ -153,5 +154,46 @@ describe('publishing migration', () => {
         expect(result.bookPublishingPreferences).toHaveLength(1);
         expect(result.bookPublishingPreferences[0].preferredTemplateProfileIdByContext?.podcast).toBe('bundled-podcast');
         expect(result.lastUsedExportProfileId).toBe('legacy-podcast');
+    });
+
+    it('preserves last-used modal snapshots in book publishing preferences', () => {
+        const cleanup = {
+            ...getDefaultManuscriptCleanupOptions('markdown'),
+            stripComments: true,
+            stripLinks: true,
+        };
+        const prefs = normalizeBookPublishingPreferences({
+            bookId: 'book-1',
+            lastUsedExportProfileSnapshot: {
+                id: '__last_used_snapshot__',
+                name: 'Last used',
+                templateProfileId: 'bundled-fiction-classic-manuscript',
+                usageContext: 'novel',
+                exportType: 'manuscript',
+                outputFormat: 'markdown',
+                manuscriptPreset: 'novel',
+                tocMode: 'markdown',
+                includeSceneIdInToc: true,
+                includeSceneIdInHeading: false,
+                order: 'chronological',
+                subplot: 'Main Plot',
+                includeMatter: false,
+                includeSynopsis: false,
+                updateWordCounts: false,
+                saveMarkdownArtifact: false,
+                cleanup,
+                splitMode: 'parts',
+                splitParts: 3,
+                selectionPolicy: 'manual-range',
+                rangeStart: 2,
+                rangeEnd: 8,
+            },
+        });
+
+        expect(prefs?.lastUsedExportProfileSnapshot?.outputFormat).toBe('markdown');
+        expect(prefs?.lastUsedExportProfileSnapshot?.cleanup.stripComments).toBe(true);
+        expect(prefs?.lastUsedExportProfileSnapshot?.cleanup.stripLinks).toBe(true);
+        expect(prefs?.lastUsedExportProfileSnapshot?.order).toBe('chronological');
+        expect(prefs?.lastUsedExportProfileSnapshot?.rangeStart).toBe(2);
     });
 });

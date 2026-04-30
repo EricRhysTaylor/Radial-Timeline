@@ -71,6 +71,8 @@ export interface AssembleManuscriptOptions {
   includeSceneIdInToc?: boolean;
   /** When true, append each scene's SceneId to its body heading. Default off — adds visual chrome to manuscript proper. */
   includeSceneIdInHeading?: boolean;
+  /** Use plain SceneId text for Pandoc PDF headings; code spans are unsafe in PDF bookmark strings. */
+  sceneIdFormat?: 'code' | 'plain';
 }
 
 let matterOrderIgnoredWarned = false;
@@ -78,6 +80,10 @@ const matterLikeMissingClassWarnings = new Set<string>();
 
 function isDevMode(): boolean {
   return typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+}
+
+function formatSceneIdForManuscript(sceneId: string, format: AssembleManuscriptOptions['sceneIdFormat'] = 'code'): string {
+  return format === 'plain' ? sceneId : `\`${sceneId}\``;
 }
 
 function warnMatterOrderIgnoredOnce(): void {
@@ -818,7 +824,8 @@ function generateTableOfContents(
   totalWords: number,
   useObsidianLinks = false,
   sortOrder?: string,
-  includeSceneIdInToc = false
+  includeSceneIdInToc = false,
+  sceneIdFormat: AssembleManuscriptOptions['sceneIdFormat'] = 'code'
 ): string {
   const tocLines: string[] = [
     '# TABLE OF CONTENTS',
@@ -838,7 +845,7 @@ function generateTableOfContents(
   scenes.forEach((scene, index) => {
     const sceneNum = index + 1;
     const sceneIdSuffix = includeSceneIdInToc
-      ? ` ${scene.sceneId ? '`' + scene.sceneId + '`' : '`(no SceneId)`'}`
+      ? ` ${formatSceneIdForManuscript(scene.sceneId || '(no SceneId)', sceneIdFormat)}`
       : '';
     if (useObsidianLinks) {
       // Obsidian internal link format - clickable in reading mode
@@ -882,6 +889,7 @@ export async function assembleManuscript(
   const chapterMarkersByScenePath = options?.chapterMarkersByScenePath ?? {};
   const includeSceneIdInToc = options?.includeSceneIdInToc === true;
   const includeSceneIdInHeading = options?.includeSceneIdInHeading === true;
+  const sceneIdFormat = options?.sceneIdFormat || 'code';
   const matterDiagnostics: Array<{
     filePath: string;
     side: 'front' | 'back';
@@ -1037,7 +1045,7 @@ export async function assembleManuscript(
             textParts.push(`\\section*{${latexHeading}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
           } else {
             const headingSuffix = includeSceneIdInHeading
-              ? sceneId ? ` \`${sceneId}\`` : ''
+              ? sceneId ? ` ${formatSceneIdForManuscript(sceneId, sceneIdFormat)}` : ''
               : '';
             textParts.push(`## ${heading}${headingSuffix}\n\n${bodyText}\n\n`);
           }
@@ -1066,7 +1074,7 @@ export async function assembleManuscript(
   }
 
   // Generate TOC and prepend to manuscript
-  const toc = includeToc ? generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder, includeSceneIdInToc) : '';
+  const toc = includeToc ? generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder, includeSceneIdInToc, sceneIdFormat) : '';
   const manuscriptText = toc + textParts.join('');
 
   return {

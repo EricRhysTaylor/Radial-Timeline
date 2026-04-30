@@ -31,6 +31,7 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
     const hasTwosideLayout = /\btwoside\b|\bopenright\b|\bopenany\b/i.test(source);
     const hasHeaderFooterCommands = /\\pagestyle|\\thispagestyle|\\headrulewidth|\\footrulewidth/i.test(source);
     const hasTitlePageSignals = /\$if\(title\)\$|\$title\$|\\maketitle|titlepage/i.test(source);
+    const hasBodyHook = /\$body\$/i.test(source);
     const hasTocSignals = /\\tableofcontents\b|\$if\(toc\)\$|\$toc-title\$/i.test(source);
     const hasSceneBreakSignals = /\\scenebreak\b|\\scenebreak\b|\\asterism\b|\\rtSceneSep\b/i.test(source);
     const hasDropCapSignals = /\\lettrine\b|\\dropcap\b/i.test(source);
@@ -127,10 +128,12 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
     }
 
     if (styleHint === 'custom' && traits.length === 0) {
-        addTrait('No strong structure detected');
-        addTrait('Custom formatting');
+        if (hasBodyHook) {
+            addTrait('Pandoc manuscript body hook');
+        }
+        addTrait('Custom LaTeX styling');
     } else if (styleHint === 'custom') {
-        addTrait('Custom formatting');
+        addTrait('Custom LaTeX styling');
     }
 
     if (usageContext === 'screenplay' && styleHint === 'custom') {

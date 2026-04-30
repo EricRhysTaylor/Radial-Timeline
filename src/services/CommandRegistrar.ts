@@ -546,6 +546,7 @@ export class CommandRegistrar {
                         suppressMatterPageChrome: true,
                         includeSceneIdInToc: result.includeSceneIdInToc === true,
                         includeSceneIdInHeading: result.includeSceneIdInHeading === true,
+                        sceneIdFormat: 'plain',
                         modernClassicStructure: useModernClassicStructure
                             ? {
                                 enabled: true,

@@ -188,6 +188,7 @@ export function normalizeBookPublishingPreferences(preferences: Partial<BookPubl
         bookId,
         ...(isNonEmptyString(preferences.defaultExportProfileId) ? { defaultExportProfileId: preferences.defaultExportProfileId.trim() } : {}),
         ...(isNonEmptyString(preferences.lastUsedExportProfileId) ? { lastUsedExportProfileId: preferences.lastUsedExportProfileId.trim() } : {}),
+        ...(preferences.lastUsedExportProfileSnapshot ? { lastUsedExportProfileSnapshot: normalizeExportProfile(preferences.lastUsedExportProfileSnapshot) } : {}),
         ...(preferredTemplateProfileIdByContext && Object.keys(preferredTemplateProfileIdByContext).length > 0
             ? { preferredTemplateProfileIdByContext }
             : {}),

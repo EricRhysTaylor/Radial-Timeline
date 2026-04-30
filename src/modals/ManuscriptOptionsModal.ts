@@ -236,6 +236,7 @@ export class ManuscriptOptionsModal extends Modal {
     private manuscriptRulesCard?: HTMLElement;
     private publishingCard?: HTMLElement;
     private publishingHeadingTextEl?: HTMLElement;
+    private pdfSettingsCard?: HTMLElement;
     private artifactRowEl?: HTMLElement;
     private artifactHelperEl?: HTMLElement;
     private includeMatterCard?: HTMLElement;
@@ -540,7 +541,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         // C) SPLIT OUTPUT
         this.splitCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        this.createSectionHeading(this.splitCard, 'Split Output', 'split');
+        this.createSectionHeading(this.splitCard, 'Split output', 'split');
         this.splitCard.createDiv({
             cls: 'ert-sub-card-note',
             text: 'Export as one file or split into multiple equal-sized files.'
@@ -642,7 +643,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         // F) MANUSCRIPT OPTIONS
         this.manuscriptRulesCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        this.createSectionHeading(this.manuscriptRulesCard, 'Table of Contents', 'list-checks');
+        this.createSectionHeading(this.manuscriptRulesCard, 'Table of contents', 'list-checks');
 
         this.tocCard = this.manuscriptRulesCard.createDiv({ cls: 'ert-manuscript-rule-block' });
         this.tocCard.createDiv({ cls: 'ert-manuscript-toggle-label', text: t('manuscriptModal.tocHeading') });
@@ -667,25 +668,15 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.syncTocPills();
 
-        // G) PDF EXPORT CONTROLS
+        // G) MANUSCRIPT OPTIONS
         this.publishingCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        const publishingHeading = this.createSectionHeading(this.publishingCard, 'Manuscript Options', 'settings');
+        const publishingHeading = this.createSectionHeading(this.publishingCard, 'Manuscript options', 'settings');
         this.publishingHeadingTextEl = publishingHeading.querySelector('.ert-sub-card-head-text') as HTMLElement | null || undefined;
         const publishingBody = this.publishingCard.createDiv({ cls: 'ert-manuscript-advanced-body' });
 
-        const exportControlsCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
+        this.pdfSettingsCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
 
-        this.wordCountCard = exportControlsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        const wordCountLabel = this.wordCountCard.createSpan({ cls: 'ert-manuscript-toggle-label' });
-        this.appendInlineCodeText(wordCountLabel, t('manuscriptModal.wordCountToggle'));
-        this.updateWordCountsToggle = new ToggleComponent(this.wordCountCard)
-            .setValue(this.updateWordCounts)
-            .onChange((value) => {
-                this.updateWordCounts = value;
-                this.updateTemplateActionButtonState();
-            });
-
-        this.includeMatterCard = exportControlsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        this.includeMatterCard = this.pdfSettingsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
         this.includeMatterCard.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Include front & back matter' });
         this.includeMatterToggle = new ToggleComponent(this.includeMatterCard)
             .setValue(this.includeMatterUserChoice)
@@ -696,20 +687,31 @@ export class ManuscriptOptionsModal extends Modal {
                 this.updateTemplateActionButtonState();
             });
 
-        this.artifactRowEl = exportControlsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        this.artifactRowEl.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Save compiled + sanitized Markdown files' });
+        this.artifactRowEl = this.pdfSettingsCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        this.artifactRowEl.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Save compiled + Pandoc-ready Markdown files' });
         this.markdownArtifactToggle = new ToggleComponent(this.artifactRowEl)
             .setValue(this.saveMarkdownArtifact)
             .onChange((value) => {
                 this.saveMarkdownArtifact = value;
                 this.updateTemplateActionButtonState();
             });
-        this.artifactHelperEl = exportControlsCard.createDiv({
+        this.artifactHelperEl = this.pdfSettingsCard.createDiv({
             cls: 'ert-sub-card-note',
-            text: 'Saves compiled and sanitized Markdown artifacts alongside the PDF.'
+            text: 'Saves the assembled source and the cleaned Markdown sent to Pandoc. Cleanup settings below decide what gets removed.'
         });
 
-        const sceneIdCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--cleanup' });
+        this.wordCountCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--separated' });
+        const wordCountRow = this.wordCountCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        const wordCountLabel = wordCountRow.createSpan({ cls: 'ert-manuscript-toggle-label' });
+        this.appendInlineCodeText(wordCountLabel, t('manuscriptModal.wordCountToggle'));
+        this.updateWordCountsToggle = new ToggleComponent(wordCountRow)
+            .setValue(this.updateWordCounts)
+            .onChange((value) => {
+                this.updateWordCounts = value;
+                this.updateTemplateActionButtonState();
+            });
+
+        const sceneIdCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--separated' });
         this.createSectionHeading(sceneIdCard, 'Scene ID');
         sceneIdCard.createDiv({
             cls: 'ert-sub-card-note',
@@ -727,8 +729,8 @@ export class ManuscriptOptionsModal extends Modal {
                 this.updateTemplateActionButtonState();
             });
 
-        this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--cleanup' });
-        this.createSectionHeading(this.exportCleanupCard, 'Export Cleanup');
+        this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--separated' });
+        this.createSectionHeading(this.exportCleanupCard, 'Export cleanup');
         this.exportCleanupCard.createDiv({
             cls: 'ert-sub-card-note',
             text: 'Controls how draft-only elements are removed before final output.'
@@ -764,8 +766,9 @@ export class ManuscriptOptionsModal extends Modal {
         // H) EXPORT TEMPLATES
         this.templateCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card ert-layout-templates-card' });
         this.createSectionHeading(this.templateCard, 'Saved export presets', 'bookmark');
-        this.templateSummaryEl = this.templateCard.createDiv({ cls: 'ert-sub-card-note ert-export-preset-summary' });
-        const dropdownRow = this.templateCard.createDiv({ cls: 'ert-template-dropdown-row' });
+        const presetTopRow = this.templateCard.createDiv({ cls: 'ert-export-preset-toprow' });
+        this.templateSummaryEl = presetTopRow.createDiv({ cls: 'ert-sub-card-note ert-export-preset-summary' });
+        const dropdownRow = presetTopRow.createDiv({ cls: 'ert-template-dropdown-row' });
         const templateSetting = new DropdownComponent(dropdownRow.createDiv({ cls: 'ert-manuscript-input-container' }));
         templateSetting.selectEl.addClass('ert-input', 'ert-input--lg');
         this.exportTemplateDropdown = templateSetting.selectEl;
@@ -828,7 +831,9 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.cancelButton = new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCancel'))
-            .onClick(() => this.close());
+            .onClick(() => {
+                void this.persistCurrentSnapshot().finally(() => this.close());
+            });
 
         this.outputStatusEl = container.createDiv({ cls: 'ert-manuscript-output-status ert-sub-card-note ert-hidden' });
 
@@ -1028,9 +1033,12 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private getCurrentTemplateSelection(): string | null {
-        const value = this.selectedExportProfileId || this.exportTemplateDropdown?.value || '';
+        const dropdownValue = (this.exportTemplateDropdown?.value || '').trim();
+        const selectedValue = (this.selectedExportProfileId || '').trim();
+        const value = dropdownValue || selectedValue;
         const trimmed = value.trim();
-        return trimmed.length > 0 ? trimmed : null;
+        if (!trimmed) return null;
+        return this.getTemplateList().some(template => template.id === trimmed) ? trimmed : null;
     }
 
     private async rememberLastUsedTemplate(templateId: string | null): Promise<void> {
@@ -1085,10 +1093,15 @@ export class ManuscriptOptionsModal extends Modal {
             && templates.some(template => template.id === this.selectedExportProfileId);
         this.exportTemplateDropdown.value = hasActiveTemplate ? this.selectedExportProfileId! : '';
         this.exportTemplateDropdown.disabled = false;
-        if (!hasActiveTemplate) {
+        const hasTransientProfile = !!this.selectedExportProfile
+            && !!this.selectedExportProfileId
+            && this.selectedExportProfile.id === this.selectedExportProfileId;
+        if (!hasActiveTemplate && !hasTransientProfile) {
             this.selectedExportProfileId = null;
             this.selectedExportProfile = this.defaultExportProfile;
             this.selectedLayoutId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
+        } else if (!hasActiveTemplate && hasTransientProfile) {
+            placeholder.selected = true;
         }
         this.updateTemplateActionButtonState();
     }
@@ -1643,7 +1656,9 @@ export class ManuscriptOptionsModal extends Modal {
         this.manuscriptRulesCard?.toggleClass('ert-hidden', !mode.showToc);
         this.tocCard?.toggleClass('ert-hidden', !mode.showToc);
         this.publishingCard?.toggleClass('ert-hidden', !mode.showPublishing);
+        this.pdfSettingsCard?.toggleClass('ert-hidden', !mode.showIncludeMatter && !mode.showSavePrecompile);
         this.wordCountCard?.toggleClass('ert-hidden', !mode.showWordCount);
+        this.wordCountCard?.toggleClass('ert-manuscript-rule-block--separated', mode.showIncludeMatter || mode.showSavePrecompile);
         this.includeMatterCard?.toggleClass('ert-hidden', !mode.showIncludeMatter);
         this.includeMatterToggle?.setValue(this.includeMatterUserChoice);
         this.exportCleanupCard?.toggleClass('ert-hidden', !mode.showExportCleanup);
@@ -1664,7 +1679,7 @@ export class ManuscriptOptionsModal extends Modal {
         }
 
         if (this.publishingHeadingTextEl) {
-            this.publishingHeadingTextEl.setText(mode.isPdfManuscript ? 'PDF Export Controls' : 'Manuscript Options');
+            this.publishingHeadingTextEl.setText(mode.isPdfManuscript ? 'PDF options' : 'Manuscript options');
         }
 
         let shouldReloadScenes = false;
@@ -1732,7 +1747,7 @@ export class ManuscriptOptionsModal extends Modal {
                 return aRank - bRank || a.name.localeCompare(b.name);
             });
         const activeProfileId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
-        let selectedLayoutName: string | undefined;
+        let selectedLayoutProfile: TemplateProfile | undefined;
 
         if (layouts.length === 0) {
             // Empty state
@@ -1747,7 +1762,7 @@ export class ManuscriptOptionsModal extends Modal {
                 this.openPublishingSettings();
             });
             this.selectedLayoutId = undefined;
-            selectedLayoutName = undefined;
+            selectedLayoutProfile = undefined;
         } else if (layouts.length === 1) {
             // Single layout — static text
             this.layoutContainerEl.createDiv({
@@ -1755,7 +1770,7 @@ export class ManuscriptOptionsModal extends Modal {
                 text: this.formatTemplateProfileName(layouts[0])
             });
             this.selectedLayoutId = activeProfileId || layouts[0].id;
-            selectedLayoutName = this.formatTemplateProfileName(layouts[0]);
+            selectedLayoutProfile = layouts[0];
         } else {
             // Multiple layouts — dropdown
             const ddContainer = this.layoutContainerEl.createDiv({ cls: 'ert-manuscript-input-container' });
@@ -1780,7 +1795,7 @@ export class ManuscriptOptionsModal extends Modal {
                 : (accessibleDefault?.id || layouts[0].id);
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
-            selectedLayoutName = this.formatTemplateProfileName(layouts.find(l => l.id === defaultId));
+            selectedLayoutProfile = layouts.find(l => l.id === defaultId);
             dd.onChange((val) => {
                 const nextProfile = layouts.find(l => l.id === val);
                 if (!this.isPro && this.getTemplateProfileTierLabel(nextProfile) === 'Pro') {
@@ -1794,26 +1809,44 @@ export class ManuscriptOptionsModal extends Modal {
                     this.selectedExportProfileId = this.selectedExportProfile.id;
                 }
                 const selected = layouts.find(l => l.id === val);
-                this.renderLayoutDescription(this.formatTemplateProfileName(selected));
+                this.renderLayoutDescription(selected);
                 this.updateExportProfileSummary();
                 this.updateTemplateWarning();
                 this.updateTemplateActionButtonState();
             });
         }
 
-        this.renderLayoutDescription(selectedLayoutName);
+        this.renderLayoutDescription(selectedLayoutProfile);
 
     }
 
-    private renderLayoutDescription(layoutName?: string): void {
+    private renderLayoutDescription(profile?: TemplateProfile): void {
         if (!this.layoutContainerEl) return;
         this.layoutContainerEl.querySelector('.ert-manuscript-layout-desc')?.remove();
         const desc = this.layoutContainerEl.createDiv({ cls: 'ert-sub-card-note ert-manuscript-layout-desc' });
-        if (!layoutName) {
+        if (!profile) {
             desc.setText('Choose a PDF layout to continue.');
             return;
         }
-        desc.setText(`${layoutName}. Controls typography, spacing, headers, and chapter styling.`);
+        const summary = desc.createDiv({ cls: 'ert-manuscript-layout-summary' });
+        summary.createDiv({
+            cls: 'ert-manuscript-layout-summary-title',
+            text: `${profile.name} · ${this.getTemplateProfileTierLabel(profile)}`,
+        });
+        summary.createDiv({
+            cls: 'ert-manuscript-layout-summary-detail',
+            text: this.getTemplateProfileSummary(profile),
+        });
+
+        const hasProTemplates = this.templateProfiles
+            .filter(item => item.usageContexts.includes(this.manuscriptPreset))
+            .some(item => this.getTemplateProfileTierLabel(item) === 'Pro');
+        if (!this.isPro && hasProTemplates) {
+            desc.createDiv({
+                cls: 'ert-manuscript-layout-pro-hint',
+                text: 'Pro styles add advanced typography, chapter treatments, and custom layouts.',
+            });
+        }
     }
 
     private findLayoutForTemplateProfile(profile?: TemplateProfile): PandocLayoutTemplate | undefined {
@@ -1830,6 +1863,23 @@ export class ManuscriptOptionsModal extends Modal {
     private formatTemplateProfileName(profile?: TemplateProfile): string | undefined {
         if (!profile) return undefined;
         return `${profile.name} (${this.getTemplateProfileTierLabel(profile)})`;
+    }
+
+    private getTemplateProfileSummary(profile: TemplateProfile): string {
+        const sourceLayout = this.findLayoutForTemplateProfile(profile);
+        if (this.getTemplateProfileTierLabel(profile) === 'Pro') {
+            if (sourceLayout?.usesModernClassicStructure) {
+                return 'Advanced book styling with part pages, epigraph support, and chapter treatments.';
+            }
+            if (sourceLayout?.hasSceneOpenerHeadingOptions) {
+                return 'Refined literary styling with scene opener controls and polished running heads.';
+            }
+            return 'Advanced PDF styling for custom, print-oriented, or specialized layouts.';
+        }
+        if (profile.id === 'bundled-fiction-contemporary-literary') {
+            return 'A polished reading draft style with clean headers and comfortable book-page spacing.';
+        }
+        return 'A clean manuscript format for reliable PDF export.';
     }
 
     private formatTemplateIdName(templateId: string, fallbackName: string): string {
@@ -1849,30 +1899,71 @@ export class ManuscriptOptionsModal extends Modal {
         }
     }
 
+    private getTemplateCompatibilityLabel(level: NonNullable<PublishingValidationSnapshot['templateCompatibility']>['level']): string {
+        switch (level) {
+            case 'invalid':
+                return 'Needs template repair';
+            case 'compatible':
+                return 'Structured matter ready';
+            case 'legacy':
+            default:
+                return 'Standard manuscript flow';
+        }
+    }
+
+    private getTemplateCompatibilityDetail(level: NonNullable<PublishingValidationSnapshot['templateCompatibility']>['level']): string {
+        switch (level) {
+            case 'invalid':
+                return 'This PDF style is missing a required manuscript placement point.';
+            case 'compatible':
+                return 'This template supports the current manuscript path and structured matter hooks.';
+            case 'legacy':
+            default:
+                return 'This template uses the standard manuscript path. Your full manuscript will export normally.';
+        }
+    }
+
+    private createPdfOutputStatusRow(parent: HTMLElement, label: string, value: string, detail?: string): void {
+        const row = parent.createDiv({ cls: 'ert-pdf-output-status-row' });
+        row.createDiv({ cls: 'ert-pdf-output-status-label', text: label });
+        const copy = row.createDiv({ cls: 'ert-pdf-output-status-copy' });
+        copy.createDiv({ cls: 'ert-pdf-output-status-value', text: value });
+        if (detail) {
+            copy.createDiv({ cls: 'ert-pdf-output-status-detail', text: detail });
+        }
+    }
+
+    private formatValidationIssue(issue: NonNullable<PublishingValidationSnapshot['templateCompatibilityIssues']>[number]): string {
+        const prefix = issue.level === 'error'
+            ? 'ERROR'
+            : issue.level === 'warning'
+                ? 'WARNING'
+                : 'INFO';
+        return `${prefix}: ${issue.message}`;
+    }
+
     private renderTemplateAccessGroup(content: HTMLElement): void {
         const access = this.validationSnapshot?.templateAccess;
         const issues = this.validationSnapshot?.templateAccessIssues || [];
         if (!access && issues.length === 0) return;
 
-        content.createDiv({ cls: 'ert-pdf-output-title', text: 'Template Access' });
         if (access) {
             const requestedName = this.formatTemplateIdName(access.requestedTemplateId, access.requestedTemplateName);
             const effectiveName = this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName);
-            content.createDiv({
-                cls: 'ert-pdf-output-line',
-                text: access.usedFallback
-                    ? `PDF style: ${requestedName} -> ${effectiveName}`
-                    : `PDF style: ${effectiveName}`,
-            });
-        }
-
-        for (const issue of issues.slice(0, 3)) {
-            const prefix = issue.level === 'error'
-                ? 'ERROR'
-                : issue.level === 'warning'
-                    ? 'WARNING'
-                    : 'INFO';
-            content.createDiv({ cls: 'ert-pdf-output-line', text: `${prefix}: ${issue.message}` });
+            const blockingIssue = issues.find(issue => issue.level === 'error');
+            const warningIssue = issues.find(issue => issue.level === 'warning');
+            const infoIssue = issues.find(issue => issue.level === 'info');
+            const value = blockingIssue
+                ? 'Access needs attention'
+                : access.usedFallback
+                    ? 'Using Core fallback'
+                    : infoIssue?.message || (access.tier === 'free' ? 'Included with Core.' : 'Available with Pro.');
+            const detail = blockingIssue?.message
+                || warningIssue?.message
+                || (access.usedFallback
+                    ? `${requestedName} will be replaced by ${effectiveName} for this export.`
+                    : `PDF style: ${effectiveName}`);
+            this.createPdfOutputStatusRow(content, 'Access', value, detail);
         }
     }
 
@@ -1881,56 +1972,43 @@ export class ManuscriptOptionsModal extends Modal {
         if (!compatibility) return;
 
         const issues = this.validationSnapshot?.templateCompatibilityIssues || [];
-        const errorCount = issues.filter(issue => issue.level === 'error').length;
-        const warningCount = issues.filter(issue => issue.level === 'warning').length;
-        const infoIssues = issues.filter(issue => issue.level === 'info');
-        const warningIssues = issues.filter(issue => issue.level === 'warning');
-        const errorIssues = issues.filter(issue => issue.level === 'error');
+        const blockingIssue = issues.find(issue => issue.level === 'error');
+        this.createPdfOutputStatusRow(
+            content,
+            'Compatibility',
+            this.getTemplateCompatibilityLabel(compatibility.level),
+            blockingIssue?.message || this.getTemplateCompatibilityDetail(compatibility.level)
+        );
+    }
 
-        content.createDiv({ cls: 'ert-pdf-output-title', text: 'Template Compatibility' });
-        content.createDiv({
-            cls: 'ert-pdf-output-line',
-            text: `Template: ${this.formatTemplateIdName(compatibility.templateId, compatibility.templateName)}`,
-        });
-        content.createDiv({ cls: 'ert-pdf-output-line', text: `RTTS level: ${this.getRttsLevelLabel(compatibility.level)}` });
-        content.createDiv({
-            cls: 'ert-pdf-output-line',
-            text: compatibility.variables.hasBody
-                ? '$body$: Ready'
-                : '$body$: Missing',
-        });
-        content.createDiv({
-            cls: 'ert-pdf-output-line',
-            text: compatibility.variables.hasTitle
-                ? '$title$: Available'
-                : '$title$: Not exposed',
-        });
-        content.createDiv({
-            cls: 'ert-pdf-output-line',
-            text: compatibility.variables.hasAuthor
-                ? '$author$: Available'
-                : '$author$: Not exposed',
-        });
-
-        const visibleIssues = [
-            ...errorIssues,
-            ...warningIssues,
-            ...infoIssues,
-        ].slice(0, 4);
-        for (const issue of visibleIssues) {
-            const prefix = issue.level === 'error'
-                ? 'ERROR'
-                : issue.level === 'warning'
-                    ? 'WARNING'
-                    : 'INFO';
-            content.createDiv({ cls: 'ert-pdf-output-line', text: `${prefix}: ${issue.message}` });
+    private collectTemplateTechnicalLines(): string[] {
+        const lines: string[] = [];
+        const access = this.validationSnapshot?.templateAccess;
+        if (access) {
+            lines.push(`Access template: ${access.usedFallback
+                ? `${this.formatTemplateIdName(access.requestedTemplateId, access.requestedTemplateName)} -> ${this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName)}`
+                : this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName)
+            }`);
+        }
+        for (const issue of this.validationSnapshot?.templateAccessIssues || []) {
+            lines.push(`Access ${this.formatValidationIssue(issue)}`);
         }
 
-        if (errorCount === 0 && warningCount === 0 && infoIssues.length === 0) {
-            content.createDiv({ cls: 'ert-pdf-output-line', text: 'INFO: Structured matter hooks are optional in this version.' });
-        } else if (!infoIssues.some(issue => issue.code === 'rtts_legacy_body_fallback' || issue.code === 'rtts_optional_hook_absent')) {
-            content.createDiv({ cls: 'ert-pdf-output-line', text: 'INFO: Structured matter hooks are optional in this version.' });
+        const compatibility = this.validationSnapshot?.templateCompatibility;
+        if (compatibility) {
+            lines.push(`Template: ${this.formatTemplateIdName(compatibility.templateId, compatibility.templateName)}`);
+            lines.push(`RTTS level: ${this.getRttsLevelLabel(compatibility.level)}`);
+            lines.push(compatibility.variables.hasBody ? '$body$: Ready' : '$body$: Missing');
+            lines.push(compatibility.variables.hasTitle ? '$title$: Available' : '$title$: Not exposed');
+            lines.push(compatibility.variables.hasAuthor ? '$author$: Available' : '$author$: Not exposed');
+            for (const [hook, present] of Object.entries(compatibility.variables.hooks)) {
+                lines.push(`$${hook}$: ${present ? 'Available' : 'Not exposed'}`);
+            }
         }
+        for (const issue of this.validationSnapshot?.templateCompatibilityIssues || []) {
+            lines.push(`Compatibility ${this.formatValidationIssue(issue)}`);
+        }
+        return lines;
     }
 
     /**
@@ -1992,7 +2070,7 @@ export class ManuscriptOptionsModal extends Modal {
             const icon = this.templateWarningEl.createSpan({ cls: 'ert-warning-icon' });
             setIcon(icon, 'alert-triangle');
             const text = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
-            text.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF Output' });
+            text.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF output' });
             text.createDiv({ cls: 'ert-pdf-output-line', text: validation.error || 'Layout template not found.' });
             return;
         }
@@ -2029,6 +2107,7 @@ export class ManuscriptOptionsModal extends Modal {
         if (willEmbed) {
             technicalLines.push('Font embedding: enabled');
         }
+        technicalLines.push(...this.collectTemplateTechnicalLines());
 
         // ── Render ───────────────────────────────────────────────────
         this.templateWarningEl.addClass('ert-pdf-output-summary');
@@ -2037,7 +2116,7 @@ export class ManuscriptOptionsModal extends Modal {
         setIcon(icon, (hasFontRisk || hasCompatibilityError || hasCompatibilityWarning || hasAccessError || hasAccessWarning) ? 'alert-triangle' : 'check-circle-2');
 
         const content = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
-        content.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF Output' });
+        content.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF output' });
 
         if (hasAccessError) {
             const firstError = accessIssues.find(issue => issue.level === 'error');

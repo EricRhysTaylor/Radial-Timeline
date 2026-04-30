@@ -281,6 +281,13 @@
   flex-wrap: wrap;
 }
 
+.ert-export-preset-toprow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: var(--ert-gap-md);
+  align-items: start;
+}
+
 .ert-export-preset-summary-text {
   min-width: 0;
 }
@@ -515,6 +522,29 @@
   margin: 0;
 }
 
+.ert-manuscript-layout-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  min-width: 0;
+}
+
+.ert-manuscript-layout-summary-title {
+  font-weight: 650;
+  color: var(--text-normal);
+}
+
+.ert-manuscript-layout-summary-detail {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.ert-manuscript-layout-pro-hint {
+  margin-top: var(--ert-gap-sm);
+  color: var(--text-accent);
+  line-height: 1.45;
+}
+
 .ert-manuscript-preset-status {
   grid-column: 1 / -1;
 }
@@ -636,9 +666,10 @@
   gap: 10px;
 }
 
-.ert-manuscript-rule-block--cleanup {
-  margin-top: 8px;
-  padding-top: 10px;
+.ert-manuscript-rule-block--cleanup,
+.ert-manuscript-rule-block--separated {
+  margin-top: var(--ert-gap-sm);
+  padding-top: var(--ert-pad-cozy);
   border-top: 1px solid var(--background-modifier-border);
 }
 
@@ -658,11 +689,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
+  width: 100%;
 }
 
 .ert-manuscript-modal .ert-template-dropdown-row .ert-manuscript-input-container {
   flex: 1;
   min-width: 0;
+}
+
+.ert-manuscript-modal .ert-template-dropdown-row select.dropdown {
+  width: 100%;
 }
 
 .ert-manuscript-advanced {
@@ -1760,6 +1797,41 @@
 
 .ert-pdf-output-line {
   line-height: 1.6;
+}
+
+.ert-pdf-output-status-row {
+  display: grid;
+  grid-template-columns: minmax(92px, max-content) minmax(0, 1fr);
+  gap: var(--ert-gap-loose);
+  align-items: start;
+  padding: calc(var(--ert-gap-cozy) / 2) 0;
+}
+
+.ert-pdf-output-status-label {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.ert-pdf-output-status-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-2xs);
+  min-width: 0;
+}
+
+.ert-pdf-output-status-value {
+  color: var(--text-normal);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ert-pdf-output-status-detail {
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 /* Technical details toggle */

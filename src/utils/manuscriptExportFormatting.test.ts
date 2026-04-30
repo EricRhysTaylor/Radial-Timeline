@@ -306,6 +306,29 @@ describe('assembleManuscript SceneId surfacing', () => {
         expect(assembled.text).toContain('## 6 Trisan Therapist `scn_xyz789`');
     });
 
+    it('can append plain SceneId text for Pandoc PDF headings', async () => {
+        const a = makeFile('Scenes/6 Trisan Therapist.md', '6 Trisan Therapist');
+        const vault = makeVault({
+            [a.path]: '---\nClass: Scene\nSceneId: scn_xyz789\n---\n\nScene body.',
+        });
+
+        const assembled = await assembleManuscript(
+            [a],
+            vault,
+            undefined,
+            false,
+            undefined,
+            true,
+            undefined,
+            undefined,
+            { includeSceneIdInToc: true, includeSceneIdInHeading: true, sceneIdFormat: 'plain' }
+        );
+
+        expect(assembled.text).toContain('## 6 Trisan Therapist scn_xyz789');
+        expect(assembled.text).toMatch(/1\.\s.*\(\d+ words\)\s+scn_xyz789/);
+        expect(assembled.text).not.toContain('`scn_xyz789`');
+    });
+
     it('does not append SceneId to scene heading when missing from frontmatter', async () => {
         const a = makeFile('Scenes/6 Trisan Therapist.md', '6 Trisan Therapist');
         const vault = makeVault({

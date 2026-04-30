@@ -50,7 +50,7 @@ describe('detectTemplateProfile', () => {
         expect(detected.traits.some((trait) => trait.includes('margins') || trait.includes('spacing') || trait.includes('print layout'))).toBe(true);
     });
 
-    it('falls back to custom unknown when there are no strong signals', () => {
+    it('falls back to a neutral custom profile when there are no strong layout signals', () => {
         const detected = detectTemplateProfile([
             '\\newcommand{\\mystyle}{custom}',
             '$body$',
@@ -59,6 +59,6 @@ describe('detectTemplateProfile', () => {
         expect(detected.usageContext).toBe('unknown');
         expect(detected.styleHint).toBe('custom');
         expect(detected.mockPreviewKind).toBe('generic');
-        expect(detected.traits[0]).toBe('No strong structure detected');
+        expect(detected.traits).toEqual(['Pandoc manuscript body hook', 'Custom LaTeX styling']);
     });
 });

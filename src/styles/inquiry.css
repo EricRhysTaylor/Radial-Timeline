@@ -864,16 +864,15 @@
   fill: var(--text-normal);
 }
 
-/* ── Legend trigger (? icon) ── */
+/* ── Legend trigger (* icon) ── */
 .ert-inquiry-cc-legend-trigger {
   pointer-events: auto;
-  cursor: help;
+  cursor: default;
 }
 
 .ert-inquiry-cc-legend-trigger-border {
   fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 1.2;
+  stroke: none;
 }
 
 .ert-inquiry-cc-legend-trigger-icon {
@@ -882,7 +881,7 @@
 }
 
 .ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-border {
-  stroke: var(--text-normal);
+  stroke: none;
 }
 
 .ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-icon {

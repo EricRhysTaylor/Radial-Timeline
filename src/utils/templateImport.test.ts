@@ -94,4 +94,45 @@ describe('templateImport helper', () => {
         expect(stored).toBe('custom.tex');
         expect(buildImportedTemplateId('My Template', 'novel', ['imported-my-template-novel'])).toBe('imported-my-template-novel-2');
     });
+
+    it('preserves absolute paths during import storage normalization', () => {
+        const plugin = createPluginWithFiles({});
+        const absolutePath = '/tmp/absolute-template.tex';
+        expect(compactTemplatePathForStorage(plugin, absolutePath)).toBe(absolutePath);
+    });
+
+    it('detects rich formatting from provided template content', async () => {
+        const plugin = createPluginWithFiles({
+            'Templates/ajfinn.tex': '$body$',
+        });
+        const templateContent = [
+            '\\documentclass[11pt]{book}',
+            '\\usepackage{fontspec}',
+            '\\usepackage{fancyhdr}',
+            '\\usepackage{titlesec}',
+            '\\usepackage{geometry}',
+            '\\usepackage{setspace}',
+            '\\setmainfont{Sorts Mill Goudy}',
+            '\\geometry{paperwidth=6in, paperheight=9in}',
+            '\\fancyhead[CE]{Author}',
+            '\\onehalfspacing',
+            '\\begin{document}',
+            '$body$',
+            '\\end{document}',
+        ].join('\n');
+
+        const candidate = await buildImportedTemplateCandidate(plugin, {
+            sourcePath: 'Templates/ajfinn.tex',
+            sourceContent: templateContent,
+        });
+
+        expect(candidate.canActivate).toBe(true);
+        expect(candidate.detectedTemplate.styleHint).toBe('book');
+        expect(candidate.detectedTemplate.confidence).toBe('high');
+        expect(candidate.detectedTemplate.traits).toContain('Running headers detected');
+        expect(candidate.detectedTemplate.traits).toContain('Book-style page structure');
+        expect(candidate.detectedTemplate.traits).toContain('OpenType fonts configured');
+        expect(candidate.detectedTemplate.traits).toContain('Custom margins detected');
+        expect(candidate.detectedTemplate.traits).toContain('Adjusted line spacing');
+    });
 });

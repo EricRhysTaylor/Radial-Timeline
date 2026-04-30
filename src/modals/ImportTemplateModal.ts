@@ -68,6 +68,7 @@ class TemplateFileSuggestModal extends SuggestModal<TFile> {
 export class ImportTemplateModal extends Modal {
     private step: ImportTemplateStep = 1;
     private sourcePath = '';
+    private sourceContentOverride: string | null = null;
     private usageContext: UsageContext = 'novel';
     private usageContextTouched = false;
     private templateName = '';
@@ -99,6 +100,7 @@ export class ImportTemplateModal extends Modal {
     onOpen(): void {
         this.step = 1;
         this.sourcePath = '';
+        this.sourceContentOverride = null;
         this.usageContext = 'novel';
         this.usageContextTouched = false;
         this.templateName = '';
@@ -183,6 +185,7 @@ export class ImportTemplateModal extends Modal {
         try {
             const candidate = await buildImportedTemplateCandidate(this.plugin, {
                 sourcePath,
+                sourceContent: this.sourceContentOverride || undefined,
                 name: this.getCandidateName(),
                 preset: this.usageContextTouched ? this.usageContext : undefined,
                 description: this.getCandidateDescription(),
@@ -214,6 +217,7 @@ export class ImportTemplateModal extends Modal {
     private async chooseFile(): Promise<void> {
         new TemplateFileSuggestModal(this.app, (selectedPath) => {
             this.sourcePath = selectedPath;
+            this.sourceContentOverride = null;
             void this.refreshCandidate();
         }).open();
     }
@@ -231,6 +235,12 @@ export class ImportTemplateModal extends Modal {
         if (!filePath) {
             new Notice('Could not read the dropped file path.');
             return;
+        }
+
+        try {
+            this.sourceContentOverride = await dropped.text();
+        } catch {
+            this.sourceContentOverride = null;
         }
 
         this.sourcePath = filePath;
@@ -573,8 +583,7 @@ export class ImportTemplateModal extends Modal {
             const traitSection = summary.createDiv({ cls: 'ert-import-template-summary-traits' });
             traitSection.createDiv({ cls: 'ert-import-template-summary-subtitle', text: 'Detected formatting' });
             const traits = traitSection.createDiv({ cls: 'ert-import-template-traitGrid ert-import-template-traitGrid--summary' });
-            candidate?.detectedTemplate.traits.slice(0, 5).forEach(trait => {
-                const visual = this.describeTraitVisual(trait);
+            this.getVisibleTraitEntries(candidate?.detectedTemplate.traits || []).forEach(({ trait, visual }) => {
                 const item = traits.createDiv({ cls: 'ert-import-template-traitTile ert-import-template-traitTile--summary' });
                 const iconWrap = item.createDiv({ cls: 'ert-import-template-traitIcon ert-import-template-traitIcon--summary' });
                 setIcon(iconWrap, visual.icon);
@@ -609,12 +618,12 @@ export class ImportTemplateModal extends Modal {
 
         if (candidate.detectedTemplate.traits.length > 0) {
             const traits = card.createDiv({ cls: 'ert-import-template-traitGrid' });
-            candidate.detectedTemplate.traits.slice(0, 5).forEach(trait => {
-                const visual = this.describeTraitVisual(trait);
+            this.getVisibleTraitEntries(candidate.detectedTemplate.traits).forEach(({ trait, visual }) => {
                 const item = traits.createDiv({ cls: 'ert-import-template-traitTile' });
                 const iconWrap = item.createDiv({ cls: 'ert-import-template-traitIcon' });
                 setIcon(iconWrap, visual.icon);
                 item.createDiv({ cls: 'ert-import-template-traitLabel', text: visual.label });
+                item.createDiv({ cls: 'ert-import-template-summary-traitText', text: trait });
             });
         }
     }
@@ -688,6 +697,9 @@ export class ImportTemplateModal extends Modal {
 
     private describeTraitVisual(trait: string): { icon: string; label: string } {
         const normalized = trait.toLowerCase();
+        if (normalized.includes('body hook') || normalized.includes('manuscript')) {
+            return { icon: 'book-open-text', label: 'Manuscript' };
+        }
         if (normalized.includes('header')) {
             return { icon: 'panel-top', label: 'Header' };
         }
@@ -719,6 +731,19 @@ export class ImportTemplateModal extends Modal {
             return { icon: 'message-square', label: 'Dialogue' };
         }
         return { icon: 'file-text', label: 'Custom' };
+    }
+
+    private getVisibleTraitEntries(traits: string[]): Array<{ trait: string; visual: { icon: string; label: string } }> {
+        const entries: Array<{ trait: string; visual: { icon: string; label: string } }> = [];
+        const seenLabels = new Set<string>();
+        for (const trait of traits) {
+            const visual = this.describeTraitVisual(trait);
+            if (seenLabels.has(visual.label)) continue;
+            seenLabels.add(visual.label);
+            entries.push({ trait, visual });
+            if (entries.length >= 5) break;
+        }
+        return entries;
     }
 
     private formatConfidence(confidence: DetectedTemplateConfidence): string {

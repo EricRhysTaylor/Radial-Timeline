@@ -30,6 +30,7 @@ export interface ImportedTemplateCandidate {
 
 export interface TemplateImportInput {
     sourcePath: string;
+    sourceContent?: string;
     name?: string;
     preset?: UsageContext;
     description?: string;
@@ -97,7 +98,7 @@ export function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawP
     const trimmed = rawPath.trim();
     if (!trimmed) return '';
     if (isAbsolutePath(trimmed)) {
-        return normalizePath(trimmed);
+        return trimmed;
     }
 
     const normalized = normalizePath(trimmed.replace(/^\/+/, ''));
@@ -175,7 +176,7 @@ export async function buildImportedTemplateCandidate(
     }
 
     const resolvedPath = resolveTemplatePath(plugin, layout.path);
-    const content = await readTemplateText(plugin, resolvedPath);
+    const content = input.sourceContent ?? await readTemplateText(plugin, resolvedPath);
     if (content && !/\$body\$/i.test(content)) {
         issues.push({
             code: 'import_missing_body',
