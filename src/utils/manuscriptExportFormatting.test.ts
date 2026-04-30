@@ -154,6 +154,16 @@ describe('assembleManuscript scene heading formatting', () => {
         const sceneSepCount = (assembled.text.match(/\\rtSceneSep/g) || []).length;
         expect(sceneSepCount).toBe(1);
 
+        const emittedRtMacros = Array.from(new Set(
+            Array.from(assembled.text.matchAll(/\\(rt[A-Za-z]+)/g)).map(match => match[1])
+        )).sort();
+        expect(emittedRtMacros).toEqual([
+            'rtChapter',
+            'rtEpigraph',
+            'rtPart',
+            'rtSceneSep',
+        ]);
+
         expect(assembled.text).not.toContain('## 1 Opening');
         expect(assembled.text).not.toContain('## 2 Midpoint');
         expect(assembled.text).not.toContain('## 3 Turn');
@@ -190,6 +200,35 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('\\clearpage\\pagestyle{fancy}');
         expect(assembled.text).toContain('Matter body.');
         expect(assembled.text).toContain('Scene body.');
+    });
+
+    it('keeps standard Basic Manuscript-style assembly on the existing $body$ path', async () => {
+        const file = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const vault = makeVault({
+            [file.path]: 'First paragraph.\n\nSecond paragraph.'
+        });
+
+        const assembled = await assembleManuscript(
+            [file],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number-title',
+                sceneHeadingRenderMode: 'markdown-h2'
+            }
+        );
+
+        expect(assembled.text).toBe('## 1 Opening\n\nFirst paragraph.\n\nSecond paragraph.\n\n');
+        expect(assembled.totalScenes).toBe(1);
+        expect(assembled.scenes[0]).toMatchObject({
+            title: '1 Opening',
+            bodyText: 'First paragraph.\n\nSecond paragraph.',
+        });
     });
 });
 

@@ -66,17 +66,18 @@ describe('bundled pandoc layout export auto-install', () => {
         const fictionLayouts = getBundledPandocLayouts().filter(layout => layout.preset === 'novel');
         expect(fictionLayouts).toHaveLength(4);
         expect(fictionLayouts.map(layout => layout.name)).toEqual([
-            'Signature Literary',
             'Basic Manuscript',
             'Contemporary Literary',
+            'Signature Literary',
             'Modern Classic'
         ]);
         expect(fictionLayouts.map(layout => layout.path)).toEqual([
-            'rt_signature_literary.tex',
             'rt_classic_manuscript.tex',
             'rt_contemporary_literary.tex',
+            'rt_signature_literary.tex',
             'rt_modern_classic.tex'
         ]);
+        expect(fictionLayouts.map(layout => layout.tier)).toEqual(['free', 'free', 'pro', 'pro']);
         const modernClassic = fictionLayouts.find(layout => layout.id === 'bundled-fiction-modern-classic');
         expect(modernClassic?.usesModernClassicStructure).toBe(true);
         expect(modernClassic?.hasEpigraphs).toBe(true);
@@ -118,6 +119,66 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(updated).toContain('\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.2\\textheight}');
         expect(updated).toContain('\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.2\\textheight}');
         expect(updated).not.toContain('\\dimexpr\\textheight/5\\relax');
+    });
+
+    it('bundled Modern Classic template defines all macros emitted by assembly', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
+
+        const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(install.installed).toBe(true);
+
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const content = await (plugin.app.vault as any).read(file);
+
+        expect(content).toContain('\\newcommand{\\rtPart}[1]');
+        expect(content).toContain('\\newcommand{\\rtEpigraph}[2]');
+        expect(content).toContain('\\newcommand{\\rtChapter}[2]');
+        expect(content).toContain('\\newcommand{\\rtSceneSep}');
+        expect(content).toContain('\\newcommand{\\rtBookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
+        expect(content).toContain('\\newcommand{\\rtBookAuthor}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
+    });
+
+    it('hotfixes legacy Modern Classic bundled template macro contracts', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const legacy = [
+            '% rt_modern_classic.tex',
+            '% Modern Classic fiction layout for 6x9 trade',
+            '% --- capture Pandoc title/author ---',
+            '\\makeatletter',
+            '\\newcommand{\\rtBookTitle}{\\@title}',
+            '\\newcommand{\\rtBookAuthor}{\\@author}',
+            '\\makeatother',
+            '\\newcommand{\\rtPart}[1]{%',
+            '  \\cleardoublepage',
+            '  \\thispagestyle{rtEmpty}%',
+            '  \\vspace*{2.1in}%',
+            '  \\begin{center}',
+            '    {\\sffamily\\bfseries\\Large PART~#1}',
+            '  \\end{center}',
+            '  \\vspace*{1.2in}%',
+            '  \\cleardoublepage',
+            '}',
+            '\\newcommand{\\rtSceneSep}{\\par}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, legacy);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toContain('\\newcommand{\\rtEpigraph}[2]');
+        expect(updated).toContain('\\newcommand{\\rtChapter}[2]');
+        expect(updated).toContain('\\newcommand{\\rtBookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
+        expect(updated).toContain('\\newcommand{\\rtBookAuthor}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
+        expect(updated).not.toContain('\\newcommand{\\rtBookTitle}{\\@title}');
+        expect(updated).not.toContain('\\makeatletter');
     });
 
     it('migrates legacy bundled signature ids/paths and avoids duplicate bundled entries', () => {

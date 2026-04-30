@@ -19,6 +19,9 @@ import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { adaptPandocLayoutsToPublishingModel } from '../utils/publishingModel';
 import { BOOK_META_BACKED_ROLES } from '../utils/manuscript';
+import { validateRttsTemplateContent } from '../publishing/rttsValidation';
+import { getPandocLayoutSortRank, getPandocLayoutTier, resolveTemplateAccess } from '../publishing/templateTiering';
+import { hasProFeatureAccess } from '../settings/featureGate';
 
 type ValidationScope = ValidationIssue['scope'];
 
@@ -350,16 +353,47 @@ export class PublishingValidationService {
             activeBookMetaIssues: [],
             matterIssues: [],
             preflightIssues: [],
+            templateAccessIssues: [],
+            templateCompatibilityIssues: [],
         };
 
         const layouts = Array.isArray(this.plugin.settings.pandocLayouts) ? this.plugin.settings.pandocLayouts : [];
         const { assets, profiles } = adaptPandocLayoutsToPublishingModel(layouts);
         const book = this.resolveBook(bookId);
         const sourceFolder = (book?.sourceFolder || '').trim();
-        const selectedProfile = this.resolveSelectedProfile(layouts, profiles, book, context);
-        const selectedLayout = selectedProfile
-            ? layouts.find(layout => layout.id === selectedProfile.legacyLayoutId)
+        let selectedProfile = this.resolveSelectedProfile(layouts, profiles, book, context);
+        let selectedLayout = selectedProfile
+            ? layouts.find(layout => layout.id === selectedProfile!.legacyLayoutId)
             : undefined;
+        if (context.exportType === 'manuscript' && context.outputFormat === 'pdf' && selectedLayout) {
+            const access = resolveTemplateAccess({
+                layouts,
+                selectedLayoutId: selectedLayout.id,
+                manuscriptPreset: context.manuscriptPreset,
+                hasProAccess: hasProFeatureAccess(this.plugin),
+            });
+            snapshot.templateAccessIssues = access.issues;
+            if (access.requestedLayout) {
+                snapshot.templateAccess = {
+                    requestedTemplateName: access.requestedLayout.name,
+                    requestedTemplateId: access.requestedLayout.id,
+                    effectiveTemplateName: access.effectiveLayout?.name || access.requestedLayout.name,
+                    effectiveTemplateId: access.effectiveLayout?.id || access.requestedLayout.id,
+                    tier: access.tier || 'pro',
+                    usedFallback: access.usedFallback,
+                };
+            }
+            const accessError = access.issues.find(issue => issue.level === 'error');
+            if (accessError) {
+                pushIssue(snapshot.preflightIssues, 'export', 'error', accessError.code, accessError.message, {
+                    actionable: true,
+                    field: accessError.field,
+                });
+            } else if (access.effectiveLayout && access.effectiveLayout.id !== selectedLayout.id) {
+                selectedLayout = access.effectiveLayout;
+                selectedProfile = profiles.find(profile => profile.legacyLayoutId === selectedLayout?.id || profile.id === selectedLayout?.id);
+            }
+        }
         const bookMetaResolution = sourceFolder ? this.resolveBookMetaForBook(sourceFolder) : { bookMeta: null as BookMeta | null };
         const matterFiles = sourceFolder ? this.getMatterFiles(sourceFolder) : [];
 
@@ -525,6 +559,42 @@ export class PublishingValidationService {
                         actionable: true,
                     });
                 }
+
+                const resolvedPath = resolveTemplatePath(this.plugin, selectedLayout.path);
+                const templateRead = readTemplateFile(resolvedPath);
+                const declaredCapabilities = (selectedProfile?.capabilities || []).map(capability => capability.key);
+                const rtts = validateRttsTemplateContent(templateRead.text, {
+                    declaredCapabilities,
+                    readError: templateRead.error,
+                });
+                snapshot.templateCompatibility = {
+                    templateName: selectedProfile?.name || selectedLayout.name || 'Selected template',
+                    templateId: selectedLayout.id,
+                    level: rtts.level,
+                    variables: rtts.variables,
+                    declaredCapabilities: rtts.declaredCapabilities,
+                    detectedCapabilities: rtts.detectedCapabilities,
+                };
+                snapshot.templateCompatibilityIssues = rtts.issues.map(issue => ({
+                    ...issue,
+                    scope: 'asset',
+                    actionable: issue.level === 'error' || issue.level === 'warning',
+                }));
+                if (rtts.level === 'invalid') {
+                    const blocking = snapshot.templateCompatibilityIssues.find(issue => issue.level === 'error');
+                    pushIssue(
+                        snapshot.preflightIssues,
+                        'export',
+                        'error',
+                        'export_template_compatibility_invalid',
+                        blocking?.message || 'Selected PDF template is not compatible with manuscript export.',
+                        {
+                            actionable: true,
+                            field: selectedLayout.id,
+                            detail: blocking?.detail,
+                        }
+                    );
+                }
             }
             const pandocPath = (this.plugin.settings.pandocPath || '').trim();
             if (pandocPath && (path.isAbsolute(pandocPath) || pandocPath.includes('/')) && !fs.existsSync(pandocPath)) {
@@ -599,7 +669,12 @@ export class PublishingValidationService {
         }
 
         if (context.manuscriptPreset) {
-            const layout = layouts.find(item => item.preset === context.manuscriptPreset);
+            const hasProAccess = hasProFeatureAccess(this.plugin);
+            const layout = layouts
+                .filter(item => item.preset === context.manuscriptPreset)
+                .sort((a, b) => getPandocLayoutSortRank(a) - getPandocLayoutSortRank(b) || a.name.localeCompare(b.name))
+                .find(item => hasProAccess || getPandocLayoutTier(item) === 'free')
+                || layouts.find(item => item.preset === context.manuscriptPreset);
             if (layout) return profiles.find(profile => profile.legacyLayoutId === layout.id);
         }
 

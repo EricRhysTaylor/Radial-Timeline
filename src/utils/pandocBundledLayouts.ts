@@ -1,10 +1,9 @@
 import { normalizePath, TFile } from 'obsidian';
-import * as path from 'path';
-import * as fs from 'fs';
 import type RadialTimelinePlugin from '../main';
 import type { PandocLayoutTemplate } from '../types';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { SHARED_CHAPTER_FIELD_PUBLICATION_COPY } from './timelineChapters';
+import { getPandocLayoutSortRank } from '../publishing/templateTiering';
 
 interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
     bundled: true;
@@ -24,6 +23,14 @@ const LEGACY_BUNDLED_LAYOUT_BASENAME_MAP: Record<string, string> = {
     'signature_literary_rt.tex': BUNDLED_FICTION_SIGNATURE_ID,
 };
 
+function basenameOfPath(value: string): string {
+    return value.split(/[\\/]/).pop() || value;
+}
+
+function isAbsolutePath(value: string): boolean {
+    return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value);
+}
+
 const LEGACY_SIGNATURE_SECTION_SPACING = '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}';
 const LEGACY_SIGNATURE_SUBSECTION_SPACING = '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}';
 const FIXED_SIGNATURE_SECTION_SPACING = '\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.2\\textheight}';
@@ -36,6 +43,89 @@ function normalizeLegacySignatureSpacing(content: string): { content: string; ch
     return { content: updated, changed: updated !== content };
 }
 
+const LEGACY_MODERN_CLASSIC_TITLE_CAPTURE = [
+    '% --- capture Pandoc title/author ---',
+    '\\makeatletter',
+    '\\newcommand{\\rtBookTitle}{\\@title}',
+    '\\newcommand{\\rtBookAuthor}{\\@author}',
+    '\\makeatother'
+].join('\n');
+
+const MODERN_CLASSIC_TITLE_BINDINGS = [
+    '% --- capture Pandoc title/author ---',
+    '\\newcommand{\\rtBookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+    '\\newcommand{\\rtBookAuthor}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}'
+].join('\n');
+
+const MODERN_CLASSIC_RTPART_BLOCK = [
+    '\\newcommand{\\rtPart}[1]{%',
+    '  \\cleardoublepage',
+    '  \\thispagestyle{rtEmpty}%',
+    '  \\vspace*{2.1in}%',
+    '  \\begin{center}',
+    '    {\\sffamily\\bfseries\\Large PART~#1}',
+    '  \\end{center}',
+    '  \\vspace*{1.2in}%',
+    '  \\cleardoublepage',
+    '}'
+].join('\n');
+
+const MODERN_CLASSIC_MISSING_MACRO_DEFINITIONS = [
+    '',
+    '% Epigraph emitted after an RT Part page when configured.',
+    '\\newcommand{\\rtEpigraph}[2]{%',
+    '  \\thispagestyle{rtEmpty}%',
+    '  \\vspace*{1.2in}%',
+    '  \\begin{center}',
+    '    \\begin{minipage}{0.68\\textwidth}',
+    '      \\centering',
+    '      {\\itshape #1}\\par',
+    '      \\if\\relax\\detokenize{#2}\\relax\\else',
+    '        \\vspace{0.25in}{\\small #2}\\par',
+    '      \\fi',
+    '    \\end{minipage}',
+    '  \\end{center}',
+    '  \\cleardoublepage',
+    '}',
+    '',
+    '% Chapter opener emitted from RT Chapter frontmatter markers.',
+    '\\newcommand{\\rtChapter}[2]{%',
+    '  \\cleardoublepage',
+    '  \\refstepcounter{chapter}%',
+    '  \\thispagestyle{rtEmpty}%',
+    '  \\vspace*{1.9in}%',
+    '  \\begin{center}',
+    '    {\\sffamily\\bfseries\\large Chapter~#1}\\par',
+    '    \\vspace{0.35in}%',
+    '    {\\rmfamily\\itshape\\Large #2}\\par',
+    '  \\end{center}',
+    '  \\vspace*{0.9in}%',
+    '}'
+].join('\n');
+
+function normalizeModernClassicMacroContract(content: string): { content: string; changed: boolean } {
+    const isModernClassicBundledTemplate = content.includes('% rt_modern_classic.tex')
+        && content.includes('% Modern Classic fiction layout for 6x9 trade')
+        && content.includes('\\newcommand{\\rtPart}[1]');
+    if (!isModernClassicBundledTemplate) {
+        return { content, changed: false };
+    }
+
+    let updated = content;
+    updated = updated.replace(LEGACY_MODERN_CLASSIC_TITLE_CAPTURE, () => MODERN_CLASSIC_TITLE_BINDINGS);
+
+    const missingRtEpigraph = !/\\newcommand\{\\rtEpigraph\}/.test(updated);
+    const missingRtChapter = !/\\newcommand\{\\rtChapter\}/.test(updated);
+    if ((missingRtEpigraph || missingRtChapter) && updated.includes(MODERN_CLASSIC_RTPART_BLOCK)) {
+        updated = updated.replace(
+            MODERN_CLASSIC_RTPART_BLOCK,
+            () => `${MODERN_CLASSIC_RTPART_BLOCK}\n${MODERN_CLASSIC_MISSING_MACRO_DEFINITIONS}`
+        );
+    }
+
+    return { content: updated, changed: updated !== content };
+}
+
 function resolveCanonicalBundledLayoutId(layout: PandocLayoutTemplate, canonicalIds: Set<string>): string | null {
     const rawId = (layout.id || '').trim();
     if (canonicalIds.has(rawId)) return rawId;
@@ -44,7 +134,7 @@ function resolveCanonicalBundledLayoutId(layout: PandocLayoutTemplate, canonical
     if (mappedById && canonicalIds.has(mappedById)) return mappedById;
 
     const normalizedPath = normalizePath((layout.path || '').trim().replace(/^\/+/, ''));
-    const basename = path.basename(normalizedPath).toLowerCase();
+    const basename = basenameOfPath(normalizedPath).toLowerCase();
     const mappedByPath = LEGACY_BUNDLED_LAYOUT_BASENAME_MAP[basename];
     if (mappedByPath && canonicalIds.has(mappedByPath)) return mappedByPath;
 
@@ -58,6 +148,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'screenplay',
         path: 'screenplay_template.tex',
         bundled: true,
+        tier: 'pro',
+        templateKind: 'screenplay',
         description: 'Industry screenplay format with uppercase sluglines, dialogue-first spacing, and production-safe margins. Page numbers run in the header with a Courier-family typewriter look.',
         content: [
             '% Pandoc LaTeX Template - Screenplay Format',
@@ -95,6 +187,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'podcast',
         path: 'podcast_template.tex',
         bundled: true,
+        tier: 'pro',
+        templateKind: 'podcast',
         description: 'Narration-first script format with speaker/segment clarity, timing-friendly spacing, and clean cue separation. Header metadata and page numbering are positioned for fast booth or desk reference.',
         content: [
             '% Pandoc LaTeX Template - Podcast Script Format',
@@ -128,6 +222,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_signature_literary.tex',
         bundled: true,
+        tier: 'pro',
+        templateKind: 'book',
         hasSceneOpenerHeadingOptions: true,
         description: 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.',
         content: [
@@ -237,6 +333,9 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_classic_manuscript.tex',
         bundled: true,
+        tier: 'free',
+        templateKind: 'book',
+        recommendedUse: 'Standard Manuscript',
         description: 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.',
         content: [
             '% Pandoc LaTeX Template - Basic Manuscript',
@@ -308,6 +407,9 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_contemporary_literary.tex',
         bundled: true,
+        tier: 'free',
+        templateKind: 'book',
+        recommendedUse: 'Reading Draft',
         description: 'Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.',
         content: [
             '% Pandoc LaTeX Template - Contemporary Literary',
@@ -381,6 +483,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_modern_classic.tex',
         bundled: true,
+        tier: 'pro',
+        templateKind: 'book',
         usesModernClassicStructure: true,
         hasEpigraphs: true,
         description: `Acts can open with optional epigraphs and Roman numeral PART pages. ${SHARED_CHAPTER_FIELD_PUBLICATION_COPY} Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.`,
@@ -415,10 +519,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  \\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}}',
             '',
             '% --- capture Pandoc title/author ---',
-            '\\makeatletter',
-            '\\newcommand{\\rtBookTitle}{\\@title}',
-            '\\newcommand{\\rtBookAuthor}{\\@author}',
-            '\\makeatother',
+            '\\newcommand{\\rtBookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+            '\\newcommand{\\rtBookAuthor}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}',
             '',
             '% --- fancyhdr setup ---',
             '\\pagestyle{fancy}',
@@ -450,6 +552,36 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  \\end{center}',
             '  \\vspace*{1.2in}%',
             '  \\cleardoublepage',
+            '}',
+            '',
+            '% Epigraph emitted after an RT Part page when configured.',
+            '\\newcommand{\\rtEpigraph}[2]{%',
+            '  \\thispagestyle{rtEmpty}%',
+            '  \\vspace*{1.2in}%',
+            '  \\begin{center}',
+            '    \\begin{minipage}{0.68\\textwidth}',
+            '      \\centering',
+            '      {\\itshape #1}\\par',
+            '      \\if\\relax\\detokenize{#2}\\relax\\else',
+            '        \\vspace{0.25in}{\\small #2}\\par',
+            '      \\fi',
+            '    \\end{minipage}',
+            '  \\end{center}',
+            '  \\cleardoublepage',
+            '}',
+            '',
+            '% Chapter opener emitted from RT Chapter frontmatter markers.',
+            '\\newcommand{\\rtChapter}[2]{%',
+            '  \\cleardoublepage',
+            '  \\refstepcounter{chapter}%',
+            '  \\thispagestyle{rtEmpty}%',
+            '  \\vspace*{1.9in}%',
+            '  \\begin{center}',
+            '    {\\sffamily\\bfseries\\large Chapter~#1}\\par',
+            '    \\vspace{0.35in}%',
+            '    {\\rmfamily\\itshape\\Large #2}\\par',
+            '  \\end{center}',
+            '  \\vspace*{0.9in}%',
             '}',
             '',
             '% CHAPTER headings come from Pandoc H1 headings inserted by RT.',
@@ -507,11 +639,14 @@ export function getBundledPandocLayouts(): PandocLayoutTemplate[] {
         preset: layout.preset,
         path: layout.path,
         bundled: true,
+        tier: layout.tier,
+        templateKind: layout.templateKind,
+        ...(layout.recommendedUse ? { recommendedUse: layout.recommendedUse } : {}),
         ...(layout.description ? { description: layout.description } : {}),
         ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
         ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
         ...(layout.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
-    }));
+    })).sort((a, b) => getPandocLayoutSortRank(a) - getPandocLayoutSortRank(b) || a.name.localeCompare(b.name));
 }
 
 export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugin): boolean {
@@ -554,6 +689,9 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             preset: canonical.preset,
             path: canonical.path,
             bundled: true,
+            tier: canonical.tier,
+            templateKind: canonical.templateKind,
+            ...(canonical.recommendedUse ? { recommendedUse: canonical.recommendedUse } : {}),
             // Bundled descriptions are authored in code and never user-edited; always refresh
             // from canonical so copy updates propagate on plugin upgrade.
             ...(canonical.description ? { description: canonical.description } : {}),
@@ -566,6 +704,9 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             || migrated.name !== layout.name
             || migrated.preset !== layout.preset
             || migrated.path !== layout.path
+            || migrated.tier !== layout.tier
+            || migrated.templateKind !== layout.templateKind
+            || migrated.recommendedUse !== layout.recommendedUse
             || migrated.description !== layout.description
             || migrated.usesModernClassicStructure !== layout.usesModernClassicStructure
             || migrated.hasEpigraphs !== layout.hasEpigraphs
@@ -620,14 +761,7 @@ export function isBundledPandocLayoutInstalled(plugin: RadialTimelinePlugin, lay
     const trimmed = (layout.path || '').trim();
     if (!trimmed) return false;
 
-    if (path.isAbsolute(trimmed)) {
-        try {
-            fs.accessSync(trimmed, fs.constants.R_OK);
-            return true;
-        } catch {
-            return false;
-        }
-    }
+    if (isAbsolutePath(trimmed)) return false;
 
     const normalized = normalizePath(trimmed.replace(/^\/+/, ''));
     const direct = plugin.app.vault.getAbstractFileByPath(normalized);
@@ -688,9 +822,15 @@ export async function ensureBundledLayoutInstalledForExport(
         if (bundled instanceof TFile) {
             try {
                 const raw = await vault.read(bundled);
-                const normalized = normalizeLegacySignatureSpacing(raw);
-                if (normalized.changed) {
-                    await vault.modify(bundled, normalized.content);
+                const signatureNormalized = normalizeLegacySignatureSpacing(raw);
+                const modernClassicNormalized = layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID
+                    ? normalizeModernClassicMacroContract(signatureNormalized.content)
+                    : signatureNormalized;
+                if (modernClassicNormalized.changed || signatureNormalized.changed) {
+                    await vault.modify(bundled, modernClassicNormalized.content);
+                    if (layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID && modernClassicNormalized.changed) {
+                        console.info('[Radial Timeline] Updated bundled Modern Classic template macro contract for export compatibility.');
+                    }
                 }
             } catch {
                 // Non-fatal: continue with standard install/validation flow.

@@ -18,6 +18,8 @@ function buildLayout(id: string, preset: TemplateProfile['usageContexts'][number
         description: id,
         usageContexts: [preset],
         outputIntent: preset === 'screenplay' ? 'screenplay-pdf' : preset === 'podcast' ? 'podcast-script' : 'print-book',
+        tier: 'pro',
+        templateKind: preset === 'screenplay' ? 'screenplay' : preset === 'podcast' ? 'podcast' : 'book',
         styleKey: id,
         summary: id,
         previewMode: 'static',

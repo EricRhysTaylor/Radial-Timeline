@@ -41,6 +41,7 @@ import {
     installBundledPandocLayouts,
     isBundledPandocLayoutInstalled
 } from '../../utils/pandocBundledLayouts';
+import { getPandocLayoutRecommendedUse, getPandocLayoutTier } from '../../publishing/templateTiering';
 import { replayTransientClass } from '../../utils/domClassEffects';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -887,6 +888,7 @@ function getPdfLayoutSummary(plugin: RadialTimelinePlugin): PdfLayoutSummary {
         relevantIssues.push(...(validation.profileIssues[layout.id] || []));
     });
     relevantIssues.push(...validation.preflightIssues);
+    relevantIssues.push(...validation.templateAccessIssues);
     if (layouts.length === 0) {
         relevantIssues.push({
             scope: 'profile',
@@ -1430,24 +1432,18 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     // CONTENT STACK
     // ─────────────────────────────────────────────────────────────────────────
     const addProRow = (setting: Setting) => setting;
-    const lockPanel = (panel: HTMLElement) => {
-        if (!isActive) {
-            panel.addClass('ert-pro-locked');
-        }
-        return panel;
-    };
     let refreshPublishingStatusCard: () => void = () => {};
 
     // ─────────────────────────────────────────────────────────────────────────
     // PANDOC & EXPORT SETTINGS
     // ─────────────────────────────────────────────────────────────────────────
-    const publishingStagesPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.STACK}` }));
+    const publishingStagesPanel = section.createDiv({ cls: `${ERT_CLASSES.STACK}` });
     publishingStagesPanel.style.order = '5';
     const statusShell = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-shell' });
     const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
     const setupActionRow = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-action' });
 
-    const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const pandocPanel = section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     pandocPanel.style.order = '10';
     const pandocHeading = addProRow(new Setting(pandocPanel))
         .setName('Export & publishing')
@@ -2381,6 +2377,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             name: copyName,
             preset: layout.preset,
             path: compactTemplatePathForStorage(plugin, copyFilename),
+            tier: 'pro',
+            templateKind: 'custom',
+            recommendedUse: 'Custom template',
             // Seed the copy with the parent's visible description so bundled and duplicate
             // render the same text. Bundled resolves via profile.summary; the copy has no
             // profile match, so we capture the resolved text into layout.description.
@@ -2535,9 +2534,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         const fictionVariantOrder: Record<FictionLayoutVariant, number> = {
             classic: 1,
-            modernClassic: 2,
+            contemporary: 2,
             signature: 3,
-            contemporary: 4,
+            modernClassic: 4,
             generic: 5
         };
         const fictionLayouts = layouts
@@ -2552,10 +2551,17 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const isBundled = layout.bundled === true;
             const isImported = layout.origin === 'imported';
             const installed = getLayoutInstalledState(layout);
+            const tier = getPandocLayoutTier(layout);
+            const isProLayout = tier === 'pro';
             const specialCapabilities = getLayoutSpecialCapabilities(layout);
             const showsSpecialOptions = hasLayoutSpecialOptions(layout);
             const expanded = expandedSpecialLayoutId === layout.id;
             if (expanded) row.addClass('is-special-expanded');
+            row.toggleClass(ERT_CLASSES.SKIN_PRO, isProLayout);
+            row.toggleClass('ert-layout-row--pro', isProLayout);
+            if (isProLayout && !isActive) {
+                row.addClass('ert-pro-locked');
+            }
 
             const variant = getFictionVariant(layout);
             const useVisual = layout.preset === 'novel' && variant !== 'generic';
@@ -2598,6 +2604,18 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     text: installed ? 'Installed' : 'Not installed'
                 });
                 pill.setAttr('aria-label', installed ? 'Installed' : 'Not installed');
+                const tierPill = s.nameEl.createSpan({
+                    cls: `ert-badgePill ert-badgePill--sm ${isProLayout ? ERT_CLASSES.BADGE_PILL_PRO : ERT_CLASSES.BADGE_PILL_NEUTRAL}`,
+                });
+                tierPill.createSpan({
+                    cls: 'ert-badgePill__text',
+                    text: isProLayout ? 'Pro' : 'Core',
+                });
+                const recommendedUse = getPandocLayoutRecommendedUse(layout);
+                if (recommendedUse) {
+                    const usePill = s.nameEl.createSpan({ cls: 'ert-layout-status-pill is-installed', text: recommendedUse });
+                    usePill.setAttr('aria-label', `Recommended use: ${recommendedUse}`);
+                }
             }
 
             if (useVisual && s.descEl) {
@@ -2797,6 +2815,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             ...commit.layout,
             draft: commit.draft,
             origin: 'imported' as const,
+            tier: 'pro' as const,
+            templateKind: 'custom' as const,
             importDetection: {
                 styleHint: commit.candidate.detectedTemplate.styleHint,
                 mockPreviewKind: commit.candidate.detectedTemplate.mockPreviewKind,
@@ -2828,7 +2848,16 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
     layoutManageSetting.addButton(button => {
         button.setButtonText('Import Template');
+        button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
+        if (!isActive) {
+            button.buttonEl.addClass('ert-pro-locked');
+            button.setTooltip('Importing custom templates requires Pro.');
+        }
         button.onClick(() => {
+            if (!isActive) {
+                new Notice('Importing custom templates requires Pro.');
+                return;
+            }
             new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
         });
     });
@@ -3298,9 +3327,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--muted');
         } else if (!showExportButton || !exportPrimary) {
             setupButtonComponent.setCta();
-            setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
+            setupButtonComponent.buttonEl.addClass('ert-pillBtn');
         } else {
-            setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
+            setupButtonComponent.buttonEl.addClass('ert-pillBtn');
         }
 
         if (setupInFlight) {
@@ -3316,7 +3345,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 });
             if (exportPrimary) {
                 exportOptionsButtonComponent.setCta();
-                exportOptionsButtonComponent.buttonEl.addClass('ert-pillBtn--pro');
             }
             exportOptionsButtonComponent.buttonEl.addClass('ert-pillBtn');
             exportOptionsButtonComponent.buttonEl.empty();

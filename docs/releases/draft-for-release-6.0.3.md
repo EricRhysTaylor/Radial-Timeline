@@ -8,8 +8,7 @@ This is a focused workflow release.
 - Added a right-click scene menu on the Timeline for quick Status, Publish Stage, and Triplet Pulse flag changes.
 - Manuscript Export now persists more of the last-used export state, including export type pills, synopsis/word-count toggles, and saved scene ranges.
 - Manuscript Export can reveal exported files directly in the system file manager on desktop, with Obsidian file explorer fallback.
-- Added a shared progress snapshot model so grid counts, stage completion, milestone state, APR progress, and timeline metrics use the same scene-progress logic.
-- Improved settings folder chips so configured folders are easier to reveal from settings.
+- Settings now show clickable folder chips for system-defined save locations such as logs and exports.
 - Tightened CSS namespace rules and drift checks for new UI chrome.
 - Refreshed model metadata snapshots, aliases, and drift reports.
 
@@ -19,7 +18,7 @@ This is a focused workflow release.
 
 ### Bug Fixes
 
-- Fixed progress grid completion when a single scene is marked `Press`; earlier stages no longer appear complete until all scenes have actually cleared them.
+- Fixed Status Grid progress math when one scene is marked `Press`; grid counts, stage completion, milestone state, APR progress, and timeline metrics now share the same scene-progress logic.
 - Fixed Runtime Processing modal behavior when no AI runtime estimate is requested; the AI Prompt & Context panel is now shown only for AI runs.
 - Fixed Inquiry briefing print/PDF output by rendering a dedicated print host instead of racing modal style restoration.
 - Fixed Manuscript Export templates so saved ranges restore after scene loading instead of being reset to the full book.

@@ -661,8 +661,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.renderSettingsHero(containerEl, {
             badgeLabel: 'PRO',
             badgeIcon: 'signature',
-            badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
-            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+            badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#publishing',
             title: 'Pro extends the core experience.',
             subtitle: 'More control, more capacity, and deeper narrative tools. Take your writing to the next level with the features that speed workflow and elevate productivity.',
             kicker: 'Pro unlocks:',
@@ -812,7 +812,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
         const publishingContent = containerEl.createDiv({
-            cls: `ert-settings-tab-content ert-settings-publishing-content ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
+            cls: 'ert-settings-tab-content ert-settings-publishing-content ert-scope--settings'
         });
         const aiContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-ai-content ert-scope--settings' });
         const advancedContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-advanced-content ert-scope--settings' });

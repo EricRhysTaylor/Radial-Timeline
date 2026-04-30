@@ -21,6 +21,7 @@ import {
     buildTransientModalExportProfile,
     type ModalExportProfile,
 } from '../utils/exportProfileModel';
+import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
 import type {
     BookPublishingPreferences,
     ExportProfile,
@@ -474,7 +475,7 @@ export class ManuscriptOptionsModal extends Modal {
         formatCol.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Output format' });
         this.formatPillRowEl = formatCol.createDiv({ cls: 'ert-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createOutputFormatPill(this.formatPillRowEl, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'both');
-        this.createOutputFormatPill(this.formatPillRowEl, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'manuscript', true);
+        this.createOutputFormatPill(this.formatPillRowEl, t('manuscriptModal.formatPdf'), 'pdf', false, 'manuscript');
         this.formatStaticEl = formatCol.createDiv({ cls: 'ert-sub-card-note ert-hidden', text: 'Format: Markdown' });
         this.documentTypeDescEl = outputGrid.createDiv({ cls: 'ert-sub-card-note ert-manuscript-output-desc' });
 
@@ -984,7 +985,7 @@ export class ManuscriptOptionsModal extends Modal {
             exportType: this.exportType,
             outputFormat: this.exportType === 'outline' ? 'markdown' : this.outputFormat,
             manuscriptPreset: this.manuscriptPreset,
-            selectedLayoutId: this.resolveLayoutIdForProfile(selectedProfile),
+            selectedLayoutId: this.selectedLayoutId || this.resolveLayoutIdForProfile(selectedProfile),
         });
     }
 
@@ -1718,7 +1719,15 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
 
-        const layouts = this.templateProfiles.filter(profile => profile.usageContexts.includes(this.manuscriptPreset));
+        const layouts = this.templateProfiles
+            .filter(profile => profile.usageContexts.includes(this.manuscriptPreset))
+            .sort((a, b) => {
+                const aLayout = this.plugin.settings.pandocLayouts?.find(layout => layout.id === a.legacyLayoutId || layout.id === a.id);
+                const bLayout = this.plugin.settings.pandocLayouts?.find(layout => layout.id === b.legacyLayoutId || layout.id === b.id);
+                const aRank = aLayout ? getPandocLayoutSortRank(aLayout) : 99;
+                const bRank = bLayout ? getPandocLayoutSortRank(bLayout) : 99;
+                return aRank - bRank || a.name.localeCompare(b.name);
+            });
         const activeProfileId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
         let selectedLayoutName: string | undefined;
 
@@ -1750,7 +1759,13 @@ export class ManuscriptOptionsModal extends Modal {
             const dd = new DropdownComponent(ddContainer);
             dd.selectEl.addClass('ert-input', 'ert-input--lg');
             for (const l of layouts) {
-                dd.addOption(l.id, l.name);
+                const sourceLayout = this.plugin.settings.pandocLayouts?.find(layout => layout.id === l.legacyLayoutId || layout.id === l.id);
+                const locked = !this.isPro && sourceLayout && getPandocLayoutTier(sourceLayout) === 'pro';
+                dd.addOption(l.id, locked ? `${l.name} (Pro)` : l.name);
+                const option = dd.selectEl.querySelector<HTMLOptionElement>(`option[value="${CSS.escape(l.id)}"]`);
+                if (option && locked) {
+                    option.disabled = true;
+                }
             }
             const hasTemplateSelection = activeProfileId && layouts.some(l => l.id === activeProfileId);
             const defaultId = hasTemplateSelection
@@ -1760,6 +1775,13 @@ export class ManuscriptOptionsModal extends Modal {
             this.selectedLayoutId = defaultId;
             selectedLayoutName = layouts.find(l => l.id === defaultId)?.name;
             dd.onChange((val) => {
+                const nextProfile = layouts.find(l => l.id === val);
+                const nextLayout = this.plugin.settings.pandocLayouts?.find(layout => layout.id === nextProfile?.legacyLayoutId || layout.id === nextProfile?.id);
+                if (!this.isPro && nextLayout && getPandocLayoutTier(nextLayout) === 'pro') {
+                    new Notice('This PDF style requires Pro.');
+                    dd.setValue(this.selectedLayoutId || defaultId);
+                    return;
+                }
                 this.selectedLayoutId = val;
                 if (this.selectedExportProfile) {
                     this.selectedExportProfile = { ...this.selectedExportProfile, templateProfileId: val, selectedLayoutId: val };
@@ -1788,6 +1810,97 @@ export class ManuscriptOptionsModal extends Modal {
         desc.setText('Controls typography, spacing, headers, and chapter styling. Choose the tone and structure of your final PDF.');
     }
 
+    private getRttsLevelLabel(level: NonNullable<PublishingValidationSnapshot['templateCompatibility']>['level']): string {
+        switch (level) {
+            case 'invalid':
+                return 'Invalid';
+            case 'compatible':
+                return 'Compatible';
+            case 'legacy':
+            default:
+                return 'Legacy';
+        }
+    }
+
+    private renderTemplateAccessGroup(content: HTMLElement): void {
+        const access = this.validationSnapshot?.templateAccess;
+        const issues = this.validationSnapshot?.templateAccessIssues || [];
+        if (!access && issues.length === 0) return;
+
+        content.createDiv({ cls: 'ert-pdf-output-title', text: 'Template Access' });
+        if (access) {
+            content.createDiv({
+                cls: 'ert-pdf-output-line',
+                text: access.usedFallback
+                    ? `PDF style: ${access.requestedTemplateName} -> ${access.effectiveTemplateName}`
+                    : `PDF style: ${access.effectiveTemplateName}`,
+            });
+        }
+
+        for (const issue of issues.slice(0, 3)) {
+            const prefix = issue.level === 'error'
+                ? 'ERROR'
+                : issue.level === 'warning'
+                    ? 'WARNING'
+                    : 'INFO';
+            content.createDiv({ cls: 'ert-pdf-output-line', text: `${prefix}: ${issue.message}` });
+        }
+    }
+
+    private renderTemplateCompatibilityGroup(content: HTMLElement): void {
+        const compatibility = this.validationSnapshot?.templateCompatibility;
+        if (!compatibility) return;
+
+        const issues = this.validationSnapshot?.templateCompatibilityIssues || [];
+        const errorCount = issues.filter(issue => issue.level === 'error').length;
+        const warningCount = issues.filter(issue => issue.level === 'warning').length;
+        const infoIssues = issues.filter(issue => issue.level === 'info');
+        const warningIssues = issues.filter(issue => issue.level === 'warning');
+        const errorIssues = issues.filter(issue => issue.level === 'error');
+
+        content.createDiv({ cls: 'ert-pdf-output-title', text: 'Template Compatibility' });
+        content.createDiv({ cls: 'ert-pdf-output-line', text: `Template: ${compatibility.templateName}` });
+        content.createDiv({ cls: 'ert-pdf-output-line', text: `RTTS level: ${this.getRttsLevelLabel(compatibility.level)}` });
+        content.createDiv({
+            cls: 'ert-pdf-output-line',
+            text: compatibility.variables.hasBody
+                ? '$body$: Ready'
+                : '$body$: Missing',
+        });
+        content.createDiv({
+            cls: 'ert-pdf-output-line',
+            text: compatibility.variables.hasTitle
+                ? '$title$: Available'
+                : '$title$: Not exposed',
+        });
+        content.createDiv({
+            cls: 'ert-pdf-output-line',
+            text: compatibility.variables.hasAuthor
+                ? '$author$: Available'
+                : '$author$: Not exposed',
+        });
+
+        const visibleIssues = [
+            ...errorIssues,
+            ...warningIssues,
+            ...infoIssues,
+        ].slice(0, 4);
+        for (const issue of visibleIssues) {
+            const prefix = issue.level === 'error'
+                ? 'ERROR'
+                : issue.level === 'warning'
+                    ? 'WARNING'
+                    : 'INFO';
+            content.createDiv({ cls: 'ert-pdf-output-line', text: `${prefix}: ${issue.message}` });
+        }
+
+        if (errorCount === 0 && warningCount === 0 && infoIssues.length === 0) {
+            content.createDiv({ cls: 'ert-pdf-output-line', text: 'INFO: Structured matter hooks are optional in this version.' });
+        } else if (!infoIssues.some(issue => issue.code === 'rtts_legacy_body_fallback' || issue.code === 'rtts_optional_hook_absent')) {
+            content.createDiv({ cls: 'ert-pdf-output-line', text: 'INFO: Structured matter hooks are optional in this version.' });
+        }
+    }
+
     /**
      * Update PDF Output summary based on current preset and format
      */
@@ -1811,6 +1924,7 @@ export class ManuscriptOptionsModal extends Modal {
             return; // No template needed for markdown
         }
         this.templateWarningEl.removeClass('ert-manuscript-preset-status--hidden');
+        this.refreshValidationSnapshot();
 
         // ── Profile-aware validation ──────────────────────────────────
         const layouts = this.templateProfiles.filter(profile => profile.usageContexts.includes(this.manuscriptPreset));
@@ -1831,6 +1945,12 @@ export class ManuscriptOptionsModal extends Modal {
         if (!selectedProfile || !selectedLayout) return;
 
         const validation = validatePandocLayout(this.plugin, selectedLayout);
+        const accessIssues = this.validationSnapshot?.templateAccessIssues || [];
+        const hasAccessError = accessIssues.some(issue => issue.level === 'error');
+        const hasAccessWarning = accessIssues.some(issue => issue.level === 'warning');
+        const compatibilityIssues = this.validationSnapshot?.templateCompatibilityIssues || [];
+        const hasCompatibilityError = compatibilityIssues.some(issue => issue.level === 'error');
+        const hasCompatibilityWarning = compatibilityIssues.some(issue => issue.level === 'warning');
 
         if (!validation.valid) {
             this.templateWarningEl.addClass('ert-pdf-output-summary');
@@ -1878,14 +1998,26 @@ export class ManuscriptOptionsModal extends Modal {
 
         // ── Render ───────────────────────────────────────────────────
         this.templateWarningEl.addClass('ert-pdf-output-summary');
-        this.templateWarningEl.addClass(hasFontRisk ? 'ert-warning-error' : 'ert-warning-info');
+        this.templateWarningEl.addClass((hasFontRisk || hasCompatibilityError || hasAccessError) ? 'ert-warning-error' : 'ert-warning-info');
         const icon = this.templateWarningEl.createSpan({ cls: 'ert-warning-icon' });
-        setIcon(icon, hasFontRisk ? 'alert-triangle' : 'check-circle-2');
+        setIcon(icon, (hasFontRisk || hasCompatibilityError || hasCompatibilityWarning || hasAccessError || hasAccessWarning) ? 'alert-triangle' : 'check-circle-2');
 
         const content = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
         content.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF Output' });
 
-        if (hasFontRisk) {
+        if (hasAccessError) {
+            const firstError = accessIssues.find(issue => issue.level === 'error');
+            content.createDiv({
+                cls: 'ert-pdf-output-line',
+                text: firstError?.message || 'Template access check failed.'
+            });
+        } else if (hasCompatibilityError) {
+            const firstError = compatibilityIssues.find(issue => issue.level === 'error');
+            content.createDiv({
+                cls: 'ert-pdf-output-line',
+                text: firstError?.message || 'Template compatibility check failed.'
+            });
+        } else if (hasFontRisk) {
             // Font issue — show actionable message
             if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
                 content.createDiv({
@@ -1898,12 +2030,21 @@ export class ManuscriptOptionsModal extends Modal {
                     text: `Font: ${primaryRequested} is not installed. Install it before exporting.`
                 });
             }
+        } else if (hasAccessWarning) {
+            const firstWarning = accessIssues.find(issue => issue.level === 'warning');
+            content.createDiv({
+                cls: 'ert-pdf-output-line',
+                text: firstWarning?.message || 'Template access changed for this export.'
+            });
         } else {
             content.createDiv({ cls: 'ert-pdf-output-line', text: 'This layout is ready to use.' });
             content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: ${resolvedFont}` });
             content.createDiv({ cls: 'ert-pdf-output-line', text: `Page layout: ${layoutDesc}` });
             content.createDiv({ cls: 'ert-pdf-output-line', text: 'Embedding: Fonts will be included' });
         }
+
+        this.renderTemplateAccessGroup(content);
+        this.renderTemplateCompatibilityGroup(content);
 
         // ── Technical details toggle ─────────────────────────────────
         if (technicalLines.length > 0) {

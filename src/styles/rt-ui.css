@@ -2786,20 +2786,6 @@
   color: var(--ert-social-accent-color-base);
 }
 
-.ert-ui.ert-scope--settings .ert-settings-tab-publishing.ert-settings-tab-active {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--ert-pro-accent-rgb-base), 0.08),
-    rgba(var(--ert-pro-accent-rgb-base), 0.02)
-  );
-  color: var(--ert-pro-accent-color);
-  border-color: color-mix(in srgb, var(--ert-pro-accent-color) 25%, transparent);
-}
-
-.ert-ui.ert-scope--settings .ert-settings-tab-publishing.ert-settings-tab-active .ert-settings-tab-icon {
-  color: var(--ert-pro-accent-color);
-}
-
 .ert-ui.ert-scope--settings .ert-settings-tab-icon {
   display: flex;
   align-items: center;

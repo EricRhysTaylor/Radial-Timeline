@@ -1,9 +1,67 @@
 import { describe, expect, it } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import type RadialTimelinePlugin from '../main';
+import type { PandocLayoutTemplate, RadialTimelineSettings } from '../types';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 import {
     buildBookDetailsChecklist,
     buildBookPagesChecklist,
-    describeMatterReadiness
+    describeMatterReadiness,
+    PublishingValidationService
 } from './PublishingValidationService';
+
+function writeTempTemplate(content: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-rtts-'));
+    const filePath = path.join(dir, 'template.tex');
+    fs.writeFileSync(filePath, content, 'utf8');
+    return filePath;
+}
+
+function createValidationPlugin(layout: PandocLayoutTemplate | PandocLayoutTemplate[], options: { pro?: boolean } = { pro: true }): RadialTimelinePlugin {
+    const layouts = Array.isArray(layout) ? layout : [layout];
+    const settings: RadialTimelineSettings = {
+        ...DEFAULT_SETTINGS,
+        books: [{
+            id: 'book-1',
+            title: 'Example Book',
+            sourceFolder: 'Book',
+        }],
+        activeBookId: 'book-1',
+        pandocLayouts: layouts,
+        proLicenseKey: options.pro === false ? '' : '1234567890123456',
+    };
+
+    return {
+        settings,
+        app: {
+            vault: {
+                getMarkdownFiles: () => [],
+                getAbstractFileByPath: () => null,
+            },
+            metadataCache: {
+                getFileCache: () => null,
+            },
+        },
+        getBookMeta: () => ({
+            title: 'Example Book',
+            author: 'Example Author',
+            sourcePath: 'Book/000 BookMeta.md',
+        }),
+    } as unknown as RadialTimelinePlugin;
+}
+
+function makeNovelLayout(content: string, overrides: Partial<PandocLayoutTemplate> = {}): PandocLayoutTemplate {
+    return {
+        id: overrides.id || 'test-layout',
+        name: overrides.name || 'Test Layout',
+        preset: 'novel',
+        path: writeTempTemplate(content),
+        bundled: false,
+        ...overrides,
+    };
+}
 
 describe('PublishingValidationService matter readiness', () => {
     it.each(['copyright', 'title-page', 'about-author'])(
@@ -156,4 +214,181 @@ describe('PublishingValidationService checklists', () => {
         expect(checklist.find(item => item.key === 'title-page')?.state).toBe('Excluded by layout');
     });
 
+});
+
+describe('PublishingValidationService template compatibility', () => {
+    it('includes a Template Compatibility snapshot for selected PDF layouts', () => {
+        const layout = makeNovelLayout('$title$\n$author$\n$body$');
+        const plugin = createValidationPlugin(layout);
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: layout.id,
+        });
+
+        expect(snapshot.templateCompatibility).toMatchObject({
+            templateName: 'Test Layout',
+            templateId: layout.id,
+            level: 'legacy',
+        });
+        expect(snapshot.templateCompatibility?.variables.hasBody).toBe(true);
+    });
+
+    it('blocks export when RTTS validation is invalid because $body$ is missing', () => {
+        const layout = makeNovelLayout('$title$\n$author$');
+        const plugin = createValidationPlugin(layout);
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: layout.id,
+        });
+
+        expect(snapshot.templateCompatibility?.level).toBe('invalid');
+        expect(snapshot.templateCompatibilityIssues).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                level: 'error',
+                code: 'rtts_missing_body',
+            }),
+        ]));
+        expect(snapshot.preflightIssues).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                level: 'error',
+                code: 'export_template_compatibility_invalid',
+            }),
+        ]));
+    });
+
+    it('allows legacy RTTS templates with $body$ and reports fallback info', () => {
+        const layout = makeNovelLayout('$body$');
+        const plugin = createValidationPlugin(layout);
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: layout.id,
+        });
+
+        expect(snapshot.templateCompatibility?.level).toBe('legacy');
+        expect(snapshot.templateCompatibilityIssues).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                level: 'info',
+                code: 'rtts_legacy_body_fallback',
+            }),
+        ]));
+        expect(snapshot.preflightIssues.some(issue => issue.code === 'export_template_compatibility_invalid')).toBe(false);
+    });
+
+    it('reports missing title and author as warnings only', () => {
+        const layout = makeNovelLayout('$body$');
+        const plugin = createValidationPlugin(layout);
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: layout.id,
+        });
+
+        expect(snapshot.templateCompatibilityIssues).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                level: 'warning',
+                code: 'rtts_missing_title',
+            }),
+            expect.objectContaining({
+                level: 'warning',
+                code: 'rtts_missing_author',
+            }),
+        ]));
+        expect(snapshot.preflightIssues.some(issue => issue.code === 'export_template_compatibility_invalid')).toBe(false);
+    });
+
+    it('keeps Basic Manuscript-style $body$ templates exportable', () => {
+        const layout = makeNovelLayout('$if(title)$$title$$endif$\n$body$', {
+            id: 'bundled-fiction-classic-manuscript',
+            name: 'Basic Manuscript',
+            bundled: true,
+            tier: 'free',
+            templateKind: 'book',
+        });
+        const plugin = createValidationPlugin(layout);
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: layout.id,
+        });
+
+        expect(snapshot.templateCompatibility?.level).toBe('legacy');
+        expect(snapshot.templateCompatibility?.variables.hasBody).toBe(true);
+        expect(snapshot.preflightIssues.some(issue => issue.level === 'error')).toBe(false);
+    });
+
+    it('reports a Basic Manuscript fallback when a non-Pro user has a saved Pro template selected', () => {
+        const basic = makeNovelLayout('$body$', {
+            id: 'bundled-fiction-classic-manuscript',
+            name: 'Basic Manuscript',
+            bundled: true,
+            tier: 'free',
+            templateKind: 'book',
+        });
+        const signature = makeNovelLayout('$title$\n$author$\n$body$', {
+            id: 'bundled-fiction-signature-literary',
+            name: 'Signature Literary',
+            bundled: true,
+            tier: 'pro',
+            templateKind: 'book',
+        });
+        const plugin = createValidationPlugin([signature, basic], { pro: false });
+
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: signature.id,
+        });
+
+        expect(snapshot.templateAccess).toMatchObject({
+            requestedTemplateName: 'Signature Literary',
+            effectiveTemplateName: 'Basic Manuscript',
+            usedFallback: true,
+        });
+        expect(snapshot.templateAccessIssues).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                level: 'warning',
+                code: 'template_access_fallback_to_basic',
+            }),
+        ]));
+        expect(snapshot.templateCompatibility?.templateId).toBe(basic.id);
+        expect(snapshot.preflightIssues.some(issue => issue.level === 'error')).toBe(false);
+    });
+
+    it('keeps the selected Pro template for Pro users', () => {
+        const modernClassic = makeNovelLayout('$title$\n$author$\n$body$', {
+            id: 'bundled-fiction-modern-classic',
+            name: 'Modern Classic',
+            bundled: true,
+            tier: 'pro',
+            templateKind: 'book',
+        });
+        const plugin = createValidationPlugin(modernClassic, { pro: true });
+
+        const snapshot = new PublishingValidationService(plugin).collect('book-1', {
+            exportType: 'manuscript',
+            outputFormat: 'pdf',
+            manuscriptPreset: 'novel',
+            selectedLayoutId: modernClassic.id,
+        });
+
+        expect(snapshot.templateAccess).toMatchObject({
+            effectiveTemplateName: 'Modern Classic',
+            usedFallback: false,
+        });
+        expect(snapshot.templateAccessIssues).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                level: 'info',
+                code: 'template_access_requires_pro',
+            }),
+        ]));
+    });
 });

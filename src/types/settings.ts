@@ -106,6 +106,9 @@ export interface TemplateCapability {
     label: string;
 }
 
+export type TemplateTier = 'free' | 'pro';
+export type TemplateKind = 'book' | 'screenplay' | 'podcast' | 'custom';
+
 export interface TemplateProfile {
     id: string;
     assetId: string;
@@ -115,6 +118,9 @@ export interface TemplateProfile {
     description: string;
     usageContexts: UsageContext[];
     outputIntent: OutputIntent;
+    tier: TemplateTier;
+    templateKind: TemplateKind;
+    recommendedUse?: string;
     styleKey: string;
     summary: string;
     guidance?: string;
@@ -177,6 +183,29 @@ export interface PublishingValidationSnapshot {
     activeBookMetaIssues: ValidationIssue[];
     matterIssues: ValidationIssue[];
     preflightIssues: ValidationIssue[];
+    templateAccessIssues: ValidationIssue[];
+    templateAccess?: {
+        requestedTemplateName: string;
+        requestedTemplateId: string;
+        effectiveTemplateName: string;
+        effectiveTemplateId: string;
+        tier: TemplateTier;
+        usedFallback: boolean;
+    };
+    templateCompatibilityIssues: ValidationIssue[];
+    templateCompatibility?: {
+        templateName: string;
+        templateId: string;
+        level: 'invalid' | 'legacy' | 'compatible';
+        variables: {
+            hasBody: boolean;
+            hasTitle: boolean;
+            hasAuthor: boolean;
+            hooks: Record<string, boolean>;
+        };
+        declaredCapabilities: string[];
+        detectedCapabilities: string[];
+    };
 }
 
 export interface BeatSystemConfig {
@@ -637,6 +666,9 @@ export interface PandocLayoutTemplate {
     description?: string;      // optional user-editable description shown in Pro settings
     bundled?: boolean;         // true for RT-generated sample templates
     origin?: ProfileOrigin;    // provenance for newly imported templates
+    tier?: TemplateTier;
+    templateKind?: TemplateKind;
+    recommendedUse?: string;
     draft?: boolean;           // staged import that should not be treated as activated yet
     importDetection?: ImportedTemplateDetectionSummary; // inferred layout summary captured during guided import
     usesModernClassicStructure?: boolean; // emit rtPart/rtSceneSep markers and chapter headings in PDF compilation

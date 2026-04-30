@@ -1,6 +1,4 @@
-import { normalizePath, TFile } from 'obsidian';
-import * as fs from 'fs';
-import * as path from 'path';
+import { FileSystemAdapter, normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type {
     PandocLayoutTemplate,
@@ -74,10 +72,31 @@ const SIGNATURE_HINTS = [
     /scene opener/i,
 ];
 
+function isAbsolutePath(value: string): boolean {
+    return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value);
+}
+
+function basenameOfPath(value: string): string {
+    return value.split(/[\\/]/).pop() || value;
+}
+
+function getVaultRelativePath(plugin: RadialTimelinePlugin, maybeAbsolutePath: string): string {
+    const normalized = normalizePath(maybeAbsolutePath);
+    if (!isAbsolutePath(normalized)) return normalized;
+    const adapter = plugin.app.vault.adapter;
+    if (adapter instanceof FileSystemAdapter) {
+        const basePath = normalizePath(adapter.getBasePath());
+        const prefix = `${basePath}/`;
+        if (normalized === basePath) return '';
+        if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+    }
+    return normalized;
+}
+
 export function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawPath: string): string {
     const trimmed = rawPath.trim();
     if (!trimmed) return '';
-    if (path.isAbsolute(trimmed) || /^[A-Za-z]:[\\/]/.test(trimmed)) {
+    if (isAbsolutePath(trimmed)) {
         return normalizePath(trimmed);
     }
 
@@ -112,7 +131,7 @@ export async function buildImportedTemplateCandidate(
     const issues: ValidationIssue[] = [];
     const rawPath = input.sourcePath.trim();
     const storedPath = compactTemplatePathForStorage(plugin, rawPath);
-    const fileName = path.basename(storedPath || rawPath || 'imported-template.tex');
+    const fileName = basenameOfPath(storedPath || rawPath || 'imported-template.tex');
     const inferredName = input.name?.trim() || stripTemplateExtension(fileName) || 'Imported Template';
 
     if (!rawPath) {
@@ -135,6 +154,8 @@ export async function buildImportedTemplateCandidate(
         description: input.description?.trim() || '',
         bundled: false,
         origin: input.origin || 'imported',
+        tier: 'pro',
+        templateKind: 'custom',
         draft: input.draft ?? false,
         usesModernClassicStructure: input.usesModernClassicStructure,
         hasEpigraphs: input.hasEpigraphs,
@@ -244,15 +265,8 @@ function buildPreviewLines(content: string): string[] {
 
 async function readTemplateText(plugin: RadialTimelinePlugin, resolvedPath: string): Promise<string> {
     if (!resolvedPath) return '';
-    if (path.isAbsolute(resolvedPath) && fs.existsSync(resolvedPath)) {
-        try {
-            return await fs.promises.readFile(resolvedPath, 'utf8');
-        } catch {
-            return '';
-        }
-    }
-
-    const abstract = plugin.app.vault.getAbstractFileByPath(resolvedPath);
+    const vaultPath = getVaultRelativePath(plugin, resolvedPath);
+    const abstract = plugin.app.vault.getAbstractFileByPath(vaultPath);
     if (abstract instanceof TFile) {
         try {
             return await plugin.app.vault.read(abstract);

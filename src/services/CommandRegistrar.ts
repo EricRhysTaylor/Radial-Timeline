@@ -31,6 +31,7 @@ import { ensureReferenceIdTemplateFrontmatter, ensureSceneTemplateFrontmatter } 
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
+import { resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
@@ -230,6 +231,17 @@ export class CommandRegistrar {
         }
 
         try {
+            const templateAccess = result.exportType === 'manuscript' && result.outputFormat === 'pdf'
+                ? resolveTemplateAccess({
+                    layouts: this.plugin.settings.pandocLayouts || [],
+                    selectedLayoutId: result.selectedLayoutId,
+                    manuscriptPreset: result.manuscriptPreset || 'novel',
+                    hasProAccess: hasProFeatureAccess(this.plugin),
+                })
+                : undefined;
+            const selectedLayoutIdForExport = templateAccess?.effectiveLayout?.id || result.selectedLayoutId;
+            const usedTemplateFallback = templateAccess?.usedFallback === true;
+
             const lockSceneSelectionToFullBook = result.exportType === 'manuscript' && result.outputFormat === 'pdf';
             const effectiveOrder = lockSceneSelectionToFullBook ? 'narrative' : result.order;
             const effectiveSubplot = lockSceneSelectionToFullBook ? undefined : result.subplot;
@@ -326,6 +338,10 @@ export class CommandRegistrar {
             const savedPaths: string[] = [];
             const renderedPaths: string[] = [];
             const statusMessages: string[] = [];
+            if (usedTemplateFallback) {
+                statusMessages.push(TEMPLATE_ACCESS_FALLBACK_MESSAGE);
+                new Notice(TEMPLATE_ACCESS_FALLBACK_MESSAGE);
+            }
             const selectedMatterCount = slicedSelection.files.reduce((count, file) => (
                 filteredSelection.matterMetaByPath?.has(file.path) ? count + 1 : count
             ), 0);
@@ -461,7 +477,7 @@ export class CommandRegistrar {
                 throw new Error(`Unsupported manuscript output format: ${result.outputFormat}`);
             }
 
-            const layout = getLayoutById(this.plugin, result.selectedLayoutId);
+            const layout = getLayoutById(this.plugin, selectedLayoutIdForExport);
             if (!layout) {
                 new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
                 return {};
@@ -663,6 +679,8 @@ export class CommandRegistrar {
 
         const detailLines = [
             ...snapshot.preflightIssues.map(issue => `Preflight: ${issue.message}`),
+            ...snapshot.templateAccessIssues.map(issue => `Template Access: ${issue.message}`),
+            ...snapshot.templateCompatibilityIssues.map(issue => `Template Compatibility: ${issue.message}`),
             ...(shouldBlockOnBookMeta
                 ? snapshot.activeBookMetaIssues.map(issue => `BookMeta: ${issue.message}`)
                 : []),
@@ -671,7 +689,7 @@ export class CommandRegistrar {
         let category: ConstructorParameters<typeof ExportFailure>[0]['category'] = 'pandoc_compile_failure';
         if (blocking.code.includes('pandoc') || blocking.code.includes('engine')) {
             category = 'missing_dependency';
-        } else if (blocking.code.includes('layout') || blocking.code.includes('template') || blocking.code.includes('profile')) {
+        } else if (blocking.code.includes('layout') || blocking.code.includes('template') || blocking.code.includes('profile') || blocking.code.includes('compatibility')) {
             category = 'invalid_template';
         } else if (blocking.scope === 'book-meta') {
             category = 'missing_metadata';
@@ -986,7 +1004,7 @@ export class CommandRegistrar {
 
     private requiresPro(options: ManuscriptModalResult): boolean {
         if (options.exportType === 'outline') return true;
-        if (options.outputFormat !== 'markdown') return true;
+        if (options.outputFormat !== 'markdown' && options.outputFormat !== 'pdf') return true;
         if (options.manuscriptPreset && (options.manuscriptPreset === 'screenplay' || options.manuscriptPreset === 'podcast')) return true;
         if (options.outlinePreset && (options.outlinePreset === 'index-cards-csv' || options.outlinePreset === 'index-cards-json')) return true;
         return false;

@@ -8,6 +8,7 @@ import type {
     TemplateSource,
     UsageContext,
 } from '../types';
+import { getPandocLayoutKind, getPandocLayoutRecommendedUse, getPandocLayoutTier } from '../publishing/templateTiering';
 
 const SUPPORTED_MATTER_ROLES = [
     'title-page',
@@ -138,6 +139,9 @@ export function adaptPandocLayoutToTemplateProfile(layout: PandocLayoutTemplate)
         description,
         usageContexts: [layout.preset as UsageContext],
         outputIntent,
+        tier: getPandocLayoutTier(layout),
+        templateKind: getPandocLayoutKind(layout),
+        recommendedUse: getPandocLayoutRecommendedUse(layout),
         styleKey: getStyleKey(layout),
         summary: description,
         guidance: layout.preset === 'novel'
