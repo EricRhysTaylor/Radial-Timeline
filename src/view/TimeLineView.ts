@@ -43,6 +43,11 @@ export const TIMELINE_VIEW_TYPE = "radial-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 const TIMELINE_REFRESH_DELAY_MS = 5000;
 
+// Namespace rule for Timeline view work:
+// - New Timeline chrome (legends, panels, badges, overlays, tooltips, controls) uses ert-timeline-*.
+// - Existing SVG/rendering primitives may still reference legacy rt-* islands.
+// - Do not introduce fresh rt-* class creation for new chrome here unless it is explicitly allowlisted.
+
 // CONSTANTS: Scene expansion constants
 const HOVER_EXPAND_FACTOR = 1.05; // expansion multiplier when text doesn't fit
 const TIMELINE_LEGEND_MODES = new Set(['progress', 'narrative', 'chronologue']);

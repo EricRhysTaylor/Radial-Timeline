@@ -30,10 +30,15 @@ Do not mix settings-root selectors and modal-root selectors casually. They are s
   Legacy islands and extracted migration selectors.
 
 ## Current Naming Reality
-- **Standard**: the codebase has fully migrated to `ert-*` for all UI classes. New CSS classes MUST use the `ert-` prefix.
-- **Do not introduce new `.rt-*` classes** anywhere — not in `rt-ui.css`, not in domain islands, not in legacy files. There is no compelling reason to add to the `rt-` set; we have standardized on `ert-`.
-- **Legacy / tolerated**: existing `.rt-*` classes still exist in domain islands and legacy files. Leave them alone unless touching that code for other reasons; if you do touch it, prefer migrating to `ert-`.
-- **Rule of thumb**: if you find yourself writing `.rt-` for a new selector, stop and use `.ert-` instead.
+- **Standard**: new UI classes default to `ert-*`.
+- **Default rule**: new app chrome should not introduce new `.rt-*` classes.
+- **Legacy / tolerated**: existing `.rt-*` classes still exist in renderer/domain islands and legacy files.
+- **Exception rule**: extending a legacy island may still use `rt-*`, but only when that island is explicitly allowlisted.
+- **Rule of thumb**: if you find yourself writing `.rt-` for a new selector, stop and check whether you are building chrome or extending a legacy renderer primitive.
+
+See:
+- [css-namespace-policy.md](/Users/ericrhystaylor/Documents/RT%20LLC/CodeBase/radial-timeline/docs/engineering/standards/css-namespace-policy.md)
+- [css-namespace-allowlist.json](/Users/ericrhystaylor/Documents/RT%20LLC/CodeBase/radial-timeline/scripts/css-namespace-allowlist.json)
 
 ## Surface Treatment Doctrine
 
@@ -107,6 +112,12 @@ This is the live behavior today. It is not a theoretical future gate.
 
 ### Social lock
 `scripts/check-social-ert-lock.mjs` blocks new `rt-*` backslide in specific Social settings render files, with a very small allowlist.
+
+### Timeline chrome lock
+`scripts/check-timeline-chrome-ert-lock.mjs` blocks new non-allowlisted `rt-*` class creation in Timeline view chrome.
+This is intentionally narrower than the renderer island itself:
+- new Timeline legends, panels, badges, overlays, and other chrome should use `ert-timeline-*`
+- existing SVG renderer primitives may still remain `rt-*` inside the allowlisted legacy island
 
 ## Current vs Target-State Guidance
 - **Current / enforced**: scope under `.ert-ui`, avoid `!important`, do not add `.rt-*` to `rt-ui.css`.

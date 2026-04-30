@@ -1,3 +1,6 @@
+/* Timeline namespace rule:
+   - New Timeline chrome (legend, trigger, tooltip, panel, badge, overlay) should use ert-timeline-*.
+   - Existing SVG renderer primitives in this legacy island may remain rt-* until intentionally migrated. */
 .rt-scene-title-bold.rt-title-stage-zero {
   fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero));
 }

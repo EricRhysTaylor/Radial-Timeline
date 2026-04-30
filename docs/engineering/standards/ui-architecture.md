@@ -93,6 +93,10 @@ Practical rule:
 - if the code is legacy or domain-specific, existing `rt-*` may remain until deliberately migrated
 - do not treat `rt-*` as the pattern for new shared settings/modal shell work
 
+For view-specific exceptions and allowlisted legacy islands, see:
+- [css-namespace-policy.md](/Users/ericrhystaylor/Documents/RT%20LLC/CodeBase/radial-timeline/docs/engineering/standards/css-namespace-policy.md)
+- [css-namespace-allowlist.json](/Users/ericrhystaylor/Documents/RT%20LLC/CodeBase/radial-timeline/scripts/css-namespace-allowlist.json)
+
 ## Spacing Policy
 - **Current**: stacks own spacing.
 - **Current**: gaps and padding tokens define rhythm.
@@ -119,6 +123,8 @@ Current enforcement comes from code and scripts, not just docs.
   `scripts/check-inquiry-ert-lock.mjs` blocks `ert-inquiry-*` tokens in settings/modals TS and `rt-ui.css`.
 - Social lock
   `scripts/check-social-ert-lock.mjs` blocks new `rt-*` backslide in specific social settings render files.
+- Timeline chrome lock
+  `scripts/check-timeline-chrome-ert-lock.mjs` blocks new non-allowlisted `rt-*` class creation in Timeline view chrome.
 - `!important`
   Banned by the CSS drift check.
 
