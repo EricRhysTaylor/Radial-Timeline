@@ -45,6 +45,18 @@ const TIMELINE_REFRESH_DELAY_MS = 5000;
 
 // CONSTANTS: Scene expansion constants
 const HOVER_EXPAND_FACTOR = 1.05; // expansion multiplier when text doesn't fit
+const TIMELINE_LEGEND_MODES = new Set(['progress', 'narrative', 'chronologue']);
+
+interface TimelineLegendRow {
+    icon: string;
+    label: string;
+    detail?: string;
+}
+
+interface TimelineLegendSection {
+    title: string;
+    rows: TimelineLegendRow[];
+}
 
 // SceneNumberInfo now imported from constants
 
@@ -73,6 +85,8 @@ export class RadialTimelineView extends ItemView {
     private bookSwitcherEl?: HTMLElement;
     private bookSwitcherSelect?: HTMLSelectElement;
     private bookSwitcherManageBtn?: HTMLButtonElement;
+    private timelineLegendTrigger?: HTMLButtonElement;
+    private timelineLegendPanel?: HTMLElement;
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
@@ -103,6 +117,7 @@ export class RadialTimelineView extends ItemView {
      */
     public set currentMode(mode: string) {
         this._currentMode = mode;
+        this.updateTimelineLegend();
     }
 
     /**
@@ -160,9 +175,20 @@ export class RadialTimelineView extends ItemView {
             const wrapper = document.createElement('div');
             wrapper.className = 'rt-book-switcher';
 
+            const legendBtn = document.createElement('button');
+            legendBtn.className = 'ert-timeline-legend__trigger clickable-icon';
+            legendBtn.type = 'button';
+            legendBtn.setAttribute('aria-label', 'Timeline legend');
+            legendBtn.setAttribute('aria-expanded', 'false');
+            setIcon(legendBtn, 'asterisk');
+
+            const legendPanel = document.createElement('div');
+            legendPanel.className = 'ert-timeline-legend';
+            legendPanel.setAttribute('role', 'tooltip');
+
             const select = document.createElement('select');
             select.className = 'rt-book-switcher__select';
-            select.addEventListener('change', () => {
+            this.registerDomEvent(select, 'change', () => {
                 const nextId = select.value;
                 void this.plugin.setActiveBookId(nextId);
             });
@@ -172,7 +198,7 @@ export class RadialTimelineView extends ItemView {
             manageBtn.type = 'button';
             manageBtn.setAttribute('aria-label', 'Manage books');
             setIcon(manageBtn, 'settings');
-            manageBtn.addEventListener('click', () => {
+            this.registerDomEvent(manageBtn, 'click', () => {
                 if (this.plugin.settingsTab) {
                     this.plugin.settingsTab.setActiveTab('core');
                 }
@@ -183,6 +209,65 @@ export class RadialTimelineView extends ItemView {
                 }
             });
 
+            let hideLegendTimer: number | null = null;
+            const showLegend = () => {
+                if (hideLegendTimer !== null) {
+                    window.clearTimeout(hideLegendTimer);
+                    hideLegendTimer = null;
+                }
+                if (legendBtn.hidden) return;
+                legendPanel.classList.add('is-visible');
+                legendBtn.setAttribute('aria-expanded', 'true');
+            };
+            const hideLegend = () => {
+                legendPanel.classList.remove('is-visible');
+                legendBtn.setAttribute('aria-expanded', 'false');
+            };
+            const scheduleLegendHide = () => {
+                if (hideLegendTimer !== null) {
+                    window.clearTimeout(hideLegendTimer);
+                }
+                hideLegendTimer = window.setTimeout(() => {
+                    hideLegendTimer = null;
+                    if (legendPanel.matches(':hover') || legendBtn.matches(':hover') || legendPanel.contains(document.activeElement)) {
+                        return;
+                    }
+                    hideLegend();
+                }, 120);
+            };
+
+            this.registerDomEvent(legendBtn, 'mouseenter', showLegend);
+            this.registerDomEvent(legendBtn, 'focus', showLegend);
+            this.registerDomEvent(legendBtn, 'mouseleave', scheduleLegendHide);
+            this.registerDomEvent(legendBtn, 'blur', scheduleLegendHide);
+            this.registerDomEvent(legendBtn, 'click', (evt: MouseEvent) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                if (legendPanel.classList.contains('is-visible')) {
+                    hideLegend();
+                    return;
+                }
+                showLegend();
+            });
+            this.registerDomEvent(legendPanel, 'mouseenter', showLegend);
+            this.registerDomEvent(legendPanel, 'mouseleave', scheduleLegendHide);
+            this.registerDomEvent(document.body, 'click', (evt: MouseEvent) => {
+                const target = evt.target as Node | null;
+                if (target && (legendPanel.contains(target) || legendBtn.contains(target))) return;
+                hideLegend();
+            });
+            this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Escape') hideLegend();
+            });
+            this.register(() => {
+                if (hideLegendTimer !== null) {
+                    window.clearTimeout(hideLegendTimer);
+                    hideLegendTimer = null;
+                }
+            });
+
+            wrapper.appendChild(legendBtn);
+            wrapper.appendChild(legendPanel);
             wrapper.appendChild(select);
             wrapper.appendChild(manageBtn);
 
@@ -195,9 +280,131 @@ export class RadialTimelineView extends ItemView {
             this.bookSwitcherEl = wrapper;
             this.bookSwitcherSelect = select;
             this.bookSwitcherManageBtn = manageBtn;
+            this.timelineLegendTrigger = legendBtn;
+            this.timelineLegendPanel = legendPanel;
         }
 
         this.updateBookSwitcherOptions();
+        this.updateTimelineLegend();
+    }
+
+    private updateTimelineLegend(): void {
+        if (!this.timelineLegendTrigger || !this.timelineLegendPanel) return;
+
+        const mode = this.currentMode || 'narrative';
+        const isSupportedMode = TIMELINE_LEGEND_MODES.has(mode);
+        this.timelineLegendTrigger.hidden = !isSupportedMode;
+        this.timelineLegendPanel.classList.toggle('is-disabled', !isSupportedMode);
+        this.timelineLegendPanel.classList.toggle('is-visible', false);
+        this.timelineLegendTrigger.setAttribute('aria-expanded', 'false');
+        if (!isSupportedMode) return;
+
+        this.timelineLegendPanel.empty();
+
+        const surface = document.createElement('div');
+        surface.className = 'ert-timeline-legend__surface';
+
+        const header = document.createElement('div');
+        header.className = 'ert-timeline-legend__header';
+        const title = document.createElement('div');
+        title.className = 'ert-timeline-legend__title';
+        title.textContent = 'Timeline Keys';
+        const badge = document.createElement('div');
+        badge.className = 'ert-timeline-legend__mode';
+        badge.textContent = this.getTimelineLegendModeLabel(mode);
+        header.appendChild(title);
+        header.appendChild(badge);
+        surface.appendChild(header);
+
+        this.getTimelineLegendSections(mode).forEach(section => {
+            const sectionEl = document.createElement('section');
+            sectionEl.className = 'ert-timeline-legend__section';
+
+            const sectionTitle = document.createElement('div');
+            sectionTitle.className = 'ert-timeline-legend__section-title';
+            sectionTitle.textContent = section.title;
+            sectionEl.appendChild(sectionTitle);
+
+            section.rows.forEach(row => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'ert-timeline-legend__row';
+
+                const iconEl = document.createElement('span');
+                iconEl.className = 'ert-timeline-legend__icon';
+                setIcon(iconEl, row.icon);
+
+                const copyEl = document.createElement('span');
+                copyEl.className = 'ert-timeline-legend__copy';
+                const labelEl = document.createElement('span');
+                labelEl.className = 'ert-timeline-legend__label';
+                labelEl.textContent = row.label;
+                copyEl.appendChild(labelEl);
+
+                if (row.detail) {
+                    const detailEl = document.createElement('span');
+                    detailEl.className = 'ert-timeline-legend__detail';
+                    detailEl.textContent = row.detail;
+                    copyEl.appendChild(detailEl);
+                }
+
+                rowEl.appendChild(iconEl);
+                rowEl.appendChild(copyEl);
+                sectionEl.appendChild(rowEl);
+            });
+
+            surface.appendChild(sectionEl);
+        });
+
+        this.timelineLegendPanel.appendChild(surface);
+    }
+
+    private getTimelineLegendModeLabel(mode: string): string {
+        if (mode === 'progress') return 'Progress';
+        if (mode === 'chronologue') return 'Chronologue';
+        return 'Narrative';
+    }
+
+    private getTimelineLegendSections(mode: string): TimelineLegendSection[] {
+        const sections: TimelineLegendSection[] = [
+            {
+                title: 'Scene Actions',
+                rows: [
+                    { icon: 'mouse-pointer-click', label: 'Hover scene', detail: mode === 'chronologue' ? 'show synopsis and matching scenes' : 'show synopsis and expand title' },
+                    { icon: 'external-link', label: 'Click scene', detail: 'open scene note' },
+                    { icon: 'mouse', label: 'Right click scene', detail: 'set status, stage, or triplet pulse' },
+                ],
+            },
+        ];
+
+        if (mode === 'narrative') {
+            sections.push({
+                title: 'Narrative Only',
+                rows: [
+                    { icon: 'move-horizontal', label: 'Drag outer ring', detail: 'move scene or beat in manuscript order' },
+                ],
+            });
+        }
+
+        if (mode === 'chronologue') {
+            sections.push({
+                title: 'Chronologue Only',
+                rows: [
+                    { icon: 'arrow-left-right', label: 'Shift / Caps Lock', detail: 'compare elapsed time between scenes' },
+                    { icon: 'crosshair', label: 'Click while comparing', detail: 'choose the scene pair' },
+                ],
+            });
+        }
+
+        sections.push({
+            title: 'Right Click Menu',
+            rows: [
+                { icon: 'circle-dot', label: 'Set Status', detail: 'Todo, Working, Complete' },
+                { icon: 'layers', label: 'Change Stage', detail: 'Zero, Author, House, Press' },
+                { icon: 'flag', label: 'Misc', detail: 'Flag Triplet Pulse' },
+            ],
+        });
+
+        return sections;
     }
 
     private updateBookSwitcherOptions(): void {
