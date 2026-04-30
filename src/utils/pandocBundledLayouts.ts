@@ -43,6 +43,84 @@ function normalizeLegacySignatureSpacing(content: string): { content: string; ch
     return { content: updated, changed: updated !== content };
 }
 
+const CORE_SCENE_OPENER_HELPER_LINES = [
+    '\\setcounter{secnumdepth}{0}',
+    '\\makeatletter',
+    '\\newcommand{\\rtSceneOpenerTitle}[1]{%',
+    '  \\begingroup',
+    '  \\def\\rt@sceneFirst{}%',
+    '  \\rt@sceneFirstWord#1 \\@nil',
+    '  \\rt@sceneFirst',
+    '  \\endgroup',
+    '}',
+    '\\def\\rt@sceneFirstWord#1 #2\\@nil{\\def\\rt@sceneFirst{#1}}',
+    '\\makeatother',
+].join('\n');
+
+const STANDARD_MANUSCRIPT_LEGACY_HEADING_BLOCK = [
+    '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
+    '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+].join('\n');
+
+const STANDARD_MANUSCRIPT_HEADING_BLOCK = [
+    CORE_SCENE_OPENER_HELPER_LINES,
+    '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
+    '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
+    '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
+    '\\titlespacing*{\\subsection}{0pt}{0.16\\textheight}{0.12\\textheight}',
+    '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+    '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}',
+].join('\n');
+
+const CONTEMPORARY_LITERARY_LEGACY_HEADING_BLOCK = [
+    '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
+    '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
+    '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+].join('\n');
+
+const CONTEMPORARY_LITERARY_HEADING_BLOCK = [
+    CORE_SCENE_OPENER_HELPER_LINES,
+    '\\titleformat{\\chapter}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titlespacing*{\\chapter}{0pt}{0.18\\textheight}{0.14\\textheight}',
+    '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+    '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
+    '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
+    '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
+    '\\titlespacing*{\\subsection}{0pt}{0.18\\textheight}{0.14\\textheight}',
+    '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
+    '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+    '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}',
+].join('\n');
+
+function normalizeCoreTemplateSceneOpeners(
+    content: string,
+    layoutId: string
+): { content: string; changed: boolean } {
+    const isStandard = layoutId === BUNDLED_FICTION_CLASSIC_ID
+        && content.includes('% Pandoc LaTeX Template - Standard Manuscript');
+    const isContemporary = layoutId === BUNDLED_FICTION_CONTEMPORARY_ID
+        && content.includes('% Pandoc LaTeX Template - Contemporary Literary');
+    if (!isStandard && !isContemporary) return { content, changed: false };
+
+    const legacyBlock = isStandard
+        ? STANDARD_MANUSCRIPT_LEGACY_HEADING_BLOCK
+        : CONTEMPORARY_LITERARY_LEGACY_HEADING_BLOCK;
+    const fixedBlock = isStandard
+        ? STANDARD_MANUSCRIPT_HEADING_BLOCK
+        : CONTEMPORARY_LITERARY_HEADING_BLOCK;
+
+    if (content.includes(fixedBlock)) return { content, changed: false };
+    const updated = content.includes(legacyBlock)
+        ? content.replace(legacyBlock, fixedBlock)
+        : content;
+    return { content: updated, changed: updated !== content };
+}
+
 const LEGACY_MODERN_CLASSIC_TITLE_CAPTURE = [
     '% --- capture Pandoc title/author ---',
     '\\makeatletter',
@@ -386,9 +464,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  \\renewcommand{\\footrulewidth}{0pt}',
             '}',
             '',
-            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
-            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            STANDARD_MANUSCRIPT_HEADING_BLOCK,
             '',
             '\\onehalfspacing',
             '\\setlength{\\parindent}{1.5em}',
@@ -460,10 +536,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '\\fancyfoot[C]{\\rmfamily\\footnotesize\\thepage}',
             '\\pagestyle{fancy}',
             '',
-            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
-            '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
-            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            CONTEMPORARY_LITERARY_HEADING_BLOCK,
             '',
             '\\onehalfspacing',
             '\\setlength{\\parindent}{1.5em}',
@@ -821,13 +894,20 @@ export async function ensureBundledLayoutInstalledForExport(
             try {
                 const raw = await vault.read(bundled);
                 const signatureNormalized = normalizeLegacySignatureSpacing(raw);
+                const coreSceneOpenersNormalized = normalizeCoreTemplateSceneOpeners(
+                    signatureNormalized.content,
+                    layout.id
+                );
                 const modernClassicNormalized = layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID
                     ? normalizeModernClassicMacroContract(signatureNormalized.content)
-                    : signatureNormalized;
-                if (modernClassicNormalized.changed || signatureNormalized.changed) {
+                    : coreSceneOpenersNormalized;
+                if (modernClassicNormalized.changed || coreSceneOpenersNormalized.changed || signatureNormalized.changed) {
                     await vault.modify(bundled, modernClassicNormalized.content);
                     if (layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID && modernClassicNormalized.changed) {
                         console.info('[Radial Timeline] Updated bundled Modern Classic template macro contract for export compatibility.');
+                    }
+                    if (coreSceneOpenersNormalized.changed) {
+                        console.info(`[Radial Timeline] Updated bundled ${layout.name} template scene opener formatting for export compatibility.`);
                     }
                 }
             } catch {

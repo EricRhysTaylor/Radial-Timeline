@@ -767,7 +767,9 @@ export class ManuscriptOptionsModal extends Modal {
         this.templateCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card ert-layout-templates-card' });
         this.createSectionHeading(this.templateCard, 'Saved export presets', 'bookmark');
         const presetTopRow = this.templateCard.createDiv({ cls: 'ert-export-preset-toprow' });
-        this.templateSummaryEl = presetTopRow.createDiv({ cls: 'ert-sub-card-note ert-export-preset-summary' });
+        const presetSummaryStack = presetTopRow.createDiv({ cls: 'ert-export-preset-summary-stack' });
+        this.templateSummaryEl = presetSummaryStack.createDiv({ cls: 'ert-sub-card-note ert-export-preset-summary' });
+        this.templateHintEl = presetSummaryStack.createDiv({ cls: 'ert-sub-card-note ert-export-preset-hint' });
         const dropdownRow = presetTopRow.createDiv({ cls: 'ert-template-dropdown-row' });
         const templateSetting = new DropdownComponent(dropdownRow.createDiv({ cls: 'ert-manuscript-input-container' }));
         templateSetting.selectEl.addClass('ert-input', 'ert-input--lg');
@@ -784,7 +786,6 @@ export class ManuscriptOptionsModal extends Modal {
             }
             void this.applyTemplateById(value);
         });
-        this.templateHintEl = this.templateCard.createDiv({ cls: 'ert-sub-card-note ert-export-preset-hint' });
         const templateActions = this.templateCard.createDiv({ cls: 'ert-template-actions' });
         this.saveTemplateButton = new ButtonComponent(templateActions)
             .setButtonText('Create preset')
@@ -1775,7 +1776,7 @@ export class ManuscriptOptionsModal extends Modal {
             // Multiple layouts — dropdown
             const ddContainer = this.layoutContainerEl.createDiv({ cls: 'ert-manuscript-input-container' });
             const dd = new DropdownComponent(ddContainer);
-            dd.selectEl.addClass('ert-input', 'ert-input--lg');
+            dd.selectEl.addClass('ert-input', 'ert-input--full');
             for (const l of layouts) {
                 const locked = !this.isPro && this.getTemplateProfileTierLabel(l) === 'Pro';
                 dd.addOption(l.id, this.formatTemplateProfileName(l) || l.name);

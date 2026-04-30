@@ -1608,7 +1608,7 @@ export const en: TranslationKeys = {
                 author: {
                     label: 'Author',
                     desc: 'Outer ring author name text.',
-                    placeholder: 'Author Name',
+                    placeholder: 'Author',
                 },
                 percentSymbol: { label: '% Symbol', desc: 'Center percent symbol.' },
                 percentNumber: { label: '% Number', desc: 'Center progress number.' },

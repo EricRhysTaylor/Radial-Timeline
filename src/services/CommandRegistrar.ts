@@ -32,7 +32,7 @@ import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
-import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
+import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from '../utils/manuscriptSanitize';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
@@ -563,7 +563,7 @@ export class CommandRegistrar {
                 }
 
                 const compiledMarkdown = assembled.text;
-                const sanitizedMarkdown = sanitizeCompiledManuscript(compiledMarkdown, cleanupOptions);
+                const sanitizedMarkdown = sanitizeCompiledManuscriptForPdf(compiledMarkdown, cleanupOptions);
 
                 if (shouldSaveMarkdown) {
                     const basePrecursorName = isSplitRun
@@ -1136,16 +1136,16 @@ export class CommandRegistrar {
                 'Class: BookMeta',
                 'Book:',
                 '  title: "Untitled Manuscript"',
-                '  author: "Author Name"',
+                '  author: "Author"',
                 'Rights:',
-                '  copyright_holder: "Author Name"',
+                '  copyright_holder: "Copyright Holder"',
                 `  year: ${currentYear}`,
                 'Identifiers:',
                 '  isbn_paperback: "000-0-00-000000-0"',
                 'Publisher:',
-                '  name: "Publisher Name"',
+                '  name: "Publisher"',
                 'Production:',
-                '  imprint: "Imprint Name"',
+                '  imprint: "Imprint"',
                 '  edition: "1"',
                 '  print_location: "City, Country"'
             ].join('\n');

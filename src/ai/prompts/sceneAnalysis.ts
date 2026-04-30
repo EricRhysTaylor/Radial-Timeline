@@ -66,7 +66,7 @@ export function getSceneAnalysisSystemPrompt(): string {
 
 const SCENE_ANALYSIS_JSON_EXAMPLE = `{
   "previousSceneAnalysis": [
-    { "ref_id": "scn_prev23", "scene": "23", "title": "First-rescue echo", "grade": "+", "comment": "Chae’s compassion parallels Shail’s later desperation" },
+    { "ref_id": "scn_prev23", "scene": "23", "title": "First-rescue echo", "grade": "+", "comment": "A supporting character's choice parallels the protagonist's later desperation" },
     { "ref_id": "scn_prev23", "scene": "23", "title": "Implant mystery", "grade": "?", "comment": "Tech anomalies foreshadow later biological puzzles" }
   ],
   "currentSceneAnalysis": [
@@ -74,8 +74,8 @@ const SCENE_ANALYSIS_JSON_EXAMPLE = `{
     { "ref_id": "scn_cur24", "scene": "24", "title": "Harsh environment pressure", "grade": "+", "comment": "Strongly escalates physical and emotional stakes" }
   ],
   "nextSceneAnalysis": [
-    { "ref_id": "scn_next25", "scene": "25", "title": "Tech–bio tension", "grade": "+", "comment": "Survival biology echoes Diga genetic stakes" },
-    { "ref_id": "scn_next25", "scene": "25", "title": "Trust and secrecy", "grade": "+", "comment": "Shail’s reliance reflects Chae–Trisan disclosure themes" }
+    { "ref_id": "scn_next25", "scene": "25", "title": "Tech–bio tension", "grade": "+", "comment": "Survival biology echoes earlier genetic stakes" },
+    { "ref_id": "scn_next25", "scene": "25", "title": "Trust and secrecy", "grade": "+", "comment": "The protagonist's reliance reflects earlier disclosure themes" }
   ]
 }`;
 

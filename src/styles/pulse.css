@@ -281,6 +281,13 @@
   flex-wrap: wrap;
 }
 
+.ert-export-preset-summary-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  min-width: 0;
+}
+
 .ert-export-preset-toprow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);

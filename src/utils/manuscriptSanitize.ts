@@ -165,6 +165,10 @@ function stripBlockIds(content: string): string {
     return withoutInline.replace(/^\^[A-Za-z0-9][A-Za-z0-9_-]*\s*$/gm, '');
 }
 
+function stripTaskListMarkers(content: string): string {
+    return content.replace(/^(\s{0,3}(?:[-+*]|\d+[.)])\s+)\[[ xX]\]\s+/gm, '$1');
+}
+
 export function getDefaultManuscriptCleanupOptions(format: ManuscriptCleanupFormat): ManuscriptExportCleanupOptions {
     return format === 'pdf'
         ? { ...PDF_CLEANUP_DEFAULTS }
@@ -198,4 +202,11 @@ export function sanitizeCompiledManuscript(
     if (opts.stripBlockIds) cleaned = stripBlockIds(cleaned);
 
     return cleaned.trim();
+}
+
+export function sanitizeCompiledManuscriptForPdf(
+    text: string,
+    opts: Partial<ManuscriptExportCleanupOptions> = {}
+): string {
+    return stripTaskListMarkers(sanitizeCompiledManuscript(text, opts)).trim();
 }

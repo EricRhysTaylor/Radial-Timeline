@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeCompiledManuscript } from './manuscriptSanitize';
+import { sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from './manuscriptSanitize';
 
 describe('sanitizeCompiledManuscript', () => {
     it('always removes YAML frontmatter blocks from compiled manuscript text', () => {
@@ -146,5 +146,38 @@ Ends here ^scene-end`;
         expect(sanitized).toContain('\\rtPart{I}');
         expect(sanitized).toContain('\\rtEpigraph{A quote}{Author}');
         expect(sanitized).toContain('\\rtSceneSep');
+    });
+
+    it('removes markdown task-list boxes from PDF-bound manuscript text', () => {
+        const input = `## 1 Opening
+
+- [ ] recently read
+- [x] already known
+1. [ ] numbered task`;
+
+        const sanitized = sanitizeCompiledManuscriptForPdf(input, {
+            stripComments: false,
+            stripLinks: false,
+            stripCallouts: false,
+            stripBlockIds: false
+        });
+
+        expect(sanitized).toContain('- recently read');
+        expect(sanitized).toContain('- already known');
+        expect(sanitized).toContain('1. numbered task');
+        expect(sanitized).not.toContain('[ ]');
+        expect(sanitized).not.toContain('[x]');
+    });
+
+    it('preserves markdown task-list boxes for regular manuscript cleanup', () => {
+        const input = `- [ ] recently read`;
+        const sanitized = sanitizeCompiledManuscript(input, {
+            stripComments: false,
+            stripLinks: false,
+            stripCallouts: false,
+            stripBlockIds: false
+        });
+
+        expect(sanitized).toBe('- [ ] recently read');
     });
 });

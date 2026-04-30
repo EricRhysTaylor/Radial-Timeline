@@ -121,6 +121,80 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(updated).not.toContain('\\dimexpr\\textheight/5\\relax');
     });
 
+    it('bundled core templates define numbered section and subsection scene openers', async () => {
+        for (const layoutId of ['bundled-fiction-classic-manuscript', 'bundled-fiction-contemporary-literary']) {
+            const { plugin, layout } = createPluginWithBundledLayout(layoutId);
+            const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
+            expect(install.installed).toBe(true);
+
+            const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+            const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+            const content = await (plugin.app.vault as any).read(file);
+            expect(content).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
+            expect(content).toContain('\\setcounter{secnumdepth}{0}');
+            expect(content).toContain('\\titleformat{\\section}[display]');
+            expect(content).toContain('\\titleformat{name=\\section,numberless}[display]');
+            expect(content).toContain('\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}');
+            expect(content).toContain('\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
+            expect(content).toContain('\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
+            expect(content).toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
+            expect(content).toContain('\\preto\\subsection{\\clearpage\\thispagestyle{empty}}');
+        }
+    });
+
+    it('hotfixes legacy Standard Manuscript scene opener formatting in existing bundled template files', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const legacy = [
+            '% Pandoc LaTeX Template - Standard Manuscript',
+            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
+            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, legacy);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
+        expect(updated).toContain('\\titleformat{\\section}[display]');
+        expect(updated).toContain('\\titleformat{\\subsection}[display]');
+        expect(updated).toContain('\\preto\\subsection{\\clearpage\\thispagestyle{empty}}');
+    });
+
+    it('hotfixes legacy Contemporary Literary scene opener formatting in existing bundled template files', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const legacy = [
+            '% Pandoc LaTeX Template - Contemporary Literary',
+            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
+            '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
+            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, legacy);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toContain('\\titleformat{\\chapter}[display]');
+        expect(updated).toContain('\\titleformat{\\section}[display]');
+        expect(updated).toContain('\\titleformat{\\subsection}[display]');
+        expect(updated).toContain('\\preto\\subsection{\\clearpage\\thispagestyle{empty}}');
+    });
+
     it('bundled Modern Classic template defines all macros emitted by assembly', async () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
 

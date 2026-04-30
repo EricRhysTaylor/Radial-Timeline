@@ -28,10 +28,10 @@ function getVerifier(): Verifier {
 function singleSceneIndex() {
     return buildSceneRefIndex([{
         sceneId: 'scn_a1b2c3d4',
-        path: 'Book 1 Shail + Trisan/3 Party.md',
-        label: '3 Party.md',
+        path: 'Book 1 Example Novel/3 Turning Point.md',
+        label: '3 Turning Point.md',
         sceneNumber: 3,
-        title: '3 Party',
+        title: '3 Turning Point',
         aliases: []
     }]);
 }
@@ -63,8 +63,8 @@ describe('verifyFindingRefs', () => {
         const out = verify(
             [{
                 ref_id: 'scn_a1b2c3d4',
-                ref_label: '3 Party.md',
-                ref_path: 'Book 1 Shail + Trisan/3 Party.md',
+                ref_label: '3 Turning Point.md',
+                ref_path: 'Book 1 Example Novel/3 Turning Point.md',
                 kind: 'continuity',
                 headline: 'Clean finding',
                 bullets: ['a'],
@@ -111,8 +111,8 @@ describe('verifyFindingRefs', () => {
         const out = verify(
             [{
                 ref_id: 'scn_deadbeef',
-                ref_label: '3 Party.md',
-                ref_path: 'Book 1 Shail + Trisan/3 Party.md',
+                ref_label: '3 Turning Point.md',
+                ref_path: 'Book 1 Example Novel/3 Turning Point.md',
                 kind: 'continuity',
                 headline: 'Rescued',
                 bullets: [],
@@ -125,8 +125,8 @@ describe('verifyFindingRefs', () => {
         expect(out.verified[0].refId).toBe('scn_a1b2c3d4');
         expect(out.verified[0].rawRef).toEqual({
             refId: 'scn_deadbeef',
-            refLabel: '3 Party.md',
-            refPath: 'Book 1 Shail + Trisan/3 Party.md'
+            refLabel: '3 Turning Point.md',
+            refPath: 'Book 1 Example Novel/3 Turning Point.md'
         });
         expect(out.warnings.some(w => w.stage === 'unresolved_ref' && w.message.includes('scn_a1b2c3d4'))).toBe(true);
     });
@@ -157,10 +157,10 @@ describe('verifyFindingRefs', () => {
         const index = buildSceneRefIndex([
             {
                 sceneId: 'scn_aaaaaaaa',
-                path: 'Book/3 Party.md',
-                label: '3 Party.md',
+                path: 'Book/3 Turning Point.md',
+                label: '3 Turning Point.md',
                 sceneNumber: 3,
-                title: '3 Party',
+                title: '3 Turning Point',
                 aliases: []
             },
             {
@@ -236,8 +236,8 @@ describe('verifyFindingRefs', () => {
         const out = verify(
             [{
                 ref_id: 'scn_a1b2c3d4',
-                ref_label: '3 Party.md',
-                ref_path: 'Book 1 Shail + Trisan/3 Party.md',
+                ref_label: '3 Turning Point.md',
+                ref_path: 'Book 1 Example Novel/3 Turning Point.md',
                 headline: 'Clean',
                 bullets: []
             }],

@@ -74,8 +74,8 @@ export async function buildGossamerEvidenceDocument(params: {
         '---',
         ''
     ];
-    // Scene titles already carry their own narrative-order prefix (e.g. "1 Training at…",
-    // "10 Chae Ban Breakfast"). No outer enumeration — a second "${index + 1}." in front
+    // Scene titles already carry their own narrative-order prefix (e.g. "1 Opening",
+    // "10 Breakfast"). No outer enumeration — a second "${index + 1}." in front
     // only doubles the numbering and adds noise for the LLM.
     entries.forEach((entry) => {
         tocLines.push(`${entry.title} (${entry.sceneId})`);

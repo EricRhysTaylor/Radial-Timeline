@@ -116,22 +116,22 @@ async function updateSceneFile(
 }
 
 const DUMMY_API_RESPONSE = `previousSceneAnalysis:
- - 33.2 Trisan Inner Turmoil - / Lacks clarity
- - Chae Ban Hesitation ? / Uncertain decision
- - Entiat Reflection ? / Needs clearer link: should explore motive
- - Chae Ban Plan + / Strengthens connection to currentSceneAnalysis choices
- - Meeting Entiat + / Sets up tension
+ - 33.2 Protagonist Inner Turmoil - / Lacks clarity
+ - Ally Hesitation ? / Uncertain decision
+ - Mentor Reflection ? / Needs clearer link: should explore motive
+ - Ally Plan + / Strengthens connection to currentSceneAnalysis choices
+ - Meeting the Mentor + / Sets up tension
 currentSceneAnalysis:
- - 33.5 B / Scene will be stronger by making Entiat motivations clearer. Clarify: imminent threat
- - Entiat Adoption Reflections ? / Lacks tension link to events in previousSceneAnalysis
- - Chae Ban Escape News + / Advances plot
- - Entiat Internal Conflict + / Highlights dilemma: how to handle the situation from previousSceneAnalysis
+ - 33.5 B / Scene will be stronger by making the mentor's motivations clearer. Clarify: imminent threat
+ - Mentor Reflections ? / Lacks tension link to events in previousSceneAnalysis
+ - Ally Escape News + / Advances plot
+ - Mentor Internal Conflict + / Highlights dilemma: how to handle the situation from previousSceneAnalysis
  - Connection to nextSceneAnalysis + / Sets up the coming conflict
 nextSceneAnalysis:
- - 34 Teco Routine Disruption - / Needs purpose
- - Entiat Unexpected Visit ? / Confusing motivation: clarify intention here
+ - 34 Routine Disruption - / Needs purpose
+ - Mentor Unexpected Visit ? / Confusing motivation: clarify intention here
  - Sasha Defense and Defeat + / Builds on tension from currentSceneAnalysis
- - Teco Escape Decision + / Strong transition
+ - Ally Escape Decision + / Strong transition
  - Final Choice + / Resolves arc started in previousSceneAnalysis`;
 
 export async function testYamlUpdateFormatting(

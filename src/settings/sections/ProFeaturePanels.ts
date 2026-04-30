@@ -1026,17 +1026,17 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
         '---',
         'Class: BookMeta',
         'Book:',
-        '  title: "Your Title"',
-        '  author: "Author Name"',
+        '  title: "Untitled Manuscript"',
+        '  author: "Author"',
         'Rights:',
-        '  copyright_holder: "Author Name"',
+        '  copyright_holder: "Copyright Holder"',
         `  year: ${year}`,
         'Identifiers:',
         '  isbn_paperback: "000-0-00-000000-0"',
         'Publisher:',
-        '  name: "Publisher Name"',
+        '  name: "Publisher"',
         'Production:',
-        '  imprint: "Imprint Name"',
+        '  imprint: "Imprint"',
         '  edition: "1"',
         '  print_location: "City, Country"',
         '---',
@@ -1252,17 +1252,17 @@ async function generateSampleTemplates(
             '---',
             'Class: BookMeta',
             'Book:',
-            '  title: "Your Title"',
-            '  author: "Author Name"',
+            '  title: "Untitled Manuscript"',
+            '  author: "Author"',
             'Rights:',
-            '  copyright_holder: "Author Name"',
+            '  copyright_holder: "Copyright Holder"',
             `  year: ${currentYear}`,
             'Identifiers:',
             '  isbn_paperback: "000-0-00-000000-0"',
             'Publisher:',
-            '  name: "Publisher Name"',
+            '  name: "Publisher"',
             'Production:',
-            '  imprint: "Imprint Name"',
+            '  imprint: "Imprint"',
             '  edition: "1"',
             '  print_location: "City, Country"',
             '---',
@@ -1305,7 +1305,7 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Rights notice and legal disclaimer text can be written here in plain language.',
+                'Additional rights notice or legal disclaimer text goes here.',
             ].join('\n')
         },
         {
@@ -1319,7 +1319,7 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'For the ones who stayed.',
+                'Dedication text goes here.',
             ].join('\n')
         },
         {
@@ -1333,7 +1333,7 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                '"Your quote here."',
+                'Epigraph text goes here.',
             ].join('\n')
         },
         {
@@ -1347,7 +1347,7 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Thank you to everyone who helped shape this manuscript.',
+                'Acknowledgments text goes here.',
             ].join('\n')
         },
         {
@@ -1362,7 +1362,7 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Author bio goes here.',
+                'Author bio text goes here.',
             ].join('\n')
         }
     ];
@@ -1695,7 +1695,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     { label: 'Folios', value: 'Bottom center' },
                     { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
                     { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Scenes', value: 'Opener page — centered, bold, suppresses headers' },
+                    { label: 'Scenes', value: 'New page — centered scene number only' },
                 ];
             case 'modernClassic':
                 return [
@@ -1724,7 +1724,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     { label: 'Folios', value: 'Bottom center (serif)' },
                     { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
                     { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Scenes', value: 'Opener page — centered, bold, suppresses headers' },
+                    { label: 'Scenes', value: 'New page — centered scene number only' },
                     { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
                 ];
             default:
