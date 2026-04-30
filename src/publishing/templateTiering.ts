@@ -3,7 +3,7 @@ import type { PandocLayoutTemplate, TemplateKind, TemplateTier, ValidationIssue 
 export const BASIC_MANUSCRIPT_LAYOUT_ID = 'bundled-fiction-classic-manuscript';
 export const CONTEMPORARY_LITERARY_LAYOUT_ID = 'bundled-fiction-contemporary-literary';
 
-export const TEMPLATE_ACCESS_FALLBACK_MESSAGE = 'Your selected PDF style requires Pro. Basic Manuscript will be used for this export.';
+export const TEMPLATE_ACCESS_FALLBACK_MESSAGE = 'Your selected PDF style requires Pro. Standard Manuscript will be used for this export.';
 export const TEMPLATE_ACCESS_LOCKED_MESSAGE = 'Selected PDF style requires Pro and no Core fallback is available.';
 
 export interface TemplateAccessResolution {
@@ -34,8 +34,6 @@ export function getPandocLayoutKind(layout: Pick<PandocLayoutTemplate, 'preset' 
 
 export function getPandocLayoutRecommendedUse(layout: Pick<PandocLayoutTemplate, 'id' | 'recommendedUse'>): string | undefined {
     if (layout.recommendedUse?.trim()) return layout.recommendedUse.trim();
-    if (layout.id === BASIC_MANUSCRIPT_LAYOUT_ID) return 'Standard Manuscript';
-    if (layout.id === CONTEMPORARY_LITERARY_LAYOUT_ID) return 'Reading Draft';
     return undefined;
 }
 

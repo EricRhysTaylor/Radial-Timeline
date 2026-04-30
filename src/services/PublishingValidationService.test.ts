@@ -303,10 +303,10 @@ describe('PublishingValidationService template compatibility', () => {
         expect(snapshot.preflightIssues.some(issue => issue.code === 'export_template_compatibility_invalid')).toBe(false);
     });
 
-    it('keeps Basic Manuscript-style $body$ templates exportable', () => {
+    it('keeps Standard Manuscript-style $body$ templates exportable', () => {
         const layout = makeNovelLayout('$if(title)$$title$$endif$\n$body$', {
             id: 'bundled-fiction-classic-manuscript',
-            name: 'Basic Manuscript',
+            name: 'Standard Manuscript',
             bundled: true,
             tier: 'free',
             templateKind: 'book',
@@ -324,10 +324,10 @@ describe('PublishingValidationService template compatibility', () => {
         expect(snapshot.preflightIssues.some(issue => issue.level === 'error')).toBe(false);
     });
 
-    it('reports a Basic Manuscript fallback when a non-Pro user has a saved Pro template selected', () => {
+    it('reports a Standard Manuscript fallback when a non-Pro user has a saved Pro template selected', () => {
         const basic = makeNovelLayout('$body$', {
             id: 'bundled-fiction-classic-manuscript',
-            name: 'Basic Manuscript',
+            name: 'Standard Manuscript',
             bundled: true,
             tier: 'free',
             templateKind: 'book',
@@ -350,7 +350,7 @@ describe('PublishingValidationService template compatibility', () => {
 
         expect(snapshot.templateAccess).toMatchObject({
             requestedTemplateName: 'Signature Literary',
-            effectiveTemplateName: 'Basic Manuscript',
+            effectiveTemplateName: 'Standard Manuscript',
             usedFallback: true,
         });
         expect(snapshot.templateAccessIssues).toEqual(expect.arrayContaining([

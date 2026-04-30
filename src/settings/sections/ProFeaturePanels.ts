@@ -41,7 +41,7 @@ import {
     installBundledPandocLayouts,
     isBundledPandocLayoutInstalled
 } from '../../utils/pandocBundledLayouts';
-import { getPandocLayoutRecommendedUse, getPandocLayoutTier } from '../../publishing/templateTiering';
+import { getPandocLayoutTier } from '../../publishing/templateTiering';
 import { replayTransientClass } from '../../utils/domClassEffects';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1634,7 +1634,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'novel' && layout.bundled) {
             const variant = getFictionVariant(layout);
-            if (variant === 'classic') return 'Basic Manuscript';
+            if (variant === 'classic') return 'Standard Manuscript';
             if (variant === 'modernClassic') return 'Modern Classic';
             if (variant === 'signature') return 'Signature Literary';
             if (variant === 'contemporary') return 'Contemporary Literary';
@@ -2379,7 +2379,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             path: compactTemplatePathForStorage(plugin, copyFilename),
             tier: 'pro',
             templateKind: 'custom',
-            recommendedUse: 'Custom template',
             // Seed the copy with the parent's visible description so bundled and duplicate
             // render the same text. Bundled resolves via profile.summary; the copy has no
             // profile match, so we capture the resolved text into layout.description.
@@ -2559,6 +2558,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             if (expanded) row.addClass('is-special-expanded');
             row.toggleClass(ERT_CLASSES.SKIN_PRO, isProLayout);
             row.toggleClass('ert-layout-row--pro', isProLayout);
+            if (isProLayout) {
+                row.addClass(ERT_CLASSES.ELEMENT_BLOCK);
+            }
             if (isProLayout && !isActive) {
                 row.addClass('ert-pro-locked');
             }
@@ -2611,11 +2613,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     cls: 'ert-badgePill__text',
                     text: isProLayout ? 'Pro' : 'Core',
                 });
-                const recommendedUse = getPandocLayoutRecommendedUse(layout);
-                if (recommendedUse) {
-                    const usePill = s.nameEl.createSpan({ cls: 'ert-layout-status-pill is-installed', text: recommendedUse });
-                    usePill.setAttr('aria-label', `Recommended use: ${recommendedUse}`);
-                }
             }
 
             if (useVisual && s.descEl) {

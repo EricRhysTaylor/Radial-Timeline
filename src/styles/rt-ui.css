@@ -10041,6 +10041,23 @@
   flex-direction: column;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-row.ert-layout-row--pro.ert-skin--pro.ert-elementBlock {
+  background: var(--ert-pro-surface-bg);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row.ert-layout-row--pro.ert-skin--pro.ert-elementBlock .setting-item.ert-layout-row-setting {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row.ert-layout-row--pro.ert-skin--pro.ert-elementBlock .ert-layout-special-panel {
+  background: color-mix(in srgb, var(--ert-accent) 7%, transparent);
+  border-color: color-mix(in srgb, var(--ert-accent) 20%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-layout-row .setting-item.ert-layout-row-setting {
   --ert-row-pad: var(--ert-pad-sm);
   row-gap: var(--ert-gap-xs);

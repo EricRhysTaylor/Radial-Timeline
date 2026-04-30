@@ -329,16 +329,15 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: BUNDLED_FICTION_CLASSIC_ID,
-        name: 'Basic Manuscript',
+        name: 'Standard Manuscript',
         preset: 'novel',
         path: 'rt_classic_manuscript.tex',
         bundled: true,
         tier: 'free',
         templateKind: 'book',
-        recommendedUse: 'Standard Manuscript',
         description: 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.',
         content: [
-            '% Pandoc LaTeX Template - Basic Manuscript',
+            '% Pandoc LaTeX Template - Standard Manuscript',
             '% Traditional manuscript layout with simple headers and centered folios.',
             '\\documentclass[11pt,letterpaper,twoside]{book}',
             '',
@@ -409,7 +408,6 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         bundled: true,
         tier: 'free',
         templateKind: 'book',
-        recommendedUse: 'Reading Draft',
         description: 'Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.',
         content: [
             '% Pandoc LaTeX Template - Contemporary Literary',
@@ -691,7 +689,7 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             bundled: true,
             tier: canonical.tier,
             templateKind: canonical.templateKind,
-            ...(canonical.recommendedUse ? { recommendedUse: canonical.recommendedUse } : {}),
+            recommendedUse: canonical.recommendedUse,
             // Bundled descriptions are authored in code and never user-edited; always refresh
             // from canonical so copy updates propagate on plugin upgrade.
             ...(canonical.description ? { description: canonical.description } : {}),

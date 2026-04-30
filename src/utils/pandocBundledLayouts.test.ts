@@ -66,7 +66,7 @@ describe('bundled pandoc layout export auto-install', () => {
         const fictionLayouts = getBundledPandocLayouts().filter(layout => layout.preset === 'novel');
         expect(fictionLayouts).toHaveLength(4);
         expect(fictionLayouts.map(layout => layout.name)).toEqual([
-            'Basic Manuscript',
+            'Standard Manuscript',
             'Contemporary Literary',
             'Signature Literary',
             'Modern Classic'

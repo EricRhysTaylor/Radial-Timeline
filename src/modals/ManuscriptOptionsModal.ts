@@ -27,6 +27,7 @@ import type {
     ExportProfile,
     ManuscriptExportCleanupOptions,
     ManuscriptExportTemplate,
+    PandocLayoutTemplate,
     PublishingValidationSnapshot,
     TemplateProfile,
 } from '../types';
@@ -904,7 +905,9 @@ export class ManuscriptOptionsModal extends Modal {
                 ? this.createTemplateSnapshot(selectedTemplate.name, selectedTemplate.id)
                 : this.createTemplateSnapshot('Current settings');
             const templateProfile = this.templateProfiles.find(item => item.id === summaryProfile.templateProfileId);
-            const templateName = templateProfile?.name || 'Unknown template';
+            const templateName = templateProfile
+                ? this.formatTemplateProfileName(templateProfile)
+                : 'Unknown template';
 
             const badgeVariant = isCreateMode
                 ? 'ert-badgePill--muted'
@@ -1749,35 +1752,38 @@ export class ManuscriptOptionsModal extends Modal {
             // Single layout — static text
             this.layoutContainerEl.createDiv({
                 cls: 'ert-sub-card-note',
-                text: layouts[0].name
+                text: this.formatTemplateProfileName(layouts[0])
             });
             this.selectedLayoutId = activeProfileId || layouts[0].id;
-            selectedLayoutName = layouts[0].name;
+            selectedLayoutName = this.formatTemplateProfileName(layouts[0]);
         } else {
             // Multiple layouts — dropdown
             const ddContainer = this.layoutContainerEl.createDiv({ cls: 'ert-manuscript-input-container' });
             const dd = new DropdownComponent(ddContainer);
             dd.selectEl.addClass('ert-input', 'ert-input--lg');
             for (const l of layouts) {
-                const sourceLayout = this.plugin.settings.pandocLayouts?.find(layout => layout.id === l.legacyLayoutId || layout.id === l.id);
-                const locked = !this.isPro && sourceLayout && getPandocLayoutTier(sourceLayout) === 'pro';
-                dd.addOption(l.id, locked ? `${l.name} (Pro)` : l.name);
+                const locked = !this.isPro && this.getTemplateProfileTierLabel(l) === 'Pro';
+                dd.addOption(l.id, this.formatTemplateProfileName(l) || l.name);
                 const option = dd.selectEl.querySelector<HTMLOptionElement>(`option[value="${CSS.escape(l.id)}"]`);
                 if (option && locked) {
                     option.disabled = true;
                 }
             }
             const hasTemplateSelection = activeProfileId && layouts.some(l => l.id === activeProfileId);
-            const defaultId = hasTemplateSelection
+            const activeProfile = layouts.find(l => l.id === activeProfileId);
+            const accessibleDefault = layouts.find(profile => this.isPro || this.getTemplateProfileTierLabel(profile) === 'Core');
+            const defaultId = hasTemplateSelection && (
+                this.isPro
+                || this.getTemplateProfileTierLabel(activeProfile) === 'Core'
+            )
                 ? activeProfileId!
-                : layouts[0].id;
+                : (accessibleDefault?.id || layouts[0].id);
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
-            selectedLayoutName = layouts.find(l => l.id === defaultId)?.name;
+            selectedLayoutName = this.formatTemplateProfileName(layouts.find(l => l.id === defaultId));
             dd.onChange((val) => {
                 const nextProfile = layouts.find(l => l.id === val);
-                const nextLayout = this.plugin.settings.pandocLayouts?.find(layout => layout.id === nextProfile?.legacyLayoutId || layout.id === nextProfile?.id);
-                if (!this.isPro && nextLayout && getPandocLayoutTier(nextLayout) === 'pro') {
+                if (!this.isPro && this.getTemplateProfileTierLabel(nextProfile) === 'Pro') {
                     new Notice('This PDF style requires Pro.');
                     dd.setValue(this.selectedLayoutId || defaultId);
                     return;
@@ -1788,7 +1794,7 @@ export class ManuscriptOptionsModal extends Modal {
                     this.selectedExportProfileId = this.selectedExportProfile.id;
                 }
                 const selected = layouts.find(l => l.id === val);
-                this.renderLayoutDescription(selected?.name);
+                this.renderLayoutDescription(this.formatTemplateProfileName(selected));
                 this.updateExportProfileSummary();
                 this.updateTemplateWarning();
                 this.updateTemplateActionButtonState();
@@ -1807,7 +1813,28 @@ export class ManuscriptOptionsModal extends Modal {
             desc.setText('Choose a PDF layout to continue.');
             return;
         }
-        desc.setText('Controls typography, spacing, headers, and chapter styling. Choose the tone and structure of your final PDF.');
+        desc.setText(`${layoutName}. Controls typography, spacing, headers, and chapter styling.`);
+    }
+
+    private findLayoutForTemplateProfile(profile?: TemplateProfile): PandocLayoutTemplate | undefined {
+        if (!profile) return undefined;
+        return this.plugin.settings.pandocLayouts?.find(layout => layout.id === profile.legacyLayoutId || layout.id === profile.id);
+    }
+
+    private getTemplateProfileTierLabel(profile?: TemplateProfile): 'Core' | 'Pro' {
+        const sourceLayout = this.findLayoutForTemplateProfile(profile);
+        const tier = sourceLayout ? getPandocLayoutTier(sourceLayout) : profile?.tier;
+        return tier === 'free' ? 'Core' : 'Pro';
+    }
+
+    private formatTemplateProfileName(profile?: TemplateProfile): string | undefined {
+        if (!profile) return undefined;
+        return `${profile.name} (${this.getTemplateProfileTierLabel(profile)})`;
+    }
+
+    private formatTemplateIdName(templateId: string, fallbackName: string): string {
+        const profile = this.templateProfiles.find(item => item.id === templateId || item.legacyLayoutId === templateId);
+        return this.formatTemplateProfileName(profile) || fallbackName;
     }
 
     private getRttsLevelLabel(level: NonNullable<PublishingValidationSnapshot['templateCompatibility']>['level']): string {
@@ -1829,11 +1856,13 @@ export class ManuscriptOptionsModal extends Modal {
 
         content.createDiv({ cls: 'ert-pdf-output-title', text: 'Template Access' });
         if (access) {
+            const requestedName = this.formatTemplateIdName(access.requestedTemplateId, access.requestedTemplateName);
+            const effectiveName = this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName);
             content.createDiv({
                 cls: 'ert-pdf-output-line',
                 text: access.usedFallback
-                    ? `PDF style: ${access.requestedTemplateName} -> ${access.effectiveTemplateName}`
-                    : `PDF style: ${access.effectiveTemplateName}`,
+                    ? `PDF style: ${requestedName} -> ${effectiveName}`
+                    : `PDF style: ${effectiveName}`,
             });
         }
 
@@ -1859,7 +1888,10 @@ export class ManuscriptOptionsModal extends Modal {
         const errorIssues = issues.filter(issue => issue.level === 'error');
 
         content.createDiv({ cls: 'ert-pdf-output-title', text: 'Template Compatibility' });
-        content.createDiv({ cls: 'ert-pdf-output-line', text: `Template: ${compatibility.templateName}` });
+        content.createDiv({
+            cls: 'ert-pdf-output-line',
+            text: `Template: ${this.formatTemplateIdName(compatibility.templateId, compatibility.templateName)}`,
+        });
         content.createDiv({ cls: 'ert-pdf-output-line', text: `RTTS level: ${this.getRttsLevelLabel(compatibility.level)}` });
         content.createDiv({
             cls: 'ert-pdf-output-line',
@@ -1934,8 +1966,10 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
 
-        const selectedProfile = this.selectedExportProfile?.templateProfileId
-            ? layouts.find(profile => profile.id === this.selectedExportProfile?.templateProfileId)
+        const selectedProfile = this.selectedLayoutId
+            ? layouts.find(profile => profile.id === this.selectedLayoutId || profile.legacyLayoutId === this.selectedLayoutId)
+            : this.selectedExportProfile?.templateProfileId
+                ? layouts.find(profile => profile.id === this.selectedExportProfile?.templateProfileId)
             : layouts[0];
 
         const selectedLayout = selectedProfile
@@ -1978,7 +2012,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         // ── Build user-facing summary ────────────────────────────────
         const resolvedFont = this.buildFontDisplayName(primaryRequested, canVerifyFonts, hasPrimaryMissing, fallbackFont);
-        const layoutDesc = selectedProfile.name || selectedLayout.name || 'Custom';
+        const layoutDesc = this.formatTemplateProfileName(selectedProfile) || selectedLayout.name || 'Custom';
         const willEmbed = fontDiagnostics.usesFontspec;
 
         // ── Build technical details (hidden by default) ──────────────

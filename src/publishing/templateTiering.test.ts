@@ -22,20 +22,19 @@ function layout(overrides: Partial<PandocLayoutTemplate>): PandocLayoutTemplate 
 }
 
 describe('template tiering', () => {
-    it('marks Basic Manuscript and Contemporary Literary as Core templates', () => {
+    it('marks Standard Manuscript and Contemporary Literary as Core templates', () => {
         const bundled = getBundledPandocLayouts();
         const basic = bundled.find(item => item.id === BASIC_MANUSCRIPT_LAYOUT_ID);
         const contemporary = bundled.find(item => item.id === CONTEMPORARY_LITERARY_LAYOUT_ID);
 
         expect(basic).toMatchObject({
+            name: 'Standard Manuscript',
             tier: 'free',
             templateKind: 'book',
-            recommendedUse: 'Standard Manuscript',
         });
         expect(contemporary).toMatchObject({
             tier: 'free',
             templateKind: 'book',
-            recommendedUse: 'Reading Draft',
         });
         expect(getPandocLayoutTier(basic!)).toBe('free');
         expect(getPandocLayoutTier(contemporary!)).toBe('free');
@@ -71,10 +70,10 @@ describe('template tiering', () => {
         expect(getPandocLayoutKind(layout({ bundled: false }))).toBe('custom');
     });
 
-    it('falls a non-Pro novel Pro template back to Basic Manuscript', () => {
+    it('falls a non-Pro novel Pro template back to Standard Manuscript', () => {
         const basic = layout({
             id: BASIC_MANUSCRIPT_LAYOUT_ID,
-            name: 'Basic Manuscript',
+            name: 'Standard Manuscript',
             bundled: true,
             tier: 'free',
         });

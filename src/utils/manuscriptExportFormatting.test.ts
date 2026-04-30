@@ -202,7 +202,7 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('Scene body.');
     });
 
-    it('keeps standard Basic Manuscript-style assembly on the existing $body$ path', async () => {
+    it('keeps standard manuscript-style assembly on the existing $body$ path', async () => {
         const file = makeFile('Scenes/1 Opening.md', '1 Opening');
         const vault = makeVault({
             [file.path]: 'First paragraph.\n\nSecond paragraph.'
