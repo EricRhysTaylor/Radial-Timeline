@@ -178,7 +178,6 @@ export class RadialTimelineView extends ItemView {
             const legendBtn = document.createElement('button');
             legendBtn.className = 'ert-timeline-legend__trigger clickable-icon';
             legendBtn.type = 'button';
-            legendBtn.setAttribute('aria-label', 'Timeline legend');
             legendBtn.setAttribute('aria-expanded', 'false');
             setIcon(legendBtn, 'asterisk');
 
@@ -369,8 +368,8 @@ export class RadialTimelineView extends ItemView {
             {
                 title: 'Scene Actions',
                 rows: [
-                    { icon: 'mouse-pointer-click', label: 'Hover scene', detail: mode === 'chronologue' ? 'show synopsis and matching scenes' : 'show synopsis and expand title' },
-                    { icon: 'external-link', label: 'Click scene', detail: 'open scene note' },
+                    { icon: 'square-mouse-pointer', label: 'Hover scene', detail: mode === 'chronologue' ? 'show synopsis and matching scenes' : 'show synopsis and expand title' },
+                    { icon: 'mouse-pointer-click', label: 'Click scene', detail: 'open scene note' },
                     { icon: 'mouse', label: 'Right click scene', detail: 'set status, stage, or triplet pulse' },
                 ],
             },
@@ -399,7 +398,7 @@ export class RadialTimelineView extends ItemView {
             title: 'Right Click Menu',
             rows: [
                 { icon: 'circle-dot', label: 'Set Status', detail: 'Todo, Working, Complete' },
-                { icon: 'layers', label: 'Change Stage', detail: 'Zero, Author, House, Press' },
+                { icon: 'component', label: 'Change Stage', detail: 'Zero, Author, House, Press' },
                 { icon: 'flag', label: 'Misc', detail: 'Flag Triplet Pulse' },
             ],
         });

@@ -1078,11 +1078,12 @@
 .ert-timeline-legend {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
-  width: min(360px, calc(100vw - 32px));
+  right: calc(100% - 24px);
+  width: min(330px, calc(100vw - 32px));
   z-index: var(--layer-popover, 1000);
   opacity: 0;
   transform: translateY(-4px);
+  transform-origin: top right;
   pointer-events: none;
   transition: opacity 120ms ease, transform 120ms ease;
 }
@@ -1197,6 +1198,7 @@
   font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
+  white-space: nowrap;
 }
 
 .ert-timeline-legend__detail {
@@ -1204,4 +1206,5 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
+  white-space: nowrap;
 }
