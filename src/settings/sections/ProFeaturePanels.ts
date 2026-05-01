@@ -3015,8 +3015,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         attr: { [ERT_DATA.SECTION]: 'book-details' }
     });
     bookMetaPreviewPanel.style.order = '10';
-    const previewFrame = bookMetaPreviewPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--center ert-previewFrame--flush` });
-    const previewBody = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-body' });
+    const previewBody = bookMetaPreviewPanel.createDiv({ cls: 'ert-bookmeta-preview-body' });
     const renderBookMetaPreview = () => {
         previewBody.empty();
         const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
@@ -3203,6 +3202,33 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             renderBookMetaPreview();
         };
 
+        const clearBookMetaField = async (field: EditableBookMetaFieldKey) => {
+            if (activeBookMetaEditBusy) return;
+            const editPath = await ensureBookMetaNoteForEditing();
+            if (!editPath) return;
+            const file = plugin.app.vault.getAbstractFileByPath(editPath);
+            if (!(file instanceof TFile)) {
+                new Notice('Book Details note could not be found.');
+                return;
+            }
+
+            activeBookMetaEditBusy = true;
+            const result = await updateBookMetaField(plugin.app, file, field, '');
+            activeBookMetaEditBusy = false;
+
+            if (!result.ok) {
+                new Notice(result.error || 'Book Details could not be updated.');
+                renderBookMetaPreview();
+                return;
+            }
+
+            activeBookMetaEditField = null;
+            activeBookMetaDraft = '';
+            activeBookMetaEditSourcePath = file.path;
+            activeBookMetaPreviewOverride = applyBookMetaEditToPreview(meta, field, result.normalizedValue, file.path);
+            renderBookMetaPreview();
+        };
+
         const normalizeValue = (value?: string | number | null): string | null => {
             if (value === undefined || value === null) return null;
             const normalized = String(value).trim();
@@ -3216,7 +3242,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             value: string | number | null | undefined,
             placeholder: string,
             required: boolean,
-            className: 'ert-bookmeta-primary-value' | 'ert-bookmeta-detail-value'
+            className: 'ert-bookmeta-primary-value' | 'ert-bookmeta-detail-value' | 'ert-bookmeta-matter-value'
         ) => {
             if (activeBookMetaEditField === field) {
                 const multilineFields = new Set<EditableBookMetaFieldKey>([
@@ -3319,18 +3345,30 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             target.createDiv({ cls: 'ert-bookmeta-intent-caption', text: caption });
         };
 
-        const titleCard = previewBody.createDiv({ cls: 'ert-bookmeta-title-card' });
-        titleCard.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Book Details' });
+        const bookDetailsPanel = previewBody.createDiv({ cls: 'ert-bookmeta-module ert-bookmeta-module--details' });
+        const bookDetailsHeader = bookDetailsPanel.createDiv({
+            cls: 'ert-bookmeta-module-header ert-bookmeta-module-header--static'
+        });
+        const bookDetailsHeaderLeft = bookDetailsHeader.createDiv({ cls: 'ert-bookmeta-module-header-left' });
+        const bookDetailsIcon = bookDetailsHeaderLeft.createSpan({ cls: 'ert-bookmeta-module-icon' });
+        bookDetailsIcon.setAttr('aria-hidden', 'true');
+        setIcon(bookDetailsIcon, 'file-text');
+        bookDetailsHeaderLeft.createSpan({ cls: 'ert-bookmeta-module-title', text: 'Book Details' });
+        bookDetailsHeader.createDiv({
+            cls: 'ert-bookmeta-module-count',
+            text: hasSourcePath ? 'Connected' : 'Not set up'
+        });
 
-        const primary = previewBody.createDiv({ cls: 'ert-bookmeta-primary' });
+        const primary = bookDetailsPanel.createDiv({ cls: 'ert-bookmeta-primary' });
         const addPrimaryField = (
             label: string,
             fieldKey: EditableBookMetaFieldKey,
             value: string | number | null | undefined,
             placeholder: string,
-            required = true
+            required = true,
+            tone: 'title' | 'subtitle' | 'author' = 'title'
         ) => {
-            const field = primary.createDiv({ cls: 'ert-bookmeta-primary-field' });
+            const field = primary.createDiv({ cls: `ert-bookmeta-primary-field ert-bookmeta-primary-field--${tone}` });
             renderBookMetaValue(
                 field,
                 fieldKey,
@@ -3342,11 +3380,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             );
             field.createDiv({ cls: 'ert-bookmeta-primary-label', text: label });
         };
-        addPrimaryField('Title', 'title', meta?.title, 'Add title');
-        addPrimaryField('Subtitle', 'subtitle', meta?.subtitle, 'Add subtitle', false);
-        addPrimaryField('Author', 'author', meta?.author, 'Add author');
+        addPrimaryField('Title', 'title', meta?.title, 'Add title', true, 'title');
+        addPrimaryField('Subtitle', 'subtitle', meta?.subtitle, 'Add subtitle', false, 'subtitle');
+        addPrimaryField('Author', 'author', meta?.author, 'Add author', true, 'author');
 
-        const details = previewBody.createDiv({ cls: 'ert-bookmeta-detail-grid' });
+        const details = bookDetailsPanel.createDiv({ cls: 'ert-bookmeta-detail-grid' });
         const leftCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--left' });
         const rightCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--right' });
         const addDetailField = (
@@ -3382,10 +3420,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         type MatterBookMetaField = {
             field: EditableBookMetaFieldKey;
             label: string;
+            pageLabel: string;
             value: string | undefined;
             placeholder: string;
             kind: 'title' | 'dedication' | 'epigraph' | 'copyright' | 'prose' | 'list';
             caption: string;
+            guidance: string;
+            tone?: 'quote' | 'attribution';
         };
 
         const renderMatterBookMetaSection = (
@@ -3394,23 +3435,64 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             description: string,
             fields: MatterBookMetaField[]
         ): void => {
-            const detailsEl = previewBody.createEl('details', { cls: 'ert-bookmeta-matter-fold' });
-            detailsEl.open = expandedBookMetaSections.has(key);
-            detailsEl.addEventListener('toggle', () => {
-                if (detailsEl.open) expandedBookMetaSections.add(key);
-                else expandedBookMetaSections.delete(key);
+            const expanded = expandedBookMetaSections.has(key);
+            const filledPageLabels = Array.from(new Set(
+                fields
+                    .filter(field => normalizeValue(field.value))
+                    .map(field => field.pageLabel)
+            ));
+            const count = filledPageLabels.length;
+            const panel = previewBody.createDiv({
+                cls: `ert-bookmeta-module ert-bookmeta-module--matter${expanded ? ' is-expanded' : ''}`
             });
-            const summary = detailsEl.createEl('summary', { cls: 'ert-bookmeta-matter-summary' });
-            const copy = summary.createDiv({ cls: 'ert-bookmeta-matter-summary-copy' });
-            copy.createDiv({ cls: 'ert-bookmeta-matter-summary-title', text: title });
-            copy.createDiv({ cls: 'ert-bookmeta-matter-summary-desc', text: description });
-            const count = fields.filter(field => normalizeValue(field.value)).length;
-            summary.createDiv({ cls: 'ert-bookmeta-matter-summary-count', text: `${count} filled` });
+            const header = panel.createDiv({
+                cls: 'ert-bookmeta-module-header',
+                attr: {
+                    role: 'button',
+                    tabindex: '0',
+                    'aria-expanded': String(expanded),
+                    'aria-label': `${expanded ? 'Collapse' : 'Expand'} ${title}`
+                }
+            });
+            const headerLeft = header.createDiv({ cls: 'ert-bookmeta-module-header-left' });
+            const chevron = headerLeft.createSpan({ cls: 'ert-bookmeta-module-chevron' });
+            chevron.setAttr('aria-hidden', 'true');
+            setIcon(chevron, 'chevron-right');
+            const copy = headerLeft.createDiv({ cls: 'ert-bookmeta-module-copy' });
+            copy.createDiv({ cls: 'ert-bookmeta-module-title', text: title });
+            copy.createDiv({ cls: 'ert-bookmeta-module-description', text: description });
+            header.createDiv({ cls: 'ert-bookmeta-module-count', text: `${count} page${count === 1 ? '' : 's'}` });
 
-            const list = detailsEl.createDiv({ cls: 'ert-bookmeta-matter-list' });
+            const toggleSection = () => {
+                if (expanded) expandedBookMetaSections.delete(key);
+                else expandedBookMetaSections.add(key);
+                renderBookMetaPreview();
+            };
+            header.addEventListener('click', toggleSection);
+            header.addEventListener('keydown', (evt: KeyboardEvent) => {
+                if (evt.key !== 'Enter' && evt.key !== ' ') return;
+                evt.preventDefault();
+                toggleSection();
+            });
+
+            if (!expanded) {
+                panel.createDiv({
+                    cls: 'ert-bookmeta-module-summary',
+                    text: count > 0 ? filledPageLabels.join(', ') : 'No pages added'
+                });
+                return;
+            }
+
+            panel.createDiv({ cls: 'ert-bookmeta-module-divider' });
+            panel.createDiv({
+                cls: 'ert-bookmeta-module-note',
+                text: 'Used only by matter notes with a Role and UseBookMeta: true. Existing LaTeX notes keep their page content.'
+            });
+            const list = panel.createDiv({ cls: 'ert-bookmeta-matter-list' });
             fields.forEach(fieldDef => {
-                const row = list.createDiv({ cls: 'ert-bookmeta-matter-row' });
-                const textCol = row.createDiv({ cls: 'ert-bookmeta-matter-field' });
+                const hasValue = !!normalizeValue(fieldDef.value);
+                const row = list.createDiv({ cls: `ert-bookmeta-matter-row${fieldDef.tone ? ` ert-bookmeta-matter-row--${fieldDef.tone}` : ''}` });
+                const textCol = row.createDiv({ cls: `ert-bookmeta-matter-field${fieldDef.tone ? ` ert-bookmeta-matter-field--${fieldDef.tone}` : ''}` });
                 renderBookMetaValue(
                     textCol,
                     fieldDef.field,
@@ -3418,9 +3500,30 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     fieldDef.value,
                     fieldDef.placeholder,
                     false,
-                    'ert-bookmeta-detail-value'
+                    'ert-bookmeta-matter-value'
                 );
-                textCol.createDiv({ cls: 'ert-bookmeta-detail-label', text: fieldDef.label });
+                textCol.createDiv({ cls: 'ert-bookmeta-matter-guidance', text: fieldDef.guidance });
+                textCol.createDiv({
+                    cls: 'ert-bookmeta-matter-state',
+                    text: hasValue ? 'BookMeta value set' : 'No BookMeta value'
+                });
+                const metaRow = textCol.createDiv({ cls: 'ert-bookmeta-matter-meta-row' });
+                metaRow.createDiv({ cls: 'ert-bookmeta-matter-role', text: fieldDef.pageLabel.toUpperCase() });
+                if (hasValue) {
+                    const clearButton = metaRow.createEl('button', {
+                        cls: 'ert-bookmeta-matter-clear',
+                        text: 'Clear',
+                        attr: {
+                            type: 'button',
+                            'aria-label': `Clear ${fieldDef.label.toLowerCase()}`
+                        }
+                    });
+                    clearButton.addEventListener('click', (evt) => {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        void clearBookMetaField(fieldDef.field);
+                    });
+                }
                 const intent = row.createDiv({ cls: 'ert-bookmeta-intent' });
                 renderPageIntent(intent, fieldDef.kind, fieldDef.caption);
             });
@@ -3430,34 +3533,44 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             {
                 field: 'title-page-note',
                 label: 'Title page note',
+                pageLabel: 'Title page',
                 value: meta?.frontmatter?.title_page_note,
-                placeholder: 'Add title page note',
+                placeholder: 'Title page note',
                 kind: 'title',
                 caption: 'Centered title page',
+                guidance: 'Optional note beneath the title page block.',
             },
             {
                 field: 'dedication',
                 label: 'Dedication',
+                pageLabel: 'Dedication',
                 value: meta?.frontmatter?.dedication,
-                placeholder: 'Add dedication',
+                placeholder: 'Dedication',
                 kind: 'dedication',
                 caption: 'Centered one-third down',
+                guidance: 'A brief dedication, usually sparse and centered.',
             },
             {
                 field: 'epigraph-quote',
                 label: 'Epigraph quote',
+                pageLabel: 'Epigraph',
                 value: meta?.frontmatter?.epigraph_quote,
-                placeholder: 'Add quote',
+                placeholder: 'Epigraph quote',
                 kind: 'epigraph',
                 caption: 'Centered quote block',
+                guidance: 'A short quoted passage before the manuscript.',
+                tone: 'quote',
             },
             {
                 field: 'epigraph-attribution',
                 label: 'Epigraph attribution',
+                pageLabel: 'Epigraph',
                 value: meta?.frontmatter?.epigraph_attribution,
-                placeholder: 'Add attribution',
+                placeholder: 'Epigraph attribution',
                 kind: 'epigraph',
                 caption: 'Right-aligned attribution',
+                guidance: 'The author, source, or context for the epigraph.',
+                tone: 'attribution',
             },
         ]);
 
@@ -3465,44 +3578,52 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             {
                 field: 'acknowledgments',
                 label: 'Acknowledgments',
+                pageLabel: 'Acknowledgments',
                 value: meta?.backmatter?.acknowledgments,
-                placeholder: 'Add acknowledgments',
+                placeholder: 'Acknowledgments',
                 kind: 'prose',
                 caption: 'Heading + prose',
+                guidance: 'Thanks to readers, editors, supporters, or contributors.',
             },
             {
                 field: 'about-author',
                 label: 'About the author',
+                pageLabel: 'About the author',
                 value: meta?.backmatter?.about_author,
-                placeholder: 'Add author bio',
+                placeholder: 'About the author',
                 kind: 'prose',
                 caption: 'Bio paragraph',
+                guidance: 'A short author bio for the final pages.',
             },
             {
                 field: 'author-note',
                 label: 'Author note',
+                pageLabel: 'Author note',
                 value: meta?.backmatter?.author_note,
-                placeholder: 'Add author note',
+                placeholder: 'Author note',
                 kind: 'prose',
                 caption: 'Heading + prose',
+                guidance: 'A closing note to readers after the manuscript.',
             },
             {
                 field: 'other-works',
                 label: 'Other works',
+                pageLabel: 'Other works',
                 value: meta?.backmatter?.other_works,
-                placeholder: 'Add other works',
+                placeholder: 'Other works',
                 kind: 'list',
                 caption: 'Heading + list',
+                guidance: 'Related titles, series entries, or selected works.',
             },
         ]);
 
         if (hasSourcePath) {
-            const previewActions = previewBody.createDiv({ cls: 'ert-bookmeta-preview-actions' });
+            const previewActions = bookDetailsPanel.createDiv({ cls: 'ert-bookmeta-preview-actions' });
             const infoIcon = previewActions.createSpan({ cls: 'ert-bookmeta-preview-actions-icon' });
             infoIcon.setAttr('aria-hidden', 'true');
             setIcon(infoIcon, 'info');
             previewActions.createSpan({ cls: 'ert-bookmeta-preview-actions-text', text: 'Click any field to edit.' });
-            const sourceRow = previewBody.createDiv({ cls: 'ert-bookmeta-source-row' });
+            const sourceRow = bookDetailsPanel.createDiv({ cls: 'ert-bookmeta-source-row' });
             sourceRow.createSpan({ cls: 'ert-bookmeta-source-label', text: 'Source' });
             const sourceLink = sourceRow.createEl('a', {
                 cls: 'ert-bookmeta-source-link',
@@ -3516,7 +3637,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         }
 
         if (!meta) {
-            const actions = previewBody.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
+            const actions = bookDetailsPanel.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
             new ButtonComponent(actions)
                 .setButtonText('Create Book Details')
                 .setCta()

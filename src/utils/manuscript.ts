@@ -978,10 +978,14 @@ export async function assembleManuscript(
   const modernClassicState = createModernClassicState(options?.modernClassicStructure);
   let matterChromeActive = false;
 
-  const beginMatterChrome = () => {
-    if (!suppressMatterPageChrome || matterChromeActive) return;
-    textParts.push(buildRawLatexBlock('\\clearpage\\pagestyle{empty}\\thispagestyle{empty}'));
-    matterChromeActive = true;
+  const beginMatterPage = () => {
+    if (!suppressMatterPageChrome) return;
+    if (!matterChromeActive) {
+      textParts.push(buildRawLatexBlock('\\clearpage\\pagestyle{empty}\\thispagestyle{empty}'));
+      matterChromeActive = true;
+      return;
+    }
+    textParts.push(buildRawLatexBlock('\\clearpage\\thispagestyle{empty}'));
   };
 
   const endMatterChrome = () => {
@@ -1020,7 +1024,7 @@ export async function assembleManuscript(
       const matterMeta = (file.path && matterMetaByPath?.get(file.path)) || extractMatterMeta(content);
       const isMatterNote = !!matterMeta;
       if (isMatterNote) {
-        beginMatterChrome();
+        beginMatterPage();
       } else {
         endMatterChrome();
       }

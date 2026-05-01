@@ -256,6 +256,36 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('Scene body.');
     });
 
+    it('starts each latex matter note on a new empty page when matter chrome is enabled', async () => {
+        const acknowledgments = makeFile('Matter/200.1 Acknowledgments.md', '200.1 Acknowledgments');
+        const aboutAuthor = makeFile('Matter/200.2 About the Author.md', '200.2 About the Author');
+        const vault = makeVault({
+            [acknowledgments.path]: '---\nClass: Backmatter\nBodyMode: latex\n---\n\n\\vspace*{4cm}\n\nAcknowledgments body.',
+            [aboutAuthor.path]: '---\nClass: Backmatter\nBodyMode: latex\n---\n\n\\vspace*{4cm}\n\nAbout author body.',
+        });
+
+        const assembled = await assembleManuscript(
+            [acknowledgments, aboutAuthor],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number-title',
+                sceneHeadingRenderMode: 'latex-section-starred',
+                suppressMatterPageChrome: true
+            }
+        );
+
+        expect(assembled.text).toContain('\\clearpage\\pagestyle{empty}\\thispagestyle{empty}');
+        expect(assembled.text).toContain('\\clearpage\\thispagestyle{empty}');
+        expect(assembled.text.indexOf('Acknowledgments body.')).toBeLessThan(assembled.text.indexOf('\\clearpage\\thispagestyle{empty}'));
+        expect(assembled.text.indexOf('\\clearpage\\thispagestyle{empty}')).toBeLessThan(assembled.text.indexOf('About author body.'));
+    });
+
     it('keeps standard manuscript-style assembly on the existing $body$ path', async () => {
         const file = makeFile('Scenes/1 Opening.md', '1 Opening');
         const vault = makeVault({
