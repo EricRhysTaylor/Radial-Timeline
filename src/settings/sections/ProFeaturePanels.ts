@@ -36,6 +36,7 @@ import {
 import { adaptPandocLayoutsToPublishingModel } from '../../utils/publishingModel';
 import { buildPublishingProgressStages, type PublishingStageId } from '../../utils/publishingProgress';
 import {
+    ensureBundledLayoutInstalledForExport,
     ensureBundledPandocLayoutsRegistered,
     getBundledPandocLayouts,
     installBundledPandocLayouts,
@@ -385,6 +386,12 @@ async function ensurePublishingEnvironment(plugin: RadialTimelinePlugin): Promis
         templatesInstalled = result.installed.length;
         if (result.failed.length > 0) {
             issues.push(`Failed to install templates: ${result.failed.join(', ')}`);
+        }
+        for (const layout of getBundledPandocLayouts()) {
+            const refresh = await ensureBundledLayoutInstalledForExport(plugin, layout);
+            if (refresh.failed) {
+                issues.push(`Failed to refresh template: ${layout.name}`);
+            }
         }
     }
 
@@ -2864,14 +2871,19 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         installAllButtonEl.addClass('ert-layout-install-all-button');
         refreshInstallAllButtonState();
         button.onClick(async () => {
-            const bundledIds = getVisibleBundledLayouts().map(layout => layout.id);
+            const bundledLayouts = getVisibleBundledLayouts();
+            const bundledIds = bundledLayouts.map(layout => layout.id);
             const result = await installBundledPandocLayouts(plugin, bundledIds);
-            if (result.installed.length > 0) {
+            const refreshResults = await Promise.all(bundledLayouts.map(layout => ensureBundledLayoutInstalledForExport(plugin, layout)));
+            const refreshFailures = refreshResults.filter(item => item.failed).length;
+            if (refreshFailures > 0) {
+                new Notice('Some bundled layouts failed to refresh.');
+            } else if (result.installed.length > 0) {
                 new Notice(`Installed ${result.installed.length} bundled layout template(s) in ${getConfiguredPandocFolder(plugin)}/.`);
             } else if (result.failed.length > 0) {
                 new Notice('Some bundled layouts failed to install.');
             } else {
-                new Notice('Bundled layouts are already installed.');
+                new Notice('Bundled layouts are installed and refreshed.');
             }
             renderLayoutRows();
             refreshPublishingStatusCard();

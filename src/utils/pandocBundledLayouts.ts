@@ -35,11 +35,27 @@ const LEGACY_SIGNATURE_SECTION_SPACING = '\\titlespacing*{\\section}{0pt}{\\dime
 const LEGACY_SIGNATURE_SUBSECTION_SPACING = '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}';
 const FIXED_SIGNATURE_SECTION_SPACING = '\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.2\\textheight}';
 const FIXED_SIGNATURE_SUBSECTION_SPACING = '\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.2\\textheight}';
+const LEGACY_SIGNATURE_MIRRORED_MARGINS = [
+    '  inner=1.05in,',
+    '  outer=0.75in'
+].join('\n');
+const FIXED_SIGNATURE_SYMMETRIC_MARGINS = [
+    '  left=0.9in,',
+    '  right=0.9in'
+].join('\n');
 
 function normalizeLegacySignatureSpacing(content: string): { content: string; changed: boolean } {
     let updated = content;
     updated = updated.replace(LEGACY_SIGNATURE_SECTION_SPACING, FIXED_SIGNATURE_SECTION_SPACING);
     updated = updated.replace(LEGACY_SIGNATURE_SUBSECTION_SPACING, FIXED_SIGNATURE_SUBSECTION_SPACING);
+    return { content: updated, changed: updated !== content };
+}
+
+function normalizeSignatureSymmetricMargins(content: string): { content: string; changed: boolean } {
+    if (!content.includes('% Pandoc LaTeX Template - Signature Literary')) {
+        return { content, changed: false };
+    }
+    const updated = content.replace(LEGACY_SIGNATURE_MIRRORED_MARGINS, FIXED_SIGNATURE_SYMMETRIC_MARGINS);
     return { content: updated, changed: updated !== content };
 }
 
@@ -327,8 +343,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  paperheight=9in,',
             '  top=0.85in,',
             '  bottom=1.05in,',
-            '  inner=1.05in,',
-            '  outer=0.75in',
+            '  left=0.9in,',
+            '  right=0.9in',
             '}',
             '',
             '\\defaultfontfeatures{Ligatures=TeX}',
@@ -894,15 +910,26 @@ export async function ensureBundledLayoutInstalledForExport(
             try {
                 const raw = await vault.read(bundled);
                 const signatureNormalized = normalizeLegacySignatureSpacing(raw);
+                const signatureMarginsNormalized = layout.id === BUNDLED_FICTION_SIGNATURE_ID
+                    ? normalizeSignatureSymmetricMargins(signatureNormalized.content)
+                    : signatureNormalized;
                 const coreSceneOpenersNormalized = normalizeCoreTemplateSceneOpeners(
-                    signatureNormalized.content,
+                    signatureMarginsNormalized.content,
                     layout.id
                 );
                 const modernClassicNormalized = layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID
-                    ? normalizeModernClassicMacroContract(signatureNormalized.content)
+                    ? normalizeModernClassicMacroContract(signatureMarginsNormalized.content)
                     : coreSceneOpenersNormalized;
-                if (modernClassicNormalized.changed || coreSceneOpenersNormalized.changed || signatureNormalized.changed) {
+                if (
+                    modernClassicNormalized.changed
+                    || coreSceneOpenersNormalized.changed
+                    || signatureMarginsNormalized.changed
+                    || signatureNormalized.changed
+                ) {
                     await vault.modify(bundled, modernClassicNormalized.content);
+                    if (layout.id === BUNDLED_FICTION_SIGNATURE_ID && signatureMarginsNormalized.changed) {
+                        console.info('[Radial Timeline] Updated bundled Signature Literary template margins for symmetric export pages.');
+                    }
                     if (layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID && modernClassicNormalized.changed) {
                         console.info('[Radial Timeline] Updated bundled Modern Classic template macro contract for export compatibility.');
                     }

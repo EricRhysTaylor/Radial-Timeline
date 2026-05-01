@@ -121,6 +121,52 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(updated).not.toContain('\\dimexpr\\textheight/5\\relax');
     });
 
+    it('bundled Signature Literary uses symmetric margins', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-signature-literary');
+
+        const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(install.installed).toBe(true);
+
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const content = await (plugin.app.vault as any).read(file);
+        expect(content).toContain('  left=0.9in,');
+        expect(content).toContain('  right=0.9in');
+        expect(content).not.toContain('  inner=1.05in,');
+        expect(content).not.toContain('  outer=0.75in');
+    });
+
+    it('hotfixes legacy Signature Literary mirrored margins in existing bundled template files', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-signature-literary');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const legacy = [
+            '% Pandoc LaTeX Template - Signature Literary',
+            '\\geometry{',
+            '  paperwidth=6in,',
+            '  paperheight=9in,',
+            '  top=0.85in,',
+            '  bottom=1.05in,',
+            '  inner=1.05in,',
+            '  outer=0.75in',
+            '}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, legacy);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toContain('  left=0.9in,');
+        expect(updated).toContain('  right=0.9in');
+        expect(updated).not.toContain('  inner=1.05in,');
+        expect(updated).not.toContain('  outer=0.75in');
+    });
+
     it('bundled core templates define numbered section and subsection scene openers', async () => {
         for (const layoutId of ['bundled-fiction-classic-manuscript', 'bundled-fiction-contemporary-literary']) {
             const { plugin, layout } = createPluginWithBundledLayout(layoutId);
