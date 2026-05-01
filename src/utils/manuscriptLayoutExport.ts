@@ -4,7 +4,26 @@ import type { ManuscriptSceneHeadingMode, SceneHeadingRenderMode } from './manus
 export interface ManuscriptLayoutExportBehavior {
     sceneHeadingRenderMode: SceneHeadingRenderMode;
     defaultSceneHeadingMode?: ManuscriptSceneHeadingMode;
+    /**
+     * When true, the export pipeline drops Chapter-field markers before
+     * assembly so neither raw `\rtChapter{...}` macros nor markdown `# Chapter`
+     * headings reach Pandoc. Templates without a chapter treatment in their
+     * design pictogram should always set this to true: a stray `# Chapter 1`
+     * markdown heading will be promoted to `\chapter{}` (or `\part{}` under a
+     * `book` class) and produce visible chrome the layout was never meant to
+     * have.
+     */
     suppressChapterMarkers: boolean;
+    /**
+     * When true, the export pipeline must not emit Part / Act openers
+     * (`\rtPart{...}`) for this layout. Today only the Modern-Classic
+     * `usesModernClassicStructure` path emits Part markers from
+     * `assembleManuscript`, but flagging this explicitly per-template keeps
+     * the behavior matrix readable and protects against future regressions in
+     * the assembly layer that would otherwise leak a Part page into a
+     * scene-only or chapter-only design.
+     */
+    suppressPartMarkers: boolean;
 }
 
 export const STANDARD_MANUSCRIPT_LAYOUT_ID = 'bundled-fiction-classic-manuscript';
@@ -21,24 +40,63 @@ export function getManuscriptLayoutExportBehavior(
         || /\bstandard manuscript\b/.test(identity)
         || /rt_classic_manuscript\.tex/.test(identity);
     const isSignatureLiterary = /signature literary|signature[-_ ]literary/.test(identity);
+    const isModernClassic = layout.id === 'bundled-fiction-modern-classic'
+        || /\bmodern classic\b/.test(identity)
+        || /rt_modern_classic\.tex/.test(identity);
+    const isContemporaryLiterary = layout.id === 'bundled-fiction-contemporary-literary'
+        || /\bcontemporary literary\b/.test(identity)
+        || /rt_contemporary_literary\.tex/.test(identity);
 
     if (isStandardManuscript) {
+        // Standard Manuscript pictogram: scene-only. No part, no chapter cards.
         return {
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: true,
+            suppressPartMarkers: true,
         };
     }
 
     if (isSignatureLiterary) {
+        // Signature Literary pictogram: scene-mode variants only. No part,
+        // no chapter cards. Previously this branch left chapter markers
+        // enabled, which fed `# Chapter N` markdown into Pandoc and produced
+        // a phantom Part-Roman + "Chapter 1" stack on the first scene page.
         return {
             sceneHeadingRenderMode: 'latex-section-starred',
-            suppressChapterMarkers: false,
+            suppressChapterMarkers: true,
+            suppressPartMarkers: true,
         };
     }
 
+    if (isModernClassic) {
+        // Modern Classic owns part + chapter typography via its own
+        // \rtPart / \rtChapter macros; the Modern-Classic structure path in
+        // assembleManuscript emits those raw LaTeX blocks rather than
+        // markdown chapter headings.
+        return {
+            sceneHeadingRenderMode: 'markdown-h2',
+            suppressChapterMarkers: false,
+            suppressPartMarkers: false,
+        };
+    }
+
+    if (isContemporaryLiterary) {
+        // Contemporary Literary pictogram: scene + chapter, no part.
+        return {
+            sceneHeadingRenderMode: 'markdown-h2',
+            suppressChapterMarkers: false,
+            suppressPartMarkers: true,
+        };
+    }
+
+    // Unknown / user-imported layouts: be conservative. Suppress both so a
+    // custom template designer never has surprise Part / Chapter chrome
+    // forced on them by chapter-field markers in the timeline. Templates
+    // that want them can opt in via the Modern-Classic structure path.
     return {
         sceneHeadingRenderMode: 'markdown-h2',
-        suppressChapterMarkers: false,
+        suppressChapterMarkers: true,
+        suppressPartMarkers: true,
     };
 }

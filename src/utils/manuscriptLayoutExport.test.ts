@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getManuscriptLayoutExportBehavior } from './manuscriptLayoutExport';
 
 describe('getManuscriptLayoutExportBehavior', () => {
-    it('uses number-only raw LaTeX scene openers and suppresses chapter markers for Standard Manuscript', () => {
+    it('uses number-only raw LaTeX scene openers and suppresses both part + chapter markers for Standard Manuscript', () => {
         const behavior = getManuscriptLayoutExportBehavior({
             id: 'bundled-fiction-classic-manuscript',
             name: 'Standard Manuscript',
@@ -13,10 +13,14 @@ describe('getManuscriptLayoutExportBehavior', () => {
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: true,
+            suppressPartMarkers: true,
         });
     });
 
-    it('keeps Signature Literary raw LaTeX scene openers without suppressing chapter markers', () => {
+    it('suppresses both part and chapter markers for Signature Literary', () => {
+        // Signature Literary's pictogram is scene-only. Leaking chapter
+        // markdown turned into a phantom Part Roman + "Chapter 1" stack on
+        // the first scene page when Pandoc compiled with documentclass=book.
         const behavior = getManuscriptLayoutExportBehavior({
             id: 'bundled-fiction-signature-literary',
             name: 'Signature Literary',
@@ -25,11 +29,40 @@ describe('getManuscriptLayoutExportBehavior', () => {
 
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'latex-section-starred',
-            suppressChapterMarkers: false,
+            suppressChapterMarkers: true,
+            suppressPartMarkers: true,
         });
     });
 
-    it('keeps ordinary layouts on Markdown h2 scene headings', () => {
+    it('keeps Modern Classic free to emit both part and chapter markers (its template owns the typography)', () => {
+        const behavior = getManuscriptLayoutExportBehavior({
+            id: 'bundled-fiction-modern-classic',
+            name: 'Modern Classic',
+            path: 'rt_modern_classic.tex',
+        });
+
+        expect(behavior).toEqual({
+            sceneHeadingRenderMode: 'markdown-h2',
+            suppressChapterMarkers: false,
+            suppressPartMarkers: false,
+        });
+    });
+
+    it('lets Contemporary Literary render chapters but suppresses part markers', () => {
+        const behavior = getManuscriptLayoutExportBehavior({
+            id: 'bundled-fiction-contemporary-literary',
+            name: 'Contemporary Literary',
+            path: 'rt_contemporary_literary.tex',
+        });
+
+        expect(behavior).toEqual({
+            sceneHeadingRenderMode: 'markdown-h2',
+            suppressChapterMarkers: false,
+            suppressPartMarkers: true,
+        });
+    });
+
+    it('falls back to suppressing both markers for unknown/user-imported layouts', () => {
         const behavior = getManuscriptLayoutExportBehavior({
             id: 'custom-layout',
             name: 'Imported Layout',
@@ -38,7 +71,8 @@ describe('getManuscriptLayoutExportBehavior', () => {
 
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'markdown-h2',
-            suppressChapterMarkers: false,
+            suppressChapterMarkers: true,
+            suppressPartMarkers: true,
         });
     });
 });

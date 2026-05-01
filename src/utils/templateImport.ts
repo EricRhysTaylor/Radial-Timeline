@@ -14,7 +14,7 @@ import { getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout } 
 import { adaptPandocLayoutToTemplateAsset, adaptPandocLayoutToTemplateProfile } from './publishingModel';
 import { summarizeValidationIssues } from '../services/PublishingValidationService';
 import type { DetectedTemplateProfile } from '../publishing/templateDetection';
-import { detectTemplateProfile } from '../publishing/templateDetection';
+import { detectImportedTemplateStyle } from '../publishing/templateDetection';
 
 export interface ImportedTemplateCandidate {
     layout: PandocLayoutTemplate;
@@ -214,7 +214,7 @@ export async function buildImportedTemplateCandidate(
     const asset = adaptPandocLayoutToTemplateAsset(layout);
     const profile = adaptPandocLayoutToTemplateProfile(layout);
     const summary = summarizeValidationIssues(issues);
-    const detectedTemplate = detectTemplateProfile(content);
+    const detectedTemplate = detectImportedTemplateStyle(content, layout.origin);
 
     return {
         layout,

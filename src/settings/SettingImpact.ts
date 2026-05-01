@@ -33,6 +33,11 @@ export const IMPACT_SETTINGS_VISUAL: SettingImpact = {
     changeTypes: [ChangeType.SETTINGS],
 };
 
+export const IMPACT_PROGRESS_TICKS: SettingImpact = {
+    kind: 'selective',
+    changeTypes: [ChangeType.TARGET_DATES],
+};
+
 export const IMPACT_GOSSAMER: SettingImpact = {
     kind: 'selective',
     changeTypes: [ChangeType.GOSSAMER],

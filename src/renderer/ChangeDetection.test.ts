@@ -14,6 +14,7 @@ function makeSnapshot(overrides: Partial<TimelineSnapshot> = {}): TimelineSnapsh
     sortByWhen: false,
     aiEnabled: false,
     targetDate: undefined,
+    stageTargetDatesHash: 'Zero:|Author:|House:|Press:',
     chronologueDurationCap: undefined,
     discontinuityThreshold: undefined,
     showBackdropRing: true,
@@ -26,6 +27,11 @@ function makeSnapshot(overrides: Partial<TimelineSnapshot> = {}): TimelineSnapsh
     gossamerRunHash: '',
     updateAvailable: false,
     runtimeModeActive: false,
+    activeBookId: '',
+    activeBookTitle: 'Untitled Book',
+    readabilityScale: 'normal',
+    showChapterMarkers: false,
+    recentMovesHash: '',
     timestamp: 1,
     ...overrides
   };
@@ -44,5 +50,33 @@ describe('detectChanges', () => {
     expect(result.changeTypes.has(ChangeType.DOMINANT_SUBPLOT)).toBe(true);
     expect(result.canUseSelectiveUpdate).toBe(false);
     expect(result.updateStrategy).toBe('full');
+  });
+
+  it('uses a selective update when per-stage target dates change', () => {
+    const prev = makeSnapshot();
+    const current = makeSnapshot({
+      stageTargetDatesHash: 'Zero:2026-07-01|Author:|House:|Press:',
+      timestamp: 2
+    });
+
+    const result = detectChanges(prev, current);
+
+    expect(result.changeTypes.has(ChangeType.TARGET_DATES)).toBe(true);
+    expect(result.canUseSelectiveUpdate).toBe(true);
+    expect(result.updateStrategy).toBe('selective');
+  });
+
+  it('uses a selective update when the legacy target date changes', () => {
+    const prev = makeSnapshot();
+    const current = makeSnapshot({
+      targetDate: '2026-07-01',
+      timestamp: 2
+    });
+
+    const result = detectChanges(prev, current);
+
+    expect(result.changeTypes.has(ChangeType.TARGET_DATES)).toBe(true);
+    expect(result.canUseSelectiveUpdate).toBe(true);
+    expect(result.updateStrategy).toBe('selective');
   });
 });

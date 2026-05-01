@@ -43,6 +43,14 @@ import {
     isBundledPandocLayoutInstalled
 } from '../../utils/pandocBundledLayouts';
 import { getPandocLayoutTier } from '../../publishing/templateTiering';
+import {
+    getFictionVariantForLayout,
+    getLayoutFeatures,
+    getLayoutPictogramRows,
+    renderLayoutFeatureList,
+    renderLayoutPictograms,
+    type FictionLayoutVariant,
+} from '../../publishing/layoutVisuals';
 import { replayTransientClass } from '../../utils/domClassEffects';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1672,18 +1680,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     let layoutProfilesById = new Map<string, TemplateProfile>();
 
-    type FictionLayoutVariant = 'classic' | 'modernClassic' | 'signature' | 'contemporary' | 'generic';
-    const getFictionVariant = (layout: PandocLayoutTemplate): FictionLayoutVariant => {
-        const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
-        if (source.includes('modern classic') || source.includes('modern-classic') || source.includes('modern_classic') || source.includes('rt_modern_classic') || layout.id === 'bundled-fiction-modern-classic') return 'modernClassic';
-        if (source.includes('classic') || source.includes('traditional')) return 'classic';
-        if (source.includes('contemporary')) return 'contemporary';
-        if (source.includes('signature') || source.includes('signature_literary_rt') || source.includes('rt_signature_literary') || layout.id === 'bundled-fiction-signature-literary' || layout.id === 'bundled-novel') return 'signature';
-        return 'generic';
-    };
     const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'novel' && layout.bundled) {
-            const variant = getFictionVariant(layout);
+            const variant = getFictionVariantForLayout(layout);
             if (variant === 'classic') return 'Standard Manuscript';
             if (variant === 'modernClassic') return 'Modern Classic';
             if (variant === 'signature') return 'Signature Literary';
@@ -1698,361 +1697,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
         return layout.description?.trim() || '';
     };
-
-    // ── Layout Visual: Types ──────────────────────────────────────────────
-    type LayoutFeatureRow = { label: string; value: string };
-
-    type PictogramPageSide = {
-        headerLeft?: string;
-        headerCenter?: string;
-        headerRight?: string;
-        folioBottom?: string;
-        bodyLines: number;
-        suppressHeader?: boolean;
-        suppressFooter?: boolean;
-        specialText?: string;
-        specialSubtext?: string;
-        /** Short rule rendered below specialText (like scene separator rule) */
-        specialRule?: boolean;
-        /** Italic epigraph quote below the special block */
-        epigraphText?: string;
-        /** Attribution line below epigraph — rendered all-caps with em-dash prefix */
-        epigraphAttribution?: string;
-        /** Body lines before a scene separator, followed by separator, then more lines */
-        separatorText?: string;
-        linesBeforeSeparator?: number;
-        linesAfterSeparator?: number;
-    };
-
-    type PictogramSpread = {
-        label: string;
-        leftPage: PictogramPageSide | null;
-        rightPage: PictogramPageSide | null;
-        /** When set, this spread represents a selectable scene heading mode */
-        sceneMode?: ManuscriptSceneHeadingMode;
-    };
-
-    // ── Layout Visual: Feature Data ───────────────────────────────────────
-    // RT terminology → export structure:
-    //   Parts    = Acts (determined by Act count in settings; emit \rtPart{I})
-    //   Chapters = Timeline notes with a Chapter field (rendered as chapter openers/headings)
-    //   Scenes   = Scene notes (the primary content unit; scene separators via \rtSceneSep)
-    const getLayoutFeatures = (variant: FictionLayoutVariant): LayoutFeatureRow[] => {
-        switch (variant) {
-            case 'classic':
-                return [
-                    { label: 'Headers', value: 'Title centered (both pages)' },
-                    { label: 'Folios', value: 'Bottom center' },
-                    { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
-                    { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Scenes', value: 'New page — centered scene number only' },
-                ];
-            case 'modernClassic':
-                return [
-                    { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
-                    { label: 'Folios', value: 'In headers' },
-                    { label: 'Font', value: 'Latin Modern (serif)' },
-                    { label: 'Spacing', value: '1.18×' },
-                    { label: 'Parts', value: 'Act opener — Roman numeral with optional epigraph' },
-                    { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
-                    { label: 'Scenes', value: 'Lowercase Roman numeral (i. ii.) with short rule' },
-                ];
-            case 'signature':
-                return [
-                    { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
-                    { label: 'Folios', value: 'Header-only, letter-spaced' },
-                    { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
-                    { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Scenes', value: 'Opener page — 30pt bold, suppresses headers' },
-                    { label: 'Scene #', value: 'Number only' },
-                    { label: 'Scene #+T', value: 'Number + title (in parentheses)' },
-                    { label: 'Scene T', value: 'Title only' },
-                ];
-            case 'contemporary':
-                return [
-                    { label: 'Headers', value: 'Book title (left) · Scene context (right), sans' },
-                    { label: 'Folios', value: 'Bottom center (serif)' },
-                    { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
-                    { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Scenes', value: 'New page — centered scene number only' },
-                    { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
-                ];
-            default:
-                return [];
-        }
-    };
-
-    // ── Layout Visual: Pictogram Spread Configs ───────────────────────────
-    // Pictograms represent the physical PDF page layout for each template.
-    // Scene separators appear inline within body text (not on dedicated pages).
-    // "Special" spreads show dedicated opener pages:
-    //   PART    = Act opener page (RT Acts → LaTeX \rtPart)
-    //   CHAPTER = Chapter heading from the shared Chapter field
-    //   SCENE # / #+TITLE / TITLE = Scene heading modes (Signature only)
-    const BODY_LINES = 14;
-
-    type LayoutPictogramRows = {
-        /** Primary row: scene separator page (optional) + body spread — always right-aligned */
-        scene: PictogramSpread | null;
-        body: PictogramSpread;
-        /** Special row: Part, Chapter, or Scene heading mode variants */
-        special: PictogramSpread[];
-    };
-
-    const getLayoutPictogramRows = (variant: FictionLayoutVariant): LayoutPictogramRows => {
-        switch (variant) {
-            case 'classic':
-                return {
-                    // Scene opener: suppresses headers/footers (\thispagestyle{empty})
-                    scene: {
-                        label: 'SCENE',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 5,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: '3',
-                        },
-                    },
-                    body: {
-                        label: 'BODY',
-                        leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: BODY_LINES },
-                        rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: BODY_LINES },
-                    },
-                    special: [],
-                };
-            case 'modernClassic':
-                return {
-                    scene: {
-                        label: 'SCENE',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 0,
-                            separatorText: 'ii.',
-                            linesBeforeSeparator: 0,
-                            linesAfterSeparator: 5,
-                        },
-                    },
-                    body: {
-                        label: 'BODY',
-                        leftPage: { headerCenter: '12 | AUTH', bodyLines: BODY_LINES },
-                        rightPage: { headerCenter: 'TITLE | 13', bodyLines: BODY_LINES },
-                    },
-                    special: [
-                        {
-                            label: 'PART',
-                            leftPage: null,
-                            rightPage: {
-                                bodyLines: 0,
-                                suppressHeader: true,
-                                suppressFooter: true,
-                                specialText: 'I',
-                                specialRule: true,
-                                epigraphText: 'a quote',
-                                epigraphAttribution: '\u2014J. Name',
-                            },
-                        },
-                        {
-                            label: 'CHAPTER',
-                            leftPage: null,
-                            rightPage: {
-                                bodyLines: 0,
-                                suppressHeader: true,
-                                suppressFooter: true,
-                                specialText: 'Chapter 1',
-                                specialSubtext: 'Boy with a Skull',
-                            },
-                        },
-                    ],
-                };
-            case 'signature':
-                return {
-                    scene: null,
-                    body: {
-                        label: 'BODY',
-                        leftPage: { headerCenter: '12 | AUTH', bodyLines: BODY_LINES },
-                        rightPage: { headerCenter: 'TITLE | 13', bodyLines: BODY_LINES },
-                    },
-                    special: [
-                        {
-                            label: 'SCENE #',
-                            sceneMode: 'scene-number',
-                            leftPage: null,
-                            rightPage: {
-                                bodyLines: 4,
-                                suppressHeader: true,
-                                suppressFooter: true,
-                                specialText: '3',
-                            },
-                        },
-                        {
-                            label: '#+TITLE',
-                            sceneMode: 'scene-number-title',
-                            leftPage: null,
-                            rightPage: {
-                                bodyLines: 4,
-                                suppressHeader: true,
-                                suppressFooter: true,
-                                specialText: '3',
-                                specialSubtext: '(The Escape)',
-                            },
-                        },
-                        {
-                            label: 'TITLE',
-                            sceneMode: 'title-only',
-                            leftPage: null,
-                            rightPage: {
-                                bodyLines: 4,
-                                suppressHeader: true,
-                                suppressFooter: true,
-                                specialText: 'The Escape',
-                            },
-                        },
-                    ],
-                };
-            case 'contemporary':
-                return {
-                    // Scene opener: suppresses headers/footers (\thispagestyle{empty})
-                    scene: {
-                        label: 'SCENE',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 5,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: '3',
-                        },
-                    },
-                    body: {
-                        label: 'BODY',
-                        leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
-                        rightPage: { headerRight: 'scene', folioBottom: '13', bodyLines: BODY_LINES },
-                    },
-                    special: [
-                        {
-                            label: 'CHAPTER',
-                            leftPage: null,
-                            rightPage: {
-                                bodyLines: 5,
-                                suppressHeader: true,
-                                suppressFooter: true,
-                                specialText: 'Chapter',
-                            },
-                        },
-                    ],
-                };
-            default:
-                return {
-                    scene: null,
-                    body: {
-                        label: '',
-                        leftPage: { bodyLines: BODY_LINES },
-                        rightPage: { bodyLines: BODY_LINES },
-                    },
-                    special: [],
-                };
-        }
-    };
-
-    // ── Layout Visual: DOM Builders ───────────────────────────────────────
-    const renderLayoutPage = (parent: HTMLElement, side: PictogramPageSide, sideClass: string): void => {
-        const page = parent.createDiv({ cls: `ert-layout-page ${sideClass}` });
-
-        // Header
-        const hdr = page.createDiv({ cls: 'ert-layout-page-header' });
-        if (side.suppressHeader) hdr.addClass('is-suppressed');
-        if (side.headerCenter) {
-            hdr.addClass('is-centered');
-            hdr.createSpan({ cls: 'ert-layout-page-hdr-center', text: side.headerCenter });
-        } else {
-            if (side.headerLeft) hdr.createSpan({ cls: 'ert-layout-page-hdr-left', text: side.headerLeft });
-            if (side.headerRight) hdr.createSpan({ cls: 'ert-layout-page-hdr-right', text: side.headerRight });
-        }
-
-        // Body
-        const body = page.createDiv({ cls: 'ert-layout-page-body' });
-
-        if (side.separatorText != null) {
-            // Scene separator mode: lines → separator → lines
-            // Use ?? (not ||) so that 0 is respected as "no lines above"
-            for (let i = 0; i < (side.linesBeforeSeparator ?? 3); i++) {
-                body.createDiv({ cls: 'ert-layout-page-line' });
-            }
-            const sep = body.createDiv({ cls: 'ert-layout-page-separator' });
-            sep.createSpan({ cls: 'ert-layout-page-separator-text', text: side.separatorText });
-            sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
-            for (let i = 0; i < (side.linesAfterSeparator ?? 3); i++) {
-                body.createDiv({ cls: 'ert-layout-page-line' });
-            }
-        } else if (side.specialText) {
-            // Special text mode: centered Part/Chapter/Scene text
-            body.addClass('is-special');
-            body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
-            if (side.specialRule) {
-                body.createDiv({ cls: 'ert-layout-page-separator-rule' });
-            }
-            if (side.specialSubtext) {
-                body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
-            }
-            if (side.epigraphText) {
-                body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
-            }
-            if (side.epigraphAttribution) {
-                body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
-            }
-            // Add body lines below special text if specified
-            if (side.bodyLines > 0) {
-                const bodyBelow = page.createDiv({ cls: 'ert-layout-page-body' });
-                bodyBelow.style.flex = '0 0 auto';
-                for (let i = 0; i < side.bodyLines; i++) {
-                    bodyBelow.createDiv({ cls: 'ert-layout-page-line' });
-                }
-            }
-        } else {
-            // Normal body lines
-            for (let i = 0; i < side.bodyLines; i++) {
-                body.createDiv({ cls: 'ert-layout-page-line' });
-            }
-        }
-
-        // Footer
-        const ftr = page.createDiv({ cls: 'ert-layout-page-footer' });
-        if (side.suppressFooter) ftr.addClass('is-suppressed');
-        if (side.folioBottom) {
-            ftr.createSpan({ cls: 'ert-layout-page-folio', text: side.folioBottom });
-        }
-    };
-
-    const renderLayoutSpread = (parent: HTMLElement, spread: PictogramSpread): HTMLElement => {
-        const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
-        const pagesEl = spreadEl.createDiv({ cls: 'ert-layout-spread-pages' });
-
-        if (spread.leftPage && spread.rightPage) {
-            renderLayoutPage(pagesEl, spread.leftPage, 'is-left');
-            pagesEl.createDiv({ cls: 'ert-layout-spread-spine' });
-            renderLayoutPage(pagesEl, spread.rightPage, 'is-right');
-        } else if (spread.rightPage) {
-            renderLayoutPage(pagesEl, spread.rightPage, 'is-single');
-        } else if (spread.leftPage) {
-            renderLayoutPage(pagesEl, spread.leftPage, 'is-single');
-        }
-
-        if (spread.label) {
-            spreadEl.createSpan({ cls: 'ert-layout-spread-label', text: spread.label });
-        }
-        return spreadEl;
-    };
-
-    const renderLayoutFeatureList = (parent: HTMLElement, features: LayoutFeatureRow[]): HTMLElement => {
-        const featureCol = parent.createDiv({ cls: 'ert-layout-visual-features' });
-        for (const feat of features) {
-            const row = featureCol.createDiv({ cls: 'ert-layout-feature-row' });
-            row.createSpan({ cls: 'ert-layout-feature-label', text: feat.label });
-            row.createSpan({ cls: 'ert-layout-feature-value', text: feat.value });
-        }
-        return featureCol;
-    };
-
     /**
      * Click-to-edit inline text. Displays as plain text until clicked, then swaps to an
      * input/textarea. Enter commits, Escape cancels, blur commits.
@@ -2139,36 +1783,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         });
     };
 
-    const renderLayoutPictograms = (
-        parent: HTMLElement,
-        rows: LayoutPictogramRows,
-        activeSceneMode?: ManuscriptSceneHeadingMode,
-    ): void => {
-        const pictoCol = parent.createDiv({ cls: 'ert-layout-visual-pictograms' });
-
-        // Primary row: scene (optional, left) + body spread (right)
-        const primaryRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
-        if (rows.scene) renderLayoutSpread(primaryRow, rows.scene);
-        renderLayoutSpread(primaryRow, rows.body);
-
-        // Special row: Part, Chapter, Scene mode variants
-        // When spreads have sceneMode, highlight the active one and dim the rest
-        const hasSceneModes = rows.special.some(s => s.sceneMode);
-        if (rows.special.length > 0) {
-            const specialRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
-            for (const spread of rows.special) {
-                const spreadEl = renderLayoutSpread(specialRow, spread);
-                if (hasSceneModes && spread.sceneMode && activeSceneMode) {
-                    if (spread.sceneMode === activeSceneMode) {
-                        spreadEl.addClass('is-scene-active');
-                    } else {
-                        spreadEl.addClass('is-scene-dimmed');
-                    }
-                }
-            }
-        }
-    };
-
     type LayoutVisualOptions = {
         layoutId?: string;
         description?: string;
@@ -2177,7 +1791,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const buildLayoutVisual = (
         container: HTMLElement,
         variant: FictionLayoutVariant,
-        options: LayoutVisualOptions = {}
+        options: LayoutVisualOptions & { layout?: PandocLayoutTemplate } = {}
     ): void => {
         const visual = container.createDiv({ cls: 'ert-layout-visual' });
         const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
@@ -2208,7 +1822,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             ? (getLayoutOptionsForActiveBook(options.layoutId).sceneHeadingMode || 'scene-number-title')
             : undefined;
 
-        const rows = getLayoutPictogramRows(variant);
+        const rows = getLayoutPictogramRows(variant, options.layout);
         renderLayoutPictograms(cols, rows, activeSceneMode);
     };
 
@@ -2279,7 +1893,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         }
         const usesModernClassicStructure = layout.usesModernClassicStructure === true;
         const hasEpigraphs = layout.hasEpigraphs === true || usesModernClassicStructure;
-        const variant = getFictionVariant(layout);
+        const variant = getFictionVariantForLayout(layout);
         const hasSceneOpenerHeadingOptions = layout.hasSceneOpenerHeadingOptions === true || variant === 'signature';
         return { usesModernClassicStructure, hasEpigraphs, hasSceneOpenerHeadingOptions };
     };
@@ -2592,7 +2206,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const fictionLayouts = layouts
             .filter(layout => layout.preset === 'novel')
             .sort((a, b) => {
-                const variantDiff = fictionVariantOrder[getFictionVariant(a)] - fictionVariantOrder[getFictionVariant(b)];
+                const variantDiff = fictionVariantOrder[getFictionVariantForLayout(a)] - fictionVariantOrder[getFictionVariantForLayout(b)];
                 if (variantDiff !== 0) return variantDiff;
                 return getLayoutDisplayName(a).localeCompare(getLayoutDisplayName(b));
             });
@@ -2616,7 +2230,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 row.addClass('ert-pro-locked');
             }
 
-            const variant = getFictionVariant(layout);
+            const variant = getFictionVariantForLayout(layout);
             const useVisual = layout.preset === 'novel' && variant !== 'generic';
 
             const isEditableLayout = !isBundled && !isImported;
@@ -2669,6 +2283,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             if (useVisual && s.descEl) {
                 buildLayoutVisual(s.descEl, variant, {
                     layoutId: layout.id,
+                    layout,
                     description: buildLayoutDescription(layout),
                     editableDescription: isEditableLayout
                         ? {
@@ -2697,6 +2312,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     btn.onClick(async () => {
                         const result = await installBundledPandocLayouts(plugin, [layout.id]);
                         await ensureBundledLayoutInstalledForExport(plugin, layout);
+                        // Mirror Install all + Auto-configure: keep the registry
+                        // in sync with on-disk templates so the publishing
+                        // status strip advances PDF Style on the next render.
+                        if (ensureBundledPandocLayoutsRegistered(plugin)) {
+                            await plugin.saveSettings();
+                        }
                         if (result.installed.length > 0) {
                             new Notice(`Installed bundled layout: ${getLayoutDisplayName(layout)}`);
                         } else if (result.failed.length > 0) {
@@ -2912,6 +2533,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     });
     layoutManageSetting.addButton(button => {
         button.setButtonText('Install all');
+        button.setTooltip('Install the bundled PDF style templates to your Pandoc folder. Does not seed Book Details or Book Pages.');
         installAllButtonEl = button.buttonEl;
         installAllButtonEl.addClass('ert-layout-install-all-button');
         refreshInstallAllButtonState();
@@ -2920,6 +2542,16 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const bundledIds = bundledLayouts.map(layout => layout.id);
             const result = await installBundledPandocLayouts(plugin, bundledIds);
             const refreshResults = await Promise.all(bundledLayouts.map(layout => ensureBundledLayoutInstalledForExport(plugin, layout)));
+            // Re-register bundled layouts in plugin.settings.pandocLayouts so the
+            // PDF Style stage of the publishing status strip sees them as
+            // present. Without this, users who had no entries (or had trashed
+            // entries) install templates on disk but the validator still
+            // reports zero novel layouts and the stage stays Below.
+            // Auto-configure ('runAutoConfigurePublishing') already does this
+            // via ensurePublishingEnvironment; mirror that behaviour here.
+            if (ensureBundledPandocLayoutsRegistered(plugin)) {
+                await plugin.saveSettings();
+            }
             const refreshFailures = refreshResults.filter(item => item.failed).length;
             if (refreshFailures > 0) {
                 new Notice('Some bundled layouts failed to refresh.');
@@ -3442,7 +3074,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             ));
             const count = filledPageLabels.length;
             const panel = previewBody.createDiv({
-                cls: `ert-bookmeta-module ert-bookmeta-module--matter${expanded ? ' is-expanded' : ''}`
+                cls: `ert-bookmeta-module ert-bookmeta-module--matter${expanded ? ' is-expanded' : ''}`,
+                attr: { 'data-bookmeta-section': key }
             });
             const header = panel.createDiv({
                 cls: 'ert-bookmeta-module-header',
@@ -3462,10 +3095,40 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             copy.createDiv({ cls: 'ert-bookmeta-module-description', text: description });
             header.createDiv({ cls: 'ert-bookmeta-module-count', text: `${count} page${count === 1 ? '' : 's'}` });
 
+            const getScrollParent = (el: HTMLElement): HTMLElement | null => {
+                let current = el.parentElement;
+                while (current) {
+                    const style = window.getComputedStyle(current);
+                    const canScroll = /(auto|scroll)/.test(style.overflowY);
+                    if (canScroll && current.scrollHeight > current.clientHeight) return current;
+                    current = current.parentElement;
+                }
+                return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null;
+            };
+            const restoreSectionAnchor = (
+                sectionKey: string,
+                scrollParent: HTMLElement | null,
+                previousHeaderTop: number
+            ) => {
+                const restore = () => {
+                    const nextPanel = previewBody
+                        .querySelector<HTMLElement>(`.ert-bookmeta-module--matter[data-bookmeta-section="${sectionKey}"]`);
+                    const nextHeader = nextPanel?.querySelector<HTMLElement>('.ert-bookmeta-module-header');
+                    if (!scrollParent || !nextHeader) return;
+                    scrollParent.scrollTop += nextHeader.getBoundingClientRect().top - previousHeaderTop;
+                };
+                requestAnimationFrame(() => {
+                    restore();
+                    requestAnimationFrame(restore);
+                });
+            };
             const toggleSection = () => {
+                const scrollParent = getScrollParent(header);
+                const previousHeaderTop = header.getBoundingClientRect().top;
                 if (expanded) expandedBookMetaSections.delete(key);
                 else expandedBookMetaSections.add(key);
                 renderBookMetaPreview();
+                restoreSectionAnchor(key, scrollParent, previousHeaderTop);
             };
             header.addEventListener('click', toggleSection);
             header.addEventListener('keydown', (evt: KeyboardEvent) => {
@@ -3712,6 +3375,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         // Auto configure — rendered first (left position)
         setupButtonComponent = new ButtonComponent(setupActionRow)
             .setButtonText(AUTO_CONFIGURE_BUTTON)
+            .setTooltip('One-shot setup: detects Pandoc, installs templates, and seeds Book Details + front/back matter starter notes.')
             .onClick(() => {
                 void runAutoConfigurePublishing();
             });

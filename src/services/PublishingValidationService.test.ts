@@ -271,16 +271,14 @@ describe('PublishingValidationService template compatibility', () => {
         });
 
         expect(snapshot.templateCompatibility?.level).toBe('legacy');
-        expect(snapshot.templateCompatibilityIssues).toEqual(expect.arrayContaining([
-            expect.objectContaining({
-                level: 'info',
-                code: 'rtts_legacy_body_fallback',
-            }),
-        ]));
+        // Template-side absences (no $title$, no $author$, no hooks) are not
+        // user-facing problems — the snapshot should not surface warnings or
+        // info entries describing template design.
+        expect(snapshot.templateCompatibilityIssues || []).toEqual([]);
         expect(snapshot.preflightIssues.some(issue => issue.code === 'export_template_compatibility_invalid')).toBe(false);
     });
 
-    it('reports missing title and author as warnings only', () => {
+    it('does not surface warnings for missing $title$ or $author$ in the template', () => {
         const layout = makeNovelLayout('$body$');
         const plugin = createValidationPlugin(layout);
         const snapshot = new PublishingValidationService(plugin).collect('book-1', {
@@ -290,16 +288,8 @@ describe('PublishingValidationService template compatibility', () => {
             selectedLayoutId: layout.id,
         });
 
-        expect(snapshot.templateCompatibilityIssues).toEqual(expect.arrayContaining([
-            expect.objectContaining({
-                level: 'warning',
-                code: 'rtts_missing_title',
-            }),
-            expect.objectContaining({
-                level: 'warning',
-                code: 'rtts_missing_author',
-            }),
-        ]));
+        const warningIssues = (snapshot.templateCompatibilityIssues || []).filter(issue => issue.level === 'warning');
+        expect(warningIssues).toEqual([]);
         expect(snapshot.preflightIssues.some(issue => issue.code === 'export_template_compatibility_invalid')).toBe(false);
     });
 

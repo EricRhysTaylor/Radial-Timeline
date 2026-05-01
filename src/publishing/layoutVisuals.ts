@@ -18,6 +18,8 @@
 import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneHeadingMode } from '../utils/manuscript';
 import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
+import { getVariantForArchetype, type DesignedStyleSpec } from './designedStyle';
+import { BUNDLED_FICTION_SPECS, isBundledFictionId } from './bundledStyleSpecs';
 
 // ── Variant identification ────────────────────────────────────────────
 export type FictionLayoutVariant = 'classic' | 'modernClassic' | 'signature' | 'contemporary' | 'generic';
@@ -36,6 +38,11 @@ export const ALL_FICTION_VARIANTS: readonly FictionLayoutVariant[] = [
 
 export function getFictionVariantForLayout(layout?: PandocLayoutTemplate): FictionLayoutVariant {
     if (!layout) return 'generic';
+    // Designed styles map archetype → variant directly. The .tex file is a derived
+    // artifact, so name/path heuristics must be skipped to keep the preview accurate.
+    if (layout.origin === 'designed' && layout.designedSpec) {
+        return getVariantForArchetype(layout.designedSpec.archetype);
+    }
     const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
     if (
         source.includes('modern classic') ||
@@ -85,6 +92,10 @@ export type PictogramSpread = {
     rightPage: PictogramPageSide | null;
     /** When set, this spread represents a selectable scene heading mode */
     sceneMode?: ManuscriptSceneHeadingMode;
+    /** When set, the spread renders an alert state (orange tint) */
+    warningLevel?: 'warning';
+    /** Tooltip text shown on hover when warningLevel is set */
+    warningTooltip?: string;
 };
 
 export type LayoutPictogramRows = {
@@ -157,7 +168,160 @@ export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureR
 //   PART    = Act opener page (\rtPart)
 //   CHAPTER = Chapter heading from the shared Chapter field
 //   SCENE # / #+TITLE / TITLE = Scene heading modes (Signature only)
-export function getLayoutPictogramRows(variant: FictionLayoutVariant): LayoutPictogramRows {
+//
+/**
+ * Derive a pictogram row set directly from a DesignedStyleSpec.
+ *
+ * This is the spec-driven path: when a layout carries a DesignedStyleSpec
+ * (bundled fiction templates and `origin === 'designed'` Pro layouts), the
+ * preview shape is derived from the same source of truth that produces the
+ * `.tex` content. No drift is structurally possible.
+ *
+ * Pure / deterministic / no side effects.
+ */
+export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogramRows {
+    // Header strings used in the BODY spread.
+    const headerByMode = (): { left?: string; right?: string; center?: string } => {
+        const rh = spec.runningHeader;
+        switch (rh.mode) {
+            case 'centered-title':                 return { center: 'TITLE' };
+            case 'split-author-page-title-page':   return { center: '12 | AUTH' };
+            case 'left-title-right-context':       return { left: 'title', right: 'scene' };
+            default:                               return {};
+        }
+    };
+    const oddCenter = spec.runningHeader.mode === 'split-author-page-title-page' ? 'TITLE | 13' : undefined;
+    const folioBottom = spec.folio.position === 'bottom-center' ? '12' : undefined;
+    const folioBottomRight = spec.folio.position === 'bottom-center' ? '13' : undefined;
+
+    const hb = headerByMode();
+    const bodyLeft: PictogramPageSide = {
+        bodyLines: LAYOUT_PREVIEW_BODY_LINES,
+        ...(hb.left ? { headerLeft: hb.left } : {}),
+        ...(hb.center ? { headerCenter: hb.center } : {}),
+        ...(folioBottom ? { folioBottom } : {}),
+    };
+    const bodyRight: PictogramPageSide = {
+        bodyLines: LAYOUT_PREVIEW_BODY_LINES,
+        ...(hb.right ? { headerRight: hb.right } : {}),
+        ...(oddCenter ? { headerCenter: oddCenter } : hb.center ? { headerCenter: hb.center } : {}),
+        ...(folioBottomRight ? { folioBottom: folioBottomRight } : {}),
+    };
+
+    const special: PictogramSpread[] = [];
+
+    // PART spread — emitted when parts are on (Modern Classic).
+    if (spec.parts.mode !== 'off') {
+        const partPage: PictogramPageSide = {
+            bodyLines: 0,
+            suppressHeader: true,
+            suppressFooter: true,
+            specialText: 'I',
+            specialRule: spec.parts.epigraph,
+        };
+        if (spec.parts.epigraph) {
+            partPage.epigraphText = 'a quote';
+            partPage.epigraphAttribution = '—J. Name';
+        }
+        special.push({ label: 'PART', leftPage: null, rightPage: partPage });
+    }
+
+    // CHAPTER spread — emitted when chapters are on AND not signature scene-mode-only.
+    if (spec.chapters.mode !== 'off') {
+        const isTitled = spec.chapters.mode === 'titled' || spec.chapters.mode === 'numbered-titled';
+        const chapterPage: PictogramPageSide = {
+            bodyLines: 0,
+            suppressHeader: true,
+            suppressFooter: true,
+            specialText: 'Chapter 1',
+            ...(isTitled ? { specialSubtext: 'Boy with a Skull' } : {}),
+        };
+        // Contemporary's chapter-only page (no chapter title) — drop subtext.
+        if (spec.chapters.mode === 'numbered' && spec.chapters.spacing) {
+            chapterPage.specialText = 'Chapter';
+            delete chapterPage.specialSubtext;
+        }
+        special.push({ label: 'CHAPTER', leftPage: null, rightPage: chapterPage });
+    }
+
+    // Signature's three scene-opener heading modes.
+    if (spec.scene.openerHeadingModes && spec.scene.openerHeadingModes.length > 0) {
+        for (const mode of spec.scene.openerHeadingModes) {
+            const page: PictogramPageSide = {
+                bodyLines: 4,
+                suppressHeader: true,
+                suppressFooter: true,
+            };
+            let label: string;
+            if (mode === 'scene-number') {
+                label = 'SCENE #';
+                page.specialText = '3';
+            } else if (mode === 'scene-number-title') {
+                label = '#+TITLE';
+                page.specialText = '3';
+                page.specialSubtext = '(The Escape)';
+            } else {
+                label = 'TITLE';
+                page.specialText = 'The Escape';
+            }
+            special.push({ label, sceneMode: mode, leftPage: null, rightPage: page });
+        }
+    }
+
+    // Scene opener spread (top row) — emitted when opener is dedicated-page or roman-with-rule.
+    let scene: PictogramSpread | null = null;
+    if (spec.scene.opener === 'dedicated-page' && (!spec.scene.openerHeadingModes || spec.scene.openerHeadingModes.length === 0)) {
+        scene = {
+            label: 'SCENE',
+            leftPage: null,
+            rightPage: {
+                bodyLines: 5,
+                suppressHeader: spec.scene.suppressHeaderFooterOnOpener,
+                suppressFooter: spec.scene.suppressHeaderFooterOnOpener,
+                specialText: '3',
+            },
+        };
+    } else if (spec.scene.opener === 'roman-with-rule') {
+        scene = {
+            label: 'SCENE',
+            leftPage: null,
+            rightPage: {
+                bodyLines: 0,
+                separatorText: 'ii.',
+                linesBeforeSeparator: 0,
+                linesAfterSeparator: 5,
+            },
+        };
+    }
+
+    return {
+        scene,
+        body: { label: 'BODY', leftPage: bodyLeft, rightPage: bodyRight },
+        special,
+    };
+}
+
+// Legacy variant-keyed pictogram builder. Kept as a fallback for layouts that
+// don't carry a DesignedStyleSpec (custom imports, etc.). For the four bundled
+// fiction templates and `origin === 'designed'` Pro layouts, the spec path
+// (getLayoutPictogramRows with a layout argument) is preferred.
+export function getLayoutPictogramRows(
+    variant: FictionLayoutVariant,
+    layout?: PandocLayoutTemplate
+): LayoutPictogramRows {
+    // Spec-driven path: derive pictogram rows from the layout's DesignedStyleSpec
+    // when one is available. Bundled fiction layouts carry a designedSpec via
+    // BUNDLED_FICTION_SPECS; user-authored layouts carry one when origin === 'designed'.
+    if (layout?.designedSpec) {
+        return getPictogramRowsFromSpec(layout.designedSpec);
+    }
+    if (layout && isBundledFictionId(layout.id)) {
+        return getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS[layout.id]);
+    }
+    return getLayoutPictogramRowsByVariant(variant);
+}
+
+function getLayoutPictogramRowsByVariant(variant: FictionLayoutVariant): LayoutPictogramRows {
     switch (variant) {
         case 'classic':
             return {
@@ -287,10 +451,17 @@ export function getLayoutPictogramRows(variant: FictionLayoutVariant): LayoutPic
                 },
                 special: [
                     {
+                        // Contemporary Literary template forces the chapter heading
+                        // onto its own freshly cleared page via
+                        //   \preto\chapter{\clearpage\thispagestyle{empty}}
+                        //   \titlespacing*{\chapter}{0pt}{0.46\textheight}{0.08\textheight}
+                        // → ~46% top margin + 8% below leaves no room for body on
+                        //   the same page before the next scene break. The pictogram
+                        //   must show an empty page with just "Chapter" centered.
                         label: 'CHAPTER',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 5,
+                            bodyLines: 0,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: 'Chapter',
@@ -311,6 +482,45 @@ export function getLayoutPictogramRows(variant: FictionLayoutVariant): LayoutPic
                 special: [],
             };
     }
+}
+
+// ── Spread validation ─────────────────────────────────────────────────
+//
+// Stamps preview-card warning state onto PART/CHAPTER spreads when the
+// underlying data isn't populated for the active book/scene selection.
+//   PART     → fewer than two Acts configured for this book
+//   CHAPTER  → no scene in the current selection has a Chapter field
+// SCENE / BODY (top row) and any sceneMode-bearing spreads are never alerted.
+export type SpreadValidationContext = {
+    actCount: number;
+    chapterFieldCount: number;
+};
+
+const PART_WARNING_TOOLTIP =
+    'No Parts will render — fewer than two Acts configured for this book.';
+const CHAPTER_WARNING_TOOLTIP =
+    'No chapter pages will render — no scenes have a Chapter field set.';
+
+export function applySpreadValidation(
+    rows: LayoutPictogramRows,
+    ctx: SpreadValidationContext,
+): LayoutPictogramRows {
+    const stampedSpecial = rows.special.map((spread): PictogramSpread => {
+        // sceneMode-bearing spreads (Signature scene-heading variants) are never alerted.
+        if (spread.sceneMode) return spread;
+        if (spread.label === 'PART' && ctx.actCount < 2) {
+            return { ...spread, warningLevel: 'warning', warningTooltip: PART_WARNING_TOOLTIP };
+        }
+        if (spread.label === 'CHAPTER' && ctx.chapterFieldCount === 0) {
+            return { ...spread, warningLevel: 'warning', warningTooltip: CHAPTER_WARNING_TOOLTIP };
+        }
+        return spread;
+    });
+    return {
+        scene: rows.scene,
+        body: rows.body,
+        special: stampedSpecial,
+    };
 }
 
 // ── DOM renderers (pure) ──────────────────────────────────────────────
@@ -361,10 +571,11 @@ export function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, s
             body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
         }
         if (side.bodyLines > 0) {
-            const bodyBelow = page.createDiv({ cls: 'ert-layout-page-body' });
-            bodyBelow.style.flex = '0 0 auto';
+            // Render body lines inside the same .is-special div to avoid a
+            // second .ert-layout-page-body inheriting padding-top — that extra
+            // padding visually doubled the first body line.
             for (let i = 0; i < side.bodyLines; i++) {
-                bodyBelow.createDiv({ cls: 'ert-layout-page-line' });
+                body.createDiv({ cls: 'ert-layout-page-line' });
             }
         }
     } else {
@@ -382,6 +593,12 @@ export function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, s
 
 export function renderLayoutSpread(parent: HTMLElement, spread: PictogramSpread): HTMLElement {
     const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
+    if (spread.warningLevel === 'warning') {
+        spreadEl.addClass('ert-layout-spread--warning');
+        if (spread.warningTooltip) {
+            spreadEl.setAttribute('title', spread.warningTooltip);
+        }
+    }
     const pagesEl = spreadEl.createDiv({ cls: 'ert-layout-spread-pages' });
 
     if (spread.leftPage && spread.rightPage) {

@@ -7,7 +7,7 @@ import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
 import { ERT_CLASSES } from '../../ui/classes';
-import { IMPACT_FULL } from '../SettingImpact';
+import { IMPACT_FULL, IMPACT_PROGRESS_TICKS } from '../SettingImpact';
 import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 
 type Stage = typeof STAGE_ORDER[number];
@@ -830,7 +830,7 @@ export function renderProgressSection(params: {
                         text.inputEl.removeClass('ert-setting-input-error');
                         text.inputEl.removeClass('ert-setting-input-overdue');
                         await plugin.saveSettings();
-                        plugin.onSettingChanged(IMPACT_FULL); // Tier 3: target date tick marks on timeline
+                        plugin.onSettingChanged(IMPACT_PROGRESS_TICKS); // Tier 2: target date tick marks on timeline
                         // Update icon color
                         const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
                         if (icon) {
@@ -871,7 +871,7 @@ export function renderProgressSection(params: {
                     }
 
                     await plugin.saveSettings();
-                    plugin.onSettingChanged(IMPACT_FULL); // Tier 3: target date tick marks on timeline
+                    plugin.onSettingChanged(IMPACT_PROGRESS_TICKS); // Tier 2: target date tick marks on timeline
                 };
 
                 plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });

@@ -1,3 +1,5 @@
+import type { ProfileOrigin } from '../types';
+
 export type DetectedTemplateUsageContext = 'novel' | 'screenplay' | 'unknown';
 export type DetectedTemplateStyleHint = 'manuscript' | 'book' | 'literary' | 'chaptered' | 'custom';
 export type DetectedTemplateConfidence = 'low' | 'medium' | 'high';
@@ -9,6 +11,32 @@ export interface DetectedTemplateProfile {
     traits: string[];
     confidence: DetectedTemplateConfidence;
     mockPreviewKind: DetectedTemplateMockPreviewKind;
+}
+
+/**
+ * Generated Designed-Style .tex files are derived artifacts and must not be
+ * reclassified by content heuristics — return a stable "custom" profile so
+ * the layout's declared origin is the source of truth.
+ */
+const DESIGNED_PROFILE: DetectedTemplateProfile = {
+    usageContext: 'novel',
+    styleHint: 'custom',
+    traits: ['Designed style'],
+    confidence: 'high',
+    mockPreviewKind: 'generic',
+};
+
+/**
+ * Wrapper around detectTemplateProfile that early-returns for layouts with
+ * origin === 'designed'. Use this from any code path that infers style from
+ * a .tex file's contents (e.g. import flows, settings reload).
+ */
+export function detectImportedTemplateStyle(
+    texContent: string,
+    origin?: ProfileOrigin,
+): DetectedTemplateProfile {
+    if (origin === 'designed') return DESIGNED_PROFILE;
+    return detectTemplateProfile(texContent);
 }
 
 export function detectTemplateProfile(texContent: string): DetectedTemplateProfile {

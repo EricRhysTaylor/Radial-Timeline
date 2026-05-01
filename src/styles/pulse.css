@@ -544,6 +544,8 @@
 .ert-manuscript-layout-summary-detail {
   color: var(--text-muted);
   line-height: 1.45;
+  /* Auto-balance wrapped lines so the trailing line isn't a stranded fragment. */
+  text-wrap: pretty;
 }
 
 .ert-manuscript-layout-pro-hint {
@@ -649,6 +651,29 @@
   color: var(--text-accent);
 }
 
+/* Validation alert state — PART/CHAPTER spreads when underlying data is missing.
+   Subtle orange tint via existing warning tokens; tooltip set via title attr. */
+.ert-ui.ert-scope--modal .ert-layout-spread--warning .ert-layout-page {
+  border-color: var(--text-warning, var(--color-orange, #f5a97a));
+  background: color-mix(
+    in srgb,
+    var(--text-warning, var(--color-orange, #f5a97a)) 10%,
+    var(--background-primary)
+  );
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread--warning .ert-layout-spread-spine {
+  background: color-mix(
+    in srgb,
+    var(--text-warning, var(--color-orange, #f5a97a)) 60%,
+    transparent
+  );
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread--warning .ert-layout-spread-label {
+  color: var(--text-warning, var(--color-orange, #f5a97a));
+}
+
 .ert-ui.ert-scope--modal .ert-layout-page {
   --_picto-mono: 'SF Mono', 'Cascadia Mono', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
   --_picto-font-size: 7px;
@@ -728,6 +753,15 @@
   justify-content: flex-start;
   gap: var(--ert-gap-xs);
   padding-top: calc(var(--ert-gap-2xs) + var(--ert-gap-3xs));
+  /* Allow the body to shrink below its intrinsic content size when the page
+     is height-constrained (e.g. BODY pictogram cards with 14 line rows). The
+     footer (.ert-layout-page-footer) has flex-shrink:0 and must always reserve
+     its slot — without min-height:0 the body refuses to shrink, pushing the
+     footer past the page bottom where overflow:hidden on the page clips the
+     folio. overflow:hidden here clips trailing line rows instead of the
+     folio, which is the correct visual trade-off. */
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ert-ui.ert-scope--modal .ert-layout-page-body.is-special {
@@ -736,9 +770,14 @@
 }
 
 .ert-ui.ert-scope--modal .ert-layout-page-line {
+  flex: 0 0 1px;
   height: 1px;
-  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
-  border-radius: 0.5px;
+  min-height: 1px;
+  max-height: 1px;
+  flex-shrink: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--text-muted) 22%, transparent);
 }
 
 .ert-ui.ert-scope--modal .ert-layout-page-line:last-child {
@@ -802,8 +841,11 @@
   flex-shrink: 0;
 }
 
+/* Export-checks panel lives inside the left preset column (alongside the
+   manuscript-preset dropdown), aligning vertically with the Layout column on
+   the right. No grid spanning required. */
 .ert-manuscript-preset-status {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .ert-manuscript-preset-status--hidden {
@@ -1993,6 +2035,12 @@
   color: var(--text-error, #ff5757);
 }
 
+.ert-manuscript-template-warning.ert-warning-warning {
+  background: color-mix(in srgb, var(--text-warning, #f5a97a) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-warning, #f5a97a) 35%, transparent);
+  color: var(--text-normal, #dcddde);
+}
+
 .ert-manuscript-template-warning.ert-warning-info {
   background: var(--ert-alert-success-bg, rgba(109, 220, 207, 0.08));
   border: 1px solid var(--ert-alert-success-border, rgba(109, 220, 207, 0.2));
@@ -2009,6 +2057,46 @@
 .ert-manuscript-template-warning.ert-pdf-output-summary--compact.ert-warning-info {
   background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
   border-color: color-mix(in srgb, var(--text-success) 28%, var(--background-modifier-border));
+}
+
+.ert-manuscript-template-warning.ert-pdf-output-summary--compact.ert-warning-warning {
+  background: color-mix(in srgb, var(--text-warning, #f5a97a) 8%, var(--background-secondary));
+  border-color: color-mix(in srgb, var(--text-warning, #f5a97a) 38%, var(--background-modifier-border));
+}
+
+.ert-manuscript-template-warning.ert-pdf-output-summary--compact.ert-warning-error {
+  background: color-mix(in srgb, var(--text-error, #ff5757) 8%, var(--background-secondary));
+  border-color: color-mix(in srgb, var(--text-error, #ff5757) 38%, var(--background-modifier-border));
+}
+
+/* Compact ready form: single line with no verbose ACCESS / COMPATIBILITY rows.
+   The verbose rows are reserved for warning / error states only. */
+.ert-manuscript-template-warning.ert-pdf-output-summary--ready {
+  align-items: center;
+  padding: var(--ert-pad-xs) var(--ert-pad-sm);
+}
+
+.ert-manuscript-template-warning.ert-pdf-output-summary--ready .ert-warning-icon {
+  margin-top: 0;
+}
+
+.ert-pdf-output-ready-line {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-normal, #dcddde);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* Warning state icon picks up the warning color */
+.ert-manuscript-template-warning.ert-warning-warning .ert-warning-icon {
+  color: var(--text-warning, var(--color-orange, #f5a97a));
+}
+
+/* Error state icon picks up the error color */
+.ert-manuscript-template-warning.ert-warning-error .ert-warning-icon {
+  color: var(--text-error, var(--color-red, #ff5757));
 }
 
 .ert-manuscript-template-warning .ert-warning-icon {
@@ -2066,41 +2154,9 @@
 
 .ert-pdf-output-line {
   line-height: 1.6;
-}
-
-.ert-pdf-output-status-row {
-  display: grid;
-  grid-template-columns: minmax(92px, max-content) minmax(0, 1fr);
-  gap: var(--ert-gap-loose);
-  align-items: start;
-  padding: calc(var(--ert-gap-cozy) / 2) 0;
-}
-
-.ert-pdf-output-status-label {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.45;
-  text-transform: uppercase;
-}
-
-.ert-pdf-output-status-copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-2xs);
-  min-width: 0;
-}
-
-.ert-pdf-output-status-value {
-  color: var(--text-normal);
-  font-weight: 650;
-  line-height: 1.45;
-}
-
-.ert-pdf-output-status-detail {
-  color: var(--text-muted);
-  line-height: 1.45;
+  /* Auto-balance wrapped lines so warning/info messages don't end with a
+     stranded short fragment. Falls back to normal wrap on older browsers. */
+  text-wrap: balance;
 }
 
 /* Technical details toggle */

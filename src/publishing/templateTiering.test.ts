@@ -5,6 +5,7 @@ import { getBundledPandocLayouts } from '../utils/pandocBundledLayouts';
 import {
     BASIC_MANUSCRIPT_LAYOUT_ID,
     CONTEMPORARY_LITERARY_LAYOUT_ID,
+    getLayoutAbbreviation,
     getPandocLayoutKind,
     getPandocLayoutTier,
     resolveTemplateAccess,
@@ -99,6 +100,49 @@ describe('template tiering', () => {
                 code: 'template_access_fallback_to_basic',
             }),
         ]));
+    });
+
+    it('treats designed-origin layouts as Pro regardless of name/id', () => {
+        const designed = layout({
+            id: 'designed-style-my-look',
+            name: 'My Submission Look', // contains 'submission' but origin should win
+            origin: 'designed',
+            bundled: false,
+        });
+        expect(getPandocLayoutTier(designed)).toBe('pro');
+    });
+
+    describe('getLayoutAbbreviation', () => {
+        it('returns the correct two-letter code for each bundled fiction layout', () => {
+            const bundled = getBundledPandocLayouts();
+            const byId = (id: string) => bundled.find(item => item.id === id)!;
+            expect(getLayoutAbbreviation(byId(BASIC_MANUSCRIPT_LAYOUT_ID))).toBe('SM');
+            expect(getLayoutAbbreviation(byId(CONTEMPORARY_LITERARY_LAYOUT_ID))).toBe('CL');
+            expect(getLayoutAbbreviation(byId('bundled-fiction-signature-literary'))).toBe('SL');
+            expect(getLayoutAbbreviation(byId('bundled-fiction-modern-classic'))).toBe('MC');
+        });
+
+        it('returns "DS" for designed-origin layouts', () => {
+            expect(getLayoutAbbreviation(layout({
+                id: 'designed-style-my-look',
+                origin: 'designed',
+                bundled: false,
+            }))).toBe('DS');
+        });
+
+        it('returns "CT" for imported / unknown / undefined layouts', () => {
+            expect(getLayoutAbbreviation(layout({
+                id: 'random-imported-layout',
+                origin: 'imported',
+                bundled: false,
+            }))).toBe('CT');
+            expect(getLayoutAbbreviation(layout({
+                id: 'whatever-custom',
+                bundled: false,
+            }))).toBe('CT');
+            expect(getLayoutAbbreviation(undefined)).toBe('CT');
+            expect(getLayoutAbbreviation(null)).toBe('CT');
+        });
     });
 
     it('keeps the selected Pro template for Pro users', () => {

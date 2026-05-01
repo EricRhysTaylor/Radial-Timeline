@@ -31,7 +31,7 @@ import { ensureReferenceIdTemplateFrontmatter, ensureSceneTemplateFrontmatter } 
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
-import { resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
+import { getLayoutAbbreviation, resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from '../utils/manuscriptSanitize';
 import { getManuscriptLayoutExportBehavior } from '../utils/manuscriptLayoutExport';
 import { getPlotSystem } from '../utils/beatsSystems';
@@ -602,7 +602,8 @@ export class CommandRegistrar {
                         subplotFilter: effectiveSubplot,
                         manuscriptPreset: result.manuscriptPreset,
                         extension,
-                        fileStem: ctx.fileStem
+                        fileStem: ctx.fileStem,
+                        layoutAbbreviation: getLayoutAbbreviation(layout)
                     });
                 const renderedAbsolutePath = `${absoluteOutputFolder}/${renderedFilename}`;
                 const renderedVaultPath = `${outputFolder}/${renderedFilename}`;

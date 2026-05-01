@@ -354,8 +354,10 @@ export class RendererService {
      * Selectively update the year progress ring, target-date tick/marker,
      * and estimated date elements without full re-render.
      */
-    updateProgressAndTicks(containerEl: HTMLElement, currentSceneId?: string | null): boolean {
-        const container = containerEl.children[1] as HTMLElement | undefined ?? containerEl;
+    updateProgressAndTicks(containerEl: HTMLElement | { containerEl?: HTMLElement }, _currentSceneId?: string | null): boolean {
+        const rootEl = containerEl instanceof HTMLElement ? containerEl : containerEl.containerEl;
+        if (!rootEl) return false;
+        const container = (rootEl.querySelector('.radial-timeline-container') as HTMLElement | null) ?? rootEl;
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
 
@@ -365,8 +367,8 @@ export class RendererService {
         if (!Number.isFinite(progressRadius) || progressRadius <= 0) return false;
 
         svg.querySelectorAll('path.progress-ring-fill').forEach(n => n.parentNode?.removeChild(n));
-        svg.querySelectorAll('line.target-date-tick, rect.target-date-marker').forEach(n => n.parentNode?.removeChild(n));
-        svg.querySelectorAll('.rt-estimate-tick-group, line.estimated-date-tick, circle.estimated-date-dot').forEach(n => n.parentNode?.removeChild(n));
+        svg.querySelectorAll('.rt-target-tick-group, line.target-date-tick, rect.target-date-marker, .rt-target-hotspot').forEach(n => n.parentNode?.removeChild(n));
+        svg.querySelectorAll('.rt-estimate-tick-group, line.estimated-date-tick, circle.estimated-date-dot, .rt-estimate-hotspot').forEach(n => n.parentNode?.removeChild(n));
         svg.querySelectorAll('path.progress-ring-base').forEach(n => n.parentNode?.removeChild(n));
 
         const now = new Date();

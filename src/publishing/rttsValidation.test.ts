@@ -15,18 +15,16 @@ describe('RTTS validation', () => {
         ]));
     });
 
-    it('marks $body$-only templates as legacy', () => {
+    it('marks $body$-only templates as legacy without surfacing warnings', () => {
         const result = validateRttsTemplateContent('\\begin{document}\n$body$\n\\end{document}');
 
         expect(result.level).toBe('legacy');
         expect(result.variables.hasBody).toBe(true);
         expect(result.detectedCapabilities).toEqual([]);
-        expect(result.issues).toEqual(expect.arrayContaining([
-            expect.objectContaining({
-                level: 'info',
-                code: 'rtts_legacy_body_fallback',
-            }),
-        ]));
+        // Template-side absences (no $title$, no $author$, no hooks) are not
+        // user-facing problems — they describe template design, not export
+        // blockers. The issues array should contain no warnings.
+        expect(result.issues.filter(issue => issue.level === 'warning')).toEqual([]);
     });
 
     it('marks templates with body, metadata, and declared hooks as compatible', () => {
@@ -49,29 +47,21 @@ describe('RTTS validation', () => {
         expect(result.detectedCapabilities).toContain('structuredBlocks');
     });
 
-    it('warns when $author$ is missing', () => {
-        const result = validateRttsTemplateContent('$title$\n$body$');
+    it('does not warn when $title$ or $author$ are absent — those describe template design, not export blockers', () => {
+        const result = validateRttsTemplateContent('$body$');
 
         expect(result.level).toBe('legacy');
-        expect(result.issues).toEqual(expect.arrayContaining([
-            expect.objectContaining({
-                level: 'warning',
-                code: 'rtts_missing_author',
-            }),
-        ]));
+        expect(result.variables.hasTitle).toBe(false);
+        expect(result.variables.hasAuthor).toBe(false);
+        expect(result.issues.filter(issue => issue.level === 'warning')).toEqual([]);
     });
 
-    it('warns when a declared capability is missing its hook', () => {
+    it('does not warn when a declared capability lacks its hook — those describe template design, not export blockers', () => {
         const result = validateRttsTemplateContent('$title$\n$author$\n$body$', {
             declaredCapabilities: ['frontmatter_dedication'],
         });
 
         expect(result.level).toBe('legacy');
-        expect(result.issues).toEqual(expect.arrayContaining([
-            expect.objectContaining({
-                level: 'warning',
-                code: 'rtts_capability_missing_hook',
-            }),
-        ]));
+        expect(result.issues.filter(issue => issue.level === 'warning')).toEqual([]);
     });
 });

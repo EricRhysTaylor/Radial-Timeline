@@ -21,6 +21,7 @@ export enum ChangeType {
     SEARCH = 'search',                // Search term changed
     MODE = 'mode',                    // View mode changed
     SETTINGS = 'settings',            // Settings changed
+    TARGET_DATES = 'target_dates',    // Progress target ticks changed
     TIME = 'time',                    // Time-based (year progress, month)
     GOSSAMER = 'gossamer',            // Gossamer data updated
     DOMINANT_SUBPLOT = 'dominant_subplot',  // Dominant subplot changed (scene colors only)
@@ -51,6 +52,7 @@ export interface TimelineSnapshot {
     sortByWhen: boolean;
     aiEnabled: boolean;
     targetDate: string | undefined;
+    stageTargetDatesHash: string;
     chronologueDurationCap: string | undefined;
     discontinuityThreshold: string | undefined;
     showBackdropRing: boolean;
@@ -159,6 +161,11 @@ export function createSnapshot(
     const microBackdropHash = settings.chronologueBackdropMicroRings
         ? JSON.stringify(settings.chronologueBackdropMicroRings)
         : '';
+    const stageTargetDatesHash = settings.stageTargetDates
+        ? ['Zero', 'Author', 'House', 'Press']
+            .map(stage => `${stage}:${settings.stageTargetDates?.[stage as keyof NonNullable<RadialTimelineSettings['stageTargetDates']>] ?? ''}`)
+            .join('|')
+        : '';
     
     const now = new Date();
     
@@ -206,6 +213,7 @@ export function createSnapshot(
         sortByWhen: settings.sortByWhenDate ?? false,
         aiEnabled: settings.enableAiSceneAnalysis ?? false,
         targetDate: settings.targetCompletionDate,
+        stageTargetDatesHash,
         chronologueDurationCap: settings.chronologueDurationCapSelection,
         discontinuityThreshold: settings.discontinuityThreshold,
         showBackdropRing: settings.showBackdropRing ?? true,
@@ -266,10 +274,15 @@ export function detectChanges(
         changeTypes.add(ChangeType.MODE);
     }
     
-    // Detect settings changes (excluding dominant subplots - handled separately)
+    // Target-date ticks can be swapped in place without rebuilding the full SVG.
+    if (prev.targetDate !== current.targetDate ||
+        prev.stageTargetDatesHash !== current.stageTargetDatesHash) {
+        changeTypes.add(ChangeType.TARGET_DATES);
+    }
+
+    // Detect settings changes (excluding dominant subplots and target ticks - handled separately)
     if (prev.sortByWhen !== current.sortByWhen || 
         prev.aiEnabled !== current.aiEnabled ||
-        prev.targetDate !== current.targetDate ||
         prev.chronologueDurationCap !== current.chronologueDurationCap ||
         prev.discontinuityThreshold !== current.discontinuityThreshold ||
         prev.showBackdropRing !== current.showBackdropRing ||
@@ -323,6 +336,7 @@ export function detectChanges(
         ChangeType.OPEN_FILES, 
         ChangeType.SEARCH, 
         ChangeType.TIME,
+        ChangeType.TARGET_DATES,
         ChangeType.SYNOPSIS,          // DOM update for synopsis text
         ChangeType.GOSSAMER
     ];
@@ -372,8 +386,10 @@ export function describeChanges(result: ChangeDetectionResult): string {
             case ChangeType.SEARCH: return 'search';
             case ChangeType.MODE: return 'mode';
             case ChangeType.SETTINGS: return 'settings';
+            case ChangeType.TARGET_DATES: return 'target dates';
             case ChangeType.TIME: return 'time';
             case ChangeType.GOSSAMER: return 'gossamer';
+            case ChangeType.DOMINANT_SUBPLOT: return 'dominant subplot';
             case ChangeType.UPDATE_STATUS: return 'plugin update';
             case ChangeType.RECENT_MOVES: return 'recent moves';
             default: return type;

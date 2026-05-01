@@ -14,10 +14,32 @@ function safeRun(cmd) {
   }
 }
 
+function stashListNonEmpty() {
+  try {
+    const out = execSync('git stash list', { stdio: 'pipe' }).toString();
+    return out.trim().length > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
 try {
   // Check if backup is needed (more than 1 hour since last commit)
-  const backupNeeded = !safeRun('node check-backup-time.mjs');
-  
+  let backupNeeded = !safeRun('node check-backup-time.mjs');
+
+  // Auto-backup safety guards. The backup runs `git add -A` and pushes to
+  // origin, so it must never fire when the working tree is in a partial
+  // state or when an external caller (CI, agent, verification script)
+  // explicitly opted out.
+  if (backupNeeded && process.env.SKIP_BACKUP) {
+    console.log('[build] SKIP_BACKUP set — skipping post-build backup.');
+    backupNeeded = false;
+  }
+  if (backupNeeded && stashListNonEmpty()) {
+    console.log('[build] Stash entries exist — skipping post-build backup so partial state is not committed.');
+    backupNeeded = false;
+  }
+
   // Run the actual build steps
   console.log('\n[build] Running build steps...\n');
   run('node show-scripts.mjs');

@@ -194,6 +194,14 @@ export interface ExportFilenameOptions {
     extension: string;
     /** Book title-derived stem used for manuscript PDF naming. */
     fileStem?: string;
+    /**
+     * Two-letter layout abbreviation appended in square brackets to the PDF
+     * filename so the template that produced the file is visible at a glance
+     * (e.g. "[CL]" for Contemporary Literary, "[DS]" for designed styles).
+     * See `getLayoutAbbreviation` in src/publishing/templateTiering.ts.
+     * Only applied to manuscript PDF exports.
+     */
+    layoutAbbreviation?: string;
 }
 
 /**
@@ -218,7 +226,10 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
         const prefix = options.fileStem
             ? (isDefault ? 'Manuscript' : stemToReadable(options.fileStem))
             : 'Manuscript';
-        return `${prefix} PDF ${timestamp}.${options.extension}`;
+        const abbrev = options.layoutAbbreviation && /^[A-Z]{2}$/.test(options.layoutAbbreviation)
+            ? ` [${options.layoutAbbreviation}]`
+            : '';
+        return `${prefix} PDF ${timestamp}${abbrev}.${options.extension}`;
     }
     
     if (options.exportType === 'outline') {

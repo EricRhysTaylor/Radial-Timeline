@@ -654,10 +654,10 @@ export class RadialTimelineView extends ItemView {
                         updated = true;
                     }
                     
-                    // Handle time changes (year progress ring) using selective update
-                    if (changeResult.changeTypes.has(ChangeType.TIME)) {
-                        // this.rendererService.updateProgressAndTicks(this);
-                        updated = true;
+                    // Handle time and progress target-date changes using selective update
+                    if (changeResult.changeTypes.has(ChangeType.TIME) ||
+                        changeResult.changeTypes.has(ChangeType.TARGET_DATES)) {
+                        updated = this.rendererService.updateProgressAndTicks(container) || updated;
                     }
                     
                     // Handle synopsis text changes

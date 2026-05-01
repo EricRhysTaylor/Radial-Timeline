@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TFile, Vault } from 'obsidian';
 import { assembleManuscript } from './manuscript';
+import { getManuscriptLayoutExportBehavior } from './manuscriptLayoutExport';
 
 function makeFile(path: string, basename: string): TFile {
     return { path, basename } as TFile;
@@ -265,6 +266,76 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('First body.');
         expect(assembled.text).toContain('Second body.');
         expect(assembled.text).toContain('Third body.');
+    });
+
+    it('drops chapter markers and never emits \\rtPart for Signature Literary, even when scene rows carry chapter fields and act metadata', async () => {
+        // Reproduces the user-reported leak: exporting Signature Literary
+        // with chapter-field markers + act assignments produced a phantom
+        // Part-Roman "I" and "Chapter 1" stack on the first scene page. The
+        // export pipeline must (a) ask the layout-behavior table for
+        // suppression flags, then (b) drop chapter markers BEFORE handing
+        // them to assembleManuscript, and (c) never invoke the
+        // Modern-Classic structure path that would emit \rtPart{...}.
+        const layoutBehavior = getManuscriptLayoutExportBehavior({
+            id: 'bundled-fiction-signature-literary',
+            name: 'Signature Literary',
+            path: 'rt_signature_literary.tex',
+        });
+        expect(layoutBehavior.suppressChapterMarkers).toBe(true);
+        expect(layoutBehavior.suppressPartMarkers).toBe(true);
+
+        const scene1 = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const scene2 = makeFile('Scenes/2 Midpoint.md', '2 Midpoint');
+        const vault = makeVault({
+            [scene1.path]: '---\nClass: Scene\nAct: 1\n---\n\nFirst body.',
+            [scene2.path]: '---\nClass: Scene\nAct: 2\n---\n\nSecond body.'
+        });
+
+        // Mirror CommandRegistrar's wiring: when a layout suppresses chapter
+        // markers, the registrar passes an empty chapter-marker map to
+        // assembleManuscript. Signature Literary does not opt into
+        // usesModernClassicStructure so modernClassicStructure stays
+        // undefined here (no \rtPart emission path).
+        const inputChapterMarkers = layoutBehavior.suppressChapterMarkers
+            ? {}
+            : {
+                [scene1.path]: [{
+                    sourcePath: 'Chapters/Chapter 1.md',
+                    sourceType: 'Scene' as const,
+                    title: 'Chapter 1',
+                    resolvedScenePath: scene1.path,
+                    resolvedTimelinePosition: 1,
+                }]
+            };
+
+        const assembled = await assembleManuscript(
+            [scene1, scene2],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: layoutBehavior.defaultSceneHeadingMode ?? 'scene-number-title',
+                sceneHeadingRenderMode: layoutBehavior.sceneHeadingRenderMode,
+                chapterMarkersByScenePath: inputChapterMarkers,
+            }
+        );
+
+        // No phantom Part page macro and no auto-Roman "I" trigger.
+        expect(assembled.text).not.toContain('\\rtPart');
+        expect(assembled.text).not.toContain('\\part{');
+        // No chapter heading text - markdown chapter headings would be
+        // promoted to \chapter{} (or worse, \part{}) by Pandoc under a book
+        // class, producing the user-reported "Chapter 1" stack.
+        expect(assembled.text).not.toContain('# Chapter 1');
+        expect(assembled.text).not.toContain('\\chapter{');
+        // Scene-only typography survives.
+        expect(assembled.text).toContain('\\section*');
+        expect(assembled.text).toContain('First body.');
+        expect(assembled.text).toContain('Second body.');
     });
 
     it('suppresses headers and footers across matter runs when enabled', async () => {

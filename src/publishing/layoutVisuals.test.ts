@@ -5,11 +5,16 @@ import {
     ALL_FICTION_VARIANTS,
     BUILTIN_FICTION_VARIANTS,
     LAYOUT_PREVIEW_BODY_LINES,
+    applySpreadValidation,
     getFictionVariantForLayout,
     getLayoutFeatures,
     getLayoutPictogramRows,
+    getPictogramRowsFromSpec,
     type FictionLayoutVariant,
+    type LayoutPictogramRows,
+    type PictogramSpread,
 } from './layoutVisuals';
+import { BUNDLED_FICTION_SPECS } from './bundledStyleSpecs';
 
 function layout(overrides: Partial<PandocLayoutTemplate>): PandocLayoutTemplate {
     return {
@@ -52,6 +57,61 @@ describe('getFictionVariantForLayout', () => {
 
     it('falls back to generic for unknown templates', () => {
         expect(getFictionVariantForLayout(layout({ id: 'foo', name: 'Just A Layout', path: 'foo.tex' }))).toBe('generic');
+    });
+
+    describe('designed-origin layouts use archetype mapping', () => {
+        // Build a minimal DesignedStyleSpec inline rather than depending on its full default surface.
+        const baseSpec = {
+            specVersion: 1 as const,
+            paperSize: 'us-trade-6x9' as const,
+            margins: { topIn: 1, bottomIn: 1, leftIn: 1, rightIn: 1 },
+            body: { font: 'sorts-mill-goudy' as const, fontFallbackChain: [], sizePt: 11, lineSpacing: 1.5 },
+            runningHeader: { mode: 'centered-title' as const },
+            folio: { position: 'bottom-center' as const },
+            parts: { mode: 'off' as const, pageBreak: false, epigraph: false },
+            chapters: { mode: 'off' as const, pageBreak: false, resetSceneCounter: false },
+            scene: { opener: 'inline-separator' as const, headingMode: 'scene-number' as const, suppressHeaderFooterOnOpener: true },
+            epigraph: { enabled: false, italic: false, attributionStyle: 'plain' as const },
+        };
+
+        // Heuristic-misleading id/name/path so we can prove archetype wins.
+        const misleadingPath = { id: 'foo', name: 'Modern Classic Look', path: 'rt_modern_classic.tex' };
+
+        it('archetype submission → classic (overrides id/name heuristic)', () => {
+            const result = getFictionVariantForLayout(layout({
+                ...misleadingPath,
+                origin: 'designed',
+                designedSpec: { ...baseSpec, archetype: 'submission' as const },
+            }));
+            expect(result).toBe('classic');
+        });
+
+        it('archetype reading-draft → contemporary', () => {
+            const result = getFictionVariantForLayout(layout({
+                id: 'd1', name: 'Whatever',
+                origin: 'designed',
+                designedSpec: { ...baseSpec, archetype: 'reading-draft' as const },
+            }));
+            expect(result).toBe('contemporary');
+        });
+
+        it('archetype literary → signature', () => {
+            const result = getFictionVariantForLayout(layout({
+                id: 'd2', name: 'Whatever',
+                origin: 'designed',
+                designedSpec: { ...baseSpec, archetype: 'literary' as const },
+            }));
+            expect(result).toBe('signature');
+        });
+
+        it('archetype structured → modernClassic', () => {
+            const result = getFictionVariantForLayout(layout({
+                id: 'd3', name: 'Whatever',
+                origin: 'designed',
+                designedSpec: { ...baseSpec, archetype: 'structured' as const },
+            }));
+            expect(result).toBe('modernClassic');
+        });
     });
 });
 
@@ -102,6 +162,91 @@ describe('getLayoutPictogramRows', () => {
     });
 });
 
+describe('applySpreadValidation', () => {
+    function findSpread(rows: LayoutPictogramRows, label: string): PictogramSpread | undefined {
+        return rows.special.find(spread => spread.label === label);
+    }
+
+    it('stamps a warning on the PART spread when actCount < 2', () => {
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+            actCount: 1,
+            chapterFieldCount: 5,
+        });
+        const part = findSpread(rows, 'PART');
+        expect(part?.warningLevel).toBe('warning');
+        expect(part?.warningTooltip).toMatch(/fewer than two Acts/);
+    });
+
+    it('does NOT stamp the PART spread when actCount >= 2', () => {
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+            actCount: 3,
+            chapterFieldCount: 5,
+        });
+        const part = findSpread(rows, 'PART');
+        expect(part?.warningLevel).toBeUndefined();
+        expect(part?.warningTooltip).toBeUndefined();
+    });
+
+    it('stamps a warning on the CHAPTER spread when chapterFieldCount === 0', () => {
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+            actCount: 3,
+            chapterFieldCount: 0,
+        });
+        const chapter = findSpread(rows, 'CHAPTER');
+        expect(chapter?.warningLevel).toBe('warning');
+        expect(chapter?.warningTooltip).toMatch(/no scenes have a Chapter field/);
+    });
+
+    it('does NOT stamp the CHAPTER spread when chapterFieldCount >= 1', () => {
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+            actCount: 3,
+            chapterFieldCount: 1,
+        });
+        const chapter = findSpread(rows, 'CHAPTER');
+        expect(chapter?.warningLevel).toBeUndefined();
+    });
+
+    it('never stamps a warning on SCENE / BODY / sceneMode-bearing spreads', () => {
+        const ctx = { actCount: 0, chapterFieldCount: 0 };
+
+        // Classic has top-row SCENE + BODY only — no special row entries.
+        const classic = applySpreadValidation(getLayoutPictogramRows('classic'), ctx);
+        expect(classic.scene?.warningLevel).toBeUndefined();
+        expect(classic.body.warningLevel).toBeUndefined();
+
+        // Signature's special spreads all carry a sceneMode — never alerted.
+        const signature = applySpreadValidation(getLayoutPictogramRows('signature'), ctx);
+        for (const spread of signature.special) {
+            expect(spread.sceneMode).toBeTruthy();
+            expect(spread.warningLevel).toBeUndefined();
+        }
+        expect(signature.body.warningLevel).toBeUndefined();
+
+        // Modern Classic has BODY in top row — never alerted regardless of ctx.
+        const modern = applySpreadValidation(getLayoutPictogramRows('modernClassic'), ctx);
+        expect(modern.scene?.warningLevel).toBeUndefined();
+        expect(modern.body.warningLevel).toBeUndefined();
+    });
+
+    it('returns a NEW rows object and does not mutate the input', () => {
+        const original = getLayoutPictogramRows('modernClassic');
+        const originalSpecialRef = original.special;
+        const originalPartRef = original.special.find(s => s.label === 'PART');
+        expect(originalPartRef?.warningLevel).toBeUndefined();
+
+        const next = applySpreadValidation(original, { actCount: 0, chapterFieldCount: 0 });
+
+        // New top-level rows object.
+        expect(next).not.toBe(original);
+        // New special array (mapped).
+        expect(next.special).not.toBe(originalSpecialRef);
+        // Input PART spread unchanged.
+        expect(originalPartRef?.warningLevel).toBeUndefined();
+        // Output PART spread carries the warning.
+        expect(next.special.find(s => s.label === 'PART')?.warningLevel).toBe('warning');
+    });
+});
+
 describe('shared variant resolution agrees across consumers', () => {
     it('every bundled fiction layout resolves to a known variant', () => {
         const bundled = getBundledPandocLayouts();
@@ -113,6 +258,111 @@ describe('shared variant resolution agrees across consumers', () => {
             // Pictogram + features should both have an answer for the resolved variant.
             expect(getLayoutPictogramRows(variant).body).toBeDefined();
             expect(getLayoutFeatures(variant).length).toBeGreaterThan(0);
+        }
+    });
+});
+
+describe('getPictogramRowsFromSpec — spec-driven pictograms', () => {
+    it('Standard Manuscript spec → classic-shaped rows', () => {
+        const rows = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-classic-manuscript']);
+        // Centered title header on both pages.
+        expect(rows.body.leftPage?.headerCenter).toBe('TITLE');
+        expect(rows.body.rightPage?.headerCenter).toBe('TITLE');
+        // Bottom-center folio.
+        expect(rows.body.leftPage?.folioBottom).toBe('12');
+        expect(rows.body.rightPage?.folioBottom).toBe('13');
+        // Scene opener spread present, suppresses chrome.
+        expect(rows.scene).not.toBeNull();
+        expect(rows.scene?.rightPage?.suppressHeader).toBe(true);
+        expect(rows.scene?.rightPage?.suppressFooter).toBe(true);
+        expect(rows.scene?.rightPage?.specialText).toBe('3');
+        // No PART, no CHAPTER, no scene-mode variants.
+        expect(rows.special).toEqual([]);
+    });
+
+    it('Contemporary Literary spec → CHAPTER spread with bodyLines === 0', () => {
+        const rows = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-contemporary-literary']);
+        // Sans-styled split header (left=title, right=scene-context).
+        expect(rows.body.leftPage?.headerLeft).toBe('title');
+        expect(rows.body.rightPage?.headerRight).toBe('scene');
+        // Bottom-center folio.
+        expect(rows.body.leftPage?.folioBottom).toBe('12');
+        expect(rows.body.rightPage?.folioBottom).toBe('13');
+        // CHAPTER spread is chapter-only-page (the previously divergent case).
+        const chapter = rows.special.find(s => s.label === 'CHAPTER');
+        expect(chapter).toBeDefined();
+        const page = chapter!.rightPage!;
+        expect(page.bodyLines).toBe(0);
+        expect(page.suppressHeader).toBe(true);
+        expect(page.suppressFooter).toBe(true);
+        expect(page.specialText).toBe('Chapter');
+    });
+
+    it('Signature Literary spec → three scene-mode opener spreads, no PART/CHAPTER', () => {
+        const rows = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-signature-literary']);
+        // Split-author headers.
+        expect(rows.body.leftPage?.headerCenter).toMatch(/\|/);
+        expect(rows.body.rightPage?.headerCenter).toMatch(/\|/);
+        // No bottom folio — folio lives in header.
+        expect(rows.body.leftPage?.folioBottom).toBeUndefined();
+        expect(rows.body.rightPage?.folioBottom).toBeUndefined();
+        // No top-row scene spread; the three scene-mode spreads live in special.
+        expect(rows.scene).toBeNull();
+        const sceneModes = rows.special.map(s => s.sceneMode).filter(Boolean);
+        expect(sceneModes).toEqual(['scene-number', 'scene-number-title', 'title-only']);
+    });
+
+    it('Modern Classic spec → PART (with epigraph), CHAPTER, and roman-rule scene', () => {
+        const rows = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-modern-classic']);
+        // Split-author headers; no bottom folio.
+        expect(rows.body.leftPage?.headerCenter).toMatch(/\|/);
+        expect(rows.body.rightPage?.headerCenter).toMatch(/\|/);
+        // Top-row scene spread is the lowercase Roman rule.
+        expect(rows.scene?.rightPage?.separatorText).toBe('ii.');
+        // PART spread with an epigraph.
+        const part = rows.special.find(s => s.label === 'PART');
+        expect(part).toBeDefined();
+        expect(part!.rightPage?.specialText).toBe('I');
+        expect(part!.rightPage?.epigraphText).toBe('a quote');
+        // CHAPTER spread with subtext (numbered-titled).
+        const chapter = rows.special.find(s => s.label === 'CHAPTER');
+        expect(chapter).toBeDefined();
+        expect(chapter!.rightPage?.specialText).toBe('Chapter 1');
+        expect(chapter!.rightPage?.specialSubtext).toBe('Boy with a Skull');
+    });
+
+    it('getLayoutPictogramRows uses the spec when a bundled layout is supplied', () => {
+        const bundled = getBundledPandocLayouts();
+        const contemporary = bundled.find(l => l.id === 'bundled-fiction-contemporary-literary')!;
+        const rows = getLayoutPictogramRows(getFictionVariantForLayout(contemporary), contemporary);
+        const chapter = rows.special.find(s => s.label === 'CHAPTER');
+        expect(chapter?.rightPage?.bodyLines).toBe(0);
+    });
+
+    // Regression: scene opener pages with specialText + bodyLines > 0 must carry
+    // both fields on the same PictogramPageSide. The DOM renderer uses this to
+    // place body lines inside the special-text body div (not a second body div
+    // that would inherit padding and visually double the first line).
+    it('scene opener pages combine specialText and bodyLines on the same page side', () => {
+        // Standard Manuscript: dedicated-page scene opener with body preview lines.
+        const classic = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-classic-manuscript']);
+        const classicScene = classic.scene?.rightPage;
+        expect(classicScene?.specialText).toBe('3');
+        expect(classicScene?.bodyLines).toBe(5);
+
+        // Contemporary Literary: same shape.
+        const contemp = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-contemporary-literary']);
+        const contempScene = contemp.scene?.rightPage;
+        expect(contempScene?.specialText).toBe('3');
+        expect(contempScene?.bodyLines).toBe(5);
+
+        // Signature Literary: scene-mode opener spreads also combine special + body.
+        const sig = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-signature-literary']);
+        for (const spread of sig.special) {
+            if (spread.sceneMode) {
+                expect(spread.rightPage?.specialText).toBeTruthy();
+                expect(spread.rightPage?.bodyLines).toBeGreaterThan(0);
+            }
         }
     });
 });

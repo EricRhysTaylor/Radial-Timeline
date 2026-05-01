@@ -1,5 +1,6 @@
 import type { InquiryScope, InquiryZone } from '../inquiry/state';
 import type { AiSettingsV1, AIRoleTemplate } from '../ai/types';
+import type { DesignedStyleSpec } from '../publishing/designedStyle';
 
 export type AiContextTemplate = AIRoleTemplate;
 
@@ -31,7 +32,7 @@ export type UsageContext = 'novel' | 'screenplay' | 'podcast';
 export type OutputIntent = 'print-book' | 'submission-manuscript' | 'screenplay-pdf' | 'podcast-script' | 'epub' | 'web';
 export type TemplateSource = 'bundled' | 'vault' | 'imported';
 export type ValidationLevel = 'info' | 'warning' | 'error';
-export type ProfileOrigin = 'built-in' | 'duplicated' | 'imported' | 'legacy-custom';
+export type ProfileOrigin = 'built-in' | 'duplicated' | 'imported' | 'legacy-custom' | 'designed';
 export type HealthState = 'ready' | 'warning' | 'blocked';
 
 export interface ManuscriptExportCleanupOptions {
@@ -674,6 +675,11 @@ export interface PandocLayoutTemplate {
     usesModernClassicStructure?: boolean; // emit rtPart/rtSceneSep markers and chapter headings in PDF compilation
     hasEpigraphs?: boolean;
     hasSceneOpenerHeadingOptions?: boolean;
+    /**
+     * Spec for layouts authored via the Designed Style wizard (origin === 'designed').
+     * The .tex file at `path` is regenerated from this spec on save; this field is the source of truth.
+     */
+    designedSpec?: DesignedStyleSpec;
 }
 
 export interface RadialTimelineSettings {

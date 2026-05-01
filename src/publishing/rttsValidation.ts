@@ -98,6 +98,11 @@ export function validateRttsTemplateContent(
         hooks,
     };
 
+    // Only template-side issues that BLOCK export are reported here.
+    // Anything in the form "the template doesn't have X" is left out — that
+    // describes template capability, not an actionable problem for the user.
+    // Book-meta gaps the template *needs* are surfaced by
+    // PublishingValidationService (the book-details and matter checklists).
     if (!variables.hasBody) {
         pushIssue(
             issues,
@@ -107,60 +112,7 @@ export function validateRttsTemplateContent(
         );
     }
 
-    if (variables.hasBody && !variables.hasTitle) {
-        pushIssue(
-            issues,
-            'warning',
-            'rtts_missing_title',
-            'Template does not expose $title$; the book title may not appear in template-controlled areas.'
-        );
-    }
-
-    if (variables.hasBody && !variables.hasAuthor) {
-        pushIssue(
-            issues,
-            'warning',
-            'rtts_missing_author',
-            'Template does not expose $author$. The PDF may omit the author from title pages or headers.'
-        );
-    }
-
-    for (const capability of declaredCapabilities) {
-        const requiredHooks = CAPABILITY_HOOKS[capability] || [];
-        if (requiredHooks.length === 0) continue;
-        const missingHooks = requiredHooks.filter(hook => !variables.hooks[hook]);
-        if (missingHooks.length > 0) {
-            pushIssue(
-                issues,
-                'warning',
-                'rtts_capability_missing_hook',
-                `Declared RTTS capability "${capability}" is not backed by the template content.`,
-                `Missing hook(s): ${missingHooks.join(', ')}`
-            );
-        }
-    }
-
     const hasAnyHook = Object.values(variables.hooks).some(Boolean);
-    if (variables.hasBody && !hasAnyHook) {
-        pushIssue(
-            issues,
-            'info',
-            'rtts_legacy_body_fallback',
-            'Legacy template mode. All manuscript content will be sent through $body$.'
-        );
-    } else {
-        for (const hook of RTTS_STRUCTURED_HOOKS) {
-            if (!variables.hooks[hook]) {
-                pushIssue(
-                    issues,
-                    'info',
-                    'rtts_optional_hook_absent',
-                    `Optional RTTS hook "$${hook}$" is not present.`,
-                    'Structured matter hooks are optional in this version.'
-                );
-            }
-        }
-    }
 
     const requiredHooks = getRequiredHooksForCapabilities(declaredCapabilities);
     const declaredHooksPresent = requiredHooks.every(hook => variables.hooks[hook]);

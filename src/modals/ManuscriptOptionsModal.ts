@@ -22,6 +22,14 @@ import {
     type ModalExportProfile,
 } from '../utils/exportProfileModel';
 import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
+import {
+    applySpreadValidation,
+    getFictionVariantForLayout,
+    getLayoutPictogramRows,
+    renderLayoutPictograms,
+    type FictionLayoutVariant,
+    type SpreadValidationContext,
+} from '../publishing/layoutVisuals';
 import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
 import type {
     BookPublishingPreferences,
@@ -35,354 +43,21 @@ import type {
 
 const OPEN_SCENES_FILTER = '__open_scenes__';
 
-type ModalLayoutVariant = 'classic' | 'modernClassic' | 'signature' | 'contemporary' | 'generic';
-type ModalLayoutFeatureRow = { label: string; value: string };
-
-type ModalPictogramPageSide = {
-    headerLeft?: string;
-    headerCenter?: string;
-    headerRight?: string;
-    folioBottom?: string;
-    bodyLines: number;
-    suppressHeader?: boolean;
-    suppressFooter?: boolean;
-    specialText?: string;
-    specialSubtext?: string;
-    specialRule?: boolean;
-    epigraphText?: string;
-    epigraphAttribution?: string;
-    separatorText?: string;
-    linesBeforeSeparator?: number;
-    linesAfterSeparator?: number;
-};
-
-type ModalPictogramSpread = {
-    label: string;
-    leftPage: ModalPictogramPageSide | null;
-    rightPage: ModalPictogramPageSide | null;
-    sceneMode?: ManuscriptSceneHeadingMode;
-};
-
-type ModalLayoutPictogramRows = {
-    scene: ModalPictogramSpread | null;
-    body: ModalPictogramSpread;
-    special: ModalPictogramSpread[];
-};
-
-const MODAL_BODY_PREVIEW_LINES = 14;
-
-function getModalFictionVariant(layout?: PandocLayoutTemplate): ModalLayoutVariant {
-    if (!layout) return 'generic';
-    const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
-    if (source.includes('modern classic') || source.includes('modern-classic') || source.includes('modern_classic') || source.includes('rt_modern_classic') || layout.id === 'bundled-fiction-modern-classic') return 'modernClassic';
-    if (source.includes('classic') || source.includes('traditional')) return 'classic';
-    if (source.includes('contemporary')) return 'contemporary';
-    if (source.includes('signature') || source.includes('signature_literary_rt') || source.includes('rt_signature_literary') || layout.id === 'bundled-fiction-signature-literary' || layout.id === 'bundled-novel') return 'signature';
-    return 'generic';
-}
-
-function getModalLayoutFeatures(variant: ModalLayoutVariant): ModalLayoutFeatureRow[] {
-    switch (variant) {
-        case 'classic':
-            return [
-                { label: 'Headers', value: 'Title centered (both pages)' },
-                { label: 'Folios', value: 'Bottom center' },
-                { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
-                { label: 'Spacing', value: '1.5 lines' },
-                { label: 'Scenes', value: 'New page — centered scene number only' },
-            ];
-        case 'modernClassic':
-            return [
-                { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
-                { label: 'Folios', value: 'In headers' },
-                { label: 'Font', value: 'Latin Modern (serif)' },
-                { label: 'Spacing', value: '1.18×' },
-                { label: 'Parts', value: 'Act opener — Roman numeral with optional epigraph' },
-                { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
-                { label: 'Scenes', value: 'Lowercase Roman numeral (i. ii.) with short rule' },
-            ];
-        case 'signature':
-            return [
-                { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
-                { label: 'Folios', value: 'Header-only, letter-spaced' },
-                { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
-                { label: 'Spacing', value: '1.5 lines' },
-                { label: 'Scenes', value: 'Opener page — 30pt bold, suppresses headers' },
-                { label: 'Scene #', value: 'Number only' },
-                { label: 'Scene #+T', value: 'Number + title (in parentheses)' },
-                { label: 'Scene T', value: 'Title only' },
-            ];
-        case 'contemporary':
-            return [
-                { label: 'Headers', value: 'Book title (left) · Scene context (right), sans' },
-                { label: 'Folios', value: 'Bottom center (serif)' },
-                { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
-                { label: 'Spacing', value: '1.5 lines' },
-                { label: 'Scenes', value: 'New page — centered scene number only' },
-                { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
-            ];
-        default:
-            return [];
-    }
-}
-
-function getModalLayoutPictogramRows(variant: ModalLayoutVariant): ModalLayoutPictogramRows {
-    switch (variant) {
-        case 'classic':
-            return {
-                scene: {
-                    label: 'SCENE',
-                    leftPage: null,
-                    rightPage: {
-                        bodyLines: 5,
-                        suppressHeader: true,
-                        suppressFooter: true,
-                        specialText: '3',
-                    },
-                },
-                body: {
-                    label: 'BODY',
-                    leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                    rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                },
-                special: [],
-            };
-        case 'modernClassic':
-            return {
-                scene: {
-                    label: 'SCENE',
-                    leftPage: null,
-                    rightPage: {
-                        bodyLines: 0,
-                        separatorText: 'ii.',
-                        linesBeforeSeparator: 0,
-                        linesAfterSeparator: 5,
-                    },
-                },
-                body: {
-                    label: 'BODY',
-                    leftPage: { headerCenter: '12 | AUTH', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                    rightPage: { headerCenter: 'TITLE | 13', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                },
-                special: [
-                    {
-                        label: 'PART',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 0,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'I',
-                            specialRule: true,
-                            epigraphText: 'a quote',
-                            epigraphAttribution: '—J. Name',
-                        },
-                    },
-                    {
-                        label: 'CHAPTER',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 0,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'Chapter 1',
-                            specialSubtext: 'Boy with a Skull',
-                        },
-                    },
-                ],
-            };
-        case 'signature':
-            return {
-                scene: null,
-                body: {
-                    label: 'BODY',
-                    leftPage: { headerCenter: '12 | AUTH', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                    rightPage: { headerCenter: 'TITLE | 13', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                },
-                special: [
-                    {
-                        label: 'SCENE #',
-                        sceneMode: 'scene-number',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 4,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: '3',
-                        },
-                    },
-                    {
-                        label: '#+TITLE',
-                        sceneMode: 'scene-number-title',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 4,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: '3',
-                            specialSubtext: '(The Escape)',
-                        },
-                    },
-                    {
-                        label: 'TITLE',
-                        sceneMode: 'title-only',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 4,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'The Escape',
-                        },
-                    },
-                ],
-            };
-        case 'contemporary':
-            return {
-                scene: {
-                    label: 'SCENE',
-                    leftPage: null,
-                    rightPage: {
-                        bodyLines: 5,
-                        suppressHeader: true,
-                        suppressFooter: true,
-                        specialText: '3',
-                    },
-                },
-                body: {
-                    label: 'BODY',
-                    leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                    rightPage: { headerRight: 'scene', folioBottom: '13', bodyLines: MODAL_BODY_PREVIEW_LINES },
-                },
-                special: [
-                    {
-                        label: 'CHAPTER',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 5,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'Chapter',
-                        },
-                    },
-                ],
-            };
-        default:
-            return {
-                scene: null,
-                body: {
-                    label: '',
-                    leftPage: { bodyLines: MODAL_BODY_PREVIEW_LINES },
-                    rightPage: { bodyLines: MODAL_BODY_PREVIEW_LINES },
-                },
-                special: [],
-            };
-    }
-}
-
-function renderModalLayoutPage(parent: HTMLElement, side: ModalPictogramPageSide, sideClass: string): void {
-    const page = parent.createDiv({ cls: `ert-layout-page ${sideClass}` });
-    const hdr = page.createDiv({ cls: 'ert-layout-page-header' });
-    if (side.suppressHeader) hdr.addClass('is-suppressed');
-    if (side.headerCenter) {
-        hdr.addClass('is-centered');
-        hdr.createSpan({ cls: 'ert-layout-page-hdr-center', text: side.headerCenter });
-    } else {
-        if (side.headerLeft) hdr.createSpan({ cls: 'ert-layout-page-hdr-left', text: side.headerLeft });
-        if (side.headerRight) hdr.createSpan({ cls: 'ert-layout-page-hdr-right', text: side.headerRight });
-    }
-
-    const body = page.createDiv({ cls: 'ert-layout-page-body' });
-    if (side.separatorText != null) {
-        for (let i = 0; i < (side.linesBeforeSeparator ?? 3); i++) {
-            body.createDiv({ cls: 'ert-layout-page-line' });
-        }
-        const sep = body.createDiv({ cls: 'ert-layout-page-separator' });
-        sep.createSpan({ cls: 'ert-layout-page-separator-text', text: side.separatorText });
-        sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
-        for (let i = 0; i < (side.linesAfterSeparator ?? 3); i++) {
-            body.createDiv({ cls: 'ert-layout-page-line' });
-        }
-    } else if (side.specialText) {
-        body.addClass('is-special');
-        body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
-        if (side.specialRule) {
-            body.createDiv({ cls: 'ert-layout-page-separator-rule' });
-        }
-        if (side.specialSubtext) {
-            body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
-        }
-        if (side.epigraphText) {
-            body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
-        }
-        if (side.epigraphAttribution) {
-            body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
-        }
-        if (side.bodyLines > 0) {
-            const bodyBelow = page.createDiv({ cls: 'ert-layout-page-body' });
-            bodyBelow.style.flex = '0 0 auto';
-            for (let i = 0; i < side.bodyLines; i++) {
-                bodyBelow.createDiv({ cls: 'ert-layout-page-line' });
-            }
-        }
-    } else {
-        for (let i = 0; i < side.bodyLines; i++) {
-            body.createDiv({ cls: 'ert-layout-page-line' });
-        }
-    }
-
-    const ftr = page.createDiv({ cls: 'ert-layout-page-footer' });
-    if (side.suppressFooter) ftr.addClass('is-suppressed');
-    if (side.folioBottom) {
-        ftr.createSpan({ cls: 'ert-layout-page-folio', text: side.folioBottom });
-    }
-}
-
-function renderModalLayoutSpread(parent: HTMLElement, spread: ModalPictogramSpread): HTMLElement {
-    const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
-    const pagesEl = spreadEl.createDiv({ cls: 'ert-layout-spread-pages' });
-
-    if (spread.leftPage && spread.rightPage) {
-        renderModalLayoutPage(pagesEl, spread.leftPage, 'is-left');
-        pagesEl.createDiv({ cls: 'ert-layout-spread-spine' });
-        renderModalLayoutPage(pagesEl, spread.rightPage, 'is-right');
-    } else if (spread.rightPage) {
-        renderModalLayoutPage(pagesEl, spread.rightPage, 'is-single');
-    } else if (spread.leftPage) {
-        renderModalLayoutPage(pagesEl, spread.leftPage, 'is-single');
-    }
-
-    if (spread.label) {
-        spreadEl.createSpan({ cls: 'ert-layout-spread-label', text: spread.label });
-    }
-    return spreadEl;
-}
-
-function renderModalLayoutPreview(parent: HTMLElement, variant: ModalLayoutVariant, activeSceneMode?: ManuscriptSceneHeadingMode): void {
-    const visual = parent.createDiv({ cls: 'ert-layout-visual' });
-    const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
-    const featureCol = cols.createDiv({ cls: 'ert-layout-visual-features' });
-    for (const feature of getModalLayoutFeatures(variant)) {
-        const row = featureCol.createDiv({ cls: 'ert-layout-feature-row' });
-        row.createSpan({ cls: 'ert-layout-feature-label', text: feature.label });
-        row.createSpan({ cls: 'ert-layout-feature-value', text: feature.value });
-    }
-
-    const rows = getModalLayoutPictogramRows(variant);
-    const pictoCol = cols.createDiv({ cls: 'ert-layout-visual-pictograms' });
-    const primaryRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
-    if (rows.scene) renderModalLayoutSpread(primaryRow, rows.scene);
-    renderModalLayoutSpread(primaryRow, rows.body);
-
-    const hasSceneModes = rows.special.some(spread => spread.sceneMode);
-    if (rows.special.length > 0) {
-        const specialRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
-        for (const spread of rows.special) {
-            const spreadEl = renderModalLayoutSpread(specialRow, spread);
-            if (hasSceneModes && spread.sceneMode && activeSceneMode) {
-                spreadEl.addClass(spread.sceneMode === activeSceneMode ? 'is-scene-active' : 'is-scene-dimmed');
-            }
-        }
-    }
+// Layout variant detection, pictogram data, and DOM rendering live in
+// src/publishing/layoutVisuals so the settings panel and this modal stay
+// in sync. The thin renderModalLayoutPreview wrapper below adds the
+// modal-only `ert-layout-visual--cards-only` modifier.
+function renderModalLayoutPreview(
+    parent: HTMLElement,
+    variant: FictionLayoutVariant,
+    activeSceneMode?: ManuscriptSceneHeadingMode,
+    ctx?: SpreadValidationContext,
+    layout?: PandocLayoutTemplate,
+): void {
+    const visual = parent.createDiv({ cls: 'ert-layout-visual ert-layout-visual--cards-only' });
+    const baseRows = getLayoutPictogramRows(variant, layout);
+    const rows = ctx ? applySpreadValidation(baseRows, ctx) : baseRows;
+    renderLayoutPictograms(visual, rows, activeSceneMode);
 }
 
 export interface ManuscriptModalResult {
@@ -544,6 +219,8 @@ export class ManuscriptOptionsModal extends Modal {
     private sceneWhenDates: (string | null)[] = [];
     private sceneNumbers: number[] = [];
     private sceneWordCounts: (number | null)[] = [];
+    private sceneActs: (number | null)[] = [];
+    private chapterMarkersByScenePath: Record<string, unknown[]> = {};
     private totalScenes = 0;
     private rangeStart = 1;
     private rangeEnd = 1;
@@ -856,8 +533,11 @@ export class ManuscriptOptionsModal extends Modal {
             });
         this.manuscriptPresetDescEl = presetCol.createDiv({ cls: 'ert-sub-card-note' });
         this.updateManuscriptPresetDescription();
+        // Export checks panel lives inside the left preset column so it
+        // visually aligns with the Layout column on the right (which holds the
+        // pictogram cards). Width is constrained to the preset column.
+        this.templateWarningEl = presetCol.createDiv({ cls: 'ert-manuscript-template-warning ert-manuscript-preset-status' });
         this.layoutContainerEl = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-layout-picker ert-manuscript-preset-col ert-manuscript-preset-col--layout' });
-        this.templateWarningEl = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-template-warning ert-manuscript-preset-status' });
 
         this.outlineOptionsCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
         if (!this.isPro) {
@@ -2129,11 +1809,20 @@ export class ManuscriptOptionsModal extends Modal {
             const dd = new DropdownComponent(ddContainer);
             dd.selectEl.addClass('ert-input', 'ert-input--full');
             for (const l of layouts) {
-                const locked = !this.isPro && this.getTemplateProfileTierLabel(l) === 'Pro';
-                dd.addOption(l.id, this.formatTemplateProfileName(l) || l.name);
+                const tierLabel = this.getTemplateProfileTierLabel(l);
+                const locked = !this.isPro && tierLabel === 'Pro';
+                // Native <select> options cannot embed real icons, so we
+                // prefix the option label with a Unicode tier glyph and set
+                // the option's `title` attribute to the tier name so screen
+                // readers and hover users still see "Core tier" / "Pro tier".
+                dd.addOption(l.id, this.formatTemplateProfileNameForDropdown(l) || l.name);
                 const option = dd.selectEl.querySelector<HTMLOptionElement>(`option[value="${CSS.escape(l.id)}"]`);
-                if (option && locked) {
-                    option.disabled = true;
+                if (option) {
+                    option.title = locked ? `${tierLabel} tier — requires Pro` : `${tierLabel} tier`;
+                    option.setAttribute('aria-label', `${l.name}, ${tierLabel} tier`);
+                    if (locked) {
+                        option.disabled = true;
+                    }
                 }
             }
             const hasTemplateSelection = activeProfileId && layouts.some(l => l.id === activeProfileId);
@@ -2181,7 +1870,7 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         const sourceLayout = this.findLayoutForTemplateProfile(profile);
-        const variant = getModalFictionVariant(sourceLayout);
+        const variant = getFictionVariantForLayout(sourceLayout);
         const summary = desc.createDiv({ cls: 'ert-manuscript-layout-summary' });
         summary.createDiv({
             cls: 'ert-manuscript-layout-summary-title',
@@ -2193,7 +1882,11 @@ export class ManuscriptOptionsModal extends Modal {
         });
 
         if (variant !== 'generic') {
-            renderModalLayoutPreview(desc, variant, this.resolveActiveSceneHeadingMode(sourceLayout));
+            const ctx: SpreadValidationContext = {
+                actCount: this.getSelectedActCount(),
+                chapterFieldCount: this.getSelectedChapterMarkerCount(),
+            };
+            renderModalLayoutPreview(desc, variant, this.resolveActiveSceneHeadingMode(sourceLayout), ctx, sourceLayout);
         }
 
         const hasProTemplates = this.templateProfiles
@@ -2227,9 +1920,31 @@ export class ManuscriptOptionsModal extends Modal {
         return tier === 'free' ? 'Core' : 'Pro';
     }
 
+    /**
+     * Glyph used as a tier indicator on dropdown options. Native HTML
+     * <select> options cannot render icons, so we prefix the option label
+     * with a Unicode glyph instead. Keep these distinct enough to be
+     * readable at small sizes in dark and light themes; the tier name is
+     * still surfaced via the option's title attribute for accessibility.
+     */
+    private getTemplateProfileTierGlyph(profile?: TemplateProfile): string {
+        return this.getTemplateProfileTierLabel(profile) === 'Pro' ? '◆' : '◇';
+    }
+
     private formatTemplateProfileName(profile?: TemplateProfile): string | undefined {
         if (!profile) return undefined;
         return `${profile.name} (${this.getTemplateProfileTierLabel(profile)})`;
+    }
+
+    /**
+     * Dropdown-option label: glyph prefix instead of the parenthetical
+     * "(Core)" / "(Pro)" text. The native <select> cannot render icons,
+     * so a Unicode glyph stands in. Tier name is still set via the option's
+     * title attribute (see refreshLayoutOptions for the wiring).
+     */
+    private formatTemplateProfileNameForDropdown(profile?: TemplateProfile): string | undefined {
+        if (!profile) return undefined;
+        return `${this.getTemplateProfileTierGlyph(profile)} ${profile.name}`;
     }
 
     private getTemplateProfileSummary(profile: TemplateProfile): string {
@@ -2266,40 +1981,6 @@ export class ManuscriptOptionsModal extends Modal {
         }
     }
 
-    private getTemplateCompatibilityLabel(level: NonNullable<PublishingValidationSnapshot['templateCompatibility']>['level']): string {
-        switch (level) {
-            case 'invalid':
-                return 'Needs template repair';
-            case 'compatible':
-                return 'Structured matter ready';
-            case 'legacy':
-            default:
-                return 'Standard manuscript flow';
-        }
-    }
-
-    private getTemplateCompatibilityDetail(level: NonNullable<PublishingValidationSnapshot['templateCompatibility']>['level']): string {
-        switch (level) {
-            case 'invalid':
-                return 'This PDF style is missing a required manuscript placement point.';
-            case 'compatible':
-                return 'This template supports the current manuscript path and structured matter hooks.';
-            case 'legacy':
-            default:
-                return 'This template uses the standard manuscript path. Your full manuscript will export normally.';
-        }
-    }
-
-    private createPdfOutputStatusRow(parent: HTMLElement, label: string, value: string, detail?: string): void {
-        const row = parent.createDiv({ cls: 'ert-pdf-output-status-row' });
-        row.createDiv({ cls: 'ert-pdf-output-status-label', text: label });
-        const copy = row.createDiv({ cls: 'ert-pdf-output-status-copy' });
-        copy.createDiv({ cls: 'ert-pdf-output-status-value', text: value });
-        if (detail) {
-            copy.createDiv({ cls: 'ert-pdf-output-status-detail', text: detail });
-        }
-    }
-
     private formatValidationIssue(issue: NonNullable<PublishingValidationSnapshot['templateCompatibilityIssues']>[number]): string {
         const prefix = issue.level === 'error'
             ? 'ERROR'
@@ -2307,45 +1988,6 @@ export class ManuscriptOptionsModal extends Modal {
                 ? 'WARNING'
                 : 'INFO';
         return `${prefix}: ${issue.message}`;
-    }
-
-    private renderTemplateAccessGroup(content: HTMLElement): void {
-        const access = this.validationSnapshot?.templateAccess;
-        const issues = this.validationSnapshot?.templateAccessIssues || [];
-        if (!access && issues.length === 0) return;
-
-        if (access) {
-            const requestedName = this.formatTemplateIdName(access.requestedTemplateId, access.requestedTemplateName);
-            const effectiveName = this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName);
-            const blockingIssue = issues.find(issue => issue.level === 'error');
-            const warningIssue = issues.find(issue => issue.level === 'warning');
-            const infoIssue = issues.find(issue => issue.level === 'info');
-            const value = blockingIssue
-                ? 'Access needs attention'
-                : access.usedFallback
-                    ? 'Using Core fallback'
-                    : infoIssue?.message || (access.tier === 'free' ? 'Included with Core.' : 'Available with Pro.');
-            const detail = blockingIssue?.message
-                || warningIssue?.message
-                || (access.usedFallback
-                    ? `${requestedName} will be replaced by ${effectiveName} for this export.`
-                    : `PDF style: ${effectiveName}`);
-            this.createPdfOutputStatusRow(content, 'Access', value, detail);
-        }
-    }
-
-    private renderTemplateCompatibilityGroup(content: HTMLElement): void {
-        const compatibility = this.validationSnapshot?.templateCompatibility;
-        if (!compatibility) return;
-
-        const issues = this.validationSnapshot?.templateCompatibilityIssues || [];
-        const blockingIssue = issues.find(issue => issue.level === 'error');
-        this.createPdfOutputStatusRow(
-            content,
-            'Compatibility',
-            this.getTemplateCompatibilityLabel(compatibility.level),
-            blockingIssue?.message || this.getTemplateCompatibilityDetail(compatibility.level)
-        );
     }
 
     private collectTemplateTechnicalLines(): string[] {
@@ -2392,9 +2034,11 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.templateWarningEl.empty();
         this.templateWarningEl.removeClass('ert-warning-error');
+        this.templateWarningEl.removeClass('ert-warning-warning');
         this.templateWarningEl.removeClass('ert-warning-info');
         this.templateWarningEl.removeClass('ert-pdf-output-summary');
         this.templateWarningEl.removeClass('ert-pdf-output-summary--compact');
+        this.templateWarningEl.removeClass('ert-pdf-output-summary--ready');
 
         // Only check templates for PDF format
         if (this.outputFormat === 'markdown') {
@@ -2434,7 +2078,7 @@ export class ManuscriptOptionsModal extends Modal {
             this.templateWarningEl.addClass('ert-pdf-output-summary');
             this.templateWarningEl.addClass('ert-warning-error');
             const icon = this.templateWarningEl.createSpan({ cls: 'ert-warning-icon' });
-            setIcon(icon, 'alert-triangle');
+            setIcon(icon, 'alert-circle');
             const text = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
             text.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF output' });
             text.createDiv({ cls: 'ert-pdf-output-line', text: validation.error || 'Layout template not found.' });
@@ -2477,14 +2121,54 @@ export class ManuscriptOptionsModal extends Modal {
         technicalLines.push(`Page layout: ${layoutDesc}`);
         technicalLines.push(...this.collectTemplateTechnicalLines());
 
+        // ── Severity classification ─────────────────────────────────
+        // Three-state model for the export-checks panel:
+        //   error   → blocking, red, alert-circle
+        //   warning → font risk or non-blocking warning, orange, alert-triangle
+        //   ready   → everything passes, green, check-circle-2 (compact form)
+        const hasError = hasAccessError || hasCompatibilityError;
+        const hasWarning = !hasError && (hasFontRisk || hasCompatibilityWarning || hasAccessWarning);
+        const isReady = !hasError && !hasWarning;
+
         // ── Render ───────────────────────────────────────────────────
         this.templateWarningEl.addClass('ert-pdf-output-summary');
         this.templateWarningEl.addClass('ert-pdf-output-summary--compact');
-        this.templateWarningEl.addClass((hasFontRisk || hasCompatibilityError || hasAccessError) ? 'ert-warning-error' : 'ert-warning-info');
+        if (isReady) {
+            this.templateWarningEl.addClass('ert-pdf-output-summary--ready');
+        }
+        this.templateWarningEl.addClass(
+            hasError ? 'ert-warning-error'
+            : hasWarning ? 'ert-warning-warning'
+            : 'ert-warning-info'
+        );
         const icon = this.templateWarningEl.createSpan({ cls: 'ert-warning-icon' });
-        setIcon(icon, (hasFontRisk || hasCompatibilityError || hasCompatibilityWarning || hasAccessError || hasAccessWarning) ? 'alert-triangle' : 'check-circle-2');
+        setIcon(icon,
+            hasError ? 'alert-circle'
+            : hasWarning ? 'alert-triangle'
+            : 'check-circle-2'
+        );
 
         const content = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
+
+        if (isReady) {
+            // ── Compact ready form ───────────────────────────────────
+            // Single row: small label "Export checks · Ready". No verbose
+            // ACCESS / COMPATIBILITY rows (irrelevant when nothing is wrong).
+            // Technical details remain available behind the expander for
+            // power users who want to inspect the underlying state.
+            content.createDiv({ cls: 'ert-pdf-output-ready-line', text: 'Export checks · Ready' });
+            if (technicalLines.length > 0) {
+                const details = content.createEl('details', { cls: 'ert-pdf-output-details' });
+                details.createEl('summary', { text: 'View technical details' });
+                const detailsContent = details.createDiv({ cls: 'ert-pdf-output-details-content' });
+                for (const line of technicalLines) {
+                    detailsContent.createDiv({ text: line });
+                }
+            }
+            return;
+        }
+
+        // ── Warning / error form ─────────────────────────────────
         content.createDiv({ cls: 'ert-pdf-output-title', text: 'Export checks' });
 
         if (hasAccessError) {
@@ -2518,12 +2202,17 @@ export class ManuscriptOptionsModal extends Modal {
                 cls: 'ert-pdf-output-line',
                 text: firstWarning?.message || 'Template access changed for this export.'
             });
-        } else {
-            content.createDiv({ cls: 'ert-pdf-output-line', text: 'This PDF style is ready to use.' });
+        } else if (hasCompatibilityWarning) {
+            const firstWarning = compatibilityIssues.find(issue => issue.level === 'warning');
+            content.createDiv({
+                cls: 'ert-pdf-output-line',
+                text: firstWarning?.message || 'Template compatibility changed for this export.'
+            });
         }
 
-        this.renderTemplateAccessGroup(content);
-        this.renderTemplateCompatibilityGroup(content);
+        // ACCESS / COMPATIBILITY status rows are intentionally omitted —
+        // tier and template-flow are inferred from the layout selection
+        // itself. This panel surfaces only actionable problems.
 
         // ── Technical details toggle ─────────────────────────────────
         if (technicalLines.length > 0) {
@@ -2694,6 +2383,39 @@ Sarah stood at the window, watching the world wake up.`;
         const endIndexExclusive = Math.min(this.rangeEnd, this.scenePaths.length);
         if (endIndexExclusive <= startIndex) return [];
         return this.scenePaths.slice(startIndex, endIndexExclusive);
+    }
+
+    /**
+     * Number of distinct Act values configured for the active book within the
+     * current scene selection. Drives the PART preview-card warning.
+     */
+    private getSelectedActCount(): number {
+        if (this.totalScenes === 0 || this.sceneActs.length === 0) return 0;
+        const startIndex = Math.max(0, this.rangeStart - 1);
+        const endIndexExclusive = Math.min(this.rangeEnd, this.sceneActs.length);
+        if (endIndexExclusive <= startIndex) return 0;
+        const seen = new Set<number>();
+        for (let i = startIndex; i < endIndexExclusive; i++) {
+            const act = this.sceneActs[i];
+            if (typeof act === 'number' && Number.isFinite(act)) seen.add(act);
+        }
+        return seen.size;
+    }
+
+    /**
+     * Count of chapter markers (scenes/beats/backdrops with a Chapter field)
+     * that fall within the currently-selected scene range. Drives the CHAPTER
+     * preview-card warning.
+     */
+    private getSelectedChapterMarkerCount(): number {
+        const selected = new Set(this.getSelectedScenePaths());
+        if (selected.size === 0) return 0;
+        let count = 0;
+        for (const [scenePath, markers] of Object.entries(this.chapterMarkersByScenePath)) {
+            if (!selected.has(scenePath)) continue;
+            count += Array.isArray(markers) ? markers.length : 0;
+        }
+        return count;
     }
 
     private isSplitEnabled(): boolean {
@@ -3093,6 +2815,7 @@ Sarah stood at the window, watching the world wake up.`;
             const effectiveSubplot = isPdfManuscript || this.subplot === 'All Subplots' || isOpenScenes ? undefined : this.subplot;
             const result = await getSceneFilesByOrder(this.app, this.plugin, effectiveOrder, effectiveSubplot);
             let { titles, whenDates, sceneNumbers, wordCounts } = result;
+            let acts = result.acts;
             const paths = result.files.map(f => f.path);
 
             if (isOpenScenes) {
@@ -3101,6 +2824,7 @@ Sarah stood at the window, watching the world wake up.`;
                 whenDates = indices.map(i => whenDates[i]);
                 sceneNumbers = indices.map(i => sceneNumbers[i]);
                 wordCounts = indices.map(i => wordCounts[i]);
+                acts = indices.map(i => acts[i]);
                 this.scenePaths = indices.map(i => paths[i]);
             } else {
                 this.scenePaths = paths;
@@ -3110,6 +2834,8 @@ Sarah stood at the window, watching the world wake up.`;
             this.sceneWhenDates = whenDates;
             this.sceneNumbers = sceneNumbers;
             this.sceneWordCounts = wordCounts;
+            this.sceneActs = acts;
+            this.chapterMarkersByScenePath = (result.chapterMarkersByScenePath ?? {}) as Record<string, unknown[]>;
             this.totalScenes = titles.length;
             this.rangeStart = 1;
             this.rangeEnd = Math.max(1, this.totalScenes);
