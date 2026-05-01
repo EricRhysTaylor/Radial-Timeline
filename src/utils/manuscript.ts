@@ -217,6 +217,14 @@ function resolveLatexSceneHeading(
   return escapeLatex(trimmed || `Scene ${fallbackNumber}`);
 }
 
+function resolveLatexSceneRunningMark(
+  title: string,
+  mode: ManuscriptSceneHeadingMode,
+  fallbackNumber: number
+): string {
+  return escapeLatex(resolveSceneHeading(title, mode, fallbackNumber));
+}
+
 /**
  * Roles whose pages can be rendered from BookMeta when `UseBookMeta: true`.
  * Other roles ignore the flag and render their body as-is.
@@ -1122,8 +1130,9 @@ export async function assembleManuscript(
 
           if (sceneHeadingRenderMode === 'latex-section-starred') {
             const latexHeading = resolveLatexSceneHeading(title, sceneHeadingMode, i + 1);
+            const latexRunningMark = resolveLatexSceneRunningMark(title, sceneHeadingMode, i + 1);
             // Force header/footer suppression on scene-opener pages.
-            textParts.push(`\\section*{${latexHeading}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
+            textParts.push(`\\section*{${latexHeading}}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{${latexRunningMark}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
           } else {
             const headingSuffix = includeSceneIdInHeading
               ? sceneId ? ` ${formatSceneIdForManuscript(sceneId, sceneIdFormat)}` : ''

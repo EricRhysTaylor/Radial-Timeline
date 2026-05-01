@@ -43,6 +43,14 @@ const FIXED_SIGNATURE_SYMMETRIC_MARGINS = [
     '  left=0.9in,',
     '  right=0.9in'
 ].join('\n');
+const LEGACY_MODERN_CLASSIC_MIRRORED_MARGINS = [
+    '  inner=1.10in,',
+    '  outer=0.85in'
+].join('\n');
+const FIXED_MODERN_CLASSIC_SYMMETRIC_MARGINS = [
+    '  left=0.98in,',
+    '  right=0.98in'
+].join('\n');
 
 function normalizeLegacySignatureSpacing(content: string): { content: string; changed: boolean } {
     let updated = content;
@@ -51,11 +59,26 @@ function normalizeLegacySignatureSpacing(content: string): { content: string; ch
     return { content: updated, changed: updated !== content };
 }
 
-function normalizeSignatureSymmetricMargins(content: string): { content: string; changed: boolean } {
-    if (!content.includes('% Pandoc LaTeX Template - Signature Literary')) {
-        return { content, changed: false };
+function normalizeBundledSymmetricMargins(
+    content: string,
+    layoutId: string
+): { content: string; changed: boolean } {
+    const isSignature = layoutId === BUNDLED_FICTION_SIGNATURE_ID
+        && content.includes('% Pandoc LaTeX Template - Signature Literary');
+    const isContemporary = layoutId === BUNDLED_FICTION_CONTEMPORARY_ID
+        && content.includes('% Pandoc LaTeX Template - Contemporary Literary');
+    const isModernClassic = layoutId === BUNDLED_FICTION_MODERN_CLASSIC_ID
+        && content.includes('% rt_modern_classic.tex')
+        && content.includes('% Modern Classic fiction layout for 6x9 trade');
+    let updated = content;
+
+    if (isSignature || isContemporary) {
+        updated = updated.replace(LEGACY_SIGNATURE_MIRRORED_MARGINS, FIXED_SIGNATURE_SYMMETRIC_MARGINS);
     }
-    const updated = content.replace(LEGACY_SIGNATURE_MIRRORED_MARGINS, FIXED_SIGNATURE_SYMMETRIC_MARGINS);
+    if (isModernClassic) {
+        updated = updated.replace(LEGACY_MODERN_CLASSIC_MIRRORED_MARGINS, FIXED_MODERN_CLASSIC_SYMMETRIC_MARGINS);
+    }
+
     return { content: updated, changed: updated !== content };
 }
 
@@ -101,7 +124,7 @@ const CONTEMPORARY_LITERARY_LEGACY_HEADING_BLOCK = [
 const CONTEMPORARY_LITERARY_HEADING_BLOCK = [
     CORE_SCENE_OPENER_HELPER_LINES,
     '\\titleformat{\\chapter}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-    '\\titlespacing*{\\chapter}{0pt}{0.18\\textheight}{0.14\\textheight}',
+    '\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}',
     '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
     '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
     '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
@@ -153,6 +176,41 @@ function normalizeCoreTemplateSceneOpeners(
             updated = `${updated.slice(0, startIndex)}${fixedBlock}${updated.slice(endIndex + endNeedle.length)}`;
         }
     }
+    return { content: updated, changed: updated !== content };
+}
+
+function normalizeContemporaryRunningHeader(content: string, layoutId: string): { content: string; changed: boolean } {
+    const isContemporary = layoutId === BUNDLED_FICTION_CONTEMPORARY_ID
+        && content.includes('% Pandoc LaTeX Template - Contemporary Literary');
+    if (!isContemporary) return { content, changed: false };
+
+    let updated = content;
+    if (!updated.includes('\\newcommand{\\rtSceneRunningTitle}{}')) {
+        updated = updated.replace(
+            '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+            [
+                '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+                '\\newcommand{\\rtSceneRunningTitle}{}',
+                '\\newcommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}',
+            ].join('\n')
+        );
+    }
+    updated = updated.replace(
+        '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rightmark}}',
+        '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}'
+    );
+    updated = updated.replace(
+        '\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{title}}',
+        '\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}'
+    );
+    updated = updated.replace(
+        '\\titlespacing*{\\chapter}{0pt}{0.18\\textheight}{0.14\\textheight}',
+        '\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}'
+    );
+    updated = updated.replace(
+        '\\titlespacing*{\\chapter}{0pt}{0.38\\textheight}{0.08\\textheight}',
+        '\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}'
+    );
     return { content: updated, changed: updated !== content };
 }
 
@@ -216,6 +274,25 @@ const MODERN_CLASSIC_MISSING_MACRO_DEFINITIONS = [
     '}'
 ].join('\n');
 
+const MODERN_CLASSIC_UNSAFE_CHAPTER_TITLEFORMAT_BLOCK = [
+    '\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%',
+    '  \\thispagestyle{rtEmpty}%',
+    '  \\vspace*{1.9in}%',
+    '  \\begin{center}',
+    '    {\\sffamily\\bfseries\\large Chapter~\\thechapter}\\par',
+    '    \\vspace{0.35in}%',
+    '    {\\rmfamily\\itshape\\Large #1}\\par',
+    '  \\end{center}',
+    '  \\vspace*{0.9in}%',
+    '}',
+    '\\titlespacing*{\\chapter}{0pt}{0pt}{0pt}',
+].join('\n');
+
+const MODERN_CLASSIC_SAFE_CHAPTER_TITLEFORMAT_BLOCK = [
+    '\\titleformat{\\chapter}{\\normalfont}{}{0pt}{}',
+    '\\titlespacing*{\\chapter}{0pt}{0pt}{0pt}',
+].join('\n');
+
 function normalizeModernClassicMacroContract(content: string): { content: string; changed: boolean } {
     const isModernClassicBundledTemplate = content.includes('% rt_modern_classic.tex')
         && content.includes('% Modern Classic fiction layout for 6x9 trade')
@@ -226,6 +303,7 @@ function normalizeModernClassicMacroContract(content: string): { content: string
 
     let updated = content;
     updated = updated.replace(LEGACY_MODERN_CLASSIC_TITLE_CAPTURE, () => MODERN_CLASSIC_TITLE_BINDINGS);
+    updated = updated.replace(MODERN_CLASSIC_UNSAFE_CHAPTER_TITLEFORMAT_BLOCK, () => MODERN_CLASSIC_SAFE_CHAPTER_TITLEFORMAT_BLOCK);
 
     const missingRtEpigraph = !/\\newcommand\{\\rtEpigraph\}/.test(updated);
     const missingRtChapter = !/\\newcommand\{\\rtChapter\}/.test(updated);
@@ -519,10 +597,10 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         bundled: true,
         tier: 'free',
         templateKind: 'book',
-        description: 'Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.',
+        description: 'Running headers show book title on even pages and scene context on odd pages. Page numbers are centered at the bottom. Chapter and scene opener pages suppress headers and page numbers.',
         content: [
             '% Pandoc LaTeX Template - Contemporary Literary',
-            '% Running headers: title (left pages) and section title (right pages).',
+            '% Running headers: title (left pages) and scene context (right pages).',
             '\\documentclass[11pt,letterpaper,twoside]{book}',
             '',
             '\\usepackage{fontspec}',
@@ -541,8 +619,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  paperheight=9in,',
             '  top=0.9in,',
             '  bottom=1.0in,',
-            '  inner=1.05in,',
-            '  outer=0.75in',
+            '  left=0.9in,',
+            '  right=0.9in',
             '}',
             '',
             '\\defaultfontfeatures{Ligatures=TeX}',
@@ -561,13 +639,15 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '}',
             '',
             '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+            '\\newcommand{\\rtSceneRunningTitle}{}',
+            '\\newcommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}',
             '',
             '\\fancyhf{}',
             '\\renewcommand{\\headrulewidth}{0pt}',
             '\\renewcommand{\\footrulewidth}{0pt}',
             '\\renewcommand{\\sectionmark}[1]{\\markright{#1}}',
             '\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}',
-            '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rightmark}}',
+            '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}',
             '\\fancyfoot[C]{\\rmfamily\\footnotesize\\thepage}',
             '\\pagestyle{fancy}',
             '',
@@ -607,8 +687,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  paperheight=9in,',
             '  top=0.95in,',
             '  bottom=1.15in,',
-            '  inner=1.10in,',
-            '  outer=0.85in',
+            '  left=0.98in,',
+            '  right=0.98in',
             ']{geometry}',
             '',
             '\\usepackage{microtype}',
@@ -690,18 +770,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '  \\vspace*{0.9in}%',
             '}',
             '',
-            '% CHAPTER headings come from Pandoc H1 headings inserted by RT.',
-            '\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%',
-            '  \\thispagestyle{rtEmpty}%',
-            '  \\vspace*{1.9in}%',
-            '  \\begin{center}',
-            '    {\\sffamily\\bfseries\\large Chapter~\\thechapter}\\par',
-            '    \\vspace{0.35in}%',
-            '    {\\rmfamily\\itshape\\Large #1}\\par',
-            '  \\end{center}',
-            '  \\vspace*{0.9in}%',
-            '}',
-            '\\titlespacing*{\\chapter}{0pt}{0pt}{0pt}',
+            '% Modern Classic chapter openers are emitted by \\rtChapter. Keep fallback Pandoc H1 styling inert.',
+            MODERN_CLASSIC_SAFE_CHAPTER_TITLEFORMAT_BLOCK,
             '',
             '% --- scene separator: i. + underline (centered) ---',
             '\\newcounter{rtscene}',
@@ -929,31 +999,37 @@ export async function ensureBundledLayoutInstalledForExport(
             try {
                 const raw = await vault.read(bundled);
                 const signatureNormalized = normalizeLegacySignatureSpacing(raw);
-                const signatureMarginsNormalized = layout.id === BUNDLED_FICTION_SIGNATURE_ID
-                    ? normalizeSignatureSymmetricMargins(signatureNormalized.content)
-                    : signatureNormalized;
+                const marginsNormalized = normalizeBundledSymmetricMargins(signatureNormalized.content, layout.id);
                 const coreSceneOpenersNormalized = normalizeCoreTemplateSceneOpeners(
-                    signatureMarginsNormalized.content,
+                    marginsNormalized.content,
+                    layout.id
+                );
+                const contemporaryRunningHeaderNormalized = normalizeContemporaryRunningHeader(
+                    coreSceneOpenersNormalized.content,
                     layout.id
                 );
                 const modernClassicNormalized = layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID
-                    ? normalizeModernClassicMacroContract(signatureMarginsNormalized.content)
-                    : coreSceneOpenersNormalized;
+                    ? normalizeModernClassicMacroContract(marginsNormalized.content)
+                    : contemporaryRunningHeaderNormalized;
                 if (
                     modernClassicNormalized.changed
+                    || contemporaryRunningHeaderNormalized.changed
                     || coreSceneOpenersNormalized.changed
-                    || signatureMarginsNormalized.changed
+                    || marginsNormalized.changed
                     || signatureNormalized.changed
                 ) {
                     await vault.modify(bundled, modernClassicNormalized.content);
-                    if (layout.id === BUNDLED_FICTION_SIGNATURE_ID && signatureMarginsNormalized.changed) {
-                        console.info('[Radial Timeline] Updated bundled Signature Literary template margins for symmetric export pages.');
+                    if (marginsNormalized.changed) {
+                        console.info(`[Radial Timeline] Updated bundled ${layout.name} template margins for symmetric export pages.`);
                     }
                     if (layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID && modernClassicNormalized.changed) {
                         console.info('[Radial Timeline] Updated bundled Modern Classic template macro contract for export compatibility.');
                     }
                     if (coreSceneOpenersNormalized.changed) {
                         console.info(`[Radial Timeline] Updated bundled ${layout.name} template scene opener formatting for export compatibility.`);
+                    }
+                    if (contemporaryRunningHeaderNormalized.changed) {
+                        console.info('[Radial Timeline] Updated bundled Contemporary Literary template running headers for scene context.');
                     }
                 }
             } catch {

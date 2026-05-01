@@ -4,7 +4,7 @@
 import { App, ButtonComponent, DropdownComponent, FileSystemAdapter, Modal, Notice, Platform, setIcon, TAbstractFile, TFile, ToggleComponent, normalizePath } from 'obsidian';
 import * as path from 'path'; // SAFE: Node path needed to build absolute paths for native Finder reveal
 import type RadialTimelinePlugin from '../main';
-import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
+import { getSceneFilesByOrder, ManuscriptOrder, TocMode, type ManuscriptSceneHeadingMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
 import { hasProFeatureAccess } from '../settings/featureGate';
@@ -22,6 +22,7 @@ import {
     type ModalExportProfile,
 } from '../utils/exportProfileModel';
 import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
+import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
 import type {
     BookPublishingPreferences,
     ExportProfile,
@@ -33,6 +34,356 @@ import type {
 } from '../types';
 
 const OPEN_SCENES_FILTER = '__open_scenes__';
+
+type ModalLayoutVariant = 'classic' | 'modernClassic' | 'signature' | 'contemporary' | 'generic';
+type ModalLayoutFeatureRow = { label: string; value: string };
+
+type ModalPictogramPageSide = {
+    headerLeft?: string;
+    headerCenter?: string;
+    headerRight?: string;
+    folioBottom?: string;
+    bodyLines: number;
+    suppressHeader?: boolean;
+    suppressFooter?: boolean;
+    specialText?: string;
+    specialSubtext?: string;
+    specialRule?: boolean;
+    epigraphText?: string;
+    epigraphAttribution?: string;
+    separatorText?: string;
+    linesBeforeSeparator?: number;
+    linesAfterSeparator?: number;
+};
+
+type ModalPictogramSpread = {
+    label: string;
+    leftPage: ModalPictogramPageSide | null;
+    rightPage: ModalPictogramPageSide | null;
+    sceneMode?: ManuscriptSceneHeadingMode;
+};
+
+type ModalLayoutPictogramRows = {
+    scene: ModalPictogramSpread | null;
+    body: ModalPictogramSpread;
+    special: ModalPictogramSpread[];
+};
+
+const MODAL_BODY_PREVIEW_LINES = 14;
+
+function getModalFictionVariant(layout?: PandocLayoutTemplate): ModalLayoutVariant {
+    if (!layout) return 'generic';
+    const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
+    if (source.includes('modern classic') || source.includes('modern-classic') || source.includes('modern_classic') || source.includes('rt_modern_classic') || layout.id === 'bundled-fiction-modern-classic') return 'modernClassic';
+    if (source.includes('classic') || source.includes('traditional')) return 'classic';
+    if (source.includes('contemporary')) return 'contemporary';
+    if (source.includes('signature') || source.includes('signature_literary_rt') || source.includes('rt_signature_literary') || layout.id === 'bundled-fiction-signature-literary' || layout.id === 'bundled-novel') return 'signature';
+    return 'generic';
+}
+
+function getModalLayoutFeatures(variant: ModalLayoutVariant): ModalLayoutFeatureRow[] {
+    switch (variant) {
+        case 'classic':
+            return [
+                { label: 'Headers', value: 'Title centered (both pages)' },
+                { label: 'Folios', value: 'Bottom center' },
+                { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
+                { label: 'Spacing', value: '1.5 lines' },
+                { label: 'Scenes', value: 'New page — centered scene number only' },
+            ];
+        case 'modernClassic':
+            return [
+                { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
+                { label: 'Folios', value: 'In headers' },
+                { label: 'Font', value: 'Latin Modern (serif)' },
+                { label: 'Spacing', value: '1.18×' },
+                { label: 'Parts', value: 'Act opener — Roman numeral with optional epigraph' },
+                { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
+                { label: 'Scenes', value: 'Lowercase Roman numeral (i. ii.) with short rule' },
+            ];
+        case 'signature':
+            return [
+                { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
+                { label: 'Folios', value: 'Header-only, letter-spaced' },
+                { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
+                { label: 'Spacing', value: '1.5 lines' },
+                { label: 'Scenes', value: 'Opener page — 30pt bold, suppresses headers' },
+                { label: 'Scene #', value: 'Number only' },
+                { label: 'Scene #+T', value: 'Number + title (in parentheses)' },
+                { label: 'Scene T', value: 'Title only' },
+            ];
+        case 'contemporary':
+            return [
+                { label: 'Headers', value: 'Book title (left) · Scene context (right), sans' },
+                { label: 'Folios', value: 'Bottom center (serif)' },
+                { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
+                { label: 'Spacing', value: '1.5 lines' },
+                { label: 'Scenes', value: 'New page — centered scene number only' },
+                { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
+            ];
+        default:
+            return [];
+    }
+}
+
+function getModalLayoutPictogramRows(variant: ModalLayoutVariant): ModalLayoutPictogramRows {
+    switch (variant) {
+        case 'classic':
+            return {
+                scene: {
+                    label: 'SCENE',
+                    leftPage: null,
+                    rightPage: {
+                        bodyLines: 5,
+                        suppressHeader: true,
+                        suppressFooter: true,
+                        specialText: '3',
+                    },
+                },
+                body: {
+                    label: 'BODY',
+                    leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                    rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                },
+                special: [],
+            };
+        case 'modernClassic':
+            return {
+                scene: {
+                    label: 'SCENE',
+                    leftPage: null,
+                    rightPage: {
+                        bodyLines: 0,
+                        separatorText: 'ii.',
+                        linesBeforeSeparator: 0,
+                        linesAfterSeparator: 5,
+                    },
+                },
+                body: {
+                    label: 'BODY',
+                    leftPage: { headerCenter: '12 | AUTH', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                    rightPage: { headerCenter: 'TITLE | 13', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                },
+                special: [
+                    {
+                        label: 'PART',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 0,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'I',
+                            specialRule: true,
+                            epigraphText: 'a quote',
+                            epigraphAttribution: '—J. Name',
+                        },
+                    },
+                    {
+                        label: 'CHAPTER',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 0,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'Chapter 1',
+                            specialSubtext: 'Boy with a Skull',
+                        },
+                    },
+                ],
+            };
+        case 'signature':
+            return {
+                scene: null,
+                body: {
+                    label: 'BODY',
+                    leftPage: { headerCenter: '12 | AUTH', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                    rightPage: { headerCenter: 'TITLE | 13', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                },
+                special: [
+                    {
+                        label: 'SCENE #',
+                        sceneMode: 'scene-number',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 4,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: '3',
+                        },
+                    },
+                    {
+                        label: '#+TITLE',
+                        sceneMode: 'scene-number-title',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 4,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: '3',
+                            specialSubtext: '(The Escape)',
+                        },
+                    },
+                    {
+                        label: 'TITLE',
+                        sceneMode: 'title-only',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 4,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'The Escape',
+                        },
+                    },
+                ],
+            };
+        case 'contemporary':
+            return {
+                scene: {
+                    label: 'SCENE',
+                    leftPage: null,
+                    rightPage: {
+                        bodyLines: 5,
+                        suppressHeader: true,
+                        suppressFooter: true,
+                        specialText: '3',
+                    },
+                },
+                body: {
+                    label: 'BODY',
+                    leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                    rightPage: { headerRight: 'scene', folioBottom: '13', bodyLines: MODAL_BODY_PREVIEW_LINES },
+                },
+                special: [
+                    {
+                        label: 'CHAPTER',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 5,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'Chapter',
+                        },
+                    },
+                ],
+            };
+        default:
+            return {
+                scene: null,
+                body: {
+                    label: '',
+                    leftPage: { bodyLines: MODAL_BODY_PREVIEW_LINES },
+                    rightPage: { bodyLines: MODAL_BODY_PREVIEW_LINES },
+                },
+                special: [],
+            };
+    }
+}
+
+function renderModalLayoutPage(parent: HTMLElement, side: ModalPictogramPageSide, sideClass: string): void {
+    const page = parent.createDiv({ cls: `ert-layout-page ${sideClass}` });
+    const hdr = page.createDiv({ cls: 'ert-layout-page-header' });
+    if (side.suppressHeader) hdr.addClass('is-suppressed');
+    if (side.headerCenter) {
+        hdr.addClass('is-centered');
+        hdr.createSpan({ cls: 'ert-layout-page-hdr-center', text: side.headerCenter });
+    } else {
+        if (side.headerLeft) hdr.createSpan({ cls: 'ert-layout-page-hdr-left', text: side.headerLeft });
+        if (side.headerRight) hdr.createSpan({ cls: 'ert-layout-page-hdr-right', text: side.headerRight });
+    }
+
+    const body = page.createDiv({ cls: 'ert-layout-page-body' });
+    if (side.separatorText != null) {
+        for (let i = 0; i < (side.linesBeforeSeparator ?? 3); i++) {
+            body.createDiv({ cls: 'ert-layout-page-line' });
+        }
+        const sep = body.createDiv({ cls: 'ert-layout-page-separator' });
+        sep.createSpan({ cls: 'ert-layout-page-separator-text', text: side.separatorText });
+        sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
+        for (let i = 0; i < (side.linesAfterSeparator ?? 3); i++) {
+            body.createDiv({ cls: 'ert-layout-page-line' });
+        }
+    } else if (side.specialText) {
+        body.addClass('is-special');
+        body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
+        if (side.specialRule) {
+            body.createDiv({ cls: 'ert-layout-page-separator-rule' });
+        }
+        if (side.specialSubtext) {
+            body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
+        }
+        if (side.epigraphText) {
+            body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
+        }
+        if (side.epigraphAttribution) {
+            body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
+        }
+        if (side.bodyLines > 0) {
+            const bodyBelow = page.createDiv({ cls: 'ert-layout-page-body' });
+            bodyBelow.style.flex = '0 0 auto';
+            for (let i = 0; i < side.bodyLines; i++) {
+                bodyBelow.createDiv({ cls: 'ert-layout-page-line' });
+            }
+        }
+    } else {
+        for (let i = 0; i < side.bodyLines; i++) {
+            body.createDiv({ cls: 'ert-layout-page-line' });
+        }
+    }
+
+    const ftr = page.createDiv({ cls: 'ert-layout-page-footer' });
+    if (side.suppressFooter) ftr.addClass('is-suppressed');
+    if (side.folioBottom) {
+        ftr.createSpan({ cls: 'ert-layout-page-folio', text: side.folioBottom });
+    }
+}
+
+function renderModalLayoutSpread(parent: HTMLElement, spread: ModalPictogramSpread): HTMLElement {
+    const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
+    const pagesEl = spreadEl.createDiv({ cls: 'ert-layout-spread-pages' });
+
+    if (spread.leftPage && spread.rightPage) {
+        renderModalLayoutPage(pagesEl, spread.leftPage, 'is-left');
+        pagesEl.createDiv({ cls: 'ert-layout-spread-spine' });
+        renderModalLayoutPage(pagesEl, spread.rightPage, 'is-right');
+    } else if (spread.rightPage) {
+        renderModalLayoutPage(pagesEl, spread.rightPage, 'is-single');
+    } else if (spread.leftPage) {
+        renderModalLayoutPage(pagesEl, spread.leftPage, 'is-single');
+    }
+
+    if (spread.label) {
+        spreadEl.createSpan({ cls: 'ert-layout-spread-label', text: spread.label });
+    }
+    return spreadEl;
+}
+
+function renderModalLayoutPreview(parent: HTMLElement, variant: ModalLayoutVariant, activeSceneMode?: ManuscriptSceneHeadingMode): void {
+    const visual = parent.createDiv({ cls: 'ert-layout-visual' });
+    const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
+    const featureCol = cols.createDiv({ cls: 'ert-layout-visual-features' });
+    for (const feature of getModalLayoutFeatures(variant)) {
+        const row = featureCol.createDiv({ cls: 'ert-layout-feature-row' });
+        row.createSpan({ cls: 'ert-layout-feature-label', text: feature.label });
+        row.createSpan({ cls: 'ert-layout-feature-value', text: feature.value });
+    }
+
+    const rows = getModalLayoutPictogramRows(variant);
+    const pictoCol = cols.createDiv({ cls: 'ert-layout-visual-pictograms' });
+    const primaryRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
+    if (rows.scene) renderModalLayoutSpread(primaryRow, rows.scene);
+    renderModalLayoutSpread(primaryRow, rows.body);
+
+    const hasSceneModes = rows.special.some(spread => spread.sceneMode);
+    if (rows.special.length > 0) {
+        const specialRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
+        for (const spread of rows.special) {
+            const spreadEl = renderModalLayoutSpread(specialRow, spread);
+            if (hasSceneModes && spread.sceneMode && activeSceneMode) {
+                spreadEl.addClass(spread.sceneMode === activeSceneMode ? 'is-scene-active' : 'is-scene-dimmed');
+            }
+        }
+    }
+}
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -1824,11 +2175,13 @@ export class ManuscriptOptionsModal extends Modal {
     private renderLayoutDescription(profile?: TemplateProfile): void {
         if (!this.layoutContainerEl) return;
         this.layoutContainerEl.querySelector('.ert-manuscript-layout-desc')?.remove();
-        const desc = this.layoutContainerEl.createDiv({ cls: 'ert-sub-card-note ert-manuscript-layout-desc' });
+        const desc = this.layoutContainerEl.createDiv({ cls: 'ert-manuscript-layout-desc ert-manuscript-layout-preview' });
         if (!profile) {
-            desc.setText('Choose a PDF layout to continue.');
+            desc.createDiv({ cls: 'ert-manuscript-layout-summary-detail', text: 'Choose a PDF layout to continue.' });
             return;
         }
+        const sourceLayout = this.findLayoutForTemplateProfile(profile);
+        const variant = getModalFictionVariant(sourceLayout);
         const summary = desc.createDiv({ cls: 'ert-manuscript-layout-summary' });
         summary.createDiv({
             cls: 'ert-manuscript-layout-summary-title',
@@ -1839,6 +2192,10 @@ export class ManuscriptOptionsModal extends Modal {
             text: this.getTemplateProfileSummary(profile),
         });
 
+        if (variant !== 'generic') {
+            renderModalLayoutPreview(desc, variant, this.resolveActiveSceneHeadingMode(sourceLayout));
+        }
+
         const hasProTemplates = this.templateProfiles
             .filter(item => item.usageContexts.includes(this.manuscriptPreset))
             .some(item => this.getTemplateProfileTierLabel(item) === 'Pro');
@@ -1848,6 +2205,15 @@ export class ManuscriptOptionsModal extends Modal {
                 text: 'Pro styles add advanced typography, chapter treatments, and custom layouts.',
             });
         }
+    }
+
+    private resolveActiveSceneHeadingMode(layout?: PandocLayoutTemplate): ManuscriptSceneHeadingMode | undefined {
+        if (!layout) return undefined;
+        const activeBook = getActiveBook(this.plugin.settings);
+        const mode = activeBook?.layoutOptions?.[layout.id]?.sceneHeadingMode;
+        return mode === 'scene-number' || mode === 'scene-number-title' || mode === 'title-only'
+            ? mode
+            : 'scene-number-title';
     }
 
     private findLayoutForTemplateProfile(profile?: TemplateProfile): PandocLayoutTemplate | undefined {
@@ -2028,6 +2394,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.templateWarningEl.removeClass('ert-warning-error');
         this.templateWarningEl.removeClass('ert-warning-info');
         this.templateWarningEl.removeClass('ert-pdf-output-summary');
+        this.templateWarningEl.removeClass('ert-pdf-output-summary--compact');
 
         // Only check templates for PDF format
         if (this.outputFormat === 'markdown') {
@@ -2051,9 +2418,7 @@ export class ManuscriptOptionsModal extends Modal {
                 ? layouts.find(profile => profile.id === this.selectedExportProfile?.templateProfileId)
             : layouts[0];
 
-        const selectedLayout = selectedProfile
-            ? this.plugin.settings.pandocLayouts?.find(layout => layout.id === selectedProfile.legacyLayoutId)
-            : undefined;
+        const selectedLayout = this.findLayoutForTemplateProfile(selectedProfile);
 
         if (!selectedProfile || !selectedLayout) return;
 
@@ -2108,16 +2473,19 @@ export class ManuscriptOptionsModal extends Modal {
         if (willEmbed) {
             technicalLines.push('Font embedding: enabled');
         }
+        technicalLines.push(`Resolved font: ${resolvedFont}`);
+        technicalLines.push(`Page layout: ${layoutDesc}`);
         technicalLines.push(...this.collectTemplateTechnicalLines());
 
         // ── Render ───────────────────────────────────────────────────
         this.templateWarningEl.addClass('ert-pdf-output-summary');
+        this.templateWarningEl.addClass('ert-pdf-output-summary--compact');
         this.templateWarningEl.addClass((hasFontRisk || hasCompatibilityError || hasAccessError) ? 'ert-warning-error' : 'ert-warning-info');
         const icon = this.templateWarningEl.createSpan({ cls: 'ert-warning-icon' });
         setIcon(icon, (hasFontRisk || hasCompatibilityError || hasCompatibilityWarning || hasAccessError || hasAccessWarning) ? 'alert-triangle' : 'check-circle-2');
 
         const content = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
-        content.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF output' });
+        content.createDiv({ cls: 'ert-pdf-output-title', text: 'Export checks' });
 
         if (hasAccessError) {
             const firstError = accessIssues.find(issue => issue.level === 'error');
@@ -2151,10 +2519,7 @@ export class ManuscriptOptionsModal extends Modal {
                 text: firstWarning?.message || 'Template access changed for this export.'
             });
         } else {
-            content.createDiv({ cls: 'ert-pdf-output-line', text: 'This layout is ready to use.' });
-            content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: ${resolvedFont}` });
-            content.createDiv({ cls: 'ert-pdf-output-line', text: `Page layout: ${layoutDesc}` });
-            content.createDiv({ cls: 'ert-pdf-output-line', text: 'Embedding: Fonts will be included' });
+            content.createDiv({ cls: 'ert-pdf-output-line', text: 'This PDF style is ready to use.' });
         }
 
         this.renderTemplateAccessGroup(content);

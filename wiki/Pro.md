@@ -10,7 +10,7 @@ Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaig
 
 *   **Inquiry+** — Additional custom question slots per zone (up to 7 vs 2 in Core)
 *   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis
-*   **Publishing exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
+*   **Advanced publishing layouts** — Pro PDF styles, imported LaTeX templates, screenplay, and podcast formats
 *   **Chronologue Runtime sub-mode** — Blue wireframe showing scene runtime duration arcs
 *   **Campaign Manager** — Multiple Author Progress Report campaigns with independent schedules and Teaser Reveal
 *   **Website Exclusives** — Template vaults, Omnibus Inquiry briefings, and guided workflow demonstrations
@@ -46,11 +46,11 @@ Runtime Estimation analyzes your scenes to calculate realistic duration estimate
 
 ---
 
-## Publishing Exports
+## Advanced Publishing Layouts
 
-*Generate production-ready manuscripts via Pandoc.*
+*Extend the Core publishing flow with advanced Pandoc layouts.*
 
-Export your manuscript in professional formats using customizable Pandoc templates. Configure paths for your local Pandoc installation and assign templates per format.
+Core includes the standard publishing setup and Core PDF layouts. Pro adds advanced bundled layouts, imported LaTeX templates, and specialized formats.
 
 **Supported formats:**
 - **Screenplay** — Industry-standard screenplay formatting
@@ -59,7 +59,7 @@ Export your manuscript in professional formats using customizable Pandoc templat
 
 **Configuration:**
 - Primary and fallback Pandoc binary paths
-- Custom LaTeX templates per format
+- Imported or duplicated LaTeX templates per format
 - Output to your export folder alongside analysis files
 
 > **Full guide**: [Publishing](Publishing) — template catalog, Modern Classic setup, Chapters, Parts, act epigraphs.

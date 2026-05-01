@@ -323,7 +323,7 @@ Everything you need to go from draft to finished manuscript.
 *   **Novel Manuscript** — Standard submission format for prose
 
 > [!NOTE]
-> Publishing exports are a Pro feature. See [Publishing](Publishing) for the full guide — template catalog, the `Chapter:` field, how Parts are generated from Acts, Modern Classic setup, act epigraphs, and scene opener heading options. Pro-tier summary at [Publishing Exports](Pro#publishing-exports). For the core manuscript export workflow (Markdown, outlines, index cards), see [Export Workflow](Core-Workflows#exporting-a-manuscript).
+> Core includes the standard publishing setup and Core PDF layouts. Pro adds advanced layouts, imported templates, and expanded publishing controls. See [Publishing](Publishing) for the full guide — template catalog, Book Details, BookMeta-backed page slots, the `Chapter:` field, and scene opener heading options.
 
 ---
 
@@ -381,7 +381,7 @@ Pro Mode extends Radial Timeline with advanced workflows for authors who want mo
 
 **Pro features include:**
 *   **Inquiry+** — Additional custom question slots per zone
-*   **Publishing exports** — Manuscript generation via Pandoc
+*   **Advanced publishing layouts** — Pro PDF styles and imported LaTeX templates
 *   **APR Campaigns** — Multiple Author Progress Report campaigns
 *   **Chronologue Runtime sub-mode** — Scene duration visualization
 *   **Website Exclusives** — Template vaults and guided demonstrations

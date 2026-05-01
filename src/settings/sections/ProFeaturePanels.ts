@@ -451,21 +451,21 @@ class StarterPublishingSetupModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal--template-pack', ERT_CLASSES.SKIN_PRO);
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal--template-pack');
             modalEl.style.width = '560px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-pack-modal');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        const badge = header.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
+        const badge = header.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}` });
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(badgeIcon, 'signature');
-        badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+        setIcon(badgeIcon, 'book-open-text');
+        badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'CORE' });
         header.createDiv({ cls: 'ert-modal-title', text: AUTO_CONFIGURE_BUTTON });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Configure your publishing environment, book details, pages, and PDF style in one step.'
+            text: 'Configure your publishing environment, Book Details, book page slots, and PDF styles in one step.'
         });
 
         const createdBlock = contentEl.createDiv({ cls: 'ert-template-pack-created ert-stack--tight' });
@@ -476,8 +476,8 @@ class StarterPublishingSetupModal extends Modal {
         const createdList = createdBlock.createEl('ol', { cls: 'ert-template-pack-list ert-template-pack-list--ordered' });
         const items = [
             'Book Details note',
-            'Book page stubs (Title Page, Copyright, Dedication, and more)',
-            'PDF style files',
+            'Book page slots connected to Book Details',
+            'Core PDF layout files',
         ];
         if (this.includeScriptExamples) {
             items.splice(items.length - 1, 0, 'Writing samples (screenplay and podcast)');
@@ -490,7 +490,8 @@ class StarterPublishingSetupModal extends Modal {
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
         const generateButton = new ButtonComponent(actions)
             .setButtonText(AUTO_CONFIGURE_BUTTON);
-        generateButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
+        generateButton.setCta();
+        generateButton.buttonEl.addClass('ert-btn');
         generateButton.onClick(() => {
                 this.resolved = true;
                 this.close();
@@ -1085,7 +1086,7 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
 
 /**
  * Generate the starter publishing setup in the user's vault:
- * Book Details note, template-managed page stubs, and bundled PDF style files.
+ * Book Details note, BookMeta-backed page slots, and bundled PDF layout files.
  * Skips files that already exist. Auto-configures template paths in settings.
  */
 async function generateSampleTemplates(
@@ -1322,9 +1323,10 @@ async function generateSampleTemplates(
 
     const matterPageComment = [
         '<!--',
-        'Publishing Setup Page',
-        'Rendered using your Book Details and the selected PDF style.',
-        'Add plain text below only if this page needs custom prose.',
+        'Book page slot.',
+        'Role + UseBookMeta tells Radial Timeline to render this page from Book Details.',
+        'Leave the body empty unless this page needs custom prose.',
+        'Use BodyMode: latex only for standalone LaTeX matter notes that provide their own page content.',
         '-->'
     ];
 
@@ -1355,7 +1357,6 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Additional rights notice or legal disclaimer text goes here.',
             ].join('\n')
         },
         {
@@ -1370,7 +1371,6 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Dedication text goes here.',
             ].join('\n')
         },
         {
@@ -1385,7 +1385,6 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Epigraph text goes here.',
             ].join('\n')
         },
         {
@@ -1400,7 +1399,6 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Acknowledgments text goes here.',
             ].join('\n')
         },
         {
@@ -1415,7 +1413,6 @@ async function generateSampleTemplates(
                 '',
                 ...matterPageComment,
                 '',
-                'Author bio text goes here.',
             ].join('\n')
         }
     ];
@@ -1773,7 +1770,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 ];
             case 'contemporary':
                 return [
-                    { label: 'Headers', value: 'Book title (left) · Section (right), sans' },
+                    { label: 'Headers', value: 'Book title (left) · Scene context (right), sans' },
                     { label: 'Folios', value: 'Bottom center (serif)' },
                     { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
                     { label: 'Spacing', value: '1.5 lines' },
@@ -1929,7 +1926,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     body: {
                         label: 'BODY',
                         leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
-                        rightPage: { headerRight: 'section', folioBottom: '13', bodyLines: BODY_LINES },
+                        rightPage: { headerRight: 'scene', folioBottom: '13', bodyLines: BODY_LINES },
                     },
                     special: [
                         {
@@ -2381,6 +2378,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     const duplicateBundledLayout = async (layout: PandocLayoutTemplate): Promise<void> => {
         const installResult = await installBundledPandocLayouts(plugin, [layout.id]);
+        await ensureBundledLayoutInstalledForExport(plugin, layout);
         if (installResult.installed.length > 0) {
             new Notice(`Installed bundled layout '${layout.name}' to Pandoc folder.`);
         }
@@ -2698,6 +2696,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     btn.setTooltip('Install bundled layout');
                     btn.onClick(async () => {
                         const result = await installBundledPandocLayouts(plugin, [layout.id]);
+                        await ensureBundledLayoutInstalledForExport(plugin, layout);
                         if (result.installed.length > 0) {
                             new Notice(`Installed bundled layout: ${getLayoutDisplayName(layout)}`);
                         } else if (result.failed.length > 0) {
@@ -2988,7 +2987,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
             const matterTargetLabel = sourceFolder || scriptTargetLabel;
             if (created.length > 0) {
-                new Notice(`Publishing configured. Created ${created.length} starter setup files. Book details + pages → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
+                new Notice(`Publishing configured. Created ${created.length} starter setup files. Book Details + page slots → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
             } else {
                 new Notice(STARTER_PUBLISHING_SETUP_ALREADY_EXISTS);
             }
@@ -3509,22 +3508,24 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 });
                 const metaRow = textCol.createDiv({ cls: 'ert-bookmeta-matter-meta-row' });
                 metaRow.createDiv({ cls: 'ert-bookmeta-matter-role', text: fieldDef.pageLabel.toUpperCase() });
+                const previewCol = row.createDiv({ cls: 'ert-bookmeta-matter-preview-cell' });
                 if (hasValue) {
-                    const clearButton = metaRow.createEl('button', {
-                        cls: 'ert-bookmeta-matter-clear',
-                        text: 'Clear',
+                    const clearButton = previewCol.createEl('button', {
+                        cls: 'ert-iconBtn ert-bookmeta-matter-clear',
                         attr: {
                             type: 'button',
-                            'aria-label': `Clear ${fieldDef.label.toLowerCase()}`
+                            'aria-label': `Reset ${fieldDef.label.toLowerCase()}`,
+                            title: `Reset ${fieldDef.label.toLowerCase()}`
                         }
                     });
+                    setIcon(clearButton, 'rotate-ccw');
                     clearButton.addEventListener('click', (evt) => {
                         evt.preventDefault();
                         evt.stopPropagation();
                         void clearBookMetaField(fieldDef.field);
                     });
                 }
-                const intent = row.createDiv({ cls: 'ert-bookmeta-intent' });
+                const intent = previewCol.createDiv({ cls: 'ert-bookmeta-intent' });
                 renderPageIntent(intent, fieldDef.kind, fieldDef.caption);
             });
         };

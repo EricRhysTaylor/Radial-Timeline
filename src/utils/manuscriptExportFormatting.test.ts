@@ -79,6 +79,7 @@ describe('assembleManuscript scene heading formatting', () => {
         );
 
         expect(assembled.text).toContain('\\section*{3\\\\[0.25em]{\\normalsize\\itshape (Arrival)}}');
+        expect(assembled.text).toContain('\\rtSetSceneRunningTitle{3 Arrival}');
         expect(assembled.text).toContain('\\thispagestyle{empty}');
         expect(assembled.text).not.toContain('## 3 Arrival');
     });
@@ -104,7 +105,7 @@ describe('assembleManuscript scene heading formatting', () => {
             }
         );
 
-        expect(assembled.text).toContain('\\section*{1}\n\\thispagestyle{empty}');
+        expect(assembled.text).toContain('\\section*{1}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{1}\n\\thispagestyle{empty}');
         expect(assembled.text).toContain('First paragraph.');
         expect(assembled.text).not.toContain('Training at Academy Field');
         expect(assembled.text).not.toContain('## 1');
@@ -135,6 +136,46 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).not.toContain('# Shail + Trisan');
         expect(assembled.text).not.toContain('\\section*{Shail + Trisan}');
         expect(assembled.text).toContain('\\section*{1}');
+    });
+
+    it('resets latex scene running marks after chapter opener pages', async () => {
+        const file = makeFile('Scenes/1 Training at Academy Field.md', '1 Training at Academy Field');
+        const vault = makeVault({
+            [file.path]: 'First paragraph.'
+        });
+
+        const assembled = await assembleManuscript(
+            [file],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number',
+                sceneHeadingRenderMode: 'latex-section-starred',
+                chapterMarkersByScenePath: {
+                    [file.path]: [{
+                        sourcePath: 'Chapters/Chapter 1.md',
+                        sourceType: 'Scene',
+                        title: 'Chapter 1',
+                        resolvedScenePath: file.path,
+                        resolvedTimelinePosition: 1,
+                    }]
+                }
+            }
+        );
+
+        const chapterIndex = assembled.text.indexOf('# Chapter 1');
+        const sceneIndex = assembled.text.indexOf('\\section*{1}');
+        const markIndex = assembled.text.indexOf('\\rtSetSceneRunningTitle{1}');
+        const bodyIndex = assembled.text.indexOf('First paragraph.');
+        expect(chapterIndex).toBeGreaterThanOrEqual(0);
+        expect(sceneIndex).toBeGreaterThan(chapterIndex);
+        expect(markIndex).toBeGreaterThan(sceneIndex);
+        expect(bodyIndex).toBeGreaterThan(markIndex);
     });
 
     it('injects shared Chapter field headings before scene content and suppresses scene headings in Modern Classic mode', async () => {

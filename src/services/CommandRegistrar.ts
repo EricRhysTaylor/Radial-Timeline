@@ -483,6 +483,12 @@ export class CommandRegistrar {
                 new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
                 return {};
             }
+            if (layout.bundled) {
+                const bundledInstall = await ensureBundledLayoutInstalledForExport(this.plugin, layout);
+                if (bundledInstall.installed) {
+                    new Notice(`Installed bundled layout '${layout.name}' to Pandoc folder.`);
+                }
+            }
             let layoutValidation = validatePandocLayout(this.plugin, layout);
             if (!layoutValidation.valid && layout.bundled) {
                 const bundledInstall = await ensureBundledLayoutInstalledForExport(this.plugin, layout);

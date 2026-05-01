@@ -21,7 +21,7 @@ Bundled templates live in **Settings → Publish → PDF Styles**. Each row show
 
 | Template | Structure | Best for |
 |---|---|---|
-| **Basic Manuscript** | Standard double-spaced submission format | Sending to agents / editors |
+| **Standard Manuscript** | Standard double-spaced submission format | Sending to agents / editors |
 | **Contemporary Literary** | Book-style with Sorts Mill Goudy body, running headers, chapter openers | A finished book look with simple chapters |
 | **Signature Literary** | Literary book style with refined typography | Polished prose fiction |
 | **Modern Classic** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
@@ -42,6 +42,34 @@ Bundled templates live in **Settings → Publish → PDF Styles**. Each row show
 3. The plugin copies the template's `.tex` file into `Radial Timeline/Pandoc/` inside your vault. The pill changes to **Installed**.
 
 Only installed templates can be used for export.
+
+## Book Details and Matter Pages
+
+**Auto configure publishing** is part of Core. It creates a Book Details note, BookMeta-backed page slots, and Core PDF layout files.
+
+BookMeta-backed page slots are lightweight ordering notes. They usually have an empty body and use:
+
+```yaml
+---
+Class: Frontmatter
+Role: title-page
+UseBookMeta: true
+BodyMode: plain
+---
+```
+
+`UseBookMeta: true` tells Radial Timeline to fill that page from Book Details. The physical note controls whether the page appears and where it sits in the manuscript order.
+
+Standalone LaTeX matter notes are different. Use them only when you want the page body to be custom LaTeX:
+
+```yaml
+---
+Class: Frontmatter
+BodyMode: latex
+---
+```
+
+Those notes keep their own page content and do not need BookMeta values.
 
 ## Duplicating a Template
 
@@ -198,7 +226,7 @@ Templates that have the **Scene opener heading options** capability let you choo
 
 Find this in **Settings → Publish → PDF Styles → [template] → +** (expand) → **Scene openers**.
 
-**Modern Classic ignores this setting** because it doesn't print scene headings — scenes are separated by ornaments and carry no label. If you want labeled scene openers, use Contemporary Literary, Signature Literary, or Basic Manuscript.
+**Modern Classic ignores this setting** because it doesn't print scene headings — scenes are separated by ornaments and carry no label. If you want labeled scene openers, use Standard Manuscript, Contemporary Literary, or Signature Literary.
 
 ---
 
