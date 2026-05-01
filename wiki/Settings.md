@@ -11,7 +11,7 @@ The settings interface is organized into seven tabs:
 *   **Core** — Timeline configuration, progress tracking, story beats, chronology, and metadata
 *   **Social** — Author Progress Report (APR) for sharing your writing journey
 *   **Inquiry** — Corpus scanning, prompt libraries, and Inquiry automation
-*   **Publishing** — Manuscript export via Pandoc with templates and format configuration
+*   **Publish** — Manuscript export via Pandoc with templates and format configuration
 *   **AI** — AI provider configuration, model selection, and analysis settings
 *   **Advanced** — Technical configuration and file handling
 *   **PRO** — Pro entitlement, access keys, and feature overview
@@ -306,7 +306,8 @@ The Outline file can be anywhere inside the book folder (including inside subfol
 ---
 
 <a name="publishing"></a>
-## Publishing Tab
+<a name="publish"></a>
+## Publish Tab
 
 Everything you need to go from draft to finished manuscript.
 

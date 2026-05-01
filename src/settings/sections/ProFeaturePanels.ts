@@ -752,6 +752,8 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
     const rights = frontmatter.Rights as Record<string, unknown> | undefined;
     const identifiers = frontmatter.Identifiers as Record<string, unknown> | undefined;
     const publisher = frontmatter.Publisher as Record<string, unknown> | undefined;
+    const frontmatterBlocks = frontmatter.Frontmatter as Record<string, unknown> | undefined;
+    const backmatterBlocks = frontmatter.Backmatter as Record<string, unknown> | undefined;
 
     const rawYear = rights?.year;
     const year = typeof rawYear === 'number'
@@ -762,6 +764,7 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
 
     return {
         title: (book?.title as string) || undefined,
+        subtitle: (book?.subtitle as string) || undefined,
         author: (book?.author as string) || undefined,
         rights: rights ? {
             copyright_holder: (rights.copyright_holder as string) || undefined,
@@ -771,7 +774,21 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
             isbn_paperback: (identifiers.isbn_paperback as string) || undefined
         } : undefined,
         publisher: publisher ? {
-            name: (publisher.name as string) || undefined
+            name: (publisher.name as string) || undefined,
+            imprint: (publisher.imprint as string) || undefined,
+            edition: (publisher.edition as string) || undefined
+        } : undefined,
+        frontmatter: frontmatterBlocks ? {
+            title_page_note: (frontmatterBlocks.title_page_note as string) || undefined,
+            dedication: (frontmatterBlocks.dedication as string) || undefined,
+            epigraph_quote: (frontmatterBlocks.epigraph_quote as string) || undefined,
+            epigraph_attribution: (frontmatterBlocks.epigraph_attribution as string) || undefined
+        } : undefined,
+        backmatter: backmatterBlocks ? {
+            acknowledgments: (backmatterBlocks.acknowledgments as string) || undefined,
+            about_author: (backmatterBlocks.about_author as string) || undefined,
+            author_note: (backmatterBlocks.author_note as string) || undefined,
+            other_works: (backmatterBlocks.other_works as string) || undefined
         } : undefined,
         sourcePath
     };
@@ -1034,6 +1051,7 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
         'Class: BookMeta',
         'Book:',
         '  title: "Untitled Manuscript"',
+        '  subtitle: ""',
         '  author: "Author"',
         'Rights:',
         '  copyright_holder: "Copyright Holder"',
@@ -1042,6 +1060,18 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
         '  isbn_paperback: "000-0-00-000000-0"',
         'Publisher:',
         '  name: "Publisher"',
+        '  imprint: "Imprint"',
+        '  edition: "1"',
+        'Frontmatter:',
+        '  title_page_note: ""',
+        '  dedication: ""',
+        '  epigraph_quote: ""',
+        '  epigraph_attribution: ""',
+        'Backmatter:',
+        '  acknowledgments: ""',
+        '  about_author: ""',
+        '  author_note: ""',
+        '  other_works: ""',
         'Production:',
         '  imprint: "Imprint"',
         '  edition: "1"',
@@ -1260,6 +1290,7 @@ async function generateSampleTemplates(
             'Class: BookMeta',
             'Book:',
             '  title: "Untitled Manuscript"',
+            '  subtitle: ""',
             '  author: "Author"',
             'Rights:',
             '  copyright_holder: "Copyright Holder"',
@@ -1268,6 +1299,18 @@ async function generateSampleTemplates(
             '  isbn_paperback: "000-0-00-000000-0"',
             'Publisher:',
             '  name: "Publisher"',
+            '  imprint: "Imprint"',
+            '  edition: "1"',
+            'Frontmatter:',
+            '  title_page_note: ""',
+            '  dedication: ""',
+            '  epigraph_quote: ""',
+            '  epigraph_attribution: ""',
+            'Backmatter:',
+            '  acknowledgments: ""',
+            '  about_author: ""',
+            '  author_note: ""',
+            '  other_works: ""',
             'Production:',
             '  imprint: "Imprint"',
             '  edition: "1"',
@@ -1321,6 +1364,7 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Frontmatter',
                 'Role: dedication',
+                'UseBookMeta: true',
                 'BodyMode: plain',
                 '---',
                 '',
@@ -1335,6 +1379,7 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Frontmatter',
                 'Role: epigraph',
+                'UseBookMeta: true',
                 'BodyMode: plain',
                 '---',
                 '',
@@ -1349,6 +1394,7 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Backmatter',
                 'Role: acknowledgments',
+                'UseBookMeta: true',
                 'BodyMode: plain',
                 '---',
                 '',
@@ -1457,7 +1503,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below.')
         .setHeading();
     addHeadingIcon(pandocHeading, 'book-open-text');
-    addWikiLink(pandocHeading, 'Settings#professional');
+    addWikiLink(pandocHeading, 'Settings#publish');
     applyErtHeaderLayout(pandocHeading);
 
     const systemConfigPanel = pandocPanel.createDiv({
@@ -2963,6 +3009,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     let activeBookMetaEditSourcePath: string | null = null;
     let activeBookMetaPreviewOverride: BookMeta | null = null;
     let activeBookMetaEditBusy = false;
+    const expandedBookMetaSections = new Set<string>();
     const bookMetaPreviewPanel = pandocPanel.createDiv({
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-details' }
@@ -3030,9 +3077,25 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 sourcePath: nextSourcePath,
             };
 
+            const assignString = (
+                target: Record<string, unknown>,
+                key: string,
+                value: string | number | null
+            ): void => {
+                if (typeof value === 'string' && value.trim()) target[key] = value;
+                else if (typeof value === 'number') target[key] = value;
+                else delete target[key];
+            };
+
             if (field === 'title') {
                 if (typeof normalizedValue === 'string') nextMeta.title = normalizedValue;
                 else delete nextMeta.title;
+                return nextMeta;
+            }
+
+            if (field === 'subtitle') {
+                if (typeof normalizedValue === 'string') nextMeta.subtitle = normalizedValue;
+                else delete nextMeta.subtitle;
                 return nextMeta;
             }
 
@@ -3066,10 +3129,43 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 return nextMeta;
             }
 
-            const publisher = { ...(nextMeta.publisher || {}) };
-            if (typeof normalizedValue === 'string') publisher.name = normalizedValue;
-            else delete publisher.name;
-            nextMeta.publisher = Object.keys(publisher).length > 0 ? publisher : undefined;
+            if (field === 'publisher' || field === 'imprint' || field === 'edition') {
+                const publisher = { ...(nextMeta.publisher || {}) };
+                const key = field === 'publisher' ? 'name' : field;
+                assignString(publisher, key, normalizedValue);
+                nextMeta.publisher = Object.keys(publisher).length > 0 ? publisher : undefined;
+                return nextMeta;
+            }
+
+            if (
+                field === 'title-page-note'
+                || field === 'dedication'
+                || field === 'epigraph-quote'
+                || field === 'epigraph-attribution'
+            ) {
+                const frontmatter = { ...(nextMeta.frontmatter || {}) };
+                const key = field === 'title-page-note'
+                    ? 'title_page_note'
+                    : field === 'epigraph-quote'
+                        ? 'epigraph_quote'
+                        : field === 'epigraph-attribution'
+                            ? 'epigraph_attribution'
+                            : 'dedication';
+                assignString(frontmatter, key, normalizedValue);
+                nextMeta.frontmatter = Object.keys(frontmatter).length > 0 ? frontmatter : undefined;
+                return nextMeta;
+            }
+
+            const backmatter = { ...(nextMeta.backmatter || {}) };
+            const key = field === 'about-author'
+                ? 'about_author'
+                : field === 'author-note'
+                    ? 'author_note'
+                    : field === 'other-works'
+                        ? 'other_works'
+                        : 'acknowledgments';
+            assignString(backmatter, key, normalizedValue);
+            nextMeta.backmatter = Object.keys(backmatter).length > 0 ? backmatter : undefined;
             return nextMeta;
         };
 
@@ -3123,13 +3219,30 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             className: 'ert-bookmeta-primary-value' | 'ert-bookmeta-detail-value'
         ) => {
             if (activeBookMetaEditField === field) {
-                const input = target.createEl('input', {
-                    cls: `${className} ert-bookmeta-inline-input ${className === 'ert-bookmeta-primary-value' ? 'ert-bookmeta-inline-input--primary' : 'ert-bookmeta-inline-input--detail'}`,
-                    attr: {
-                        type: 'text',
-                        'aria-label': label,
-                    }
-                });
+                const multilineFields = new Set<EditableBookMetaFieldKey>([
+                    'title-page-note',
+                    'dedication',
+                    'epigraph-quote',
+                    'acknowledgments',
+                    'about-author',
+                    'author-note',
+                    'other-works',
+                ]);
+                const input = multilineFields.has(field)
+                    ? target.createEl('textarea', {
+                        cls: `${className} ert-bookmeta-inline-input ert-bookmeta-inline-input--textarea`,
+                        attr: {
+                            rows: '3',
+                            'aria-label': label,
+                        }
+                    })
+                    : target.createEl('input', {
+                        cls: `${className} ert-bookmeta-inline-input ${className === 'ert-bookmeta-primary-value' ? 'ert-bookmeta-inline-input--primary' : 'ert-bookmeta-inline-input--detail'}`,
+                        attr: {
+                            type: 'text',
+                            'aria-label': label,
+                        }
+                    });
                 input.value = activeBookMetaDraft;
                 window.setTimeout(() => {
                     input.focus();
@@ -3139,7 +3252,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 input.addEventListener('input', () => {
                     activeBookMetaDraft = input.value;
                 });
-                input.addEventListener('keydown', (evt) => {
+                input.addEventListener('keydown', (evt: KeyboardEvent) => {
                     if (evt.key === 'Enter') {
                         evt.preventDefault();
                         handled = true;
@@ -3187,25 +3300,51 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             return valueEl;
         };
 
+        const renderPageIntent = (
+            target: HTMLElement,
+            kind: 'title' | 'dedication' | 'epigraph' | 'copyright' | 'prose' | 'list',
+            caption: string
+        ): void => {
+            const page = target.createDiv({ cls: `ert-bookmeta-intent-page ert-bookmeta-intent-page--${kind}` });
+            page.createDiv({ cls: 'ert-bookmeta-intent-block ert-bookmeta-intent-block--primary' });
+            if (kind === 'title' || kind === 'epigraph') {
+                page.createDiv({ cls: 'ert-bookmeta-intent-block ert-bookmeta-intent-block--secondary' });
+            }
+            if (kind === 'prose' || kind === 'list') {
+                const lines = page.createDiv({ cls: 'ert-bookmeta-intent-lines' });
+                for (let index = 0; index < (kind === 'list' ? 4 : 5); index++) {
+                    lines.createDiv({ cls: `ert-bookmeta-intent-line${index === 3 ? ' is-short' : ''}` });
+                }
+            }
+            target.createDiv({ cls: 'ert-bookmeta-intent-caption', text: caption });
+        };
+
         const titleCard = previewBody.createDiv({ cls: 'ert-bookmeta-title-card' });
         titleCard.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Book Details' });
 
         const primary = previewBody.createDiv({ cls: 'ert-bookmeta-primary' });
-        const addPrimaryField = (label: string, value: string | number | null | undefined, placeholder: string) => {
+        const addPrimaryField = (
+            label: string,
+            fieldKey: EditableBookMetaFieldKey,
+            value: string | number | null | undefined,
+            placeholder: string,
+            required = true
+        ) => {
             const field = primary.createDiv({ cls: 'ert-bookmeta-primary-field' });
             renderBookMetaValue(
                 field,
-                label === 'Title' ? 'title' : 'author',
+                fieldKey,
                 label,
                 value,
                 placeholder,
-                true,
+                required,
                 'ert-bookmeta-primary-value'
             );
             field.createDiv({ cls: 'ert-bookmeta-primary-label', text: label });
         };
-        addPrimaryField('Title', meta?.title, 'Add title');
-        addPrimaryField('Author', meta?.author, 'Add author');
+        addPrimaryField('Title', 'title', meta?.title, 'Add title');
+        addPrimaryField('Subtitle', 'subtitle', meta?.subtitle, 'Add subtitle', false);
+        addPrimaryField('Author', 'author', meta?.author, 'Add author');
 
         const details = previewBody.createDiv({ cls: 'ert-bookmeta-detail-grid' });
         const leftCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--left' });
@@ -3225,14 +3364,137 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                         ? 'isbn'
                         : label === 'Rights year'
                             ? 'rights-year'
-                            : 'publisher';
+                            : label === 'Imprint'
+                                ? 'imprint'
+                                : label === 'Edition'
+                                    ? 'edition'
+                                    : 'publisher';
             renderBookMetaValue(field, fieldKey, label, value, placeholder, required, 'ert-bookmeta-detail-value');
             field.createDiv({ cls: 'ert-bookmeta-detail-label', text: label });
         };
         addDetailField(leftCol, 'Copyright holder', meta?.rights?.copyright_holder, 'Add copyright', true);
         addDetailField(leftCol, 'ISBN', meta?.identifiers?.isbn_paperback, 'Add ISBN (optional)', false);
+        addDetailField(leftCol, 'Imprint', meta?.publisher?.imprint, 'Add imprint', false);
         addDetailField(rightCol, 'Rights year', meta?.rights?.year, 'Add year', true);
         addDetailField(rightCol, 'Publisher', meta?.publisher?.name, 'Add publisher', false);
+        addDetailField(rightCol, 'Edition', meta?.publisher?.edition, 'Add edition', false);
+
+        type MatterBookMetaField = {
+            field: EditableBookMetaFieldKey;
+            label: string;
+            value: string | undefined;
+            placeholder: string;
+            kind: 'title' | 'dedication' | 'epigraph' | 'copyright' | 'prose' | 'list';
+            caption: string;
+        };
+
+        const renderMatterBookMetaSection = (
+            key: string,
+            title: string,
+            description: string,
+            fields: MatterBookMetaField[]
+        ): void => {
+            const detailsEl = previewBody.createEl('details', { cls: 'ert-bookmeta-matter-fold' });
+            detailsEl.open = expandedBookMetaSections.has(key);
+            detailsEl.addEventListener('toggle', () => {
+                if (detailsEl.open) expandedBookMetaSections.add(key);
+                else expandedBookMetaSections.delete(key);
+            });
+            const summary = detailsEl.createEl('summary', { cls: 'ert-bookmeta-matter-summary' });
+            const copy = summary.createDiv({ cls: 'ert-bookmeta-matter-summary-copy' });
+            copy.createDiv({ cls: 'ert-bookmeta-matter-summary-title', text: title });
+            copy.createDiv({ cls: 'ert-bookmeta-matter-summary-desc', text: description });
+            const count = fields.filter(field => normalizeValue(field.value)).length;
+            summary.createDiv({ cls: 'ert-bookmeta-matter-summary-count', text: `${count} filled` });
+
+            const list = detailsEl.createDiv({ cls: 'ert-bookmeta-matter-list' });
+            fields.forEach(fieldDef => {
+                const row = list.createDiv({ cls: 'ert-bookmeta-matter-row' });
+                const textCol = row.createDiv({ cls: 'ert-bookmeta-matter-field' });
+                renderBookMetaValue(
+                    textCol,
+                    fieldDef.field,
+                    fieldDef.label,
+                    fieldDef.value,
+                    fieldDef.placeholder,
+                    false,
+                    'ert-bookmeta-detail-value'
+                );
+                textCol.createDiv({ cls: 'ert-bookmeta-detail-label', text: fieldDef.label });
+                const intent = row.createDiv({ cls: 'ert-bookmeta-intent' });
+                renderPageIntent(intent, fieldDef.kind, fieldDef.caption);
+            });
+        };
+
+        renderMatterBookMetaSection('frontmatter', 'Frontmatter', 'Optional pages that appear before the manuscript body.', [
+            {
+                field: 'title-page-note',
+                label: 'Title page note',
+                value: meta?.frontmatter?.title_page_note,
+                placeholder: 'Add title page note',
+                kind: 'title',
+                caption: 'Centered title page',
+            },
+            {
+                field: 'dedication',
+                label: 'Dedication',
+                value: meta?.frontmatter?.dedication,
+                placeholder: 'Add dedication',
+                kind: 'dedication',
+                caption: 'Centered one-third down',
+            },
+            {
+                field: 'epigraph-quote',
+                label: 'Epigraph quote',
+                value: meta?.frontmatter?.epigraph_quote,
+                placeholder: 'Add quote',
+                kind: 'epigraph',
+                caption: 'Centered quote block',
+            },
+            {
+                field: 'epigraph-attribution',
+                label: 'Epigraph attribution',
+                value: meta?.frontmatter?.epigraph_attribution,
+                placeholder: 'Add attribution',
+                kind: 'epigraph',
+                caption: 'Right-aligned attribution',
+            },
+        ]);
+
+        renderMatterBookMetaSection('backmatter', 'Backmatter', 'Optional prose pages after the manuscript body.', [
+            {
+                field: 'acknowledgments',
+                label: 'Acknowledgments',
+                value: meta?.backmatter?.acknowledgments,
+                placeholder: 'Add acknowledgments',
+                kind: 'prose',
+                caption: 'Heading + prose',
+            },
+            {
+                field: 'about-author',
+                label: 'About the author',
+                value: meta?.backmatter?.about_author,
+                placeholder: 'Add author bio',
+                kind: 'prose',
+                caption: 'Bio paragraph',
+            },
+            {
+                field: 'author-note',
+                label: 'Author note',
+                value: meta?.backmatter?.author_note,
+                placeholder: 'Add author note',
+                kind: 'prose',
+                caption: 'Heading + prose',
+            },
+            {
+                field: 'other-works',
+                label: 'Other works',
+                value: meta?.backmatter?.other_works,
+                placeholder: 'Add other works',
+                kind: 'list',
+                caption: 'Heading + list',
+            },
+        ]);
 
         if (hasSourcePath) {
             const previewActions = previewBody.createDiv({ cls: 'ert-bookmeta-preview-actions' });

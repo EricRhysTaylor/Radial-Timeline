@@ -15,7 +15,7 @@ This page covers:
 
 ## Template Catalog
 
-Bundled templates live in **Settings → Publishing → PDF Styles**. Each row shows a status pill (**Installed** / **Not installed**), a preview card, and buttons for **Install** and **Duplicate**.
+Bundled templates live in **Settings → Publish → PDF Styles**. Each row shows a status pill (**Installed** / **Not installed**), a preview card, and buttons for **Install** and **Duplicate**.
 
 ### Novel templates
 
@@ -37,7 +37,7 @@ Bundled templates live in **Settings → Publishing → PDF Styles**. Each row s
 
 ## Installing a Template
 
-1. Open **Settings → Publishing → PDF Styles**.
+1. Open **Settings → Publish → PDF Styles**.
 2. Find the template you want in the list. If the pill says **Not installed**, click **Install**.
 3. The plugin copies the template's `.tex` file into `Radial Timeline/Pandoc/` inside your vault. The pill changes to **Installed**.
 
@@ -117,7 +117,7 @@ Here's the full setup, step by step.
 
 ### Step 1 — Install Modern Classic
 
-**Settings → Publishing → PDF Styles → Modern Classic → Install**
+**Settings → Publish → PDF Styles → Modern Classic → Install**
 
 The template file writes to `Radial Timeline/Pandoc/rt_modern_classic.tex` in your vault.
 
@@ -150,7 +150,7 @@ You can have many chapters per act. There's no upper limit and no naming require
 
 ### Step 5 — (Optional) Add act epigraphs
 
-**Settings → Publishing → PDF Styles → Modern Classic** → click the **+** button at the end of the row to expand special options → **Act epigraphs**.
+**Settings → Publish → PDF Styles → Modern Classic** → click the **+** button at the end of the row to expand special options → **Act epigraphs**.
 
 For each act, fill in:
 - **Quote** — the epigraph text
@@ -173,7 +173,7 @@ The exporter:
 4. Emits scene prose separated by ornaments inside each chapter.
 5. Hands the assembled markdown to Pandoc, which produces a PDF.
 
-Output goes to `Radial Timeline/Export/` by default (configurable in Settings → Publishing → Export folder).
+Output goes to `Radial Timeline/Export/` by default (configurable in Settings → Publish → Export folder).
 
 ### Minimum viable Modern Classic manuscript
 
@@ -196,7 +196,7 @@ Templates that have the **Scene opener heading options** capability let you choo
 - **Scene number + title** — `3 — Opening Beat` (default)
 - **Title only** — `Opening Beat` (no number)
 
-Find this in **Settings → Publishing → PDF Styles → [template] → +** (expand) → **Scene openers**.
+Find this in **Settings → Publish → PDF Styles → [template] → +** (expand) → **Scene openers**.
 
 **Modern Classic ignores this setting** because it doesn't print scene headings — scenes are separated by ornaments and carry no label. If you want labeled scene openers, use Contemporary Literary, Signature Literary, or Basic Manuscript.
 

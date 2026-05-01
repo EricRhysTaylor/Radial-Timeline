@@ -225,12 +225,24 @@ export const BOOK_META_BACKED_ROLES: ReadonlySet<string> = new Set([
   'copyright',
   'title-page',
   'about-author',
+  'dedication',
+  'epigraph',
+  'acknowledgments',
+  'author-note',
+  'other-works',
 ]);
+
+function preferBookMetaText(value: string | undefined, bodyText: string, bodyMode: MatterBodyMode): string {
+  const normalized = (value || '').trim();
+  if (normalized) return escapeLatex(normalized);
+  return processBody(bodyText, bodyMode);
+}
 
 function renderTitlePage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
   const title = escapeLatex(bookMeta.title ?? '');
+  const subtitle = escapeLatex(bookMeta.subtitle ?? '');
   const author = escapeLatex(bookMeta.author ?? '');
-  const processedBody = processBody(bodyText, bodyMode);
+  const titlePageNote = preferBookMetaText(bookMeta.frontmatter?.title_page_note, bodyText, bodyMode);
 
   const parts: string[] = [];
   parts.push('\\begin{center}');
@@ -239,14 +251,17 @@ function renderTitlePage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterB
   if (title) {
     parts.push(`{\\Huge ${title}}\\\\[1em]`);
   }
+  if (subtitle) {
+    parts.push(`{\\Large ${subtitle}}\\\\[1.5em]`);
+  }
   if (author) {
     parts.push(`{\\Large ${author}}`);
   }
-  if (processedBody) {
+  if (titlePageNote) {
     parts.push('');
     parts.push('\\vspace{1cm}');
     parts.push('');
-    parts.push(processedBody);
+    parts.push(titlePageNote);
   }
   parts.push('');
   parts.push('\\vfill');
@@ -299,7 +314,7 @@ function renderCopyrightPage(bookMeta: BookMeta, bodyText: string, bodyMode: Mat
 
 function renderAboutAuthorPage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
   const author = escapeLatex(bookMeta.author ?? '');
-  const processedBody = processBody(bodyText, bodyMode);
+  const processedBody = preferBookMetaText(bookMeta.backmatter?.about_author, bodyText, bodyMode);
 
   const parts: string[] = [];
   parts.push('\\section*{About the Author}');
@@ -312,6 +327,58 @@ function renderAboutAuthorPage(bookMeta: BookMeta, bodyText: string, bodyMode: M
     parts.push(processedBody);
   }
 
+  return parts.join('\n');
+}
+
+function renderDedicationPage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
+  const dedication = preferBookMetaText(bookMeta.frontmatter?.dedication, bodyText, bodyMode);
+  if (!dedication) return '';
+  return [
+    '\\begin{center}',
+    '\\vspace*{0.33\\textheight}',
+    dedication,
+    '\\vfill',
+    '\\end{center}',
+    '\\newpage'
+  ].join('\n');
+}
+
+function renderEpigraphPage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
+  const quote = (bookMeta.frontmatter?.epigraph_quote || '').trim();
+  const attribution = (bookMeta.frontmatter?.epigraph_attribution || '').trim();
+  if (!quote && !attribution) {
+    const fallback = processBody(bodyText, bodyMode);
+    if (!fallback) return '';
+    return `${fallback}\n\\newpage`;
+  }
+  const parts: string[] = [];
+  parts.push('\\begin{center}');
+  parts.push('\\vspace*{0.32\\textheight}');
+  parts.push('\\begin{minipage}{0.72\\textwidth}');
+  if (quote) parts.push(`\\itshape ${escapeLatex(quote)}`);
+  if (attribution) {
+    parts.push('');
+    parts.push('\\vspace{0.8em}');
+    parts.push(`\\raggedleft\\normalfont --- ${escapeLatex(attribution)}`);
+  }
+  parts.push('\\end{minipage}');
+  parts.push('\\vfill');
+  parts.push('\\end{center}');
+  parts.push('\\newpage');
+  return parts.join('\n');
+}
+
+function renderProseMatterPage(
+  heading: string,
+  bookMetaText: string | undefined,
+  bodyText: string,
+  bodyMode: MatterBodyMode
+): string {
+  const processedBody = preferBookMetaText(bookMetaText, bodyText, bodyMode);
+  const parts: string[] = [];
+  parts.push(`\\section*{${escapeLatex(heading)}}`);
+  parts.push('');
+  if (processedBody) parts.push(processedBody);
   return parts.join('\n');
 }
 
@@ -328,6 +395,16 @@ function renderBookMetaBackedMatterPage(
       return renderTitlePage(bookMeta, bodyText, bodyMode);
     case 'about-author':
       return renderAboutAuthorPage(bookMeta, bodyText, bodyMode);
+    case 'dedication':
+      return renderDedicationPage(bookMeta, bodyText, bodyMode);
+    case 'epigraph':
+      return renderEpigraphPage(bookMeta, bodyText, bodyMode);
+    case 'acknowledgments':
+      return renderProseMatterPage('Acknowledgments', bookMeta.backmatter?.acknowledgments, bodyText, bodyMode);
+    case 'author-note':
+      return renderProseMatterPage('Author Note', bookMeta.backmatter?.author_note, bodyText, bodyMode);
+    case 'other-works':
+      return renderProseMatterPage('Other Works', bookMeta.backmatter?.other_works, bodyText, bodyMode);
     default:
       return null;
   }

@@ -14,7 +14,7 @@ For authors, the practical result is that more planning, diagnosis, presentation
 - Expanded and refined several core **author-facing modals and guided workflows**, including Book Designer, Create note…, Manage subplots, and Manuscript export.
 - Added **drag-to-reorder in Narrative mode** with optional ripple rename, a recent-moves overlay, and persistent move history logs so structural edits are easier to track and audit.
 - Upgraded **Gossamer Mode** into a multi-signal, multi-run scoring system with run filtering, signal switching, saved history, and richer AI/manual workflows.
-- Rebuilt the **settings experience** into distinct tabs for Core, Social, Inquiry, Publishing, AI, Advanced, and Pro, with stronger visual separation and integrated wiki/help linking.
+- Rebuilt the **settings experience** into distinct tabs for Core, Social, Inquiry, Publish, AI, Advanced, and Pro, with stronger visual separation and integrated wiki/help linking.
 
 ### Inquiry View
 
@@ -129,7 +129,7 @@ This is part of a broader shift in RT from pure planning toward a more complete 
   - **Core**
   - **Social**
   - **Inquiry**
-  - **Publishing**
+  - **Publish**
   - **AI**
   - **Advanced**
   - **Pro**

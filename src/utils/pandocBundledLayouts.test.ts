@@ -214,6 +214,33 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(updated).toContain('\\preto\\subsection{\\clearpage\\thispagestyle{empty}}');
     });
 
+    it('hotfixes partially updated Standard Manuscript scene opener formatting in existing bundled template files', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const stale = [
+            '% Pandoc LaTeX Template - Standard Manuscript',
+            '\\setcounter{secnumdepth}{0}',
+            '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
+            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, stale);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
+        expect(updated).toContain('\\titleformat{\\subsection}[display]');
+        expect(updated).toContain('\\preto\\subsection{\\clearpage\\thispagestyle{empty}}');
+    });
+
     it('hotfixes legacy Contemporary Literary scene opener formatting in existing bundled template files', async () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);

@@ -298,6 +298,8 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
     const rights = frontmatter.Rights as Record<string, unknown> | undefined;
     const identifiers = frontmatter.Identifiers as Record<string, unknown> | undefined;
     const publisher = frontmatter.Publisher as Record<string, unknown> | undefined;
+    const frontmatterBlocks = frontmatter.Frontmatter as Record<string, unknown> | undefined;
+    const backmatterBlocks = frontmatter.Backmatter as Record<string, unknown> | undefined;
 
     const rawYear = rights?.year;
     const year = typeof rawYear === 'number'
@@ -308,6 +310,7 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
 
     return {
         title: (book?.title as string) || undefined,
+        subtitle: (book?.subtitle as string) || undefined,
         author: (book?.author as string) || undefined,
         rights: rights ? {
             copyright_holder: (rights.copyright_holder as string) || undefined,
@@ -318,6 +321,20 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
         } : undefined,
         publisher: publisher ? {
             name: (publisher.name as string) || undefined,
+            imprint: (publisher.imprint as string) || undefined,
+            edition: (publisher.edition as string) || undefined,
+        } : undefined,
+        frontmatter: frontmatterBlocks ? {
+            title_page_note: (frontmatterBlocks.title_page_note as string) || undefined,
+            dedication: (frontmatterBlocks.dedication as string) || undefined,
+            epigraph_quote: (frontmatterBlocks.epigraph_quote as string) || undefined,
+            epigraph_attribution: (frontmatterBlocks.epigraph_attribution as string) || undefined,
+        } : undefined,
+        backmatter: backmatterBlocks ? {
+            acknowledgments: (backmatterBlocks.acknowledgments as string) || undefined,
+            about_author: (backmatterBlocks.about_author as string) || undefined,
+            author_note: (backmatterBlocks.author_note as string) || undefined,
+            other_works: (backmatterBlocks.other_works as string) || undefined,
         } : undefined,
         sourcePath,
     };

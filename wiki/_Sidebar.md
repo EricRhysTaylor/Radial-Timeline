@@ -12,7 +12,7 @@
     *   [Core](Settings#core)
     *   [Social](Settings#social)
     *   [Inquiry](Settings#inquiry)
-    *   [Publishing](Settings#publishing)
+    *   [Publish](Settings#publish)
     *   [AI](Settings#ai)
     *   [Advanced](Settings#advanced)
     *   [PRO](Settings#pro)

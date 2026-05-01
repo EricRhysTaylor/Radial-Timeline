@@ -39,4 +39,4 @@ For first-time setup, start with [Fresh Vault Onboarding](Fresh-Vault-Onboarding
 
 1.  Install [Pandoc](https://pandoc.org/installing.html).
 2.  Install a LaTeX distribution if you want PDF output.
-3.  Open **Settings → Publishing** and configure paths, templates, or bundled styles as needed.
+3.  Open **Settings → Publish** and configure paths, templates, or bundled styles as needed.

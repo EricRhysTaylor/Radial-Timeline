@@ -11,6 +11,8 @@
 export interface BookMeta {
     /** Book title */
     title?: string;
+    /** Optional subtitle */
+    subtitle?: string;
     /** Author name */
     author?: string;
     /** Copyright and rights info */
@@ -25,6 +27,22 @@ export interface BookMeta {
     /** Publisher info */
     publisher?: {
         name?: string;
+        imprint?: string;
+        edition?: string;
+    };
+    /** Optional semantic frontmatter text blocks */
+    frontmatter?: {
+        title_page_note?: string;
+        dedication?: string;
+        epigraph_quote?: string;
+        epigraph_attribution?: string;
+    };
+    /** Optional semantic backmatter text blocks */
+    backmatter?: {
+        acknowledgments?: string;
+        about_author?: string;
+        author_note?: string;
+        other_works?: string;
     };
     /** Path to the BookMeta note in the vault */
     sourcePath?: string;

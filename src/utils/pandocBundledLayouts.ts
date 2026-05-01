@@ -131,9 +131,28 @@ function normalizeCoreTemplateSceneOpeners(
         : CONTEMPORARY_LITERARY_HEADING_BLOCK;
 
     if (content.includes(fixedBlock)) return { content, changed: false };
-    const updated = content.includes(legacyBlock)
+    let updated = content.includes(legacyBlock)
         ? content.replace(legacyBlock, fixedBlock)
         : content;
+    if (updated === content) {
+        const headingIndexes = [
+            updated.indexOf('\\titleformat{\\section}'),
+            updated.indexOf('\\titleformat{name=\\section'),
+            updated.indexOf('\\titleformat{\\chapter}'),
+        ].filter(index => index >= 0);
+        const firstHeadingIndex = headingIndexes.length > 0 ? Math.min(...headingIndexes) : -1;
+        const sectionHook = '\\preto\\section{\\clearpage\\thispagestyle{empty}}';
+        const subsectionHook = '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}';
+        const endNeedle = updated.includes(subsectionHook) ? subsectionHook : sectionHook;
+        const endIndex = firstHeadingIndex >= 0 ? updated.indexOf(endNeedle, firstHeadingIndex) : -1;
+        if (firstHeadingIndex >= 0 && endIndex >= 0) {
+            const helperIndex = updated.indexOf('\\setcounter{secnumdepth}{0}');
+            const startIndex = helperIndex >= 0 && helperIndex < firstHeadingIndex
+                ? helperIndex
+                : firstHeadingIndex;
+            updated = `${updated.slice(0, startIndex)}${fixedBlock}${updated.slice(endIndex + endNeedle.length)}`;
+        }
+    }
     return { content: updated, changed: updated !== content };
 }
 

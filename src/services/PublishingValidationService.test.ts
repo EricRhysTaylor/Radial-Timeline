@@ -94,7 +94,7 @@ describe('PublishingValidationService matter readiness', () => {
 
     it('marks UseBookMeta on a non-backed role as Uses page content (flag is a no-op)', () => {
         const result = describeMatterReadiness({
-            role: 'epigraph',
+            role: 'foreword',
             usesBookMeta: true,
             bookMetaAvailable: true
         });

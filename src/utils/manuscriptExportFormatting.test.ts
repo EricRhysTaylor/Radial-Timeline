@@ -83,6 +83,60 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).not.toContain('## 3 Arrival');
     });
 
+    it('can render Standard Manuscript scene opener pages as number-only raw LaTeX', async () => {
+        const file = makeFile('Scenes/1 Training at Academy Field.md', '1 Training at Academy Field');
+        const vault = makeVault({
+            [file.path]: 'First paragraph.'
+        });
+
+        const assembled = await assembleManuscript(
+            [file],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number',
+                sceneHeadingRenderMode: 'latex-section-starred'
+            }
+        );
+
+        expect(assembled.text).toContain('\\section*{1}\n\\thispagestyle{empty}');
+        expect(assembled.text).toContain('First paragraph.');
+        expect(assembled.text).not.toContain('Training at Academy Field');
+        expect(assembled.text).not.toContain('## 1');
+    });
+
+    it('omits chapter marker headings when chapter markers are not passed to assembly', async () => {
+        const file = makeFile('Scenes/1 Training at Academy Field.md', '1 Training at Academy Field');
+        const vault = makeVault({
+            [file.path]: 'First paragraph.'
+        });
+
+        const assembled = await assembleManuscript(
+            [file],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number',
+                sceneHeadingRenderMode: 'latex-section-starred',
+                chapterMarkersByScenePath: {}
+            }
+        );
+
+        expect(assembled.text).not.toContain('# Shail + Trisan');
+        expect(assembled.text).not.toContain('\\section*{Shail + Trisan}');
+        expect(assembled.text).toContain('\\section*{1}');
+    });
+
     it('injects shared Chapter field headings before scene content and suppresses scene headings in Modern Classic mode', async () => {
         const scene1 = makeFile('Scenes/1 Opening.md', '1 Opening');
         const scene2 = makeFile('Scenes/2 Midpoint.md', '2 Midpoint');

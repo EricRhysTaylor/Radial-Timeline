@@ -33,6 +33,7 @@ import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from '../utils/manuscriptSanitize';
+import { getManuscriptLayoutExportBehavior } from '../utils/manuscriptLayoutExport';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
@@ -503,7 +504,7 @@ export class CommandRegistrar {
 
             const templatePath = resolveTemplatePath(this.plugin, layout.path);
             const shouldSaveMarkdown = result.saveMarkdownArtifact ?? true;
-            const useLatexSceneOpeners = /signature literary|signature[-_ ]literary/i.test(`${layout.id} ${layout.name} ${layout.path}`);
+            const layoutExportBehavior = getManuscriptLayoutExportBehavior(layout);
             const useModernClassicStructure = layout.usesModernClassicStructure === true;
             const modernClassicBeatDefinitions = useModernClassicStructure
                 ? this.resolveModernClassicBeatDefinitions()
@@ -511,8 +512,12 @@ export class CommandRegistrar {
             const modernClassicLayoutOptions = useModernClassicStructure
                 ? this.resolveModernClassicLayoutOptions(layout.id)
                 : undefined;
-            const layoutSceneHeadingMode = this.resolveLayoutSceneHeadingMode(layout.id);
-            const sceneHeadingRenderMode = useLatexSceneOpeners ? 'latex-section-starred' : 'markdown-h2';
+            const layoutSceneHeadingMode = layoutExportBehavior.defaultSceneHeadingMode
+                ?? this.resolveLayoutSceneHeadingMode(layout.id);
+            const sceneHeadingRenderMode = layoutExportBehavior.sceneHeadingRenderMode;
+            const chapterMarkersByScenePath = layoutExportBehavior.suppressChapterMarkers
+                ? {}
+                : filteredSelection.chapterMarkersByScenePath;
             const pandocMetadata: Record<string, string | undefined> = {
                 title: bookMetaResolution.bookMeta?.title,
                 author: bookMetaResolution.bookMeta?.author,
@@ -540,7 +545,7 @@ export class CommandRegistrar {
                     bookMetaResolution.bookMeta,
                     filteredSelection.matterMetaByPath,
                     {
-                        chapterMarkersByScenePath: filteredSelection.chapterMarkersByScenePath,
+                        chapterMarkersByScenePath,
                         sceneHeadingMode: layoutSceneHeadingMode,
                         sceneHeadingRenderMode,
                         suppressMatterPageChrome: true,
@@ -809,6 +814,8 @@ export class CommandRegistrar {
         const rights = frontmatter.Rights as Record<string, unknown> | undefined;
         const identifiers = frontmatter.Identifiers as Record<string, unknown> | undefined;
         const publisher = frontmatter.Publisher as Record<string, unknown> | undefined;
+        const frontmatterBlocks = frontmatter.Frontmatter as Record<string, unknown> | undefined;
+        const backmatterBlocks = frontmatter.Backmatter as Record<string, unknown> | undefined;
 
         const rawYear = rights?.year;
         const year = typeof rawYear === 'number'
@@ -819,6 +826,7 @@ export class CommandRegistrar {
 
         return {
             title: (book?.title as string) || undefined,
+            subtitle: (book?.subtitle as string) || undefined,
             author: (book?.author as string) || undefined,
             rights: rights ? {
                 copyright_holder: (rights.copyright_holder as string) || undefined,
@@ -828,7 +836,21 @@ export class CommandRegistrar {
                 isbn_paperback: (identifiers.isbn_paperback as string) || undefined
             } : undefined,
             publisher: publisher ? {
-                name: (publisher.name as string) || undefined
+                name: (publisher.name as string) || undefined,
+                imprint: (publisher.imprint as string) || undefined,
+                edition: (publisher.edition as string) || undefined
+            } : undefined,
+            frontmatter: frontmatterBlocks ? {
+                title_page_note: (frontmatterBlocks.title_page_note as string) || undefined,
+                dedication: (frontmatterBlocks.dedication as string) || undefined,
+                epigraph_quote: (frontmatterBlocks.epigraph_quote as string) || undefined,
+                epigraph_attribution: (frontmatterBlocks.epigraph_attribution as string) || undefined
+            } : undefined,
+            backmatter: backmatterBlocks ? {
+                acknowledgments: (backmatterBlocks.acknowledgments as string) || undefined,
+                about_author: (backmatterBlocks.about_author as string) || undefined,
+                author_note: (backmatterBlocks.author_note as string) || undefined,
+                other_works: (backmatterBlocks.other_works as string) || undefined
             } : undefined,
             sourcePath
         };
@@ -1136,6 +1158,7 @@ export class CommandRegistrar {
                 'Class: BookMeta',
                 'Book:',
                 '  title: "Untitled Manuscript"',
+                '  subtitle: ""',
                 '  author: "Author"',
                 'Rights:',
                 '  copyright_holder: "Copyright Holder"',
@@ -1144,6 +1167,18 @@ export class CommandRegistrar {
                 '  isbn_paperback: "000-0-00-000000-0"',
                 'Publisher:',
                 '  name: "Publisher"',
+                '  imprint: "Imprint"',
+                '  edition: "1"',
+                'Frontmatter:',
+                '  title_page_note: ""',
+                '  dedication: ""',
+                '  epigraph_quote: ""',
+                '  epigraph_attribution: ""',
+                'Backmatter:',
+                '  acknowledgments: ""',
+                '  about_author: ""',
+                '  author_note: ""',
+                '  other_works: ""',
                 'Production:',
                 '  imprint: "Imprint"',
                 '  edition: "1"',

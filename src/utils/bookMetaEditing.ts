@@ -2,11 +2,22 @@ import type { App, TFile } from 'obsidian';
 
 export type EditableBookMetaFieldKey =
     | 'title'
+    | 'subtitle'
     | 'author'
     | 'copyright-holder'
     | 'rights-year'
     | 'isbn'
-    | 'publisher';
+    | 'publisher'
+    | 'imprint'
+    | 'edition'
+    | 'title-page-note'
+    | 'dedication'
+    | 'epigraph-quote'
+    | 'epigraph-attribution'
+    | 'acknowledgments'
+    | 'about-author'
+    | 'author-note'
+    | 'other-works';
 
 interface EditableBookMetaFieldDefinition {
     path: [group: string, key: string];
@@ -19,6 +30,11 @@ const BOOK_META_FIELD_DEFINITIONS: Record<EditableBookMetaFieldKey, EditableBook
         path: ['Book', 'title'],
         required: true,
         label: 'Title',
+    },
+    subtitle: {
+        path: ['Book', 'subtitle'],
+        required: false,
+        label: 'Subtitle',
     },
     author: {
         path: ['Book', 'author'],
@@ -44,6 +60,56 @@ const BOOK_META_FIELD_DEFINITIONS: Record<EditableBookMetaFieldKey, EditableBook
         path: ['Publisher', 'name'],
         required: false,
         label: 'Publisher',
+    },
+    imprint: {
+        path: ['Publisher', 'imprint'],
+        required: false,
+        label: 'Imprint',
+    },
+    edition: {
+        path: ['Publisher', 'edition'],
+        required: false,
+        label: 'Edition',
+    },
+    'title-page-note': {
+        path: ['Frontmatter', 'title_page_note'],
+        required: false,
+        label: 'Title page note',
+    },
+    dedication: {
+        path: ['Frontmatter', 'dedication'],
+        required: false,
+        label: 'Dedication',
+    },
+    'epigraph-quote': {
+        path: ['Frontmatter', 'epigraph_quote'],
+        required: false,
+        label: 'Epigraph quote',
+    },
+    'epigraph-attribution': {
+        path: ['Frontmatter', 'epigraph_attribution'],
+        required: false,
+        label: 'Epigraph attribution',
+    },
+    acknowledgments: {
+        path: ['Backmatter', 'acknowledgments'],
+        required: false,
+        label: 'Acknowledgments',
+    },
+    'about-author': {
+        path: ['Backmatter', 'about_author'],
+        required: false,
+        label: 'About the author',
+    },
+    'author-note': {
+        path: ['Backmatter', 'author_note'],
+        required: false,
+        label: 'Author note',
+    },
+    'other-works': {
+        path: ['Backmatter', 'other_works'],
+        required: false,
+        label: 'Other works',
     },
 };
 

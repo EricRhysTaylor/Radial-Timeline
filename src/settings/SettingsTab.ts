@@ -662,7 +662,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeLabel: 'PRO',
             badgeIcon: 'signature',
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
-            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#publishing',
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#pro',
             title: 'Pro extends the core experience.',
             subtitle: 'More control, more capacity, and deeper narrative tools. Take your writing to the next level with the features that speed workflow and elevate productivity.',
             kicker: 'Pro unlocks:',
@@ -678,10 +678,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private renderPublishingHero(containerEl: HTMLElement): void {
         this.renderSettingsHero(containerEl, {
-            badgeLabel: 'PUBLISHING',
+            badgeLabel: 'PUBLISH',
             badgeIcon: 'book-open-text',
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
-            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#publish',
             title: 'Prepare your manuscript for export and publication.',
             subtitle: 'Turn your draft into a polished, shareable manuscript. Radial Timeline brings your book details, pages, and layout together—so you can generate clean, print-ready PDFs without wrestling with formatting.',
             helperLine: 'Powered by Pandoc and LaTeX — industry-standard tools for high-quality document formatting, handled for you behind the scenes.',
@@ -792,7 +792,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const publishingTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-publishing' });
         const publishingIcon = publishingTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(publishingIcon, 'book-open-text');
-        publishingTab.createSpan({ text: 'Publishing', cls: 'ert-settings-tab-label' });
+        publishingTab.createSpan({ text: 'Publish', cls: 'ert-settings-tab-label' });
         const aiTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const aiIcon = aiTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(aiIcon, 'cpu');
