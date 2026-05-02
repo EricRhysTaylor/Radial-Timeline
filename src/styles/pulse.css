@@ -2106,6 +2106,32 @@
   color: var(--text-normal, #dcddde);
   line-height: 1.3;
   text-wrap: balance;
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+/* Inline icon variant: sits next to the title text on the same row instead of
+   as a left-rail sibling. This frees the panel's full width for technical
+   details lines below, which would otherwise wrap awkwardly in a narrow column
+   reserved for the icon's gutter. */
+.ert-warning-icon--inline {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.ert-warning-icon--inline svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* When the icon is inline (inside the title row), suppress the legacy
+   left-rail sibling alignment on the parent panel so content can use the
+   full horizontal space. */
+.ert-manuscript-template-warning:has(.ert-warning-icon--inline) > .ert-pdf-output-text {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 /* Warning state icon picks up the warning color */
@@ -2164,6 +2190,9 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
 }
 
 .ert-pdf-output-text {
@@ -2176,6 +2205,21 @@
   /* Auto-balance wrapped lines so warning/info messages don't end with a
      stranded short fragment. Falls back to normal wrap on older browsers. */
   text-wrap: balance;
+}
+
+/* Informational status rows — non-alarmist factual counts. Render in any
+   panel state (including Ready) and never escalate severity. Visually
+   muted so they read as background context, not as warnings. */
+.ert-pdf-output-line.is-status {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.ert-pdf-output-line.is-status-success {
+  /* Hex-free: the --ert-alert-success-color token already encapsulates the
+     theme fallback chain (see rt-ui.css), so this line stays drift-clean
+     while still resolving to the same green tint. */
+  color: color-mix(in srgb, var(--ert-alert-success-color) 70%, var(--text-muted));
 }
 
 /* Technical details toggle */
@@ -2200,6 +2244,18 @@
   margin-top: 4px;
   padding-left: 4px;
   line-height: 1.5;
+}
+
+/* OS-tailored install steps for missing-font hints. Compact, muted bullets
+   that read as supplementary checklist content next to the main warning. */
+.ert-pdf-output-steps {
+  margin: var(--ert-gap-xs) 0 0 0;
+  padding-left: var(--ert-pad-roomy);
+  list-style: disc;
+}
+
+.ert-pdf-output-steps > li {
+  margin: var(--ert-gap-2xs) 0;
 }
 
 
@@ -2231,8 +2287,9 @@
 
 .rt-tooltip {
   position: fixed;
-  z-index: 9999;
-  /* High z-index to sit above everything */
+  /* Same layer Obsidian uses for its own tooltips: above modals (50) and
+     menus (65), below dragged items (80). No 9999 escape hatches. */
+  z-index: var(--layer-tooltip);
   background-color: var(--background-modifier-message);
   /* Dark background matching Obsidian toast/tooltip */
   color: var(--text-normal);
@@ -2246,24 +2303,22 @@
   transition: opacity 0.1s ease, transform 0.1s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   font-family: var(--font-interface);
+  /* Inline-block + max-width gives shrink-to-fit; text-wrap: balance picks
+     line breaks that minimize the longest line, so the box ends up snug. */
   display: inline-block;
-  width: var(--rt-tooltip-width, auto);
   text-align: center;
-  white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;
   max-width: 420px;
-  /* Balance line lengths so the last line isn't a short orphan. */
   text-wrap: balance;
 }
 
-/* Obsidian's native tooltip (rendered by setTooltip()) wraps with a default
-   greedy algorithm that frequently leaves a short orphan on the last line.
-   text-wrap: balance distributes words evenly across all lines for the
-   tooltip's natural max-width. Scoped to body > .tooltip so we only target
-   Obsidian's own tooltip element, not arbitrary descendant nodes. */
+/* Obsidian's native tooltip (rendered by setTooltip()) ships with greedy
+   wrapping and a fixed 300px max-width. Override both: balance line lengths
+   and let the box shrink to the longest balanced line via fit-content. */
 body > .tooltip {
   text-wrap: balance;
+  width: fit-content;
 }
 
 .rt-tooltip.rt-visible {

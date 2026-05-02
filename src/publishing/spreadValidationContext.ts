@@ -26,6 +26,23 @@ export interface SpreadValidationInputs {
     selectedSceneTitles?: string[];
     /** Selected per-scene act numbers (parallel to selectedScenePaths). */
     selectedSceneActs?: Array<number | null>;
+    /**
+     * Precomputed BOOK-wide counts for surfaces that have no scene selection
+     * (Settings → Publish). When `selectedScenePaths` is undefined and these
+     * are supplied, the helper uses them in place of the sentinel Infinity
+     * values, enabling status/warning lines on the data-less surface.
+     *
+     * Trade-off: book-wide chapter scanning requires the async
+     * `getSceneFilesByOrder` accessor + `resolveTimelineChapterMarkers`,
+     * which the synchronous Settings render path cannot await. Callers that
+     * have already loaded scene data may pass these explicit counts; the
+     * Settings panel today does not, and so still falls back to Infinity for
+     * chapter/title checks (PART card flagging continues to work via the
+     * book-derived `actEpigraphPopulatedCount`).
+     */
+    bookActCount?: number;
+    bookChapterFieldCount?: number;
+    bookChapterTitlePopulatedCount?: number;
 }
 
 /**
@@ -66,10 +83,22 @@ export function buildSpreadValidationContext(
     for (const act of selectedActs) {
         if (typeof act === 'number' && Number.isFinite(act)) seenActs.add(act);
     }
-    // When no selection data is supplied we cannot meaningfully count acts.
-    // Use POSITIVE_INFINITY so the `actCount < 2` gate does not fire — the
-    // settings preview uses this path; the modal always has selection data.
-    const actCount = hasSelection ? seenActs.size : Number.POSITIVE_INFINITY;
+    // Resolution order for actCount when no scene-selection data is supplied:
+    //   1. Caller-supplied `bookActCount` (precomputed book-wide scan)
+    //   2. `plugin.settings.actCount` — the canonical book-wide act count, sync
+    //      and always available. This is what the BookDesigner / progress UI
+    //      already use as the source of truth, so the Settings publish surface
+    //      can rely on it without doing its own async scan.
+    //   3. POSITIVE_INFINITY as a last-resort sentinel that disables the gate.
+    const settingsActCount = (() => {
+        const raw = (plugin?.settings as { actCount?: number } | undefined)?.actCount;
+        return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : undefined;
+    })();
+    const actCount = hasSelection
+        ? seenActs.size
+        : (typeof inputs.bookActCount === 'number'
+            ? inputs.bookActCount
+            : (settingsActCount ?? Number.POSITIVE_INFINITY));
 
     // chapterFieldCount — total markers across selected scenes.
     let chapterFieldCount = 0;
@@ -88,8 +117,13 @@ export function buildSpreadValidationContext(
             }
         }
     }
-    // Same rationale as actCount: data-less surfaces should not warn.
-    const effectiveChapterFieldCount = hasSelection ? chapterFieldCount : Number.POSITIVE_INFINITY;
+    // Same rationale as actCount: data-less surfaces fall back to Infinity
+    // unless the caller supplied a precomputed `bookChapterFieldCount`.
+    const effectiveChapterFieldCount = hasSelection
+        ? chapterFieldCount
+        : (typeof inputs.bookChapterFieldCount === 'number'
+            ? inputs.bookChapterFieldCount
+            : Number.POSITIVE_INFINITY);
 
     // sceneTitlePopulatedRatio — fraction of selected scenes with a title.
     // Returns 1 when selection is empty (no warning).
@@ -113,8 +147,12 @@ export function buildSpreadValidationContext(
     // data — otherwise the title-mode check would gate-pass on a synthesized
     // 0 and falsely warn. The validation gate uses `typeof === 'number'` so
     // omitting the field skips the check entirely.
+    // For data-less surfaces, callers may supply `bookChapterTitlePopulatedCount`
+    // explicitly to enable the title-mode check on book-wide data.
     if (hasSelection) {
         ctx.chapterTitlePopulatedCount = chapterTitlePopulatedCount;
+    } else if (typeof inputs.bookChapterTitlePopulatedCount === 'number') {
+        ctx.chapterTitlePopulatedCount = inputs.bookChapterTitlePopulatedCount;
     }
     return ctx;
 }

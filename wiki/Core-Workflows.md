@@ -9,7 +9,7 @@ For first-time setup, start with [Fresh Vault Onboarding](Fresh-Vault-Onboarding
 *   Use [Scenes, Structure, and the Timeline](Scenes-Structure-Timeline) if you want the conceptual model first.
 *   Organize the manuscript around **Acts**, **Subplots**, and an optional **story beat system**.
 *   Use [Book Designer](Book-Designer) when you want a guided scaffold instead of creating every note by hand.
-*   Configure structure in [Settings → Acts](Settings#acts) and [Settings → Story beats system](Settings#story-beats).
+*   Configure structure in [Settings → Acts](Settings-Core#acts) and [Settings → Story beats system](Settings-Core#story-beats-system).
 
 ## Creating Scenes
 

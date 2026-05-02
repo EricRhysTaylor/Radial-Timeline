@@ -10,10 +10,10 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 
 **Timeline mode**: Gossamer (key **4**)
 **Command**: `Gossamer score manager`
-**Settings**: [Story beats system](Settings#story-beats)
+**Settings**: [Story beats system](Settings-Core#story-beats-system)
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400; max-width: 100%;" />
+  <img src="images/gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400px; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer — saved runs, signal switching, and beat-level scoring</div>
 </div>
 

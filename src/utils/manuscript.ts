@@ -54,15 +54,8 @@ export type TocMode = 'markdown' | 'plain' | 'none';
 export type ManuscriptSceneHeadingMode = 'scene-number' | 'scene-number-title' | 'title-only';
 export type SceneHeadingRenderMode = 'markdown-h2' | 'latex-section-starred';
 
-export interface ModernClassicBeatDefinition {
-  name: string;
-  actIndex: number;
-  id?: string;
-}
-
 export interface ModernClassicStructureOptions {
   enabled: boolean;
-  beatDefinitions: ModernClassicBeatDefinition[];
   actEpigraphs?: string[];
   actEpigraphAttributions?: string[];
 }
@@ -79,6 +72,17 @@ export interface AssembleManuscriptOptions {
   includeSceneIdInHeading?: boolean;
   /** Use plain SceneId text for Pandoc PDF headings; code spans are unsafe in PDF bookmark strings. */
   sceneIdFormat?: 'code' | 'plain';
+  /**
+   * Emit chapter markers as `\rtChapter{N}{Title}` raw LaTeX instead of `# Title`
+   * markdown. Use this for any layout whose template defines an `\rtChapter`
+   * macro (e.g. Contemporary Literary, Modern Classic). When false (default),
+   * chapter markers fall through to pandoc's default `\chapter{}` via the
+   * book document class.
+   *
+   * Only applies to the non-Modern-Classic emission branch; the Modern
+   * Classic structure path already emits `\rtChapter` unconditionally.
+   */
+  useRtChapterMacro?: boolean;
   /**
    * User-saved Book Pages order from `BookProfile.bookPageOrder`. When set,
    * matter pages emit in this order (saved positions first, new pages
@@ -745,11 +749,6 @@ function parseActNumber(value: unknown): number | null {
   return romanMap[normalizedRoman] ?? null;
 }
 
-interface ModernClassicSceneBeatReference {
-  beatId?: string;
-  beatName?: string;
-}
-
 interface ModernClassicState {
   enabled: boolean;
   currentActIndex: number | null;
@@ -757,17 +756,6 @@ interface ModernClassicState {
   emittedSceneCount: number;
   actEpigraphs: string[];
   actEpigraphAttributions: string[];
-  beatById: Map<string, ModernClassicBeatDefinition>;
-  beatByName: Map<string, ModernClassicBeatDefinition>;
-}
-
-function normalizeBeatLookupKey(value: string): string {
-  return value
-    .trim()
-    .replace(/^\d+(?:\.\d+)?(?:\s+|[._:-]+\s*)/, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
 }
 
 function toRomanNumeral(value: number): string {
@@ -834,13 +822,38 @@ function getFirstFrontmatterString(frontmatter: Record<string, unknown>, keys: s
   return undefined;
 }
 
-function extractSceneBeatReference(content: string): ModernClassicSceneBeatReference {
+/**
+ * Read a scene's canonical Act number from its frontmatter.
+ *
+ * Scene placement on the timeline ring (Narrative / Progress modes) is
+ * driven by the scene's own `Act:` frontmatter field — see
+ * `SceneDataService.parseScenes`. The publishing export uses the same
+ * source so Part / Act dividers in the PDF match the structure the user
+ * sees in the timeline. There is no beat indirection: scenes self-declare
+ * which Act they belong to, and the export reads it directly.
+ *
+ * Returns null when the field is missing, empty, non-numeric, or <= 0.
+ */
+function extractSceneActIndex(content: string): number | null {
   const fm = extractFrontmatterObject(content);
-  if (!fm) return {};
-
-  const beatId = getFirstFrontmatterString(fm, ['Beat Id', 'BeatId']);
-  const beatName = getFirstFrontmatterString(fm, ['Beat', 'Story Beat', 'Beat Name']);
-  return { beatId, beatName };
+  if (!fm) return null;
+  const raw = getFirstFrontmatterString(fm, ['Act']);
+  if (!raw) {
+    // Numeric Act values (Act: 1) survive YAML parsing as numbers, not
+    // strings — getFirstFrontmatterString only matches strings, so we
+    // re-scan for the Act key with case-insensitive normalization.
+    for (const [rawKey, value] of Object.entries(fm)) {
+      const normalizedKey = rawKey.toLowerCase().replace(/[\s_-]/g, '');
+      if (normalizedKey !== 'act') continue;
+      const parsed = typeof value === 'number' ? value : Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed);
+      return null;
+    }
+    return null;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
 }
 
 function createModernClassicState(options?: ModernClassicStructureOptions): ModernClassicState {
@@ -848,49 +861,14 @@ function createModernClassicState(options?: ModernClassicStructureOptions): Mode
     if (!Array.isArray(values)) return [];
     return values.map(value => (typeof value === 'string' ? value : ''));
   };
-  const state: ModernClassicState = {
+  return {
     enabled: options?.enabled === true,
     currentActIndex: null,
     chapterIndex: 0,
     emittedSceneCount: 0,
     actEpigraphs: normalizeList(options?.actEpigraphs),
     actEpigraphAttributions: normalizeList(options?.actEpigraphAttributions),
-    beatById: new Map<string, ModernClassicBeatDefinition>(),
-    beatByName: new Map<string, ModernClassicBeatDefinition>()
   };
-  if (!state.enabled) return state;
-
-  for (const beat of options?.beatDefinitions || []) {
-    if (!beat || typeof beat.name !== 'string') continue;
-    const actIndex = Number.isFinite(beat.actIndex) ? Math.floor(beat.actIndex) : 0;
-    if (actIndex <= 0) continue;
-    if (typeof beat.id === 'string' && beat.id.trim()) {
-      state.beatById.set(beat.id.trim(), beat);
-    }
-    const nameKey = normalizeBeatLookupKey(beat.name);
-    if (nameKey) {
-      state.beatByName.set(nameKey, beat);
-    }
-  }
-
-  return state;
-}
-
-function resolveModernClassicBeatDefinition(
-  state: ModernClassicState,
-  reference: ModernClassicSceneBeatReference
-): ModernClassicBeatDefinition | undefined {
-  if (!state.enabled) return undefined;
-  if (reference.beatId && state.beatById.has(reference.beatId)) {
-    return state.beatById.get(reference.beatId);
-  }
-  if (!reference.beatName) return undefined;
-  if (state.beatById.has(reference.beatName)) {
-    return state.beatById.get(reference.beatName);
-  }
-  const key = normalizeBeatLookupKey(reference.beatName);
-  if (!key) return undefined;
-  return state.beatByName.get(key);
 }
 
 /**
@@ -991,6 +969,10 @@ export async function assembleManuscript(
   const includeSceneIdInToc = options?.includeSceneIdInToc === true;
   const includeSceneIdInHeading = options?.includeSceneIdInHeading === true;
   const sceneIdFormat = options?.sceneIdFormat || 'code';
+  const useRtChapterMacro = options?.useRtChapterMacro === true;
+  // Chapter counter for the non-Modern-Classic + \rtChapter macro path.
+  // Modern Classic tracks its own counter via modernClassicState.chapterIndex.
+  let rtChapterCounter = 0;
   const matterDiagnostics: Array<{
     filePath: string;
     side: 'front' | 'back';
@@ -1203,15 +1185,15 @@ export async function assembleManuscript(
     const wordCount = countWords(countableBodyText);
 
     if (modernClassicState.enabled) {
-      const beatRef = extractSceneBeatReference(content);
-      const beatDef = resolveModernClassicBeatDefinition(modernClassicState, beatRef);
       let emittedStructureOpener = false;
 
       // RT terminology → structure mapping:
-      //   Acts (from settings Act count)   → \rtPart{Roman} — dedicated Part page
+      //   Acts (from each scene's `Act:` frontmatter field, the canonical
+      //         source that also drives the timeline ring partitions)
+      //                                    → \rtPart{Roman} — dedicated Part page
       //   Chapters (from Chapter fields)   → \rtChapter{n}{Title} — chapter opener
       //   Scenes (scene notes)             → \rtSceneSep — inline scene separator
-      const nextActIndex = beatDef?.actIndex;
+      const nextActIndex = extractSceneActIndex(content);
       if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
         const actRoman = toRomanNumeral(nextActIndex);
         if (actRoman) {
@@ -1246,9 +1228,23 @@ export async function assembleManuscript(
     } else {
       const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
       for (const marker of chapterMarkers) {
-        const chapterTitle = normalizeChapterHeadingText(marker.title);
-        if (!chapterTitle) continue;
-        textParts.push(`# ${chapterTitle}\n\n`);
+        if (useRtChapterMacro) {
+          // Emit \rtChapter{N}{Title} so the layout's template macro owns the
+          // chapter page typography (cleardoublepage, chrome suppression,
+          // centered title, page-number arabic switch). Without this branch
+          // the chapter falls through to pandoc's default \chapter{} via the
+          // book class, which produces left-aligned "Chapter N" + "Shail +
+          // Trisan" header + roman page numbers because \rtBeginMainArabic
+          // never runs and \thispagestyle{rtEmpty} never applies.
+          const chapterTitle = sanitizeModernClassicMacroArg(marker.title);
+          if (!chapterTitle) continue;
+          rtChapterCounter += 1;
+          textParts.push(buildRawLatexBlock(`\\rtChapter{${rtChapterCounter}}{${chapterTitle}}`));
+        } else {
+          const chapterTitle = normalizeChapterHeadingText(marker.title);
+          if (!chapterTitle) continue;
+          textParts.push(`# ${chapterTitle}\n\n`);
+        }
       }
 
       const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);

@@ -82,6 +82,15 @@ You can click the middle stages in the preview (Scenes, Colors) to skip them and
 - **Book/Author Color**: Color for the perimeter text ring
 - **Branding Color**: Color for the "RT" badge
 
+## Live Embed And Refresh
+
+The Social tab also controls the APR live embed/export behavior:
+
+*   **Update Frequency**: Manual Only, Daily, Weekly, or Monthly auto-updates.
+*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Radial Timeline View.
+*   **Embed File Path**: Location for the live embed SVG file.
+*   **Auto-update embed paths**: Updates default embed paths when size or schedule changes and the path still matches the default pattern.
+
 ## Campaigns (Pro)
 
 Create multiple APR configurations for different platforms:

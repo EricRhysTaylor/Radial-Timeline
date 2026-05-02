@@ -1,4 +1,4 @@
-import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
+import { addTooltipData } from '../../utils/tooltip';
 import {
     DEBUG_SVG_OVERLAY,
     GLYPH_OFFSET_Y,
@@ -142,13 +142,13 @@ export function createInquiryDesktopShell(args: {
     const scopeToggleButton = args.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
     const scopeToggleIcon = scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement | undefined;
     scopeToggleButton.querySelector('title')?.remove();
-    addTooltipData(scopeToggleButton, balanceTooltipText('Toggle scope'), 'left');
+    addTooltipData(scopeToggleButton, 'Toggle scope', 'left');
 
     const artifactX = (VIEWBOX_MAX - hudMargin - iconSize) - hudOffsetX;
     const helpX = artifactX - (iconSize + iconGap);
     const simulateX = helpX - (iconSize + iconGap);
     const apiSimulationButton = args.createIconButton(hudGroup, simulateX, 0, iconSize, 'activity', 'Simulate API run');
-    addTooltipData(apiSimulationButton, balanceTooltipText('Simulate API run'), 'left');
+    addTooltipData(apiSimulationButton, 'Simulate API run', 'left');
 
     const helpToggleButton = args.createIconButton(
         hudGroup,
@@ -325,7 +325,7 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     });
     addTooltipData(
         briefingResetButton,
-        balanceTooltipText('Resets live corpus overrides only.'),
+        'Resets live corpus overrides only.',
         'top'
     );
     const briefingPurgeButton = briefingFooterEl.createEl('button', {
@@ -334,7 +334,7 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     });
     addTooltipData(
         briefingPurgeButton,
-        balanceTooltipText('Removes Inquiry-generated action items from scene frontmatter. User notes are preserved.'),
+        'Removes Inquiry-generated action items from scene frontmatter. User notes are preserved.',
         'top'
     );
     briefingFooterEl.createDiv({

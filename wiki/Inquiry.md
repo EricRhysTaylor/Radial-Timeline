@@ -16,7 +16,7 @@ Inquiry sends your manuscript corpus to an AI provider and asks structured quest
 *   `Open Inquiry` — Opens the Inquiry view
 *   `Inquiry Omnibus Pass` — Runs all enabled questions in a single batch
 
-**Settings**: [Inquiry settings](Settings#inquiry)
+**Settings**: [Inquiry settings](Settings-Inquiry)
 
 ---
 
@@ -133,7 +133,7 @@ Inquiry builds a "corpus" from your manuscript files before sending them to the 
 | **Summary** | `Summary` field only | Lower token usage while preserving high-level context |
 | **None** | Excluded entirely | Reference notes, worldbuilding docs you want to skip |
 
-Configure per-class material modes in [Inquiry sources](Settings#inquiry-sources).
+Configure per-class material modes in [Inquiry sources](Settings-Inquiry#sources).
 
 ### Corpus Content (CC) Thresholds
 
@@ -146,7 +146,7 @@ The Corpus system classifies notes by word count to help you spot thin content:
 | Medium | ≥ 300 words |
 | Substantive | ≥ 1,000 words |
 
-When **Highlight completed docs with low substance** is enabled, completed notes that remain Empty or Sketchy are flagged. Adjust thresholds in [Corpus (CC)](Settings#inquiry-corpus).
+When **Highlight completed docs with low substance** is enabled, completed notes that remain Empty or Sketchy are flagged. Adjust thresholds in [Corpus (CC)](Settings-Inquiry#corpus).
 
 ---
 
@@ -205,7 +205,7 @@ Inquiry can also produce **Briefing Articles** — HTML-formatted presentation o
 
 Inquiry can write findings directly into your scene frontmatter:
 
-*   **Enable**: Toggle **Write Inquiry action notes to scenes** in [Inquiry settings](Settings#inquiry).
+*   **Enable**: Toggle **Write Inquiry action notes to scenes** in [Inquiry settings](Settings-Inquiry).
 *   **Target field**: Findings are appended to the configured YAML field (default `Pending Edits`).
 *   **Purge**: Use the purge function in the Inquiry view to remove all Inquiry-generated action notes from scenes.
 
@@ -222,7 +222,7 @@ Inquiry comes with built-in prompt questions for each zone. You can also add cus
 *   Toggle individual questions on/off.
 *   Reset to built-in defaults using the restore button.
 
-Configure prompts in [Inquiry prompts](Settings#inquiry-prompts).
+Configure prompts in [Inquiry prompts](Settings-Inquiry#prompts).
 
 ---
 
@@ -235,7 +235,7 @@ Control which vault content Inquiry can access:
 *   **Class scope**: Filter which YAML `Class` values are scanned. Use `/` to allow all classes.
 *   **Presets**: Choose Default (recommended), Light (fast, lower token usage), or Deep (comprehensive, higher token usage).
 
-Configure sources in [Inquiry sources](Settings#inquiry-sources).
+Configure sources in [Inquiry sources](Settings-Inquiry#sources).
 
 ---
 

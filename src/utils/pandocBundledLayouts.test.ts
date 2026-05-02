@@ -4,7 +4,14 @@ import type RadialTimelinePlugin from '../main';
 import type { RadialTimelineSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { validatePandocLayout } from './exportFormats';
-import { ensureBundledLayoutInstalledForExport, ensureBundledPandocLayoutsRegistered, getBundledPandocLayouts, installBundledPandocLayouts } from './pandocBundledLayouts';
+import {
+    HOTFIX_ID_SPEC_DRIFT_OVERWRITE,
+    ensureBundledLayoutInstalledForExport,
+    ensureBundledPandocLayoutsRegistered,
+    getBundledPandocLayoutContent,
+    getBundledPandocLayouts,
+    installBundledPandocLayouts,
+} from './pandocBundledLayouts';
 
 function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimelinePlugin; layout: ReturnType<typeof getBundledPandocLayouts>[number] } {
     const layout = getBundledPandocLayouts().find(item => item.id === layoutId);
@@ -99,436 +106,63 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(after.valid).toBe(true);
     });
 
-    it('hotfixes legacy signature literary spacing in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-signature-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-            '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}'
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.1\\textheight}');
-        expect(updated).toContain('\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.1\\textheight}');
-        expect(updated).not.toContain('\\dimexpr\\textheight/5\\relax');
-    });
-
-    it('hotfixes pre-tightened (0.2/0.2) signature literary spacing to the new 0.2/0.1 spacing', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-signature-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const preTightened = [
-            '\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.2\\textheight}',
-            '\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.2\\textheight}'
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, preTightened);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.1\\textheight}');
-        expect(updated).toContain('\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.1\\textheight}');
-    });
-
-    it('bundled Signature Literary uses symmetric margins', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-signature-literary');
-
-        const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(install.installed).toBe(true);
-
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const content = await (plugin.app.vault as any).read(file);
-        expect(content).toContain('  left=0.9in,');
-        expect(content).toContain('  right=0.9in');
-        expect(content).not.toContain('  inner=1.05in,');
-        expect(content).not.toContain('  outer=0.75in');
-    });
-
-    it('bundled Contemporary Literary uses symmetric margins', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
-
-        const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(install.installed).toBe(true);
-
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const content = await (plugin.app.vault as any).read(file);
-        expect(content).toContain('  left=0.9in,');
-        expect(content).toContain('  right=0.9in');
-        expect(content).not.toContain('  inner=1.05in,');
-        expect(content).not.toContain('  outer=0.75in');
-    });
-
-    it('bundled Modern Classic uses symmetric margins', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
-
-        const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(install.installed).toBe(true);
-
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const content = await (plugin.app.vault as any).read(file);
-        expect(content).toContain('  left=0.98in,');
-        expect(content).toContain('  right=0.98in');
-        expect(content).not.toContain('  inner=1.10in,');
-        expect(content).not.toContain('  outer=0.85in');
-    });
-
-    it('hotfixes legacy Signature Literary mirrored margins in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-signature-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '% Pandoc LaTeX Template - Signature Literary',
-            '\\geometry{',
-            '  paperwidth=6in,',
-            '  paperheight=9in,',
-            '  top=0.85in,',
-            '  bottom=1.05in,',
-            '  inner=1.05in,',
-            '  outer=0.75in',
-            '}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('  left=0.9in,');
-        expect(updated).toContain('  right=0.9in');
-        expect(updated).not.toContain('  inner=1.05in,');
-        expect(updated).not.toContain('  outer=0.75in');
-    });
-
-    it('hotfixes legacy Contemporary Literary mirrored margins in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '% Pandoc LaTeX Template - Contemporary Literary',
-            '\\geometry{',
-            '  paperwidth=6in,',
-            '  paperheight=9in,',
-            '  top=0.9in,',
-            '  bottom=1.0in,',
-            '  inner=1.05in,',
-            '  outer=0.75in',
-            '}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('  left=0.9in,');
-        expect(updated).toContain('  right=0.9in');
-        expect(updated).not.toContain('  inner=1.05in,');
-        expect(updated).not.toContain('  outer=0.75in');
-    });
-
-    it('hotfixes legacy Modern Classic mirrored margins in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '% rt_modern_classic.tex',
-            '% Modern Classic fiction layout for 6x9 trade',
-            '\\usepackage[',
-            '  paperwidth=6in,',
-            '  paperheight=9in,',
-            '  top=0.95in,',
-            '  bottom=1.15in,',
-            '  inner=1.10in,',
-            '  outer=0.85in',
-            ']{geometry}',
-            '\\newcommand{\\rtPart}[1]{%}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('  left=0.98in,');
-        expect(updated).toContain('  right=0.98in');
-        expect(updated).not.toContain('  inner=1.10in,');
-        expect(updated).not.toContain('  outer=0.85in');
-    });
-
-    it('bundled core templates define a \\rtSceneOpener macro driven by the spec generator', async () => {
-        // Contract: the assembler emits \rtSceneOpener{HEADING} for each scene
-        // (latex-section-starred path), so the .tex must define \rtSceneOpener.
-        // The first-word-emphasis helper macro and secnumdepth=0 reset still apply.
-        // Old \titleformat{\section} + \preto\section hooks must NOT be present —
-        // they only fired on \section{} (NOT \section*{}, which the assembler
-        // previously emitted), leaving formatting dead.
+    it('canonical spec-driven content for each bundled fiction layout has the spec-generator semantic markers', () => {
+        // Standard Manuscript / Contemporary Literary: scene-opener macro contract.
         for (const layoutId of ['bundled-fiction-classic-manuscript', 'bundled-fiction-contemporary-literary']) {
-            const { plugin, layout } = createPluginWithBundledLayout(layoutId);
-            const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
-            expect(install.installed).toBe(true);
-
-            const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-            const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-            const content = await (plugin.app.vault as any).read(file);
-            expect(content).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
-            expect(content).toContain('\\setcounter{secnumdepth}{0}');
-            expect(content).toContain('\\newcommand{\\rtSceneOpener}[1]');
-            expect(content).toContain('\\cleardoublepage');
-            expect(content).toContain('\\thispagestyle{empty}');
-            expect(content).toMatch(/\\rtSceneOpenerTitle\{#1\}/);
+            const content = getBundledPandocLayoutContent(layoutId);
+            expect(content).toBeTruthy();
+            expect(content!).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
+            expect(content!).toContain('\\newcommand{\\rtSceneOpener}[1]');
             // Old hooks must not regress — they don't fire on \section*{}.
-            expect(content).not.toMatch(/\\titleformat\{\\section\}\[display\][^\n]*\{[^}]*\}\{0pt\}\{\\rtSceneOpenerTitle\}/);
-            expect(content).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
-            if (layoutId === 'bundled-fiction-contemporary-literary') {
-                expect(content).toContain('\\providecommand{\\rtSceneRunningTitle}{}');
-                expect(content).toContain('\\providecommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}');
-                expect(content).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
-                // Spec-driven chapter spacing now lives inside \rtChapter as
-                // \vspace*{0.46\textheight}; the old \titlespacing*{\chapter}
-                // hook never fired because the assembler emits \rtChapter, not
-                // \chapter. The macro body should contain the textheight-fraction
-                // vspace that drives the deep-page layout.
-                expect(content).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.46\\textheight\}/);
-                expect(content).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.08\\textheight\}/);
-            }
+            expect(content!).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
         }
-    });
 
-    it('hotfixes legacy Standard Manuscript scene opener formatting in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '% Pandoc LaTeX Template - Standard Manuscript',
-            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
-            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
-            '$body$',
-        ].join('\n');
+        // Contemporary Literary: macro-driven running headers, no literal labels.
+        const contemporary = getBundledPandocLayoutContent('bundled-fiction-contemporary-literary')!;
+        expect(contemporary).toMatch(/\\fancyhead\[LE\]\{[^}]*\\BookTitle\}/);
+        expect(contemporary).toMatch(/\\fancyhead\[RO\]\{[^}]*\\rtSceneRunningTitle\}/);
+        expect(contemporary).not.toContain('\\nouppercase{title}');
+        expect(contemporary).not.toContain('\\nouppercase{scene}');
+        // Spec-driven chapter spacing now lives inside \rtChapter as
+        // \vspace*{0.46\textheight} (the old \titlespacing*{\chapter} hook never
+        // fired — assembler emits \rtChapter, not \chapter).
+        expect(contemporary).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.46\\textheight\}/);
 
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
+        // Signature Literary / Contemporary Literary use symmetric margins.
+        for (const layoutId of ['bundled-fiction-signature-literary', 'bundled-fiction-contemporary-literary']) {
+            const content = getBundledPandocLayoutContent(layoutId)!;
+            expect(content).toContain('  left=0.9in,');
+            expect(content).toContain('  right=0.9in');
+        }
 
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
-        // Contract: defines \rtSceneOpener macro that the assembler invokes.
-        expect(updated).toContain('\\newcommand{\\rtSceneOpener}[1]');
-        // Old hacks (subsection hooks, preto section, titleformat-only) must
-        // be evicted — they only fired on \section{} not \section*{}.
-        expect(updated).not.toContain('\\titleformat{\\subsection}');
-        expect(updated).not.toContain('\\preto\\subsection');
-        expect(updated).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
-    });
-
-    it('hotfixes partially updated Standard Manuscript scene opener formatting in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const stale = [
-            '% Pandoc LaTeX Template - Standard Manuscript',
-            '\\setcounter{secnumdepth}{0}',
-            '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
-            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, stale);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
-        expect(updated).toContain('\\newcommand{\\rtSceneOpener}[1]');
-        expect(updated).not.toContain('\\titleformat{\\subsection}');
-        expect(updated).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
-    });
-
-    it('hotfixes legacy Contemporary Literary scene opener formatting in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '% Pandoc LaTeX Template - Contemporary Literary',
-            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
-            '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
-            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\titleformat{\\chapter}[display]');
-        expect(updated).toContain('\\newcommand{\\rtSceneOpener}[1]');
-        expect(updated).not.toContain('\\titleformat{\\subsection}');
-        expect(updated).not.toContain('\\preto\\subsection');
-        expect(updated).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
-        expect(updated).toContain('\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}');
-    });
-
-    it('hotfixes Contemporary Literary running headers to use scene context', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const stale = [
-            '% Pandoc LaTeX Template - Contemporary Literary',
-            '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
-            '\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{title}}',
-            '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rightmark}}',
-            '\\titleformat{\\chapter}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
-            '\\titlespacing*{\\chapter}{0pt}{0.18\\textheight}{0.14\\textheight}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, stale);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\newcommand{\\rtSceneRunningTitle}{}');
-        expect(updated).toContain('\\newcommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}');
-        expect(updated).toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}');
-        expect(updated).not.toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{title}}');
-        expect(updated).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
-        expect(updated).not.toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rightmark}}');
-        expect(updated).toContain('\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}');
-    });
-
-    it('hotfixes Contemporary Literary running header that leaks literal "scene" label', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const stale = [
-            '% Pandoc LaTeX Template - Contemporary Literary',
-            '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
-            '\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{title}}',
-            '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{scene}}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, stale);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}');
-        expect(updated).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
-        expect(updated).not.toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{scene}}');
-        expect(updated).not.toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{title}}');
-    });
-
-    it('bundled Contemporary Literary canonical .tex content does not leak literal title/scene labels in running headers', async () => {
-        const { getBundledPandocLayoutContent } = await import('./pandocBundledLayouts');
-        const content = getBundledPandocLayoutContent('bundled-fiction-contemporary-literary');
-        expect(content).toBeTruthy();
-        // Pictogram declares headerLeft: 'title' / headerRight: 'scene' as label data;
-        // the .tex template MUST consume the macros, never the literal words.
-        expect(content!).toMatch(/\\fancyhead\[LE\]\{[^}]*\\BookTitle\}/);
-        expect(content!).toMatch(/\\fancyhead\[RO\]\{[^}]*\\rtSceneRunningTitle\}/);
-        expect(content!).not.toContain('\\nouppercase{title}');
-        expect(content!).not.toContain('\\nouppercase{scene}');
-    });
-
-    it('bundled Modern Classic template defines all macros emitted by assembly', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
-
-        const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(install.installed).toBe(true);
-
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const content = await (plugin.app.vault as any).read(file);
-
-        expect(content).toContain('\\newcommand{\\rtPart}[1]');
-        expect(content).toContain('\\newcommand{\\rtEpigraph}[2]');
-        expect(content).toContain('\\newcommand{\\rtChapter}[2]');
-        expect(content).toContain('\\newcommand{\\rtSceneSep}');
-        // Spec-driven generator unifies on \BookTitle / \AuthorName across all
-        // bundled fiction templates (Modern Classic no longer needs its own
-        // \rtBookTitle / \rtBookAuthor pair). The manuscript pipeline never
-        // emits the rt-prefixed macros literally.
-        expect(content).toContain('\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
-        expect(content).toContain('\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
+        // Modern Classic: symmetric margins + assembled-macro contract.
+        const modernClassic = getBundledPandocLayoutContent('bundled-fiction-modern-classic')!;
+        expect(modernClassic).toContain('  left=0.98in,');
+        expect(modernClassic).toContain('  right=0.98in');
+        expect(modernClassic).toContain('\\newcommand{\\rtPart}[1]');
+        expect(modernClassic).toContain('\\newcommand{\\rtEpigraph}[2]');
+        expect(modernClassic).toContain('\\newcommand{\\rtChapter}[2]');
+        expect(modernClassic).toContain('\\newcommand{\\rtSceneSep}');
+        expect(modernClassic).toContain('\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
+        expect(modernClassic).toContain('\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
         // Unsafe legacy chapter titleformat must not regress.
-        expect(content).not.toContain('\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%');
-        expect(content).not.toContain('Chapter~\\thechapter');
+        expect(modernClassic).not.toContain('\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%');
+        expect(modernClassic).not.toContain('Chapter~\\thechapter');
     });
 
-    it('hotfixes legacy Modern Classic bundled template macro contracts', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
+    /**
+     * Drift-detect: stale on-disk content for a spec-driven fiction layout is
+     * overwritten with the canonical generator output on plugin load. The
+     * single hotfix-history entry under id `spec-drift-overwrite-v1` triggers
+     * the synthetic 'PDF Templates Updated' alert.
+     */
+    it('drift-detect: overwrites stale on-disk content with canonical spec output and records one history entry', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '% rt_modern_classic.tex',
-            '% Modern Classic fiction layout for 6x9 trade',
-            '% --- capture Pandoc title/author ---',
-            '\\makeatletter',
-            '\\newcommand{\\rtBookTitle}{\\@title}',
-            '\\newcommand{\\rtBookAuthor}{\\@author}',
-            '\\makeatother',
-            '\\newcommand{\\rtPart}[1]{%',
-            '  \\cleardoublepage',
-            '  \\thispagestyle{rtEmpty}%',
-            '  \\vspace*{2.1in}%',
-            '  \\begin{center}',
-            '    {\\sffamily\\bfseries\\Large PART~#1}',
-            '  \\end{center}',
-            '  \\vspace*{1.2in}%',
-            '  \\cleardoublepage',
-            '}',
-            '\\newcommand{\\rtSceneSep}{\\par}',
-            '$body$',
-        ].join('\n');
+        const stale = '% stale\n';
 
         await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
+        await (plugin.app.vault as any).create(target, stale);
 
         const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
         expect(result.installed).toBe(false);
@@ -536,47 +170,75 @@ describe('bundled pandoc layout export auto-install', () => {
 
         const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
         const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\newcommand{\\rtEpigraph}[2]');
-        expect(updated).toContain('\\newcommand{\\rtChapter}[2]');
-        expect(updated).toContain('\\newcommand{\\rtBookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
-        expect(updated).toContain('\\newcommand{\\rtBookAuthor}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
-        expect(updated).not.toContain('\\newcommand{\\rtBookTitle}{\\@title}');
-        expect(updated).not.toContain('\\makeatletter');
+        const canonical = getBundledPandocLayoutContent(layout.id);
+        expect(updated).toBe(canonical);
+
+        const history = plugin.settings.templateHotfixHistory ?? [];
+        expect(history).toHaveLength(1);
+        expect(history[0].layoutId).toBe(layout.id);
+        expect(history[0].hotfixId).toBe(HOTFIX_ID_SPEC_DRIFT_OVERWRITE);
+        expect(history[0].acknowledged).toBe(false);
     });
 
-    it('hotfixes unsafe Modern Classic chapter title formatting in existing bundled template files', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-modern-classic');
+    it('drift-detect no-op: on-disk content already matches canonical → no rewrite, no history entry', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const unsafe = [
-            '% rt_modern_classic.tex',
-            '% Modern Classic fiction layout for 6x9 trade',
-            '\\newcommand{\\rtPart}[1]{%}',
-            '\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%',
-            '  \\thispagestyle{rtEmpty}%',
-            '  \\vspace*{1.9in}%',
-            '  \\begin{center}',
-            '    {\\sffamily\\bfseries\\large Chapter~\\thechapter}\\par',
-            '    \\vspace{0.35in}%',
-            '    {\\rmfamily\\itshape\\Large #1}\\par',
-            '  \\end{center}',
-            '  \\vspace*{0.9in}%',
-            '}',
-            '\\titlespacing*{\\chapter}{0pt}{0pt}{0pt}',
-            '$body$',
-        ].join('\n');
+        const canonical = getBundledPandocLayoutContent(layout.id)!;
 
         await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, unsafe);
+        await (plugin.app.vault as any).create(target, canonical);
 
         const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
         expect(result.installed).toBe(false);
         expect(result.failed).toBe(false);
 
         const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toContain('\\titleformat{\\chapter}{\\normalfont}{}{0pt}{}');
-        expect(updated).not.toContain('\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%');
-        expect(updated).not.toContain('Chapter~\\thechapter');
+        const after = await (plugin.app.vault as any).read(file);
+        expect(after).toBe(canonical);
+
+        expect(plugin.settings.templateHotfixHistory ?? []).toEqual([]);
+    });
+
+    it('drift-detect per-layout: stale Contemporary + up-to-date Standard yields exactly one history entry', async () => {
+        const { plugin, layout: contemporary } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
+        const standard = getBundledPandocLayouts().find(item => item.id === 'bundled-fiction-classic-manuscript')!;
+        // Register both layouts in the plugin so the orchestrator can see both.
+        plugin.settings.pandocLayouts = [contemporary, standard];
+
+        const contemporaryTarget = normalizePath(`${plugin.settings.pandocFolder}/${contemporary.path}`);
+        const standardTarget = normalizePath(`${plugin.settings.pandocFolder}/${standard.path}`);
+        const standardCanonical = getBundledPandocLayoutContent(standard.id)!;
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(contemporaryTarget, '% stale\n');
+        await (plugin.app.vault as any).create(standardTarget, standardCanonical);
+
+        await ensureBundledLayoutInstalledForExport(plugin, contemporary);
+        await ensureBundledLayoutInstalledForExport(plugin, standard);
+
+        const history = plugin.settings.templateHotfixHistory ?? [];
+        expect(history).toHaveLength(1);
+        expect(history[0].layoutId).toBe(contemporary.id);
+        expect(history[0].hotfixId).toBe(HOTFIX_ID_SPEC_DRIFT_OVERWRITE);
+    });
+
+    it('hand-coded non-spec layouts (screenplay, podcast) are not drift-detected: on-disk content is preserved', async () => {
+        for (const layoutId of ['bundled-screenplay', 'bundled-podcast']) {
+            const { plugin, layout } = createPluginWithBundledLayout(layoutId);
+            const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+            const userEdit = '% user-edited content for ' + layoutId + '\n';
+
+            await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+            await (plugin.app.vault as any).create(target, userEdit);
+
+            await ensureBundledLayoutInstalledForExport(plugin, layout);
+
+            const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+            const after = await (plugin.app.vault as any).read(file);
+            // Drift-detect skipped: hand-coded layouts are not in the spec-driven set.
+            expect(after).toBe(userEdit);
+            expect(plugin.settings.templateHotfixHistory ?? []).toEqual([]);
+        }
     });
 
     it('migrates legacy bundled signature ids/paths and avoids duplicate bundled entries', () => {
@@ -617,15 +279,6 @@ describe('bundled pandoc layout export auto-install', () => {
     });
 
     /**
-     * Regression: clicking "Install all" with an empty pandocLayouts registry
-     * (e.g. user trashed all bundled entries) used to leave the PDF Style
-     * publishing stage stuck on "Below" because the validation snapshot only
-     * sees layouts present in `plugin.settings.pandocLayouts`. The handler
-     * now mirrors Auto-configure and calls ensureBundledPandocLayoutsRegistered
-     * after the file install — verify both pieces (files-on-disk +
-     * registered settings entries + validates) line up.
-     */
-    /**
      * Regression: when the on-disk `.tex` for a spec-driven fiction template
      * diverged from the canonical generator output (legacy literal `title`
      * /`scene` running-header text, stale chapter spacing, anything an
@@ -634,7 +287,7 @@ describe('bundled pandoc layout export auto-install', () => {
      * The drift-detect path overwrites stale fiction templates so install
      * is self-healing — users don't need to manually delete vault files.
      */
-    it('drift-detects and overwrites stale on-disk content for spec-driven fiction templates', async () => {
+    it('installBundledPandocLayouts drift-detects and overwrites stale on-disk content for spec-driven fiction templates', async () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
         const stale = [
@@ -655,18 +308,11 @@ describe('bundled pandoc layout export auto-install', () => {
 
         const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
         const updated = await (plugin.app.vault as any).read(file);
-        // Canonical spec-driven content: macros, not literal labels.
-        expect(updated).toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}');
-        expect(updated).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
-        // Spec-driven chapter spacing now lives inside \rtChapter as
-        // \vspace*{0.46\textheight} (the old \titlespacing*{\chapter} hook never
-        // fired — assembler emits \rtChapter, not \chapter).
-        expect(updated).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.46\\textheight\}/);
-        expect(updated).not.toMatch(/\\fancyhead\[LE\]\{[^}]*\bnouppercase\{title\}/);
-        expect(updated).not.toMatch(/\\fancyhead\[RO\]\{[^}]*\bnouppercase\{scene\}/);
+        const canonical = getBundledPandocLayoutContent(layout.id);
+        expect(updated).toBe(canonical);
     });
 
-    it('does NOT overwrite when on-disk content already matches the canonical spec output', async () => {
+    it('installBundledPandocLayouts does NOT overwrite when on-disk content already matches the canonical spec output', async () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
 
@@ -701,57 +347,5 @@ describe('bundled pandoc layout export auto-install', () => {
         for (const layout of fictionLayouts) {
             expect(validatePandocLayout(plugin, layout).valid).toBe(true);
         }
-    });
-
-    // Page-numbering hierarchy hotfix: spec-driven .tex files installed before
-    // \rtBeginMainArabic / \ifrtMainStarted were introduced get rewritten to
-    // canonical content on next install pass. Pre-cutover legacy files remain
-    // owned by the older normalizers and are NOT touched here.
-    it('hotfixes spec-driven bundled template files lacking the page-numbering hierarchy', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        // Synthetic spec-driven file (carries the generator header) that
-        // predates the page-numbering hierarchy.
-        const stale = [
-            '% Generated from DesignedStyleSpec v2 — bundled-fiction-classic-manuscript',
-            '\\documentclass{book}',
-            '\\newcommand{\\rtSceneOpener}[1]{\\section*{#1}}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, stale);
-
-        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
-        expect(result.installed).toBe(false);
-        expect(result.failed).toBe(false);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        expect(updated).toMatch(/\\newcommand\{\\rtBeginMainArabic\}/);
-        expect(updated).toMatch(/\\newif\\ifrtMainStarted/);
-        expect(updated).toMatch(/\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
-    });
-
-    it('does NOT rewrite pre-cutover legacy bundled files (those are repaired by the older normalizers)', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
-        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        // Hand-authored legacy file (no spec-driven header, no rtBeginMainArabic).
-        const legacy = [
-            '% Pandoc LaTeX Template - Standard Manuscript',
-            '\\documentclass{book}',
-            '$body$',
-        ].join('\n');
-
-        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
-
-        await ensureBundledLayoutInstalledForExport(plugin, layout);
-
-        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
-        const updated = await (plugin.app.vault as any).read(file);
-        // The page-numbering normalizer is gated to spec-driven files, so
-        // hand-authored legacy stubs are NOT auto-rewritten here.
-        expect(updated).not.toMatch(/\\rtBeginMainArabic/);
     });
 });

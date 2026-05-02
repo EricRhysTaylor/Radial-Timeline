@@ -25,7 +25,7 @@ Unlike Narrative Mode, this mode replaces subplot colors with your workflow stat
 
 2.  **Progress Stage Colors**:
     *   Once a scene is "Complete", it displays the color of its current stage (Zero Draft, Author's Draft, House Edit, Press Ready).
-    *   These colors can be customized in [Progress stage colors](Settings#progress-stage-colors).
+    *   These colors can be customized in [Progress stage colors](Settings-Core#progress-stage-colors).
 
 Think of this as the Progress Mode status grammar:
 

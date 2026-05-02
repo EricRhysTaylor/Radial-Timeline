@@ -24,10 +24,12 @@ import {
 import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
 import {
     applySpreadValidation,
+    collectSpreadStatuses,
     getFictionVariantForLayout,
     getLayoutPictogramRows,
     renderLayoutPictograms,
     type FictionLayoutVariant,
+    type SpreadStatus,
     type SpreadValidationContext,
 } from '../publishing/layoutVisuals';
 import { buildSpreadValidationContext, collectSpreadWarningTooltips } from '../publishing/spreadValidationContext';
@@ -1678,6 +1680,15 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private syncExportUi(): void {
+        // If a previous export has completed and the user is now changing
+        // settings, restore the pre-export UI (Generate PDF + Cancel) so they
+        // can export again with the new settings without closing and reopening
+        // the modal. The success-state buttons (Reveal in Finder / Open file)
+        // are hidden because their `lastOutcome` would describe a stale file
+        // that no longer matches the current settings.
+        if (this.exportCompleted) {
+            this.resetPostExportState();
+        }
         this.normalizeOutputFormatForOutline();
         const mode = this.getUiMode();
         this.sanitizeStateForMode(mode);
@@ -1855,6 +1866,12 @@ export class ManuscriptOptionsModal extends Modal {
                 this.updateExportProfileSummary();
                 this.updateTemplateWarning();
                 this.updateTemplateActionButtonState();
+                // Switching templates after a successful export must restore the
+                // pre-export footer (Generate PDF + Cancel) so the user can
+                // re-export with the new template without closing the modal.
+                // applyTemplate() does this for saved-preset switches; the layout
+                // dropdown is the other entry point and was missing the call.
+                this.syncExportUi();
             });
         }
 
@@ -2128,17 +2145,24 @@ export class ManuscriptOptionsModal extends Modal {
         technicalLines.push(`Page layout: ${layoutDesc}`);
         technicalLines.push(...this.collectTemplateTechnicalLines());
 
-        // ── Spread-validation warnings ────────────────────────────────
+        // ── Spread-validation warnings + statuses ─────────────────────
         // Run the same validation pass the preview cards use, then collect
         // distinct warning tooltips so each unique advisory surfaces as a
-        // line item below. Warnings are non-blocking — Generate stays enabled.
+        // line item below. Statuses are informational counts that always
+        // render (even in "Ready"). Warnings are non-blocking — Generate
+        // stays enabled regardless.
         const spreadVariant = getFictionVariantForLayout(selectedLayout);
-        const spreadWarningTooltips: string[] = spreadVariant === 'generic'
-            ? []
-            : collectSpreadWarningTooltips(applySpreadValidation(
+        let spreadWarningTooltips: string[] = [];
+        let spreadStatuses: SpreadStatus[] = [];
+        if (spreadVariant !== 'generic') {
+            const spreadCtx = this.buildSpreadValidationContext(selectedLayout);
+            const validatedRows = applySpreadValidation(
                 getLayoutPictogramRows(spreadVariant, selectedLayout),
-                this.buildSpreadValidationContext(selectedLayout),
-            ));
+                spreadCtx,
+            );
+            spreadWarningTooltips = collectSpreadWarningTooltips(validatedRows);
+            spreadStatuses = collectSpreadStatuses(validatedRows, spreadCtx);
+        }
         const hasSpreadWarning = spreadWarningTooltips.length > 0;
 
         // ── Severity classification ─────────────────────────────────
@@ -2161,12 +2185,14 @@ export class ManuscriptOptionsModal extends Modal {
             : hasWarning ? 'ert-warning-warning'
             : 'ert-warning-info'
         );
-        const icon = this.templateWarningEl.createSpan({ cls: 'ert-warning-icon' });
-        setIcon(icon,
-            hasError ? 'alert-circle'
+        // Icon now lives inline with the title row (inside the content block)
+        // instead of as a left-rail sibling. This frees the technical-details
+        // list to use the full panel width — important because the details
+        // contain long lines like "$frontmatter_acknowledgments$: Not exposed"
+        // that wrap awkwardly in a narrow column.
+        const iconName = hasError ? 'alert-circle'
             : hasWarning ? 'alert-triangle'
-            : 'check-circle-2'
-        );
+            : 'check-circle-2';
 
         const content = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
 
@@ -2176,7 +2202,19 @@ export class ManuscriptOptionsModal extends Modal {
             // ACCESS / COMPATIBILITY rows (irrelevant when nothing is wrong).
             // Technical details remain available behind the expander for
             // power users who want to inspect the underlying state.
-            content.createDiv({ cls: 'ert-pdf-output-ready-line', text: 'Export checks · Ready' });
+            const readyLine = content.createDiv({ cls: 'ert-pdf-output-ready-line' });
+            const readyIcon = readyLine.createSpan({ cls: 'ert-warning-icon ert-warning-icon--inline' });
+            setIcon(readyIcon, iconName);
+            readyLine.createSpan({ text: 'Export checks · Ready' });
+            // Informational status rows (non-alarmist counts) — always render
+            // even in Ready state. Visually distinct from warnings via the
+            // is-status modifier on the existing line class.
+            for (const status of spreadStatuses) {
+                content.createDiv({
+                    cls: `ert-pdf-output-line is-status is-status-${status.tone}`,
+                    text: status.text,
+                });
+            }
             if (technicalLines.length > 0) {
                 const details = content.createEl('details', { cls: 'ert-pdf-output-details' });
                 details.createEl('summary', { text: 'View technical details' });
@@ -2189,7 +2227,10 @@ export class ManuscriptOptionsModal extends Modal {
         }
 
         // ── Warning / error form ─────────────────────────────────
-        content.createDiv({ cls: 'ert-pdf-output-title', text: 'Export checks' });
+        const titleRow = content.createDiv({ cls: 'ert-pdf-output-title' });
+        const titleIcon = titleRow.createSpan({ cls: 'ert-warning-icon ert-warning-icon--inline' });
+        setIcon(titleIcon, iconName);
+        titleRow.createSpan({ text: 'Export checks' });
 
         if (hasAccessError) {
             const firstError = accessIssues.find(issue => issue.level === 'error');
@@ -2216,24 +2257,39 @@ export class ManuscriptOptionsModal extends Modal {
                         structuredFontDiag.installHint?.message || 'Plugin asset missing — reinstall plugin.'
                     );
                 } else {
-                    // 'fallback' — render the legacy "Using X — install Y"
-                    // sentence, with an inline link when the install hint
-                    // carries a URL (Google Fonts).
+                    // 'fallback' — render the "Using X — install Y" sentence
+                    // followed by the OS-tailored install message, an inline
+                    // download link (when applicable), and a short bulleted
+                    // checklist of platform-specific install steps.
                     const fallbackName = structuredFontDiag.resolvedFontName;
                     const primaryName = structuredFontDiag.primaryFontName;
                     if (fallbackName && fallbackName !== primaryName) {
-                        line.appendText(`Font: Using ${fallbackName} — install ${primaryName} for the intended look. `);
+                        line.appendText(`Font: Using ${fallbackName} — install ${primaryName} for the intended look.`);
                     } else {
-                        line.appendText(`Font: ${primaryName} is not installed. Install it before exporting. `);
+                        line.appendText(`Font: ${primaryName} is not installed. Install it before exporting.`);
                     }
-                    if (structuredFontDiag.installHint?.url) {
-                        const a = line.createEl('a', {
-                            cls: 'ert-link-accent',
-                            text: 'Open Google Fonts',
-                        });
-                        a.setAttribute('href', structuredFontDiag.installHint.url);
-                        a.setAttribute('target', '_blank');
-                        a.setAttribute('rel', 'noopener');
+                    const hint = structuredFontDiag.installHint;
+                    if (hint) {
+                        const hintLine = content.createDiv({ cls: 'ert-pdf-output-line' });
+                        hintLine.appendText(`${hint.message} `);
+                        if (hint.url) {
+                            const a = hintLine.createEl('a', {
+                                cls: 'ert-link-accent',
+                                text: 'Open Google Fonts download page',
+                            });
+                            a.setAttribute('href', hint.url);
+                            a.setAttribute('target', '_blank');
+                            a.setAttribute('rel', 'noopener');
+                        }
+                        if (hint.steps && hint.steps.length > 0) {
+                            const list = content.createEl('ul', { cls: 'ert-pdf-output-steps' });
+                            for (const step of hint.steps) {
+                                list.createEl('li', {
+                                    cls: 'ert-pdf-output-line is-status',
+                                    text: step,
+                                });
+                            }
+                        }
                     }
                 }
             } else if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
@@ -2269,6 +2325,16 @@ export class ManuscriptOptionsModal extends Modal {
         // already deduped by collectSpreadWarningTooltips.
         for (const tooltip of spreadWarningTooltips) {
             content.createDiv({ cls: 'ert-pdf-output-line', text: tooltip });
+        }
+
+        // Informational status rows (non-alarmist counts). Render in any
+        // state, including alongside warnings, so a user with one warning
+        // and one fully-populated feature sees both.
+        for (const status of spreadStatuses) {
+            content.createDiv({
+                cls: `ert-pdf-output-line is-status is-status-${status.tone}`,
+                text: status.text,
+            });
         }
 
         // ACCESS / COMPATIBILITY status rows are intentionally omitted —
@@ -2486,6 +2552,23 @@ Sarah stood at the window, watching the world wake up.`;
         if (!this.actionButton || this.exportCompleted) return;
         const splitInvalid = !this.isSplitSelectionValid();
         this.actionButton.setDisabled(this.totalScenes === 0 || splitInvalid);
+    }
+
+    /**
+     * Restore the modal's pre-export footer (Generate PDF + Cancel) and clear
+     * the success-state buttons + outcome banner. Called by `syncExportUi` when
+     * the user changes a setting after a completed export, so they can re-export
+     * with the new settings without closing the modal first.
+     */
+    private resetPostExportState(): void {
+        this.exportCompleted = false;
+        this.lastOutcome = null;
+        this.outputStatusEl?.addClass('ert-hidden');
+        this.openFolderButton?.buttonEl.addClass('ert-hidden');
+        this.openFileButton?.buttonEl.addClass('ert-hidden');
+        this.cancelButton?.buttonEl.removeClass('ert-hidden');
+        this.updateActionButtonLabel();
+        this.updateActionButtonDisabledState();
     }
 
     private updateSplitUi(): void {

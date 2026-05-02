@@ -3,7 +3,7 @@
  * Keep this module focused on formatting and process execution.
  */
 
-import { normalizePath, FileSystemAdapter, Vault, TFile } from 'obsidian';
+import { normalizePath, FileSystemAdapter, Platform, Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneSelection, ManuscriptOrder } from './manuscript';
@@ -470,10 +470,97 @@ export function getTemplateFontDiagnostics(templatePath?: string): TemplateFontD
 
 export type FontDiagnosticState = 'ok' | 'fallback' | 'missing-bundled';
 
+export type FontDiagnosticPlatform = 'mac' | 'win' | 'linux';
+
 export interface FontDiagnosticInstallHint {
     source: 'google-fonts' | 'ctan' | 'bundled';
+    /** Primary download URL (any platform). */
     url?: string;
+    /** OS-tailored instruction line. */
     message: string;
+    /** Short actionable bullet list, OS-tailored when relevant. */
+    steps?: string[];
+}
+
+/**
+ * Resolve the current OS family for diagnostic hint copy. Prefers Obsidian's
+ * `Platform` (covers desktop + mobile cleanly) and falls back to
+ * `process.platform` when the import is unavailable in a test environment.
+ */
+function getCurrentPlatform(): FontDiagnosticPlatform {
+    try {
+        if (Platform && typeof Platform === 'object') {
+            if (Platform.isMacOS) return 'mac';
+            if (Platform.isWin) return 'win';
+            if (Platform.isLinux) return 'linux';
+        }
+    } catch {
+        // Fall through to process.platform.
+    }
+    const p = typeof process !== 'undefined' ? process.platform : '';
+    if (p === 'darwin') return 'mac';
+    if (p === 'win32') return 'win';
+    return 'linux';
+}
+
+/**
+ * Build the OS-tailored Google Fonts install hint. Exported for direct
+ * platform-coverage testing — `getStructuredFontDiagnostic` wires this in via
+ * its `overridePlatform` argument, so tests can exercise the full hint shape
+ * without depending on whether `fc-list` is present in the test runner.
+ */
+export function buildGoogleFontsHint(
+    primaryFontName: string,
+    url: string,
+    platform: FontDiagnosticPlatform
+): FontDiagnosticInstallHint {
+    if (platform === 'mac') {
+        return {
+            source: 'google-fonts',
+            url,
+            message: `Install ${primaryFontName} via Font Book.`,
+            steps: [
+                'Download from Google Fonts (link below)',
+                'Open the downloaded ZIP',
+                'Drag the .ttf files onto Font Book to install',
+                'Re-export this PDF',
+            ],
+        };
+    }
+    if (platform === 'win') {
+        return {
+            source: 'google-fonts',
+            url,
+            message: `Install ${primaryFontName} from Google Fonts.`,
+            steps: [
+                'Download the ZIP from Google Fonts',
+                'Right-click each .ttf file → "Install for all users"',
+                'Re-export this PDF',
+            ],
+        };
+    }
+    return {
+        source: 'google-fonts',
+        url,
+        message: `Install ${primaryFontName} from Google Fonts.`,
+        steps: [
+            'Download the ZIP from Google Fonts',
+            'Copy .ttf files to ~/.fonts/ or /usr/share/fonts/',
+            'Run "fc-cache -f" to refresh',
+            'Re-export this PDF',
+        ],
+    };
+}
+
+export function buildCtanHint(primaryFontName: string): FontDiagnosticInstallHint {
+    // CTAN-source fonts cover system-installed TeX fonts whose download path
+    // varies enough across distributions that fabricating platform-specific
+    // steps would be misleading. Keep the message generic — the user will
+    // already have a working TeX install if they're exporting PDFs.
+    return {
+        source: 'ctan',
+        message: `Install ${primaryFontName} for the intended look.`,
+    };
 }
 
 export interface FontDiagnostic {
@@ -542,9 +629,13 @@ function bundledFontFilesPresent(fontKey: DesignedStyleSpec['body']['font']): bo
  * fontspec's `\IfFontExistsTF` may not see it, but XeLaTeX always finds it
  * via kpathsea on any complete TeX install. We always report 'ok' for it.
  */
-export function getStructuredFontDiagnostic(layout?: PandocLayoutTemplate): FontDiagnostic {
+export function getStructuredFontDiagnostic(
+    layout?: PandocLayoutTemplate,
+    overridePlatform?: FontDiagnosticPlatform
+): FontDiagnostic {
     const spec = specForLayout(layout);
     const fontKey = spec?.body.font;
+    const platform = overridePlatform ?? getCurrentPlatform();
 
     // Layouts without a spec (custom imports) — fall back to a generic ok
     // state so the Export Checks panel doesn't fabricate an alarm.
@@ -602,15 +693,8 @@ export function getStructuredFontDiagnostic(layout?: PandocLayoutTemplate): Font
     const fallbackName = spec.body.fontFallbackChain[0] || 'TeX Gyre Pagella';
     const url = GOOGLE_FONTS_BY_KEY[fontKey];
     const installHint: FontDiagnosticInstallHint = url
-        ? {
-            source: 'google-fonts',
-            url,
-            message: `Install ${primaryFontName} from Google Fonts for the intended look.`,
-        }
-        : {
-            source: 'ctan',
-            message: `Install ${primaryFontName} for the intended look.`,
-        };
+        ? buildGoogleFontsHint(primaryFontName, url, platform)
+        : buildCtanHint(primaryFontName);
 
     return {
         state: 'fallback',

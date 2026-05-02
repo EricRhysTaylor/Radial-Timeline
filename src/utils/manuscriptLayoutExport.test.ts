@@ -14,6 +14,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
             defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
+            useRtChapterMacro: false,
         });
     });
 
@@ -31,6 +32,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
             sceneHeadingRenderMode: 'latex-section-starred',
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
+            useRtChapterMacro: false,
         });
     });
 
@@ -41,10 +43,14 @@ describe('getManuscriptLayoutExportBehavior', () => {
             path: 'rt_modern_classic.tex',
         });
 
+        // useRtChapterMacro stays false: Modern Classic emits \rtChapter from
+        // its own modernClassicStructure branch in assembleManuscript, not from
+        // the markdown-chapter path that useRtChapterMacro gates.
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'markdown-h2',
             suppressChapterMarkers: false,
             suppressPartMarkers: false,
+            useRtChapterMacro: false,
         });
     });
 
@@ -59,12 +65,16 @@ describe('getManuscriptLayoutExportBehavior', () => {
         // headingMode = 'scene-number'; the export pipeline now seeds those
         // from the spec so the assembler emits \rtSceneOpener{N} per scene
         // rather than markdown ## headings (which Pandoc would convert to
-        // \section{} and bypass the opener-page macro).
+        // \section{} and bypass the opener-page macro). useRtChapterMacro is
+        // true so chapter markers go through the template's \rtChapter macro
+        // (centered title page, page numbering switch, chrome suppression)
+        // instead of pandoc's book-class \chapter{} default.
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: false,
             suppressPartMarkers: true,
+            useRtChapterMacro: true,
         });
     });
 
@@ -79,6 +89,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
             sceneHeadingRenderMode: 'markdown-h2',
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
+            useRtChapterMacro: false,
         });
     });
 });

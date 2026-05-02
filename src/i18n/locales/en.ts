@@ -1650,7 +1650,7 @@ export const en: TranslationKeys = {
                 proTeaser: {
                     wantMore: 'Want more?',
                     enhanceWorkflow: 'Enhance your workflow',
-                    desc: 'Campaign manager lets you create multiple embeds with Teaser Reveal\u2014progressively show more detail as you write. Get access to Campaign manager and more Pro workflow features including runtime (RT) chronologue mode and Pandoc manuscript export templates.',
+                    desc: 'Campaign manager lets you create multiple embeds with Teaser Reveal\u2014progressively show more detail as you write. Get access to Campaign manager and more Pro workflow features including runtime (RT) chronologue mode plus advanced Pandoc publishing templates and customization.',
                     upgradeLink: 'Upgrade to Pro \u2192',
                 },
             },
@@ -1922,7 +1922,7 @@ export const en: TranslationKeys = {
     manuscriptModal: {
         badge: 'Export',
         title: 'Export',
-        description: 'Export your scenes as plain text or PDF (Pro Tier). Choose what to include and how it should be formatted.',
+        description: 'Export your scenes as Markdown or PDF. Core includes the standard Pandoc PDF path; Pro adds extra templates and advanced customization.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Adjust scene range below.',
         exportHeading: 'Export type',

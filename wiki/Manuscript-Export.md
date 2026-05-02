@@ -11,12 +11,14 @@ Use it when you want to assemble your notes into a deliverable artifact instead 
 
 ## What It Can Export
 
-Depending on your configuration and tier, the export workflow can produce:
+The export workflow can produce:
 
 *   compiled Markdown manuscripts
 *   PDF manuscripts
 *   outline-style exports
 *   filtered or ranged exports by order and subplot
+
+Core includes compiled Markdown and Pandoc PDF export. Pro adds extra templates and deeper publishing customization.
 
 The modal supports ordering, selection range, output presets, and publishing-oriented layout decisions in one place.
 

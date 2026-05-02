@@ -48,8 +48,6 @@ interface SyntheticScene {
     body: string;
     /** Optional chapter marker emitted before this scene by the registrar layer. */
     chapterMarker?: { title: string };
-    /** Optional Modern-Classic-style beat reference for act assignment. */
-    beat?: string;
 }
 
 function makeFile(path: string, basename: string): TFile {
@@ -57,42 +55,39 @@ function makeFile(path: string, basename: string): TFile {
 }
 
 function buildSyntheticScenes(): SyntheticScene[] {
+    // Scenes self-declare which Act they belong to via the canonical `Act:`
+    // frontmatter field — the same source the timeline ring uses. The Modern
+    // Classic export emits \rtPart at every Act-boundary transition.
     return [
         // Act I → Chapter 1 → Scenes 1 + 2
         {
             file: makeFile('Scenes/1 Arrival.md', '1 Arrival'),
-            body: '---\nClass: Scene\nBeat: Opening Image\n---\n\nFirst paragraph of scene one.',
+            body: '---\nClass: Scene\nAct: 1\n---\n\nFirst paragraph of scene one.',
             chapterMarker: { title: 'Boy with a Skull' },
-            beat: 'Opening Image',
         },
         {
             file: makeFile('Scenes/2 The Garden.md', '2 The Garden'),
-            body: '---\nClass: Scene\nBeat: Setup\n---\n\nSecond paragraph.',
-            beat: 'Setup',
+            body: '---\nClass: Scene\nAct: 1\n---\n\nSecond paragraph.',
         },
         // Act I → Chapter 2 → Scenes 3 + 4
         {
             file: makeFile('Scenes/3 Confrontation.md', '3 Confrontation'),
-            body: '---\nClass: Scene\nBeat: Midpoint\n---\n\nThird paragraph.',
+            body: '---\nClass: Scene\nAct: 1\n---\n\nThird paragraph.',
             chapterMarker: { title: 'Everything of Possibility' },
-            beat: 'Midpoint',
         },
         {
             file: makeFile('Scenes/4 Aftermath.md', '4 Aftermath'),
-            body: '---\nClass: Scene\nBeat: All Is Lost\n---\n\nFourth paragraph.',
-            beat: 'All Is Lost',
+            body: '---\nClass: Scene\nAct: 1\n---\n\nFourth paragraph.',
         },
         // Act II → Chapter 3 → Scenes 5 + 6
         {
             file: makeFile('Scenes/5 Departure.md', '5 Departure'),
-            body: '---\nClass: Scene\nBeat: Break into 3\n---\n\nFifth paragraph.',
+            body: '---\nClass: Scene\nAct: 2\n---\n\nFifth paragraph.',
             chapterMarker: { title: 'New Horizons' },
-            beat: 'Break into 3',
         },
         {
             file: makeFile('Scenes/6 Resolution.md', '6 Resolution'),
-            body: '---\nClass: Scene\nBeat: Finale\n---\n\nSixth paragraph.',
-            beat: 'Finale',
+            body: '---\nClass: Scene\nAct: 2\n---\n\nSixth paragraph.',
         },
     ];
 }
@@ -254,18 +249,10 @@ describe('one spec, three echoes — contract alignment', () => {
         const scenes = buildSyntheticScenes();
         const vault = buildVault(scenes);
 
-        // Modern Classic uses the structure path. Beat → act mapping:
-        //   Opening Image, Setup, Midpoint, All Is Lost → act 1
-        //   Break into 3, Finale                        → act 2
-        const beatDefinitions = [
-            { name: 'Opening Image', actIndex: 1 },
-            { name: 'Setup',         actIndex: 1 },
-            { name: 'Midpoint',      actIndex: 1 },
-            { name: 'All Is Lost',   actIndex: 1 },
-            { name: 'Break into 3',  actIndex: 2 },
-            { name: 'Finale',        actIndex: 2 },
-        ];
-
+        // Modern Classic emits \rtPart at every Act-boundary transition. Acts
+        // come from each scene's own `Act:` frontmatter field (see
+        // buildSyntheticScenes): scenes 1–4 are Act 1, scenes 5–6 are Act 2,
+        // so we expect exactly two \rtPart calls.
         const assembled = await assembleManuscript(
             scenes.map(s => s.file),
             vault, undefined, false, undefined, false, undefined, undefined,
@@ -275,7 +262,6 @@ describe('one spec, three echoes — contract alignment', () => {
                 chapterMarkersByScenePath: buildChapterMarkers(scenes),
                 modernClassicStructure: {
                     enabled: true,
-                    beatDefinitions,
                     actEpigraphs: ['Quote one.', 'Quote two.'],
                     actEpigraphAttributions: ['Author A', 'Author B'],
                 },

@@ -186,13 +186,17 @@ describe('assembleManuscript scene heading formatting', () => {
     });
 
     it('injects shared Chapter field headings before scene content and suppresses scene headings in Modern Classic mode', async () => {
+        // Scenes self-declare their Act via the canonical `Act:` frontmatter
+        // field — the same source the timeline ring uses. Modern Classic emits
+        // \rtPart at every Act-boundary transition, which here is scene1+scene2
+        // (Act 1) → scene3 (Act 2). No beat indirection.
         const scene1 = makeFile('Scenes/1 Opening.md', '1 Opening');
         const scene2 = makeFile('Scenes/2 Midpoint.md', '2 Midpoint');
         const scene3 = makeFile('Scenes/3 Turn.md', '3 Turn');
         const vault = makeVault({
-            [scene1.path]: '---\nClass: Scene\nBeat: Opening Image\n---\n\nFirst body.',
-            [scene2.path]: '---\nClass: Scene\nBeat: Midpoint\n---\n\nSecond body.',
-            [scene3.path]: '---\nClass: Scene\nBeat: Break into 3\n---\n\nThird body.'
+            [scene1.path]: '---\nClass: Scene\nAct: 1\n---\n\nFirst body.',
+            [scene2.path]: '---\nClass: Scene\nAct: 1\n---\n\nSecond body.',
+            [scene3.path]: '---\nClass: Scene\nAct: 2\n---\n\nThird body.'
         });
 
         const assembled = await assembleManuscript(
@@ -227,11 +231,6 @@ describe('assembleManuscript scene heading formatting', () => {
                     enabled: true,
                     actEpigraphs: ['The beginning of all things.', 'A turn into possibility.'],
                     actEpigraphAttributions: ['Anonymous', 'The Narrator'],
-                    beatDefinitions: [
-                        { name: 'Opening Image', actIndex: 1 },
-                        { name: 'Midpoint', actIndex: 1 },
-                        { name: 'Break into 3', actIndex: 2 }
-                    ]
                 }
             }
         );

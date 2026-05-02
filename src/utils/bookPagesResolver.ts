@@ -347,35 +347,41 @@ export function resolveBookPages(
  *   - else → reorders `resolved` to match `saved`
  *     - new (unsaved) pages append at the end in canonical order
  *     - removed pages drop silently from `saved`
+ *     - **side grouping is enforced**: all frontmatter pages render before all
+ *       backmatter pages regardless of what `saved` contains. A frontmatter
+ *       page cannot become backmatter (or vice versa) just because the saved
+ *       order interleaves them. The export pipeline relies on this
+ *       front→manuscript→back ordering, and the UI enforces it on drag too.
+ *       Within each side the saved order is honored.
  */
 export function applyBookPageOrder(
     resolved: ResolvedPage[],
     saved: string[] | undefined,
 ): ResolvedPage[] {
-    if (!saved || saved.length === 0) return resolved.slice();
-
-    const byId = new Map<string, ResolvedPage>();
-    for (const page of resolved) byId.set(page.id, page);
-
-    const used = new Set<string>();
-    const ordered: ResolvedPage[] = [];
-
-    for (const id of saved) {
-        const page = byId.get(id);
-        if (page && !used.has(id)) {
-            ordered.push(page);
-            used.add(id);
+    const applyWithinSide = (sidePages: ResolvedPage[]): ResolvedPage[] => {
+        if (!saved || saved.length === 0) return sidePages.slice();
+        const byId = new Map<string, ResolvedPage>();
+        for (const page of sidePages) byId.set(page.id, page);
+        const used = new Set<string>();
+        const ordered: ResolvedPage[] = [];
+        for (const id of saved) {
+            const page = byId.get(id);
+            if (page && !used.has(id)) {
+                ordered.push(page);
+                used.add(id);
+            }
         }
-        // Removed page → silently drop.
-    }
-
-    // New pages not yet in `saved` → append in canonical (input) order.
-    for (const page of resolved) {
-        if (!used.has(page.id)) {
-            ordered.push(page);
-            used.add(page.id);
+        // New pages not yet in `saved` → append in canonical (input) order.
+        for (const page of sidePages) {
+            if (!used.has(page.id)) {
+                ordered.push(page);
+                used.add(page.id);
+            }
         }
-    }
+        return ordered;
+    };
 
-    return ordered;
+    const front = resolved.filter(p => p.side === 'frontmatter');
+    const back = resolved.filter(p => p.side === 'backmatter');
+    return [...applyWithinSide(front), ...applyWithinSide(back)];
 }

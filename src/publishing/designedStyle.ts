@@ -157,6 +157,14 @@ export interface GenerateDesignedStyleTexOptions {
      * Trailing slash is added by the consumer if needed.
      */
     bundledFontPath?: string;
+    /**
+     * Absolute filesystem path to the directory containing Latin Modern Roman
+     * OTF files in the user's existing TeX install. Resolved at plugin load via
+     * `kpsewhich lmroman10-regular.otf`. When provided, the generator points
+     * fontspec `Path=` directly at the user's TeX install for the
+     * `latin-modern` font — no bundled assets, no system font install required.
+     */
+    latinModernPath?: string;
 }
 
 export function generateDesignedStyleTex(
@@ -177,7 +185,10 @@ export function generateDesignedStyleTex(
     sections.push('');
     sections.push(renderGeometry(spec));
     sections.push('');
-    sections.push(renderFontspec(spec, { bundledFontPath: options.bundledFontPath }));
+    sections.push(renderFontspec(spec, {
+        bundledFontPath: options.bundledFontPath,
+        latinModernPath: options.latinModernPath,
+    }));
     sections.push('');
     sections.push(renderFancyhdr(spec));
 

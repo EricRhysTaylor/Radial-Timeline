@@ -25,6 +25,17 @@ export interface ManuscriptLayoutExportBehavior {
      * scene-only or chapter-only design.
      */
     suppressPartMarkers: boolean;
+    /**
+     * When true, the assembler emits `\rtChapter{N}{Title}` raw LaTeX for
+     * each chapter marker (instead of `# Title` markdown). Use this for any
+     * layout whose template defines an `\rtChapter` macro — without it,
+     * pandoc falls through to the book class's default `\chapter{}` style,
+     * which produces the wrong typography (left-aligned "Chapter N" near
+     * page top, page chrome not suppressed, page numbering doesn't switch
+     * to arabic on chapter 1). The Modern-Classic structure path is
+     * unaffected — it emits `\rtChapter` from its own branch.
+     */
+    useRtChapterMacro: boolean;
 }
 
 export const STANDARD_MANUSCRIPT_LAYOUT_ID = 'bundled-fiction-classic-manuscript';
@@ -64,6 +75,7 @@ export function getManuscriptLayoutExportBehavior(
             defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
+            useRtChapterMacro: false,
         };
     }
 
@@ -76,6 +88,7 @@ export function getManuscriptLayoutExportBehavior(
             sceneHeadingRenderMode: 'latex-section-starred',
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
+            useRtChapterMacro: false,
         };
     }
 
@@ -83,11 +96,13 @@ export function getManuscriptLayoutExportBehavior(
         // Modern Classic owns part + chapter typography via its own
         // \rtPart / \rtChapter macros; the Modern-Classic structure path in
         // assembleManuscript emits those raw LaTeX blocks rather than
-        // markdown chapter headings.
+        // markdown chapter headings. useRtChapterMacro stays false because
+        // the modernClassic branch handles \rtChapter emission directly.
         return {
             sceneHeadingRenderMode: 'markdown-h2',
             suppressChapterMarkers: false,
             suppressPartMarkers: false,
+            useRtChapterMacro: false,
         };
     }
 
@@ -95,13 +110,15 @@ export function getManuscriptLayoutExportBehavior(
         // Contemporary Literary pictogram: scene + chapter, no part.
         // Spec says scene.opener = 'dedicated-page' with headingMode = 'scene-number',
         // so the assembler emits \rtSceneOpener{number} per scene. The .tex defines
-        // the macro to handle the page break, chrome suppression, and centered
-        // typography (see designedStyleFragments.renderSceneOpener).
+        // \rtChapter for chapter pages — we must call it via useRtChapterMacro,
+        // otherwise pandoc falls through to book-class \chapter{} defaults
+        // (left-aligned, plain pagestyle, page numbering stuck on roman).
         return {
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: false,
             suppressPartMarkers: true,
+            useRtChapterMacro: true,
         };
     }
 
@@ -113,18 +130,24 @@ export function getManuscriptLayoutExportBehavior(
     // When the layout carries a DesignedStyleSpec, derive renderMode and
     // default heading mode from the spec — `dedicated-page` openers must use
     // latex-section-starred so the assembler emits \rtSceneOpener{HEADING}.
+    // useRtChapterMacro is true whenever the spec advertises chapters; the
+    // generated `.tex` always defines \rtChapter when chapters.mode !== 'off'
+    // (see designedStyleFragments.renderChapter).
     if (designed) {
         const usesDedicatedOpener = designed.scene.opener === 'dedicated-page';
+        const chaptersOn = designed.chapters.mode !== 'off';
         return {
             sceneHeadingRenderMode: usesDedicatedOpener ? 'latex-section-starred' : 'markdown-h2',
             ...(specDefaultHeadingMode ? { defaultSceneHeadingMode: specDefaultHeadingMode } : {}),
-            suppressChapterMarkers: designed.chapters.mode === 'off',
+            suppressChapterMarkers: !chaptersOn,
             suppressPartMarkers: designed.parts.mode === 'off',
+            useRtChapterMacro: chaptersOn,
         };
     }
     return {
         sceneHeadingRenderMode: 'markdown-h2',
         suppressChapterMarkers: true,
         suppressPartMarkers: true,
+        useRtChapterMacro: false,
     };
 }

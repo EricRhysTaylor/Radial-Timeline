@@ -1,5 +1,7 @@
 Radial Timeline turns your scene notes into a finished manuscript using **Pandoc** and **LaTeX**. You pick a template that defines the look of the page — fonts, headers, chapter openers, part dividers — and the plugin assembles your scenes into that format and hands the result to Pandoc to produce a PDF.
 
+**Core includes Pandoc-based PDF export.** Core users can export PDFs with the bundled Core publishing layouts. **Pro** extends that system with extra templates and more advanced publishing customization.
+
 This page covers:
 - The template catalog (what's bundled and what each one looks like)
 - Installing, duplicating, and importing templates
@@ -16,6 +18,8 @@ This page covers:
 ## Template Catalog
 
 Bundled templates live in **Settings → Publish → PDF Styles**. Each row shows a status pill (**Installed** / **Not installed**), a preview card, and buttons for **Install** and **Duplicate**.
+
+Core includes the standard publishing layouts needed for Pandoc PDF export. Pro adds additional advanced layouts and deeper template customization/import workflows.
 
 ### Novel templates
 
@@ -117,17 +121,19 @@ You do **not** need `Chapter:` on every scene. Only on the scene (or beat/backdr
 
 You don't type "Part I" anywhere. Parts are generated automatically from your **Acts**.
 
-1. Set **Act count** in **Settings** (e.g., 3).
-2. Assign each scene to an act via its beat sheet (the `Beat:` field links a scene to a beat definition, and each beat belongs to an act).
+1. Set **Act count** in **Settings → Core → Acts** (e.g., 3). This is the canonical partition that also drives the timeline ring.
+2. Set the `Act:` field on each scene (`Act: 1`, `Act: 2`, …). This is the same field the timeline reads to place the scene in its act segment, so what you see in the ring is what the export prints.
 3. When the exporter crosses from Act 1 to Act 2, it emits a **Part II** divider page.
 
 **Part ordering**: Part → Chapter → Scene.
 
-- Part I contains all scenes from Act 1 (with their chapters)
-- Part II contains all scenes from Act 2
-- Part III contains all scenes from Act 3
+- Part I contains all scenes whose `Act: 1` (with their chapters)
+- Part II contains all scenes whose `Act: 2`
+- Part III contains all scenes whose `Act: 3`
 
 Not every template uses Parts. Only templates with `usesModernClassicStructure` (currently **Modern Classic**) print Part divider pages. Simpler templates ignore act boundaries and flow straight through.
+
+> Beats are not used to determine acts for export. The export reads each scene's own `Act:` field directly, the same way the timeline ring does, so Parts in the PDF always match the act partitioning you see in Narrative mode.
 
 ---
 
@@ -155,14 +161,11 @@ The template file writes to `Radial Timeline/Pandoc/rt_modern_classic.tex` in yo
 
 This is a global plugin setting (not a per-template one). Most novels use 3 acts; some use 4 or 5. Whatever you pick here is the number of Parts your book will have.
 
-### Step 3 — Make sure your scenes are assigned to beats
+### Step 3 — Make sure your scenes carry an `Act:` value
 
-Modern Classic generates Part breaks when the exporter sees scenes crossing an act boundary. It figures out which act a scene belongs to by following its `Beat:` field to a beat definition, which in turn has an `Act:` field.
+Modern Classic generates Part breaks at every act-boundary transition in narrative order. It reads each scene's own `Act:` field directly (the same field the timeline ring uses to place the scene), so what you see partitioned in Narrative mode is exactly what gets printed as Parts.
 
-If you used **Book Designer** to scaffold your manuscript, this is already done. Otherwise, check that:
-
-- Each scene has a `Beat:` field pointing to a beat name.
-- Each beat note has an `Act:` field (`1`, `2`, `3`, …).
+If you used **Book Designer** to scaffold your manuscript, this is already set. Otherwise, check that every scene has a numeric `Act:` field (`1`, `2`, `3`, …) in its frontmatter.
 
 See [Scene Properties](YAML-Frontmatter) for the full frontmatter schema.
 
@@ -209,7 +212,7 @@ The smallest setup that produces a valid Modern Classic PDF:
 
 - Modern Classic **Installed**
 - **Act count** set (default 3 is fine)
-- At least one scene with a `Beat:` and its beat with an `Act:`
+- At least one scene with an `Act:` field (`1`, `2`, …) — and one transition to a higher Act if you want a Part II
 - At least one scene (anywhere) with a `Chapter:` value
 
 Epigraphs, extra chapters, and multi-act structure are all optional refinements.
@@ -250,7 +253,7 @@ For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX is
 
 **Template shows "Not installed" after I clicked Install.** The `.tex` file couldn't be written — check that `Radial Timeline/Pandoc/` exists and is writable.
 
-**Parts don't appear in my Modern Classic export.** Parts only emit when scenes cross an act boundary. Check that your scenes have `Beat:` fields, those beats have `Act:` fields, and your Act count is >1.
+**Parts don't appear in my Modern Classic export.** Parts only emit when scenes cross an act boundary. Check that your scenes have `Act:` values in their frontmatter and that more than one act is represented in the selection.
 
 **Chapter numbering is wrong.** The exporter numbers chapters by the order `Chapter:` values appear in the timeline. If a `Chapter:` value appears out of order, renumbering will reflect that. Check narrative order via [Timeline Modes](Timeline-Modes).
 

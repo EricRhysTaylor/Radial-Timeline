@@ -6,6 +6,7 @@ import {
     BUILTIN_FICTION_VARIANTS,
     LAYOUT_PREVIEW_BODY_LINES,
     applySpreadValidation,
+    collectSpreadStatuses,
     getFictionVariantForLayout,
     getLayoutFeatures,
     getLayoutPictogramRows,
@@ -265,14 +266,41 @@ describe('applySpreadValidation', () => {
             expect(part?.warningTooltip).toMatch(/epigraph/i);
         });
 
-        it('does NOT stamp PART when at least one act has an epigraph quote', () => {
+        it('does NOT stamp PART when every act has an epigraph quote', () => {
+            // Partial-population gate: only N-of-N is fully clean.
             const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
                 actCount: 3,
                 chapterFieldCount: 5,
-                actEpigraphPopulatedCount: 1,
+                actEpigraphPopulatedCount: 3,
             });
             const part = findSpread(rows, 'PART');
             expect(part?.warningLevel).toBeUndefined();
+        });
+
+        it('stamps PART with a partial-population tooltip when some but not all acts have a quote', () => {
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                actEpigraphPopulatedCount: 2,
+            });
+            const part = findSpread(rows, 'PART');
+            expect(part?.warningLevel).toBe('warning');
+            // Tooltip should mention both populated and total counts.
+            expect(part?.warningTooltip).toMatch(/2/);
+            expect(part?.warningTooltip).toMatch(/3/);
+            expect(part?.warningTooltip).toMatch(/partial/i);
+        });
+
+        it('stamps PART with the zero-population tooltip when no act has a quote (back-compat)', () => {
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                actEpigraphPopulatedCount: 0,
+            });
+            const part = findSpread(rows, 'PART');
+            expect(part?.warningLevel).toBe('warning');
+            // Zero phrasing — no act has an epigraph quote.
+            expect(part?.warningTooltip).toMatch(/no act has an epigraph quote/i);
         });
 
         it('does NOT fire on templates that do not advertise epigraphs', () => {
@@ -302,14 +330,28 @@ describe('applySpreadValidation', () => {
             expect(chapter?.warningTooltip).toMatch(/title/i);
         });
 
-        it('does NOT stamp CHAPTER when at least one chapter has a title', () => {
+        it('does NOT stamp CHAPTER when every chapter has a title', () => {
+            // Partial-population gate: only N-of-N is fully clean.
             const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
                 actCount: 3,
                 chapterFieldCount: 5,
-                chapterTitlePopulatedCount: 2,
+                chapterTitlePopulatedCount: 5,
             });
             const chapter = findSpread(rows, 'CHAPTER');
             expect(chapter?.warningLevel).toBeUndefined();
+        });
+
+        it('stamps CHAPTER with a partial-population tooltip when some but not all chapters have a title', () => {
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                chapterTitlePopulatedCount: 3,
+            });
+            const chapter = findSpread(rows, 'CHAPTER');
+            expect(chapter?.warningLevel).toBe('warning');
+            expect(chapter?.warningTooltip).toMatch(/3/);
+            expect(chapter?.warningTooltip).toMatch(/5/);
+            expect(chapter?.warningTooltip).toMatch(/partial/i);
         });
 
         it('does NOT fire on templates that advertise chapters but not TITLES', () => {
@@ -500,5 +542,101 @@ describe('getPictogramRowsFromSpec — spec-driven pictograms', () => {
                 expect(spread.rightPage?.bodyLines).toBeGreaterThan(0);
             }
         }
+    });
+});
+
+describe('collectSpreadStatuses — always-emit base counts', () => {
+    // Regression bench for the gap where layouts that advertise CHAPTER pages
+    // without titles (e.g. Contemporary, spec.chapters.mode === 'numbered')
+    // silently emitted nothing. The producer now ALWAYS emits a count when
+    // the spread is present and not warning, with the qualifier appended only
+    // when the layout advertises the extension feature (titles/epigraphs).
+
+    it('emits a plain "N Chapters configured" info for a numbered (non-titled) chapters layout', () => {
+        // Contemporary advertises chapter pages without titles — the spread
+        // has no specialSubtext, so the success qualifier never triggers.
+        const ctx = {
+            actCount: Number.POSITIVE_INFINITY,
+            chapterFieldCount: 5,
+            actEpigraphPopulatedCount: 0,
+            sceneTitlePopulatedRatio: 1,
+        };
+        const rows = applySpreadValidation(getLayoutPictogramRows('contemporary'), ctx);
+        const statuses = collectSpreadStatuses(rows, ctx);
+        const ch = statuses.find(s => s.id === 'chapters-count');
+        expect(ch).toBeDefined();
+        expect(ch?.tone).toBe('info');
+        expect(ch?.text).toMatch(/5 Chapters configured/);
+        expect(ch?.text).not.toMatch(/all titled/i);
+    });
+
+    it('emits "N Chapters configured, all titled." (success) for a titled layout with full population', () => {
+        const ctx = {
+            actCount: 3,
+            chapterFieldCount: 5,
+            actEpigraphPopulatedCount: 3,
+            chapterTitlePopulatedCount: 5,
+            sceneTitlePopulatedRatio: 1,
+        };
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), ctx);
+        const statuses = collectSpreadStatuses(rows, ctx);
+        const ch = statuses.find(s => s.id === 'chapters-count');
+        expect(ch).toBeDefined();
+        expect(ch?.tone).toBe('success');
+        expect(ch?.text).toMatch(/5 Chapters configured, all titled/i);
+    });
+
+    it('emits NO chapter status when the layout has no CHAPTER spread (chapters mode off)', () => {
+        // Standard Manuscript: spec.chapters.mode === 'off' → no CHAPTER spread.
+        const ctx = {
+            actCount: 3,
+            chapterFieldCount: 5,
+            actEpigraphPopulatedCount: 0,
+            sceneTitlePopulatedRatio: 1,
+        };
+        const rows = applySpreadValidation(getLayoutPictogramRows('classic'), ctx);
+        const statuses = collectSpreadStatuses(rows, ctx);
+        expect(statuses.find(s => s.id === 'chapters-count')).toBeUndefined();
+    });
+
+    it('emits NO chapter status when the CHAPTER spread is in a warning state', () => {
+        // chapterFieldCount === 0 trips the missing-chapter warning. Status
+        // line must defer to the warning (the warning carries the message).
+        const ctx = {
+            actCount: 3,
+            chapterFieldCount: 0,
+            actEpigraphPopulatedCount: 0,
+            sceneTitlePopulatedRatio: 1,
+        };
+        const rows = applySpreadValidation(getLayoutPictogramRows('contemporary'), ctx);
+        const statuses = collectSpreadStatuses(rows, ctx);
+        expect(statuses.find(s => s.id === 'chapters-count')).toBeUndefined();
+    });
+
+    it('emits a plain "N Acts configured" info when the layout has no PART epigraph feature', () => {
+        // Construct a synthetic PART spread without epigraphText (a layout
+        // that advertises parts but not epigraphs). The base count line fires.
+        const baseRows = getLayoutPictogramRows('modernClassic');
+        const strippedSpecial = baseRows.special.map(s => {
+            if (s.label !== 'PART' || !s.rightPage) return s;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { epigraphText, epigraphAttribution, specialRule, ...rest } = s.rightPage;
+            return { ...s, rightPage: rest };
+        });
+        const rows = { ...baseRows, special: strippedSpecial };
+        const ctx = {
+            actCount: 4,
+            chapterFieldCount: 5,
+            actEpigraphPopulatedCount: 0,
+            chapterTitlePopulatedCount: 5,
+            sceneTitlePopulatedRatio: 1,
+        };
+        const validated = applySpreadValidation(rows, ctx);
+        const statuses = collectSpreadStatuses(validated, ctx);
+        const parts = statuses.find(s => s.id === 'parts-count');
+        expect(parts).toBeDefined();
+        expect(parts?.tone).toBe('info');
+        expect(parts?.text).toMatch(/4 Acts configured/);
+        expect(parts?.text).not.toMatch(/all epigraphs/i);
     });
 });

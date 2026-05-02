@@ -4,9 +4,7 @@ import type RadialTimelinePlugin from '../main';
 import type { HotfixHistoryEntry, RadialTimelineSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import {
-    HOTFIX_ID_LEGACY_SIGNATURE_SPACING,
-    HOTFIX_ID_SCENE_OPENER_MACRO,
-    HOTFIX_ID_SYMMETRIC_MARGINS,
+    HOTFIX_ID_SPEC_DRIFT_OVERWRITE,
     acknowledgeHotfixHistory,
     ensureBundledLayoutInstalledForExport,
     getBundledPandocLayouts,
@@ -82,11 +80,11 @@ function createPluginForLayout(layoutId: string): {
 
 describe('recordHotfixEvent', () => {
     it('appends a new entry when (layoutId, hotfixId) is missing', () => {
-        const next = recordHotfixEvent([], 'bundled-fiction-signature-literary', HOTFIX_ID_LEGACY_SIGNATURE_SPACING, 100);
+        const next = recordHotfixEvent([], 'bundled-fiction-signature-literary', HOTFIX_ID_SPEC_DRIFT_OVERWRITE, 100);
         expect(next).toHaveLength(1);
         expect(next[0]).toEqual({
             layoutId: 'bundled-fiction-signature-literary',
-            hotfixId: HOTFIX_ID_LEGACY_SIGNATURE_SPACING,
+            hotfixId: HOTFIX_ID_SPEC_DRIFT_OVERWRITE,
             appliedAt: 100,
             acknowledged: false,
         });
@@ -94,24 +92,24 @@ describe('recordHotfixEvent', () => {
 
     it('dedupes by (layoutId, hotfixId): same pair recorded twice yields one entry', () => {
         let history: HotfixHistoryEntry[] = [];
-        history = recordHotfixEvent(history, 'bundled-fiction-classic-manuscript', HOTFIX_ID_SCENE_OPENER_MACRO, 100);
-        history = recordHotfixEvent(history, 'bundled-fiction-classic-manuscript', HOTFIX_ID_SCENE_OPENER_MACRO, 200);
+        history = recordHotfixEvent(history, 'bundled-fiction-classic-manuscript', HOTFIX_ID_SPEC_DRIFT_OVERWRITE, 100);
+        history = recordHotfixEvent(history, 'bundled-fiction-classic-manuscript', HOTFIX_ID_SPEC_DRIFT_OVERWRITE, 200);
         expect(history).toHaveLength(1);
         expect(history[0].appliedAt).toBe(100);
     });
 
     it('treats different layoutIds with the same hotfixId as distinct entries', () => {
         let history: HotfixHistoryEntry[] = [];
-        history = recordHotfixEvent(history, 'bundled-fiction-signature-literary', HOTFIX_ID_SYMMETRIC_MARGINS, 100);
-        history = recordHotfixEvent(history, 'bundled-fiction-modern-classic', HOTFIX_ID_SYMMETRIC_MARGINS, 110);
+        history = recordHotfixEvent(history, 'bundled-fiction-signature-literary', HOTFIX_ID_SPEC_DRIFT_OVERWRITE, 100);
+        history = recordHotfixEvent(history, 'bundled-fiction-modern-classic', HOTFIX_ID_SPEC_DRIFT_OVERWRITE, 110);
         expect(history).toHaveLength(2);
     });
 
     it('does not flip an acknowledged entry back to unacknowledged when re-recorded', () => {
         let history: HotfixHistoryEntry[] = [
-            { layoutId: 'bundled-fiction-signature-literary', hotfixId: HOTFIX_ID_LEGACY_SIGNATURE_SPACING, appliedAt: 1, acknowledged: true },
+            { layoutId: 'bundled-fiction-signature-literary', hotfixId: HOTFIX_ID_SPEC_DRIFT_OVERWRITE, appliedAt: 1, acknowledged: true },
         ];
-        history = recordHotfixEvent(history, 'bundled-fiction-signature-literary', HOTFIX_ID_LEGACY_SIGNATURE_SPACING, 200);
+        history = recordHotfixEvent(history, 'bundled-fiction-signature-literary', HOTFIX_ID_SPEC_DRIFT_OVERWRITE, 200);
         expect(history).toHaveLength(1);
         expect(history[0].acknowledged).toBe(true);
     });
@@ -149,7 +147,7 @@ describe('getTemplateHotfixAlert / getActiveRefactorAlerts', () => {
 
     it('returns a synthetic info-severity alert when at least one entry is unacknowledged', () => {
         const alert = getTemplateHotfixAlert(makeSettings([
-            { layoutId: 'bundled-fiction-classic-manuscript', hotfixId: HOTFIX_ID_SCENE_OPENER_MACRO, appliedAt: 1, acknowledged: false },
+            { layoutId: 'bundled-fiction-classic-manuscript', hotfixId: HOTFIX_ID_SPEC_DRIFT_OVERWRITE, appliedAt: 1, acknowledged: false },
         ]));
         expect(alert).not.toBeNull();
         expect(alert!.id).toBe(TEMPLATE_HOTFIX_ALERT_ID);
@@ -159,7 +157,7 @@ describe('getTemplateHotfixAlert / getActiveRefactorAlerts', () => {
 
     it('appends the synthetic alert to getActiveRefactorAlerts when unacknowledged entries exist', () => {
         const settings = makeSettings([
-            { layoutId: 'bundled-fiction-signature-literary', hotfixId: HOTFIX_ID_LEGACY_SIGNATURE_SPACING, appliedAt: 1, acknowledged: false },
+            { layoutId: 'bundled-fiction-signature-literary', hotfixId: HOTFIX_ID_SPEC_DRIFT_OVERWRITE, appliedAt: 1, acknowledged: false },
         ]);
         const active = getActiveRefactorAlerts(settings);
         const ids = active.map(a => a.id);
@@ -168,65 +166,54 @@ describe('getTemplateHotfixAlert / getActiveRefactorAlerts', () => {
 
     it('does not include the synthetic alert once all entries are acknowledged', () => {
         const settings = makeSettings([
-            { layoutId: 'bundled-fiction-signature-literary', hotfixId: HOTFIX_ID_LEGACY_SIGNATURE_SPACING, appliedAt: 1, acknowledged: true },
+            { layoutId: 'bundled-fiction-signature-literary', hotfixId: HOTFIX_ID_SPEC_DRIFT_OVERWRITE, appliedAt: 1, acknowledged: true },
         ]);
         const active = getActiveRefactorAlerts(settings);
         expect(active.map(a => a.id)).not.toContain(TEMPLATE_HOTFIX_ALERT_ID);
     });
 });
 
-describe('ensureBundledLayoutInstalledForExport hotfix wiring', () => {
-    it('appends a history entry when a normalize* hotfix runs and persists via saveSettings', async () => {
+describe('ensureBundledLayoutInstalledForExport drift-detect wiring', () => {
+    it('records a single spec-drift-overwrite history entry when on-disk content diverges, and persists via saveSettings', async () => {
         const { plugin, layout, saveSettingsCalls } = createPluginForLayout('bundled-fiction-signature-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-            '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-        ].join('\n');
         await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
+        await (plugin.app.vault as any).create(target, '% stale\n');
 
         await ensureBundledLayoutInstalledForExport(plugin, layout);
 
         const history = plugin.settings.templateHotfixHistory ?? [];
-        const ids = history.map(entry => entry.hotfixId);
-        expect(ids).toContain(HOTFIX_ID_LEGACY_SIGNATURE_SPACING);
-        expect(history.every(entry => entry.layoutId === layout.id)).toBe(true);
-        expect(history.every(entry => entry.acknowledged === false)).toBe(true);
+        expect(history).toHaveLength(1);
+        expect(history[0].hotfixId).toBe(HOTFIX_ID_SPEC_DRIFT_OVERWRITE);
+        expect(history[0].layoutId).toBe(layout.id);
+        expect(history[0].acknowledged).toBe(false);
         expect(saveSettingsCalls.count).toBeGreaterThan(0);
     });
 
-    it('does not append a duplicate entry when the same hotfix would record twice', async () => {
+    it('does not append a duplicate entry when the same drift-overwrite would record twice', async () => {
         const { plugin, layout } = createPluginForLayout('bundled-fiction-signature-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const legacy = [
-            '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-            '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-        ].join('\n');
         await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, legacy);
+        await (plugin.app.vault as any).create(target, '% stale\n');
 
-        // Pre-seed the entry as acknowledged. Re-running the orchestrator must NOT
-        // re-add or flip the acknowledged flag.
+        // Pre-seed the entry as acknowledged. Re-running the orchestrator may
+        // overwrite the file again (drift-detect compares bytes), but it must
+        // NOT add a duplicate or flip the acknowledged flag.
         plugin.settings.templateHotfixHistory = [
-            { layoutId: layout.id, hotfixId: HOTFIX_ID_LEGACY_SIGNATURE_SPACING, appliedAt: 1, acknowledged: true },
+            { layoutId: layout.id, hotfixId: HOTFIX_ID_SPEC_DRIFT_OVERWRITE, appliedAt: 1, acknowledged: true },
         ];
 
         await ensureBundledLayoutInstalledForExport(plugin, layout);
 
         const history = plugin.settings.templateHotfixHistory ?? [];
-        const matching = history.filter(entry => entry.hotfixId === HOTFIX_ID_LEGACY_SIGNATURE_SPACING && entry.layoutId === layout.id);
+        const matching = history.filter(entry => entry.hotfixId === HOTFIX_ID_SPEC_DRIFT_OVERWRITE && entry.layoutId === layout.id);
         expect(matching).toHaveLength(1);
         expect(matching[0].acknowledged).toBe(true);
-
-        // Synthetic alert must not surface because the only matching entry is acknowledged.
-        // (Other layout-margin hotfixes might still add NEW unacknowledged entries on this same
-        // run, so we only assert about the acknowledged spacing entry above, not the alert state.)
     });
 
-    it('does not record any history when no hotfix fires (clean install)', async () => {
+    it('does not record any history when no drift fires (clean install)', async () => {
         const { plugin, layout } = createPluginForLayout('bundled-fiction-signature-literary');
-        // No legacy file present — install path runs but no normalize* on existing content.
+        // No file present — install path runs but drift-detect skips (no on-disk file to compare).
         await ensureBundledLayoutInstalledForExport(plugin, layout);
         expect(plugin.settings.templateHotfixHistory ?? []).toEqual([]);
     });

@@ -91,6 +91,9 @@ The Scene properties editor lets you tailor the advanced scene properties while 
 *   Enable **Settings → Scene properties & remapping → Scene properties editor**.
 *   Required base keys stay locked and auto-included in order.
 *   Optional keys can be drag-reordered, renamed, deleted, or added.
+*   RT-managed maintenance only governs the core and current advanced scene-property fields.
+*   External or foreign YAML properties are preserved and are not deleted by scene-property maintenance.
+*   Reorder keeps foreign keys attached to the RT-managed item directly above them instead of pushing them into a generic end block.
 *   Use the restore icon to revert to the shipped defaults.
 
 ## Beat Notes (YAML)
@@ -128,7 +131,7 @@ Backdrop notes can be extended using the **Backdrop properties editor** in Setti
 *   **Beat properties editor**: Customize beat note fields and beat hover metadata.
 *   **Custom Metadata Mapping**: Map your existing keys to Radial Timeline keys without rewriting your files.
 
-See [Scene properties & remapping](Settings#yaml-templates) and [Story beats system](Settings#story-beats) for configuration details.
+See [Scene properties & remapping](Settings-Core#scene-properties-and-remapping) and [Story beats system](Settings-Core#story-beats-system) for configuration details.
 
 ## Custom Metadata Mapping
 

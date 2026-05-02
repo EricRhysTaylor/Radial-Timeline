@@ -87,28 +87,28 @@ describe('Book Pages resolver — UI ⇄ export alignment', () => {
         expect(roles.filter(r => r === null)).toHaveLength(1);
     });
 
-    it('orders canonical-role rows by side (frontmatter then backmatter); custom notes append at end', () => {
+    it('groups output by side: all frontmatter rows precede all backmatter rows', () => {
         const resolved = resolveBookPages(fixtureBookMeta, fixtureNotes);
         const ordered = applyBookPageOrder(resolved, undefined);
 
-        // Canonical pages render in CANONICAL_ROLE_ORDER (frontmatter side first,
-        // then backmatter side). Custom notes (role: null) are appended after
-        // canonical pages in input file order — they keep their declared side
-        // but their POSITION is end-of-list in the canonical layout.
-        const canonicalRows = ordered.filter(p => p.role !== null);
-        const customRows = ordered.filter(p => p.role === null);
-
-        // Among canonical rows, frontmatter precedes backmatter.
-        const canonicalSides = canonicalRows.map(p => p.side);
-        const lastFront = canonicalSides.lastIndexOf('frontmatter');
-        const firstBack = canonicalSides.indexOf('backmatter');
+        // Hard contract: every frontmatter row must come before every
+        // backmatter row, regardless of role/source/customness. The export
+        // pipeline relies on this front→manuscript→back ordering, and the
+        // UI's "no cross-side dragging" guard reflects the same invariant.
+        const sides = ordered.map(p => p.side);
+        const lastFront = sides.lastIndexOf('frontmatter');
+        const firstBack = sides.indexOf('backmatter');
         expect(firstBack).toBeGreaterThan(-1);
         expect(lastFront).toBeLessThan(firstBack);
 
-        // Custom rows come AFTER all canonical rows.
-        const lastCanonicalIdx = ordered.lastIndexOf(canonicalRows[canonicalRows.length - 1]);
-        const firstCustomIdx = ordered.indexOf(customRows[0]);
-        expect(firstCustomIdx).toBeGreaterThan(lastCanonicalIdx);
+        // Custom notes (role: null) sit on whichever side they declared. The
+        // fixture's "Alpha Readers" note declares `side: 'frontmatter'`, so it
+        // belongs in the frontmatter group — NOT at the end of the whole list.
+        const customRow = ordered.find(p => p.role === null);
+        expect(customRow).toBeDefined();
+        expect(customRow!.side).toBe('frontmatter');
+        const customIdx = ordered.indexOf(customRow!);
+        expect(customIdx).toBeLessThanOrEqual(lastFront);
     });
 
     it('does NOT duplicate a canonical role even when BookMeta also has content for it', () => {
@@ -137,9 +137,17 @@ describe('Book Pages resolver — UI ⇄ export alignment', () => {
     it('honours saved drag-reorder via applyBookPageOrder (UI persists, export consumes the same field)', () => {
         const resolved = resolveBookPages(fixtureBookMeta, fixtureNotes);
 
-        // Simulate the user dragging Acknowledgments to the top.
+        // Simulate the user dragging within the backmatter group:
+        // Acknowledgments moves above About-the-Author. Side-grouping is
+        // enforced (a backmatter row CANNOT migrate to the frontmatter side
+        // even if the saved order tries to put it at index 0), so the saved
+        // order is honored only within the backmatter partition.
         const acknowledgmentsId = 'note:Books/X/200.1 Acknowledgments.md';
+        const aboutAuthorId     = 'note:Books/X/200.2 About the Author.md';
         const canonicalIds = resolved.map(p => p.id);
+        // Caller "asks" for Acknowledgments at index 0 — which would mean a
+        // backmatter row in the frontmatter slot. The applier must ignore
+        // that and keep frontmatter-then-backmatter ordering.
         const savedOrder = [
             acknowledgmentsId,
             ...canonicalIds.filter(id => id !== acknowledgmentsId),
@@ -150,8 +158,16 @@ describe('Book Pages resolver — UI ⇄ export alignment', () => {
 
         // Both consumers must agree.
         expect(orderedUi).toEqual(orderedExport);
-        // Acknowledgments must be first.
-        expect(orderedUi[0].id).toBe(acknowledgmentsId);
+        // Side-grouping enforced: index 0 must still be a frontmatter row.
+        expect(orderedUi[0].side).toBe('frontmatter');
+        // Acknowledgments stays in the backmatter partition.
+        const ackIdx = orderedUi.findIndex(p => p.id === acknowledgmentsId);
+        const aboutIdx = orderedUi.findIndex(p => p.id === aboutAuthorId);
+        expect(ackIdx).toBeGreaterThan(-1);
+        expect(orderedUi[ackIdx].side).toBe('backmatter');
+        // Within backmatter, the saved relative order is honored:
+        // Acknowledgments now precedes About-the-Author.
+        expect(ackIdx).toBeLessThan(aboutIdx);
     });
 
     it('drops a BookMeta-only role when no matching note exists AND BookMeta has no content for it', () => {

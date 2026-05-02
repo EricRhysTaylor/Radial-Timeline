@@ -676,12 +676,28 @@ const PART_WARNING_TOOLTIP =
     'No Parts will render — fewer than two Acts configured for this book.';
 const CHAPTER_WARNING_TOOLTIP =
     'No chapter pages will render — no scenes have a Chapter field set.';
-const PART_EPIGRAPH_WARNING_TOOLTIP =
-    'Part epigraphs configured but no act has an epigraph quote.';
-const CHAPTER_TITLE_WARNING_TOOLTIP =
-    'Chapter titles configured but no chapter has a title set.';
 const SCENE_TITLE_WARNING_TOOLTIP =
     'Scene title heading mode configured but scenes have no titles.';
+
+/**
+ * Part-epigraph tooltip — switches phrasing between zero-population and
+ * partial-population states. Zero is back-compat with the prior fixed string;
+ * partial reports the fraction so the user knows which acts still need a quote.
+ */
+function partEpigraphTooltip(populated: number, total: number): string {
+    if (populated <= 0) {
+        return 'Part epigraphs configured but no act has an epigraph quote.';
+    }
+    return `Part epigraphs partially populated — ${populated} of ${total} acts have a quote.`;
+}
+
+/** Chapter-title tooltip — same dual-state shape as partEpigraphTooltip. */
+function chapterTitleTooltip(populated: number, total: number): string {
+    if (populated <= 0) {
+        return 'Chapter titles configured but no chapter has a title set.';
+    }
+    return `Chapter titles partially populated — ${populated} of ${total} chapters have a title.`;
+}
 
 /** Heuristic threshold: if fewer than 5% of selected scenes have titles,
  *  the title-only heading mode will visibly fail. */
@@ -713,13 +729,28 @@ export function applySpreadValidation(
             // the feature (presence of epigraphText) AND the caller has opted
             // in by supplying `actEpigraphPopulatedCount`. Callers that omit
             // the field get the historical behavior (no extra warning).
+            //
+            // Two firing modes:
+            //   • finite actCount → warn when populated < actCount (partial OR
+            //                       zero); tooltip carries the fraction.
+            //   • infinite actCount (data-less settings preview) → warn only
+            //                       on zero population (back-compat phrasing).
             const advertisesEpigraph = !!spread.rightPage?.epigraphText || !!spread.leftPage?.epigraphText;
-            if (
-                advertisesEpigraph
-                && typeof ctx.actEpigraphPopulatedCount === 'number'
-                && ctx.actEpigraphPopulatedCount === 0
-            ) {
-                return { ...spread, warningLevel: 'warning', warningTooltip: PART_EPIGRAPH_WARNING_TOOLTIP };
+            if (advertisesEpigraph && typeof ctx.actEpigraphPopulatedCount === 'number') {
+                if (Number.isFinite(ctx.actCount) && ctx.actEpigraphPopulatedCount < ctx.actCount) {
+                    return {
+                        ...spread,
+                        warningLevel: 'warning',
+                        warningTooltip: partEpigraphTooltip(ctx.actEpigraphPopulatedCount, ctx.actCount),
+                    };
+                }
+                if (!Number.isFinite(ctx.actCount) && ctx.actEpigraphPopulatedCount === 0) {
+                    return {
+                        ...spread,
+                        warningLevel: 'warning',
+                        warningTooltip: partEpigraphTooltip(0, 0),
+                    };
+                }
             }
             return spread;
         }
@@ -730,14 +761,20 @@ export function applySpreadValidation(
             }
             // Chapter-title check fires only when the spread advertises a
             // titled chapter (presence of specialSubtext) AND the caller
-            // supplied `chapterTitlePopulatedCount` explicitly.
+            // supplied `chapterTitlePopulatedCount` explicitly. Fires on both
+            // zero AND partial population (count < chapterFieldCount).
             const advertisesTitle = !!spread.rightPage?.specialSubtext || !!spread.leftPage?.specialSubtext;
             if (
                 advertisesTitle
                 && typeof ctx.chapterTitlePopulatedCount === 'number'
-                && ctx.chapterTitlePopulatedCount === 0
+                && Number.isFinite(ctx.chapterFieldCount)
+                && ctx.chapterTitlePopulatedCount < ctx.chapterFieldCount
             ) {
-                return { ...spread, warningLevel: 'warning', warningTooltip: CHAPTER_TITLE_WARNING_TOOLTIP };
+                return {
+                    ...spread,
+                    warningLevel: 'warning',
+                    warningTooltip: chapterTitleTooltip(ctx.chapterTitlePopulatedCount, ctx.chapterFieldCount),
+                };
             }
             return spread;
         }
@@ -767,6 +804,123 @@ export function applySpreadValidation(
         body: rows.body,
         special: stampedSpecial,
     };
+}
+
+// ── Status (informational) channel ────────────────────────────────────
+//
+// Statuses surface non-alarmist factual counts that always render, regardless
+// of warning state. They never escalate severity — the panel can be in pure
+// "Ready" and still carry status entries. The producer skips a status whenever
+// the same spread is already in warning state (warnings take precedence) and
+// only emits for spreads whose feature the layout ADVERTISES (same advertise
+// gate as warnings).
+
+export interface SpreadStatus {
+    /** Stable id for dedup / ordering. */
+    id: 'parts-count' | 'chapters-count' | 'scene-titles-count';
+    tone: 'info' | 'success';
+    /** Short rendered text. */
+    text: string;
+}
+
+/**
+ * Collect informational status messages from validated rows + the same
+ * context that drove `applySpreadValidation`. Order: parts → chapters →
+ * scenes. Spreads already in warning state are skipped (the warning carries
+ * the user-facing message). Pure / deterministic.
+ *
+ * Each spread emits a single line item:
+ *   • PART (any mode)        → "N Acts configured" (info)
+ *                              upgraded to "...all epigraphs populated."
+ *                              (success) when the layout advertises
+ *                              epigraphs and every act has a quote.
+ *   • CHAPTER (any mode)     → "N Chapters configured" (info)
+ *                              upgraded to "...all titled." (success)
+ *                              when the layout advertises titled chapters
+ *                              and every chapter has a title.
+ *   • SCENE title-only       → "All selected scenes have titles." (success)
+ *                              when ratio is 1.
+ */
+export function collectSpreadStatuses(
+    rows: LayoutPictogramRows,
+    ctx: SpreadValidationContext,
+): SpreadStatus[] {
+    const out: SpreadStatus[] = [];
+
+    // ── PART spread → "N Acts configured" (+ epigraph extension) ──
+    // Always emit when the layout has a PART spread, the spread isn't
+    // warning, and we know the act count. Append the "all epigraphs
+    // populated" qualifier only when the layout advertises epigraphs and
+    // every act has a quote — that flips tone from info → success.
+    const partSpread = rows.special.find(s => s.label === 'PART' && !s.sceneMode);
+    if (partSpread && partSpread.warningLevel !== 'warning' && Number.isFinite(ctx.actCount) && ctx.actCount >= 2) {
+        const advertisesEpigraph = !!partSpread.rightPage?.epigraphText || !!partSpread.leftPage?.epigraphText;
+        const allEpigraphsPopulated =
+            advertisesEpigraph
+            && typeof ctx.actEpigraphPopulatedCount === 'number'
+            && ctx.actEpigraphPopulatedCount >= ctx.actCount;
+        if (allEpigraphsPopulated) {
+            out.push({
+                id: 'parts-count',
+                tone: 'success',
+                text: `${ctx.actCount} Acts configured, all epigraphs populated.`,
+            });
+        } else {
+            out.push({
+                id: 'parts-count',
+                tone: 'info',
+                text: `${ctx.actCount} Acts configured.`,
+            });
+        }
+    }
+
+    // ── CHAPTER spread → "N Chapters configured" (+ titled extension) ──
+    // Always emit when the layout has a CHAPTER spread, the spread isn't
+    // warning, and we know the chapter count. Append "all titled" only when
+    // the layout advertises titled chapters and every chapter has a title.
+    const chapterSpread = rows.special.find(s => s.label === 'CHAPTER' && !s.sceneMode);
+    if (
+        chapterSpread
+        && chapterSpread.warningLevel !== 'warning'
+        && Number.isFinite(ctx.chapterFieldCount)
+        && ctx.chapterFieldCount > 0
+    ) {
+        const advertisesTitle = !!chapterSpread.rightPage?.specialSubtext || !!chapterSpread.leftPage?.specialSubtext;
+        const allTitled =
+            advertisesTitle
+            && typeof ctx.chapterTitlePopulatedCount === 'number'
+            && ctx.chapterTitlePopulatedCount >= ctx.chapterFieldCount;
+        if (allTitled) {
+            out.push({
+                id: 'chapters-count',
+                tone: 'success',
+                text: `${ctx.chapterFieldCount} Chapters configured, all titled.`,
+            });
+        } else {
+            out.push({
+                id: 'chapters-count',
+                tone: 'info',
+                text: `${ctx.chapterFieldCount} Chapters configured.`,
+            });
+        }
+    }
+
+    // ── Scene title-only spread → "all selected scenes have titles" ──
+    const titleOnlySpread = rows.special.find(s => s.sceneMode === 'title-only');
+    if (
+        titleOnlySpread
+        && titleOnlySpread.warningLevel !== 'warning'
+        && typeof ctx.sceneTitlePopulatedRatio === 'number'
+        && ctx.sceneTitlePopulatedRatio >= 1
+    ) {
+        out.push({
+            id: 'scene-titles-count',
+            tone: 'success',
+            text: 'All selected scenes have titles.',
+        });
+    }
+
+    return out;
 }
 
 // ── DOM renderers (pure) ──────────────────────────────────────────────

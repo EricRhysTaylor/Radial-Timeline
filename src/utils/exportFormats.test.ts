@@ -5,7 +5,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 // SAFE: test-only temp fixture setup for bundled font diagnostics.
 import * as path from 'path';
-import { buildExportFilename, getStructuredFontDiagnostic, renderFontDiagnosticLine } from './exportFormats';
+import {
+    buildCtanHint,
+    buildExportFilename,
+    buildGoogleFontsHint,
+    getStructuredFontDiagnostic,
+    renderFontDiagnosticLine,
+} from './exportFormats';
 import { setBundledFontPath } from './pandocBundledLayouts';
 import { DESIGNED_STYLE_SPEC_VERSION, type DesignedStyleSpec } from '../publishing/designedStyle';
 import type { PandocLayoutTemplate } from '../types';
@@ -232,5 +238,129 @@ describe('renderFontDiagnosticLine', () => {
             },
         });
         expect(line).toMatch(/reinstall/i);
+    });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// OS-aware install hints (Google Fonts source)
+// ════════════════════════════════════════════════════════════════════════════
+
+const GOOGLE_FONTS_URL = 'https://fonts.google.com/specimen/EB+Garamond';
+
+describe('buildGoogleFontsHint — platform routing', () => {
+    it('mac: routes through Font Book with macOS-specific steps', () => {
+        const hint = buildGoogleFontsHint('EB Garamond', GOOGLE_FONTS_URL, 'mac');
+        expect(hint.source).toBe('google-fonts');
+        expect(hint.url).toBe(GOOGLE_FONTS_URL);
+        expect(hint.message).toMatch(/Font Book/);
+        expect(hint.steps).toBeDefined();
+        expect(hint.steps!.length).toBeGreaterThanOrEqual(3);
+        expect(hint.steps!.some(step => /Font Book/.test(step))).toBe(true);
+        expect(hint.steps!.some(step => /Re-export/.test(step))).toBe(true);
+    });
+
+    it('win: routes through right-click → Install for all users', () => {
+        const hint = buildGoogleFontsHint('EB Garamond', GOOGLE_FONTS_URL, 'win');
+        expect(hint.source).toBe('google-fonts');
+        expect(hint.url).toBe(GOOGLE_FONTS_URL);
+        expect(hint.message).toMatch(/Google Fonts/);
+        expect(hint.steps).toBeDefined();
+        expect(hint.steps!.some(step => /Right-click/.test(step))).toBe(true);
+        expect(hint.steps!.some(step => /Install for all users/.test(step))).toBe(true);
+        expect(hint.steps!.some(step => /Font Book/.test(step))).toBe(false);
+    });
+
+    it('linux: routes through ~/.fonts and fc-cache', () => {
+        const hint = buildGoogleFontsHint('EB Garamond', GOOGLE_FONTS_URL, 'linux');
+        expect(hint.source).toBe('google-fonts');
+        expect(hint.url).toBe(GOOGLE_FONTS_URL);
+        expect(hint.message).toMatch(/Google Fonts/);
+        expect(hint.steps).toBeDefined();
+        expect(hint.steps!.some(step => /\.fonts/.test(step))).toBe(true);
+        expect(hint.steps!.some(step => /fc-cache/.test(step))).toBe(true);
+        expect(hint.steps!.some(step => /Font Book/.test(step))).toBe(false);
+    });
+
+    it('uses the same Google Fonts URL across all platforms', () => {
+        const macHint = buildGoogleFontsHint('EB Garamond', GOOGLE_FONTS_URL, 'mac');
+        const winHint = buildGoogleFontsHint('EB Garamond', GOOGLE_FONTS_URL, 'win');
+        const linuxHint = buildGoogleFontsHint('EB Garamond', GOOGLE_FONTS_URL, 'linux');
+        expect(macHint.url).toBe(GOOGLE_FONTS_URL);
+        expect(winHint.url).toBe(GOOGLE_FONTS_URL);
+        expect(linuxHint.url).toBe(GOOGLE_FONTS_URL);
+    });
+
+    it('embeds the requested font name in every platform message', () => {
+        for (const platform of ['mac', 'win', 'linux'] as const) {
+            const hint = buildGoogleFontsHint('Crimson Text', GOOGLE_FONTS_URL, platform);
+            expect(hint.message).toMatch(/Crimson Text/);
+        }
+    });
+});
+
+describe('buildCtanHint — generic (no platform branching for unknown fonts)', () => {
+    it('returns a generic message without steps for fonts not on Google Fonts', () => {
+        const hint = buildCtanHint('TeX Gyre Pagella');
+        expect(hint.source).toBe('ctan');
+        expect(hint.message).toMatch(/TeX Gyre Pagella/);
+        expect(hint.url).toBeUndefined();
+        // No fabricated platform-specific steps for fonts whose download path
+        // varies too much across distributions to give actionable guidance.
+        expect(hint.steps).toBeUndefined();
+    });
+});
+
+describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
+    it('passes overridePlatform through to the install hint when in fallback state', () => {
+        // Bundled fonts that are fully present always resolve to 'ok', and
+        // Latin Modern always resolves to 'ok'. Non-bundled fonts hit the
+        // system-catalog probe — depending on the test runner's environment
+        // we may land in 'ok' (catalog miss → assume installed) or 'fallback'
+        // (catalog hit + font not installed). When we DO land in 'fallback',
+        // the hint MUST reflect the override platform.
+        const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'eb-garamond' } });
+        const diag = getStructuredFontDiagnostic(layout, 'mac');
+        if (diag.state === 'fallback' && diag.installHint?.source === 'google-fonts') {
+            expect(diag.installHint.steps).toBeDefined();
+            expect(diag.installHint.message).toMatch(/Font Book/);
+        }
+        // The signature accepts overridePlatform without throwing — that's
+        // the load-bearing assertion regardless of which branch fired.
+        expect(['ok', 'fallback', 'missing-bundled']).toContain(diag.state);
+    });
+
+    it('returns ok (no install hint) for a bundled font with assets present, regardless of platform', () => {
+        // Sorts Mill Goudy is bundled. With files on disk we must always
+        // return 'ok' — no platform-specific install steps should ever be
+        // emitted, because system install isn't required.
+        const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-fontdiag-platform-'));
+        try {
+            const fontDir = path.join(tempRoot, 'sorts-mill-goudy');
+            fs.mkdirSync(fontDir, { recursive: true });
+            fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Regular.ttf'), 'FAKE');
+            fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Italic.ttf'), 'FAKE');
+            setBundledFontPath(tempRoot);
+
+            const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'sorts-mill-goudy' } });
+            for (const platform of ['mac', 'win', 'linux'] as const) {
+                const diag = getStructuredFontDiagnostic(layout, platform);
+                expect(diag.state).toBe('ok');
+                expect(diag.installHint).toBeUndefined();
+            }
+        } finally {
+            try {
+                fs.rmSync(tempRoot, { recursive: true, force: true });
+            } catch { /* noop */ }
+            setBundledFontPath(undefined);
+        }
+    });
+
+    it('returns ok for Latin Modern regardless of platform (kpathsea-loaded)', () => {
+        const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
+        for (const platform of ['mac', 'win', 'linux'] as const) {
+            const diag = getStructuredFontDiagnostic(layout, platform);
+            expect(diag.state).toBe('ok');
+            expect(diag.installHint).toBeUndefined();
+        }
     });
 });

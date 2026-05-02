@@ -10457,6 +10457,33 @@
   opacity: 0.6;
 }
 
+/* Pro-skin layout rows: divider picks up the Pro accent color so it reads
+   as part of the same visual system as the rest of the Pro skin chrome. */
+.ert-ui.ert-scope--settings .ert-layout-row--pro.ert-skin--pro .ert-layout-feature-divider {
+  background: var(--ert-pro-accent-border);
+  opacity: 1;
+}
+
+/* Status lines (Acts/Chapters configured, all populated, etc.) live inside
+   the description column below the prose block, separated by another divider.
+   Visual treatment mirrors the description prose: muted text, comfortable
+   line-height. Tone modifier nudges color: success → green-tinted; info →
+   default muted. The block is short so a width-limited divider above it
+   keeps the visual hierarchy tight. */
+.ert-ui.ert-scope--settings .ert-layout-feature-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-2xs);
+}
+.ert-ui.ert-scope--settings .ert-layout-feature-status-line {
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.ert-ui.ert-scope--settings .ert-layout-feature-status-line.is-status-success {
+  color: var(--text-success, var(--ert-alert-success-color));
+}
+
 .ert-ui.ert-scope--settings .ert-layout-feature-description {
   font-size: 0.74rem;
   line-height: 1.45;

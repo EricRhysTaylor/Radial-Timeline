@@ -28,7 +28,10 @@ import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
 import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
 import { isProActive } from '../proEntitlement';
 import {
-    SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE
+    SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE,
+    buildTimelineChapterResolverItems,
+    collapseTimelineChapterMarkersByResolvedBoundary,
+    resolveTimelineChapterMarkers
 } from '../../utils/timelineChapters';
 import {
     describeMatterReadiness
@@ -44,6 +47,8 @@ import {
 } from '../../utils/pandocBundledLayouts';
 import { getPandocLayoutTier } from '../../publishing/templateTiering';
 import {
+    applySpreadValidation,
+    collectSpreadStatuses,
     getFictionVariantForLayout,
     getLayoutFeatures,
     getLayoutPictogramRows,
@@ -51,6 +56,7 @@ import {
     renderLayoutPictograms,
     type FictionLayoutVariant,
 } from '../../publishing/layoutVisuals';
+import { buildSpreadValidationContext } from '../../publishing/spreadValidationContext';
 import { replayTransientClass } from '../../utils/domClassEffects';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1685,8 +1691,42 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             ? (getLayoutOptionsForActiveBook(options.layoutId).sceneHeadingMode || 'scene-number-title')
             : undefined;
 
-        const rows = getLayoutPictogramRows(variant, options.layout);
+        // Apply the same spread-validation pass the export modal uses, so
+        // preview cards in Settings → Publish light up consistently when the
+        // active book lacks data the layout promises (e.g. <2 Acts but the
+        // layout advertises Part pages, or Part epigraphs configured but no
+        // act has a quote). Settings has no scene-selection concept; we pass
+        // only the cheap, book-derived inputs (epigraph counts) and let the
+        // helper's "no selection → suppress scene-derived warnings" behavior
+        // skip the chapter/scene-title checks.
+        const baseRows = getLayoutPictogramRows(variant, options.layout);
+        const ctx = buildSpreadValidationContext(plugin, {
+            layout: options.layout,
+            // Book-wide counts prefetched in `refreshBookChapterCounts` so the
+            // CHAPTER status / warning surfaces here. `actCount` already falls
+            // back to `plugin.settings.actCount` inside the helper.
+            bookChapterFieldCount: cachedBookChapterFieldCount,
+            bookChapterTitlePopulatedCount: cachedBookChapterTitlePopulatedCount,
+        });
+        const rows = applySpreadValidation(baseRows, ctx);
         renderLayoutPictograms(cols, rows, activeSceneMode);
+
+        // Status lines (Acts/Chapters counts, scene-title coverage) render
+        // INSIDE the description column with the same prose styling as the
+        // template description, separated by a thin rule. Same visual treatment
+        // as the description block: muted text, comfortable line-height. The
+        // user sees feature list → rule → description → rule → status.
+        const statuses = collectSpreadStatuses(rows, ctx);
+        if (statuses.length > 0) {
+            featureCol.createDiv({ cls: 'ert-layout-feature-divider' });
+            const statusBlock = featureCol.createDiv({ cls: 'ert-layout-feature-description ert-layout-feature-status' });
+            for (const status of statuses) {
+                statusBlock.createDiv({
+                    cls: `ert-layout-feature-status-line is-status-${status.tone}`,
+                    text: status.text,
+                });
+            }
+        }
     };
 
     /**
@@ -2043,6 +2083,38 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
 
     /** Render category groups with layout rows. */
+    // Book-wide chapter counts for the spread-validation context. Computed
+    // async (chapter markers come from scene metadata scanning) and cached in
+    // the panel closure so each layout-row render can read them sync. When the
+    // cache is empty (initial mount, before prefetch returns), the helper falls
+    // back to its data-less defaults — no warning regression vs. before.
+    let cachedBookChapterFieldCount: number | undefined;
+    let cachedBookChapterTitlePopulatedCount: number | undefined;
+
+    const refreshBookChapterCounts = async (): Promise<void> => {
+        try {
+            // Count UNIQUE chapter boundaries, not scenes-that-carry-a-Chapter-field.
+            // The same scene can have a Chapter title set in its frontmatter, but
+            // a "chapter" in the manuscript sense is one boundary that may span
+            // many scenes. Reuse the timeline-chapter resolver pattern used by
+            // ConfigurationSection so this stays in sync with what the user sees
+            // elsewhere in the plugin.
+            const sceneItems = await plugin.getSceneData();
+            const resolverItems = buildTimelineChapterResolverItems(sceneItems);
+            const uniqueMarkers = collapseTimelineChapterMarkersByResolvedBoundary(
+                resolveTimelineChapterMarkers(resolverItems)
+            );
+            cachedBookChapterFieldCount = uniqueMarkers.length;
+            cachedBookChapterTitlePopulatedCount = uniqueMarkers.filter(m => {
+                return typeof m.title === 'string' && m.title.trim().length > 0;
+            }).length;
+        } catch {
+            // Non-fatal: leave caches undefined; helper falls back to its
+            // data-less defaults. The failure mode is "no chapter status line
+            // in Settings", not a broken panel.
+        }
+    };
+
     const renderLayoutRows = () => {
         layoutRowsContainer.empty();
 
@@ -2341,6 +2413,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
 
     renderLayoutRows();
+
+    // Async prefetch of book-wide chapter counts; re-render the layout rows
+    // once the data is in so the CHAPTER status line ("5 Chapters configured.")
+    // appears without making the initial mount block on metadata scanning.
+    void refreshBookChapterCounts().then(() => {
+        renderLayoutRows();
+    });
 
     const commitImportedTemplate = async (commit: ImportedTemplateCommit): Promise<void> => {
         const existing = plugin.settings.pandocLayouts || [];
@@ -3458,6 +3537,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
             const reorderTo = async (fromId: string, toId: string) => {
                 if (fromId === toId) return;
+                // Enforce side-grouping: a frontmatter page cannot drop onto a
+                // backmatter row (or vice versa). The export pipeline relies on
+                // strict front→manuscript→back ordering; mixing sides would
+                // also confuse readers. The applier enforces this at render
+                // time too, but rejecting the drop here gives crisper UX —
+                // the row visibly snaps back instead of silently re-sorting.
+                const fromPage = resolvedPages.find(p => p.id === fromId);
+                const toPage = resolvedPages.find(p => p.id === toId);
+                if (!fromPage || !toPage || fromPage.side !== toPage.side) return;
                 const ids = resolvedPages.map(p => p.id);
                 const fromIdx = ids.indexOf(fromId);
                 const toIdx = ids.indexOf(toId);
@@ -3564,13 +3652,27 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 plugin.registerDomEvent(row, 'dragend', () => {
                     clearDragState();
                 });
+                // Cross-side drops are rejected (frontmatter ↔ backmatter never
+                // mix). Suppress the dragover affordance entirely on rows from
+                // the other side so the cursor shows "no drop" and the row
+                // doesn't get a misleading drop indicator.
+                const isCrossSideDrag = (): boolean => {
+                    if (!dragState.fromId) return false;
+                    const fromPage = resolvedPages.find(p => p.id === dragState.fromId);
+                    return !!fromPage && fromPage.side !== page.side;
+                };
                 plugin.registerDomEvent(row, 'dragenter', (e: DragEvent) => {
                     if (!dragState.fromId || dragState.fromId === page.id) return;
+                    if (isCrossSideDrag()) return;
                     e.preventDefault();
                     row.addClass('is-dragover');
                 });
                 plugin.registerDomEvent(row, 'dragover', (e: DragEvent) => {
                     if (!dragState.fromId || dragState.fromId === page.id) return;
+                    if (isCrossSideDrag()) {
+                        if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+                        return;
+                    }
                     e.preventDefault();
                     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
                     row.addClass('is-dragover');

@@ -102,7 +102,7 @@ The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** 
 5. Adjust the cap slider to tune the visualization
 
 > [!NOTE]
-> Runtime estimates appear in scene hover tooltips when Runtime Estimation is enabled. See [Settings → Runtime estimation](Settings#runtime-estimation) for configuration and [Pro](Pro) for full Pro documentation.
+> Runtime estimates appear in scene hover tooltips when Runtime Estimation is enabled. See [Settings → Runtime estimation](Settings-Core#runtime-estimation) for configuration and [Pro](Pro) for full Pro documentation.
 
 ---
 

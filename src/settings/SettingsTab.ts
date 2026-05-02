@@ -783,6 +783,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         containerEl.closest('.vertical-tab-content')?.classList.add('ert-settings-scroll-host');
         this._aiRelatedElements = [];
 
+        // Restore the last tab the user had open. The setActiveTab/revealSettingsSection
+        // public methods take precedence (they're called BEFORE display() and set
+        // _activeTab to a non-default value). Only fall back to the persisted value
+        // when nothing else has set it.
+        if (this._activeTab === 'core' && this.plugin.settings.lastSettingsTab) {
+            this._activeTab = this.plugin.settings.lastSettingsTab;
+        }
+
         // Auto-migrate: Clean up legacy advanced template if needed
         this.autoMigrateAdvancedTemplate();
 
@@ -848,13 +856,22 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
         };
 
-        this.plugin.registerDomEvent(coreTab, 'click', () => { this._activeTab = 'core'; updateTabState(); });
-        this.plugin.registerDomEvent(socialTab, 'click', () => { this._activeTab = 'social'; updateTabState(); });
-        this.plugin.registerDomEvent(inquiryTab, 'click', () => { this._activeTab = 'inquiry'; updateTabState(); });
-        this.plugin.registerDomEvent(publishingTab, 'click', () => { this._activeTab = 'publishing'; updateTabState(); });
-        this.plugin.registerDomEvent(aiTab, 'click', () => { this._activeTab = 'ai'; updateTabState(); });
-        this.plugin.registerDomEvent(advancedTab, 'click', () => { this._activeTab = 'advanced'; updateTabState(); });
-        this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
+        // Persist tab selection so Settings reopens on the user's last tab.
+        // Saving via void-promise — failure to persist is non-fatal; the in-memory
+        // _activeTab still drives the current view.
+        const persistTab = (tab: typeof this._activeTab) => {
+            this._activeTab = tab;
+            this.plugin.settings.lastSettingsTab = tab;
+            void this.plugin.saveSettings();
+            updateTabState();
+        };
+        this.plugin.registerDomEvent(coreTab, 'click', () => persistTab('core'));
+        this.plugin.registerDomEvent(socialTab, 'click', () => persistTab('social'));
+        this.plugin.registerDomEvent(inquiryTab, 'click', () => persistTab('inquiry'));
+        this.plugin.registerDomEvent(publishingTab, 'click', () => persistTab('publishing'));
+        this.plugin.registerDomEvent(aiTab, 'click', () => persistTab('ai'));
+        this.plugin.registerDomEvent(advancedTab, 'click', () => persistTab('advanced'));
+        this.plugin.registerDomEvent(proTab, 'click', () => persistTab('pro'));
         updateTabState();
 
         const proEntitlement = getProEntitlement(this.plugin);

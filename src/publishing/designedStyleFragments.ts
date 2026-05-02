@@ -108,6 +108,15 @@ export interface RenderFontspecOptions {
      * resolution for fonts the plugin ships with.
      */
     bundledFontPath?: string;
+    /**
+     * Absolute filesystem path to the directory containing Latin Modern Roman
+     * OTFs in the user's TeX install (resolved via kpsewhich at plugin load).
+     * When set AND `spec.body.font === 'latin-modern'`, fontspec uses this path
+     * directly. Preferred over `bundledFontPath` for Latin Modern because the
+     * user's existing TeX install is the canonical source of these fonts and
+     * always has them available.
+     */
+    latinModernPath?: string;
 }
 
 export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecOptions = {}): string {
@@ -119,23 +128,51 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
     const lines: string[] = [];
     lines.push('\\defaultfontfeatures{Ligatures=TeX}');
 
-    // Latin Modern: fontspec's name-based lookup (\setmainfont{Latin Modern Roman})
-    // fails on macOS because the OS font system doesn't auto-register fonts that
-    // live only in TeXLive's TDS tree. The reliable approach is filename-based
-    // lookup — fontspec resolves bare .otf filenames via kpsewhich, which always
-    // succeeds on a complete TeXLive/MacTeX install because the lm/ directory is
-    // part of the standard TDS. No bundled assets, no system install required.
-    // Reference: TeXLive ships these at texmf-dist/fonts/opentype/public/lm/.
+    // Latin Modern is bundled with the plugin (GUST Font License). Same approach
+    // as Sorts Mill Goudy: when the export pipeline supplies the bundled-fonts
+    // path, fontspec uses an explicit Path= directive pointing at the .otf files.
+    // This eliminates failures caused by:
+    //   - fontspec's name-based lookup not finding "Latin Modern Roman" on macOS
+    //     (the OTFs live in TeXLive's tree but aren't registered with the OS
+    //     font system, so \setmainfont{Latin Modern Roman} reports "font not
+    //     found" even with the lmodern package loaded);
+    //   - filename-based kpsewhich lookup failing when the user's font tree
+    //     wasn't refreshed (mktexlsr/fc-cache out of date).
+    // Falls back to filename lookup when no bundled path is provided (dev tests,
+    // generator unit tests).
     if (spec.body.font === 'latin-modern') {
-        lines.push('\\setmainfont{lmroman10-regular.otf}[');
-        lines.push('  ItalicFont = lmroman10-italic.otf ,');
-        lines.push('  BoldFont = lmroman10-bold.otf ,');
-        lines.push('  BoldItalicFont = lmroman10-bolditalic.otf');
-        lines.push(']');
-        const letterSpacing = spec.runningHeader.letterSpacing;
-        if (typeof letterSpacing === 'number' && letterSpacing > 0) {
-            lines.push('\\newfontface\\headerfont{lmroman10-regular.otf}[');
-            lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
+        // Resolution priority for Latin Modern:
+        //   1. User's TeX install via kpsewhich (latinModernPath) — preferred, no
+        //      bundled assets needed because every TeXLive/MacTeX install ships
+        //      with these fonts and the plugin detects the absolute path at load
+        //      time. This is the path that "just works" for users.
+        //   2. Plugin's bundled-fonts directory — fallback only if a user dropped
+        //      the lmroman OTFs into assets/fonts/latin-modern/ manually.
+        //   3. Filename-only kpsewhich lookup at compile time — last-resort.
+        const lmPath = options.latinModernPath
+            ?? (options.bundledFontPath ? `${options.bundledFontPath.replace(/\/$/, '')}/latin-modern` : undefined);
+        if (lmPath) {
+            const root = lmPath.endsWith('/') ? lmPath : `${lmPath}/`;
+            lines.push('\\setmainfont{Latin Modern Roman}[');
+            lines.push(`  Path = ${root} ,`);
+            lines.push('  UprightFont = lmroman10-regular.otf ,');
+            lines.push('  ItalicFont = lmroman10-italic.otf ,');
+            lines.push('  BoldFont = lmroman10-bold.otf ,');
+            lines.push('  BoldItalicFont = lmroman10-bolditalic.otf');
+            lines.push(']');
+            const letterSpacing = spec.runningHeader.letterSpacing;
+            if (typeof letterSpacing === 'number' && letterSpacing > 0) {
+                lines.push('\\newfontface\\headerfont{Latin Modern Roman}[');
+                lines.push(`  Path = ${root} ,`);
+                lines.push('  UprightFont = lmroman10-regular.otf ,');
+                lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
+                lines.push(']');
+            }
+        } else {
+            lines.push('\\setmainfont{lmroman10-regular.otf}[');
+            lines.push('  ItalicFont = lmroman10-italic.otf ,');
+            lines.push('  BoldFont = lmroman10-bold.otf ,');
+            lines.push('  BoldItalicFont = lmroman10-bolditalic.otf');
             lines.push(']');
         }
         return lines.join('\n');
@@ -331,6 +368,10 @@ export function renderPartTitle(spec: DesignedStyleSpec): string {
     lines.push('\\newcommand{\\rtPart}[1]{%');
     lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
     if (spec.parts.pageBreak) lines.push('  \\cleardoublepage');
+    // \null primes the freshly cleared page so \thispagestyle and \vspace*
+    // bind to it reliably (without \null they can be discarded at the page
+    // boundary). Same fix applied in \rtChapter and \rtSceneOpener.
+    lines.push('  \\null%');
     lines.push('  \\thispagestyle{rtEmpty}%');
     lines.push('  \\vspace*{2.1in}%');
     lines.push('  \\begin{center}');
@@ -395,12 +436,19 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     // assembler calls \rtChapter{N}{Title}; this macro owns the full page —
     // pre-clearpage, chrome suppression, vertical spacing, heading typography,
     // bottom-clearpage so the chapter sits alone on its own page (body text
-    // begins on the next page). Don't emit \titleformat{\chapter} or
-    // \preto\chapter hooks — they target the wrong macro and never fire.
+    // begins on the next page).
+    //
+    // \null is a load-bearing detail: after \cleardoublepage, the new page
+    // hasn't yet been "started" (no content emitted). \thispagestyle{} and
+    // \vspace*{} both behave inconsistently at that boundary — \vspace* may
+    // get discarded despite the asterisk, and \thispagestyle{} may bind to
+    // the wrong page. Emitting \null primes the page so both directives
+    // reliably apply to the chapter opener page.
     lines.push('\\newcommand{\\rtChapter}[2]{%');
     lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
     if (spec.chapters.pageBreak) lines.push('  \\cleardoublepage');
     lines.push('  \\refstepcounter{chapter}%');
+    lines.push('  \\null%');
     lines.push('  \\thispagestyle{rtEmpty}%');
     lines.push(`  \\vspace*{${topVspace}}%`);
     lines.push('  \\begin{center}');
@@ -470,6 +518,10 @@ export function renderSceneOpener(spec: DesignedStyleSpec): string {
             lines.push('\\newcommand{\\rtSceneOpener}[1]{%');
             lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
             lines.push('  \\cleardoublepage');
+            // \null primes the freshly cleared page so \thispagestyle and
+            // \vspace* bind to it reliably (without \null they can be
+            // discarded at the page boundary).
+            lines.push('  \\null%');
             if (spec.scene.suppressHeaderFooterOnOpener) lines.push('  \\thispagestyle{empty}%');
             lines.push('  \\vspace*{0.16\\textheight}%');
             lines.push(`  \\begin{center}{\\normalfont\\bfseries\\Large ${titleExpr}}\\end{center}`);

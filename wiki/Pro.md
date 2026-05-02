@@ -42,15 +42,15 @@ Runtime Estimation analyzes your scenes to calculate realistic duration estimate
 - `(runtime: 3m)`
 - `(allow 5 minutes)` — for demos, podcasts, presentations
 
-> **Settings**: [Runtime estimation](Settings#runtime-estimation)
+> **Settings**: [Runtime estimation](Settings-Core#runtime-estimation)
 
 ---
 
 ## Advanced Publishing Layouts
 
-*Extend the Core publishing flow with advanced Pandoc layouts.*
+*Extend the Core publishing flow with extra Pandoc layouts and deeper publishing customization.*
 
-Core includes the standard publishing setup and Core PDF layouts. Pro adds advanced bundled layouts, imported LaTeX templates, and specialized formats.
+Core already includes Pandoc-based PDF export and the bundled Core publishing layouts. Pro adds extra bundled layouts, imported LaTeX templates, and deeper publishing customization.
 
 **Supported formats:**
 - **Screenplay** — Industry-standard screenplay formatting
@@ -63,7 +63,7 @@ Core includes the standard publishing setup and Core PDF layouts. Pro adds advan
 - Output to your export folder alongside analysis files
 
 > **Full guide**: [Publishing](Publishing) — template catalog, Modern Classic setup, Chapters, Parts, act epigraphs.
-> **Settings**: [Publish](Settings#publish)
+> **Settings**: [Publish](Publishing)
 
 ---
 
@@ -80,7 +80,7 @@ Campaign Manager lets you manage multiple APR configurations for different platf
 - **Manual reveal options** - Toggle acts, subplots, status colors, and percent display when Teaser Reveal is disabled
 - **Teaser Reveal presets** - Slow (15/40/70), Standard (10/30/60), Fast (5/20/45), or custom thresholds
 
-> **Settings**: [Social](Settings#social)
+> **Settings**: [Social](Author-Progress-Report)
 
 ---
 

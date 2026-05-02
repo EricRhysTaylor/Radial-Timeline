@@ -21,7 +21,7 @@ import type { InquiryRunProgressEvent } from '../runner/types';
 import type { InquiryRoleValidation, InquiryScope, InquirySelectionMode } from '../state';
 import type { AIRunAdvancedContext } from '../../ai/types';
 import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren } from './svgUtils';
-import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
+import { addTooltipData } from '../../utils/tooltip';
 import { buildPassIndicator } from '../services/readiness';
 import { buildMinimapSubsetResult } from '../services/minimapSubset';
 
@@ -646,7 +646,7 @@ export class InquiryMinimapRenderer {
                 const targetTooltip = isDegradedFocused
                     ? 'Incomplete Focused Analysis — Target scenes were selected, but no target-specific findings were returned.'
                     : 'Target Scene — Included in focused analysis.';
-                tick.setAttribute('data-target-tooltip', balanceTooltipText(targetTooltip));
+                tick.setAttribute('data-target-tooltip', targetTooltip);
             } else {
                 tick.removeAttribute('data-target-tooltip');
             }
@@ -1032,8 +1032,7 @@ export class InquiryMinimapRenderer {
         advancedContext: AIRunAdvancedContext | null,
         progress: InquiryRunProgressEvent | null,
         corpusTokens: number,
-        formatTokenEstimate: (value: number) => string,
-        balanceTooltipText: (text: string) => string
+        formatTokenEstimate: (value: number) => string
     ): void {
         if (!this.minimapBackboneGroup || !this.minimapBaseline) return;
 
@@ -1092,7 +1091,7 @@ export class InquiryMinimapRenderer {
         if (readinessUi.readiness.exceedsBudget) {
             tooltipLines.push('Will split into multiple analysis passes');
         }
-        addTooltipData(this.minimapBaseline, balanceTooltipText(tooltipLines.join('\n')), 'top');
+        addTooltipData(this.minimapBaseline, tooltipLines.join('\n'), 'top');
 
         const passIndicator = buildPassIndicator(
             passPlan.recentExactPassCount ?? undefined,
@@ -1112,7 +1111,7 @@ export class InquiryMinimapRenderer {
                     : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total`;
                 addTooltipData(
                     this.minimapPassIndicatorGroup,
-                    balanceTooltipText(`${passText}\n${reason}`),
+                    `${passText}\n${reason}`,
                     'top'
                 );
             }
@@ -1224,7 +1223,6 @@ export class InquiryMinimapRenderer {
         viewboxSize: number,
         callbacks: {
             getItemTitle: (item: InquiryCorpusItem) => string;
-            balanceTooltipText: (text: string) => string;
             registerDomEvent: (el: HTMLElement, event: string, handler: (e: Event) => void) => void;
             onTickClick: (item: InquiryCorpusItem, event: MouseEvent) => void;
             onTickContextMenu: (item: InquiryCorpusItem, event: MouseEvent) => void;
@@ -1383,7 +1381,7 @@ export class InquiryMinimapRenderer {
             } else {
                 tick.removeAttribute('data-scene-id');
             }
-            addTooltipData(tick, callbacks.balanceTooltipText(fullLabel), 'bottom');
+            addTooltipData(tick, fullLabel, 'bottom');
             tick.setAttribute('data-rt-tip-offset-y', '6');
             callbacks.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: Event) => {
                 callbacks.onTickClick(item, event as MouseEvent);
@@ -1409,8 +1407,7 @@ export class InquiryMinimapRenderer {
     updateFindingStates(
         isRunning: boolean,
         isError: boolean,
-        findingMap: Map<string, { kind: string; role?: 'target' | 'context' }>,
-        balanceTooltipText: (text: string) => string
+        findingMap: Map<string, { kind: string; role?: 'target' | 'context' }>
     ): void {
         if (!this.minimapTicks.length) return;
         if (isRunning || isError) {
@@ -1421,7 +1418,7 @@ export class InquiryMinimapRenderer {
                 if (label) {
                     const fullLabel = tick.getAttribute('data-full-label') || label;
                     const targetTooltip = tick.getAttribute('data-target-tooltip') || '';
-                    addTooltipData(tick, targetTooltip || balanceTooltipText(fullLabel), 'bottom');
+                    addTooltipData(tick, targetTooltip || fullLabel, 'bottom');
                 }
             });
             return;
@@ -1438,7 +1435,7 @@ export class InquiryMinimapRenderer {
             if (finding) {
                 addTooltipData(tick, '', 'bottom');
             } else {
-                addTooltipData(tick, targetTooltip || balanceTooltipText(fullLabel), 'bottom');
+                addTooltipData(tick, targetTooltip || fullLabel, 'bottom');
             }
         });
     }

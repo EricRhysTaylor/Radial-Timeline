@@ -689,9 +689,17 @@ export interface PandocLayoutTemplate {
     designedSpec?: DesignedStyleSpec;
 }
 
+export type SettingsTabId = 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro';
+
 export interface RadialTimelineSettings {
     books: BookProfile[];
     activeBookId?: string;
+    /**
+     * Last tab the user had open in Settings. Restored on next Settings open
+     * so users who live on (e.g.) the Publish tab don't have to re-navigate
+     * from Core every time. Persists across reloads.
+     */
+    lastSettingsTab?: SettingsTabId;
     sourcePath: string;
     /** @deprecated Legacy toggle. Book title now comes from BookProfile. Kept for migration. */
     showSourcePathAsTitle?: boolean;

@@ -5,8 +5,8 @@
 
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { BeatDefinition, BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta, PublishingValidationSnapshot } from '../types';
-import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, type ModernClassicBeatDefinition, updateSceneWordCounts } from '../utils/manuscript';
+import type { BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta, PublishingValidationSnapshot } from '../types';
+import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult, type ManuscriptExportOutcome } from '../modals/ManuscriptOptionsModal';
@@ -34,10 +34,7 @@ import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLay
 import { getLayoutAbbreviation, resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from '../utils/manuscriptSanitize';
 import { getManuscriptLayoutExportBehavior } from '../utils/manuscriptLayoutExport';
-import { getPlotSystem } from '../utils/beatsSystems';
-import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
-import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 import { t } from '../i18n';
 import { writeManagedOutput } from '../utils/logVaultOps';
@@ -486,7 +483,7 @@ export class CommandRegistrar {
 
             const layout = getLayoutById(this.plugin, selectedLayoutIdForExport);
             if (!layout) {
-                new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
+                new Notice('No Pandoc layout selected. Configure layouts in Publish settings.');
                 return {};
             }
             if (layout.bundled) {
@@ -518,9 +515,6 @@ export class CommandRegistrar {
             const shouldSaveMarkdown = result.saveMarkdownArtifact ?? true;
             const layoutExportBehavior = getManuscriptLayoutExportBehavior(layout);
             const useModernClassicStructure = layout.usesModernClassicStructure === true;
-            const modernClassicBeatDefinitions = useModernClassicStructure
-                ? this.resolveModernClassicBeatDefinitions()
-                : [];
             const modernClassicLayoutOptions = useModernClassicStructure
                 ? this.resolveModernClassicLayoutOptions(layout.id)
                 : undefined;
@@ -569,10 +563,10 @@ export class CommandRegistrar {
                         includeSceneIdInToc: result.includeSceneIdInToc === true,
                         includeSceneIdInHeading: result.includeSceneIdInHeading === true,
                         sceneIdFormat: 'plain',
+                        useRtChapterMacro: layoutExportBehavior.useRtChapterMacro,
                         modernClassicStructure: useModernClassicStructure
                             ? {
                                 enabled: true,
-                                beatDefinitions: modernClassicBeatDefinitions,
                                 actEpigraphs: modernClassicLayoutOptions?.actEpigraphs,
                                 actEpigraphAttributions: modernClassicLayoutOptions?.actEpigraphAttributions
                             }
@@ -925,55 +919,6 @@ export class CommandRegistrar {
         }
 
         return { bookMeta: selected.meta };
-    }
-
-    private resolveModernClassicActIndex(value: unknown, fallback: number): number {
-        const parsed = typeof value === 'number'
-            ? value
-            : typeof value === 'string'
-                ? Number(value)
-                : NaN;
-        if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-        return Math.floor(parsed);
-    }
-
-    private toModernClassicBeatDefinition(
-        beat: BeatDefinition,
-        fallbackActIndex: number
-    ): ModernClassicBeatDefinition | null {
-        const name = typeof beat.name === 'string' ? beat.name.trim() : '';
-        if (!name) return null;
-        return {
-            name,
-            id: typeof beat.id === 'string' && beat.id.trim().length > 0 ? beat.id.trim() : undefined,
-            actIndex: this.resolveModernClassicActIndex(beat.act, fallbackActIndex),
-        };
-    }
-
-    private resolveModernClassicBeatDefinitions(): ModernClassicBeatDefinition[] {
-        const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
-        if (activeTab) {
-            return activeTab.beats
-                .map((beat, index) => this.toModernClassicBeatDefinition(beat, index + 1))
-                .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
-        }
-
-        const selectedSystem = (resolveSelectedBeatModelFromSettings(this.plugin.settings) || '').trim();
-        if (!selectedSystem) return [];
-
-        const builtin = getPlotSystem(selectedSystem);
-        if (!builtin) return [];
-
-        return builtin.beatDetails
-            .map((detail, index) => {
-                const beat: BeatDefinition = {
-                    name: detail.name,
-                    id: detail.id,
-                    act: this.resolveModernClassicActIndex(detail.act, 1),
-                };
-                return this.toModernClassicBeatDefinition(beat, index + 1);
-            })
-            .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
     }
 
     private resolveModernClassicLayoutOptions(layoutId: string): BookLayoutOptions | undefined {
