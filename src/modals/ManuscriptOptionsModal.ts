@@ -1883,13 +1883,7 @@ export class ManuscriptOptionsModal extends Modal {
         });
 
         if (variant !== 'generic') {
-            const ctx: SpreadValidationContext = {
-                actCount: this.getSelectedActCount(),
-                chapterFieldCount: this.getSelectedChapterMarkerCount(),
-                actEpigraphPopulatedCount: this.getActEpigraphPopulatedCount(sourceLayout),
-                chapterTitlePopulatedCount: this.getSelectedChapterTitlePopulatedCount(),
-                sceneTitlePopulatedRatio: this.getSelectedSceneTitlePopulatedRatio(),
-            };
+            const ctx = this.buildSpreadValidationContext(sourceLayout);
             renderModalLayoutPreview(desc, variant, this.resolveActiveSceneHeadingMode(sourceLayout), ctx, sourceLayout);
         }
 
@@ -2134,13 +2128,26 @@ export class ManuscriptOptionsModal extends Modal {
         technicalLines.push(`Page layout: ${layoutDesc}`);
         technicalLines.push(...this.collectTemplateTechnicalLines());
 
+        // ── Spread-validation warnings ────────────────────────────────
+        // Run the same validation pass the preview cards use, then collect
+        // distinct warning tooltips so each unique advisory surfaces as a
+        // line item below. Warnings are non-blocking — Generate stays enabled.
+        const spreadVariant = getFictionVariantForLayout(selectedLayout);
+        const spreadWarningTooltips: string[] = spreadVariant === 'generic'
+            ? []
+            : collectSpreadWarningTooltips(applySpreadValidation(
+                getLayoutPictogramRows(spreadVariant, selectedLayout),
+                this.buildSpreadValidationContext(selectedLayout),
+            ));
+        const hasSpreadWarning = spreadWarningTooltips.length > 0;
+
         // ── Severity classification ─────────────────────────────────
         // Three-state model for the export-checks panel:
         //   error   → blocking, red, alert-circle
         //   warning → font risk or non-blocking warning, orange, alert-triangle
         //   ready   → everything passes, green, check-circle-2 (compact form)
         const hasError = hasAccessError || hasCompatibilityError;
-        const hasWarning = !hasError && (hasFontRisk || hasCompatibilityWarning || hasAccessWarning);
+        const hasWarning = !hasError && (hasFontRisk || hasCompatibilityWarning || hasAccessWarning || hasSpreadWarning);
         const isReady = !hasError && !hasWarning;
 
         // ── Render ───────────────────────────────────────────────────
@@ -2254,6 +2261,14 @@ export class ManuscriptOptionsModal extends Modal {
                 cls: 'ert-pdf-output-line',
                 text: firstWarning?.message || 'Template compatibility changed for this export.'
             });
+        }
+
+        // Spread-validation advisories (non-blocking). Surfaced as additional
+        // line items so a user with font risk + a missing-Acts spread sees
+        // both. Order follows the canonical row iteration; tooltips are
+        // already deduped by collectSpreadWarningTooltips.
+        for (const tooltip of spreadWarningTooltips) {
+            content.createDiv({ cls: 'ert-pdf-output-line', text: tooltip });
         }
 
         // ACCESS / COMPATIBILITY status rows are intentionally omitted —
@@ -2432,85 +2447,25 @@ Sarah stood at the window, watching the world wake up.`;
     }
 
     /**
-     * Number of distinct Act values configured for the active book within the
-     * current scene selection. Drives the PART preview-card warning.
+     * Build a SpreadValidationContext for the current scene selection +
+     * supplied layout. Delegates to the shared helper so the Settings → Publish
+     * preview computes warnings from the same logic.
      */
-    private getSelectedActCount(): number {
-        if (this.totalScenes === 0 || this.sceneActs.length === 0) return 0;
+    private buildSpreadValidationContext(layout?: PandocLayoutTemplate): SpreadValidationContext {
         const startIndex = Math.max(0, this.rangeStart - 1);
-        const endIndexExclusive = Math.min(this.rangeEnd, this.sceneActs.length);
-        if (endIndexExclusive <= startIndex) return 0;
-        const seen = new Set<number>();
-        for (let i = startIndex; i < endIndexExclusive; i++) {
-            const act = this.sceneActs[i];
-            if (typeof act === 'number' && Number.isFinite(act)) seen.add(act);
-        }
-        return seen.size;
-    }
-
-    /**
-     * Count of chapter markers (scenes/beats/backdrops with a Chapter field)
-     * that fall within the currently-selected scene range. Drives the CHAPTER
-     * preview-card warning.
-     */
-    private getSelectedChapterMarkerCount(): number {
-        const selected = new Set(this.getSelectedScenePaths());
-        if (selected.size === 0) return 0;
-        let count = 0;
-        for (const [scenePath, markers] of Object.entries(this.chapterMarkersByScenePath)) {
-            if (!selected.has(scenePath)) continue;
-            count += Array.isArray(markers) ? markers.length : 0;
-        }
-        return count;
-    }
-
-    /**
-     * Count of chapter markers in the current selection whose `title` is a
-     * non-empty string. Drives the "Chapter titles configured but no chapter
-     * has a title" warning on the CHAPTER spread for titled-mode templates.
-     */
-    private getSelectedChapterTitlePopulatedCount(): number {
-        const selected = new Set(this.getSelectedScenePaths());
-        if (selected.size === 0) return 0;
-        let count = 0;
-        for (const [scenePath, markers] of Object.entries(this.chapterMarkersByScenePath)) {
-            if (!selected.has(scenePath)) continue;
-            if (!Array.isArray(markers)) continue;
-            for (const marker of markers) {
-                const title = (marker as { title?: unknown })?.title;
-                if (typeof title === 'string' && title.trim().length > 0) count += 1;
-            }
-        }
-        return count;
-    }
-
-    /**
-     * Fraction (0..1) of scenes in the current selection that carry a
-     * non-empty title. Drives the "Scene titles configured but scenes have
-     * no titles" warning on title-only-mode scene spreads.
-     */
-    private getSelectedSceneTitlePopulatedRatio(): number {
-        const selected = this.getSelectedSceneTitles();
-        if (selected.length === 0) return 1;
-        const populated = selected.filter(title => typeof title === 'string' && title.trim().length > 0);
-        return populated.length / selected.length;
-    }
-
-    /**
-     * Count of acts whose epigraph quote is populated for the active book +
-     * supplied layout. Drives the Part-epigraph warning on PART spreads for
-     * templates that advertise `parts.epigraph`.
-     */
-    private getActEpigraphPopulatedCount(layout?: PandocLayoutTemplate): number {
-        if (!layout) return 0;
-        const book = getActiveBook(this.plugin.settings);
-        if (!book) return 0;
-        const epigraphs = book.layoutOptions?.[layout.id]?.actEpigraphs;
-        if (!Array.isArray(epigraphs)) return 0;
-        return epigraphs.reduce<number>((sum, value) => {
-            if (typeof value === 'string' && value.trim().length > 0) return sum + 1;
-            return sum;
-        }, 0);
+        const endIndexExclusive = Math.min(this.rangeEnd, this.totalScenes);
+        const slice = <T>(arr: T[]): T[] => (
+            this.totalScenes === 0 || arr.length === 0 || endIndexExclusive <= startIndex
+                ? []
+                : arr.slice(startIndex, Math.min(endIndexExclusive, arr.length))
+        );
+        return buildSpreadValidationContext(this.plugin, {
+            layout,
+            selectedScenePaths: slice(this.scenePaths),
+            selectedSceneTitles: slice(this.sceneTitles),
+            selectedSceneActs: slice(this.sceneActs),
+            chapterMarkersByScenePath: this.chapterMarkersByScenePath as Record<string, unknown[]>,
+        });
     }
 
     private isSplitEnabled(): boolean {
