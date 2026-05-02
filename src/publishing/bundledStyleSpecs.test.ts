@@ -75,6 +75,46 @@ describe('BUNDLED_FICTION_SPECS', () => {
         });
     }
 
+    // Typography overflow relief — every spec emits microtype + emergencystretch
+    // unconditionally, so user PDFs no longer overflow the right margin even on
+    // plain prose. Assertion is on the SEMANTIC tokens (regex), not byte-equality.
+    for (const id of BUNDLED_FICTION_IDS) {
+        it(`${id}: emits typography overflow relief floor (microtype + emergencystretch)`, () => {
+            const spec = BUNDLED_FICTION_SPECS[id];
+            const tex = generateDesignedStyleTex(spec, { bundledLayoutId: id });
+            expect(tex).toMatch(/\\usepackage\{microtype\}/);
+            expect(tex).toMatch(/\\setlength\{\\emergencystretch\}/);
+        });
+    }
+
+    // Page numbering hierarchy — every spec defines \rtBeginMainArabic and
+    // \ifrtMainStarted so arabic numbering starts at the first opener
+    // (Part > Chapter > Scene). The flag-guard pattern is present in
+    // \rtPart, \rtChapter, AND \rtSceneOpener (when those macros are emitted).
+    for (const id of BUNDLED_FICTION_IDS) {
+        it(`${id}: defines \\rtBeginMainArabic and guards every opener with \\ifrtMainStarted`, () => {
+            const spec = BUNDLED_FICTION_SPECS[id];
+            const tex = generateDesignedStyleTex(spec, { bundledLayoutId: id });
+            // Macro definition + flag declaration must always be present.
+            expect(tex).toMatch(/\\newcommand\{\\rtBeginMainArabic\}/);
+            expect(tex).toMatch(/\\newif\\ifrtMainStarted/);
+            // Flag-guard appears at the top of each opener that the spec emits.
+            const guard = /\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/;
+            if (spec.parts.mode !== 'off') {
+                // \rtPart body should contain the flag-guard.
+                expect(tex).toMatch(/\\newcommand\{\\rtPart\}\[1\]\{%[\s\S]*?\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
+            }
+            if (spec.chapters.mode !== 'off') {
+                expect(tex).toMatch(/\\newcommand\{\\rtChapter\}\[2\]\{%[\s\S]*?\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
+            }
+            if (spec.scene.opener === 'dedicated-page') {
+                expect(tex).toMatch(/\\newcommand\{\\rtSceneOpener\}\[1\]\{%[\s\S]*?\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
+            }
+            // Sanity: at least one occurrence of the guard exists somewhere.
+            expect(tex).toMatch(guard);
+        });
+    }
+
     // Regression: Signature Literary's scene-opener bottom-fraction was reduced
     // from 0.2 to 0.1 to tighten the title-to-body gap. Confirm the reduced
     // spacing flows through the generator for the bundled spec.
@@ -85,23 +125,25 @@ describe('BUNDLED_FICTION_SPECS', () => {
         expect(tex).toContain('\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.1\\textheight}');
     });
 
-    // Regression: Standard / Contemporary firstWordEmphasisOnOpener hooks must
-    // target \section (matching the assembler's \section* output), not \subsection.
-    // Previously the hooks targeted \subsection which never fired, leaving scene-
-    // opener formatting dead in the PDF.
+    // Regression: Standard / Contemporary firstWordEmphasisOnOpener defines
+    // a \rtSceneOpener macro (the assembler's contract surface) that owns
+    // page break + chrome suppression + centered title typography. The old
+    // \titleformat{\section} + \preto\section hooks NEVER FIRED on the
+    // assembler's \section*{} calls; the macro form fires for every scene.
     for (const id of [
         'bundled-fiction-classic-manuscript',
         'bundled-fiction-contemporary-literary',
     ] as const) {
-        it(`${id} hooks \\section for firstWordEmphasisOnOpener (not \\subsection)`, () => {
+        it(`${id} defines \\rtSceneOpener macro for firstWordEmphasisOnOpener`, () => {
             const spec = BUNDLED_FICTION_SPECS[id];
             expect(spec.scene.firstWordEmphasisOnOpener).toBe(true);
             const tex = generateDesignedStyleTex(spec, { bundledLayoutId: id });
-            expect(tex).toContain('\\titleformat{\\section}[display]');
-            expect(tex).toContain('\\titleformat{name=\\section,numberless}');
-            expect(tex).toContain('\\titlespacing*{\\section}');
-            expect(tex).toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
-            // Must NOT hook \subsection — the assembler emits \section*, not \subsection.
+            // The macro form is the contract surface; the assembler invokes it.
+            expect(tex).toContain('\\newcommand{\\rtSceneOpener}[1]');
+            expect(tex).toContain('\\rtSceneOpenerTitle{#1}');
+            expect(tex).toMatch(/\\rtSceneOpener\}\[1\]\{%[\s\S]*?\\cleardoublepage[\s\S]*?\\thispagestyle\{empty\}/);
+            // Must NOT use the dead \titleformat{\section}/\preto\section path.
+            expect(tex).not.toMatch(/\\preto\\section\{/);
             expect(tex).not.toMatch(/\\titleformat\{\\subsection\}/);
             expect(tex).not.toMatch(/\\preto\\subsection/);
         });

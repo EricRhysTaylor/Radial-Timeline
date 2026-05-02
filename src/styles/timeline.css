@@ -1035,6 +1035,7 @@
   cursor: default;
 }
 
+.ert-timeline-title-action.clickable-icon,
 .rt-book-switcher__manage.clickable-icon {
   width: 24px;
   height: 24px;
@@ -1045,11 +1046,13 @@
   color: var(--text-muted);
 }
 
+.ert-timeline-title-action.clickable-icon svg,
 .rt-book-switcher__manage.clickable-icon svg {
   width: 14px;
   height: 14px;
 }
 
+.ert-timeline-title-action.clickable-icon:hover,
 .rt-book-switcher__manage.clickable-icon:hover {
   color: var(--text-normal);
 }

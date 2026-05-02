@@ -1,5 +1,6 @@
 import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneHeadingMode, SceneHeadingRenderMode } from './manuscript';
+import type { DesignedStyleSpec } from '../publishing/designedStyle';
 
 export interface ManuscriptLayoutExportBehavior {
     sceneHeadingRenderMode: SceneHeadingRenderMode;
@@ -33,7 +34,7 @@ function layoutIdentity(layout: Pick<PandocLayoutTemplate, 'id' | 'name' | 'path
 }
 
 export function getManuscriptLayoutExportBehavior(
-    layout: Pick<PandocLayoutTemplate, 'id' | 'name' | 'path'>
+    layout: Pick<PandocLayoutTemplate, 'id' | 'name' | 'path'> & { designedSpec?: DesignedStyleSpec }
 ): ManuscriptLayoutExportBehavior {
     const identity = layoutIdentity(layout);
     const isStandardManuscript = layout.id === STANDARD_MANUSCRIPT_LAYOUT_ID
@@ -46,6 +47,15 @@ export function getManuscriptLayoutExportBehavior(
     const isContemporaryLiterary = layout.id === 'bundled-fiction-contemporary-literary'
         || /\bcontemporary literary\b/.test(identity)
         || /rt_contemporary_literary\.tex/.test(identity);
+
+    // Spec-driven default: when a layout carries a DesignedStyleSpec, the spec's
+    // scene.headingMode is the floor. The hardcoded per-id branches below remain
+    // for the four bundled fiction templates (they need explicit suppression flags
+    // and renderMode that aren't representable in the spec). User-imported
+    // designed layouts that fall through to the default branch get spec-derived
+    // headingMode + dedicated-page-aware renderMode.
+    const designed = layout.designedSpec;
+    const specDefaultHeadingMode: ManuscriptSceneHeadingMode | undefined = designed?.scene.headingMode;
 
     if (isStandardManuscript) {
         // Standard Manuscript pictogram: scene-only. No part, no chapter cards.
@@ -83,8 +93,13 @@ export function getManuscriptLayoutExportBehavior(
 
     if (isContemporaryLiterary) {
         // Contemporary Literary pictogram: scene + chapter, no part.
+        // Spec says scene.opener = 'dedicated-page' with headingMode = 'scene-number',
+        // so the assembler emits \rtSceneOpener{number} per scene. The .tex defines
+        // the macro to handle the page break, chrome suppression, and centered
+        // typography (see designedStyleFragments.renderSceneOpener).
         return {
-            sceneHeadingRenderMode: 'markdown-h2',
+            sceneHeadingRenderMode: 'latex-section-starred',
+            defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: false,
             suppressPartMarkers: true,
         };
@@ -94,6 +109,19 @@ export function getManuscriptLayoutExportBehavior(
     // custom template designer never has surprise Part / Chapter chrome
     // forced on them by chapter-field markers in the timeline. Templates
     // that want them can opt in via the Modern-Classic structure path.
+    //
+    // When the layout carries a DesignedStyleSpec, derive renderMode and
+    // default heading mode from the spec — `dedicated-page` openers must use
+    // latex-section-starred so the assembler emits \rtSceneOpener{HEADING}.
+    if (designed) {
+        const usesDedicatedOpener = designed.scene.opener === 'dedicated-page';
+        return {
+            sceneHeadingRenderMode: usesDedicatedOpener ? 'latex-section-starred' : 'markdown-h2',
+            ...(specDefaultHeadingMode ? { defaultSceneHeadingMode: specDefaultHeadingMode } : {}),
+            suppressChapterMarkers: designed.chapters.mode === 'off',
+            suppressPartMarkers: designed.parts.mode === 'off',
+        };
+    }
     return {
         sceneHeadingRenderMode: 'markdown-h2',
         suppressChapterMarkers: true,

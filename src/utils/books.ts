@@ -64,6 +64,12 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
     };
   }
 
+  const normalizedBookPageOrder = Array.isArray(profile.bookPageOrder)
+    ? profile.bookPageOrder
+        .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter(entry => entry.length > 0)
+    : undefined;
+
   return {
     id: profile.id || createBookId(),
     title,
@@ -72,7 +78,8 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
     ...(profile.lastUsedPandocLayoutByPreset ? { lastUsedPandocLayoutByPreset: { ...profile.lastUsedPandocLayoutByPreset } } : {}),
     ...(Object.keys(normalizedLayoutOptions).length > 0 ? { layoutOptions: normalizedLayoutOptions } : {}),
     ...(normalizeBeatWorkspace(profile.beatWorkspace) ? { beatWorkspace: normalizeBeatWorkspace(profile.beatWorkspace) } : {}),
-    ...(normalizeRecentStructuralMoves(profile.recentStructuralMoves) ? { recentStructuralMoves: normalizeRecentStructuralMoves(profile.recentStructuralMoves) } : {})
+    ...(normalizeRecentStructuralMoves(profile.recentStructuralMoves) ? { recentStructuralMoves: normalizeRecentStructuralMoves(profile.recentStructuralMoves) } : {}),
+    ...(normalizedBookPageOrder && normalizedBookPageOrder.length > 0 ? { bookPageOrder: normalizedBookPageOrder } : {})
   };
 }
 

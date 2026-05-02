@@ -13,6 +13,9 @@ import * as os from 'os'; // SAFE: Node os required for temp directory resolutio
 import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
 import { formatRuntimeValue, RuntimeSettings } from './runtimeEstimator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { getBundledFontPath } from './pandocBundledLayouts';
+import type { DesignedStyleSpec } from '../publishing/designedStyle';
+import { BUNDLED_FICTION_SPECS, isBundledFictionId } from '../publishing/bundledStyleSpecs';
 
 export type ExportType = 'manuscript' | 'outline';
 export type ManuscriptPreset = 'screenplay' | 'podcast' | 'novel';
@@ -453,6 +456,185 @@ export function getTemplateFontDiagnostics(templatePath?: string): TemplateFontD
         missingOptionalFonts,
         canVerifySystemFonts
     };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Structured Font Diagnostic
+// ════════════════════════════════════════════════════════════════════════════
+//
+// `FontDiagnostic` is the structured, action-affordance-friendly counterpart
+// to `TemplateFontDiagnostics`. Where the latter is the raw scan output, this
+// one classifies the result into `ok | fallback | missing-bundled` and adds
+// an install hint suitable for surfacing as an inline link in the modal's
+// Export Checks panel.
+
+export type FontDiagnosticState = 'ok' | 'fallback' | 'missing-bundled';
+
+export interface FontDiagnosticInstallHint {
+    source: 'google-fonts' | 'ctan' | 'bundled';
+    url?: string;
+    message: string;
+}
+
+export interface FontDiagnostic {
+    state: FontDiagnosticState;
+    /** Display name of the font the spec / template requested. */
+    primaryFontName: string;
+    /** Font XeLaTeX will actually use after fallback resolution. */
+    resolvedFontName: string;
+    installHint?: FontDiagnosticInstallHint;
+}
+
+const FONT_KEY_TO_DISPLAY: Record<DesignedStyleSpec['body']['font'], string> = {
+    'sorts-mill-goudy': 'Sorts Mill Goudy',
+    'latin-modern':     'Latin Modern Roman',
+    'eb-garamond':      'EB Garamond',
+    'crimson':          'Crimson Text',
+    'system-serif':     'TeX Gyre Pagella',
+};
+
+const GOOGLE_FONTS_BY_KEY: Partial<Record<DesignedStyleSpec['body']['font'], string>> = {
+    'sorts-mill-goudy': 'https://fonts.google.com/specimen/Sorts+Mill+Goudy',
+    'eb-garamond':      'https://fonts.google.com/specimen/EB+Garamond',
+    'crimson':          'https://fonts.google.com/specimen/Crimson+Text',
+};
+
+/**
+ * Pick a DesignedStyleSpec for a layout. Bundled fiction layouts have a spec
+ * registered in `BUNDLED_FICTION_SPECS`; user-authored designed layouts carry
+ * their own `designedSpec`. Other layouts have no spec.
+ */
+function specForLayout(layout?: PandocLayoutTemplate): DesignedStyleSpec | undefined {
+    if (!layout) return undefined;
+    if (layout.designedSpec) return layout.designedSpec;
+    if (isBundledFictionId(layout.id)) return BUNDLED_FICTION_SPECS[layout.id];
+    return undefined;
+}
+
+/**
+ * Verify that the bundled `.ttf` files for a font key are actually present on
+ * disk. Today only Sorts Mill Goudy is bundled — extend this map when more
+ * fonts ship with the plugin.
+ */
+function bundledFontFilesPresent(fontKey: DesignedStyleSpec['body']['font']): boolean {
+    if (fontKey !== 'sorts-mill-goudy') return false;
+    const root = getBundledFontPath();
+    if (!root) return false;
+    const regular = path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Regular.ttf');
+    const italic = path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Italic.ttf');
+    try {
+        return fs.existsSync(regular) && fs.existsSync(italic);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Spec-driven font diagnostic.
+ *
+ * Returns the structured `FontDiagnostic` for a layout. The state is:
+ *   - 'ok'              → primary font resolves (system install OR bundled OR Latin Modern via lmodern)
+ *   - 'fallback'        → primary missing on the system; XeLaTeX will fall back to a system serif
+ *   - 'missing-bundled' → primary is a plugin-bundled font but the asset files
+ *                         aren't on disk (build artifact missing)
+ *
+ * Latin Modern is a special case: it's loaded via `\usepackage{lmodern}` so
+ * fontspec's `\IfFontExistsTF` may not see it, but XeLaTeX always finds it
+ * via kpathsea on any complete TeX install. We always report 'ok' for it.
+ */
+export function getStructuredFontDiagnostic(layout?: PandocLayoutTemplate): FontDiagnostic {
+    const spec = specForLayout(layout);
+    const fontKey = spec?.body.font;
+
+    // Layouts without a spec (custom imports) — fall back to a generic ok
+    // state so the Export Checks panel doesn't fabricate an alarm.
+    if (!fontKey) {
+        return { state: 'ok', primaryFontName: 'Default serif', resolvedFontName: 'Default serif' };
+    }
+
+    const primaryFontName = FONT_KEY_TO_DISPLAY[fontKey];
+
+    // Latin Modern: loaded via lmodern (kpathsea), independent of system font
+    // resolution — always ok on a complete TeX install. Skip the system check.
+    if (fontKey === 'latin-modern') {
+        return {
+            state: 'ok',
+            primaryFontName,
+            resolvedFontName: 'Latin Modern Roman',
+        };
+    }
+
+    // Bundled fonts: when the plugin's asset files are present, the export
+    // pipeline points fontspec at them via `Path=` — system install is not
+    // required. When absent (build artifact missing), state is 'missing-bundled'.
+    if (fontKey === 'sorts-mill-goudy') {
+        if (bundledFontFilesPresent(fontKey)) {
+            return {
+                state: 'ok',
+                primaryFontName,
+                resolvedFontName: primaryFontName,
+            };
+        }
+        return {
+            state: 'missing-bundled',
+            primaryFontName,
+            resolvedFontName: primaryFontName,
+            installHint: {
+                source: 'bundled',
+                message: 'Plugin asset missing — reinstall plugin.',
+            },
+        };
+    }
+
+    // System fonts (eb-garamond, crimson, system-serif): probe the catalog.
+    const catalog = loadSystemFontCatalog();
+    const canVerify = Array.isArray(catalog);
+    const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;
+
+    if (installed) {
+        return {
+            state: 'ok',
+            primaryFontName,
+            resolvedFontName: primaryFontName,
+        };
+    }
+
+    const fallbackName = spec.body.fontFallbackChain[0] || 'TeX Gyre Pagella';
+    const url = GOOGLE_FONTS_BY_KEY[fontKey];
+    const installHint: FontDiagnosticInstallHint = url
+        ? {
+            source: 'google-fonts',
+            url,
+            message: `Install ${primaryFontName} from Google Fonts for the intended look.`,
+        }
+        : {
+            source: 'ctan',
+            message: `Install ${primaryFontName} for the intended look.`,
+        };
+
+    return {
+        state: 'fallback',
+        primaryFontName,
+        resolvedFontName: fallbackName,
+        installHint,
+    };
+}
+
+/**
+ * Backward-compat string renderer for the structured diagnostic. Mirrors the
+ * legacy "Font: Using X — install Y" copy so existing callers can adopt the
+ * structured form incrementally.
+ */
+export function renderFontDiagnosticLine(diag: FontDiagnostic): string | null {
+    if (diag.state === 'ok') return null;
+    if (diag.state === 'missing-bundled') {
+        return diag.installHint?.message || `Font: ${diag.primaryFontName} bundled asset missing.`;
+    }
+    // fallback
+    if (diag.resolvedFontName && diag.resolvedFontName !== diag.primaryFontName) {
+        return `Font: Using ${diag.resolvedFontName} — install ${diag.primaryFontName} for the intended look.`;
+    }
+    return `Font: ${diag.primaryFontName} is not installed. Install it before exporting.`;
 }
 
 function templateNeedsUnicodeEngine(templatePath?: string): boolean {

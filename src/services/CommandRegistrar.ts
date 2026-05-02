@@ -417,6 +417,11 @@ export class CommandRegistrar {
                 : baseOutputFolder;
             const cleanupOptions = this.resolveCleanupOptions(result);
 
+            // The active book's saved Book Pages order (drag-reorder UI in
+            // Settings → Publish persists this) drives matter page emission
+            // order. Empty/undefined → resolver canonical order.
+            const activeBookForOrder = getActiveBook(this.plugin.settings);
+            const bookPageOrder = activeBookForOrder?.bookPageOrder;
             if (result.outputFormat === 'markdown') {
                 for (const range of partRanges) {
                     const partSelection = this.sliceSelection(slicedSelection, range.start, range.end);
@@ -434,6 +439,7 @@ export class CommandRegistrar {
                             sceneHeadingRenderMode: 'markdown-h2',
                             includeSceneIdInToc: result.includeSceneIdInToc === true,
                             includeSceneIdInHeading: result.includeSceneIdInHeading === true,
+                            bookPageOrder,
                         }
                     );
 
@@ -518,8 +524,13 @@ export class CommandRegistrar {
             const modernClassicLayoutOptions = useModernClassicStructure
                 ? this.resolveModernClassicLayoutOptions(layout.id)
                 : undefined;
-            const layoutSceneHeadingMode = layoutExportBehavior.defaultSceneHeadingMode
-                ?? this.resolveLayoutSceneHeadingMode(layout.id);
+            // Precedence: user UI override (only set for layouts that opt into
+            // hasSceneOpenerHeadingOptions, e.g. Signature Literary) wins over
+            // the layout's spec-derived default. Layouts without an override
+            // and without a spec default fall back to assembleManuscript's
+            // 'scene-number-title'.
+            const layoutSceneHeadingMode = this.resolveLayoutSceneHeadingMode(layout.id)
+                ?? layoutExportBehavior.defaultSceneHeadingMode;
             const sceneHeadingRenderMode = layoutExportBehavior.sceneHeadingRenderMode;
             const chapterMarkersByScenePath = layoutExportBehavior.suppressChapterMarkers
                 ? {}
@@ -565,7 +576,8 @@ export class CommandRegistrar {
                                 actEpigraphs: modernClassicLayoutOptions?.actEpigraphs,
                                 actEpigraphAttributions: modernClassicLayoutOptions?.actEpigraphAttributions
                             }
-                            : undefined
+                            : undefined,
+                        bookPageOrder,
                     }
                 );
 

@@ -10,7 +10,7 @@
  * - Version Indicator in timeline view
  */
 
-import type { RadialTimelineSettings } from '../types';
+import type { HotfixHistoryEntry, RadialTimelineSettings } from '../types';
 import { getActiveFrontmatterMappings } from '../utils/frontmatter';
 
 // ============================================================================
@@ -184,16 +184,43 @@ export function cleanupAdvancedTemplate(advancedTemplate: string): string {
 }
 
 /**
+ * Stable id for the synthetic "PDF Templates Updated" alert. The alert is
+ * generated dynamically from `settings.templateHotfixHistory` rather than
+ * stored in the static `REFACTOR_ALERTS` list, so it can re-appear after a
+ * future hotfix without polluting `dismissedAlerts`.
+ */
+export const TEMPLATE_HOTFIX_ALERT_ID = 'templates-auto-updated-v1';
+
+/**
+ * Build the synthetic refactor alert from `templateHotfixHistory`. Returns
+ * `null` when there are no unacknowledged entries (i.e. nothing to show).
+ */
+export function getTemplateHotfixAlert(settings: RadialTimelineSettings): RefactorAlert | null {
+    const history: HotfixHistoryEntry[] = settings.templateHotfixHistory ?? [];
+    const hasUnacknowledged = history.some(entry => !entry.acknowledged);
+    if (!hasUnacknowledged) return null;
+    return {
+        id: TEMPLATE_HOTFIX_ALERT_ID,
+        severity: 'info',
+        icon: 'file-check',
+        title: 'PDF Templates Updated',
+        description: 'Bundled PDF style templates were upgraded to the latest format. Re-export to apply the new formatting. No action required.',
+    };
+}
+
+/**
  * Get active refactor alerts that need user attention
- * Filters out dismissed alerts and alerts with no pending migrations (for migration alerts)
- * Info alerts without migrations are shown until dismissed
+ * Filters out dismissed alerts and alerts with no pending migrations (for migration alerts).
+ * Info alerts without migrations are shown until dismissed.
+ * Appends a synthetic 'PDF Templates Updated' alert when bundled-template
+ * hotfixes have run and the user hasn't yet acknowledged them.
  */
 export function getActiveRefactorAlerts(settings: RadialTimelineSettings): RefactorAlert[] {
     const dismissed = settings.dismissedAlerts ?? [];
     const remappings = getActiveFrontmatterMappings(settings) ?? {};
     const template = settings.sceneYamlTemplates?.advanced ?? '';
 
-    return REFACTOR_ALERTS.filter(alert => {
+    const staticActive = REFACTOR_ALERTS.filter(alert => {
         // Skip if already dismissed
         if (dismissed.includes(alert.id)) return false;
 
@@ -215,6 +242,9 @@ export function getActiveRefactorAlerts(settings: RadialTimelineSettings): Refac
 
         return true;
     });
+
+    const hotfixAlert = getTemplateHotfixAlert(settings);
+    return hotfixAlert ? [...staticActive, hotfixAlert] : staticActive;
 }
 
 /**

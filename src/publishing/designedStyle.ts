@@ -25,6 +25,7 @@ import {
     renderFolio,
     renderFontspec,
     renderGeometry,
+    renderPageNumberingControl,
     renderPartTitle,
     renderPreamble,
     renderSceneOpener,
@@ -146,9 +147,21 @@ export function getVariantForArchetype(archetype: DesignArchetype): FictionLayou
  * that emits \rtPart / \rtChapter / \rtSceneSep when those features are on,
  * matching the manuscript.ts macro contract.
  */
+export interface GenerateDesignedStyleTexOptions {
+    bundledLayoutId?: string;
+    /**
+     * Absolute filesystem path to the plugin's bundled-fonts directory
+     * (e.g. `/Users/foo/Vault/.obsidian/plugins/radial-timeline/assets/fonts`).
+     * When provided, the generator emits fontspec `Path=` directives pointing
+     * at the bundled `.otf` files instead of relying on system font resolution.
+     * Trailing slash is added by the consumer if needed.
+     */
+    bundledFontPath?: string;
+}
+
 export function generateDesignedStyleTex(
     spec: DesignedStyleSpec,
-    options: { bundledLayoutId?: string } = {}
+    options: GenerateDesignedStyleTexOptions = {}
 ): string {
     const sections: string[] = [];
 
@@ -164,7 +177,7 @@ export function generateDesignedStyleTex(
     sections.push('');
     sections.push(renderGeometry(spec));
     sections.push('');
-    sections.push(renderFontspec(spec));
+    sections.push(renderFontspec(spec, { bundledFontPath: options.bundledFontPath }));
     sections.push('');
     sections.push(renderFancyhdr(spec));
 
@@ -173,6 +186,12 @@ export function generateDesignedStyleTex(
         sections.push('');
         sections.push(folioBlock);
     }
+
+    // Page numbering control: roman by default, switches to arabic at the
+    // first opener (Part > Chapter > Scene). Must be emitted BEFORE the opener
+    // macros so the \ifrtMainStarted flag is defined when they reference it.
+    sections.push('');
+    sections.push(renderPageNumberingControl(spec));
 
     const partsBlock = renderPartTitle(spec);
     if (partsBlock) {

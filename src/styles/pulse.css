@@ -769,6 +769,25 @@
   align-items: center;
 }
 
+/* Heading-at-top layout: scene-opener cards where the heading anchors near
+   the top of the page and body lines flow below after a clear gap. Used by
+   Standard / Contemporary scene cards and by the three Signature scene-mode
+   variants. The flex column already gives top alignment; we just need a
+   vertical gap between heading + body block, and a flex column inside the
+   body-lines wrapper so individual line rows space out instead of stacking
+   into one thick stripe. */
+.ert-ui.ert-scope--modal .ert-layout-page-body.is-heading-top {
+  align-items: center;
+  gap: var(--ert-gap-cozy);
+  padding-top: var(--ert-gap-sm);
+}
+.ert-ui.ert-scope--modal .ert-layout-page-lines-after-heading {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--ert-gap-xs);
+}
+
 .ert-ui.ert-scope--modal .ert-layout-page-line {
   flex: 0 0 1px;
   height: 1px;
@@ -2234,6 +2253,17 @@
   word-wrap: break-word;
   overflow-wrap: anywhere;
   max-width: 420px;
+  /* Balance line lengths so the last line isn't a short orphan. */
+  text-wrap: balance;
+}
+
+/* Obsidian's native tooltip (rendered by setTooltip()) wraps with a default
+   greedy algorithm that frequently leaves a short orphan on the last line.
+   text-wrap: balance distributes words evenly across all lines for the
+   tooltip's natural max-width. Scoped to body > .tooltip so we only target
+   Obsidian's own tooltip element, not arbitrary descendant nodes. */
+body > .tooltip {
+  text-wrap: balance;
 }
 
 .rt-tooltip.rt-visible {

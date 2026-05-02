@@ -81,7 +81,13 @@ function getCapabilities(layout: PandocLayoutTemplate): TemplateCapability[] {
         }
     };
 
-    if (layout.hasSceneOpenerHeadingOptions) add('sceneHeadingMode');
+    // Scene heading controls are exposed when EITHER the layout flag is set
+    // (legacy hand-coded templates) OR the layout's DesignedStyleSpec
+    // declares opener heading modes (spec-driven path). The spec is the
+    // source of truth for designed templates.
+    const specHasOpenerHeadingModes = layout.designedSpec?.scene.openerHeadingModes
+        && layout.designedSpec.scene.openerHeadingModes.length > 0;
+    if (layout.hasSceneOpenerHeadingOptions || specHasOpenerHeadingModes) add('sceneHeadingMode');
     if (layout.hasEpigraphs) add('actEpigraphs');
     if (layout.usesModernClassicStructure) add('modernClassicStructure');
     if (layout.preset === 'novel') add('semanticMatter');

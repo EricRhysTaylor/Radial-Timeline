@@ -96,6 +96,29 @@ const filesToCopy = [
 	// "screenshot.jpeg" // Removed as it should be referenced via absolute URL in README
 ];
 
+// Directories to copy recursively from src/ to each destination. Used for the
+// bundled-fonts tree (and similar asset bundles) where listing every file by
+// name would be brittle as files are added/removed.
+const directoriesToCopy = [
+	"assets/fonts",
+];
+
+function copyDirRecursiveSync(srcDir, destDir) {
+	if (!fs.existsSync(srcDir)) return;
+	if (!fs.existsSync(destDir)) {
+		fs.mkdirSync(destDir, { recursive: true });
+	}
+	for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+		const srcPath = path.join(srcDir, entry.name);
+		const destPath = path.join(destDir, entry.name);
+		if (entry.isDirectory()) {
+			copyDirRecursiveSync(srcPath, destPath);
+		} else if (entry.isFile()) {
+			fs.copyFileSync(srcPath, destPath);
+		}
+	}
+}
+
 	// Function to copy build assets to destination directories
 	async function copyBuildAssets() {
 		try {
@@ -129,6 +152,19 @@ const filesToCopy = [
 			}
 		} else {
 			console.warn(`Warning: styles.css not found at ${stylesSource}`);
+		}
+
+		// --- Copy directories recursively from src/ ---
+		for (const dir of directoriesToCopy) {
+			const sourceDirPath = path.join(sourceDir, "src", dir);
+			const destDirPath = path.join(destDir, dir);
+			if (fs.existsSync(sourceDirPath)) {
+				try {
+					copyDirRecursiveSync(sourceDirPath, destDirPath);
+				} catch (err) {
+					logErrorDetails(`Error copying directory ${dir} to ${dest.name}:`, err);
+				}
+			}
 		}
 
 		// --- Copy individual files from src/ ---

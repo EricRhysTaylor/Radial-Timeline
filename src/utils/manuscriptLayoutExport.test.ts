@@ -55,8 +55,14 @@ describe('getManuscriptLayoutExportBehavior', () => {
             path: 'rt_contemporary_literary.tex',
         });
 
+        // Contemporary's spec says scene.opener = 'dedicated-page' with
+        // headingMode = 'scene-number'; the export pipeline now seeds those
+        // from the spec so the assembler emits \rtSceneOpener{N} per scene
+        // rather than markdown ## headings (which Pandoc would convert to
+        // \section{} and bypass the opener-page macro).
         expect(behavior).toEqual({
-            sceneHeadingRenderMode: 'markdown-h2',
+            sceneHeadingRenderMode: 'latex-section-starred',
+            defaultSceneHeadingMode: 'scene-number',
             suppressChapterMarkers: false,
             suppressPartMarkers: true,
         });

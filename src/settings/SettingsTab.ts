@@ -31,8 +31,10 @@ import {
     cleanupAdvancedTemplate,
     advancedTemplateNeedsCleanup,
     dismissAlert,
+    TEMPLATE_HOTFIX_ALERT_ID,
     type RefactorAlert
 } from './refactorAlerts';
+import { acknowledgeHotfixHistory } from '../utils/pandocBundledLayouts';
 import { DEFAULT_SETTINGS } from './defaults';
 import { getCredential } from '../ai/credentials/credentials';
 import type { AIProviderId } from '../ai/types';
@@ -384,7 +386,16 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             });
             setIcon(dismissBtn, 'x');
             this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
-                dismissAlert(alert.id, this.plugin.settings);
+                if (alert.id === TEMPLATE_HOTFIX_ALERT_ID) {
+                    // Synthetic alert is generated from templateHotfixHistory.
+                    // Acknowledge entries instead of pushing to dismissedAlerts so
+                    // the alert can re-appear after a future hotfix.
+                    this.plugin.settings.templateHotfixHistory = acknowledgeHotfixHistory(
+                        this.plugin.settings.templateHotfixHistory
+                    );
+                } else {
+                    dismissAlert(alert.id, this.plugin.settings);
+                }
                 await this.plugin.saveSettings();
 
                 // Re-render the entire alerts section

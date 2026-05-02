@@ -84,6 +84,14 @@ export type PictogramPageSide = {
     separatorText?: string;
     linesBeforeSeparator?: number;
     linesAfterSeparator?: number;
+    /**
+     * Positioning hint for the special heading on dedicated scene-opener pages.
+     * When 'top', the heading anchors near the top of the page card and body
+     * lines flow below after a clear gap (matching the Standard / Contemporary
+     * generator behavior, where the heading + first body paragraphs share a
+     * page). When omitted, the heading is centered (legacy is-special layout).
+     */
+    headingPosition?: 'top';
 };
 
 export type PictogramSpread = {
@@ -112,6 +120,146 @@ export type LayoutFeatureRow = { label: string; value: string };
 export const LAYOUT_PREVIEW_BODY_LINES = 14;
 
 // ── Feature list data ─────────────────────────────────────────────────
+//
+// Two paths exist:
+//   getLayoutFeaturesFromSpec(spec)   — spec-driven (preferred). Walks a
+//     DesignedStyleSpec and produces description rows that are guaranteed
+//     to track the same source of truth as the .tex generator + pictogram.
+//   getLayoutFeatures(variant)        — variant-keyed legacy fallback for
+//     custom imports that don't carry a spec.
+//
+// Mapping helpers below each turn one spec axis into one human row.
+
+/** Headers row — derived from runningHeader.mode + runningHeader.font. */
+function describeHeaders(spec: DesignedStyleSpec): string {
+    const rh = spec.runningHeader;
+    const sansSuffix = rh.font === 'sans' ? ', sans' : '';
+    switch (rh.mode) {
+        case 'none': return 'No running headers';
+        case 'centered-title': return `Title centered (both pages)${sansSuffix}`;
+        case 'split-author-page-title-page':
+            return rh.letterSpacing && rh.letterSpacing > 0
+                ? 'Centered: Page|Author (even) · Title|Page (odd), letter-spaced caps'
+                : 'Centered: Page|Author (even) · Title|Page (odd)';
+        case 'left-title-right-context':
+            return `Book title (left) · Scene context (right)${sansSuffix}`;
+        default: return 'Running headers';
+    }
+}
+
+/** Folios row — derived from folio.position. */
+function describeFolios(spec: DesignedStyleSpec): string {
+    switch (spec.folio.position) {
+        case 'bottom-center': return 'Bottom center';
+        case 'header': return 'In headers';
+        case 'none': return 'No folios';
+        default: return 'Folios';
+    }
+}
+
+/** Body font row — derived from body.font. */
+function describeFont(spec: DesignedStyleSpec): string {
+    switch (spec.body.font) {
+        case 'sorts-mill-goudy': return 'Sorts Mill Goudy (serif)';
+        case 'latin-modern':     return 'Latin Modern (serif)';
+        case 'eb-garamond':      return 'EB Garamond (serif)';
+        case 'crimson':          return 'Crimson Text (serif)';
+        case 'system-serif':     return 'System serif';
+        default:                 return 'Serif';
+    }
+}
+
+/** Spacing row — derived from body.lineSpacing. */
+function describeSpacing(spec: DesignedStyleSpec): string {
+    const ls = spec.body.lineSpacing;
+    if (Math.abs(ls - 1.5) < 0.001) return '1.5 lines';
+    if (Math.abs(ls - 2.0) < 0.001) return 'Double-spaced';
+    if (Math.abs(ls - 1.0) < 0.001) return 'Single-spaced';
+    return `${ls}×`;
+}
+
+/** Parts row — derived from parts.mode + parts.epigraph. Returns null when off. */
+function describeParts(spec: DesignedStyleSpec): string | null {
+    if (spec.parts.mode === 'off') return null;
+    const numbering = spec.parts.mode === 'roman' ? 'Roman numeral'
+        : spec.parts.mode === 'arabic' ? 'Arabic number'
+        : spec.parts.mode === 'word' ? 'Word'
+        : 'Numbered';
+    const epigraph = spec.parts.epigraph ? ' with optional epigraph' : '';
+    return `Act opener — ${numbering}${epigraph}`;
+}
+
+/** Chapters row — derived from chapters.mode. Returns null when off. */
+function describeChapters(spec: DesignedStyleSpec): string | null {
+    if (spec.chapters.mode === 'off') return null;
+    if (spec.chapters.mode === 'numbered') return 'Numbered chapter pages';
+    if (spec.chapters.mode === 'titled')   return 'Titled chapter pages';
+    if (spec.chapters.mode === 'numbered-titled') return SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE;
+    return 'Chapters';
+}
+
+/** Scenes row — derived from scene.opener + scene.headingMode + scene.firstWordEmphasisOnOpener. */
+function describeScenes(spec: DesignedStyleSpec): string {
+    const sc = spec.scene;
+    if (sc.opener === 'inline-separator') return 'Inline scene separator';
+    if (sc.opener === 'roman-with-rule') return 'Lowercase Roman numeral (i. ii.) with short rule';
+
+    // dedicated-page openers — the heading content depends on headingMode.
+    if (sc.openerHeadingModes && sc.openerHeadingModes.length > 0) {
+        return 'Opener page — bold, suppresses headers';
+    }
+    // Standard / Contemporary dedicated-page openers: the heading sits at the
+    // top of a new page and the body text continues below on the same page.
+    // Phrasing must convey both axes (heading content + body presence) so the
+    // user understands this isn't a heading-only page.
+    const headingDesc = sc.headingMode === 'scene-number' ? 'scene number'
+        : sc.headingMode === 'title-only' ? 'scene title'
+        : 'scene number and title';
+    return `New page — ${headingDesc} above body text`;
+}
+
+/**
+ * Spec-driven feature rows. Use this when a layout carries a DesignedStyleSpec.
+ * Each row is derived by a single mapping helper above so the relationship
+ * between spec axis and human description is auditable.
+ */
+export function getLayoutFeaturesFromSpec(spec: DesignedStyleSpec): LayoutFeatureRow[] {
+    const rows: LayoutFeatureRow[] = [];
+    rows.push({ label: 'Headers', value: describeHeaders(spec) });
+    rows.push({ label: 'Folios',  value: describeFolios(spec) });
+    rows.push({ label: 'Font',    value: describeFont(spec) });
+    rows.push({ label: 'Spacing', value: describeSpacing(spec) });
+
+    const partsRow = describeParts(spec);
+    if (partsRow) rows.push({ label: 'Parts', value: partsRow });
+
+    const chaptersRow = describeChapters(spec);
+    if (chaptersRow) rows.push({ label: 'Chapters', value: chaptersRow });
+
+    rows.push({ label: 'Scenes', value: describeScenes(spec) });
+
+    // Signature Literary's three scene-opener heading modes — each gets its
+    // own row mirroring the pictogram spreads (SCENE #, #+TITLE, TITLE).
+    if (spec.scene.openerHeadingModes && spec.scene.openerHeadingModes.length > 0) {
+        const labelByMode: Record<string, [string, string]> = {
+            'scene-number':       ['Scene #',   'Number only'],
+            'scene-number-title': ['Scene #+T', 'Number + title (in parentheses)'],
+            'title-only':         ['Scene T',   'Title only'],
+        };
+        for (const mode of spec.scene.openerHeadingModes) {
+            const entry = labelByMode[mode];
+            if (entry) rows.push({ label: entry[0], value: entry[1] });
+        }
+    }
+
+    return rows;
+}
+
+/**
+ * Variant-keyed feature rows. Legacy fallback for layouts without a spec
+ * (custom imports, unknown templates). Bundled fiction templates always have
+ * a spec, so prefer getLayoutFeaturesFromSpec for them.
+ */
 export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureRow[] {
     switch (variant) {
         case 'classic':
@@ -245,12 +393,17 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
     }
 
     // Signature's three scene-opener heading modes.
+    // Heading anchors at the top + body lines below: matches the actual PDF
+    // behavior where the scene title sits at the upper portion of the page
+    // and body text flows underneath. Without this, the four body lines
+    // would centre-stack and visually merge with the heading.
     if (spec.scene.openerHeadingModes && spec.scene.openerHeadingModes.length > 0) {
         for (const mode of spec.scene.openerHeadingModes) {
             const page: PictogramPageSide = {
-                bodyLines: 4,
+                bodyLines: 5,
                 suppressHeader: true,
                 suppressFooter: true,
+                headingPosition: 'top',
             };
             let label: string;
             if (mode === 'scene-number') {
@@ -279,6 +432,10 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
                 suppressHeader: spec.scene.suppressHeaderFooterOnOpener,
                 suppressFooter: spec.scene.suppressHeaderFooterOnOpener,
                 specialText: '3',
+                // Heading anchors at the top of the page; body lines flow below
+                // after a clear gap. Mirrors the generator behavior where
+                // \rtSceneOpener emits the title, then \vspace, then body text.
+                headingPosition: 'top',
             },
         };
     } else if (spec.scene.opener === 'roman-with-rule') {
@@ -401,10 +558,11 @@ function getLayoutPictogramRowsByVariant(variant: FictionLayoutVariant): LayoutP
                         sceneMode: 'scene-number',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 4,
+                            bodyLines: 5,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: '3',
+                            headingPosition: 'top',
                         },
                     },
                     {
@@ -412,11 +570,12 @@ function getLayoutPictogramRowsByVariant(variant: FictionLayoutVariant): LayoutP
                         sceneMode: 'scene-number-title',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 4,
+                            bodyLines: 5,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: '3',
                             specialSubtext: '(The Escape)',
+                            headingPosition: 'top',
                         },
                     },
                     {
@@ -424,10 +583,11 @@ function getLayoutPictogramRowsByVariant(variant: FictionLayoutVariant): LayoutP
                         sceneMode: 'title-only',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 4,
+                            bodyLines: 5,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: 'The Escape',
+                            headingPosition: 'top',
                         },
                     },
                 ],
@@ -488,36 +648,122 @@ function getLayoutPictogramRowsByVariant(variant: FictionLayoutVariant): LayoutP
 //
 // Stamps preview-card warning state onto PART/CHAPTER spreads when the
 // underlying data isn't populated for the active book/scene selection.
-//   PART     → fewer than two Acts configured for this book
-//   CHAPTER  → no scene in the current selection has a Chapter field
-// SCENE / BODY (top row) and any sceneMode-bearing spreads are never alerted.
+//   PART     → fewer than two Acts configured for this book; or
+//              part-epigraph feature is configured but no act has a quote
+//   CHAPTER  → no scene in the current selection has a Chapter field; or
+//              titled-chapters feature is configured but no chapter has a title
+//   SCENE    → title-only heading mode is configured but scenes lack titles
+//
+// Each "feature configured" check is gated by what the spread itself
+// advertises (the spread shape carries the feature signals — epigraphText,
+// specialSubtext, sceneMode), so we never warn about features the active
+// template doesn't promise.
+//
+// BODY (top row) is never alerted. The top-row scene spread is alerted only
+// for the title-only-without-titles case (check c).
 export type SpreadValidationContext = {
     actCount: number;
     chapterFieldCount: number;
+    /** # of acts with a non-empty epigraph quote (used by Part-epigraph check). */
+    actEpigraphPopulatedCount?: number;
+    /** # of chapter markers whose chapter title is non-empty. */
+    chapterTitlePopulatedCount?: number;
+    /** Fraction (0..1) of scenes-in-selection that carry a non-empty title. */
+    sceneTitlePopulatedRatio?: number;
 };
 
 const PART_WARNING_TOOLTIP =
     'No Parts will render — fewer than two Acts configured for this book.';
 const CHAPTER_WARNING_TOOLTIP =
     'No chapter pages will render — no scenes have a Chapter field set.';
+const PART_EPIGRAPH_WARNING_TOOLTIP =
+    'Part epigraphs configured but no act has an epigraph quote.';
+const CHAPTER_TITLE_WARNING_TOOLTIP =
+    'Chapter titles configured but no chapter has a title set.';
+const SCENE_TITLE_WARNING_TOOLTIP =
+    'Scene title heading mode configured but scenes have no titles.';
+
+/** Heuristic threshold: if fewer than 5% of selected scenes have titles,
+ *  the title-only heading mode will visibly fail. */
+const SCENE_TITLE_RATIO_FLOOR = 0.05;
 
 export function applySpreadValidation(
     rows: LayoutPictogramRows,
     ctx: SpreadValidationContext,
 ): LayoutPictogramRows {
     const stampedSpecial = rows.special.map((spread): PictogramSpread => {
-        // sceneMode-bearing spreads (Signature scene-heading variants) are never alerted.
-        if (spread.sceneMode) return spread;
-        if (spread.label === 'PART' && ctx.actCount < 2) {
-            return { ...spread, warningLevel: 'warning', warningTooltip: PART_WARNING_TOOLTIP };
+        // sceneMode-bearing spreads (Signature scene-heading variants) only
+        // get the title-only check. The other label-based checks skip them.
+        if (spread.sceneMode) {
+            if (
+                spread.sceneMode === 'title-only'
+                && typeof ctx.sceneTitlePopulatedRatio === 'number'
+                && ctx.sceneTitlePopulatedRatio <= SCENE_TITLE_RATIO_FLOOR
+            ) {
+                return { ...spread, warningLevel: 'warning', warningTooltip: SCENE_TITLE_WARNING_TOOLTIP };
+            }
+            return spread;
         }
-        if (spread.label === 'CHAPTER' && ctx.chapterFieldCount === 0) {
-            return { ...spread, warningLevel: 'warning', warningTooltip: CHAPTER_WARNING_TOOLTIP };
+
+        if (spread.label === 'PART') {
+            if (ctx.actCount < 2) {
+                return { ...spread, warningLevel: 'warning', warningTooltip: PART_WARNING_TOOLTIP };
+            }
+            // Part-epigraph check fires only when the spread itself advertises
+            // the feature (presence of epigraphText) AND the caller has opted
+            // in by supplying `actEpigraphPopulatedCount`. Callers that omit
+            // the field get the historical behavior (no extra warning).
+            const advertisesEpigraph = !!spread.rightPage?.epigraphText || !!spread.leftPage?.epigraphText;
+            if (
+                advertisesEpigraph
+                && typeof ctx.actEpigraphPopulatedCount === 'number'
+                && ctx.actEpigraphPopulatedCount === 0
+            ) {
+                return { ...spread, warningLevel: 'warning', warningTooltip: PART_EPIGRAPH_WARNING_TOOLTIP };
+            }
+            return spread;
         }
+
+        if (spread.label === 'CHAPTER') {
+            if (ctx.chapterFieldCount === 0) {
+                return { ...spread, warningLevel: 'warning', warningTooltip: CHAPTER_WARNING_TOOLTIP };
+            }
+            // Chapter-title check fires only when the spread advertises a
+            // titled chapter (presence of specialSubtext) AND the caller
+            // supplied `chapterTitlePopulatedCount` explicitly.
+            const advertisesTitle = !!spread.rightPage?.specialSubtext || !!spread.leftPage?.specialSubtext;
+            if (
+                advertisesTitle
+                && typeof ctx.chapterTitlePopulatedCount === 'number'
+                && ctx.chapterTitlePopulatedCount === 0
+            ) {
+                return { ...spread, warningLevel: 'warning', warningTooltip: CHAPTER_TITLE_WARNING_TOOLTIP };
+            }
+            return spread;
+        }
+
         return spread;
     });
+
+    // Top-row scene spread: title-only check fires only when the spread is
+    // labeled with a sceneMode of 'title-only'. For top-row SCENE spreads the
+    // Standard / Contemporary specs use 'scene-number' so this never trips
+    // there. The check applies to designed Pro layouts that opt into
+    // title-only at headingMode level (carried via spread.sceneMode).
+    let stampedScene = rows.scene;
+    if (rows.scene && rows.scene.sceneMode === 'title-only') {
+        const ratio = ctx.sceneTitlePopulatedRatio;
+        if (typeof ratio === 'number' && ratio <= SCENE_TITLE_RATIO_FLOOR) {
+            stampedScene = {
+                ...rows.scene,
+                warningLevel: 'warning',
+                warningTooltip: SCENE_TITLE_WARNING_TOOLTIP,
+            };
+        }
+    }
+
     return {
-        scene: rows.scene,
+        scene: stampedScene,
         body: rows.body,
         special: stampedSpecial,
     };
@@ -556,26 +802,45 @@ export function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, s
             body.createDiv({ cls: 'ert-layout-page-line' });
         }
     } else if (side.specialText) {
-        body.addClass('is-special');
-        body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
-        if (side.specialRule) {
-            body.createDiv({ cls: 'ert-layout-page-separator-rule' });
-        }
-        if (side.specialSubtext) {
-            body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
-        }
-        if (side.epigraphText) {
-            body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
-        }
-        if (side.epigraphAttribution) {
-            body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
-        }
-        if (side.bodyLines > 0) {
-            // Render body lines inside the same .is-special div to avoid a
-            // second .ert-layout-page-body inheriting padding-top — that extra
-            // padding visually doubled the first body line.
-            for (let i = 0; i < side.bodyLines; i++) {
-                body.createDiv({ cls: 'ert-layout-page-line' });
+        // headingPosition === 'top' lays out heading then a gap then body
+        // lines below — the dedicated-page scene-opener case (Standard /
+        // Contemporary), where the heading shares a page with body text.
+        // Otherwise we use the centered .is-special layout (PART, CHAPTER,
+        // Signature scene-mode pages — heading owns the whole page).
+        if (side.headingPosition === 'top') {
+            body.addClass('is-heading-top');
+            body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
+            if (side.specialSubtext) {
+                body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
+            }
+            if (side.bodyLines > 0) {
+                const linesWrap = body.createDiv({ cls: 'ert-layout-page-lines-after-heading' });
+                for (let i = 0; i < side.bodyLines; i++) {
+                    linesWrap.createDiv({ cls: 'ert-layout-page-line' });
+                }
+            }
+        } else {
+            body.addClass('is-special');
+            body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
+            if (side.specialRule) {
+                body.createDiv({ cls: 'ert-layout-page-separator-rule' });
+            }
+            if (side.specialSubtext) {
+                body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
+            }
+            if (side.epigraphText) {
+                body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
+            }
+            if (side.epigraphAttribution) {
+                body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
+            }
+            if (side.bodyLines > 0) {
+                // Render body lines inside the same .is-special div to avoid a
+                // second .ert-layout-page-body inheriting padding-top — that extra
+                // padding visually doubled the first body line.
+                for (let i = 0; i < side.bodyLines; i++) {
+                    body.createDiv({ cls: 'ert-layout-page-line' });
+                }
             }
         }
     } else {

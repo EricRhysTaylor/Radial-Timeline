@@ -282,10 +282,13 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(updated).not.toContain('  outer=0.85in');
     });
 
-    it('bundled core templates define section scene openers via the spec generator', async () => {
-        // The assembler emits scene headings as \section* (latex-section-starred
-        // path), so the titlesec hooks must target \section — not \subsection.
+    it('bundled core templates define a \\rtSceneOpener macro driven by the spec generator', async () => {
+        // Contract: the assembler emits \rtSceneOpener{HEADING} for each scene
+        // (latex-section-starred path), so the .tex must define \rtSceneOpener.
         // The first-word-emphasis helper macro and secnumdepth=0 reset still apply.
+        // Old \titleformat{\section} + \preto\section hooks must NOT be present —
+        // they only fired on \section{} (NOT \section*{}, which the assembler
+        // previously emitted), leaving formatting dead.
         for (const layoutId of ['bundled-fiction-classic-manuscript', 'bundled-fiction-contemporary-literary']) {
             const { plugin, layout } = createPluginWithBundledLayout(layoutId);
             const install = await ensureBundledLayoutInstalledForExport(plugin, layout);
@@ -296,14 +299,24 @@ describe('bundled pandoc layout export auto-install', () => {
             const content = await (plugin.app.vault as any).read(file);
             expect(content).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
             expect(content).toContain('\\setcounter{secnumdepth}{0}');
-            expect(content).toContain('\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
-            expect(content).toContain('\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
-            expect(content).toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
+            expect(content).toContain('\\newcommand{\\rtSceneOpener}[1]');
+            expect(content).toContain('\\cleardoublepage');
+            expect(content).toContain('\\thispagestyle{empty}');
+            expect(content).toMatch(/\\rtSceneOpenerTitle\{#1\}/);
+            // Old hooks must not regress — they don't fire on \section*{}.
+            expect(content).not.toMatch(/\\titleformat\{\\section\}\[display\][^\n]*\{[^}]*\}\{0pt\}\{\\rtSceneOpenerTitle\}/);
+            expect(content).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
             if (layoutId === 'bundled-fiction-contemporary-literary') {
                 expect(content).toContain('\\providecommand{\\rtSceneRunningTitle}{}');
                 expect(content).toContain('\\providecommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}');
                 expect(content).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
-                expect(content).toContain('\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}');
+                // Spec-driven chapter spacing now lives inside \rtChapter as
+                // \vspace*{0.46\textheight}; the old \titlespacing*{\chapter}
+                // hook never fired because the assembler emits \rtChapter, not
+                // \chapter. The macro body should contain the textheight-fraction
+                // vspace that drives the deep-page layout.
+                expect(content).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.46\\textheight\}/);
+                expect(content).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.08\\textheight\}/);
             }
         }
     });
@@ -329,11 +342,13 @@ describe('bundled pandoc layout export auto-install', () => {
         const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
         const updated = await (plugin.app.vault as any).read(file);
         expect(updated).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
-        // Scene heading hooks now target \section (matching assembler's \section* output).
-        expect(updated).toContain('\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
-        expect(updated).toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
+        // Contract: defines \rtSceneOpener macro that the assembler invokes.
+        expect(updated).toContain('\\newcommand{\\rtSceneOpener}[1]');
+        // Old hacks (subsection hooks, preto section, titleformat-only) must
+        // be evicted — they only fired on \section{} not \section*{}.
         expect(updated).not.toContain('\\titleformat{\\subsection}');
         expect(updated).not.toContain('\\preto\\subsection');
+        expect(updated).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
     });
 
     it('hotfixes partially updated Standard Manuscript scene opener formatting in existing bundled template files', async () => {
@@ -359,9 +374,9 @@ describe('bundled pandoc layout export auto-install', () => {
         const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
         const updated = await (plugin.app.vault as any).read(file);
         expect(updated).toContain('\\newcommand{\\rtSceneOpenerTitle}[1]');
-        expect(updated).toContain('\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
-        expect(updated).toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
+        expect(updated).toContain('\\newcommand{\\rtSceneOpener}[1]');
         expect(updated).not.toContain('\\titleformat{\\subsection}');
+        expect(updated).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
     });
 
     it('hotfixes legacy Contemporary Literary scene opener formatting in existing bundled template files', async () => {
@@ -386,10 +401,10 @@ describe('bundled pandoc layout export auto-install', () => {
         const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
         const updated = await (plugin.app.vault as any).read(file);
         expect(updated).toContain('\\titleformat{\\chapter}[display]');
-        expect(updated).toContain('\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}');
-        expect(updated).toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
+        expect(updated).toContain('\\newcommand{\\rtSceneOpener}[1]');
         expect(updated).not.toContain('\\titleformat{\\subsection}');
         expect(updated).not.toContain('\\preto\\subsection');
+        expect(updated).not.toContain('\\preto\\section{\\clearpage\\thispagestyle{empty}}');
         expect(updated).toContain('\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}');
     });
 
@@ -643,7 +658,10 @@ describe('bundled pandoc layout export auto-install', () => {
         // Canonical spec-driven content: macros, not literal labels.
         expect(updated).toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}');
         expect(updated).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
-        expect(updated).toContain('\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}');
+        // Spec-driven chapter spacing now lives inside \rtChapter as
+        // \vspace*{0.46\textheight} (the old \titlespacing*{\chapter} hook never
+        // fired — assembler emits \rtChapter, not \chapter).
+        expect(updated).toMatch(/\\newcommand\{\\rtChapter\}[^]*\\vspace\*\{0\.46\\textheight\}/);
         expect(updated).not.toMatch(/\\fancyhead\[LE\]\{[^}]*\bnouppercase\{title\}/);
         expect(updated).not.toMatch(/\\fancyhead\[RO\]\{[^}]*\bnouppercase\{scene\}/);
     });
@@ -683,5 +701,57 @@ describe('bundled pandoc layout export auto-install', () => {
         for (const layout of fictionLayouts) {
             expect(validatePandocLayout(plugin, layout).valid).toBe(true);
         }
+    });
+
+    // Page-numbering hierarchy hotfix: spec-driven .tex files installed before
+    // \rtBeginMainArabic / \ifrtMainStarted were introduced get rewritten to
+    // canonical content on next install pass. Pre-cutover legacy files remain
+    // owned by the older normalizers and are NOT touched here.
+    it('hotfixes spec-driven bundled template files lacking the page-numbering hierarchy', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        // Synthetic spec-driven file (carries the generator header) that
+        // predates the page-numbering hierarchy.
+        const stale = [
+            '% Generated from DesignedStyleSpec v2 — bundled-fiction-classic-manuscript',
+            '\\documentclass{book}',
+            '\\newcommand{\\rtSceneOpener}[1]{\\section*{#1}}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, stale);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toMatch(/\\newcommand\{\\rtBeginMainArabic\}/);
+        expect(updated).toMatch(/\\newif\\ifrtMainStarted/);
+        expect(updated).toMatch(/\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
+    });
+
+    it('does NOT rewrite pre-cutover legacy bundled files (those are repaired by the older normalizers)', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-classic-manuscript');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        // Hand-authored legacy file (no spec-driven header, no rtBeginMainArabic).
+        const legacy = [
+            '% Pandoc LaTeX Template - Standard Manuscript',
+            '\\documentclass{book}',
+            '$body$',
+        ].join('\n');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, legacy);
+
+        await ensureBundledLayoutInstalledForExport(plugin, layout);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        // The page-numbering normalizer is gated to spec-driven files, so
+        // hand-authored legacy stubs are NOT auto-rewritten here.
+        expect(updated).not.toMatch(/\\rtBeginMainArabic/);
     });
 });

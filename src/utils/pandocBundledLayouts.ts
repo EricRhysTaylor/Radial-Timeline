@@ -1,6 +1,6 @@
 import { normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { PandocLayoutTemplate } from '../types';
+import type { HotfixHistoryEntry, PandocLayoutTemplate } from '../types';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { SHARED_CHAPTER_FIELD_PUBLICATION_COPY } from './timelineChapters';
 import { getPandocLayoutSortRank } from '../publishing/templateTiering';
@@ -22,10 +22,37 @@ interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
  */
 const BUNDLED_GENERATED_CACHE = new Map<BundledFictionId, string>();
 
+/**
+ * Absolute filesystem path to the plugin's bundled-fonts root, e.g.
+ * `/Users/foo/Vault/.obsidian/plugins/radial-timeline/assets/fonts`. Set once
+ * at plugin load via `setBundledFontPath`. When present, the generator emits
+ * fontspec `Path=` directives pointing at the bundled `.otf` files so XeLaTeX
+ * never needs system font resolution for fonts the plugin ships with.
+ */
+let MODULE_BUNDLED_FONT_PATH: string | undefined;
+
+export function setBundledFontPath(path: string | undefined): void {
+    if (path === MODULE_BUNDLED_FONT_PATH) return;
+    MODULE_BUNDLED_FONT_PATH = path;
+    BUNDLED_GENERATED_CACHE.clear();
+}
+
+/**
+ * Read-only accessor for the bundled-fonts root resolved at plugin load.
+ * Consumers (font diagnostics) need this to verify that the plugin's bundled
+ * `.ttf` files were actually deployed to disk.
+ */
+export function getBundledFontPath(): string | undefined {
+    return MODULE_BUNDLED_FONT_PATH;
+}
+
 function getGeneratedBundledFictionTex(id: BundledFictionId): string {
     const cached = BUNDLED_GENERATED_CACHE.get(id);
     if (cached !== undefined) return cached;
-    const tex = generateDesignedStyleTex(BUNDLED_FICTION_SPECS[id], { bundledLayoutId: id });
+    const tex = generateDesignedStyleTex(BUNDLED_FICTION_SPECS[id], {
+        bundledLayoutId: id,
+        bundledFontPath: MODULE_BUNDLED_FONT_PATH,
+    });
     BUNDLED_GENERATED_CACHE.set(id, tex);
     return tex;
 }
@@ -153,6 +180,11 @@ const CORE_SCENE_OPENER_HELPER_LINES = [
     '\\makeatother',
 ].join('\n');
 
+// Standard Manuscript scene-opener block. The .tex defines \rtSceneOpener{HEADING}
+// which the assembler now emits directly. The macro owns the page break, chrome
+// suppression, vertical spacing, and centered title typography — replacing the
+// previous \titleformat{\section} + \preto\section hack which only fired on
+// \section{} (NOT \section*{}, which is what the assembler emits).
 const STANDARD_MANUSCRIPT_LEGACY_HEADING_BLOCK = [
     '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
     '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
@@ -161,13 +193,13 @@ const STANDARD_MANUSCRIPT_LEGACY_HEADING_BLOCK = [
 
 const STANDARD_MANUSCRIPT_HEADING_BLOCK = [
     CORE_SCENE_OPENER_HELPER_LINES,
-    // The assembler emits scene headings as \section* (latex-section-starred),
-    // so titlesec hooks target \section to match. Previous versions hooked
-    // \subsection which never fired.
-    '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
-    '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
-    '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
-    '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+    '\\newcommand{\\rtSceneOpener}[1]{%',
+    '  \\cleardoublepage',
+    '  \\thispagestyle{empty}%',
+    '  \\vspace*{0.16\\textheight}%',
+    '  \\begin{center}{\\normalfont\\bfseries\\Large \\rtSceneOpenerTitle{#1}}\\end{center}',
+    '  \\vspace*{0.12\\textheight}%',
+    '}',
 ].join('\n');
 
 const CONTEMPORARY_LITERARY_LEGACY_HEADING_BLOCK = [
@@ -181,12 +213,14 @@ const CONTEMPORARY_LITERARY_HEADING_BLOCK = [
     CORE_SCENE_OPENER_HELPER_LINES,
     '\\titleformat{\\chapter}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
     '\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}',
-    // Scene headings use \section* from the assembler (latex-section-starred).
-    '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
-    '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{\\rtSceneOpenerTitle}',
-    '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
     '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
-    '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+    '\\newcommand{\\rtSceneOpener}[1]{%',
+    '  \\cleardoublepage',
+    '  \\thispagestyle{empty}%',
+    '  \\vspace*{0.16\\textheight}%',
+    '  \\begin{center}{\\normalfont\\bfseries\\Large \\rtSceneOpenerTitle{#1}}\\end{center}',
+    '  \\vspace*{0.12\\textheight}%',
+    '}',
 ].join('\n');
 
 /**
@@ -759,6 +793,78 @@ export async function installBundledPandocLayouts(
     return { installed, alreadyPresent, failed };
 }
 
+/**
+ * Stable IDs for the bundled-template auto-hotfix system. These are recorded
+ * (per layout) into `settings.templateHotfixHistory` whenever a normalize* run
+ * returns `changed: true`, and feed the synthetic 'PDF Templates Updated'
+ * Core notification.
+ */
+export const HOTFIX_ID_LEGACY_SIGNATURE_SPACING = 'signature-spacing-v1';
+export const HOTFIX_ID_SYMMETRIC_MARGINS = 'symmetric-margins-v1';
+export const HOTFIX_ID_SCENE_OPENER_MACRO = 'scene-opener-macro-v1';
+export const HOTFIX_ID_CONTEMPORARY_RUNNING_HEADER = 'contemporary-running-header-v1';
+export const HOTFIX_ID_MODERN_CLASSIC_MACRO_CONTRACT = 'modern-classic-macro-contract-v1';
+export const HOTFIX_ID_PAGE_NUMBERING_HIERARCHY = 'page-numbering-hierarchy-v1';
+
+/**
+ * @deprecated Legacy normalizer that adds the page-numbering hierarchy block to
+ * pre-cutover bundled `.tex` files. Files installed before the hierarchy was
+ * introduced lack `\rtBeginMainArabic` / `\ifrtMainStarted`; this rewrite
+ * regenerates them from the canonical spec-driven content so existing vaults
+ * pick up the arabic-on-first-opener convention without manual deletion.
+ *
+ * TODO: Remove after one release cycle past the page-numbering cutover.
+ */
+function normalizePageNumberingHierarchy(
+    content: string,
+    layoutId: string
+): { content: string; changed: boolean } {
+    if (!FICTION_BUNDLED_IDS.has(layoutId as BundledFictionId)) return { content, changed: false };
+    if (content.includes('\\rtBeginMainArabic')) return { content, changed: false };
+    // Only run on already-spec-driven files (those carry the canonical
+    // generator header). Pre-spec-cutover legacy files are repaired by the
+    // older normalizers above; once those have run the next install pass will
+    // replace them entirely. A spec-driven file that just happens to predate
+    // the page-numbering hierarchy can be safely overwritten with the
+    // current canonical content here.
+    if (!content.includes('% Generated from DesignedStyleSpec')) {
+        return { content, changed: false };
+    }
+    const canonical = getGeneratedBundledFictionTex(layoutId as BundledFictionId);
+    return { content: canonical, changed: canonical !== content };
+}
+
+/**
+ * Append a hotfix-history entry for `(layoutId, hotfixId)` if the pair is not
+ * already present. Existing entries are preserved (their `acknowledged` flag
+ * is intentionally untouched: an unacknowledged entry stays unacknowledged
+ * across re-runs; an acknowledged entry stays acknowledged so we don't
+ * re-surface the synthetic alert for a hotfix the user already saw).
+ */
+export function recordHotfixEvent(
+    history: HotfixHistoryEntry[] | undefined,
+    layoutId: string,
+    hotfixId: string,
+    now: number = Date.now()
+): HotfixHistoryEntry[] {
+    const list = Array.isArray(history) ? [...history] : [];
+    const exists = list.some(entry => entry.layoutId === layoutId && entry.hotfixId === hotfixId);
+    if (exists) return list;
+    list.push({ layoutId, hotfixId, appliedAt: now, acknowledged: false });
+    return list;
+}
+
+/**
+ * Mark every unacknowledged hotfix-history entry as acknowledged. Returns a
+ * new array so callers can detect change and persist.
+ */
+export function acknowledgeHotfixHistory(
+    history: HotfixHistoryEntry[] | undefined
+): HotfixHistoryEntry[] {
+    if (!Array.isArray(history)) return [];
+    return history.map(entry => entry.acknowledged ? entry : { ...entry, acknowledged: true });
+}
+
 export async function ensureBundledLayoutInstalledForExport(
     plugin: RadialTimelinePlugin,
     layout: PandocLayoutTemplate
@@ -788,25 +894,52 @@ export async function ensureBundledLayoutInstalledForExport(
                 const modernClassicNormalized = layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID
                     ? normalizeModernClassicMacroContract(marginsNormalized.content)
                     : contemporaryRunningHeaderNormalized;
+                const pageNumberingNormalized = normalizePageNumberingHierarchy(
+                    modernClassicNormalized.content,
+                    layout.id
+                );
                 if (
-                    modernClassicNormalized.changed
+                    pageNumberingNormalized.changed
+                    || modernClassicNormalized.changed
                     || contemporaryRunningHeaderNormalized.changed
                     || coreSceneOpenersNormalized.changed
                     || marginsNormalized.changed
                     || signatureNormalized.changed
                 ) {
-                    await vault.modify(bundled, modernClassicNormalized.content);
+                    await vault.modify(bundled, pageNumberingNormalized.content);
+
+                    // Record into settings.templateHotfixHistory so the Core
+                    // notifications surface can show a single "PDF Templates
+                    // Updated" alert. Each (layoutId, hotfixId) is deduped.
+                    let history = plugin.settings.templateHotfixHistory ?? [];
+                    if (signatureNormalized.changed) {
+                        history = recordHotfixEvent(history, layout.id, HOTFIX_ID_LEGACY_SIGNATURE_SPACING);
+                    }
                     if (marginsNormalized.changed) {
+                        history = recordHotfixEvent(history, layout.id, HOTFIX_ID_SYMMETRIC_MARGINS);
                         console.info(`[Radial Timeline] Updated bundled ${layout.name} template margins for symmetric export pages.`);
                     }
-                    if (layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID && modernClassicNormalized.changed) {
-                        console.info('[Radial Timeline] Updated bundled Modern Classic template macro contract for export compatibility.');
-                    }
                     if (coreSceneOpenersNormalized.changed) {
+                        history = recordHotfixEvent(history, layout.id, HOTFIX_ID_SCENE_OPENER_MACRO);
                         console.info(`[Radial Timeline] Updated bundled ${layout.name} template scene opener formatting for export compatibility.`);
                     }
                     if (contemporaryRunningHeaderNormalized.changed) {
+                        history = recordHotfixEvent(history, layout.id, HOTFIX_ID_CONTEMPORARY_RUNNING_HEADER);
                         console.info('[Radial Timeline] Updated bundled Contemporary Literary template running headers for scene context.');
+                    }
+                    if (layout.id === BUNDLED_FICTION_MODERN_CLASSIC_ID && modernClassicNormalized.changed) {
+                        history = recordHotfixEvent(history, layout.id, HOTFIX_ID_MODERN_CLASSIC_MACRO_CONTRACT);
+                        console.info('[Radial Timeline] Updated bundled Modern Classic template macro contract for export compatibility.');
+                    }
+                    if (pageNumberingNormalized.changed) {
+                        history = recordHotfixEvent(history, layout.id, HOTFIX_ID_PAGE_NUMBERING_HIERARCHY);
+                        console.info(`[Radial Timeline] Updated bundled ${layout.name} template to use arabic page numbering at the first opener (Part > Chapter > Scene).`);
+                    }
+                    if (history !== plugin.settings.templateHotfixHistory) {
+                        plugin.settings.templateHotfixHistory = history;
+                        if (typeof plugin.saveSettings === 'function') {
+                            try { await plugin.saveSettings(); } catch { /* non-fatal: history will be re-recorded next run */ }
+                        }
                     }
                 }
             } catch {

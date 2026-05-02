@@ -327,6 +327,13 @@ export interface BookProfile {
     layoutOptions?: Record<string, BookLayoutOptions>;
     beatWorkspace?: BeatWorkspaceState;
     recentStructuralMoves?: StructuralMoveHistoryEntry[];
+    /**
+     * User-defined Book Pages preview order. Each entry is a `ResolvedPage.id`
+     * (e.g. `note:Books/X/0.2 Title Page.md` or `bookmeta:copyright`). Applied
+     * via `applyBookPageOrder`. Empty/undefined → canonical order. UI-only at
+     * this stage; the export pipeline does not yet consume this field.
+     */
+    bookPageOrder?: string[];
 }
 
 export interface BookLayoutOptions {
@@ -860,6 +867,20 @@ export interface RadialTimelineSettings {
 
     // Refactor Alerts System
     dismissedAlerts?: string[];
+
+    // Bundled .tex template auto-hotfix history. Each entry records an
+    // (layoutId, hotfixId) pair that ran during plugin load. The synthetic
+    // 'PDF Templates Updated' refactor alert reads from this list — it appears
+    // while any entry has `acknowledged: false` and clears when the user
+    // dismisses the Core notification.
+    templateHotfixHistory?: HotfixHistoryEntry[];
+}
+
+export interface HotfixHistoryEntry {
+    layoutId: string;        // e.g. 'bundled-fiction-classic-manuscript'
+    hotfixId: string;        // e.g. 'scene-opener-macro-v1', 'symmetric-margins-v1'
+    appliedAt: number;       // Date.now() when the normalize* fn returned changed: true
+    acknowledged: boolean;   // user dismissed the synthetic Core notification
 }
 
 export interface ChronologueBackdropMicroRing {

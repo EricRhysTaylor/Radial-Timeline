@@ -245,6 +245,142 @@ describe('applySpreadValidation', () => {
         // Output PART spread carries the warning.
         expect(next.special.find(s => s.label === 'PART')?.warningLevel).toBe('warning');
     });
+
+    // ── Pro-feature mismatch checks ──────────────────────────────────
+    // Each check fires only when the SPREAD itself advertises the feature
+    // (the spread shape encodes whether the spec advertises epigraph /
+    // titled-chapter / title-only-scene). This guarantees we never warn on
+    // templates that don't promise the feature.
+
+    describe('Part-epigraph populated check', () => {
+        it('stamps a warning on PART when the spread advertises epigraph but no act has a quote', () => {
+            // Modern Classic: spec.parts.epigraph === true → spread carries epigraphText
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                actEpigraphPopulatedCount: 0,
+            });
+            const part = findSpread(rows, 'PART');
+            expect(part?.warningLevel).toBe('warning');
+            expect(part?.warningTooltip).toMatch(/epigraph/i);
+        });
+
+        it('does NOT stamp PART when at least one act has an epigraph quote', () => {
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                actEpigraphPopulatedCount: 1,
+            });
+            const part = findSpread(rows, 'PART');
+            expect(part?.warningLevel).toBeUndefined();
+        });
+
+        it('does NOT fire on templates that do not advertise epigraphs', () => {
+            // Standard Manuscript: spec.parts.mode === 'off' → no PART spread at all.
+            const rows = applySpreadValidation(getLayoutPictogramRows('classic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                actEpigraphPopulatedCount: 0,
+            });
+            // No PART spread — nothing to stamp, no warning surfaces.
+            expect(findSpread(rows, 'PART')).toBeUndefined();
+            // And the existing warnings on what IS present are unaffected.
+            expect(rows.body.warningLevel).toBeUndefined();
+        });
+    });
+
+    describe('Chapter-title populated check', () => {
+        it('stamps a warning on CHAPTER when titled-mode advertised but no chapter has a title', () => {
+            // Modern Classic: spec.chapters.mode === 'numbered-titled' → spread has specialSubtext
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,           // markers exist (skips first check)
+                chapterTitlePopulatedCount: 0,  // but none have titles
+            });
+            const chapter = findSpread(rows, 'CHAPTER');
+            expect(chapter?.warningLevel).toBe('warning');
+            expect(chapter?.warningTooltip).toMatch(/title/i);
+        });
+
+        it('does NOT stamp CHAPTER when at least one chapter has a title', () => {
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                chapterTitlePopulatedCount: 2,
+            });
+            const chapter = findSpread(rows, 'CHAPTER');
+            expect(chapter?.warningLevel).toBeUndefined();
+        });
+
+        it('does NOT fire on templates that advertise chapters but not TITLES', () => {
+            // Contemporary Literary: spec.chapters.mode === 'numbered' → CHAPTER
+            // spread renders 'Chapter' with NO specialSubtext. The check is
+            // gated on specialSubtext presence, so this template never warns
+            // about missing chapter titles.
+            const rows = applySpreadValidation(getLayoutPictogramRows('contemporary'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                chapterTitlePopulatedCount: 0,
+            });
+            const chapter = findSpread(rows, 'CHAPTER');
+            expect(chapter?.warningLevel).toBeUndefined();
+        });
+    });
+
+    describe('Scene-title heading-mode check', () => {
+        it('stamps a warning on the title-only sceneMode spread when no scenes have titles', () => {
+            // Signature Literary exposes a 'title-only' scene-mode spread.
+            const rows = applySpreadValidation(getLayoutPictogramRows('signature'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                sceneTitlePopulatedRatio: 0,
+            });
+            const titleOnly = rows.special.find(s => s.sceneMode === 'title-only');
+            expect(titleOnly?.warningLevel).toBe('warning');
+            expect(titleOnly?.warningTooltip).toMatch(/title/i);
+            // Sibling sceneMode spreads (scene-number / scene-number-title) are unaffected.
+            const sceneNumber = rows.special.find(s => s.sceneMode === 'scene-number');
+            expect(sceneNumber?.warningLevel).toBeUndefined();
+        });
+
+        it('does NOT stamp the title-only spread when most scenes have titles', () => {
+            const rows = applySpreadValidation(getLayoutPictogramRows('signature'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                sceneTitlePopulatedRatio: 0.9,
+            });
+            const titleOnly = rows.special.find(s => s.sceneMode === 'title-only');
+            expect(titleOnly?.warningLevel).toBeUndefined();
+        });
+
+        it('does NOT fire on templates without a title-only scene-mode spread', () => {
+            // Modern Classic uses 'roman-with-rule' scene opener — no sceneMode spreads.
+            const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+                actCount: 3,
+                chapterFieldCount: 5,
+                sceneTitlePopulatedRatio: 0,
+            });
+            // No title-only spread to stamp — so no warning surfaces on the
+            // existing PART / CHAPTER spreads from this check (they remain
+            // unaffected by the missing scene titles).
+            const titleOnly = rows.special.find(s => s.sceneMode === 'title-only');
+            expect(titleOnly).toBeUndefined();
+        });
+    });
+
+    it('omitted optional context fields → existing checks still fire, new ones do not', () => {
+        // Backward-compat: callers that don't supply the new fields get the
+        // historical behavior (PART/CHAPTER warnings driven only by act/marker counts).
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), {
+            actCount: 3,
+            chapterFieldCount: 5,
+        });
+        // No new warnings (epigraph/title fields are undefined → checks bail out).
+        const part = findSpread(rows, 'PART');
+        expect(part?.warningLevel).toBeUndefined();
+        const chapter = findSpread(rows, 'CHAPTER');
+        expect(chapter?.warningLevel).toBeUndefined();
+    });
 });
 
 describe('shared variant resolution agrees across consumers', () => {

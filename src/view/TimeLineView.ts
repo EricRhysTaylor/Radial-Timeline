@@ -198,10 +198,11 @@ export class RadialTimelineView extends ItemView {
             });
 
             const manageBtn = document.createElement('button');
-            manageBtn.className = 'rt-book-switcher__manage clickable-icon';
+            manageBtn.className = 'rt-book-switcher__manage ert-timeline-title-action clickable-icon';
             manageBtn.type = 'button';
             manageBtn.setAttribute('aria-label', 'Manage books');
             setIcon(manageBtn, 'settings');
+            applyTooltip(manageBtn, 'Manage books', 'bottom');
             this.registerDomEvent(manageBtn, 'click', () => {
                 if (this.plugin.settingsTab) {
                     this.plugin.settingsTab.setActiveTab('core');
@@ -211,6 +212,30 @@ export class RadialTimelineView extends ItemView {
                     setting.open();
                     setting.openTabById('radial-timeline');
                 }
+            });
+
+            const commandPaletteBtn = document.createElement('button');
+            commandPaletteBtn.className = 'ert-timeline-title-action clickable-icon';
+            commandPaletteBtn.type = 'button';
+            commandPaletteBtn.setAttribute('aria-label', 'Radial Timeline commands');
+            setIcon(commandPaletteBtn, 'command');
+            applyTooltip(commandPaletteBtn, 'Radial Timeline commands', 'bottom');
+            this.registerDomEvent(commandPaletteBtn, 'click', (evt: MouseEvent) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                this.openRadialTimelineCommands();
+            });
+
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'ert-timeline-title-action clickable-icon';
+            exportBtn.type = 'button';
+            exportBtn.setAttribute('aria-label', 'Manuscript export');
+            setIcon(exportBtn, 'printer');
+            applyTooltip(exportBtn, 'Manuscript export', 'bottom');
+            this.registerDomEvent(exportBtn, 'click', (evt: MouseEvent) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                this.plugin.openManuscriptExportModal();
             });
 
             let hideLegendTimer: number | null = null;
@@ -273,6 +298,8 @@ export class RadialTimelineView extends ItemView {
             wrapper.appendChild(legendBtn);
             wrapper.appendChild(legendPanel);
             wrapper.appendChild(select);
+            wrapper.appendChild(commandPaletteBtn);
+            wrapper.appendChild(exportBtn);
             wrapper.appendChild(manageBtn);
 
             if (actionsEl && actionsEl.parentElement) {
@@ -290,6 +317,34 @@ export class RadialTimelineView extends ItemView {
 
         this.updateBookSwitcherOptions();
         this.updateTimelineLegend();
+    }
+
+    private openRadialTimelineCommands(): void {
+        const commandManager = (this.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
+        if (!commandManager?.executeCommandById) {
+            new Notice('Command palette is not available.');
+            return;
+        }
+
+        commandManager.executeCommandById('command-palette:open');
+        this.seedCommandPaletteQuery('Radial Timeline');
+    }
+
+    private seedCommandPaletteQuery(query: string, attempt = 0): void {
+        const input = document.querySelector<HTMLInputElement>('.prompt-input');
+        if (!input) {
+            if (attempt < 8) {
+                window.setTimeout(() => this.seedCommandPaletteQuery(query, attempt + 1), 25);
+                return;
+            }
+            new Notice('Command palette opened, but the search box was not found.');
+            return;
+        }
+
+        input.value = query;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+        input.setSelectionRange(query.length, query.length);
     }
 
     private updateTimelineLegend(): void {

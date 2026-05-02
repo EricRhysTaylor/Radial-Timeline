@@ -12,7 +12,6 @@ import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
 import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
-import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
@@ -23,6 +22,7 @@ import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
+import { resolveBookPages, applyBookPageOrder, ROLE_SIDE, type BookPageRole, type MatterNoteSummary, type ResolvedPage } from '../../utils/bookPagesResolver';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
 import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
@@ -446,13 +446,11 @@ async function maybeRenameTemplateFileForPathChange(
 
 class StarterPublishingSetupModal extends Modal {
     private readonly onConfirm: (confirmed: boolean) => void;
-    private readonly includeScriptExamples: boolean;
     private resolved = false;
 
-    constructor(app: App, onConfirm: (confirmed: boolean) => void, includeScriptExamples: boolean) {
+    constructor(app: App, onConfirm: (confirmed: boolean) => void) {
         super(app);
         this.onConfirm = onConfirm;
-        this.includeScriptExamples = includeScriptExamples;
     }
 
     onOpen(): void {
@@ -487,9 +485,6 @@ class StarterPublishingSetupModal extends Modal {
             'Book page slots connected to Book Details',
             'Core PDF layout files',
         ];
-        if (this.includeScriptExamples) {
-            items.splice(items.length - 1, 0, 'Writing samples (screenplay and podcast)');
-        }
         items.forEach(item => {
             const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
             listItem.setText(item);
@@ -523,9 +518,9 @@ class StarterPublishingSetupModal extends Modal {
     }
 }
 
-async function confirmStarterPublishingSetup(app: App, includeScriptExamples: boolean): Promise<boolean> {
+async function confirmStarterPublishingSetup(app: App): Promise<boolean> {
     return new Promise((resolve) => {
-        new StarterPublishingSetupModal(app, resolve, includeScriptExamples).open();
+        new StarterPublishingSetupModal(app, resolve).open();
     });
 }
 
@@ -898,6 +893,47 @@ function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMat
     };
 }
 
+/**
+ * Sync collector for the Book Pages resolver. Walks markdown files in the
+ * active book's source folder and returns matter note summaries (role +
+ * BodyMode + path + title). Cheap enough for settings render — uses the
+ * same metadata cache as `getActiveBookMatterSummary`.
+ */
+function getActiveBookMatterNoteSummaries(plugin: RadialTimelinePlugin): MatterNoteSummary[] {
+    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
+    if (!sourceFolder) return [];
+    const mappings = getActiveFrontmatterMappings(plugin.settings);
+    const result: MatterNoteSummary[] = [];
+    // Numeric-prefix sort so file order matches authoring intent
+    // (e.g. `0.1 Alpha Readers` < `0.2 Title Page` < `0.10 Foo`).
+    const files = plugin.app.vault.getMarkdownFiles()
+        .filter(file => isPathInFolderScope(file.path, sourceFolder))
+        .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' }));
+    for (const file of files) {
+        const cache = plugin.app.metadataCache.getFileCache(file);
+        const raw = cache?.frontmatter as Record<string, unknown> | undefined;
+        if (!raw) continue;
+        const normalized = normalizeFrontmatterKeys(raw, mappings);
+        const matterClass = normalizeMatterClassValue(normalized.Class);
+        if (!matterClass) continue;
+        // Role may be empty — the resolver will try filename inference, then
+        // surface the note as a custom page if no canonical role matches.
+        const role = typeof normalized.Role === 'string' ? normalized.Role.trim() : '';
+        const bodyMode = typeof normalized.BodyMode === 'string' && normalized.BodyMode.trim().toLowerCase() === 'latex'
+            ? 'latex'
+            : 'plain';
+        const side: 'frontmatter' | 'backmatter' = matterClass === 'backmatter' ? 'backmatter' : 'frontmatter';
+        result.push({
+            role,
+            path: file.path,
+            title: file.basename,
+            bodyMode,
+            side
+        });
+    }
+    return result;
+}
+
 function isConfiguredPandocPathValid(plugin: RadialTimelinePlugin): boolean {
     const candidate = (plugin.settings.pandocPath || '').trim();
     if (!candidate) return false;
@@ -1098,16 +1134,14 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
  * Skips files that already exist. Auto-configures template paths in settings.
  */
 async function generateSampleTemplates(
-    plugin: RadialTimelinePlugin,
-    includeScriptExamples: boolean
+    plugin: RadialTimelinePlugin
 ): Promise<string[]> {
     const vault = plugin.app.vault;
     const baseFolder = resolveManuscriptOutputFolder(plugin);
-    const templatesFolder = normalizePath(`${baseFolder}/Templates`);
     const pandocFolder = getConfiguredPandocFolder(plugin);
     const activeSourceFolderRaw = getActiveBookExportContext(plugin).sourceFolder.trim();
     const activeSourceFolder = activeSourceFolderRaw ? normalizePath(activeSourceFolderRaw) : '';
-    const matterTargetFolder = activeSourceFolder || templatesFolder;
+    const matterTargetFolder = activeSourceFolder || baseFolder;
 
     const ensureFolderPath = async (folderPath: string): Promise<void> => {
         const parts = normalizePath(folderPath).split('/').filter(Boolean);
@@ -1120,8 +1154,7 @@ async function generateSampleTemplates(
         }
     };
 
-    // Ensure folders exist
-    for (const folder of [baseFolder, templatesFolder, pandocFolder, matterTargetFolder]) {
+    for (const folder of [baseFolder, pandocFolder, matterTargetFolder]) {
         const normalized = normalizePath(folder);
         if (!vault.getAbstractFileByPath(normalized)) {
             await ensureFolderPath(normalized);
@@ -1129,167 +1162,6 @@ async function generateSampleTemplates(
     }
 
     const createdFiles: string[] = [];
-
-    // ── Sample Scene Files (using canonical base YAML template) ────────────
-    // Get the canonical base template (single source of truth)
-    const templates = plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
-    const baseTemplate = templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
-
-    // Helper: generate YAML frontmatter from the canonical template, then
-    // patch individual field values that differ per format.
-    const patchYaml = (yaml: string, overrides: Record<string, string>): string => {
-        let result = yaml;
-        for (const [field, value] of Object.entries(overrides)) {
-            // Replace "FieldName:" or "FieldName: <existing>" with "FieldName: <value>"
-            result = result.replace(
-                new RegExp(`^(${field}:).*$`, 'm'),
-                value ? `$1 ${value}` : `$1`
-            );
-        }
-        return result;
-    };
-
-    // Generate canonical YAML for each format, then patch format-specific defaults
-    const screenplayData = {
-        act: 1, when: '2024-01-15', sceneNumber: 1,
-        subplots: ['Main Plot'], character: 'JANE, MIKE', place: ''
-    };
-    const screenplayYaml = patchYaml(
-        generateSceneContent(baseTemplate, screenplayData),
-        {
-            Synopsis: 'Jane meets detective Mike at a coffee shop to discuss the Henderson case.',
-            POV: 'Jane',
-            Runtime: '3:00',
-            Status: 'Working'
-        }
-    );
-
-    const podcastData = {
-        act: 1, when: '2024-01-15', sceneNumber: 1,
-        subplots: ['Main Plot'], character: 'HOST, GUEST', place: ''
-    };
-    const podcastYaml = patchYaml(
-        generateSceneContent(baseTemplate, podcastData),
-        {
-            Synopsis: 'Introduction and interview with Dr. Sarah Chen about AI and creativity.',
-            Runtime: '8:00',
-            Status: 'Working'
-        }
-    );
-
-    // Body text for each format (unchanged — only YAML generation was canonicalized)
-    const screenplayBody = [
-        'INT. COFFEE SHOP - DAY',
-        '',
-        'A bustling downtown coffee shop. Morning rush hour. JANE (30s, determined) sits at a corner table with her laptop open.',
-        '',
-        'MIKE (40s, world-weary detective) enters, scans the room, spots her.',
-        '',
-        '                    MIKE',
-        '          You Jane?',
-        '',
-        '                    JANE',
-        '              (without looking up)',
-        '          Depends who\'s asking.',
-        '',
-        'Mike slides into the seat across from her.',
-        '',
-        '                    MIKE',
-        '          I\'m the guy with answers.',
-        '',
-        '                    JANE',
-        '          Then you\'re exactly who I need.',
-        '',
-        'She closes the laptop, meets his eyes for the first time.',
-        '',
-        '                    JANE (CONT\'D)',
-        '          Tell me about the Henderson case.',
-        '',
-        'Mike\'s expression darkens.',
-        '',
-        '                    MIKE',
-        '          That\'s not a door you want to open.',
-        '',
-        '                    JANE',
-        '              (leaning forward)',
-        '          Try me.',
-        '',
-        'BEAT. Mike glances around, lowers his voice.',
-        '',
-        '                    MIKE',
-        '          Alright. But not here.',
-        '',
-        'He stands, drops a business card on the table.',
-        '',
-        '                    MIKE (CONT\'D)',
-        '          Warehouse district. Pier 9. Tomorrow',
-        '          at midnight.',
-        '',
-        'He walks out. Jane picks up the card, studies it.',
-        '',
-        'FADE OUT.'
-    ].join('\n');
-
-    const podcastBody = [
-        '[SEGMENT: INTRODUCTION - 0:00]',
-        '',
-        'HOST: Welcome back to The Deep Dive, where we explore the stories behind the headlines. I\'m your host, Alex Rivera.',
-        '',
-        '[SFX: Theme music fades]',
-        '',
-        'HOST: Today we\'re talking about the rise of artificial intelligence in creative industries. With me is Dr. Sarah Chen, author of "The Algorithmic Muse."',
-        '',
-        'GUEST: Thanks for having me, Alex.',
-        '',
-        'HOST: So, Sarah, let\'s start with the big question everyone\'s asking — can AI really be creative?',
-        '',
-        'GUEST: That\'s the million-dollar question, isn\'t it? But I think we\'re asking it wrong.',
-        '',
-        'HOST: How so?',
-        '',
-        'GUEST: Instead of asking "can AI be creative," we should ask "what kind of creativity are we talking about?"',
-        '',
-        '[TIMING: 2:30]',
-        '',
-        '[SEGMENT: MAIN DISCUSSION - 2:30]',
-        '',
-        'HOST: Walk us through that distinction.',
-        '',
-        'GUEST: Well, there\'s creativity as originality — making something genuinely new. And then there\'s creativity as craft — executing an idea with skill. AI excels at the second, but the first? That\'s still very much a human domain.',
-        '',
-        'HOST: Give us an example.',
-        '',
-        'GUEST: An AI can generate a sonnet in seconds. Technically perfect. But ask it to capture the feeling of watching your child leave for college? That emotional truth — that\'s where humans still reign supreme.',
-        '',
-        '[TIMING: 5:00]',
-        '',
-        '[SEGMENT: CLOSING - 5:00]',
-        '',
-        'HOST: We\'re almost out of time, but I have to ask — what keeps you up at night about AI and creativity?',
-        '',
-        'GUEST: That we\'ll mistake efficiency for artistry. That we\'ll prioritize the quick over the meaningful.',
-        '',
-        'HOST: A perfect note to end on. Dr. Sarah Chen, thank you.',
-        '',
-        'GUEST: Thank you, Alex.',
-        '',
-        '[SFX: Theme music]',
-        '',
-        'HOST: That\'s it for this episode. Join us next week when we explore the ethics of synthetic media. Until then, keep diving deep.',
-        '',
-        '[END]'
-    ].join('\n');
-
-    const sampleScenes: { name: string; content: string }[] = [
-        {
-            name: 'Sample Screenplay Scene.md',
-            content: `---\n${screenplayYaml}\n---\n\n${screenplayBody}`
-        },
-        {
-            name: 'Sample Podcast Scene.md',
-            content: `---\n${podcastYaml}\n---\n\n${podcastBody}`
-        }
-    ];
 
     const currentYear = new Date().getFullYear();
     const bookMetaSample = {
@@ -1426,15 +1298,6 @@ async function generateSampleTemplates(
     ];
 
     // Create all files (skip existing)
-    if (includeScriptExamples) {
-        for (const scene of sampleScenes) {
-            const filePath = normalizePath(`${templatesFolder}/${scene.name}`);
-            if (!vault.getAbstractFileByPath(filePath)) {
-                await vault.create(filePath, scene.content);
-                createdFiles.push(scene.name);
-            }
-        }
-    }
 
     const bookMetaPath = normalizePath(`${matterTargetFolder}/${bookMetaSample.name}`);
     if (!vault.getAbstractFileByPath(bookMetaPath)) {
@@ -2568,7 +2431,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         });
     });
 
-    const includeScriptExamples = false;
     let setupInFlight = false;
     let setupButtonComponent: ButtonComponent | null = null;
     let exportOptionsButtonComponent: ButtonComponent | null = null;
@@ -2612,12 +2474,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             }
 
             // ── Phase 2: Starter publishing setup ─────────────────────────
-            const confirmed = await confirmStarterPublishingSetup(plugin.app, includeScriptExamples);
+            const confirmed = await confirmStarterPublishingSetup(plugin.app);
             if (!confirmed) return;
-            const created = await generateSampleTemplates(plugin, includeScriptExamples);
-            const scriptTargetLabel = `${resolveManuscriptOutputFolder(plugin)}/Templates`;
+            const created = await generateSampleTemplates(plugin);
             const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
-            const matterTargetLabel = sourceFolder || scriptTargetLabel;
+            const matterTargetLabel = sourceFolder || resolveManuscriptOutputFolder(plugin);
             if (created.length > 0) {
                 new Notice(`Publishing configured. Created ${created.length} starter setup files. Book Details + page slots → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
             } else {
@@ -2653,6 +2514,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const meta = activeBookMetaPreviewOverride ?? activeBookMetaStatus.bookMeta ?? null;
         const sourcePath = (activeBookMetaEditSourcePath || meta?.sourcePath || activeBookMetaStatus.path || '').trim();
         const hasSourcePath = sourcePath.length > 0;
+        // Roles overridden by physical notes — used to dim BookMeta rows + show "Overridden by custom page".
+        const matterNotes = getActiveBookMatterNoteSummaries(plugin);
+        const overriddenRoles = new Set<BookPageRole>(
+            matterNotes
+                .map(note => note.role.trim().toLowerCase())
+                .filter((role): role is BookPageRole => Object.prototype.hasOwnProperty.call(ROLE_SIDE, role))
+        );
         const openOrCreateBookMetaNote = async () => {
             if (hasSourcePath) {
                 void plugin.app.workspace.openLinkText(sourcePath, '', false);
@@ -3058,6 +2926,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             caption: string;
             guidance: string;
             tone?: 'quote' | 'attribution';
+            /** Canonical role this BookMeta field maps to. Used to detect note overrides. */
+            role?: BookPageRole;
         };
 
         const renderMatterBookMetaSection = (
@@ -3145,15 +3015,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 return;
             }
 
-            panel.createDiv({ cls: 'ert-bookmeta-module-divider' });
-            panel.createDiv({
-                cls: 'ert-bookmeta-module-note',
-                text: 'Used only by matter notes with a Role and UseBookMeta: true. Existing LaTeX notes keep their page content.'
-            });
             const list = panel.createDiv({ cls: 'ert-bookmeta-matter-list' });
             fields.forEach(fieldDef => {
                 const hasValue = !!normalizeValue(fieldDef.value);
-                const row = list.createDiv({ cls: `ert-bookmeta-matter-row${fieldDef.tone ? ` ert-bookmeta-matter-row--${fieldDef.tone}` : ''}` });
+                const isOverridden = !!fieldDef.role && overriddenRoles.has(fieldDef.role);
+                const overrideClass = isOverridden ? ' is-overridden' : '';
+                const row = list.createDiv({ cls: `ert-bookmeta-matter-row${fieldDef.tone ? ` ert-bookmeta-matter-row--${fieldDef.tone}` : ''}${overrideClass}` });
+                if (isOverridden) {
+                    row.style.opacity = '0.6'; // SAFE: calm awareness, not alarm — no red, no strikethrough
+                }
                 const textCol = row.createDiv({ cls: `ert-bookmeta-matter-field${fieldDef.tone ? ` ert-bookmeta-matter-field--${fieldDef.tone}` : ''}` });
                 renderBookMetaValue(
                     textCol,
@@ -3169,6 +3039,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     cls: 'ert-bookmeta-matter-state',
                     text: hasValue ? 'BookMeta value set' : 'No BookMeta value'
                 });
+                if (isOverridden) {
+                    textCol.createDiv({
+                        cls: 'ert-bookmeta-matter-state',
+                        text: 'Overridden by custom page'
+                    });
+                }
                 const metaRow = textCol.createDiv({ cls: 'ert-bookmeta-matter-meta-row' });
                 metaRow.createDiv({ cls: 'ert-bookmeta-matter-role', text: fieldDef.pageLabel.toUpperCase() });
                 const previewCol = row.createDiv({ cls: 'ert-bookmeta-matter-preview-cell' });
@@ -3193,7 +3069,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             });
         };
 
-        renderMatterBookMetaSection('frontmatter', 'Frontmatter', 'Optional pages that appear before the manuscript body.', [
+        renderMatterBookMetaSection('frontmatter', 'Frontmatter', 'Define standard pages for your book.', [
             {
                 field: 'title-page-note',
                 label: 'Title page note',
@@ -3203,6 +3079,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 kind: 'title',
                 caption: 'Centered title page',
                 guidance: 'Optional note beneath the title page block.',
+                role: 'title-page',
             },
             {
                 field: 'dedication',
@@ -3213,6 +3090,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 kind: 'dedication',
                 caption: 'Centered one-third down',
                 guidance: 'A brief dedication, usually sparse and centered.',
+                role: 'dedication',
             },
             {
                 field: 'epigraph-quote',
@@ -3224,6 +3102,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 caption: 'Centered quote block',
                 guidance: 'A short quoted passage before the manuscript.',
                 tone: 'quote',
+                role: 'epigraph',
             },
             {
                 field: 'epigraph-attribution',
@@ -3235,10 +3114,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 caption: 'Right-aligned attribution',
                 guidance: 'The author, source, or context for the epigraph.',
                 tone: 'attribution',
+                role: 'epigraph',
             },
         ]);
 
-        renderMatterBookMetaSection('backmatter', 'Backmatter', 'Optional prose pages after the manuscript body.', [
+        renderMatterBookMetaSection('backmatter', 'Backmatter', 'Define standard pages for your book.', [
             {
                 field: 'acknowledgments',
                 label: 'Acknowledgments',
@@ -3248,6 +3128,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 kind: 'prose',
                 caption: 'Heading + prose',
                 guidance: 'Thanks to readers, editors, supporters, or contributors.',
+                role: 'acknowledgments',
             },
             {
                 field: 'about-author',
@@ -3258,6 +3139,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 kind: 'prose',
                 caption: 'Bio paragraph',
                 guidance: 'A short author bio for the final pages.',
+                role: 'about-author',
             },
             {
                 field: 'author-note',
@@ -3268,6 +3150,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 kind: 'prose',
                 caption: 'Heading + prose',
                 guidance: 'A closing note to readers after the manuscript.',
+                role: 'author-note',
             },
             {
                 field: 'other-works',
@@ -3278,6 +3161,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 kind: 'list',
                 caption: 'Heading + list',
                 guidance: 'Related titles, series entries, or selected works.',
+                role: 'other-works',
             },
         ]);
 
@@ -3325,7 +3209,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     publishingSetupPanel.style.order = '20';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
         .setName('Book Pages')
-        .setDesc('Review the pages before and after the manuscript.')
+        .setDesc('Review and reorder the pages that will be included in your manuscript.')
         .setHeading();
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
@@ -3465,6 +3349,18 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     matterPreviewHeader.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Book Pages preview' });
     const matterPreviewBody = matterPreviewFrame.createDiv({ cls: 'ert-matter-preview-body' });
     const formatRoleLabel = (role: string): string => role.replace(/[_-]+/g, ' ').trim();
+
+    /**
+     * Persist a new Book Pages preview order on the active book.
+     * Saves an array of `ResolvedPage.id` values; UI reorder only at this stage.
+     */
+    const persistBookPageOrder = async (orderedIds: string[]): Promise<void> => {
+        const activeBook = getActiveBook(plugin.settings);
+        if (!activeBook) return;
+        activeBook.bookPageOrder = orderedIds.slice();
+        await plugin.saveSettings();
+    };
+
     const renderMatterPreview = async () => {
         matterPreviewBody.empty();
         try {
@@ -3472,7 +3368,18 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const validationSnapshot = getPublishingValidationSnapshot(plugin);
             const bookMetaAvailable = !!activeBookMetaStatus.bookMeta;
             const preview = await getMatterPreviewSummary(plugin);
-            if (preview.front.length === 0 && preview.back.length === 0) {
+            const matterNotes = getActiveBookMatterNoteSummaries(plugin);
+            const resolvedCanonical = resolveBookPages(
+                activeBookMetaStatus.bookMeta || undefined,
+                matterNotes
+            );
+            const activeBook = getActiveBook(plugin.settings);
+            const resolvedPages = applyBookPageOrder(resolvedCanonical, activeBook?.bookPageOrder);
+
+            // Visibility is governed solely by the resolver's output: it IS the
+            // final list. Zero pages = nothing to show, regardless of what the
+            // matter-note walk or BookMeta hero would surface in their own panels.
+            if (resolvedPages.length === 0) {
                 const empty = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-empty' });
                 empty.createDiv({ cls: 'ert-matter-preview-empty-title', text: 'No Book Pages found yet' });
                 empty.createDiv({
@@ -3493,6 +3400,14 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 return;
             }
 
+            // Build a quick lookup from note path → MatterPreviewItem so we can
+            // hydrate readiness/link metadata for note-backed rows.
+            const previewByPath = new Map<string, MatterPreviewItem>();
+            for (const item of [...preview.front, ...preview.back]) {
+                previewByPath.set(item.file.path, item);
+            }
+
+            // Aggregate readiness across all preview items (unchanged from prior behavior).
             const allItems = [...preview.front, ...preview.back];
             const descriptors = allItems.map(item => {
                 const issueCodes = validationSnapshot.matterIssues
@@ -3508,64 +3423,171 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     })
                 };
             });
-            const overallDescriptor = descriptors.reduce((winner, entry) => {
-                const rank: Record<string, number> = {
-                    Ready: 0,
-                    'Uses page content': 1,
-                    'Excluded by layout': 2,
-                    'Needs repair': 3,
-                    'Needs metadata': 4
-                };
-                return rank[entry.descriptor.label] > rank[winner.label] ? entry.descriptor : winner;
-            }, descriptors[0].descriptor);
-            const statusRow = matterPreviewBody.createDiv({ cls: `ert-bookmeta-status is-${overallDescriptor.tone === 'error' ? 'missing' : overallDescriptor.tone === 'warning' ? 'warning' : 'found'}` });
-            const statusIcon = statusRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
-            setIcon(statusIcon, overallDescriptor.tone === 'error' ? 'alert-circle' : overallDescriptor.tone === 'warning' ? 'alert-triangle' : 'check-circle-2');
-            statusRow.createSpan({ text: `${overallDescriptor.label}: ${overallDescriptor.detail}` });
+            if (descriptors.length > 0) {
+                const overallDescriptor = descriptors.reduce((winner, entry) => {
+                    const rank: Record<string, number> = {
+                        Ready: 0,
+                        'Uses page content': 1,
+                        'Excluded by layout': 2,
+                        'Needs repair': 3,
+                        'Needs metadata': 4
+                    };
+                    return rank[entry.descriptor.label] > rank[winner.label] ? entry.descriptor : winner;
+                }, descriptors[0].descriptor);
+                const statusRow = matterPreviewBody.createDiv({ cls: `ert-bookmeta-status is-${overallDescriptor.tone === 'error' ? 'missing' : overallDescriptor.tone === 'warning' ? 'warning' : 'found'}` });
+                const statusIcon = statusRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
+                setIcon(statusIcon, overallDescriptor.tone === 'error' ? 'alert-circle' : overallDescriptor.tone === 'warning' ? 'alert-triangle' : 'check-circle-2');
+                statusRow.createSpan({ text: `${overallDescriptor.label}: ${overallDescriptor.detail}` });
+            }
 
             const list = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-list' });
+
+            // Drag-reorder state. The list is a single flat array (resolver order
+            // with the user's saved override applied); the "Manuscript" divider is
+            // a visual cue between frontmatter and backmatter, NOT a separate list.
+            const dragState: { fromId: string | null; sourceRow: HTMLElement | null } = {
+                fromId: null,
+                sourceRow: null
+            };
+            const clearDragState = () => {
+                list.querySelectorAll('.ert-matter-preview-row.is-dragover').forEach(el => el.removeClass('is-dragover'));
+                dragState.sourceRow?.removeClass('is-dragging');
+                dragState.sourceRow = null;
+                dragState.fromId = null;
+            };
+
+            const reorderTo = async (fromId: string, toId: string) => {
+                if (fromId === toId) return;
+                const ids = resolvedPages.map(p => p.id);
+                const fromIdx = ids.indexOf(fromId);
+                const toIdx = ids.indexOf(toId);
+                if (fromIdx < 0 || toIdx < 0) return;
+                const [moved] = ids.splice(fromIdx, 1);
+                ids.splice(toIdx, 0, moved);
+                await persistBookPageOrder(ids);
+                await renderMatterPreview();
+            };
+
             let rowIndex = 0;
-            const renderMatterRows = (items: MatterPreviewItem[]) => {
-                items.forEach(item => {
-                    const issueCodes = validationSnapshot.matterIssues
-                        .filter(issue => issue.field === item.role || issue.field === item.file.path)
-                        .map(issue => issue.code);
-                    const readiness = describeMatterReadiness({
-                        role: item.role,
-                        usesBookMeta: item.usesBookMeta,
-                        bookMetaAvailable,
-                        issueCodes
-                    });
-                    const row = list.createDiv({ cls: 'ert-matter-preview-row' });
-                    row.toggleClass('is-alt', rowIndex % 2 === 1);
-                    rowIndex += 1;
+            let lastSide: 'frontmatter' | 'backmatter' | null = null;
+
+            const renderRow = (page: ResolvedPage) => {
+                // Visual separator between frontmatter and backmatter.
+                if (lastSide && lastSide !== page.side) {
+                    list.createDiv({ cls: 'ert-matter-preview-divider', text: 'Manuscript' });
+                }
+                lastSide = page.side;
+
+                const row = list.createDiv({ cls: 'ert-matter-preview-row' });
+                row.toggleClass('is-alt', rowIndex % 2 === 1);
+                rowIndex += 1;
+                row.draggable = true;
+                row.dataset.pageId = page.id;
+
+                // Drag handle (visual affordance — entire row is draggable).
+                const handle = row.createDiv({ cls: 'ert-drag-handle ert-matter-preview-handle' });
+                setIcon(handle, 'grip-vertical');
+                handle.setAttr('aria-label', 'Drag to reorder');
+
+                if (page.source === 'note' && page.path) {
+                    const item = previewByPath.get(page.path);
                     const titleLink = row.createEl('a', {
                         cls: 'ert-matter-preview-link',
-                        text: item.file.basename,
-                        attr: { href: '#', title: item.file.path }
+                        text: page.title,
+                        attr: { href: '#', title: page.path }
                     });
                     titleLink.addEventListener('click', (evt: MouseEvent) => {
                         evt.preventDefault();
-                        void plugin.app.workspace.openLinkText(item.file.path, '', false);
+                        if (page.path) void plugin.app.workspace.openLinkText(page.path, '', false);
                     });
 
+                    // NOTE pill omitted intentionally: every row in the Book
+                    // Pages preview that's note-sourced is already implied by
+                    // the body-mode badge (LATEX / PLAIN) and the role badge.
+                    // BookMeta-sourced rows still get an explicit BOOKMETA pill
+                    // because that source is the meaningful distinction.
                     const badges = row.createDiv({ cls: 'ert-matter-preview-badges' });
-                    badges.createSpan({ cls: `ert-matter-preview-badge ert-matter-preview-badge--${item.modeTone}`, text: item.modeLabel });
-                    const readinessBadge = badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--state', text: readiness.label });
-                    readinessBadge.setAttr('title', readiness.detail);
-                    const role = (item.role || '').trim();
-                    if (role) {
+                    const modeTone = page.bodyMode === 'latex' ? 'latex' : 'plain';
+                    badges.createSpan({
+                        cls: `ert-matter-preview-badge ert-matter-preview-badge--${modeTone}`,
+                        text: modeTone === 'latex' ? 'LATEX' : 'PLAIN'
+                    });
+
+                    if (item) {
+                        const issueCodes = validationSnapshot.matterIssues
+                            .filter(issue => issue.field === item.role || issue.field === item.file.path)
+                            .map(issue => issue.code);
+                        const readiness = describeMatterReadiness({
+                            role: item.role,
+                            usesBookMeta: item.usesBookMeta,
+                            bookMetaAvailable,
+                            issueCodes
+                        });
+                        const readinessBadge = badges.createSpan({
+                            cls: 'ert-matter-preview-badge ert-matter-preview-badge--state',
+                            text: readiness.label
+                        });
+                        readinessBadge.setAttr('title', readiness.detail);
+                    }
+
+                    if (page.role) {
                         badges.createSpan({
                             cls: 'ert-matter-preview-badge ert-matter-preview-badge--role',
-                            text: formatRoleLabel(role)
+                            text: formatRoleLabel(page.role)
                         });
                     }
+                    // Custom note (page.role === null): no role badge — the
+                    // NOTE · <BodyMode> badges already identify it.
+                } else {
+                    // BookMeta-generated row.
+                    row.createSpan({ cls: 'ert-matter-preview-link', text: page.title });
+                    const badges = row.createDiv({ cls: 'ert-matter-preview-badges' });
+                    badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--source', text: 'BOOKMETA' });
+                    badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--state', text: 'GENERATED' });
+                    if (page.role) {
+                        badges.createSpan({
+                            cls: 'ert-matter-preview-badge ert-matter-preview-badge--role',
+                            text: formatRoleLabel(page.role)
+                        });
+                    }
+                }
+
+                plugin.registerDomEvent(row, 'dragstart', (e: DragEvent) => {
+                    dragState.fromId = page.id;
+                    dragState.sourceRow = row;
+                    row.addClass('is-dragging');
+                    if (e.dataTransfer) {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', page.id);
+                    }
+                });
+                plugin.registerDomEvent(row, 'dragend', () => {
+                    clearDragState();
+                });
+                plugin.registerDomEvent(row, 'dragenter', (e: DragEvent) => {
+                    if (!dragState.fromId || dragState.fromId === page.id) return;
+                    e.preventDefault();
+                    row.addClass('is-dragover');
+                });
+                plugin.registerDomEvent(row, 'dragover', (e: DragEvent) => {
+                    if (!dragState.fromId || dragState.fromId === page.id) return;
+                    e.preventDefault();
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                    row.addClass('is-dragover');
+                });
+                plugin.registerDomEvent(row, 'dragleave', () => {
+                    row.removeClass('is-dragover');
+                });
+                plugin.registerDomEvent(row, 'drop', (e: DragEvent) => {
+                    e.preventDefault();
+                    const fromId = dragState.fromId || e.dataTransfer?.getData('text/plain') || '';
+                    clearDragState();
+                    if (!fromId || fromId === page.id) return;
+                    void reorderTo(fromId, page.id);
                 });
             };
 
-            renderMatterRows(preview.front);
-            list.createDiv({ cls: 'ert-matter-preview-divider', text: 'Manuscript' });
-            renderMatterRows(preview.back);
+            for (const page of resolvedPages) renderRow(page);
         } catch (e) {
             const message = (e as Error).message || String(e);
             matterPreviewBody.createDiv({ cls: 'ert-matter-preview-empty-line', text: `Matter preview unavailable: ${message}` });

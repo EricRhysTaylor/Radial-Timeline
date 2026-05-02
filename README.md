@@ -134,6 +134,14 @@ If you're experiencing visual quality issues on Windows, please check your displ
 *   [W3C SVG specification](https://www.w3.org/Graphics/SVG/) — for making vector graphics on the web dependable.
 *   **04 Font** by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/) このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
 
+### Bundled fonts (PDF export)
+
+The plugin ships a small set of fonts so PDF export "just works" without manual font installation. Each font travels with its original license file in `assets/fonts/<font-name>/`.
+
+*   **Sorts Mill Goudy** by Barry Schwartz — used by the Standard Manuscript, Contemporary Literary, and Signature Literary PDF templates. Licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). Source: [Google Fonts](https://fonts.google.com/specimen/Sorts+Mill+Goudy).
+
+The Modern Classic template uses **Latin Modern Roman**, which ships with every TeX distribution (MacTeX/TeXLive) and is loaded via the `lmodern` package — no install required.
+
 ---
 
 ## Feedback and support

@@ -6,7 +6,7 @@ import * as path from 'path'; // SAFE: Node path needed to build absolute paths 
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode, type ManuscriptSceneHeadingMode } from '../utils/manuscript';
 import { t } from '../i18n';
-import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
+import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics, getStructuredFontDiagnostic } from '../utils/exportFormats';
 import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, getActiveBookSourceFolder, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
@@ -30,6 +30,7 @@ import {
     type FictionLayoutVariant,
     type SpreadValidationContext,
 } from '../publishing/layoutVisuals';
+import { buildSpreadValidationContext, collectSpreadWarningTooltips } from '../publishing/spreadValidationContext';
 import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
 import type {
     BookPublishingPreferences,
@@ -1885,6 +1886,9 @@ export class ManuscriptOptionsModal extends Modal {
             const ctx: SpreadValidationContext = {
                 actCount: this.getSelectedActCount(),
                 chapterFieldCount: this.getSelectedChapterMarkerCount(),
+                actEpigraphPopulatedCount: this.getActEpigraphPopulatedCount(sourceLayout),
+                chapterTitlePopulatedCount: this.getSelectedChapterTitlePopulatedCount(),
+                sceneTitlePopulatedRatio: this.getSelectedSceneTitlePopulatedRatio(),
             };
             renderModalLayoutPreview(desc, variant, this.resolveActiveSceneHeadingMode(sourceLayout), ctx, sourceLayout);
         }
@@ -2089,6 +2093,11 @@ export class ManuscriptOptionsModal extends Modal {
         const engineSelection = getAutoPdfEngineSelection(templatePath);
         const fontDiagnostics = getTemplateFontDiagnostics(templatePath);
         const canVerifyFonts = fontDiagnostics.canVerifySystemFonts;
+        // Structured, spec-driven diagnostic. When the layout carries a spec
+        // (bundled fiction or `origin === 'designed'`) this is the
+        // authoritative font-state summary — it correctly handles the Latin
+        // Modern (lmodern) and bundled-Sorts-Mill-Goudy special cases.
+        const structuredFontDiag = getStructuredFontDiagnostic(selectedLayout);
         const primaryRequested = fontDiagnostics.optionalFonts[0] || fontDiagnostics.requiredFonts[0] || null;
         const hasPrimaryMissing = canVerifyFonts && primaryRequested
             ? fontDiagnostics.missingOptionalFonts.includes(primaryRequested) || fontDiagnostics.missingRequiredFonts.includes(primaryRequested)
@@ -2096,7 +2105,11 @@ export class ManuscriptOptionsModal extends Modal {
         const fallbackFont = canVerifyFonts
             ? fontDiagnostics.requiredFonts.find(font => !fontDiagnostics.missingRequiredFonts.includes(font)) || null
             : null;
-        const hasFontRisk = canVerifyFonts && (fontDiagnostics.missingRequiredFonts.length > 0 || hasPrimaryMissing);
+        // Spec-driven `state !== 'ok'` is preferred when present — it knows
+        // about lmodern (Latin Modern → always ok) and bundled assets. Fall
+        // back to the legacy probe for layouts without a spec.
+        const hasFontRisk = structuredFontDiag.state !== 'ok'
+            || (canVerifyFonts && (fontDiagnostics.missingRequiredFonts.length > 0 || hasPrimaryMissing));
 
         // ── Build user-facing summary ────────────────────────────────
         const resolvedFont = this.buildFontDisplayName(primaryRequested, canVerifyFonts, hasPrimaryMissing, fallbackFont);
@@ -2184,8 +2197,41 @@ export class ManuscriptOptionsModal extends Modal {
                 text: firstError?.message || 'Template compatibility check failed.'
             });
         } else if (hasFontRisk) {
-            // Font issue — show actionable message
-            if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
+            // Prefer the structured (spec-driven) diagnostic — it correctly
+            // models 'fallback' vs 'missing-bundled' and carries an install
+            // hint with a URL where applicable.
+            if (structuredFontDiag.state !== 'ok') {
+                const line = content.createDiv({ cls: 'ert-pdf-output-line' });
+                if (structuredFontDiag.state === 'missing-bundled') {
+                    // Build asset missing — should never happen in normal use,
+                    // so the affordance is "reinstall plugin", not a download.
+                    line.appendText(
+                        structuredFontDiag.installHint?.message || 'Plugin asset missing — reinstall plugin.'
+                    );
+                } else {
+                    // 'fallback' — render the legacy "Using X — install Y"
+                    // sentence, with an inline link when the install hint
+                    // carries a URL (Google Fonts).
+                    const fallbackName = structuredFontDiag.resolvedFontName;
+                    const primaryName = structuredFontDiag.primaryFontName;
+                    if (fallbackName && fallbackName !== primaryName) {
+                        line.appendText(`Font: Using ${fallbackName} — install ${primaryName} for the intended look. `);
+                    } else {
+                        line.appendText(`Font: ${primaryName} is not installed. Install it before exporting. `);
+                    }
+                    if (structuredFontDiag.installHint?.url) {
+                        const a = line.createEl('a', {
+                            cls: 'ert-link-accent',
+                            text: 'Open Google Fonts',
+                        });
+                        a.setAttribute('href', structuredFontDiag.installHint.url);
+                        a.setAttribute('target', '_blank');
+                        a.setAttribute('rel', 'noopener');
+                    }
+                }
+            } else if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
+                // Legacy fallback path — layout has no spec, so we lean on
+                // the template-scan diagnostic for the message text.
                 content.createDiv({
                     cls: 'ert-pdf-output-line',
                     text: `Font: Using ${fallbackFont} — install ${primaryRequested} for the intended look.`
@@ -2416,6 +2462,55 @@ Sarah stood at the window, watching the world wake up.`;
             count += Array.isArray(markers) ? markers.length : 0;
         }
         return count;
+    }
+
+    /**
+     * Count of chapter markers in the current selection whose `title` is a
+     * non-empty string. Drives the "Chapter titles configured but no chapter
+     * has a title" warning on the CHAPTER spread for titled-mode templates.
+     */
+    private getSelectedChapterTitlePopulatedCount(): number {
+        const selected = new Set(this.getSelectedScenePaths());
+        if (selected.size === 0) return 0;
+        let count = 0;
+        for (const [scenePath, markers] of Object.entries(this.chapterMarkersByScenePath)) {
+            if (!selected.has(scenePath)) continue;
+            if (!Array.isArray(markers)) continue;
+            for (const marker of markers) {
+                const title = (marker as { title?: unknown })?.title;
+                if (typeof title === 'string' && title.trim().length > 0) count += 1;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Fraction (0..1) of scenes in the current selection that carry a
+     * non-empty title. Drives the "Scene titles configured but scenes have
+     * no titles" warning on title-only-mode scene spreads.
+     */
+    private getSelectedSceneTitlePopulatedRatio(): number {
+        const selected = this.getSelectedSceneTitles();
+        if (selected.length === 0) return 1;
+        const populated = selected.filter(title => typeof title === 'string' && title.trim().length > 0);
+        return populated.length / selected.length;
+    }
+
+    /**
+     * Count of acts whose epigraph quote is populated for the active book +
+     * supplied layout. Drives the Part-epigraph warning on PART spreads for
+     * templates that advertise `parts.epigraph`.
+     */
+    private getActEpigraphPopulatedCount(layout?: PandocLayoutTemplate): number {
+        if (!layout) return 0;
+        const book = getActiveBook(this.plugin.settings);
+        if (!book) return 0;
+        const epigraphs = book.layoutOptions?.[layout.id]?.actEpigraphs;
+        if (!Array.isArray(epigraphs)) return 0;
+        return epigraphs.reduce<number>((sum, value) => {
+            if (typeof value === 'string' && value.trim().length > 0) return sum + 1;
+            return sum;
+        }, 0);
     }
 
     private isSplitEnabled(): boolean {

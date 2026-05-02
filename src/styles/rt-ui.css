@@ -10673,6 +10673,22 @@
   gap: var(--ert-gap-xs);
 }
 
+/* Heading-at-top layout: heading anchors near the top + body lines flow
+   below after a clear gap. The body-lines wrapper is a flex column with the
+   same line-row gap as the default body so individual lines render distinctly
+   rather than stacking into one thick stripe. */
+.ert-ui.ert-scope--settings .ert-layout-page-body.is-heading-top {
+  align-items: center;
+  gap: var(--ert-gap-cozy);
+  padding-top: var(--ert-gap-sm);
+}
+.ert-ui.ert-scope--settings .ert-layout-page-lines-after-heading {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--ert-gap-xs);
+}
+
 .ert-ui.ert-scope--settings .ert-layout-page-special-text {
   font-family: var(--_picto-mono);
   font-size: var(--_picto-font-size);
@@ -11042,7 +11058,7 @@
 
 .ert-ui.ert-scope--settings .ert-matter-preview-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ert-gap-xs);
   min-width: 0;
@@ -11050,10 +11066,35 @@
   border-bottom: none;
   border-radius: 8px;
   background: color-mix(in srgb, var(--background-secondary) 30%, transparent);
+  cursor: grab;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-row.is-alt {
   background: color-mix(in srgb, var(--background-secondary) 44%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-row.is-dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-row.is-dragover {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  cursor: grab;
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-row:active .ert-matter-preview-handle {
+  cursor: grabbing;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-link {

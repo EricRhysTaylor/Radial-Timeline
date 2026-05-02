@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     briefingTheme: 'auto',
     inquiryTimingHistory: {},
     dismissedAlerts: [],
+    templateHotfixHistory: [],
     actCount: 3,
     actLabelsRaw: '',
     gossamerRunFilter: {

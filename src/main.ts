@@ -56,7 +56,7 @@ import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { PublishingValidationService } from './services/PublishingValidationService';
 import { TimelineAuditAiService } from './services/TimelineAuditAiService';
-import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
+import { ensureBundledPandocLayoutsRegistered, setBundledFontPath } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import type { GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
@@ -319,6 +319,22 @@ export default class RadialTimelinePlugin extends Plugin {
     async onload() {
         this.settingsService = new SettingsService(this);
         await this.loadSettings();
+
+        // Resolve the absolute filesystem path to the plugin's bundled-fonts
+        // directory so the spec generator can emit fontspec Path= directives.
+        // FileSystemAdapter is only available on desktop — on mobile (where
+        // adapter is a different class) we skip; bundled fonts only matter for
+        // PDF export which requires desktop anyway.
+        try {
+            const adapter = this.app.vault.adapter as { getBasePath?: () => string };
+            const basePath = typeof adapter.getBasePath === 'function' ? adapter.getBasePath() : undefined;
+            if (basePath) {
+                const configDir = this.app.vault.configDir;
+                setBundledFontPath(`${basePath}/${configDir}/plugins/${this.manifest.id}/assets/fonts`);
+            }
+        } catch {
+            // Non-fatal: spec generator falls back to fontspec system lookup.
+        }
         void getAIClient(this).refreshModelDataIfStale();
         this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());
         this.releaseNotesService.initializeFromEmbedded();

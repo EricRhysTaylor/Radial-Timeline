@@ -244,12 +244,13 @@ describe('generateDesignedStyleTex', () => {
         });
     });
 
-    // Regression: Contemporary's chapters.spacing must produce a \titlespacing*
-    // rule that pushes the chapter heading down to ~46% of textheight. Without
-    // this rule the chapter title lands near the top of the page despite
-    // \preto\chapter{\clearpage}.
+    // Regression: spec.chapters.spacing must drive vertical placement of the
+    // chapter heading. The contract surface is \rtChapter (the assembler emits
+    // this directly); titleformat hooks on \chapter never fired because
+    // assembler doesn't call \chapter. The spacing now lives inside the
+    // \rtChapter macro body as \vspace*{<frac>\textheight}.
     describe('chapter heading spacing (Bug 2 regression)', () => {
-        it('emits \\titlespacing* with the spec\'s topFraction and bottomFraction', () => {
+        it('emits spec-driven vspace inside \\rtChapter with the spec\'s topFraction and bottomFraction', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'reading-draft',
                 chapters: {
@@ -259,10 +260,13 @@ describe('generateDesignedStyleTex', () => {
                     spacing: { topFraction: 0.46, bottomFraction: 0.08 },
                 },
             }));
-            expect(tex).toContain('\\titlespacing*{\\chapter}{0pt}{0.46\\textheight}{0.08\\textheight}');
+            // Top vspace inside \rtChapter (positions heading ~46% down the page).
+            expect(tex).toMatch(/\\vspace\*\{0\.46\\textheight\}/);
+            // Bottom vspace inside \rtChapter.
+            expect(tex).toMatch(/\\vspace\*\{0\.08\\textheight\}/);
         });
 
-        it('emits \\preto\\chapter{\\clearpage\\thispagestyle{empty}} so chapters start on their own page', () => {
+        it('\\rtChapter clears the page on entry and exits with cleardoublepage so chapters stand alone', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'reading-draft',
                 chapters: {
@@ -272,15 +276,38 @@ describe('generateDesignedStyleTex', () => {
                     spacing: { topFraction: 0.46, bottomFraction: 0.08 },
                 },
             }));
-            expect(tex).toContain('\\preto\\chapter{\\clearpage\\thispagestyle{empty}}');
+            // The \rtChapter macro must include \cleardoublepage AND \thispagestyle{rtEmpty}
+            // so the chapter heading sits alone on a chrome-suppressed page.
+            const macroBody = tex.split('\\newcommand{\\rtChapter}')[1] ?? '';
+            expect(macroBody).toContain('\\cleardoublepage');
+            expect(macroBody).toContain('\\thispagestyle{rtEmpty}');
         });
 
-        it('does not emit \\titlespacing* when chapters.spacing is omitted', () => {
+        it('does not emit \\titleformat or \\preto hooks on \\chapter (assembler emits \\rtChapter, not \\chapter)', () => {
+            const tex = generateDesignedStyleTex(buildSpec({
+                archetype: 'reading-draft',
+                chapters: {
+                    mode: 'numbered',
+                    pageBreak: true,
+                    resetSceneCounter: false,
+                    spacing: { topFraction: 0.46, bottomFraction: 0.08 },
+                },
+            }));
+            expect(tex).not.toMatch(/\\titleformat\{\\chapter\}/);
+            expect(tex).not.toMatch(/\\titlespacing\*\{\\chapter\}/);
+            expect(tex).not.toMatch(/\\preto\\chapter\{/);
+        });
+
+        it('falls back to fixed inches when spec.chapters.spacing is omitted', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'submission',
                 chapters: { mode: 'numbered-titled', pageBreak: true, resetSceneCounter: false },
             }));
-            expect(tex).not.toMatch(/\\titlespacing\*\{\\chapter\}/);
+            // No textheight-fraction spacing emitted when spacing is unset.
+            expect(tex).not.toMatch(/\\vspace\*\{0\.\d+\\textheight\}.*\\rtChapter/s);
+            // Default fixed-inch spacing is present inside the macro.
+            const macroBody = tex.split('\\newcommand{\\rtChapter}')[1] ?? '';
+            expect(macroBody).toContain('\\vspace*{1.9in}');
         });
     });
 

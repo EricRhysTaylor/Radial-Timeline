@@ -11,6 +11,12 @@ import { normalizeFrontmatterKeys } from './frontmatter';
 import { groupTimelineChapterMarkersByScenePath, resolveTimelineChapterMarkers, type TimelineChapterMarker } from './timelineChapters';
 import { cleanEvidenceBody } from '../inquiry/utils/evidenceCleaning';
 import { readSceneId } from './sceneIds';
+import {
+  resolveBookPages,
+  applyBookPageOrder,
+  type MatterNoteSummary,
+  type ResolvedPage
+} from './bookPagesResolver';
 
 export interface SceneContent {
   title: string;
@@ -73,6 +79,12 @@ export interface AssembleManuscriptOptions {
   includeSceneIdInHeading?: boolean;
   /** Use plain SceneId text for Pandoc PDF headings; code spans are unsafe in PDF bookmark strings. */
   sceneIdFormat?: 'code' | 'plain';
+  /**
+   * User-saved Book Pages order from `BookProfile.bookPageOrder`. When set,
+   * matter pages emit in this order (saved positions first, new pages
+   * appended canonically). Empty/undefined → resolver canonical order.
+   */
+  bookPageOrder?: string[];
 }
 
 let matterOrderIgnoredWarned = false;
@@ -212,7 +224,11 @@ function resolveLatexSceneHeading(
   if (prefix && strippedTitle) {
     const safePrefix = escapeLatex(prefix);
     const safeTitle = escapeLatex(strippedTitle);
-    return `${safePrefix}\\\\[0.25em]{\\normalsize\\itshape (${safeTitle})}`;
+    // Tight line break + small upright sub-title in parens. Earlier form used
+    // \itshape and 0.25em vertical leading; that left too much air between the
+    // scene number and the title, and italics conflict stylistically with body
+    // emphasis. Plain upright in parens reads cleaner and tighter.
+    return `${safePrefix}\\\\{\\normalsize (${safeTitle})}`;
   }
   return escapeLatex(trimmed || `Scene ${fallbackNumber}`);
 }
@@ -1014,48 +1030,104 @@ export async function assembleManuscript(
     return Number.isFinite(parsed) ? parsed : null;
   };
 
-  for (let i = 0; i < sceneFiles.length; i++) {
-    const file = sceneFiles[i];
-    const title = file.basename;
-
-    // Call progress callback if provided
-    if (progressCallback) {
-      progressCallback(i + 1, title, sceneFiles.length);
-    }
-
+  // ── Pre-pass: classify each input file as matter or scene ─────────────
+  // Matter classification = `Class: Frontmatter | Backmatter` in YAML, either
+  // pre-resolved via `matterMetaByPath` (production path) or detected from
+  // the file content here (test path / files lacking a pre-resolved entry).
+  // We read content once and stash it so the emit helpers don't re-read.
+  interface ClassifiedFile {
+    file: TFile;
+    content: string | null;          // null when read failed
+    readError: unknown;
+    matterMeta: MatterMeta | null;
+  }
+  const classified: ClassifiedFile[] = [];
+  for (const file of sceneFiles) {
+    let content: string | null = null;
+    let readError: unknown = null;
     try {
-      const content = await vault.read(file);
+      content = await vault.read(file);
+    } catch (error) {
+      readError = error;
+    }
+    const matterMeta = (file.path && matterMetaByPath?.get(file.path))
+      || (content !== null ? extractMatterMeta(content) : null)
+      || null;
+    classified.push({ file, content, readError, matterMeta });
+  }
 
-      // ── Semantic matter role intercept ────────────────────────────────
-      // If this file is a matter note with a semantic role, render via
-      // the appropriate template instead of the default heading + body.
-      const matterMeta = (file.path && matterMetaByPath?.get(file.path)) || extractMatterMeta(content);
-      const isMatterNote = !!matterMeta;
-      if (isMatterNote) {
-        beginMatterPage();
-      } else {
-        endMatterChrome();
+  // ── Resolver-driven matter emission ──────────────────────────────────
+  // Build summaries from the matter files we just classified, then ask the
+  // resolver for the canonical (or user-saved) order. The resolver dedupes
+  // note-vs-bookmeta-for-same-role: if a note and BookMeta both define
+  // `dedication`, only the note surfaces.
+  const matterClassified = classified.filter(c => c.matterMeta !== null);
+  const sceneClassified = classified.filter(c => c.matterMeta === null);
+
+  const matterSummaries: MatterNoteSummary[] = matterClassified.map(c => {
+    const meta = c.matterMeta!;
+    const sideRaw = (meta.side || '').toString().trim().toLowerCase();
+    const side: 'frontmatter' | 'backmatter' = (sideRaw === 'back' || sideRaw === 'backmatter')
+      ? 'backmatter'
+      : 'frontmatter';
+    return {
+      role: typeof meta.role === 'string' ? meta.role : '',
+      path: c.file.path,
+      title: c.file.basename,
+      bodyMode: normalizeMatterBodyMode(meta.bodyMode),
+      side,
+    };
+  });
+
+  const resolved = resolveBookPages(bookMeta || undefined, matterSummaries);
+  const ordered = applyBookPageOrder(resolved, options?.bookPageOrder);
+  const frontPages = ordered.filter(p => p.side === 'frontmatter');
+  const backPages = ordered.filter(p => p.side === 'backmatter');
+
+  // Map matter file paths → ClassifiedFile so the note-source emit can find
+  // the cached content + meta for the resolver-selected note.
+  const classifiedByPath = new Map<string, ClassifiedFile>();
+  for (const c of matterClassified) classifiedByPath.set(c.file.path, c);
+
+  /**
+   * Emit a single matter page. Note-source pages render the underlying
+   * note's body via the existing matter-rendering paths (BookMeta-backed
+   * via `UseBookMeta: true`, raw LaTeX, or plain). BookMeta-source pages
+   * synthesize content from BookMeta with no underlying note (this is the
+   * new path: previously BookMeta-only roles were silently dropped).
+   */
+  const emitMatterPage = (page: ResolvedPage): void => {
+    if (page.source === 'note') {
+      if (!page.path) return;
+      const c = classifiedByPath.get(page.path);
+      if (!c) return;
+      const file = c.file;
+      const title = file.basename;
+      if (c.readError !== null && c.content === null) {
+        console.error(`Error reading scene file ${file.path}:`, c.readError);
+        textParts.push(`## ${title}\n\n[Error reading scene]\n\n`);
+        return;
       }
+      const content = c.content || '';
+      const meta = c.matterMeta!;
+      beginMatterPage();
       const bodyText = extractBodyText(content);
       const countableBodyText = extractCountableBodyText(content);
-      const bodyMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
-      const role = matterMeta?.role;
-      const usesBookMeta = matterMeta?.usesBookMeta === true;
+      const bodyMode = normalizeMatterBodyMode(meta.bodyMode);
+      const role = meta.role;
+      const usesBookMeta = meta.usesBookMeta === true;
       const sceneFrontmatter = extractFrontmatterObject(content);
       const sceneId = readSceneId(sceneFrontmatter);
+      matterDiagnostics.push({
+        filePath: file.path,
+        side: inferMatterSide(meta),
+        prefix: extractPrefix(title),
+        bodyMode,
+        role,
+        usesBookMeta,
+      });
 
-      if (isMatterNote) {
-        matterDiagnostics.push({
-          filePath: file.path,
-          side: inferMatterSide(matterMeta || undefined),
-          prefix: extractPrefix(title),
-          bodyMode,
-          role,
-          usesBookMeta,
-        });
-      }
-
-      const renderedFromBookMeta = (isMatterNote && role && usesBookMeta && bookMeta)
+      const renderedFromBookMeta = (role && usesBookMeta && bookMeta)
         ? renderBookMetaBackedMatterPage(role, bookMeta, bodyText, bodyMode)
         : null;
 
@@ -1064,102 +1136,162 @@ export async function assembleManuscript(
         scenes.push({ title, bodyText: renderedFromBookMeta, wordCount, sceneId });
         totalWords += wordCount;
         textParts.push(`${renderedFromBookMeta}\n\n`);
-      } else if (isMatterNote && bodyMode === 'latex') {
+      } else if (bodyMode === 'latex') {
         const wordCount = countWords(countableBodyText);
         scenes.push({ title, bodyText, wordCount, sceneId });
         totalWords += wordCount;
         textParts.push(`${bodyText}\n\n`);
       } else {
-        // ── Normal rendering path ──────────────────────────────────────
+        // Plain matter note → default heading + body (markdown-h2 path).
         const wordCount = countWords(countableBodyText);
-        if (modernClassicState.enabled && !isMatterNote) {
-          const beatRef = extractSceneBeatReference(content);
-          const beatDef = resolveModernClassicBeatDefinition(modernClassicState, beatRef);
-          let emittedStructureOpener = false;
+        const heading = resolveSceneHeading(title, sceneHeadingMode, scenes.length + 1);
+        scenes.push({ title: heading, bodyText, wordCount, sceneId });
+        totalWords += wordCount;
+        const headingSuffix = includeSceneIdInHeading
+          ? sceneId ? ` ${formatSceneIdForManuscript(sceneId, sceneIdFormat)}` : ''
+          : '';
+        textParts.push(`## ${heading}${headingSuffix}\n\n${bodyText}\n\n`);
+      }
+      return;
+    }
+    // ── BookMeta-only synthetic page ────────────────────────────────────
+    if (!page.role || !bookMeta) return;
+    const synthesized = renderBookMetaBackedMatterPage(page.role, bookMeta, '', 'plain');
+    if (synthesized === null) return;
+    beginMatterPage();
+    const wordCount = countWords(synthesized);
+    scenes.push({ title: page.title, bodyText: synthesized, wordCount });
+    totalWords += wordCount;
+    textParts.push(`${synthesized}\n\n`);
+    matterDiagnostics.push({
+      filePath: `(bookmeta:${page.role})`,
+      side: page.side === 'backmatter' ? 'back' : 'front',
+      prefix: null,
+      bodyMode: 'plain',
+      role: page.role,
+      usesBookMeta: true,
+    });
+  };
 
-          // RT terminology → structure mapping:
-          //   Acts (from settings Act count)   → \rtPart{Roman} — dedicated Part page
-          //   Chapters (from Chapter fields)   → \rtChapter{n}{Title} — chapter opener
-          //   Scenes (scene notes)             → \rtSceneSep — inline scene separator
-          const nextActIndex = beatDef?.actIndex;
-          if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
-            // Act boundary → emit Part page (with optional epigraph)
-            const actRoman = toRomanNumeral(nextActIndex);
-            if (actRoman) {
-              textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}`));
-              const epigraphQuote = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphs[nextActIndex - 1] || '');
-              const epigraphAttribution = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphAttributions[nextActIndex - 1] || '');
-              if (epigraphQuote || epigraphAttribution) {
-                textParts.push(buildRawLatexBlock(`\\rtEpigraph{${epigraphQuote}}{${epigraphAttribution}}`));
-              }
-              modernClassicState.currentActIndex = nextActIndex;
-              emittedStructureOpener = true;
-            }
+  // Frontmatter pages first (resolver order, with bookPageOrder applied).
+  for (const page of frontPages) emitMatterPage(page);
+  endMatterChrome();
+
+  // ── Scene loop ────────────────────────────────────────────────────────
+  // Original scene order is preserved (matter notes have been hoisted to
+  // the resolver-driven section).
+  for (let i = 0; i < sceneClassified.length; i++) {
+    const c = sceneClassified[i];
+    const file = c.file;
+    const title = file.basename;
+
+    if (progressCallback) {
+      progressCallback(i + 1, title, sceneClassified.length);
+    }
+
+    if (c.readError !== null && c.content === null) {
+      console.error(`Error reading scene file ${file.path}:`, c.readError);
+      textParts.push(`## ${title}\n\n[Error reading scene]\n\n`);
+      continue;
+    }
+
+    const content = c.content || '';
+    const bodyText = extractBodyText(content);
+    const countableBodyText = extractCountableBodyText(content);
+    const sceneFrontmatter = extractFrontmatterObject(content);
+    const sceneId = readSceneId(sceneFrontmatter);
+    const wordCount = countWords(countableBodyText);
+
+    if (modernClassicState.enabled) {
+      const beatRef = extractSceneBeatReference(content);
+      const beatDef = resolveModernClassicBeatDefinition(modernClassicState, beatRef);
+      let emittedStructureOpener = false;
+
+      // RT terminology → structure mapping:
+      //   Acts (from settings Act count)   → \rtPart{Roman} — dedicated Part page
+      //   Chapters (from Chapter fields)   → \rtChapter{n}{Title} — chapter opener
+      //   Scenes (scene notes)             → \rtSceneSep — inline scene separator
+      const nextActIndex = beatDef?.actIndex;
+      if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
+        const actRoman = toRomanNumeral(nextActIndex);
+        if (actRoman) {
+          textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}`));
+          const epigraphQuote = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphs[nextActIndex - 1] || '');
+          const epigraphAttribution = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphAttributions[nextActIndex - 1] || '');
+          if (epigraphQuote || epigraphAttribution) {
+            textParts.push(buildRawLatexBlock(`\\rtEpigraph{${epigraphQuote}}{${epigraphAttribution}}`));
           }
-
-          const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
-          if (chapterMarkers.length > 0) {
-            for (const marker of chapterMarkers) {
-              const chapterTitle = sanitizeModernClassicMacroArg(marker.title);
-              if (!chapterTitle) continue;
-              modernClassicState.chapterIndex += 1;
-              textParts.push(buildRawLatexBlock(`\\rtChapter{${modernClassicState.chapterIndex}}{${chapterTitle}}`));
-            }
-            emittedStructureOpener = true;
-          } else if (modernClassicState.emittedSceneCount > 0 && !emittedStructureOpener) {
-            // Scene boundary → emit inline scene separator
-            textParts.push(buildRawLatexBlock('\\rtSceneSep'));
-          }
-
-          scenes.push({ title, bodyText, wordCount, sceneId });
-          totalWords += wordCount;
-          textParts.push(`${bodyText}\n\n`);
-          modernClassicState.emittedSceneCount += 1;
-        } else {
-          const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
-          for (const marker of chapterMarkers) {
-            const chapterTitle = normalizeChapterHeadingText(marker.title);
-            if (!chapterTitle) continue;
-            textParts.push(`# ${chapterTitle}\n\n`);
-          }
-
-          const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);
-
-          scenes.push({ title: heading, bodyText, wordCount, sceneId });
-          totalWords += wordCount;
-
-          if (sceneHeadingRenderMode === 'latex-section-starred') {
-            const latexHeading = resolveLatexSceneHeading(title, sceneHeadingMode, i + 1);
-            const latexRunningMark = resolveLatexSceneRunningMark(title, sceneHeadingMode, i + 1);
-            // Force header/footer suppression on scene-opener pages.
-            textParts.push(`\\section*{${latexHeading}}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{${latexRunningMark}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
-          } else {
-            const headingSuffix = includeSceneIdInHeading
-              ? sceneId ? ` ${formatSceneIdForManuscript(sceneId, sceneIdFormat)}` : ''
-              : '';
-            textParts.push(`## ${heading}${headingSuffix}\n\n${bodyText}\n\n`);
-          }
+          modernClassicState.currentActIndex = nextActIndex;
+          emittedStructureOpener = true;
         }
       }
-    } catch (error) {
-      console.error(`Error reading scene file ${file.path}:`, error);
-      // Add placeholder for failed scene
-      textParts.push(`## ${title}\n\n[Error reading scene]\n\n`);
+
+      const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
+      if (chapterMarkers.length > 0) {
+        for (const marker of chapterMarkers) {
+          const chapterTitle = sanitizeModernClassicMacroArg(marker.title);
+          if (!chapterTitle) continue;
+          modernClassicState.chapterIndex += 1;
+          textParts.push(buildRawLatexBlock(`\\rtChapter{${modernClassicState.chapterIndex}}{${chapterTitle}}`));
+        }
+        emittedStructureOpener = true;
+      } else if (modernClassicState.emittedSceneCount > 0 && !emittedStructureOpener) {
+        textParts.push(buildRawLatexBlock('\\rtSceneSep'));
+      }
+
+      scenes.push({ title, bodyText, wordCount, sceneId });
+      totalWords += wordCount;
+      textParts.push(`${bodyText}\n\n`);
+      modernClassicState.emittedSceneCount += 1;
+    } else {
+      const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
+      for (const marker of chapterMarkers) {
+        const chapterTitle = normalizeChapterHeadingText(marker.title);
+        if (!chapterTitle) continue;
+        textParts.push(`# ${chapterTitle}\n\n`);
+      }
+
+      const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);
+      scenes.push({ title: heading, bodyText, wordCount, sceneId });
+      totalWords += wordCount;
+
+      if (sceneHeadingRenderMode === 'latex-section-starred') {
+        const latexHeading = resolveLatexSceneHeading(title, sceneHeadingMode, i + 1);
+        const latexRunningMark = resolveLatexSceneRunningMark(title, sceneHeadingMode, i + 1);
+        // Emit a single \rtSceneOpener{HEADING} call. The opener macro
+        // (defined by the layout's .tex; see designedStyleFragments
+        // renderSceneOpener) owns the cleardoublepage, chrome suppression,
+        // vertical spacing, and centered title typography — so the
+        // assembler does not pre-bake \section* or \thispagestyle{empty}.
+        //
+        // Signature Literary's openerHeadingModes path overrides this
+        // macro to emit \section{N} or \section*{Title} via titlesec hooks.
+        // The .tex generator decides which form to define; the assembler
+        // contract surface is always \rtSceneOpener.
+        textParts.push(`\\rtSceneOpener{${latexHeading}}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{${latexRunningMark}}\n\n${bodyText}\n\n`);
+      } else {
+        const headingSuffix = includeSceneIdInHeading
+          ? sceneId ? ` ${formatSceneIdForManuscript(sceneId, sceneIdFormat)}` : ''
+          : '';
+        textParts.push(`## ${heading}${headingSuffix}\n\n${bodyText}\n\n`);
+      }
     }
   }
 
+  // Backmatter pages last (resolver order, with bookPageOrder applied).
+  for (const page of backPages) emitMatterPage(page);
   endMatterChrome();
 
   if (isDevMode() && matterDiagnostics.length > 0) {
-    const ordered = matterDiagnostics.map((entry, index) => ({
+    const orderedDiagnostics = matterDiagnostics.map((entry, index) => ({
       prefixOrderIndex: index + 1,
       ...entry
     }));
     console.info('[Matter Export Diagnostic]', {
-      front: ordered.filter(entry => entry.side === 'front'),
-      back: ordered.filter(entry => entry.side === 'back'),
+      front: orderedDiagnostics.filter(entry => entry.side === 'front'),
+      back: orderedDiagnostics.filter(entry => entry.side === 'back'),
       bookMetaPath: bookMeta?.sourcePath || null,
-      totalMatter: ordered.length
+      totalMatter: orderedDiagnostics.length
     });
   }
 

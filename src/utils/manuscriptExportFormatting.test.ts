@@ -79,10 +79,15 @@ describe('assembleManuscript scene heading formatting', () => {
             }
         );
 
-        expect(assembled.text).toContain('\\section*{3\\\\[0.25em]{\\normalsize\\itshape (Arrival)}}');
+        // Assembler's contract surface is \rtSceneOpener{HEADING} — the
+        // layout's .tex defines the macro to handle page break + chrome
+        // suppression + centered typography. (Previous \section*{} form
+        // could not be intercepted by \preto\section.)
+        // Tight upright sub-title in parens (no italics, minimal vertical leading).
+        expect(assembled.text).toContain('\\rtSceneOpener{3\\\\{\\normalsize (Arrival)}}');
         expect(assembled.text).toContain('\\rtSetSceneRunningTitle{3 Arrival}');
-        expect(assembled.text).toContain('\\thispagestyle{empty}');
         expect(assembled.text).not.toContain('## 3 Arrival');
+        expect(assembled.text).not.toContain('\\section*{');
     });
 
     it('can render Standard Manuscript scene opener pages as number-only raw LaTeX', async () => {
@@ -106,7 +111,8 @@ describe('assembleManuscript scene heading formatting', () => {
             }
         );
 
-        expect(assembled.text).toContain('\\section*{1}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{1}\n\\thispagestyle{empty}');
+        expect(assembled.text).toContain('\\rtSceneOpener{1}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{1}');
+        expect(assembled.text).not.toContain('\\section*{');
         expect(assembled.text).toContain('First paragraph.');
         expect(assembled.text).not.toContain('Training at Academy Field');
         expect(assembled.text).not.toContain('## 1');
@@ -135,8 +141,8 @@ describe('assembleManuscript scene heading formatting', () => {
         );
 
         expect(assembled.text).not.toContain('# Shail + Trisan');
-        expect(assembled.text).not.toContain('\\section*{Shail + Trisan}');
-        expect(assembled.text).toContain('\\section*{1}');
+        expect(assembled.text).not.toContain('\\rtSceneOpener{Shail + Trisan}');
+        expect(assembled.text).toContain('\\rtSceneOpener{1}');
     });
 
     it('resets latex scene running marks after chapter opener pages', async () => {
@@ -170,7 +176,7 @@ describe('assembleManuscript scene heading formatting', () => {
         );
 
         const chapterIndex = assembled.text.indexOf('# Chapter 1');
-        const sceneIndex = assembled.text.indexOf('\\section*{1}');
+        const sceneIndex = assembled.text.indexOf('\\rtSceneOpener{1}');
         const markIndex = assembled.text.indexOf('\\rtSetSceneRunningTitle{1}');
         const bodyIndex = assembled.text.indexOf('First paragraph.');
         expect(chapterIndex).toBeGreaterThanOrEqual(0);
@@ -332,8 +338,8 @@ describe('assembleManuscript scene heading formatting', () => {
         // class, producing the user-reported "Chapter 1" stack.
         expect(assembled.text).not.toContain('# Chapter 1');
         expect(assembled.text).not.toContain('\\chapter{');
-        // Scene-only typography survives.
-        expect(assembled.text).toContain('\\section*');
+        // Scene-only typography survives — the contract surface is \rtSceneOpener.
+        expect(assembled.text).toContain('\\rtSceneOpener{');
         expect(assembled.text).toContain('First body.');
         expect(assembled.text).toContain('Second body.');
     });
