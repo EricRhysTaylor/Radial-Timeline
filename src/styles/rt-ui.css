@@ -2889,6 +2889,13 @@
   animation: ert-border-flash-green 1.2s ease-out forwards;
 }
 
+.ert-ui.ert-scope--settings [data-ert-section].ert-settings-section--revealed {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: 6px;
+  border-radius: var(--ert-panel-radius);
+  transition: outline-color 0.35s ease, outline-offset 0.35s ease;
+}
+
 /* ── AI Strategy step hierarchy ───────────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-ai-steps-row {
   display: grid;
@@ -10306,8 +10313,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-special-panel {
-  margin: calc(var(--ert-gap-3xs) * -1) 0 0;
-  padding: 0 var(--ert-pad-sm) var(--ert-gap-sm);
+  margin: 0;
+  padding: var(--ert-gap-sm) var(--ert-pad-sm) var(--ert-gap-sm);
   border-left: 1px solid var(--ert-pro-border);
   border-right: 1px solid var(--ert-pro-border);
   border-bottom: 1px solid var(--ert-pro-border);
@@ -10564,6 +10571,35 @@
 
 .ert-ui.ert-scope--settings .ert-layout-spread.is-scene-active .ert-layout-spread-label {
   color: var(--text-accent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-selectable {
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-selectable .ert-layout-page {
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-selectable:hover {
+  opacity: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-selectable:hover .ert-layout-page {
+  border-color: color-mix(in srgb, var(--text-accent) 72%, var(--background-modifier-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent) 20%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-selectable:focus-visible {
+  opacity: 1;
+  outline: 2px solid color-mix(in srgb, var(--text-accent) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: calc(var(--ert-control-radius) + 2px);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-selectable:focus-visible .ert-layout-page {
+  border-color: color-mix(in srgb, var(--text-accent) 72%, var(--background-modifier-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent) 20%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-layout-spread-pages {
@@ -10849,39 +10885,61 @@
 .ert-ui.ert-scope--settings .ert-publishing-status-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
+  gap: var(--ert-gap-3xs);
+  background: color-mix(in srgb, var(--background-modifier-border) 86%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-shell {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--background-secondary) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--background-primary) 14%, transparent), transparent 42%),
+    color-mix(in srgb, var(--background-secondary) 86%, transparent);
   overflow: hidden;
   margin-top: 2px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-normal) 8%, transparent),
+    0 10px 28px color-mix(in srgb, var(--background-primary) 24%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col {
   --ert-stage-accent: color-mix(in srgb, var(--text-muted) 55%, var(--background-modifier-border));
   border: none;
   border-radius: 0;
-  padding: calc(var(--ert-pad-sm) + var(--ert-gap-2xs));
-  background: color-mix(in srgb, var(--ert-stage-accent) 4%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--ert-gap-tight) + var(--ert-gap-3xs));
+  padding: var(--ert-pad-sm);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ert-stage-accent) 7%, transparent), transparent 62%),
+    color-mix(in srgb, var(--background-secondary) 82%, var(--ert-stage-accent) 3%);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--ert-gap-sm);
   min-width: 0;
-  min-height: 164px;
+  min-height: 182px;
   position: relative;
   overflow: hidden;
   isolation: isolate;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col + .ert-publishing-status-col {
-  border-left: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  border-left: none;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"] {
   cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:hover {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ert-stage-accent) 11%, transparent), transparent 62%),
+    color-mix(in srgb, var(--background-secondary) 78%, var(--ert-stage-accent) 6%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ert-stage-accent) 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--text-normal) 8%, transparent);
+  transform: translateY(-1px);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:focus-visible {
@@ -10891,12 +10949,13 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-glyph {
   position: absolute;
-  top: var(--ert-gap-tight);
-  left: 8px;
-  width: 120px;
-  height: 120px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 104px;
+  height: 104px;
   color: var(--ert-stage-accent);
-  opacity: 0.1;
+  opacity: 0.08;
   pointer-events: none;
   z-index: 0;
 }
@@ -10907,10 +10966,21 @@
   stroke-width: 2.15;
 }
 
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:hover .ert-publishing-status-col-glyph,
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:focus-visible .ert-publishing-status-col-glyph {
+  opacity: 0.12;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:hover .ert-publishing-status-col-icon,
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:focus-visible .ert-publishing-status-col-icon {
+  border-color: color-mix(in srgb, var(--ert-stage-accent) 58%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--ert-stage-accent) 15%, var(--background-secondary));
+}
+
 .ert-ui.ert-scope--settings .ert-publishing-status-col-header {
   display: flex;
-  align-items: center;
-  gap: var(--ert-gap-xs);
+  align-items: flex-start;
+  gap: var(--ert-gap-sm);
   min-width: 0;
   position: relative;
   z-index: 1;
@@ -10920,34 +10990,72 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--ert-stage-accent) 42%, var(--background-modifier-border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ert-stage-accent) 10%, var(--background-secondary));
   color: var(--ert-stage-accent);
   flex: 0 0 auto;
 }
 
+.ert-ui.ert-scope--settings .ert-publishing-status-col-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.1;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-3xs);
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-kicker {
+  font-family: var(--font-monospace);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ert-stage-accent) 76%, var(--text-muted));
+}
+
 .ert-ui.ert-scope--settings .ert-publishing-status-col-title {
-  font-size: 1.04rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  color: var(--text-muted);
-  line-height: 1.1;
+  color: var(--text-normal);
+  line-height: 1.12;
   white-space: nowrap;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-value {
-  font-size: 1.38rem;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--ert-gap-sm);
+  border: 1px solid color-mix(in srgb, var(--ert-stage-accent) 38%, var(--background-modifier-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ert-stage-accent) 10%, var(--background-secondary));
+  font-family: var(--font-monospace);
+  font-size: 0.68rem;
   font-weight: 700;
-  color: var(--text-normal);
-  line-height: 1.1;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ert-stage-accent) 82%, var(--text-normal));
+  line-height: 1;
   position: relative;
   z-index: 1;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-desc {
-  font-size: 0.9rem;
+  align-self: start;
+  font-size: 0.86rem;
   color: var(--text-muted);
-  line-height: 1.38;
-  max-width: 17ch;
+  line-height: 1.42;
+  max-width: 22ch;
   position: relative;
   z-index: 1;
 }
@@ -10972,13 +11080,60 @@
   background: color-mix(in srgb, var(--ert-stage-accent) 7%, var(--background-secondary) 88%);
 }
 
-.ert-ui.ert-scope--settings .ert-publishing-status-col::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-top: 1px solid color-mix(in srgb, var(--ert-stage-accent) 28%, transparent);
-  pointer-events: none;
-  z-index: 0;
+.ert-ui.ert-scope--settings .ert-publishing-status-col-footer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "folio proof"
+    "folio action";
+  align-items: end;
+  gap: var(--ert-gap-3xs) var(--ert-gap-xs);
+  min-width: 0;
+  padding-top: var(--ert-gap-sm);
+  border-top: 1px solid color-mix(in srgb, var(--ert-stage-accent) 30%, transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-folio {
+  grid-area: folio;
+  font-family: var(--font-monospace);
+  font-size: 1.42rem;
+  font-weight: 700;
+  line-height: 0.9;
+  color: color-mix(in srgb, var(--ert-stage-accent) 34%, var(--text-muted));
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-proof {
+  grid-area: proof;
+  min-width: 0;
+  font-family: var(--font-monospace);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-muted) 80%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-actionLabel {
+  grid-area: action;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--text-normal) 88%, var(--ert-stage-accent));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:hover .ert-publishing-status-col-actionLabel,
+.ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:focus-visible .ert-publishing-status-col-actionLabel {
+  color: color-mix(in srgb, var(--text-normal) 72%, var(--ert-stage-accent));
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-action {
@@ -11847,6 +12002,20 @@
   opacity: 0.82;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-install-all-button--attention {
+  border-color: color-mix(in srgb, var(--interactive-accent) 68%, var(--background-modifier-border));
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--interactive-accent) 34%, transparent),
+    0 8px 22px color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-install-all-button--attention:hover:not(:disabled) {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
 .ert-ui.ert-scope--settings .ert-bookmeta-source-link:hover {
   color: var(--interactive-accent);
   text-decoration-color: currentColor;
@@ -11870,7 +12039,7 @@
 
   .ert-ui.ert-scope--settings .ert-publishing-status-col + .ert-publishing-status-col {
     border-left: none;
-    border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+    border-top: none;
   }
 
   .ert-ui.ert-scope--settings .ert-matter-preview-row {

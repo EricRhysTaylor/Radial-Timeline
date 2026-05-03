@@ -1,4 +1,6 @@
 import { normalizePath, TFile } from 'obsidian';
+import * as fs from 'fs'; // SAFE: Node fs copies bundled plugin font assets into the user's vault-local Pandoc font folder during explicit install.
+import * as path from 'path'; // SAFE: Node path builds absolute desktop font paths required by XeLaTeX templates.
 import type RadialTimelinePlugin from '../main';
 import type { HotfixHistoryEntry, PandocLayoutTemplate } from '../types';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
@@ -22,22 +24,23 @@ interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
 const BUNDLED_GENERATED_CACHE = new Map<BundledFictionId, string>();
 
 /**
- * Absolute filesystem path to the plugin's bundled-fonts root, e.g.
- * `/Users/foo/Vault/.obsidian/plugins/radial-timeline/assets/fonts`. Set once
- * at plugin load via `setBundledFontPath`. When present, the generator emits
- * fontspec `Path=` directives pointing at the bundled `.otf` files so XeLaTeX
- * never needs system font resolution for fonts the plugin ships with.
+ * Absolute filesystem path to the vault-local Pandoc font root, e.g.
+ * `/Users/foo/Vault/Radial Timeline/Pandoc/fonts`. Generated templates point
+ * here so the `.tex` file and its required font files live together in the
+ * user's vault.
  */
 let MODULE_BUNDLED_FONT_PATH: string | undefined;
 
 /**
- * Absolute filesystem path to the directory containing Latin Modern Roman OTF
- * files in the user's TeX install (e.g.
- * `/usr/local/texlive/2025/texmf-dist/fonts/opentype/public/lm/`). Resolved at
- * plugin load via `kpsewhich lmroman10-regular.otf`. When set, the generator
- * emits a fontspec `Path=` directive for the `latin-modern` font so Modern
- * Classic exports work using the user's existing MacTeX/TeXLive — no bundled
- * assets, no manual install, no font folder hunting.
+ * Absolute filesystem path to the plugin asset font source, e.g.
+ * `/Users/foo/Vault/.obsidian/plugins/radial-timeline/assets/fonts`. Install
+ * copies these files into `Radial Timeline/Pandoc/fonts`.
+ */
+let MODULE_BUNDLED_FONT_SOURCE_PATH: string | undefined;
+
+/**
+ * Absolute filesystem path to the vault-local Latin Modern directory under
+ * `Radial Timeline/Pandoc/fonts/latin-modern`.
  */
 let MODULE_LATIN_MODERN_PATH: string | undefined;
 
@@ -51,6 +54,10 @@ export function setLatinModernPath(path: string | undefined): void {
     if (path === MODULE_LATIN_MODERN_PATH) return;
     MODULE_LATIN_MODERN_PATH = path;
     BUNDLED_GENERATED_CACHE.clear();
+}
+
+export function setBundledFontSourcePath(path: string | undefined): void {
+    MODULE_BUNDLED_FONT_SOURCE_PATH = path;
 }
 
 /**
@@ -232,7 +239,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         bundled: true,
         tier: 'free',
         templateKind: 'book',
-        description: 'A polished reading draft for beta readers and proofers. Clean enough to feel like a finished book without committing to a final aesthetic. Comfortable spacing, sans-serif headers that track the scene context — readable without being precious.',
+        description: 'A polished reading draft for beta readers and proofers. Clean enough to feel like a finished book without committing to a final aesthetic. Comfortable spacing, sans-serif headers that track the scene title — readable without being precious.',
         get content(): string { return getGeneratedBundledFictionTex(BUNDLED_FICTION_CONTEMPORARY_ID); },
         get designedSpec() { return BUNDLED_FICTION_SPECS[BUNDLED_FICTION_CONTEMPORARY_ID]; },
     },
@@ -379,6 +386,83 @@ function resolveBundledVaultPath(plugin: RadialTimelinePlugin, relativePath: str
     return normalizePath(`${pandocFolder}/${normalized}`);
 }
 
+function getVaultBasePath(plugin: RadialTimelinePlugin): string | undefined {
+    const adapter = plugin.app.vault.adapter as { getBasePath?: () => string } | undefined; // SAFE: adapter.getBasePath is required to generate absolute local font paths for XeLaTeX.
+    return typeof adapter?.getBasePath === 'function' ? adapter.getBasePath() : undefined;
+}
+
+export function getPandocFontVaultFolder(plugin: RadialTimelinePlugin): string {
+    return normalizePath(`${getPandocFolder(plugin)}/fonts`);
+}
+
+export function getPandocFontAbsoluteRoot(plugin: RadialTimelinePlugin): string | undefined {
+    const basePath = getVaultBasePath(plugin);
+    if (!basePath) return undefined;
+    return path.join(basePath, getPandocFontVaultFolder(plugin));
+}
+
+const BUNDLED_PANDOC_FONT_FILES: Record<string, string[]> = {
+    'sorts-mill-goudy': [
+        'SortsMillGoudy-Regular.ttf',
+        'SortsMillGoudy-Italic.ttf',
+    ],
+    'latin-modern': [
+        'lmroman10-regular.otf',
+        'lmroman10-italic.otf',
+        'lmroman10-bold.otf',
+        'lmroman10-bolditalic.otf',
+    ],
+};
+
+export function setPandocFontPathsForVault(plugin: RadialTimelinePlugin): void {
+    const root = getPandocFontAbsoluteRoot(plugin);
+    setBundledFontPath(root);
+    setLatinModernPath(root ? path.join(root, 'latin-modern') : undefined);
+}
+
+export async function installBundledPandocFonts(
+    plugin: RadialTimelinePlugin
+): Promise<{ installed: string[]; alreadyPresent: string[]; failed: string[] }> {
+    const sourceRoot = MODULE_BUNDLED_FONT_SOURCE_PATH;
+    const targetRoot = getPandocFontAbsoluteRoot(plugin);
+    const installed: string[] = [];
+    const alreadyPresent: string[] = [];
+    const failed: string[] = [];
+
+    if (!sourceRoot || !targetRoot) {
+        for (const family of Object.keys(BUNDLED_PANDOC_FONT_FILES)) failed.push(family);
+        return { installed, alreadyPresent, failed };
+    }
+
+    for (const [family, files] of Object.entries(BUNDLED_PANDOC_FONT_FILES)) {
+        const sourceDir = path.join(sourceRoot, family);
+        const targetDir = path.join(targetRoot, family);
+        try {
+            fs.mkdirSync(targetDir, { recursive: true });
+            let changed = false;
+            for (const file of files) {
+                const sourceFile = path.join(sourceDir, file);
+                const targetFile = path.join(targetDir, file);
+                if (!fs.existsSync(sourceFile)) {
+                    throw new Error(`Missing bundled font asset: ${sourceFile}`);
+                }
+                const needsCopy = !fs.existsSync(targetFile)
+                    || fs.statSync(sourceFile).size !== fs.statSync(targetFile).size;
+                if (needsCopy) {
+                    fs.copyFileSync(sourceFile, targetFile);
+                    changed = true;
+                }
+            }
+            if (changed) installed.push(family);
+            else alreadyPresent.push(family);
+        } catch {
+            failed.push(family);
+        }
+    }
+
+    return { installed, alreadyPresent, failed };
+}
+
 async function ensureFolderPath(plugin: RadialTimelinePlugin, folderPath: string): Promise<void> {
     const vault = plugin.app.vault;
     const parts = normalizePath(folderPath).split('/').filter(Boolean);
@@ -417,6 +501,8 @@ export async function installBundledPandocLayouts(
     if (!vault.getAbstractFileByPath(pandocFolder)) {
         await ensureFolderPath(plugin, pandocFolder);
     }
+    await installBundledPandocFonts(plugin);
+    setPandocFontPathsForVault(plugin);
 
     const installed: string[] = [];
     const alreadyPresent: string[] = [];
@@ -463,6 +549,71 @@ export async function installBundledPandocLayouts(
     }
 
     return { installed, alreadyPresent, failed };
+}
+
+export async function ensureSpecDrivenBundledFictionTemplatesCurrent(
+    plugin: RadialTimelinePlugin
+): Promise<{ installed: string[]; updated: string[]; alreadyPresent: string[]; failed: string[] }> {
+    const vault = plugin.app.vault;
+    const pandocFolder = getPandocFolder(plugin);
+
+    if (!vault.getAbstractFileByPath(pandocFolder)) {
+        await ensureFolderPath(plugin, pandocFolder);
+    }
+    await installBundledPandocFonts(plugin);
+    setPandocFontPathsForVault(plugin);
+
+    const installed: string[] = [];
+    const updated: string[] = [];
+    const alreadyPresent: string[] = [];
+    const failed: string[] = [];
+    let historyChanged = false;
+
+    for (const bundled of BUNDLED_PANDOC_LAYOUT_TEMPLATES) {
+        if (!FICTION_BUNDLED_IDS.has(bundled.id as BundledFictionId)) continue;
+
+        const normalizedPath = normalizePath((bundled.path || '').trim().replace(/^\/+/, ''));
+        const direct = normalizedPath ? vault.getAbstractFileByPath(normalizedPath) : null;
+        const targetPath = resolveBundledVaultPath(plugin, bundled.path);
+        const target = direct instanceof TFile ? direct : vault.getAbstractFileByPath(targetPath);
+        const canonical = getGeneratedBundledFictionTex(bundled.id as BundledFictionId);
+
+        if (target instanceof TFile) {
+            try {
+                const onDisk = await vault.read(target);
+                if (onDisk === canonical) {
+                    alreadyPresent.push(bundled.name);
+                    continue;
+                }
+
+                await vault.modify(target, canonical);
+                plugin.settings.templateHotfixHistory = recordHotfixEvent(
+                    plugin.settings.templateHotfixHistory ?? [],
+                    bundled.id,
+                    HOTFIX_ID_SPEC_DRIFT_OVERWRITE
+                );
+                historyChanged = true;
+                updated.push(bundled.name);
+                continue;
+            } catch {
+                failed.push(bundled.name);
+                continue;
+            }
+        }
+
+        try {
+            await vault.create(targetPath, canonical);
+            installed.push(bundled.name);
+        } catch {
+            failed.push(bundled.name);
+        }
+    }
+
+    if (historyChanged && typeof plugin.saveSettings === 'function') {
+        try { await plugin.saveSettings(); } catch { /* non-fatal: history will be re-recorded next run */ }
+    }
+
+    return { installed, updated, alreadyPresent, failed };
 }
 
 /**

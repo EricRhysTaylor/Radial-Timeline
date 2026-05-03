@@ -195,7 +195,7 @@ import {
     getExecutionColorValue,
     getBackboneStartColors,
 } from './minimap/InquiryMinimapRenderer';
-import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
+import { addTooltipData, balanceTooltipText, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
 import { readSceneId } from '../utils/sceneIds';
 import { migrateSceneFrontmatterIds } from '../migrations/sceneIds';
@@ -4156,6 +4156,7 @@ export class InquiryView extends ItemView {
     private buildMinimapRenderCallbacks(): Parameters<InquiryMinimapRenderer['renderTicks']>[3] {
         return {
             getItemTitle: (item) => this.getMinimapItemTitleWithWordCount(item),
+            balanceTooltipText,
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
             onTickClick: async (item, event) => {
                 this.clearResultPreview();
@@ -4276,7 +4277,8 @@ export class InquiryView extends ItemView {
             advancedContext,
             this.currentRunProgress,
             this.getRTCorpusEstimate().estimatedTokens,
-            (value) => this.formatTokenEstimate(value)
+            (value) => this.formatTokenEstimate(value),
+            balanceTooltipText
         );
         this.updateMinimapReuseStatus();
     }
@@ -5491,7 +5493,7 @@ export class InquiryView extends ItemView {
             this.glyphHit.removeAttribute('data-rt-tip-placement');
             return;
         }
-        addTooltipData(this.glyphHit, tooltipText, 'top');
+        addTooltipData(this.glyphHit, balanceTooltipText(tooltipText), 'top');
     }
 
     private updateRings(): void {
@@ -5664,7 +5666,8 @@ export class InquiryView extends ItemView {
         this.minimap.updateFindingStates(
             this.state.isRunning,
             this.isErrorResult(result),
-            findingMap
+            findingMap,
+            balanceTooltipText
         );
     }
 
@@ -5704,8 +5707,8 @@ export class InquiryView extends ItemView {
             ? `Next book: ${this.getBookTitleForId(nextBook.id) || nextBook.displayLabel || 'Book'}`
             : t('inquiry.nav.noNextBook');
 
-        addTooltipData(this.navPrevButton, prevTooltip, 'top');
-        addTooltipData(this.navNextButton, nextTooltip, 'top');
+        addTooltipData(this.navPrevButton, balanceTooltipText(prevTooltip), 'top');
+        addTooltipData(this.navNextButton, balanceTooltipText(nextTooltip), 'top');
     }
 
     private updateNavSessionLabel(): void {
@@ -6037,12 +6040,14 @@ export class InquiryView extends ItemView {
                 : (isAlert
                     ? (state === 'not-configured' ? t('inquiry.help.configTooltip') : t('inquiry.help.noScenesTooltip'))
                     : (isResults ? t('inquiry.help.resultsTooltip') : (hasSessions ? t('inquiry.help.tooltip') : t('inquiry.help.onboardingTooltip')))));
+        const balancedTooltip = balanceTooltipText(tooltip);
+
         this.helpToggleButton.removeAttribute('aria-pressed');
         this.helpToggleButton.setAttribute('aria-disabled', isRunning ? 'true' : 'false');
         this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions && !isAlert && !isResults);
         this.helpToggleButton.classList.toggle('is-help-results', isResults && !corpusAlert);
         this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
-        addTooltipData(this.helpToggleButton, tooltip, 'left');
+        addTooltipData(this.helpToggleButton, balancedTooltip, 'left');
     }
 
     private handleGuidanceHelpClick(): void {
@@ -10568,7 +10573,7 @@ export class InquiryView extends ItemView {
                     : 'Corpus has changed since this run.';
                 addTooltipData(
                     historyRow.group,
-                    `Stale — ${diagnosis.shortLabel}.\n${detail}\nClick to run fresh.`,
+                    balanceTooltipText(`Stale — ${diagnosis.shortLabel}.\n${detail}\nClick to run fresh.`),
                     'top'
                 );
             }
@@ -11239,12 +11244,13 @@ export class InquiryView extends ItemView {
         const targets = this.getHelpTooltipTargets();
         targets.forEach(({ element, text, placement }) => {
             if (!element) return;
+            const balancedText = balanceTooltipText(text);
             if (this.helpTipsEnabled) {
-                addTooltipData(element, text, placement ?? 'bottom');
+                addTooltipData(element, balancedText, placement ?? 'bottom');
                 return;
             }
             const rtTooltipValue = element.getAttribute('data-rt-tip');
-            if (rtTooltipValue === text) {
+            if (rtTooltipValue === text || rtTooltipValue === balancedText) {
                 element.removeAttribute('data-rt-tip');
             }
             element.removeAttribute('data-rt-tip-placement');

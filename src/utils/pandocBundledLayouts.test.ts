@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import * as fs from 'fs'; // SAFE: test-only filesystem fixture setup.
+import * as os from 'os'; // SAFE: test-only temporary directory setup.
+import * as path from 'path'; // SAFE: test-only fixture path setup.
 import { TFile, TFolder, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { RadialTimelineSettings } from '../types/settings';
@@ -8,9 +11,12 @@ import {
     HOTFIX_ID_SPEC_DRIFT_OVERWRITE,
     ensureBundledLayoutInstalledForExport,
     ensureBundledPandocLayoutsRegistered,
+    ensureSpecDrivenBundledFictionTemplatesCurrent,
     getBundledPandocLayoutContent,
     getBundledPandocLayouts,
     installBundledPandocLayouts,
+    setBundledFontSourcePath,
+    setPandocFontPathsForVault,
 } from './pandocBundledLayouts';
 
 function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimelinePlugin; layout: ReturnType<typeof getBundledPandocLayouts>[number] } {
@@ -19,8 +25,24 @@ function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimeli
 
     const files = new Map<string, { file: TFile; content: string }>();
     const folders = new Set<string>();
+    const vaultBase = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-pandoc-vault-'));
+    const assetFonts = path.join(vaultBase, '.obsidian/plugins/radial-timeline/assets/fonts');
+    const fontFixtures: Record<string, string[]> = {
+        'sorts-mill-goudy': ['SortsMillGoudy-Regular.ttf', 'SortsMillGoudy-Italic.ttf'],
+        'latin-modern': ['lmroman10-regular.otf', 'lmroman10-italic.otf', 'lmroman10-bold.otf', 'lmroman10-bolditalic.otf'],
+    };
+    for (const [family, fontFiles] of Object.entries(fontFixtures)) {
+        const dir = path.join(assetFonts, family);
+        fs.mkdirSync(dir, { recursive: true });
+        for (const file of fontFiles) {
+            fs.writeFileSync(path.join(dir, file), `${family}/${file}`);
+        }
+    }
 
     const vault = {
+        adapter: {
+            getBasePath: () => vaultBase,
+        },
         getAbstractFileByPath: (input: string) => {
             const key = normalizePath(input);
             const entry = files.get(key);
@@ -62,8 +84,12 @@ function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimeli
 
     const plugin = {
         settings,
-        app: { vault }
+        app: { vault },
+        saveSettings: async () => {}
     } as unknown as RadialTimelinePlugin;
+
+    setBundledFontSourcePath(assetFonts);
+    setPandocFontPathsForVault(plugin);
 
     return { plugin, layout };
 }
@@ -139,12 +165,18 @@ describe('bundled pandoc layout export auto-install', () => {
         const modernClassic = getBundledPandocLayoutContent('bundled-fiction-modern-classic')!;
         expect(modernClassic).toContain('  left=0.98in,');
         expect(modernClassic).toContain('  right=0.98in');
-        expect(modernClassic).toContain('\\newcommand{\\rtPart}[1]');
-        expect(modernClassic).toContain('\\newcommand{\\rtEpigraph}[2]');
+        expect(modernClassic).toContain('\\newcommand{\\rtPart}[3]');
+        expect(modernClassic).not.toContain('\\newcommand{\\rtEpigraph}[2]');
+        expect(modernClassic).toContain('\\rule{0.46in}{0.4pt}');
+        expect(modernClassic).not.toContain('PART~#1');
         expect(modernClassic).toContain('\\newcommand{\\rtChapter}[2]');
         expect(modernClassic).toContain('\\newcommand{\\rtSceneSep}');
-        expect(modernClassic).toContain('\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
-        expect(modernClassic).toContain('\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
+        expect(modernClassic).toContain('\\errmessage{Radial Timeline export requires Pandoc metadata: title}');
+        expect(modernClassic).toContain('\\errmessage{Radial Timeline export requires Pandoc metadata: author}');
+        expect(modernClassic).toContain('\\newcommand{\\BookTitle}{$if(title)$$title$$endif$}');
+        expect(modernClassic).toContain('\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$endif$}');
+        expect(modernClassic).not.toContain('Untitled Manuscript');
+        expect(modernClassic).not.toContain('$else$Author');
         // Unsafe legacy chapter titleformat must not regress.
         expect(modernClassic).not.toContain('\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%');
         expect(modernClassic).not.toContain('Chapter~\\thechapter');
@@ -328,6 +360,36 @@ describe('bundled pandoc layout export auto-install', () => {
 
         // File still exists.
         expect(plugin.app.vault.getAbstractFileByPath(target)).toBeInstanceOf(TFile);
+    });
+
+    it('startup sync installs missing fiction templates and overwrites stale RT-owned fiction templates', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, '% stale contemporary\n');
+
+        const result = await ensureSpecDrivenBundledFictionTemplatesCurrent(plugin);
+
+        expect(result.failed).toEqual([]);
+        expect(result.updated).toContain(layout.name);
+        expect(result.installed.length).toBeGreaterThanOrEqual(3);
+
+        const file = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const updated = await (plugin.app.vault as any).read(file);
+        expect(updated).toBe(getBundledPandocLayoutContent(layout.id));
+
+        const modernClassic = getBundledPandocLayouts().find(item => item.id === 'bundled-fiction-modern-classic')!;
+        const modernClassicTarget = normalizePath(`${plugin.settings.pandocFolder}/${modernClassic.path}`);
+        expect(plugin.app.vault.getAbstractFileByPath(modernClassicTarget)).toBeInstanceOf(TFile);
+        const vaultBase = (plugin.app.vault.adapter as unknown as { getBasePath: () => string }).getBasePath(); // SAFE: test asserts the desktop vault base path used for local font installation.
+        expect(fs.existsSync(path.join(vaultBase, plugin.settings.pandocFolder, 'fonts/latin-modern/lmroman10-regular.otf'))).toBe(true);
+        expect(fs.existsSync(path.join(vaultBase, plugin.settings.pandocFolder, 'fonts/sorts-mill-goudy/SortsMillGoudy-Regular.ttf'))).toBe(true);
+
+        const history = plugin.settings.templateHotfixHistory ?? [];
+        expect(history).toHaveLength(1);
+        expect(history[0].layoutId).toBe(layout.id);
+        expect(history[0].hotfixId).toBe(HOTFIX_ID_SPEC_DRIFT_OVERWRITE);
     });
 
     it('seeds the registry so install-all leaves all bundled fiction layouts validating', async () => {

@@ -23,6 +23,8 @@ export interface SceneContent {
   bodyText: string;
   wordCount: number;
   sceneId?: string;
+  /** Source note path when this entry came from a real manuscript scene. */
+  sourcePath?: string;
 }
 
 export interface AssembledManuscript {
@@ -210,6 +212,27 @@ function resolveSceneHeading(
   }
 }
 
+function resolveSceneTitleForPublishing(
+  basename: string,
+  frontmatter: Record<string, unknown> | null
+): string {
+  const trimmed = basename.trim();
+  const prefix = extractScenePrefixFromTitle(trimmed);
+  const strippedTitle = stripScenePrefix(trimmed, prefix);
+  if (strippedTitle) return trimmed;
+
+  const frontmatterTitle = frontmatter
+    ? getFirstFrontmatterString(frontmatter, ['Title', 'Scene Title', 'SceneTitle', 'Scene Name', 'SceneName', 'Name'])
+    : undefined;
+  if (!frontmatterTitle) return trimmed;
+
+  const fmPrefix = extractScenePrefixFromTitle(frontmatterTitle);
+  const fmTitle = stripScenePrefix(frontmatterTitle, fmPrefix);
+  const titleText = fmTitle || frontmatterTitle.trim();
+  if (prefix && titleText) return `${prefix} ${titleText}`;
+  return titleText || trimmed;
+}
+
 function resolveLatexSceneHeading(
   title: string,
   mode: ManuscriptSceneHeadingMode,
@@ -239,10 +262,12 @@ function resolveLatexSceneHeading(
 
 function resolveLatexSceneRunningMark(
   title: string,
-  mode: ManuscriptSceneHeadingMode,
   fallbackNumber: number
 ): string {
-  return escapeLatex(resolveSceneHeading(title, mode, fallbackNumber));
+  const trimmed = title.trim();
+  const prefix = extractScenePrefixFromTitle(trimmed);
+  const strippedTitle = stripScenePrefix(trimmed, prefix);
+  return escapeLatex(strippedTitle || trimmed || `Scene ${fallbackNumber}`);
 }
 
 /**
@@ -539,8 +564,7 @@ export async function getSceneFilesByOrder(
     }
 
     const isAllowedType = scene.itemType === 'Scene'
-      || scene.itemType === 'Beat'
-      || scene.itemType === 'Backdrop'
+      || !scene.itemType
       || (includeMatter && isMatter);
 
     if (isAllowedType && scene.path && !uniquePaths.has(scene.path)) {
@@ -628,9 +652,7 @@ export async function getSceneFilesByOrder(
 
   const chapterMarkersByScenePath = groupTimelineChapterMarkersByScenePath(
     resolveTimelineChapterMarkers(
-      sortedScenes.filter((item) =>
-        item.itemType === 'Scene' || !item.itemType || item.itemType === 'Beat' || item.itemType === 'Backdrop'
-      )
+      sortedScenes.filter((item) => item.itemType === 'Scene' || !item.itemType)
     )
   );
 
@@ -781,6 +803,12 @@ function sanitizeModernClassicMacroArg(value: string): string {
     .replace(/[\\{}]/g, '')
     .replace(/\r?\n/g, ' ')
     .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sanitizeModernClassicAttributionArg(value: string): string {
+  return sanitizeModernClassicMacroArg(value)
+    .replace(/^[\s—–-]+/, '')
     .trim();
 }
 
@@ -1190,19 +1218,16 @@ export async function assembleManuscript(
       // RT terminology → structure mapping:
       //   Acts (from each scene's `Act:` frontmatter field, the canonical
       //         source that also drives the timeline ring partitions)
-      //                                    → \rtPart{Roman} — dedicated Part page
+      //                                    → \rtPart{Roman}{quote}{attr} — Part page
       //   Chapters (from Chapter fields)   → \rtChapter{n}{Title} — chapter opener
       //   Scenes (scene notes)             → \rtSceneSep — inline scene separator
       const nextActIndex = extractSceneActIndex(content);
       if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
         const actRoman = toRomanNumeral(nextActIndex);
         if (actRoman) {
-          textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}`));
           const epigraphQuote = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphs[nextActIndex - 1] || '');
-          const epigraphAttribution = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphAttributions[nextActIndex - 1] || '');
-          if (epigraphQuote || epigraphAttribution) {
-            textParts.push(buildRawLatexBlock(`\\rtEpigraph{${epigraphQuote}}{${epigraphAttribution}}`));
-          }
+          const epigraphAttribution = sanitizeModernClassicAttributionArg(modernClassicState.actEpigraphAttributions[nextActIndex - 1] || '');
+          textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}{${epigraphQuote}}{${epigraphAttribution}}`));
           modernClassicState.currentActIndex = nextActIndex;
           emittedStructureOpener = true;
         }
@@ -1221,7 +1246,7 @@ export async function assembleManuscript(
         textParts.push(buildRawLatexBlock('\\rtSceneSep'));
       }
 
-      scenes.push({ title, bodyText, wordCount, sceneId });
+      scenes.push({ title, bodyText, wordCount, sceneId, sourcePath: file.path });
       totalWords += wordCount;
       textParts.push(`${bodyText}\n\n`);
       modernClassicState.emittedSceneCount += 1;
@@ -1247,13 +1272,14 @@ export async function assembleManuscript(
         }
       }
 
-      const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);
-      scenes.push({ title: heading, bodyText, wordCount, sceneId });
+      const publishTitle = resolveSceneTitleForPublishing(title, sceneFrontmatter);
+      const heading = resolveSceneHeading(publishTitle, sceneHeadingMode, i + 1);
+      scenes.push({ title: heading, bodyText, wordCount, sceneId, sourcePath: file.path });
       totalWords += wordCount;
 
       if (sceneHeadingRenderMode === 'latex-section-starred') {
-        const latexHeading = resolveLatexSceneHeading(title, sceneHeadingMode, i + 1);
-        const latexRunningMark = resolveLatexSceneRunningMark(title, sceneHeadingMode, i + 1);
+        const latexHeading = resolveLatexSceneHeading(publishTitle, sceneHeadingMode, i + 1);
+        const latexRunningMark = resolveLatexSceneRunningMark(publishTitle, i + 1);
         // Emit a single \rtSceneOpener{HEADING} call. The opener macro
         // (defined by the layout's .tex; see designedStyleFragments
         // renderSceneOpener) owns the cleardoublepage, chrome suppression,
@@ -1264,7 +1290,7 @@ export async function assembleManuscript(
         // macro to emit \section{N} or \section*{Title} via titlesec hooks.
         // The .tex generator decides which form to define; the assembler
         // contract surface is always \rtSceneOpener.
-        textParts.push(`\\rtSceneOpener{${latexHeading}}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{${latexRunningMark}}\n\n${bodyText}\n\n`);
+        textParts.push(`\\rtSceneOpener{${latexHeading}}\n\\rtSetSceneRunningTitle{${latexRunningMark}}\n\n${bodyText}\n\n`);
       } else {
         const headingSuffix = includeSceneIdInHeading
           ? sceneId ? ` ${formatSceneIdForManuscript(sceneId, sceneIdFormat)}` : ''
@@ -1317,12 +1343,16 @@ export async function updateSceneWordCounts(
   scenes: SceneContent[]
 ): Promise<number> {
   let updatedCount = 0;
+  const scenesByPath = new Map<string, SceneContent>();
+  for (const scene of scenes) {
+    if (scene.sourcePath) scenesByPath.set(scene.sourcePath, scene);
+  }
+  const hasPathMetadata = scenesByPath.size > 0;
 
   for (let i = 0; i < sceneFiles.length; i++) {
     const file = sceneFiles[i];
-    const scene = scenes[i];
 
-    if (!file || !scene) continue;
+    if (!file) continue;
 
     try {
       let didUpdate = false;
@@ -1334,6 +1364,11 @@ export async function updateSceneWordCounts(
 
         // Only scene notes should receive word-count writes.
         if (classValue && classValue !== 'scene') return;
+
+        const scene = hasPathMetadata
+          ? scenesByPath.get(file.path)
+          : scenes[i];
+        if (!scene) return;
 
         fmObj[wordsKey] = scene.wordCount;
         didUpdate = true;

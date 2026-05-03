@@ -1,20 +1,21 @@
 /*
  * One Spec, Three Echoes — contract alignment.
  *
- * For every bundled fiction layout, the same DesignedStyleSpec drives THREE
- * independent rendering paths:
+ * For every bundled fiction layout, the DesignedStyleSpec and runtime layout
+ * behavior must agree across THREE independent rendering paths:
  *
  *   1. Feature table       (getLayoutFeaturesFromSpec)
  *   2. Pictogram preview   (getPictogramRowsFromSpec)
- *   3. PDF assembler       (assembleManuscript + generateDesignedStyleTex)
+ *   3. PDF assembler       (getManuscriptLayoutExportBehavior + assembleManuscript + generateDesignedStyleTex)
  *
  * This test builds a single comprehensive synthetic manuscript fixture in
  * memory (parts, chapters, scenes-with-titles), then asserts that for each
  * spec all three paths describe the same thing.
  *
  * IMPORTANT — test is on the SEMANTIC contract, not on byte-equality. The
- * spec config drives intent; cosmetic copy on the feature row is allowed to
- * change so long as the meaningful tokens still appear. Tests must not pin
+ * spec config and runtime layout behavior drive intent; cosmetic copy on the
+ * feature row is allowed to change so long as the meaningful tokens still
+ * appear. Tests must not pin
  * exact phrasing strings ("New page — centered scene number only") because
  * that overfits the test to the current copy and re-traps the agent into
  * fixing surface symptoms instead of the contract.
@@ -36,6 +37,8 @@ import {
     type ManuscriptSceneHeadingMode,
     type SceneHeadingRenderMode,
 } from '../utils/manuscript';
+import { getManuscriptLayoutExportBehavior } from '../utils/manuscriptLayoutExport';
+import type { PandocLayoutTemplate } from '../types';
 
 // ── Synthetic fixture ──────────────────────────────────────────────────
 //
@@ -118,7 +121,7 @@ function buildChapterMarkers(scenes: SyntheticScene[]): Record<string, Array<{
     for (const s of scenes) {
         if (s.chapterMarker) {
             markers[s.file.path] = [{
-                sourcePath: `Chapters/${s.chapterMarker.title}.md`,
+                sourcePath: s.file.path,
                 sourceType: 'Scene',
                 title: s.chapterMarker.title,
                 resolvedScenePath: s.file.path,
@@ -130,31 +133,60 @@ function buildChapterMarkers(scenes: SyntheticScene[]): Record<string, Array<{
     return markers;
 }
 
-// ── Per-spec assembly options derived from the spec ────────────────────
+// ── Per-layout assembly options ────────────────────────────────────────
 //
-// Mirrors the runtime flow: when a layout has a DesignedStyleSpec, the
-// spec's scene.headingMode is the floor, and dedicated-page openers force
-// latex-section-starred. We don't reuse getManuscriptLayoutExportBehavior
-// here so the test remains spec-driven (not coupled to per-id branches).
+// Mirrors CommandRegistrar: the runtime behavior table decides marker
+// suppression, render mode, and whether chapter markers must be emitted as
+// \rtChapter. The DesignedStyleSpec decides the generated template and preview
+// rows. Testing those together catches spec/preview/runtime drift.
 
 interface AssemblyContext {
-    sceneHeadingMode: ManuscriptSceneHeadingMode;
+    sceneHeadingMode?: ManuscriptSceneHeadingMode;
     sceneHeadingRenderMode: SceneHeadingRenderMode;
     useModernClassicStructure: boolean;
     suppressChapterMarkers: boolean;
+    suppressPartMarkers: boolean;
+    useRtChapterMacro: boolean;
 }
 
-function assemblyContextForSpec(id: BundledFictionId): AssemblyContext {
-    const spec = BUNDLED_FICTION_SPECS[id];
-    const usesDedicatedOpener = spec.scene.opener === 'dedicated-page';
-    const useModernClassicStructure = id === 'bundled-fiction-modern-classic';
+const LAYOUT_META: Record<BundledFictionId, Pick<PandocLayoutTemplate, 'id' | 'name' | 'path' | 'designedSpec' | 'usesModernClassicStructure'>> = {
+    'bundled-fiction-classic-manuscript': {
+        id: 'bundled-fiction-classic-manuscript',
+        name: 'Standard Manuscript',
+        path: 'rt_classic_manuscript.tex',
+        designedSpec: BUNDLED_FICTION_SPECS['bundled-fiction-classic-manuscript'],
+    },
+    'bundled-fiction-contemporary-literary': {
+        id: 'bundled-fiction-contemporary-literary',
+        name: 'Contemporary Literary',
+        path: 'rt_contemporary_literary.tex',
+        designedSpec: BUNDLED_FICTION_SPECS['bundled-fiction-contemporary-literary'],
+    },
+    'bundled-fiction-signature-literary': {
+        id: 'bundled-fiction-signature-literary',
+        name: 'Signature Literary',
+        path: 'rt_signature_literary.tex',
+        designedSpec: BUNDLED_FICTION_SPECS['bundled-fiction-signature-literary'],
+    },
+    'bundled-fiction-modern-classic': {
+        id: 'bundled-fiction-modern-classic',
+        name: 'Modern Classic',
+        path: 'rt_modern_classic.tex',
+        designedSpec: BUNDLED_FICTION_SPECS['bundled-fiction-modern-classic'],
+        usesModernClassicStructure: true,
+    },
+};
+
+function assemblyContextForLayout(id: BundledFictionId): AssemblyContext {
+    const layout = LAYOUT_META[id];
+    const behavior = getManuscriptLayoutExportBehavior(layout);
     return {
-        sceneHeadingMode: spec.scene.headingMode,
-        sceneHeadingRenderMode: useModernClassicStructure
-            ? 'markdown-h2'
-            : (usesDedicatedOpener ? 'latex-section-starred' : 'markdown-h2'),
-        useModernClassicStructure,
-        suppressChapterMarkers: spec.chapters.mode === 'off' && !useModernClassicStructure,
+        sceneHeadingMode: behavior.defaultSceneHeadingMode,
+        sceneHeadingRenderMode: behavior.sceneHeadingRenderMode,
+        useModernClassicStructure: layout.usesModernClassicStructure === true,
+        suppressChapterMarkers: behavior.suppressChapterMarkers,
+        suppressPartMarkers: behavior.suppressPartMarkers,
+        useRtChapterMacro: behavior.useRtChapterMacro,
     };
 }
 
@@ -176,7 +208,7 @@ describe('one spec, three echoes — contract alignment', () => {
     it('Standard Manuscript: spec → feature/picto/assembler all describe scene-number on a new page', async () => {
         const id: BundledFictionId = 'bundled-fiction-classic-manuscript';
         const spec = BUNDLED_FICTION_SPECS[id];
-        const ctx = assemblyContextForSpec(id);
+        const ctx = assemblyContextForLayout(id);
         const scenes = buildSyntheticScenes();
         const vault = buildVault(scenes);
         const chapterMarkers = ctx.suppressChapterMarkers
@@ -190,6 +222,7 @@ describe('one spec, three echoes — contract alignment', () => {
                 sceneHeadingMode: ctx.sceneHeadingMode,
                 sceneHeadingRenderMode: ctx.sceneHeadingRenderMode,
                 chapterMarkersByScenePath: chapterMarkers,
+                useRtChapterMacro: ctx.useRtChapterMacro,
             }
         );
 
@@ -245,7 +278,7 @@ describe('one spec, three echoes — contract alignment', () => {
     it('Modern Classic: spec → feature/picto/assembler all describe parts + chapters + roman-rule scenes', async () => {
         const id: BundledFictionId = 'bundled-fiction-modern-classic';
         const spec = BUNDLED_FICTION_SPECS[id];
-        const ctx = assemblyContextForSpec(id);
+        const ctx = assemblyContextForLayout(id);
         const scenes = buildSyntheticScenes();
         const vault = buildVault(scenes);
 
@@ -260,6 +293,7 @@ describe('one spec, three echoes — contract alignment', () => {
                 sceneHeadingMode: ctx.sceneHeadingMode,
                 sceneHeadingRenderMode: ctx.sceneHeadingRenderMode,
                 chapterMarkersByScenePath: buildChapterMarkers(scenes),
+                useRtChapterMacro: ctx.useRtChapterMacro,
                 modernClassicStructure: {
                     enabled: true,
                     actEpigraphs: ['Quote one.', 'Quote two.'],
@@ -268,11 +302,11 @@ describe('one spec, three echoes — contract alignment', () => {
             }
         );
 
-        // Two acts → exactly two \rtPart{...} calls.
+        // Two acts → exactly two grouped \rtPart{roman}{quote}{attribution} calls.
         expect((assembled.text.match(/\\rtPart\{/g) || []).length).toBe(2);
         // Roman-numeral act labels (parts.mode === 'roman').
-        expect(assembled.text).toContain('\\rtPart{I}');
-        expect(assembled.text).toContain('\\rtPart{II}');
+        expect(assembled.text).toContain('\\rtPart{I}{Quote one.}{Author A}');
+        expect(assembled.text).toContain('\\rtPart{II}{Quote two.}{Author B}');
         // Three chapter markers in the fixture → three \rtChapter calls.
         expect((assembled.text.match(/\\rtChapter\{/g) || []).length).toBe(3);
         // Chapters carry their titles (numbered-titled mode).
@@ -282,8 +316,8 @@ describe('one spec, three echoes — contract alignment', () => {
         expect(assembled.text).toContain('\\rtSceneSep');
         // Modern Classic does NOT use \rtSceneOpener (its opener is roman-with-rule, inline).
         expect(assembled.text).not.toContain('\\rtSceneOpener{');
-        // Epigraphs threaded through \rtEpigraph.
-        expect(assembled.text).toContain('\\rtEpigraph');
+        // Epigraphs are grouped into the Part opener, not emitted as a second page.
+        expect(assembled.text).not.toContain('\\rtEpigraph');
 
         // Pictogram: roman-rule scene + PART + CHAPTER spreads.
         const picto = getPictogramRowsFromSpec(spec);
@@ -308,7 +342,7 @@ describe('one spec, three echoes — contract alignment', () => {
     it('Signature Literary: spec → three scene-mode pictogram spreads, no PART/CHAPTER, no \\rtChapter in assembler output', async () => {
         const id: BundledFictionId = 'bundled-fiction-signature-literary';
         const spec = BUNDLED_FICTION_SPECS[id];
-        const ctx = assemblyContextForSpec(id);
+        const ctx = assemblyContextForLayout(id);
         const scenes = buildSyntheticScenes();
         const vault = buildVault(scenes);
         // chapters.mode === 'off' → suppress markers (mirrors the export pipeline).
@@ -321,13 +355,16 @@ describe('one spec, three echoes — contract alignment', () => {
                 sceneHeadingMode: ctx.sceneHeadingMode,
                 sceneHeadingRenderMode: ctx.sceneHeadingRenderMode,
                 chapterMarkersByScenePath: chapterMarkers,
+                useRtChapterMacro: ctx.useRtChapterMacro,
             }
         );
 
         // Each scene → one \rtSceneOpener call. Signature's spec defines
         // \rtSceneOpener as a thin wrapper around \section*{} so titlesec
-        // hooks fire and render the user-selected mode.
+        // hooks fire and render the user-selected mode. With no saved user
+        // override, assembly falls back to scene-number-title.
         expect((assembled.text.match(/\\rtSceneOpener\{/g) || []).length).toBe(scenes.length);
+        expect(assembled.text).toContain('\\rtSceneOpener{1\\\\{\\normalsize (Arrival)}}');
         // No PART, no CHAPTER pages.
         expect(assembled.text).not.toMatch(/\\rtPart\{/);
         expect(assembled.text).not.toMatch(/\\rtChapter\{/);
@@ -357,7 +394,7 @@ describe('one spec, three echoes — contract alignment', () => {
     it('Contemporary Literary: spec → numbered chapter pages + dedicated scene-opener pages', async () => {
         const id: BundledFictionId = 'bundled-fiction-contemporary-literary';
         const spec = BUNDLED_FICTION_SPECS[id];
-        const ctx = assemblyContextForSpec(id);
+        const ctx = assemblyContextForLayout(id);
         const scenes = buildSyntheticScenes();
         const vault = buildVault(scenes);
 
@@ -368,6 +405,7 @@ describe('one spec, three echoes — contract alignment', () => {
                 sceneHeadingMode: ctx.sceneHeadingMode,
                 sceneHeadingRenderMode: ctx.sceneHeadingRenderMode,
                 chapterMarkersByScenePath: buildChapterMarkers(scenes),
+                useRtChapterMacro: ctx.useRtChapterMacro,
             }
         );
 
@@ -375,10 +413,12 @@ describe('one spec, three echoes — contract alignment', () => {
         expect((assembled.text.match(/\\rtSceneOpener\{/g) || []).length).toBe(scenes.length);
         // No \rtPart (parts.mode === 'off').
         expect(assembled.text).not.toMatch(/\\rtPart\{/);
-        // Three chapter markers in the fixture → three markdown chapter
-        // headings reach Pandoc (Contemporary uses # heading for chapters).
+        // Three chapter markers in the fixture → three \rtChapter calls.
+        // This must mirror the export pipeline; a markdown "# Chapter" here
+        // falls through to Pandoc/book defaults and drifts from the preview.
+        expect((assembled.text.match(/\\rtChapter\{/g) || []).length).toBe(3);
         const h1Chapters = (assembled.text.match(/^# /gm) || []).length;
-        expect(h1Chapters).toBe(3);
+        expect(h1Chapters).toBe(0);
 
         // Heading inside the scene opener is just the scene number (spec floor).
         for (let i = 1; i <= scenes.length; i++) {
@@ -409,7 +449,7 @@ describe('one spec, three echoes — contract alignment', () => {
     for (const id of BUNDLED_FICTION_IDS) {
         it(`${id}: pictogram and assembler agree on the spec's headingMode`, async () => {
             const spec = BUNDLED_FICTION_SPECS[id];
-            const ctx = assemblyContextForSpec(id);
+            const ctx = assemblyContextForLayout(id);
             // Skip Modern Classic — its scene opener is inline, not a dedicated
             // page, so the contract surface is \rtSceneSep not \rtSceneOpener.
             if (spec.scene.opener !== 'dedicated-page') return;
@@ -425,17 +465,21 @@ describe('one spec, three echoes — contract alignment', () => {
                     sceneHeadingMode: ctx.sceneHeadingMode,
                     sceneHeadingRenderMode: ctx.sceneHeadingRenderMode,
                     chapterMarkersByScenePath: chapterMarkers,
+                    useRtChapterMacro: ctx.useRtChapterMacro,
                 }
             );
 
-            // Heading mode floor reaches the assembler.
-            // (Pictogram already asserted in per-spec tests above.)
-            if (spec.scene.headingMode === 'scene-number') {
+            const resolvedMode = ctx.sceneHeadingMode ?? 'scene-number-title';
+            if (resolvedMode === 'scene-number') {
                 // Every \rtSceneOpener{...} payload must be just digits.
                 const matches = Array.from(assembled.text.matchAll(/\\rtSceneOpener\{([^}]+)\}/g));
                 for (const m of matches) {
                     expect(m[1]).toMatch(/^\d+$/);
                 }
+            } else if (resolvedMode === 'scene-number-title') {
+                expect(assembled.text).toMatch(/\\rtSceneOpener\{\d+\\\\\{\\normalsize \([^)]+\)\}\}/);
+            } else {
+                expect(assembled.text).toMatch(/\\rtSceneOpener\{[A-Za-z]/);
             }
         });
     }

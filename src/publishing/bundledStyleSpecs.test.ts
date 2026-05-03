@@ -102,7 +102,7 @@ describe('BUNDLED_FICTION_SPECS', () => {
             const guard = /\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/;
             if (spec.parts.mode !== 'off') {
                 // \rtPart body should contain the flag-guard.
-                expect(tex).toMatch(/\\newcommand\{\\rtPart\}\[1\]\{%[\s\S]*?\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
+                expect(tex).toMatch(/\\newcommand\{\\rtPart\}\[3\]\{%[\s\S]*?\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
             }
             if (spec.chapters.mode !== 'off') {
                 expect(tex).toMatch(/\\newcommand\{\\rtChapter\}\[2\]\{%[\s\S]*?\\ifrtMainStarted\\else\\rtBeginMainArabic\\fi/);
@@ -112,6 +112,19 @@ describe('BUNDLED_FICTION_SPECS', () => {
             }
             // Sanity: at least one occurrence of the guard exists somewhere.
             expect(tex).toMatch(guard);
+        });
+    }
+
+    // Page-break policy: these bundled fiction previews advertise opener pages,
+    // not recto-only book signatures. `\cleardoublepage` silently inserts blank
+    // verso pages in twoside documents, so the generated templates must use
+    // plain `\clearpage` unless a future spec explicitly models recto forcing.
+    for (const id of BUNDLED_FICTION_IDS) {
+        it(`${id}: uses plain page breaks and does not synthesize blank verso pages`, () => {
+            const spec = BUNDLED_FICTION_SPECS[id];
+            const tex = generateDesignedStyleTex(spec, { bundledLayoutId: id });
+            expect(tex).not.toContain('\\cleardoublepage');
+            expect(tex).toContain('\\clearpage');
         });
     }
 
@@ -141,7 +154,8 @@ describe('BUNDLED_FICTION_SPECS', () => {
             // The macro form is the contract surface; the assembler invokes it.
             expect(tex).toContain('\\newcommand{\\rtSceneOpener}[1]');
             expect(tex).toContain('\\rtSceneOpenerTitle{#1}');
-            expect(tex).toMatch(/\\rtSceneOpener\}\[1\]\{%[\s\S]*?\\cleardoublepage[\s\S]*?\\thispagestyle\{empty\}/);
+            expect(tex).toMatch(/\\rtSceneOpener\}\[1\]\{%[\s\S]*?\\clearpage[\s\S]*?\\thispagestyle\{empty\}/);
+            expect(tex.split('\\newcommand{\\rtSceneOpener}')[1] ?? '').not.toContain('\\cleardoublepage');
             // Must NOT use the dead \titleformat{\section}/\preto\section path.
             expect(tex).not.toMatch(/\\preto\\section\{/);
             expect(tex).not.toMatch(/\\titleformat\{\\subsection\}/);

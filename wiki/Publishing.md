@@ -97,7 +97,7 @@ Imported templates appear alongside bundled ones and can be assigned to any comp
 
 The `Chapter:` YAML frontmatter field is how you tell the exporter "this is where a new chapter starts."
 
-Add it to the first scene, beat, or backdrop note that belongs to each chapter:
+Add it to the first scene note that belongs to each chapter:
 
 ```yaml
 ---
@@ -108,12 +108,12 @@ Chapter: The Homecoming
 
 Key behaviors:
 
-- **Shared across three note types.** Scenes, Beat notes, and Backdrop/context notes all accept `Chapter:`. The plugin walks the timeline in order; whichever note type appears first with a `Chapter:` value opens that chapter. This lets you anchor a chapter break on a beat card or a context note, not only on a scene.
+- **Scene notes only.** Publishing reads `Chapter:` from exported scene notes. Beat and Backdrop/context notes are not chapter anchors in the publishing pipeline.
 - **First occurrence wins.** If five scenes share `Chapter: The Homecoming`, only the first one starts the chapter — the rest flow inside it.
 - **Case-insensitive.** `Chapter`, `chapter`, `CHAPTER` all work.
 - **Numbering is automatic.** You provide the title; the exporter supplies the number (`Chapter 1`, `Chapter 2`, …).
 
-You do **not** need `Chapter:` on every scene. Only on the scene (or beat/backdrop) where a chapter begins.
+You do **not** need `Chapter:` on every scene. Only on the scene where a chapter begins.
 
 ---
 
@@ -171,7 +171,7 @@ See [Scene Properties](YAML-Frontmatter) for the full frontmatter schema.
 
 ### Step 4 — Add `Chapter:` markers
 
-Decide where each chapter should begin. On the first scene (or beat/backdrop) of each chapter, add:
+Decide where each chapter should begin. On the first scene of each chapter, add:
 
 ```yaml
 Chapter: The Gathering Storm

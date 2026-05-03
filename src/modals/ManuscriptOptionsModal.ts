@@ -35,6 +35,7 @@ import {
 import { buildSpreadValidationContext, collectSpreadWarningTooltips } from '../publishing/spreadValidationContext';
 import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
 import type {
+    BookProfile,
     BookPublishingPreferences,
     ExportProfile,
     ManuscriptExportCleanupOptions,
@@ -56,11 +57,12 @@ function renderModalLayoutPreview(
     activeSceneMode?: ManuscriptSceneHeadingMode,
     ctx?: SpreadValidationContext,
     layout?: PandocLayoutTemplate,
+    onSceneModeSelect?: (mode: ManuscriptSceneHeadingMode) => void,
 ): void {
     const visual = parent.createDiv({ cls: 'ert-layout-visual ert-layout-visual--cards-only' });
     const baseRows = getLayoutPictogramRows(variant, layout);
     const rows = ctx ? applySpreadValidation(baseRows, ctx) : baseRows;
-    renderLayoutPictograms(visual, rows, activeSceneMode);
+    renderLayoutPictograms(visual, rows, activeSceneMode, { onSceneModeSelect });
 }
 
 export interface ManuscriptModalResult {
@@ -1901,7 +1903,18 @@ export class ManuscriptOptionsModal extends Modal {
 
         if (variant !== 'generic') {
             const ctx = this.buildSpreadValidationContext(sourceLayout);
-            renderModalLayoutPreview(desc, variant, this.resolveActiveSceneHeadingMode(sourceLayout), ctx, sourceLayout);
+            renderModalLayoutPreview(
+                desc,
+                variant,
+                this.resolveActiveSceneHeadingMode(sourceLayout),
+                ctx,
+                sourceLayout,
+                sourceLayout?.hasSceneOpenerHeadingOptions
+                    ? (sceneHeadingMode) => {
+                        void this.setActiveSceneHeadingMode(sourceLayout, sceneHeadingMode, profile);
+                    }
+                    : undefined
+            );
         }
 
         const hasProTemplates = this.templateProfiles
@@ -1922,6 +1935,49 @@ export class ManuscriptOptionsModal extends Modal {
         return mode === 'scene-number' || mode === 'scene-number-title' || mode === 'title-only'
             ? mode
             : 'scene-number-title';
+    }
+
+    private getActiveBookReference(): BookProfile | null {
+        const active = getActiveBook(this.plugin.settings);
+        if (!active) return null;
+        const index = (this.plugin.settings.books || []).findIndex(book => book.id === active.id);
+        return index >= 0 ? this.plugin.settings.books[index] : null;
+    }
+
+    private async setActiveSceneHeadingMode(
+        layout: PandocLayoutTemplate,
+        sceneHeadingMode: ManuscriptSceneHeadingMode,
+        profile: TemplateProfile
+    ): Promise<void> {
+        const activeBook = this.getActiveBookReference();
+        if (!activeBook) return;
+
+        if (!activeBook.layoutOptions) activeBook.layoutOptions = {};
+        const scoped = activeBook.layoutOptions[layout.id] || {};
+        const next = { ...scoped };
+
+        if (sceneHeadingMode === 'scene-number-title') {
+            delete next.sceneHeadingMode;
+        } else {
+            next.sceneHeadingMode = sceneHeadingMode;
+        }
+
+        const hasEpigraphText = (next.actEpigraphs || []).some(value => value.trim().length > 0);
+        const hasAttributionText = (next.actEpigraphAttributions || []).some(value => value.trim().length > 0);
+        if (!next.sceneHeadingMode && !hasEpigraphText && !hasAttributionText) {
+            delete activeBook.layoutOptions[layout.id];
+            if (Object.keys(activeBook.layoutOptions).length === 0) {
+                delete activeBook.layoutOptions;
+            }
+        } else {
+            activeBook.layoutOptions[layout.id] = next;
+        }
+
+        await this.plugin.saveSettings();
+        this.renderLayoutDescription(profile);
+        this.updateExportProfileSummary();
+        this.updateTemplateWarning();
+        this.updateTemplateActionButtonState();
     }
 
     private findLayoutForTemplateProfile(profile?: TemplateProfile): PandocLayoutTemplate | undefined {
@@ -2117,21 +2173,24 @@ export class ManuscriptOptionsModal extends Modal {
             ? fontDiagnostics.requiredFonts.find(font => !fontDiagnostics.missingRequiredFonts.includes(font)) || null
             : null;
         // Spec-driven `state !== 'ok'` is preferred when present — it knows
-        // about lmodern (Latin Modern → always ok) and bundled assets. Fall
+        // about bundled font assets and hard-fail Latin Modern contracts. Fall
         // back to the legacy probe for layouts without a spec.
         const hasFontRisk = structuredFontDiag.state !== 'ok'
             || (canVerifyFonts && (fontDiagnostics.missingRequiredFonts.length > 0 || hasPrimaryMissing));
 
         // ── Build user-facing summary ────────────────────────────────
-        const resolvedFont = this.buildFontDisplayName(primaryRequested, canVerifyFonts, hasPrimaryMissing, fallbackFont);
+        const displayRequestedFont = primaryRequested || structuredFontDiag.primaryFontName || null;
+        const resolvedFont = structuredFontDiag.state !== 'ok' && structuredFontDiag.resolvedFontName
+            ? structuredFontDiag.resolvedFontName
+            : this.buildFontDisplayName(displayRequestedFont, canVerifyFonts, hasPrimaryMissing, fallbackFont);
         const layoutDesc = this.formatTemplateProfileName(selectedProfile) || selectedLayout.name || 'Custom';
         const willEmbed = fontDiagnostics.usesFontspec;
 
         // ── Build technical details (hidden by default) ──────────────
         const technicalLines: string[] = [];
-        if (primaryRequested) {
-            const requestedType = this.getFontFamilyType(primaryRequested);
-            technicalLines.push(`Requested font: ${primaryRequested} (${requestedType})`);
+        if (displayRequestedFont) {
+            const requestedType = this.getFontFamilyType(displayRequestedFont);
+            technicalLines.push(`Requested font: ${displayRequestedFont} (${requestedType})`);
         }
         if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
             const fallbackType = this.getFontFamilyType(fallbackFont);
@@ -2168,10 +2227,10 @@ export class ManuscriptOptionsModal extends Modal {
         // ── Severity classification ─────────────────────────────────
         // Three-state model for the export-checks panel:
         //   error   → blocking, red, alert-circle
-        //   warning → font risk or non-blocking warning, orange, alert-triangle
+        //   warning → non-blocking warning, orange, alert-triangle
         //   ready   → everything passes, green, check-circle-2 (compact form)
-        const hasError = hasAccessError || hasCompatibilityError;
-        const hasWarning = !hasError && (hasFontRisk || hasCompatibilityWarning || hasAccessWarning || hasSpreadWarning);
+        const hasError = hasAccessError || hasCompatibilityError || hasFontRisk;
+        const hasWarning = !hasError && (hasCompatibilityWarning || hasAccessWarning || hasSpreadWarning);
         const isReady = !hasError && !hasWarning;
 
         // ── Render ───────────────────────────────────────────────────

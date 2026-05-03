@@ -1347,7 +1347,9 @@ export class RadialTimelineView extends ItemView {
             } else {
                 setIcon(btn as unknown as HTMLElement, meta.icon);
             }
-            applyTooltip(btn as unknown as HTMLElement, meta.tooltip, 'bottom', { custom: true });
+            // Narrower balance width than default so the tooltip's native CSS wrap
+            // can't re-break our last line into a widow (e.g. "count." alone).
+            applyTooltip(btn as unknown as HTMLElement, meta.tooltip, 'bottom', 300, { custom: true });
             signalSelector.appendChild(btn);
             signalButtons.push({ el: btn, signal: signalId });
         });

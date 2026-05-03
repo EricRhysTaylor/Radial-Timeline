@@ -11,6 +11,7 @@ import {
     getLayoutFeatures,
     getLayoutPictogramRows,
     getPictogramRowsFromSpec,
+    renderLayoutPictograms,
     type FictionLayoutVariant,
     type LayoutPictogramRows,
     type PictogramSpread,
@@ -25,6 +26,68 @@ function layout(overrides: Partial<PandocLayoutTemplate>): PandocLayoutTemplate 
         path: 'test.tex',
         ...overrides,
     };
+}
+
+type FakeElementEvent = {
+    key?: string;
+    preventDefault: () => void;
+};
+
+class FakeElement {
+    public children: FakeElement[] = [];
+    public classes = new Set<string>();
+    public attributes = new Map<string, string>();
+    public listeners = new Map<string, Array<(event: FakeElementEvent) => void>>();
+    public text = '';
+
+    createDiv(options?: { cls?: string; text?: string }): FakeElement {
+        return this.createChild(options);
+    }
+
+    createSpan(options?: { cls?: string; text?: string }): FakeElement {
+        return this.createChild(options);
+    }
+
+    addClass(...classes: string[]): void {
+        for (const cls of classes) {
+            for (const token of cls.split(/\s+/).filter(Boolean)) {
+                this.classes.add(token);
+            }
+        }
+    }
+
+    setAttribute(name: string, value: string): void {
+        this.attributes.set(name, value);
+    }
+
+    addEventListener(type: string, listener: (event: FakeElementEvent) => void): void {
+        const existing = this.listeners.get(type) || [];
+        existing.push(listener);
+        this.listeners.set(type, existing);
+    }
+
+    dispatch(type: string, event: FakeElementEvent = { preventDefault: () => undefined }): void {
+        for (const listener of this.listeners.get(type) || []) {
+            listener(event);
+        }
+    }
+
+    findByClass(cls: string): FakeElement[] {
+        const matches: FakeElement[] = [];
+        if (this.classes.has(cls)) matches.push(this);
+        for (const child of this.children) {
+            matches.push(...child.findByClass(cls));
+        }
+        return matches;
+    }
+
+    private createChild(options?: { cls?: string; text?: string }): FakeElement {
+        const child = new FakeElement();
+        if (options?.cls) child.addClass(options.cls);
+        if (options?.text) child.text = options.text;
+        this.children.push(child);
+        return child;
+    }
 }
 
 describe('getFictionVariantForLayout', () => {
@@ -160,6 +223,32 @@ describe('getLayoutPictogramRows', () => {
         expect(rows.body.label).toBe('BODY');
         expect(rows.scene).toBeNull();
         expect(rows.special).toEqual([]);
+    });
+});
+
+describe('renderLayoutPictograms', () => {
+    it('renders Signature scene-mode preview cards as selectable controls', () => {
+        const root = new FakeElement();
+        const rows = getLayoutPictogramRows('signature');
+        const selectedModes: string[] = [];
+
+        renderLayoutPictograms(root as unknown as HTMLElement, rows, 'title-only', {
+            onSceneModeSelect: mode => selectedModes.push(mode),
+        });
+
+        const selectable = root.findByClass('is-scene-selectable');
+        expect(selectable).toHaveLength(3);
+        expect(selectable.map(card => card.attributes.get('role'))).toEqual(['button', 'button', 'button']);
+        expect(selectable.map(card => card.attributes.get('tabindex'))).toEqual(['0', '0', '0']);
+        expect(selectable.map(card => card.attributes.get('aria-pressed'))).toEqual(['false', 'false', 'true']);
+
+        selectable[0].dispatch('click');
+        expect(selectedModes).toEqual(['scene-number']);
+
+        let prevented = false;
+        selectable[1].dispatch('keydown', { key: ' ', preventDefault: () => { prevented = true; } });
+        expect(prevented).toBe(true);
+        expect(selectedModes).toEqual(['scene-number', 'scene-number-title']);
     });
 });
 
@@ -460,9 +549,9 @@ describe('getPictogramRowsFromSpec — spec-driven pictograms', () => {
 
     it('Contemporary Literary spec → CHAPTER spread with bodyLines === 0', () => {
         const rows = getPictogramRowsFromSpec(BUNDLED_FICTION_SPECS['bundled-fiction-contemporary-literary']);
-        // Sans-styled split header (left=title, right=scene-context).
+        // Sans-styled split header (left=title, right=scene title).
         expect(rows.body.leftPage?.headerLeft).toBe('title');
-        expect(rows.body.rightPage?.headerRight).toBe('scene');
+        expect(rows.body.rightPage?.headerRight).toBe('scene title');
         // Bottom-center folio.
         expect(rows.body.leftPage?.folioBottom).toBe('12');
         expect(rows.body.rightPage?.folioBottom).toBe('13');

@@ -13,7 +13,7 @@ import * as os from 'os'; // SAFE: Node os required for temp directory resolutio
 import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
 import { formatRuntimeValue, RuntimeSettings } from './runtimeEstimator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { getBundledFontPath } from './pandocBundledLayouts';
+import { getBundledFontPath, getLatinModernPath } from './pandocBundledLayouts';
 import type { DesignedStyleSpec } from '../publishing/designedStyle';
 import { BUNDLED_FICTION_SPECS, isBundledFictionId } from '../publishing/bundledStyleSpecs';
 
@@ -369,6 +369,33 @@ function extractConditionalFontsFromTemplate(tex: string): string[] {
     return Array.from(fonts);
 }
 
+function extractFontsWithMissingExplicitPathFiles(tex: string, templatePath?: string): string[] {
+    const missing = new Set<string>();
+    const templateDir = templatePath && path.isAbsolute(templatePath) ? path.dirname(templatePath) : process.cwd();
+    const commandPattern = /\\(?:setmainfont|newfontface\\[A-Za-z@]+)(?:\[[^\]]*])?\{([^}]+)\}\s*\[([\s\S]*?)\]/g;
+    let match: RegExpExecArray | null;
+    while ((match = commandPattern.exec(tex)) !== null) {
+        const fontName = match[1].trim();
+        const options = match[2];
+        const pathMatch = options.match(/(?:^|\n)\s*Path\s*=\s*([^,\]\n]+)\s*,?/);
+        if (!fontName || !pathMatch) continue;
+
+        const rawRoot = pathMatch[1].trim();
+        if (!rawRoot) continue;
+        const root = path.isAbsolute(rawRoot) ? rawRoot : path.resolve(templateDir, rawRoot);
+        const fileMatches = Array.from(options.matchAll(/(?:UprightFont|ItalicFont|BoldFont|BoldItalicFont)\s*=\s*([^,\]\n]+)\s*,?/g));
+        if (fileMatches.length === 0) continue;
+
+        const anyMissing = fileMatches.some(fileMatch => {
+            const fileName = fileMatch[1].trim();
+            if (!fileName) return false;
+            return !fs.existsSync(path.resolve(root, fileName));
+        });
+        if (anyMissing) missing.add(fontName);
+    }
+    return Array.from(missing);
+}
+
 function parseFcListFamilies(output: string): string[] {
     return output
         .split(/\r?\n/)
@@ -437,13 +464,19 @@ export function getTemplateFontDiagnostics(templatePath?: string): TemplateFontD
     const optionalFonts = extractConditionalFontsFromTemplate(tex);
     const optionalSet = new Set(optionalFonts.map(font => font.toLowerCase()));
     const requiredFonts = allFonts.filter(font => !optionalSet.has(font.toLowerCase()));
+    const missingExplicitPathFonts = extractFontsWithMissingExplicitPathFiles(tex, templatePath);
+    const missingExplicitPathSet = new Set(missingExplicitPathFonts.map(font => font.toLowerCase()));
     const catalog = loadSystemFontCatalog();
-    const canVerifySystemFonts = Array.isArray(catalog);
+    const canVerifySystemFonts = Array.isArray(catalog) || missingExplicitPathFonts.length > 0;
 
-    const missingRequiredFonts = canVerifySystemFonts
+    const catalogMissingRequiredFonts = Array.isArray(catalog)
         ? requiredFonts.filter(font => !isLikelyBundledLatexFont(font) && !isFontInstalled(font, catalog))
         : [];
-    const missingOptionalFonts = canVerifySystemFonts
+    const missingRequiredFonts = Array.from(new Set([
+        ...catalogMissingRequiredFonts,
+        ...requiredFonts.filter(font => missingExplicitPathSet.has(font.toLowerCase())),
+    ]));
+    const missingOptionalFonts = Array.isArray(catalog)
         ? optionalFonts.filter(font => !isFontInstalled(font, catalog))
         : [];
 
@@ -616,18 +649,34 @@ function bundledFontFilesPresent(fontKey: DesignedStyleSpec['body']['font']): bo
     }
 }
 
+function latinModernFontFilesPresent(): boolean {
+    const root = getLatinModernPath();
+    if (!root) return false;
+    const required = [
+        'lmroman10-regular.otf',
+        'lmroman10-italic.otf',
+        'lmroman10-bold.otf',
+        'lmroman10-bolditalic.otf',
+    ];
+    try {
+        return required.every(file => fs.existsSync(path.join(root, file)));
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Spec-driven font diagnostic.
  *
  * Returns the structured `FontDiagnostic` for a layout. The state is:
- *   - 'ok'              → primary font resolves (system install OR bundled OR Latin Modern via lmodern)
+ *   - 'ok'              → primary font resolves by an explicit verified path
  *   - 'fallback'        → primary missing on the system; XeLaTeX will fall back to a system serif
  *   - 'missing-bundled' → primary is a plugin-bundled font but the asset files
  *                         aren't on disk (build artifact missing)
  *
- * Latin Modern is a special case: it's loaded via `\usepackage{lmodern}` so
- * fontspec's `\IfFontExistsTF` may not see it, but XeLaTeX always finds it
- * via kpathsea on any complete TeX install. We always report 'ok' for it.
+ * Latin Modern is a hard contract for Modern Classic: the plugin must have
+ * resolved a concrete TeX font directory and all four lmroman OTF faces must
+ * exist there. No font-name or filename fallback is treated as ready.
  */
 export function getStructuredFontDiagnostic(
     layout?: PandocLayoutTemplate,
@@ -645,13 +694,22 @@ export function getStructuredFontDiagnostic(
 
     const primaryFontName = FONT_KEY_TO_DISPLAY[fontKey];
 
-    // Latin Modern: loaded via lmodern (kpathsea), independent of system font
-    // resolution — always ok on a complete TeX install. Skip the system check.
     if (fontKey === 'latin-modern') {
+        if (latinModernFontFilesPresent()) {
+            return {
+                state: 'ok',
+                primaryFontName,
+                resolvedFontName: primaryFontName,
+            };
+        }
         return {
-            state: 'ok',
+            state: 'missing-bundled',
             primaryFontName,
-            resolvedFontName: 'Latin Modern Roman',
+            resolvedFontName: primaryFontName,
+            installHint: {
+                source: 'bundled',
+                message: 'Modern Classic requires bundled Latin Modern files in Radial Timeline/Pandoc/fonts/latin-modern. Run Install all in Settings > Publish.',
+            },
         };
     }
 

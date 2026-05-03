@@ -85,7 +85,7 @@ describe('assembleManuscript scene heading formatting', () => {
         // could not be intercepted by \preto\section.)
         // Tight upright sub-title in parens (no italics, minimal vertical leading).
         expect(assembled.text).toContain('\\rtSceneOpener{3\\\\{\\normalsize (Arrival)}}');
-        expect(assembled.text).toContain('\\rtSetSceneRunningTitle{3 Arrival}');
+        expect(assembled.text).toContain('\\rtSetSceneRunningTitle{Arrival}');
         expect(assembled.text).not.toContain('## 3 Arrival');
         expect(assembled.text).not.toContain('\\section*{');
     });
@@ -111,11 +111,38 @@ describe('assembleManuscript scene heading formatting', () => {
             }
         );
 
-        expect(assembled.text).toContain('\\rtSceneOpener{1}\n\\providecommand{\\rtSetSceneRunningTitle}[1]{\\markboth{}{#1}}\n\\rtSetSceneRunningTitle{1}');
+        expect(assembled.text).toContain('\\rtSceneOpener{1}\n\\rtSetSceneRunningTitle{Training at Academy Field}');
+        expect(assembled.text).not.toContain('\\providecommand{\\rtSetSceneRunningTitle}');
         expect(assembled.text).not.toContain('\\section*{');
         expect(assembled.text).toContain('First paragraph.');
-        expect(assembled.text).not.toContain('Training at Academy Field');
+        expect(assembled.text).not.toContain('\\rtSceneOpener{Training at Academy Field}');
         expect(assembled.text).not.toContain('## 1');
+    });
+
+    it('uses frontmatter Title for running headers when the scene filename is number-only', async () => {
+        const file = makeFile('Scenes/1.md', '1');
+        const vault = makeVault({
+            [file.path]: '---\nClass: Scene\nTitle: Training at Academy Field\n---\n\nFirst paragraph.'
+        });
+
+        const assembled = await assembleManuscript(
+            [file],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number',
+                sceneHeadingRenderMode: 'latex-section-starred'
+            }
+        );
+
+        expect(assembled.text).toContain('\\rtSceneOpener{1}');
+        expect(assembled.text).toContain('\\rtSetSceneRunningTitle{Training at Academy Field}');
+        expect(assembled.text).not.toContain('\\rtSetSceneRunningTitle{1}');
     });
 
     it('omits chapter marker headings when chapter markers are not passed to assembly', async () => {
@@ -177,7 +204,7 @@ describe('assembleManuscript scene heading formatting', () => {
 
         const chapterIndex = assembled.text.indexOf('# Chapter 1');
         const sceneIndex = assembled.text.indexOf('\\rtSceneOpener{1}');
-        const markIndex = assembled.text.indexOf('\\rtSetSceneRunningTitle{1}');
+        const markIndex = assembled.text.indexOf('\\rtSetSceneRunningTitle{Training at Academy Field}');
         const bodyIndex = assembled.text.indexOf('First paragraph.');
         expect(chapterIndex).toBeGreaterThanOrEqual(0);
         expect(sceneIndex).toBeGreaterThan(chapterIndex);
@@ -185,7 +212,7 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(bodyIndex).toBeGreaterThan(markIndex);
     });
 
-    it('injects shared Chapter field headings before scene content and suppresses scene headings in Modern Classic mode', async () => {
+    it('injects scene Chapter field headings before scene content and suppresses scene headings in Modern Classic mode', async () => {
         // Scenes self-declare their Act via the canonical `Act:` frontmatter
         // field — the same source the timeline ring uses. Modern Classic emits
         // \rtPart at every Act-boundary transition, which here is scene1+scene2
@@ -213,15 +240,15 @@ describe('assembleManuscript scene heading formatting', () => {
                 sceneHeadingRenderMode: 'markdown-h2',
                 chapterMarkersByScenePath: {
                     [scene1.path]: [{
-                        sourcePath: 'Beats/1 Opening Image.md',
-                        sourceType: 'Beat',
+                        sourcePath: scene1.path,
+                        sourceType: 'Scene',
                         title: 'Boy with a Skull',
                         resolvedScenePath: scene1.path,
                         resolvedTimelinePosition: 1,
                     }],
                     [scene3.path]: [{
-                        sourcePath: 'Backdrop/2 Turn.md',
-                        sourceType: 'Backdrop',
+                        sourcePath: scene3.path,
+                        sourceType: 'Scene',
                         title: 'Everything of Possibility.',
                         resolvedScenePath: scene3.path,
                         resolvedTimelinePosition: 3,
@@ -235,20 +262,16 @@ describe('assembleManuscript scene heading formatting', () => {
             }
         );
 
-        expect(assembled.text).toContain('\\rtPart{I}');
-        expect(assembled.text).toContain('\\rtPart{II}');
-        expect(assembled.text).toContain('\\rtEpigraph{The beginning of all things.}{Anonymous}');
-        expect(assembled.text).toContain('\\rtEpigraph{A turn into possibility.}{The Narrator}');
+        expect(assembled.text).toContain('\\rtPart{I}{The beginning of all things.}{Anonymous}');
+        expect(assembled.text).toContain('\\rtPart{II}{A turn into possibility.}{The Narrator}');
+        expect(assembled.text).not.toContain('\\rtEpigraph');
         expect(assembled.text).toContain('\\rtChapter{1}{Boy with a Skull}');
         expect(assembled.text).toContain('\\rtChapter{2}{Everything of Possibility.}');
 
-        const partOneIndex = assembled.text.indexOf('\\rtPart{I}');
-        const partTwoIndex = assembled.text.indexOf('\\rtPart{II}');
-        const partOneEpigraphIndex = assembled.text.indexOf('\\rtEpigraph{The beginning of all things.}{Anonymous}');
-        const partTwoEpigraphIndex = assembled.text.indexOf('\\rtEpigraph{A turn into possibility.}{The Narrator}');
+        const partOneIndex = assembled.text.indexOf('\\rtPart{I}{The beginning of all things.}{Anonymous}');
+        const partTwoIndex = assembled.text.indexOf('\\rtPart{II}{A turn into possibility.}{The Narrator}');
         const chapterTwoIndex = assembled.text.indexOf('\\rtChapter{2}{Everything of Possibility.}');
-        expect(partOneEpigraphIndex).toBeGreaterThan(partOneIndex);
-        expect(partTwoEpigraphIndex).toBeGreaterThan(partTwoIndex);
+        expect(partOneIndex).toBeGreaterThanOrEqual(0);
         expect(partTwoIndex).toBeGreaterThanOrEqual(0);
         expect(chapterTwoIndex).toBeGreaterThan(partTwoIndex);
 
@@ -260,7 +283,6 @@ describe('assembleManuscript scene heading formatting', () => {
         )).sort();
         expect(emittedRtMacros).toEqual([
             'rtChapter',
-            'rtEpigraph',
             'rtPart',
             'rtSceneSep',
         ]);

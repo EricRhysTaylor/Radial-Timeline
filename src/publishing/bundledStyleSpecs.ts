@@ -133,7 +133,7 @@ const MODERN_CLASSIC_SPEC: DesignedStyleSpec = {
         mode: 'roman',
         pageBreak: true,
         epigraph: true,
-        epigraphPlacement: 'own-page',
+        epigraphPlacement: 'inline',
         openAny: true,
     },
     chapters: { mode: 'numbered-titled', pageBreak: true, resetSceneCounter: false },

@@ -13,7 +13,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
 import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
 import { DEFAULT_SETTINGS } from '../defaults';
-import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
+import { getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
@@ -22,7 +22,7 @@ import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
-import { resolveBookPages, applyBookPageOrder, ROLE_SIDE, type BookPageRole, type MatterNoteSummary, type ResolvedPage } from '../../utils/bookPagesResolver';
+import { resolveBookPages, applyBookPageOrder, inferRoleFromFilename, ROLE_SIDE, type BookPageRole, type MatterNoteSummary, type ResolvedPage } from '../../utils/bookPagesResolver';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
 import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
@@ -1009,13 +1009,18 @@ function getPublishingProgressContext(plugin: RadialTimelinePlugin): PublishingP
         });
     }
 
+    const resolvedBookPageCount = resolveBookPages(
+        activeBookMetaStatus.bookMeta || undefined,
+        getActiveBookMatterNoteSummaries(plugin)
+    ).length;
+
     return {
         activeBookMetaStatus,
         validationSnapshot,
         bookMetaSummary: plugin.getPublishingValidationService().summarize(activeBookMetaIssues),
         matterSummary: plugin.getPublishingValidationService().summarize(validationSnapshot.matterIssues),
         layoutSummary: getPdfLayoutSummary(plugin),
-        matterCount: getActiveBookMatterSummary(plugin).totalCount,
+        matterCount: resolvedBookPageCount,
         pandocPathValid: isConfiguredPandocPathValid(plugin)
     };
 }
@@ -1624,8 +1629,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 }
             };
 
-            input.addEventListener('blur', () => { void commit(); });
-            input.addEventListener('keydown', (e: KeyboardEvent) => {
+            plugin.registerDomEvent(input, 'blur', () => { void commit(); });
+            plugin.registerDomEvent(input, 'keydown', (e: KeyboardEvent) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     input.blur();
@@ -1643,8 +1648,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             }
         };
 
-        display.addEventListener('click', swapToEditor);
-        display.addEventListener('keydown', (e: KeyboardEvent) => {
+        plugin.registerDomEvent(display, 'click', swapToEditor);
+        plugin.registerDomEvent(display, 'keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 swapToEditor();
@@ -1709,7 +1714,21 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             bookChapterTitlePopulatedCount: cachedBookChapterTitlePopulatedCount,
         });
         const rows = applySpreadValidation(baseRows, ctx);
-        renderLayoutPictograms(cols, rows, activeSceneMode);
+        const canSelectSceneMode = !!options.layoutId && (options.layout?.hasSceneOpenerHeadingOptions === true || variant === 'signature');
+        renderLayoutPictograms(cols, rows, activeSceneMode, {
+            onSceneModeSelect: canSelectSceneMode
+                ? (sceneHeadingMode) => {
+                    if (!options.layoutId) return;
+                    const scoped = getLayoutOptionsForActiveBook(options.layoutId);
+                    void saveLayoutOptionsForActiveBook(options.layoutId, {
+                        actEpigraphs: scoped.actEpigraphs,
+                        actEpigraphAttributions: scoped.actEpigraphAttributions,
+                        sceneHeadingMode
+                    });
+                    renderLayoutRows();
+                }
+                : undefined,
+        });
 
         // Status lines (Acts/Chapters counts, scene-title coverage) render
         // INSIDE the description column with the same prose styling as the
@@ -1802,7 +1821,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
     const hasLayoutSpecialOptions = (layout: PandocLayoutTemplate): boolean => {
         const caps = getLayoutSpecialCapabilities(layout);
-        return caps.usesModernClassicStructure || caps.hasEpigraphs || caps.hasSceneOpenerHeadingOptions;
+        return caps.usesModernClassicStructure || caps.hasEpigraphs;
     };
     const toRomanNumeral = (value: number): string => {
         if (!Number.isFinite(value) || value <= 0) return '';
@@ -2307,7 +2326,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
             if (showsSpecialOptions && expanded) {
                 const panel = row.createDiv({ cls: 'ert-layout-special-panel' });
-                panel.createDiv({ cls: 'ert-layout-special-divider' });
 
                 // Parts = Acts: determined by Act count in settings.
                 // Epigraphs are optional quotes printed after each PART page.
@@ -2452,11 +2470,37 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
 
     const layoutManageSetting = addProRow(new Setting(layoutPanel));
+    let installAllButton: ButtonComponent | null = null;
     let installAllButtonEl: HTMLButtonElement | null = null;
     const refreshInstallAllButtonState = (): void => {
         if (!installAllButtonEl) return;
-        const { installed } = getVisibleBundledInstallSummary();
-        installAllButtonEl.toggleClass('ert-layout-install-all-button--muted', installed > 0);
+        const bundledLayouts = getVisibleBundledLayouts();
+        const { total, installed } = getVisibleBundledInstallSummary();
+        const hasUnacknowledgedTemplateUpdate = (plugin.settings.templateHotfixHistory || [])
+            .some(entry => !entry.acknowledged);
+        const hasFontIssue = bundledLayouts.some(layout => getStructuredFontDiagnostic(layout).state !== 'ok');
+        const needsInstall = installed < total;
+        const needsAttention = hasUnacknowledgedTemplateUpdate || hasFontIssue || needsInstall;
+
+        installAllButtonEl.toggleClass('ert-layout-install-all-button--muted', !needsAttention);
+        installAllButtonEl.toggleClass('ert-layout-install-all-button--attention', needsAttention);
+        if (installAllButton) {
+            installAllButton.setButtonText(
+                hasFontIssue ? 'Install fonts'
+                : hasUnacknowledgedTemplateUpdate ? 'Update templates'
+                : needsInstall ? 'Install all'
+                : 'Installed'
+            );
+            installAllButton.setTooltip(
+                hasFontIssue
+                    ? 'Install required bundled font files into your Pandoc folder.'
+                    : hasUnacknowledgedTemplateUpdate
+                        ? 'Bundled PDF templates were updated. Click to refresh templates and fonts in your Pandoc folder.'
+                        : needsInstall
+                            ? 'Install bundled PDF templates and their required font files to your Pandoc folder.'
+                            : 'Bundled PDF templates and required font files are installed.'
+            );
+        }
     };
     layoutManageSetting.addButton(button => {
         button.setButtonText('Import Template');
@@ -2474,8 +2518,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         });
     });
     layoutManageSetting.addButton(button => {
+        installAllButton = button;
         button.setButtonText('Install all');
-        button.setTooltip('Install the bundled PDF style templates to your Pandoc folder. Does not seed Book Details or Book Pages.');
+        button.setTooltip('Install bundled PDF templates and their required font files to your Pandoc folder. Does not seed Book Details or Book Pages.');
         installAllButtonEl = button.buttonEl;
         installAllButtonEl.addClass('ert-layout-install-all-button');
         refreshInstallAllButtonState();
@@ -2498,11 +2543,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             if (refreshFailures > 0) {
                 new Notice('Some bundled layouts failed to refresh.');
             } else if (result.installed.length > 0) {
-                new Notice(`Installed ${result.installed.length} bundled layout template(s) in ${getConfiguredPandocFolder(plugin)}/.`);
+                new Notice(`Installed ${result.installed.length} bundled layout template(s) and required fonts in ${getConfiguredPandocFolder(plugin)}/.`);
             } else if (result.failed.length > 0) {
                 new Notice('Some bundled layouts failed to install.');
             } else {
-                new Notice('Bundled layouts are installed and refreshed.');
+                new Notice('Bundled layouts and required fonts are installed and refreshed.');
             }
             renderLayoutRows();
             refreshPublishingStatusCard();
@@ -2597,8 +2642,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const matterNotes = getActiveBookMatterNoteSummaries(plugin);
         const overriddenRoles = new Set<BookPageRole>(
             matterNotes
-                .map(note => note.role.trim().toLowerCase())
-                .filter((role): role is BookPageRole => Object.prototype.hasOwnProperty.call(ROLE_SIDE, role))
+                .map(note => {
+                    const explicit = note.role.trim().toLowerCase();
+                    if (Object.prototype.hasOwnProperty.call(ROLE_SIDE, explicit)) return explicit as BookPageRole;
+                    if (explicit) return null;
+                    return inferRoleFromFilename(note.path || note.title);
+                })
+                .filter((role): role is BookPageRole => !!role)
         );
         const openOrCreateBookMetaNote = async () => {
             if (hasSourcePath) {
@@ -3299,6 +3349,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         value: string,
         desc: string,
         statusKey: 'needs-setup' | 'attention' | 'blocked' | 'ready',
+        stageNumber: number,
+        pressLabel: string,
+        actionLabel: string,
         onClick?: () => void
     ): void => {
         const col = statusGrid.createDiv({ cls: `ert-publishing-status-col ert-publishing-status-col--${statusKey}` });
@@ -3320,9 +3373,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const icon = header.createSpan({ cls: 'ert-publishing-status-col-icon' });
         icon.setAttr('aria-hidden', 'true');
         setIcon(icon, iconName);
-        header.createSpan({ cls: 'ert-publishing-status-col-title', text: title });
+        const heading = header.createDiv({ cls: 'ert-publishing-status-col-heading' });
+        heading.createSpan({ cls: 'ert-publishing-status-col-kicker', text: `Form ${String(stageNumber).padStart(2, '0')}` });
+        heading.createSpan({ cls: 'ert-publishing-status-col-title', text: title });
         col.createDiv({ cls: 'ert-publishing-status-col-value', text: value });
         col.createDiv({ cls: 'ert-publishing-status-col-desc', text: desc });
+        const footer = col.createDiv({ cls: 'ert-publishing-status-col-footer' });
+        footer.createSpan({ cls: 'ert-publishing-status-col-folio', text: String(stageNumber).padStart(2, '0') });
+        footer.createSpan({ cls: 'ert-publishing-status-col-proof', text: pressLabel });
+        footer.createSpan({ cls: 'ert-publishing-status-col-actionLabel', text: actionLabel });
     };
 
     const renderPublishingStripActions = (stages: ReturnType<typeof buildPublishingProgressStages>) => {
@@ -3401,14 +3460,23 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             'pdf-style': 'book-open',
             'export-check': 'check-circle-2'
         };
+        const pressLabelByStage: Record<PublishingStageId, string> = {
+            'book-details': 'Copy deck',
+            'book-pages': 'Imposition',
+            'pdf-style': 'Type form',
+            'export-check': 'Press proof'
+        };
 
-        stages.forEach((stage) => {
+        stages.forEach((stage, index) => {
             buildStatusColumn(
                 iconByStage[stage.id],
                 stage.title,
                 stage.statusLabel,
                 stage.detail,
                 stage.statusKey,
+                index + 1,
+                pressLabelByStage[stage.id],
+                stage.actionLabel,
                 () => {
                     if (stage.id === 'export-check' && systemConfigPanel.hasClass('is-hidden')) {
                         revealSystemConfig();

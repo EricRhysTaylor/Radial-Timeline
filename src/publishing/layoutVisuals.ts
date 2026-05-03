@@ -11,7 +11,7 @@
  * Render helpers are pure DOM builders — no plugin state, no settings access.
  *
  * RT terminology → export structure:
- *   Parts    = Acts (Act count → \rtPart{I})
+ *   Parts    = Acts (Act count → \rtPart{I}{quote}{attribution})
  *   Chapters = Timeline notes carrying a Chapter field
  *   Scenes   = Scene notes (primary unit; \rtSceneSep separators)
  */
@@ -142,7 +142,7 @@ function describeHeaders(spec: DesignedStyleSpec): string {
                 ? 'Centered: Page|Author (even) · Title|Page (odd), letter-spaced caps'
                 : 'Centered: Page|Author (even) · Title|Page (odd)';
         case 'left-title-right-context':
-            return `Book title (left) · Scene context (right)${sansSuffix}`;
+            return `Book title (left) · Scene title (right)${sansSuffix}`;
         default: return 'Running headers';
     }
 }
@@ -293,7 +293,7 @@ export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureR
             ];
         case 'contemporary':
             return [
-                { label: 'Headers', value: 'Book title (left) · Scene context (right), sans' },
+                { label: 'Headers', value: 'Book title (left) · Scene title (right), sans' },
                 { label: 'Folios', value: 'Bottom center (serif)' },
                 { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
                 { label: 'Spacing', value: '1.5 lines' },
@@ -314,7 +314,7 @@ export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureR
 // Scene separators appear inline within body text (not on dedicated pages).
 // "Special" spreads represent dedicated opener pages:
 //   PART    = Act opener page (\rtPart)
-//   CHAPTER = Chapter heading from the shared Chapter field
+//   CHAPTER = Chapter heading from a scene note's Chapter field
 //   SCENE # / #+TITLE / TITLE = Scene heading modes (Signature only)
 //
 /**
@@ -334,7 +334,7 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
         switch (rh.mode) {
             case 'centered-title':                 return { center: 'TITLE' };
             case 'split-author-page-title-page':   return { center: '12 | AUTH' };
-            case 'left-title-right-context':       return { left: 'title', right: 'scene' };
+            case 'left-title-right-context':       return { left: 'title', right: 'scene title' };
             default:                               return {};
         }
     };
@@ -1036,6 +1036,10 @@ export function renderLayoutSpread(parent: HTMLElement, spread: PictogramSpread)
     return spreadEl;
 }
 
+export type LayoutPictogramRenderOptions = {
+    onSceneModeSelect?: (mode: ManuscriptSceneHeadingMode) => void;
+};
+
 /**
  * Render the pictogram column (primary row + optional special row). Both
  * the settings panel and the export modal compose this column the same way;
@@ -1045,6 +1049,7 @@ export function renderLayoutPictograms(
     parent: HTMLElement,
     rows: LayoutPictogramRows,
     activeSceneMode?: ManuscriptSceneHeadingMode,
+    options: LayoutPictogramRenderOptions = {},
 ): void {
     const pictoCol = parent.createDiv({ cls: 'ert-layout-visual-pictograms' });
 
@@ -1059,6 +1064,24 @@ export function renderLayoutPictograms(
             const spreadEl = renderLayoutSpread(specialRow, spread);
             if (hasSceneModes && spread.sceneMode && activeSceneMode) {
                 spreadEl.addClass(spread.sceneMode === activeSceneMode ? 'is-scene-active' : 'is-scene-dimmed');
+            }
+            if (hasSceneModes && spread.sceneMode && options.onSceneModeSelect) {
+                const mode = spread.sceneMode;
+                const selected = activeSceneMode === mode;
+                spreadEl.addClass('is-scene-selectable');
+                spreadEl.setAttribute('role', 'button');
+                spreadEl.setAttribute('tabindex', '0');
+                spreadEl.setAttribute('aria-pressed', selected ? 'true' : 'false');
+                spreadEl.setAttribute('aria-label', `Use ${spread.label || mode} scene opener heading`);
+                if (!spread.warningTooltip) {
+                    spreadEl.setAttribute('title', `Use ${spread.label || mode} scene opener heading`);
+                }
+                spreadEl.addEventListener('click', () => options.onSceneModeSelect?.(mode));
+                spreadEl.addEventListener('keydown', (event: KeyboardEvent) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    options.onSceneModeSelect?.(mode);
+                });
             }
         }
     }

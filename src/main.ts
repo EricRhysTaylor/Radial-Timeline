@@ -56,7 +56,7 @@ import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { PublishingValidationService } from './services/PublishingValidationService';
 import { TimelineAuditAiService } from './services/TimelineAuditAiService';
-import { ensureBundledPandocLayoutsRegistered, setBundledFontPath, setLatinModernPath } from './utils/pandocBundledLayouts';
+import { ensureBundledPandocLayoutsRegistered, ensureSpecDrivenBundledFictionTemplatesCurrent, setBundledFontSourcePath, setPandocFontPathsForVault } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import type { GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
@@ -320,47 +320,33 @@ export default class RadialTimelinePlugin extends Plugin {
         this.settingsService = new SettingsService(this);
         await this.loadSettings();
 
-        // Resolve the absolute filesystem path to the plugin's bundled-fonts
-        // directory so the spec generator can emit fontspec Path= directives.
-        // FileSystemAdapter is only available on desktop — on mobile (where
-        // adapter is a different class) we skip; bundled fonts only matter for
-        // PDF export which requires desktop anyway.
+        // Resolve bundled font source and vault-local Pandoc font destination.
+        // Bundled templates point at Radial Timeline/Pandoc/fonts, not MacTeX,
+        // Font Book, Google URLs, or the plugin internals.
         try {
             const adapter = this.app.vault.adapter as { getBasePath?: () => string };
             const basePath = typeof adapter.getBasePath === 'function' ? adapter.getBasePath() : undefined;
             if (basePath) {
                 const configDir = this.app.vault.configDir;
-                setBundledFontPath(`${basePath}/${configDir}/plugins/${this.manifest.id}/assets/fonts`);
+                setBundledFontSourcePath(`${basePath}/${configDir}/plugins/${this.manifest.id}/assets/fonts`);
+                setPandocFontPathsForVault(this);
             }
         } catch {
-            // Non-fatal: spec generator falls back to fontspec system lookup.
+            // Non-fatal: export checks will report missing bundled font files.
         }
-
-        // Detect Latin Modern via kpsewhich. Every TeXLive/MacTeX install ships
-        // with these fonts in its TDS tree at a known relative path; kpsewhich
-        // returns the absolute path. The Modern Classic spec uses Latin Modern
-        // for body text, and pointing fontspec directly at this path means the
-        // export "just works" on any machine with TeX installed — no bundled
-        // assets, no manual font install, no Font Book hunting. Best-effort:
-        // failures (no TeX, kpsewhich missing) leave the path unset and the
-        // generator falls back to filename-only lookup at compile time.
         try {
-            const { execFile } = await import('child_process');
-            const path = await import('path');
-            await new Promise<void>((resolve) => {
-                // 5s timeout in case the user's PATH triggers a slow shell init.
-                execFile('kpsewhich', ['lmroman10-regular.otf'], { timeout: 5000 }, (err, stdout) => {
-                    if (!err && typeof stdout === 'string') {
-                        const fontFile = stdout.trim();
-                        if (fontFile && fontFile.endsWith('.otf')) {
-                            setLatinModernPath(path.dirname(fontFile));
-                        }
-                    }
-                    resolve();
-                });
-            });
-        } catch {
-            // Non-fatal: generator falls back to filename-only kpsewhich lookup.
+            const templateSync = await ensureSpecDrivenBundledFictionTemplatesCurrent(this);
+            if (templateSync.installed.length > 0 || templateSync.updated.length > 0) {
+                console.info(
+                    `[Radial Timeline] Synced bundled fiction PDF templates: `
+                    + `${templateSync.installed.length} installed, ${templateSync.updated.length} updated.`
+                );
+            }
+            if (templateSync.failed.length > 0) {
+                console.warn(`[Radial Timeline] Failed to sync bundled PDF templates: ${templateSync.failed.join(', ')}.`);
+            }
+        } catch (error) {
+            console.warn('[Radial Timeline] Failed to sync bundled fiction PDF templates.', error);
         }
         void getAIClient(this).refreshModelDataIfStale();
         this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());

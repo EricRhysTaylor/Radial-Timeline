@@ -14,7 +14,7 @@
  *   2. Filename inference (e.g. `0.2 Title Page.md` → `title-page`)
  *   3. No match → custom note (role === null), surfaced in numeric order
  *
- * The resolver is UI-only. It does not touch the export pipeline.
+ * The resolver is shared by the Settings preview and export assembly.
  */
 import type { BookMeta } from '../types';
 import type { MatterBodyMode } from './matterMeta';

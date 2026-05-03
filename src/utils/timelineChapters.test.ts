@@ -30,7 +30,7 @@ describe('timelineChapters', () => {
         expect(readSharedChapterTitle({})).toBeUndefined();
     });
 
-    it('resolves scene, beat, and backdrop chapter markers onto the next exported scene in timeline order', () => {
+    it('resolves scene chapter markers and ignores beat/backdrop Chapter fields', () => {
         const items: TimelineItem[] = [
             makeItem('Beat', 'Beats/1.md', '1 Opening Beat', 'Prologue'),
             makeItem('Backdrop', 'Backdrop/1.md', '1.5 Storm Front', 'The Storm'),
@@ -42,20 +42,6 @@ describe('timelineChapters', () => {
         const markers = resolveTimelineChapterMarkers(items);
         expect(markers).toEqual([
             {
-                sourcePath: 'Beats/1.md',
-                sourceType: 'Beat',
-                title: 'Prologue',
-                resolvedScenePath: 'Scenes/1.md',
-                resolvedTimelinePosition: 1,
-            },
-            {
-                sourcePath: 'Backdrop/1.md',
-                sourceType: 'Backdrop',
-                title: 'The Storm',
-                resolvedScenePath: 'Scenes/1.md',
-                resolvedTimelinePosition: 1,
-            },
-            {
                 sourcePath: 'Scenes/2.md',
                 sourceType: 'Scene',
                 title: 'A Door Opens',
@@ -65,17 +51,15 @@ describe('timelineChapters', () => {
         ]);
     });
 
-    it('groups multiple markers that resolve to the same scene without collapsing them', () => {
+    it('groups scene markers by their source scene path', () => {
         const markers = resolveTimelineChapterMarkers([
-            makeItem('Beat', 'Beats/1.md', '1 Beat', 'Before Dawn'),
+            makeItem('Scene', 'Scenes/0.md', '1 Prologue', 'Before Dawn'),
             makeItem('Scene', 'Scenes/1.md', '2 Scene', 'The City Wakes'),
         ]);
 
         const grouped = groupTimelineChapterMarkersByScenePath(markers);
-        expect(grouped['Scenes/1.md']?.map((marker) => marker.title)).toEqual([
-            'Before Dawn',
-            'The City Wakes',
-        ]);
+        expect(grouped['Scenes/0.md']?.map((marker) => marker.title)).toEqual(['Before Dawn']);
+        expect(grouped['Scenes/1.md']?.map((marker) => marker.title)).toEqual(['The City Wakes']);
     });
 
     it('collapses chapter markers to the final resolved boundary marker for visualization', () => {

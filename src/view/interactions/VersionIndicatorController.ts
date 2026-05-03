@@ -6,6 +6,7 @@
 
 import type { App } from 'obsidian';
 import { getVersionCheckService } from '../../services/VersionCheckService';
+import { CORE_ALERTS_SECTION_KEY, type RadialTimelineSettingsTabId } from '../../settings/settingsAnchors';
 
 /** GitHub issues URL for bug reports with pre-filled template */
 const BUG_REPORT_TEMPLATE = `### Bug Description
@@ -39,8 +40,30 @@ const BUG_REPORT_URL = `https://github.com/EricRhysTaylor/Radial-Timeline/issues
 interface VersionIndicatorView {
     plugin: {
         app: App;
+        settingsTab?: {
+            setActiveTab: (tab: RadialTimelineSettingsTabId) => void;
+            revealSettingsSection: (tab: RadialTimelineSettingsTabId, sectionKey: string) => void;
+        };
     };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
+}
+
+function openRadialTimelineCoreAlerts(view: VersionIndicatorView): void {
+    const settingsTab = view.plugin.settingsTab;
+    settingsTab?.revealSettingsSection('core', CORE_ALERTS_SECTION_KEY);
+
+    const setting = (view.plugin.app as unknown as {
+        setting?: {
+            open: () => void;
+            openTabById: (id: string) => void;
+        };
+    }).setting;
+    setting?.open?.();
+    setting?.openTabById?.('radial-timeline');
+
+    window.setTimeout(() => {
+        settingsTab?.revealSettingsSection('core', CORE_ALERTS_SECTION_KEY);
+    }, 80);
 }
 
 /**
@@ -65,10 +88,7 @@ export function setupVersionIndicatorController(view: VersionIndicatorView, svg:
         
         // Check for settings alert mode (highest priority)
         if (versionIndicator.classList.contains('rt-has-settings-alert')) {
-            // Open Radial Timeline settings
-            const app = view.plugin.app;
-            (app as any).setting?.open?.();
-            (app as any).setting?.openTabById?.('radial-timeline');
+            openRadialTimelineCoreAlerts(view);
             return;
         }
         

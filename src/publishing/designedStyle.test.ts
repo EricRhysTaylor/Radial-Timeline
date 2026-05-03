@@ -74,7 +74,10 @@ describe('generateDesignedStyleTex', () => {
         const tex = generateDesignedStyleTex(buildSpec({
             parts: { mode: 'roman', pageBreak: true, epigraph: true },
         }));
-        expect(tex).toContain('\\newcommand{\\rtPart}');
+        expect(tex).toContain('\\newcommand{\\rtPart}[3]');
+        expect(tex).toContain('\\rule{0.46in}{0.4pt}');
+        expect(tex).not.toContain('PART~#1');
+        expect(tex).not.toContain('\\newcommand{\\rtEpigraph}[2]');
     });
 
     it('does not define \\rtPart when parts.mode is off', () => {
@@ -164,6 +167,42 @@ describe('generateDesignedStyleTex', () => {
         expect(tex).toContain('\\setmainfont{Arial}'); // terminal fallback
     });
 
+    it('hard-fails Latin Modern generation when no verified TeX path is provided', () => {
+        const tex = generateDesignedStyleTex(buildSpec({
+            body: {
+                font: 'latin-modern',
+                fontFallbackChain: [],
+                sizePt: 11,
+                lineSpacing: 1.5,
+                paragraphIndentEm: 1.5,
+            },
+        }), {
+            bundledFontPath: '/tmp/radial-timeline/assets/fonts',
+        });
+
+        expect(tex).toContain('\\errmessage{Radial Timeline Modern Classic requires a verified Latin Modern font path');
+        expect(tex).not.toContain('assets/fonts/latin-modern');
+        expect(tex).not.toContain('\\setmainfont{lmroman10-regular.otf}');
+        expect(tex).not.toContain('Path = /tmp/radial-timeline/assets/fonts/latin-modern');
+    });
+
+    it('uses an explicit Latin Modern Path only when the TeX font directory is supplied', () => {
+        const tex = generateDesignedStyleTex(buildSpec({
+            body: {
+                font: 'latin-modern',
+                fontFallbackChain: [],
+                sizePt: 11,
+                lineSpacing: 1.5,
+                paragraphIndentEm: 1.5,
+            },
+        }), {
+            latinModernPath: '/usr/local/texlive/2025/texmf-dist/fonts/opentype/public/lm',
+        });
+
+        expect(tex).toContain('Path = /usr/local/texlive/2025/texmf-dist/fonts/opentype/public/lm/');
+        expect(tex).toContain('UprightFont = lmroman10-regular.otf');
+    });
+
     describe('archetype smoke specs', () => {
         const archetypes: Array<{ archetype: DesignArchetype; variant: FictionLayoutVariant; structuralMarker: string }> = [
             { archetype: 'submission',    variant: 'classic',       structuralMarker: '\\fancyhead[C]' },
@@ -186,9 +225,9 @@ describe('generateDesignedStyleTex', () => {
                 parts: { mode: 'roman', pageBreak: true, epigraph: true },
                 chapters: { mode: 'numbered-titled', pageBreak: true, resetSceneCounter: false },
             }));
-            expect(tex).toContain('\\newcommand{\\rtPart}');
+            expect(tex).toContain('\\newcommand{\\rtPart}[3]');
             expect(tex).toContain('\\newcommand{\\rtChapter}');
-            expect(tex).toContain('\\newcommand{\\rtEpigraph}');
+            expect(tex).not.toContain('\\newcommand{\\rtEpigraph}');
         });
     });
 
@@ -234,13 +273,15 @@ describe('generateDesignedStyleTex', () => {
             expect(tex).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
         });
 
-        it('declares the \\rtSceneRunningTitle macro and its setter so manuscript assembly compiles', () => {
+        it('declares the \\rtSceneRunningTitle macro and setter as hard template contracts', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'reading-draft',
                 runningHeader: { mode: 'left-title-right-context', font: 'sans' },
             }));
-            expect(tex).toContain('\\providecommand{\\rtSceneRunningTitle}{}');
-            expect(tex).toContain('\\providecommand{\\rtSetSceneRunningTitle}');
+            expect(tex).toContain('\\newcommand{\\rtSceneRunningTitle}{}');
+            expect(tex).toContain('\\newcommand{\\rtSetSceneRunningTitle}');
+            expect(tex).not.toContain('\\providecommand{\\rtSceneRunningTitle}');
+            expect(tex).not.toContain('\\providecommand{\\rtSetSceneRunningTitle}');
         });
     });
 
@@ -266,7 +307,7 @@ describe('generateDesignedStyleTex', () => {
             expect(tex).toMatch(/\\vspace\*\{0\.08\\textheight\}/);
         });
 
-        it('\\rtChapter clears the page on entry and exits with cleardoublepage so chapters stand alone', () => {
+        it('\\rtChapter uses plain clearpage breaks so chapters stand alone without forced blank verso pages', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'reading-draft',
                 chapters: {
@@ -276,10 +317,12 @@ describe('generateDesignedStyleTex', () => {
                     spacing: { topFraction: 0.46, bottomFraction: 0.08 },
                 },
             }));
-            // The \rtChapter macro must include \cleardoublepage AND \thispagestyle{rtEmpty}
-            // so the chapter heading sits alone on a chrome-suppressed page.
+            // The \rtChapter macro must include \clearpage AND \thispagestyle{rtEmpty}
+            // so the chapter heading sits alone on a chrome-suppressed page
+            // without forcing a recto-only blank page in twoside layouts.
             const macroBody = tex.split('\\newcommand{\\rtChapter}')[1] ?? '';
-            expect(macroBody).toContain('\\cleardoublepage');
+            expect(macroBody).toContain('\\clearpage');
+            expect(macroBody).not.toContain('\\cleardoublepage');
             expect(macroBody).toContain('\\thispagestyle{rtEmpty}');
         });
 

@@ -1,14 +1,14 @@
 import type { TimelineItem } from '../types';
-import { isBeatNote, isMatterNote, isSceneItem, sortScenes } from './sceneHelpers';
+import { isMatterNote, isSceneItem, sortScenes } from './sceneHelpers';
 
 export const SHARED_CHAPTER_FIELD_KEY = 'Chapter';
-export const SHARED_CHAPTER_FIELD_SOURCE_LABEL = 'shared Chapter field on scene, beat, or backdrop notes';
-export const SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE = 'Shared Chapter field on scene, beat, or backdrop notes';
+export const SHARED_CHAPTER_FIELD_SOURCE_LABEL = 'Chapter field on scene notes';
+export const SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE = 'Chapter field on scene notes';
 export const SHARED_CHAPTER_FIELD_PUBLICATION_COPY = `Chapter headings come from the ${SHARED_CHAPTER_FIELD_SOURCE_LABEL}.`;
 
 export interface TimelineChapterMarker {
     sourcePath?: string;
-    sourceType: 'Scene' | 'Beat' | 'Backdrop';
+    sourceType: 'Scene';
     title: string;
     resolvedScenePath: string;
     resolvedTimelinePosition: number;
@@ -31,65 +31,24 @@ export function readSharedChapterTitle(frontmatter?: Record<string, unknown>): s
     return undefined;
 }
 
-function isSupportedChapterSource(
-    item: TimelineItem
-): item is TimelineItem & { itemType: 'Scene' | 'Beat' | 'Backdrop' } {
-    return item.itemType === 'Scene' || item.itemType === 'Beat' || item.itemType === 'Backdrop' || !item.itemType;
-}
-
-function resolveSourceType(item: TimelineItem): TimelineChapterMarker['sourceType'] | null {
-    if (item.itemType === 'Beat' || item.itemType === 'Backdrop') {
-        return item.itemType;
-    }
-    if (isSceneItem(item)) {
-        return 'Scene';
-    }
-    return null;
-}
-
 export function resolveTimelineChapterMarkers(
     orderedItems: TimelineItem[]
 ): TimelineChapterMarker[] {
     const resolved: TimelineChapterMarker[] = [];
-    const pending: Array<Pick<TimelineChapterMarker, 'sourcePath' | 'sourceType' | 'title'>> = [];
     let resolvedTimelinePosition = 0;
 
     for (const item of orderedItems) {
-        if (!isSupportedChapterSource(item)) continue;
-
+        if (!isSceneItem(item) || !item.path) continue;
         const chapterTitle = readSharedChapterTitle(item.rawFrontmatter);
-        const sourceType = resolveSourceType(item);
-        if (!sourceType) continue;
-
-        if (isSceneItem(item) && item.path) {
-            resolvedTimelinePosition += 1;
-
-            for (const marker of pending) {
-                resolved.push({
-                    ...marker,
-                    resolvedScenePath: item.path,
-                    resolvedTimelinePosition,
-                });
-            }
-            pending.length = 0;
-
-            if (chapterTitle) {
-                resolved.push({
-                    sourcePath: item.path,
-                    sourceType,
-                    title: chapterTitle,
-                    resolvedScenePath: item.path,
-                    resolvedTimelinePosition,
-                });
-            }
-            continue;
-        }
+        resolvedTimelinePosition += 1;
 
         if (chapterTitle) {
-            pending.push({
+            resolved.push({
                 sourcePath: item.path,
-                sourceType,
+                sourceType: 'Scene',
                 title: chapterTitle,
+                resolvedScenePath: item.path,
+                resolvedTimelinePosition,
             });
         }
     }
@@ -128,19 +87,9 @@ export function collapseTimelineChapterMarkersByResolvedBoundary(
 export function buildTimelineChapterResolverItems(items: TimelineItem[]): TimelineItem[] {
     const orderedItems: TimelineItem[] = [];
     const uniqueScenes = new Map<string, TimelineItem>();
-    const seenNonSceneKeys = new Set<string>();
 
     items.forEach((item) => {
         if (isMatterNote(item) || item.itemType === 'BookMeta') return;
-
-        if (item.itemType === 'Backdrop' || isBeatNote(item)) {
-            const key = item.path || `${item.itemType || 'Item'}::${item.title || ''}`;
-            if (seenNonSceneKeys.has(key)) return;
-            seenNonSceneKeys.add(key);
-            orderedItems.push(item);
-            return;
-        }
-
         if (!isSceneItem(item)) return;
         const sceneKey = item.path || `${item.title || ''}::${String(item.when || '')}`;
         if (!uniqueScenes.has(sceneKey)) {

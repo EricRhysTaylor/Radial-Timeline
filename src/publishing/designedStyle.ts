@@ -76,7 +76,9 @@ export interface DesignedStyleSpec {
         pageBreak: boolean;
         epigraph: boolean;
         /**
-         * Modern Classic places the optional epigraph on its own page after the PART page.
+         * Controls the standalone epigraph macro when a future spec emits
+         * epigraphs separately from part openers. Modern Classic keeps act
+         * epigraphs inline inside \rtPart{roman}{quote}{attribution}.
          * 'inline' = the epigraph block is appended to the PART page.
          * 'own-page' = the epigraph runs on a dedicated cleardoublepage after PART.
          */
@@ -158,11 +160,10 @@ export interface GenerateDesignedStyleTexOptions {
      */
     bundledFontPath?: string;
     /**
-     * Absolute filesystem path to the directory containing Latin Modern Roman
-     * OTF files in the user's existing TeX install. Resolved at plugin load via
-     * `kpsewhich lmroman10-regular.otf`. When provided, the generator points
-     * fontspec `Path=` directly at the user's TeX install for the
-     * `latin-modern` font — no bundled assets, no system font install required.
+     * Absolute filesystem path to the vault-local Latin Modern directory under
+     * `Radial Timeline/Pandoc/fonts/latin-modern`. The bundled installer copies
+     * these OTF files from plugin assets into the vault before writing the
+     * generated templates.
      */
     latinModernPath?: string;
 }

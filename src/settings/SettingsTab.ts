@@ -42,6 +42,7 @@ import { fetchGeminiModels as fetchGoogleModels } from '../api/geminiApi';
 import { getCanonicalAiSettings } from '../ai/runtime/runtimeSelection';
 import { getLocalLlmBackend } from '../ai/localLlm/backends';
 import { getLocalLlmSettings } from '../ai/localLlm/settings';
+import { CORE_ALERTS_SECTION_KEY, type RadialTimelineSettingsTabId } from './settingsAnchors';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -54,20 +55,23 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _ollamaBaseUrlInput?: HTMLInputElement;
     private _ollamaModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
-    private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro' = 'core';
+    private _activeTab: RadialTimelineSettingsTabId = 'core';
+    private _hasExplicitTabRequest = false;
     private _forceExpandCoreCompletionPreview = false;
     private _pendingSectionRevealTimer: number | null = null;
 
     /** Public method to set active tab before/after opening settings */
-    public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro'): void {
+    public setActiveTab(tab: RadialTimelineSettingsTabId): void {
         this._activeTab = tab;
+        this._hasExplicitTabRequest = true;
     }
 
     public revealSettingsSection(
-        tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro',
+        tab: RadialTimelineSettingsTabId,
         sectionKey: string
     ): void {
         this._activeTab = tab;
+        this._hasExplicitTabRequest = true;
         if (this._pendingSectionRevealTimer !== null) {
             window.clearTimeout(this._pendingSectionRevealTimer);
             this._pendingSectionRevealTimer = null;
@@ -657,14 +661,31 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         return targetRect.top >= hostRect.top + 8 && targetRect.bottom <= hostRect.bottom - 8;
     }
 
+    private markSettingsSectionRevealed(target: HTMLElement): void {
+        target.addClass('ert-settings-section--revealed');
+        if (!target.hasAttribute('tabindex')) {
+            target.setAttr('tabindex', '-1');
+        }
+        try {
+            target.focus({ preventScroll: true });
+        } catch {
+            // Focus is a non-critical affordance; scrolling already completed.
+        }
+        window.setTimeout(() => {
+            target.removeClass('ert-settings-section--revealed');
+        }, 1600);
+    }
+
     private scrollToSettingsSection(sectionKey: string, options: { force?: boolean } = {}): boolean {
         const target = this.containerEl.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="${sectionKey}"]`);
         if (!target) return false;
         const host = this.findSettingsScrollHost(target);
         if (!options.force && host && this.isSectionVisibleWithinHost(target, host)) {
+            this.markSettingsSectionRevealed(target);
             return true;
         }
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        this.markSettingsSectionRevealed(target);
         return true;
     }
 
@@ -783,13 +804,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         containerEl.closest('.vertical-tab-content')?.classList.add('ert-settings-scroll-host');
         this._aiRelatedElements = [];
 
-        // Restore the last tab the user had open. The setActiveTab/revealSettingsSection
-        // public methods take precedence (they're called BEFORE display() and set
-        // _activeTab to a non-default value). Only fall back to the persisted value
-        // when nothing else has set it.
-        if (this._activeTab === 'core' && this.plugin.settings.lastSettingsTab) {
+        // Restore the last tab the user had open only when the caller did not
+        // request a specific destination such as Core alerts.
+        const hasExplicitTabRequest = this._hasExplicitTabRequest;
+        if (!hasExplicitTabRequest && this.plugin.settings.lastSettingsTab) {
             this._activeTab = this.plugin.settings.lastSettingsTab;
         }
+        this._hasExplicitTabRequest = false;
 
         // Auto-migrate: Clean up legacy advanced template if needed
         this.autoMigrateAdvancedTemplate();
@@ -918,7 +939,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.renderCoreHero(coreStack);
 
         // Refactor alerts (shown at top when migrations are needed)
-        const alertsRow = coreStack.createDiv();
+        const alertsRow = coreStack.createDiv({ attr: { [ERT_DATA.SECTION]: CORE_ALERTS_SECTION_KEY } });
         this.renderRefactorAlerts(alertsRow);
 
         const forceExpandCompletionPreview = this._forceExpandCoreCompletionPreview;

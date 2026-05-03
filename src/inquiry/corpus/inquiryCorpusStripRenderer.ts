@@ -1,6 +1,6 @@
 import type { SceneInclusion } from '../../types/settings';
 import { t } from '../../i18n';
-import { addTooltipData } from '../../utils/tooltip';
+import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
 import {
     CC_BOTTOM_MARGIN,
     CC_CELL_ICON_OFFSET,
@@ -588,7 +588,7 @@ export function renderInquiryCorpusStrip(args: {
     refs.ccLabel.setAttribute('x', String(stripCenterX));
     refs.ccLabel.setAttribute('y', '0');
     if (refs.ccLabelGroup) {
-        addTooltipData(refs.ccLabelGroup, 'Cycle all corpus scopes.', 'top');
+        addTooltipData(refs.ccLabelGroup, balanceTooltipText('Cycle all corpus scopes.'), 'top');
     }
     if (refs.ccLabelHit) {
         const scopeW = refs.ccLabel?.getComputedTextLength?.() ?? 0;

@@ -651,6 +651,35 @@
   color: var(--text-accent);
 }
 
+.ert-ui.ert-scope--modal .ert-layout-spread.is-scene-selectable {
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread.is-scene-selectable .ert-layout-page {
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread.is-scene-selectable:hover {
+  opacity: 1;
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread.is-scene-selectable:hover .ert-layout-page {
+  border-color: color-mix(in srgb, var(--text-accent) 72%, var(--background-modifier-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent) 20%, transparent);
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread.is-scene-selectable:focus-visible {
+  opacity: 1;
+  outline: 2px solid color-mix(in srgb, var(--text-accent) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: calc(var(--ert-control-radius) + 2px);
+}
+
+.ert-ui.ert-scope--modal .ert-layout-spread.is-scene-selectable:focus-visible .ert-layout-page {
+  border-color: color-mix(in srgb, var(--text-accent) 72%, var(--background-modifier-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent) 20%, transparent);
+}
+
 /* Validation alert state — PART/CHAPTER spreads when underlying data is missing.
    Subtle orange tint via existing warning tokens; tooltip set via title attr. */
 .ert-ui.ert-scope--modal .ert-layout-spread--warning .ert-layout-page {
@@ -2287,9 +2316,8 @@
 
 .rt-tooltip {
   position: fixed;
-  /* Same layer Obsidian uses for its own tooltips: above modals (50) and
-     menus (65), below dragged items (80). No 9999 escape hatches. */
-  z-index: var(--layer-tooltip);
+  z-index: 9999;
+  /* High z-index to sit above everything */
   background-color: var(--background-modifier-message);
   /* Dark background matching Obsidian toast/tooltip */
   color: var(--text-normal);
@@ -2303,22 +2331,24 @@
   transition: opacity 0.1s ease, transform 0.1s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   font-family: var(--font-interface);
-  /* Inline-block + max-width gives shrink-to-fit; text-wrap: balance picks
-     line breaks that minimize the longest line, so the box ends up snug. */
   display: inline-block;
+  width: var(--rt-tooltip-width, auto);
   text-align: center;
+  white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;
   max-width: 420px;
+  /* Balance line lengths so the last line isn't a short orphan. */
   text-wrap: balance;
 }
 
-/* Obsidian's native tooltip (rendered by setTooltip()) ships with greedy
-   wrapping and a fixed 300px max-width. Override both: balance line lengths
-   and let the box shrink to the longest balanced line via fit-content. */
+/* Obsidian's native tooltip (rendered by setTooltip()) wraps with a default
+   greedy algorithm that frequently leaves a short orphan on the last line.
+   text-wrap: balance distributes words evenly across all lines for the
+   tooltip's natural max-width. Scoped to body > .tooltip so we only target
+   Obsidian's own tooltip element, not arbitrary descendant nodes. */
 body > .tooltip {
   text-wrap: balance;
-  width: fit-content;
 }
 
 .rt-tooltip.rt-visible {

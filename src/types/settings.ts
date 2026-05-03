@@ -330,8 +330,8 @@ export interface BookProfile {
     /**
      * User-defined Book Pages preview order. Each entry is a `ResolvedPage.id`
      * (e.g. `note:Books/X/0.2 Title Page.md` or `bookmeta:copyright`). Applied
-     * via `applyBookPageOrder`. Empty/undefined → canonical order. UI-only at
-     * this stage; the export pipeline does not yet consume this field.
+     * via `applyBookPageOrder`. Empty/undefined → canonical order. The export
+     * pipeline consumes this field when assembling front/back matter.
      */
     bookPageOrder?: string[];
 }

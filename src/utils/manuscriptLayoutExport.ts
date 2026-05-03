@@ -6,6 +6,13 @@ export interface ManuscriptLayoutExportBehavior {
     sceneHeadingRenderMode: SceneHeadingRenderMode;
     defaultSceneHeadingMode?: ManuscriptSceneHeadingMode;
     /**
+     * Only layouts with an explicit scene-opener heading control should honor
+     * saved per-book sceneHeadingMode values. Other layouts use their spec
+     * default so stale saved options cannot drift the exported PDF away from
+     * the preview card.
+     */
+    allowSceneHeadingModeOverride: boolean;
+    /**
      * When true, the export pipeline drops Chapter-field markers before
      * assembly so neither raw `\rtChapter{...}` macros nor markdown `# Chapter`
      * headings reach Pandoc. Templates without a chapter treatment in their
@@ -45,7 +52,7 @@ function layoutIdentity(layout: Pick<PandocLayoutTemplate, 'id' | 'name' | 'path
 }
 
 export function getManuscriptLayoutExportBehavior(
-    layout: Pick<PandocLayoutTemplate, 'id' | 'name' | 'path'> & { designedSpec?: DesignedStyleSpec }
+    layout: Pick<PandocLayoutTemplate, 'id' | 'name' | 'path'> & { designedSpec?: DesignedStyleSpec; hasSceneOpenerHeadingOptions?: boolean }
 ): ManuscriptLayoutExportBehavior {
     const identity = layoutIdentity(layout);
     const isStandardManuscript = layout.id === STANDARD_MANUSCRIPT_LAYOUT_ID
@@ -67,12 +74,15 @@ export function getManuscriptLayoutExportBehavior(
     // headingMode + dedicated-page-aware renderMode.
     const designed = layout.designedSpec;
     const specDefaultHeadingMode: ManuscriptSceneHeadingMode | undefined = designed?.scene.headingMode;
+    const supportsSceneHeadingOverride = layout.hasSceneOpenerHeadingOptions === true
+        || ((designed?.scene.openerHeadingModes?.length ?? 0) > 0);
 
     if (isStandardManuscript) {
         // Standard Manuscript pictogram: scene-only. No part, no chapter cards.
         return {
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
             useRtChapterMacro: false,
@@ -86,6 +96,7 @@ export function getManuscriptLayoutExportBehavior(
         // a phantom Part-Roman + "Chapter 1" stack on the first scene page.
         return {
             sceneHeadingRenderMode: 'latex-section-starred',
+            allowSceneHeadingModeOverride: true,
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
             useRtChapterMacro: false,
@@ -100,6 +111,7 @@ export function getManuscriptLayoutExportBehavior(
         // the modernClassic branch handles \rtChapter emission directly.
         return {
             sceneHeadingRenderMode: 'markdown-h2',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: false,
             suppressPartMarkers: false,
             useRtChapterMacro: false,
@@ -116,6 +128,7 @@ export function getManuscriptLayoutExportBehavior(
         return {
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: false,
             suppressPartMarkers: true,
             useRtChapterMacro: true,
@@ -139,6 +152,7 @@ export function getManuscriptLayoutExportBehavior(
         return {
             sceneHeadingRenderMode: usesDedicatedOpener ? 'latex-section-starred' : 'markdown-h2',
             ...(specDefaultHeadingMode ? { defaultSceneHeadingMode: specDefaultHeadingMode } : {}),
+            allowSceneHeadingModeOverride: supportsSceneHeadingOverride,
             suppressChapterMarkers: !chaptersOn,
             suppressPartMarkers: designed.parts.mode === 'off',
             useRtChapterMacro: chaptersOn,
@@ -146,6 +160,7 @@ export function getManuscriptLayoutExportBehavior(
     }
     return {
         sceneHeadingRenderMode: 'markdown-h2',
+        allowSceneHeadingModeOverride: false,
         suppressChapterMarkers: true,
         suppressPartMarkers: true,
         useRtChapterMacro: false,

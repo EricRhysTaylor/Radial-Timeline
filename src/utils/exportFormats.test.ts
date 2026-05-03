@@ -10,9 +10,10 @@ import {
     buildExportFilename,
     buildGoogleFontsHint,
     getStructuredFontDiagnostic,
+    getTemplateFontDiagnostics,
     renderFontDiagnosticLine,
 } from './exportFormats';
-import { setBundledFontPath } from './pandocBundledLayouts';
+import { setBundledFontPath, setLatinModernPath } from './pandocBundledLayouts';
 import { DESIGNED_STYLE_SPEC_VERSION, type DesignedStyleSpec } from '../publishing/designedStyle';
 import type { PandocLayoutTemplate } from '../types';
 
@@ -99,16 +100,60 @@ function makeLayout(spec: DesignedStyleSpec): PandocLayoutTemplate {
 }
 
 describe('getStructuredFontDiagnostic — Latin Modern', () => {
-    it('always returns state: ok regardless of font path / system font catalog', () => {
-        // Latin Modern is loaded via \usepackage{lmodern}; XeLaTeX finds it
-        // through kpathsea on every TeX install, independent of the system
-        // font registry. Diagnostic must reflect this.
+    afterEach(() => {
+        setLatinModernPath(undefined);
+    });
+
+    it('returns missing-bundled when no verified Latin Modern path is registered', () => {
+        const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
+        const diag = getStructuredFontDiagnostic(layout);
+        expect(diag.state).toBe('missing-bundled');
+        expect(diag.primaryFontName).toBe('Latin Modern Roman');
+        expect(diag.resolvedFontName).toBe('Latin Modern Roman');
+        expect(diag.installHint?.source).toBe('bundled');
+        expect(diag.installHint?.message).toMatch(/Install all/);
+    });
+
+    it('returns ok only when all required Latin Modern OTF faces exist', () => {
+        const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-lm-ok-'));
+        for (const file of [
+            'lmroman10-regular.otf',
+            'lmroman10-italic.otf',
+            'lmroman10-bold.otf',
+            'lmroman10-bolditalic.otf',
+        ]) {
+            fs.writeFileSync(path.join(tempRoot, file), '');
+        }
+        setLatinModernPath(tempRoot);
+
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
         const diag = getStructuredFontDiagnostic(layout);
         expect(diag.state).toBe('ok');
-        expect(diag.primaryFontName).toBe('Latin Modern Roman');
-        expect(diag.resolvedFontName).toBe('Latin Modern Roman');
         expect(diag.installHint).toBeUndefined();
+
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+    });
+
+    it('raw template diagnostics flag a missing explicit Latin Modern Path', () => {
+        const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-lm-missing-'));
+        const templatePath = path.join(tempRoot, 'rt_modern_classic.tex');
+        fs.writeFileSync(templatePath, [
+            '\\usepackage{fontspec}',
+            '\\setmainfont{Latin Modern Roman}[',
+            `  Path = ${path.join(tempRoot, 'assets/fonts/latin-modern')} ,`,
+            '  UprightFont = lmroman10-regular.otf ,',
+            '  ItalicFont = lmroman10-italic.otf ,',
+            '  BoldFont = lmroman10-bold.otf ,',
+            '  BoldItalicFont = lmroman10-bolditalic.otf',
+            ']',
+        ].join('\n'));
+
+        const diag = getTemplateFontDiagnostics(templatePath);
+        expect(diag.canVerifySystemFonts).toBe(true);
+        expect(diag.requiredFonts).toContain('Latin Modern Roman');
+        expect(diag.missingRequiredFonts).toContain('Latin Modern Roman');
+
+        fs.rmSync(tempRoot, { recursive: true, force: true });
     });
 });
 
@@ -355,12 +400,12 @@ describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
         }
     });
 
-    it('returns ok for Latin Modern regardless of platform (kpathsea-loaded)', () => {
+    it('returns missing-bundled for Latin Modern regardless of platform when the verified path is absent', () => {
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
         for (const platform of ['mac', 'win', 'linux'] as const) {
             const diag = getStructuredFontDiagnostic(layout, platform);
-            expect(diag.state).toBe('ok');
-            expect(diag.installHint).toBeUndefined();
+            expect(diag.state).toBe('missing-bundled');
+            expect(diag.installHint?.source).toBe('bundled');
         }
     });
 });

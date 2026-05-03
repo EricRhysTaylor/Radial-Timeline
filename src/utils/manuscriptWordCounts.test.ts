@@ -83,4 +83,25 @@ describe('updateSceneWordCounts', () => {
         expect(updated).toBe(1);
         expect(frontmatterByPath[legacyFile.path].Words).toBe(101);
     });
+
+    it('matches assembled scene word counts by source path when synthetic BookMeta pages precede scenes', async () => {
+        const sceneFile = makeFile('Story/1 Opening.md');
+        const frontmatterByPath: Record<string, Record<string, unknown>> = {
+            [sceneFile.path]: { Class: 'Scene' }
+        };
+
+        const app = makeApp(frontmatterByPath);
+        const updated = await updateSceneWordCounts(
+            app,
+            [sceneFile],
+            [
+                { title: 'Title Page', bodyText: '', wordCount: 8 },
+                { title: 'Copyright', bodyText: '', wordCount: 12 },
+                { title: '1 Opening', bodyText: '', wordCount: 345, sourcePath: sceneFile.path }
+            ]
+        );
+
+        expect(updated).toBe(1);
+        expect(frontmatterByPath[sceneFile.path].Words).toBe(345);
+    });
 });

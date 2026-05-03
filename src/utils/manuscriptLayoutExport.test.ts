@@ -12,6 +12,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
             useRtChapterMacro: false,
@@ -30,6 +31,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
 
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'latex-section-starred',
+            allowSceneHeadingModeOverride: true,
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
             useRtChapterMacro: false,
@@ -48,6 +50,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
         // the markdown-chapter path that useRtChapterMacro gates.
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'markdown-h2',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: false,
             suppressPartMarkers: false,
             useRtChapterMacro: false,
@@ -72,6 +75,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'latex-section-starred',
             defaultSceneHeadingMode: 'scene-number',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: false,
             suppressPartMarkers: true,
             useRtChapterMacro: true,
@@ -87,6 +91,7 @@ describe('getManuscriptLayoutExportBehavior', () => {
 
         expect(behavior).toEqual({
             sceneHeadingRenderMode: 'markdown-h2',
+            allowSceneHeadingModeOverride: false,
             suppressChapterMarkers: true,
             suppressPartMarkers: true,
             useRtChapterMacro: false,

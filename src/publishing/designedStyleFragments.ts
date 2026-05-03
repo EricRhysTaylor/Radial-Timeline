@@ -31,6 +31,14 @@ const PACKAGES = [
     '\\usepackage{emptypage}',
 ];
 
+function structuralPageBreak(spec: DesignedStyleSpec): string {
+    return spec.parts.openAny ? '\\clearpage' : '\\cleardoublepage';
+}
+
+function standardPageBreak(): string {
+    return '\\clearpage';
+}
+
 function escapeForLatex(value: string): string {
     return value
         .replace(/\\/g, '\\textbackslash{}')
@@ -128,29 +136,19 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
     const lines: string[] = [];
     lines.push('\\defaultfontfeatures{Ligatures=TeX}');
 
-    // Latin Modern is bundled with the plugin (GUST Font License). Same approach
-    // as Sorts Mill Goudy: when the export pipeline supplies the bundled-fonts
-    // path, fontspec uses an explicit Path= directive pointing at the .otf files.
+    // Latin Modern ships with the plugin and is installed into the vault-local
+    // Pandoc font folder. When the export pipeline supplies that verified font
+    // directory, fontspec uses an explicit Path= directive pointing at the .otf
+    // files.
     // This eliminates failures caused by:
-    //   - fontspec's name-based lookup not finding "Latin Modern Roman" on macOS
-    //     (the OTFs live in TeXLive's tree but aren't registered with the OS
-    //     font system, so \setmainfont{Latin Modern Roman} reports "font not
-    //     found" even with the lmodern package loaded);
-    //   - filename-based kpsewhich lookup failing when the user's font tree
-    //     wasn't refreshed (mktexlsr/fc-cache out of date).
-    // Falls back to filename lookup when no bundled path is provided (dev tests,
-    // generator unit tests).
+    //   - fontspec's name-based lookup not finding "Latin Modern Roman";
+    //   - filename-based lookup depending on the user's TeX environment.
+    // No fallback: without a verified path, emit a hard LaTeX error so the
+    // export fails at the real contract boundary instead of silently drifting.
     if (spec.body.font === 'latin-modern') {
         // Resolution priority for Latin Modern:
-        //   1. User's TeX install via kpsewhich (latinModernPath) — preferred, no
-        //      bundled assets needed because every TeXLive/MacTeX install ships
-        //      with these fonts and the plugin detects the absolute path at load
-        //      time. This is the path that "just works" for users.
-        //   2. Plugin's bundled-fonts directory — fallback only if a user dropped
-        //      the lmroman OTFs into assets/fonts/latin-modern/ manually.
-        //   3. Filename-only kpsewhich lookup at compile time — last-resort.
-        const lmPath = options.latinModernPath
-            ?? (options.bundledFontPath ? `${options.bundledFontPath.replace(/\/$/, '')}/latin-modern` : undefined);
+        //   1. Vault-local Pandoc font folder installed from plugin assets.
+        const lmPath = options.latinModernPath;
         if (lmPath) {
             const root = lmPath.endsWith('/') ? lmPath : `${lmPath}/`;
             lines.push('\\setmainfont{Latin Modern Roman}[');
@@ -169,11 +167,7 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
                 lines.push(']');
             }
         } else {
-            lines.push('\\setmainfont{lmroman10-regular.otf}[');
-            lines.push('  ItalicFont = lmroman10-italic.otf ,');
-            lines.push('  BoldFont = lmroman10-bold.otf ,');
-            lines.push('  BoldItalicFont = lmroman10-bolditalic.otf');
-            lines.push(']');
+            lines.push('\\errmessage{Radial Timeline Modern Classic requires a verified Latin Modern font path; kpsewhich lmroman10-regular.otf did not resolve during plugin load}');
         }
         return lines.join('\n');
     }
@@ -266,13 +260,16 @@ function renderHeaderField(field: DesignedHeaderField | undefined): string {
 export function renderFancyhdr(spec: DesignedStyleSpec): string {
     const rh = spec.runningHeader;
     const lines: string[] = [];
-    lines.push('\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}');
-    lines.push('\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}');
-    lines.push('\\providecommand{\\rtSceneRunningTitle}{}');
+    lines.push('$if(title)$$else$\\errmessage{Radial Timeline export requires Pandoc metadata: title}$endif$');
+    lines.push('$if(author)$$else$\\errmessage{Radial Timeline export requires Pandoc metadata: author}$endif$');
+    lines.push('\\newcommand{\\BookTitle}{$if(title)$$title$$endif$}');
+    lines.push('\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$endif$}');
+    lines.push('\\newcommand{\\rtSceneRunningTitle}{}');
     // Modern Classic / Contemporary set the running scene title via \rtSetSceneRunningTitle.
-    // Always emit the setter so manuscript assembly's calls are valid even when
-    // the active layout doesn't display the field.
-    lines.push('\\providecommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}');
+    // Define the setter as a hard contract: if the body or another template
+    // fragment defines it first, LaTeX must fail instead of silently compiling
+    // with the wrong running-header behavior.
+    lines.push('\\newcommand{\\rtSetSceneRunningTitle}[1]{\\gdef\\rtSceneRunningTitle{#1}\\markboth{\\BookTitle}{#1}}');
     // \rtEmpty pagestyle: chrome-suppressed page used by Part / Chapter / Scene
     // opener pages. Emitted unconditionally so it's always defined regardless of
     // which structural levels the spec turns on (chapter pages need it even when
@@ -352,7 +349,7 @@ export function renderPageNumberingControl(_spec: DesignedStyleSpec): string {
         '\\newif\\ifrtMainStarted',
         '\\rtMainStartedfalse',
         '\\newcommand{\\rtBeginMainArabic}{%',
-        '  \\cleardoublepage',
+        `  ${standardPageBreak()}`,
         '  \\pagenumbering{arabic}%',
         '  \\setcounter{page}{1}%',
         '  \\rtMainStartedtrue%',
@@ -363,48 +360,42 @@ export function renderPageNumberingControl(_spec: DesignedStyleSpec): string {
 export function renderPartTitle(spec: DesignedStyleSpec): string {
     if (spec.parts.mode === 'off') return '';
     const lines: string[] = [];
+    const breakCommand = structuralPageBreak(spec);
     // \rtEmpty pagestyle is now defined unconditionally in renderFancyhdr
     // (chapters and scene separators reference it too, regardless of parts mode).
-    lines.push('\\newcommand{\\rtPart}[1]{%');
+    lines.push('\\newcommand{\\rtPart}[3]{%');
     lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
-    if (spec.parts.pageBreak) lines.push('  \\cleardoublepage');
+    if (spec.parts.pageBreak) lines.push(`  ${breakCommand}`);
     // \null primes the freshly cleared page so \thispagestyle and \vspace*
     // bind to it reliably (without \null they can be discarded at the page
     // boundary). Same fix applied in \rtChapter and \rtSceneOpener.
     lines.push('  \\null%');
     lines.push('  \\thispagestyle{rtEmpty}%');
-    lines.push('  \\vspace*{2.1in}%');
+    lines.push('  \\vspace*{1.95in}%');
     lines.push('  \\begin{center}');
-    lines.push('    {\\sffamily\\bfseries\\Large PART~#1}');
+    lines.push('    {\\sffamily\\bfseries\\Large #1}\\par');
+    lines.push('    \\vspace{0.16in}%');
+    lines.push('    \\rule{0.46in}{0.4pt}\\par');
+    if (spec.parts.epigraph || spec.epigraph.enabled) {
+        lines.push('    \\ifstrempty{#2}{}{%%');
+        lines.push('      \\vspace{0.28in}%');
+        lines.push('      \\begin{minipage}{0.68\\textwidth}');
+        lines.push('        \\centering');
+        lines.push(spec.epigraph.italic ? '        {\\itshape #2}\\par' : '        {#2}\\par');
+        lines.push('      \\end{minipage}\\par');
+        lines.push('    }%');
+        lines.push('    \\ifstrempty{#3}{}{%%');
+        if (spec.epigraph.attributionStyle === 'em-dash-caps') {
+            lines.push('      \\vspace{0.18in}{\\small\\MakeUppercase{---#3}}\\par');
+        } else {
+            lines.push('      \\vspace{0.18in}{\\small #3}\\par');
+        }
+        lines.push('    }%');
+    }
     lines.push('  \\end{center}');
     lines.push('  \\vspace*{1.2in}%');
-    if (spec.parts.pageBreak) lines.push('  \\cleardoublepage');
+    if (spec.parts.pageBreak) lines.push(`  ${breakCommand}`);
     lines.push('}');
-
-    if (spec.parts.epigraph || spec.epigraph.enabled) {
-        lines.push('\\newcommand{\\rtEpigraph}[2]{%');
-        // own-page placement starts on a fresh page after PART.
-        if (spec.parts.epigraphPlacement === 'own-page') {
-            lines.push('  \\cleardoublepage');
-        }
-        lines.push('  \\thispagestyle{rtEmpty}%');
-        lines.push('  \\vspace*{1.2in}%');
-        lines.push('  \\begin{center}');
-        lines.push('    \\begin{minipage}{0.68\\textwidth}');
-        lines.push('      \\centering');
-        lines.push(spec.epigraph.italic ? '      {\\itshape #1}\\par' : '      {#1}\\par');
-        lines.push('      \\if\\relax\\detokenize{#2}\\relax\\else');
-        if (spec.epigraph.attributionStyle === 'em-dash-caps') {
-            lines.push('        \\vspace{0.25in}{\\small\\MakeUppercase{---#2}}\\par');
-        } else {
-            lines.push('        \\vspace{0.25in}{\\small #2}\\par');
-        }
-        lines.push('      \\fi');
-        lines.push('    \\end{minipage}');
-        lines.push('  \\end{center}');
-        lines.push('  \\cleardoublepage');
-        lines.push('}');
-    }
     return lines.join('\n');
 }
 
@@ -417,6 +408,7 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
         return '';
     }
     const lines: string[] = [];
+    const breakCommand = standardPageBreak();
     if (typeof spec.chapters.secnumdepth === 'number') {
         lines.push(`\\setcounter{secnumdepth}{${spec.chapters.secnumdepth}}`);
     }
@@ -436,9 +428,11 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     // assembler calls \rtChapter{N}{Title}; this macro owns the full page —
     // pre-clearpage, chrome suppression, vertical spacing, heading typography,
     // bottom-clearpage so the chapter sits alone on its own page (body text
-    // begins on the next page).
+    // begins on the next page). This is a plain page break, not recto-forcing;
+    // twoside layouts should not synthesize blank verso pages unless the spec
+    // explicitly models that.
     //
-    // \null is a load-bearing detail: after \cleardoublepage, the new page
+    // \null is a load-bearing detail: after \clearpage, the new page
     // hasn't yet been "started" (no content emitted). \thispagestyle{} and
     // \vspace*{} both behave inconsistently at that boundary — \vspace* may
     // get discarded despite the asterisk, and \thispagestyle{} may bind to
@@ -446,7 +440,7 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     // reliably apply to the chapter opener page.
     lines.push('\\newcommand{\\rtChapter}[2]{%');
     lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
-    if (spec.chapters.pageBreak) lines.push('  \\cleardoublepage');
+    if (spec.chapters.pageBreak) lines.push(`  ${breakCommand}`);
     lines.push('  \\refstepcounter{chapter}%');
     lines.push('  \\null%');
     lines.push('  \\thispagestyle{rtEmpty}%');
@@ -461,7 +455,7 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     }
     lines.push('  \\end{center}');
     lines.push(`  \\vspace*{${bottomVspace}}%`);
-    if (spec.chapters.pageBreak) lines.push('  \\cleardoublepage');
+    if (spec.chapters.pageBreak) lines.push(`  ${breakCommand}`);
     lines.push('}');
     if (spec.chapters.resetSceneCounter) {
         lines.push('\\newcounter{rtSceneCounter}');
@@ -493,9 +487,10 @@ export function renderSceneOpener(spec: DesignedStyleSpec): string {
     if (spec.scene.opener === 'inline-separator') {
         lines.push(`\\newcommand{\\rtSceneSep}{\\par\\vspace{1.2em}\\begin{center}${glyph}\\end{center}\\vspace{1.2em}}`);
     } else if (spec.scene.opener === 'dedicated-page') {
+        const breakCommand = standardPageBreak();
         // Inline separator macro for any non-opener scene break.
         lines.push('\\newcommand{\\rtSceneSep}{%');
-        lines.push('  \\cleardoublepage');
+        lines.push(`  ${breakCommand}`);
         if (spec.scene.suppressHeaderFooterOnOpener) lines.push('  \\thispagestyle{empty}%');
         lines.push('  \\vspace*{2in}%');
         lines.push(`  \\begin{center}{\\Large ${glyph}}\\end{center}`);
@@ -517,7 +512,7 @@ export function renderSceneOpener(spec: DesignedStyleSpec): string {
                 : '#1';
             lines.push('\\newcommand{\\rtSceneOpener}[1]{%');
             lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
-            lines.push('  \\cleardoublepage');
+            lines.push(`  ${breakCommand}`);
             // \null primes the freshly cleared page so \thispagestyle and
             // \vspace* bind to it reliably (without \null they can be
             // discarded at the page boundary).
@@ -571,8 +566,8 @@ export function renderSceneOpener(spec: DesignedStyleSpec): string {
 
 export function renderEpigraphMacros(spec: DesignedStyleSpec): string {
     if (!spec.epigraph.enabled) return '';
-    // \rtEpigraph is emitted alongside parts when parts are on; emit a standalone
-    // version only when parts are off so the macro is still defined.
+    // Part-enabled specs carry part epigraph text through \rtPart{n}{quote}{attr}.
+    // Emit the standalone epigraph macro only for specs without part openers.
     if (spec.parts.mode !== 'off') return '';
     const lines: string[] = [];
     lines.push('\\newcommand{\\rtEpigraph}[2]{%');

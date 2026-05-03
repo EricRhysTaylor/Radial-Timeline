@@ -5,7 +5,7 @@
 
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta, PublishingValidationSnapshot } from '../types';
+import type { BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, PublishingValidationSnapshot } from '../types';
 import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
@@ -29,7 +29,7 @@ import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils
 import { isPathInFolderScope } from '../utils/pathScope';
 import { ensureReferenceIdTemplateFrontmatter, ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
-import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
+import { resolveBookPages, type MatterNoteSummary } from '../utils/bookPagesResolver';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { getLayoutAbbreviation, resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from '../utils/manuscriptSanitize';
@@ -340,13 +340,6 @@ export class CommandRegistrar {
                 statusMessages.push(TEMPLATE_ACCESS_FALLBACK_MESSAGE);
                 new Notice(TEMPLATE_ACCESS_FALLBACK_MESSAGE);
             }
-            const selectedMatterCount = slicedSelection.files.reduce((count, file) => (
-                filteredSelection.matterMetaByPath?.has(file.path) ? count + 1 : count
-            ), 0);
-            if (includeMatter && selectedMatterCount === 0) {
-                statusMessages.push('Include front & back matter notes is enabled, but no front/back matter notes were found in the active book source folder.');
-            }
-
             if (result.exportType === 'outline') {
                 const runtimeSettings = getRuntimeSettings(this.plugin.settings);
                 const baseOutputFolder = await ensureOutlineOutputFolder(this.plugin);
@@ -395,16 +388,59 @@ export class CommandRegistrar {
 
             const bookMetaResolution = this.resolveBookMetaForExport(folder);
             if (bookMetaResolution.warning) {
-                statusMessages.push(bookMetaResolution.warning);
-                statusMessages.push('Keep only one BookMeta per book folder to avoid ambiguity.');
+                throw new ExportFailure({
+                    category: 'missing_metadata',
+                    message: bookMetaResolution.warning,
+                    detail: 'Keep exactly one BookMeta note per book folder before exporting PDF.'
+                });
             }
-            if (!bookMetaResolution.bookMeta && this.selectionRequiresBookMeta(slicedSelection.files, filteredSelection.matterMetaByPath)) {
-                statusMessages.push('No BookMeta note found. Semantic matter pages may render incomplete.');
+            if (!bookMetaResolution.bookMeta) {
+                throw new ExportFailure({
+                    category: 'missing_metadata',
+                    message: 'No BookMeta note found for PDF export.',
+                    detail: 'Create one BookMeta note in the active book source folder so title, author, and Book Pages resolve explicitly.'
+                });
+            }
+            const selectedMatterCount = slicedSelection.files.reduce((count, file) => (
+                filteredSelection.matterMetaByPath?.has(file.path) ? count + 1 : count
+            ), 0);
+            const selectedMatterSummaries: MatterNoteSummary[] = slicedSelection.files.flatMap(file => {
+                const meta = filteredSelection.matterMetaByPath?.get(file.path);
+                if (!meta) return [];
+                const side: 'frontmatter' | 'backmatter' = meta.side === 'back' ? 'backmatter' : 'frontmatter';
+                return [{
+                    role: typeof meta.role === 'string' ? meta.role : '',
+                    path: file.path,
+                    title: file.basename,
+                    bodyMode: meta.bodyMode === 'latex' ? 'latex' : 'plain',
+                    side,
+                }];
+            });
+            const selectedBookPageCount = resolveBookPages(bookMetaResolution.bookMeta || undefined, selectedMatterSummaries).length;
+            if (includeMatter && selectedMatterCount === 0 && selectedBookPageCount === 0) {
+                statusMessages.push('Include front & back matter is enabled, but no Book Pages were found for the active book.');
             }
 
-            if (bookMetaResolution.bookMeta) {
-                if (!bookMetaResolution.bookMeta.title) new Notice('Warning: BookMeta is missing "Title"');
-                if (bookMetaResolution.bookMeta.rights && !bookMetaResolution.bookMeta.rights.year) new Notice('Warning: BookMeta is missing "Rights: Year"');
+            if (!bookMetaResolution.bookMeta.title?.trim()) {
+                throw new ExportFailure({
+                    category: 'missing_metadata',
+                    message: 'BookMeta is missing Title.',
+                    detail: 'PDF layouts require an explicit BookMeta Title for running headers and title pages.'
+                });
+            }
+            if (!bookMetaResolution.bookMeta.author?.trim()) {
+                throw new ExportFailure({
+                    category: 'missing_metadata',
+                    message: 'BookMeta is missing Author.',
+                    detail: 'PDF layouts require an explicit BookMeta Author for template metadata and title pages.'
+                });
+            }
+            if (bookMetaResolution.bookMeta.rights && !bookMetaResolution.bookMeta.rights.year) {
+                throw new ExportFailure({
+                    category: 'missing_metadata',
+                    message: 'BookMeta is missing Rights: Year.',
+                    detail: 'Complete BookMeta Rights: Year before exporting copyright-backed Book Pages.'
+                });
             }
 
             const extension = getExportFormatExtension(result.outputFormat);
@@ -518,12 +554,13 @@ export class CommandRegistrar {
             const modernClassicLayoutOptions = useModernClassicStructure
                 ? this.resolveModernClassicLayoutOptions(layout.id)
                 : undefined;
-            // Precedence: user UI override (only set for layouts that opt into
-            // hasSceneOpenerHeadingOptions, e.g. Signature Literary) wins over
-            // the layout's spec-derived default. Layouts without an override
-            // and without a spec default fall back to assembleManuscript's
-            // 'scene-number-title'.
-            const layoutSceneHeadingMode = this.resolveLayoutSceneHeadingMode(layout.id)
+            // Precedence: user UI override wins only for layouts that expose a
+            // scene-opener heading control (Signature Literary). Other layouts
+            // use their spec default so stale saved options cannot drift the
+            // exported PDF away from the preview card.
+            const layoutSceneHeadingMode = (layoutExportBehavior.allowSceneHeadingModeOverride
+                ? this.resolveLayoutSceneHeadingMode(layout.id)
+                : undefined)
                 ?? layoutExportBehavior.defaultSceneHeadingMode;
             const sceneHeadingRenderMode = layoutExportBehavior.sceneHeadingRenderMode;
             const chapterMarkersByScenePath = layoutExportBehavior.suppressChapterMarkers
@@ -867,20 +904,6 @@ export class CommandRegistrar {
             } : undefined,
             sourcePath
         };
-    }
-
-    private selectionRequiresBookMeta(files: TFile[], matterMetaByPath?: Map<string, MatterMeta>): boolean {
-        for (const file of files) {
-            const parsedMeta = matterMetaByPath?.get(file.path);
-            if (parsedMeta?.usesBookMeta === true) return true;
-
-            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
-            if (!frontmatter) continue;
-            const matterMeta = parseMatterMetaFromFrontmatter(frontmatter);
-            if (matterMeta?.usesBookMeta === true) return true;
-        }
-
-        return false;
     }
 
     private resolveBookMetaForExport(sourceFolder: string): { bookMeta: BookMeta | null; warning?: string } {

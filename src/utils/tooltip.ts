@@ -6,22 +6,22 @@
 
 /**
  * Unified Tooltip Utility for Radial Timeline
- *
- * Two systems, one entry point:
- *   - HTML elements → Obsidian's native `setTooltip` (rendered as `body > .tooltip`).
- *     Line balancing and box sizing are handled by CSS (text-wrap: balance,
- *     width: fit-content, max-width). No JS pre-wrapping.
- *   - SVG elements / `{ custom: true }` HTML → custom `.rt-tooltip` singleton,
- *     driven by data attributes. Required because Obsidian's native tooltip
- *     positions via getBoundingClientRect() which is unreliable on transformed
- *     SVG nodes, and because we need the title/body two-part rendering.
- *     Line balancing here is also CSS-only (text-wrap: balance + inline-block
- *     shrink-to-fit + max-width).
+ * 
+ * Provides consistent bubble tooltips throughout the plugin.
+ * 
+ * STRATEGY:
+ * 1. For HTML components (Settings, Modals): Uses Obsidian's native `setTooltip` or `component.setTooltip()`.
+ * 2. For SVG elements (Timeline View): Uses a CUSTOM DOM implementation (.rt-tooltip)
+ *    because Obsidian's API relies on getBoundingClientRect() which can be flaky with SVG transforms,
+ *    and the previous hack of creating anchor elements caused modal focus issues.
  */
 
 import { setTooltip, ButtonComponent, ExtraButtonComponent } from 'obsidian';
+import { splitIntoBalancedLinesOptimal } from './text';
 
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
+
+const DEFAULT_TOOLTIP_BALANCE_WIDTH = 360;
 
 const TOOLTIP_ATTR = 'data-tooltip';
 const TOOLTIP_PLACEMENT_ATTR = 'data-tooltip-placement';
@@ -121,24 +121,32 @@ function resolveTooltipTarget(start: EventTarget | null, rtOnly = false): Elemen
 
 /**
  * Apply a tooltip to an element.
- *
- * For SVG nodes (or HTML with `{ custom: true }`), goes through the rt-tooltip
- * data-attribute system. For plain HTML, hands off to Obsidian's `setTooltip`.
- * In both paths line wrapping/balancing is handled by CSS, not by inserting
- * newlines into the text.
+ * 
+ * @param element - The target element (HTML or SVG)
+ * @param text - Tooltip text to display
+ * @param placement - Where to show the tooltip
  */
 export function tooltip(
     element: HTMLElement | SVGElement,
     text: string,
     placement: TooltipPlacement = 'bottom',
+    maxWidth?: number,
     options?: { custom?: boolean }
 ): void {
+    const balancedText = maxWidth !== undefined
+        ? balanceTooltipText(text, maxWidth)
+        : balanceTooltipText(text);
     if (isSvgLikeElement(element) || options?.custom) {
-        addTooltipData(element, text, placement);
+        // Use data attributes for delegation (handled by setupTooltipsFromDataAttributes).
+        // `custom: true` forces the rt-tooltip path for HTML elements that live
+        // inside an SVG foreignObject — lets us render title/body splits that
+        // Obsidian's native tooltip can't style.
+        addTooltipData(element, balancedText, placement);
         return;
     }
     if (element instanceof HTMLElement) {
-        setTooltip(element, text, { placement });
+        // Use native Obsidian tooltip for standard HTML UI elements
+        setTooltip(element, balancedText, { placement });
     }
 }
 
@@ -150,12 +158,47 @@ export function tooltipForComponent(
     text: string,
     placement: TooltipPlacement = 'bottom'
 ): void {
+    const balancedText = balanceTooltipText(text);
+    // Access the underlying button element
     const buttonEl = (component as unknown as { buttonEl?: HTMLElement }).buttonEl;
     if (buttonEl) {
-        setTooltip(buttonEl, text, { placement });
+        setTooltip(buttonEl, balancedText, { placement });
     } else {
-        component.setTooltip(text);
+        component.setTooltip(balancedText);
     }
+}
+
+export function balanceTooltipText(text: string, maxWidth: number = DEFAULT_TOOLTIP_BALANCE_WIDTH): string {
+    if (!text) return text;
+
+    return text
+        .split('\n\n')
+        .map((section) => section
+            .split('\n')
+            .map((line) => balanceTooltipLine(line, maxWidth))
+            .join('\n'))
+        .join('\n\n');
+}
+
+function balanceTooltipLine(line: string, maxWidth: number): string {
+    const leadingWhitespaceMatch = line.match(/^(\s*)(.*)$/);
+    const leadingWhitespace = leadingWhitespaceMatch?.[1] ?? '';
+    const trimmed = (leadingWhitespaceMatch?.[2] ?? '').trim();
+    if (!trimmed) return '';
+
+    const bulletMatch = trimmed.match(/^([-*]\s+)(.+)$/);
+    if (bulletMatch) {
+        const [, prefix, content] = bulletMatch;
+        const balancedLines = splitIntoBalancedLinesOptimal(content, Math.max(200, maxWidth - 24), 1);
+        return balancedLines
+            .map((entry, index) => `${leadingWhitespace}${index === 0 ? prefix : ' '.repeat(prefix.length)}${entry}`)
+            .join('\n');
+    }
+
+    const balancedLines = splitIntoBalancedLinesOptimal(trimmed, maxWidth, 1);
+    return balancedLines
+        .map((entry) => `${leadingWhitespace}${entry}`)
+        .join('\n');
 }
 
 /**
@@ -210,7 +253,7 @@ export function setupTooltipsFromDataAttributes(
                 window.clearTimeout(hideTimeout);
                 hideTimeout = null;
             }
-
+            
             // Only update if it's a different target
             if (target !== currentTarget) {
                 clearActiveTooltipTarget(currentTarget);
@@ -218,7 +261,7 @@ export function setupTooltipsFromDataAttributes(
                 const text = getTooltipText(target, rtOnly);
                 const placement = getTooltipPlacement(target, rtOnly);
                 const anchor = getTooltipAnchor(target, rtOnly);
-
+                
                 if (text) {
                     const mouseEvent = e as MouseEvent;
                     const anchorPoint = anchor === 'cursor'
@@ -250,7 +293,7 @@ export function setupTooltipsFromDataAttributes(
             hideTimeout = window.setTimeout(hideCustomTooltip, 100);
             return;
         }
-
+        
         // Case 2: Target couldn't be resolved (e.g., events from foreignObject/HTML content)
         // Check if relatedTarget is still inside currentTarget
         if (!target && currentTarget) {
@@ -260,13 +303,13 @@ export function setupTooltipsFromDataAttributes(
                 return;
             }
         }
-
+        
         // Case 3: relatedTarget is null (left SVG entirely)
         if (!relatedTarget) {
             hideTimeout = window.setTimeout(hideCustomTooltip, 100);
         }
     };
-
+    
     // Additional mouseleave handler to catch edge cases with foreignObject/HTML content
     // mouseleave doesn't bubble, so it fires when truly leaving the SVG
     const handleMouseLeave = () => {
@@ -335,46 +378,39 @@ function ensureCustomTooltip() {
     document.body.appendChild(customTooltipEl);
 }
 
-type TooltipAnchorPoint = { x: number; y: number };
+function updateTooltipWidth(): void {
+    if (!customTooltipEl) return;
+    customTooltipEl.style.removeProperty('--rt-tooltip-width');
+    const naturalWidth = customTooltipEl.getBoundingClientRect().width;
+    const naturalHeight = customTooltipEl.getBoundingClientRect().height;
 
-/**
- * Get a screen-space rect for tooltip placement.
- *
- * For HTML elements (or SVG elements without a usable BBox/CTM), returns
- * `getBoundingClientRect()` directly.
- *
- * For SVG graphical elements, the AABB returned by `getBoundingClientRect()`
- * grows under rotation and its center no longer passes through the element's
- * visual center. Recompute the screen-space center from `getBBox()` (local
- * coords) projected through `getScreenCTM()`, then return a synthetic rect
- * sized as the AABB but centered on the true visual center. The AABB extents
- * still push the tooltip clear of the rotated element's screen footprint.
- */
-function getAnchorRect(target: Element): DOMRect {
-    const screenRect = target.getBoundingClientRect();
-    const svgEl = target as SVGGraphicsElement;
-    if (typeof svgEl.getBBox !== 'function' || typeof svgEl.getScreenCTM !== 'function') {
-        return screenRect;
+    if (naturalWidth <= 0) return;
+
+    // Single line — just lock width as-is
+    if (naturalHeight <= 20) {
+        customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(naturalWidth)}px`);
+        return;
     }
-    try {
-        const ctm = svgEl.getScreenCTM();
-        const bbox = svgEl.getBBox();
-        if (!ctm || bbox.width <= 0 || bbox.height <= 0) return screenRect;
-        const cx = bbox.x + bbox.width / 2;
-        const cy = bbox.y + bbox.height / 2;
-        const screenX = ctm.a * cx + ctm.c * cy + ctm.e;
-        const screenY = ctm.b * cx + ctm.d * cy + ctm.f;
-        return new DOMRect(
-            screenX - screenRect.width / 2,
-            screenY - screenRect.height / 2,
-            screenRect.width,
-            screenRect.height
-        );
-    } catch {
-        // getBBox throws on display:none / detached SVG nodes.
-        return screenRect;
+
+    // Multi-line: binary-search for the narrowest width that keeps the same line count.
+    // This produces balanced-looking lines with a tight-fitting box.
+    let lo = naturalWidth * 0.5;
+    let hi = naturalWidth;
+
+    while (hi - lo > 1) {
+        const mid = (lo + hi) / 2;
+        customTooltipEl.style.setProperty('--rt-tooltip-width', `${mid}px`);
+        if (customTooltipEl.getBoundingClientRect().height > naturalHeight) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
     }
+
+    customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(hi)}px`);
 }
+
+type TooltipAnchorPoint = { x: number; y: number };
 
 function updateTooltipPosition(
     target: Element,
@@ -408,7 +444,7 @@ function updateTooltipPosition(
                 break;
         }
     } else {
-        const rect = getAnchorRect(target);
+        const rect = target.getBoundingClientRect();
         switch (placement) {
             case 'bottom':
                 left = rect.left + (rect.width / 2);
@@ -465,8 +501,8 @@ function showCustomTooltip(
         customTooltipEl.setText(text);
     }
 
-    // Reset placement classes and tone before measuring; CSS handles sizing.
-    customTooltipEl.className = 'rt-tooltip';
+    // Reset classes and position before measuring to avoid shrink-to-fit from the previous location.
+    customTooltipEl.className = 'rt-tooltip'; // reset placement classes
     customTooltipEl.style.removeProperty('--rt-tooltip-tone-color');
     const tone = target.getAttribute(RT_TOOLTIP_TONE_ATTR);
     if (tone) {
@@ -476,9 +512,12 @@ function showCustomTooltip(
             customTooltipEl.style.setProperty('--rt-tooltip-tone-color', toneColor);
         }
     }
+    customTooltipEl.style.left = '0px';
+    customTooltipEl.style.top = '0px';
+    updateTooltipWidth();
 
     customTooltipEl.classList.add(`rt-placement-${placement}`);
-
+    
     updateTooltipPosition(target, placement, anchorPoint, rtOnly);
 
     // Show
