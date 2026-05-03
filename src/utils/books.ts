@@ -121,6 +121,37 @@ export function getActiveBookSourceFolder(settings: RadialTimelineSettings): str
   return (active?.sourceFolder || '').trim();
 }
 
+export function isSagaScopeAvailable(
+  settings: Pick<RadialTimelineSettings, 'books'>
+): boolean {
+  return getSagaBooks(settings).length >= 2;
+}
+
+export function getTimelineScope(
+  settings: Pick<RadialTimelineSettings, 'books' | 'timelineScope'>
+): 'book' | 'saga' {
+  return settings.timelineScope === 'saga' && isSagaScopeAvailable(settings)
+    ? 'saga'
+    : 'book';
+}
+
+export function getTimelineScopeTitle(
+  settings: RadialTimelineSettings,
+  fallback = DEFAULT_BOOK_TITLE
+): string {
+  return getTimelineScope(settings) === 'saga'
+    ? 'Saga'
+    : getActiveBookTitle(settings, fallback);
+}
+
+export function getSagaBooks(
+  settings: Pick<RadialTimelineSettings, 'books'>
+): BookProfile[] {
+  return (settings.books || [])
+    .map(book => normalizeBookProfile(book))
+    .filter(book => book.sourceFolder.trim().length > 0);
+}
+
 export function getActiveBookExportContext(settings: RadialTimelineSettings): { sourceFolder: string; title: string; fileStem: string } {
   const title = getActiveBookTitle(settings, DEFAULT_BOOK_TITLE);
   const sourceFolder = getActiveBookSourceFolder(settings);

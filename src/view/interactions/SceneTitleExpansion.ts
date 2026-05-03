@@ -71,6 +71,14 @@ export function getActBoundaries(actNumber: number, totalActs: number = 3): { st
     };
 }
 
+export function getSegmentBoundaries(segmentIndex: number, totalSegments: number = 3): { start: number; end: number } {
+    const count = Math.max(1, Math.floor(totalSegments));
+    return {
+        start: (segmentIndex * 2 * Math.PI / count) - Math.PI / 2,
+        end: ((segmentIndex + 1) * 2 * Math.PI / count) - Math.PI / 2
+    };
+}
+
 /**
  * Redistribute angles for scenes in an act when one is expanded.
  *

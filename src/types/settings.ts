@@ -694,6 +694,7 @@ export type SettingsTabId = 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' 
 export interface RadialTimelineSettings {
     books: BookProfile[];
     activeBookId?: string;
+    timelineScope?: 'book' | 'saga';
     /**
      * Last tab the user had open in Settings. Restored on next Settings open
      * so users who live on (e.g.) the Publish tab don't have to re-navigate
@@ -878,7 +879,7 @@ export interface RadialTimelineSettings {
 
     // Bundled .tex template auto-hotfix history. Each entry records an
     // (layoutId, hotfixId) pair that ran during plugin load. The synthetic
-    // 'PDF Templates Updated' refactor alert reads from this list — it appears
+    // The template and matter update refactor alert reads from this list — it appears
     // while any entry has `acknowledged: false` and clears when the user
     // dismisses the Core notification.
     templateHotfixHistory?: HotfixHistoryEntry[];

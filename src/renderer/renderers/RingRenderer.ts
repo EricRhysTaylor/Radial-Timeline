@@ -28,6 +28,7 @@ import { resolveDominantScene } from '../components/SubplotDominanceIndicators';
 import type { StageColorMap } from '../utils/Gossamer';
 import { getReadabilityMultiplier } from '../../utils/readability';
 import type { OuterRingChapterBoundaryGeometry } from '../components/ChapterMarkers';
+import { getTimelineScope } from '../../utils/books';
 
 export interface RingRenderContext {
     plugin: PluginRendererFacade;
@@ -105,6 +106,7 @@ export function renderRings(ctx: RingRenderContext): string {
     // Check if we need to force subplot fill colors
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
     const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
+    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
 
     // Loop through Acts
     for (let act = 0; act < actsToRender; act++) {
@@ -150,12 +152,14 @@ export function renderRings(ctx: RingRenderContext): string {
                     if (s.itemType === 'Backdrop') return; // EXCLUDE BACKDROP
 
                     if (!sortByWhen) {
-                        const sAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+                        const sAct = isSagaScope
+                            ? (typeof s.bookIndex === 'number' ? s.bookIndex : 0)
+                            : (s.actNumber !== undefined ? s.actNumber - 1 : 0);
                         if (sAct !== act) return;
                     }
 
                     if (isBeatNote(s)) {
-                        if (isChronologueMode) return;
+                        if (isChronologueMode || !shouldRenderStoryBeats(plugin)) return;
                         const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
                         if (!seenPlotKeys.has(pKey)) {
                             seenPlotKeys.add(pKey);

@@ -63,6 +63,7 @@ export interface TimelineSnapshot {
     povMode: string;
     activeBookId: string;
     activeBookTitle: string;
+    timelineScope: string;
     readabilityScale: string;
     showChapterMarkers: boolean;
     
@@ -109,6 +110,8 @@ export function createSnapshot(
         .map(s => {
             const parts = [
                 s.path || s.title || '',
+                s.bookId || '',
+                typeof s.bookIndex === 'number' ? String(s.bookIndex) : '',
                 s.status || '',
                 s.actNumber || '',
                 s.subplot || '',
@@ -224,6 +227,7 @@ export function createSnapshot(
         povMode: settings.globalPovMode ?? 'off',
         activeBookId: settings.activeBookId ?? '',
         activeBookTitle: getActiveBookTitle(settings, DEFAULT_BOOK_TITLE),
+        timelineScope: settings.timelineScope ?? 'book',
         readabilityScale: settings.readabilityScale ?? 'normal',
         showChapterMarkers: settings.showChapterMarkers ?? false,
         gossamerRunExists: !!gossamerRun,
@@ -292,6 +296,7 @@ export function detectChanges(
         prev.povMode !== current.povMode ||
         prev.activeBookId !== current.activeBookId ||
         prev.activeBookTitle !== current.activeBookTitle ||
+        prev.timelineScope !== current.timelineScope ||
         prev.readabilityScale !== current.readabilityScale ||
         prev.showChapterMarkers !== current.showChapterMarkers) {
         changeTypes.add(ChangeType.SETTINGS);

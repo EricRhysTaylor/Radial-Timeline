@@ -237,7 +237,7 @@ export class OuterRingDragController {
     private getRotationOffsetRad(): number {
         const rotated = this.svg.getAttribute('data-rotated') === 'true';
         if (!rotated) return 0;
-        const numActs = parseInt(this.svg.getAttribute('data-num-acts') || '3', 10);
+        const numActs = parseInt(this.svg.getAttribute('data-segment-count') || this.svg.getAttribute('data-num-acts') || '3', 10);
         const angleDeg = numActs > 0 ? 360 / numActs : 120;
         return -(angleDeg * Math.PI) / 180;
     }

@@ -2,7 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import type { RadialTimelineSettings } from '../types/settings';
 import { getActiveBookExportContext } from './exportContext';
-import { getBookSequenceNumber, getSequencedBooks, shouldSeedBookProfileFromLegacySettings } from './books';
+import {
+  getBookSequenceNumber,
+  getSagaBooks,
+  getSequencedBooks,
+  getTimelineScope,
+  getTimelineScopeTitle,
+  isSagaScopeAvailable,
+  shouldSeedBookProfileFromLegacySettings
+} from './books';
 import type RadialTimelinePlugin from '../main';
 
 describe('getActiveBookExportContext', () => {
@@ -89,5 +97,55 @@ describe('book sequencing', () => {
 
     expect(getBookSequenceNumber({ books }, 'b2')).toBe(2);
     expect(getBookSequenceNumber({ books }, 'b3')).toBe(3);
+  });
+});
+
+describe('saga timeline scope helpers', () => {
+  it('keeps saga as a scope and preserves Book Manager order', () => {
+    const settings: RadialTimelineSettings = {
+      ...DEFAULT_SETTINGS,
+      timelineScope: 'saga',
+      activeBookId: 'b2',
+      books: [
+        { id: 'b1', title: 'Shail + Trisan', sourceFolder: 'Books/Shail-Trisan' },
+        { id: 'b2', title: 'The General', sourceFolder: 'Books/The-General' },
+        { id: 'b3', title: 'Book 2', sourceFolder: 'Books/Book-2' }
+      ]
+    };
+
+    expect(isSagaScopeAvailable(settings)).toBe(true);
+    expect(getTimelineScope(settings)).toBe('saga');
+    expect(getTimelineScopeTitle(settings)).toBe('Saga');
+    expect(getSagaBooks(settings).map(book => book.id)).toEqual(['b1', 'b2', 'b3']);
+  });
+
+  it('ignores books without a usable source folder', () => {
+    const settings: RadialTimelineSettings = {
+      ...DEFAULT_SETTINGS,
+      timelineScope: 'saga',
+      books: [
+        { id: 'b1', title: 'One', sourceFolder: 'Books/One' },
+        { id: 'b2', title: 'No Folder', sourceFolder: '   ' },
+        { id: 'b3', title: 'Three', sourceFolder: 'Books/Three' }
+      ]
+    };
+
+    expect(getSagaBooks(settings).map(book => book.id)).toEqual(['b1', 'b3']);
+    expect(isSagaScopeAvailable(settings)).toBe(true);
+  });
+
+  it('falls back to book scope when fewer than two usable books exist', () => {
+    const settings: RadialTimelineSettings = {
+      ...DEFAULT_SETTINGS,
+      timelineScope: 'saga',
+      activeBookId: 'b1',
+      books: [
+        { id: 'b1', title: 'Only Book', sourceFolder: 'Books/Only' }
+      ]
+    };
+
+    expect(isSagaScopeAvailable(settings)).toBe(false);
+    expect(getTimelineScope(settings)).toBe('book');
+    expect(getTimelineScopeTitle(settings)).toBe('Only Book');
   });
 });

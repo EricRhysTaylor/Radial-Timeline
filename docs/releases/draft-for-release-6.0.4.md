@@ -8,6 +8,8 @@ This is a focused publishing release.
 - Core now includes bundled PDF layouts, while Signature Pro unlocks the expanded designed publishing layouts.
 - Improved all bundled Pandoc templates, including Standard Manuscript, Modern Classic, Contemporary Literary, and Signature Literary.
 - Added stronger Book Details and Book Pages handling for title pages, copyright, dedication, epigraphs, acknowledgments, author notes, and other manuscript matter.
+- Updated the inline LaTeX front matter and back matter examples for the new Book Pages system.
+- Book Pages can now be generated from Book Details without requiring separate matter note templates.
 - Added bundled font support for PDF publishing layouts.
 - Added export preview and warning cards so template readiness and layout risks are easier to catch before generating a PDF.
 - Added layout pictograms and template feature summaries to make PDF style selection clearer.

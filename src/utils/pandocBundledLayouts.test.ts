@@ -210,7 +210,7 @@ describe('bundled pandoc layout export auto-install', () => {
      * Drift-detect: stale on-disk content for a spec-driven fiction layout is
      * overwritten with the canonical generator output on plugin load. The
      * single hotfix-history entry under id `spec-drift-overwrite-v1` triggers
-     * the synthetic 'PDF Templates Updated' alert.
+     * the synthetic template and matter update alert.
      */
     it('drift-detect: overwrites stale on-disk content with canonical spec output and records one history entry', async () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');

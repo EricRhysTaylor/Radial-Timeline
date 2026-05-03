@@ -48,7 +48,7 @@ import { migrateLegacyKeysToSecretStorage, needsLegacyKeyMigration } from './ai/
 import { migrateAuthorProgressSettings } from './authorProgress/authorProgressConfig';
 import { migrateBeatSettings, stripLegacyBeatSettings } from './migrations/beatSettings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
-import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, normalizeBookProfile, shouldSeedBookProfileFromLegacySettings } from './utils/books';
+import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, getSagaBooks, getTimelineScope, isSagaScopeAvailable, normalizeBookProfile, shouldSeedBookProfileFromLegacySettings } from './utils/books';
 import { adaptPandocLayoutsToPublishingModel } from './utils/publishingModel';
 import { convertExportProfileToLegacyManuscriptExportTemplate, migratePublishingModelState } from './utils/publishingMigration';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
@@ -61,6 +61,7 @@ import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import type { GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
 import { seedProEntitlement } from './settings/proEntitlementSeed';
+import { hasProFeatureAccess } from './settings/featureGate';
 
 
 // Declare the variable that will be injected by the build process
@@ -267,13 +268,37 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     public async setActiveBookId(bookId: string): Promise<void> {
-        if (!bookId || this.settings.activeBookId === bookId) return;
+        if (!bookId) return;
+        const scopeChanged = this.settings.timelineScope === 'saga';
+        if (this.settings.activeBookId === bookId && !scopeChanged) return;
         this.settings.activeBookId = bookId;
+        this.settings.timelineScope = 'book';
         this.syncLegacySourcePathFromActiveBook();
         await this.saveSettings();
         this.refreshTimelineIfNeeded(null);
         this.updateTimelineBookHeaders();
         this.inquiryService?.notifyBookSettingsChanged();
+    }
+
+    public async setTimelineScope(scope: 'book' | 'saga'): Promise<void> {
+        if (scope === 'saga') {
+            if (!isSagaScopeAvailable(this.settings)) {
+                new Notice('Add at least two books in Book Manager to use Saga Timeline.');
+                return;
+            }
+            if (!hasProFeatureAccess(this)) {
+                new Notice('Saga Timeline is a Pro feature.');
+                return;
+            }
+            this.settings.timelineScope = 'saga';
+            this.settings.currentMode = 'narrative';
+        } else {
+            this.settings.timelineScope = 'book';
+        }
+
+        await this.saveSettings();
+        this.refreshTimelineIfNeeded(null);
+        this.updateTimelineBookHeaders();
     }
 
     public async persistBookSettings(): Promise<void> {
@@ -516,6 +541,26 @@ export default class RadialTimelinePlugin extends Plugin {
         return this.sceneDataService.getSceneData(options);
     }
 
+    async getTimelineSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
+        if (getTimelineScope(this.settings) !== 'saga') {
+            return this.getSceneData(options);
+        }
+
+        const books = getSagaBooks(this.settings);
+        const allScenes: TimelineItem[] = [];
+        for (const [bookIndex, book] of books.entries()) {
+            const bookScenes = await this.getSceneData({ ...options, sourcePath: book.sourceFolder });
+            allScenes.push(...bookScenes.map(scene => ({
+                ...scene,
+                bookId: book.id,
+                bookTitle: book.title,
+                bookIndex,
+                bookSourceFolder: book.sourceFolder
+            })));
+        }
+        return allScenes;
+    }
+
     /**
      * Get the BookMeta for the active manuscript.
      * Populated during getSceneData() — returns null if no BookMeta note exists.
@@ -636,6 +681,16 @@ export default class RadialTimelinePlugin extends Plugin {
                 this.settings.lastUsedPandocLayoutByPreset = {};
                 booksMigrated = true;
             }
+        }
+
+        let timelineScopeMigrated = false;
+        if (this.settings.timelineScope !== 'book' && this.settings.timelineScope !== 'saga') {
+            this.settings.timelineScope = 'book';
+            timelineScopeMigrated = true;
+        }
+        if (this.settings.timelineScope === 'saga' && (!isSagaScopeAvailable(this.settings) || !hasProFeatureAccess(this))) {
+            this.settings.timelineScope = 'book';
+            timelineScopeMigrated = true;
         }
 
         // Canonical AI settings migration/validation.
@@ -828,7 +883,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
+        if (proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || timelineScopeMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }

@@ -6,6 +6,10 @@ interface RotationView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
 }
 
+export function getRotationStepDegrees(segmentCount: number): number {
+    return segmentCount > 0 ? 360 / segmentCount : 120;
+}
+
 export function setupRotationController(view: RotationView, svg: SVGSVGElement): void {
     const rotatable = svg.querySelector('#timeline-rotatable') as SVGGElement | null;
     const toggle = svg.querySelector('#rotation-toggle') as SVGGElement | null;
@@ -20,9 +24,8 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
     let rotated = view.getRotationState();
 
     const applyRotation = () => {
-        const numActs = parseInt(svg.getAttribute('data-num-acts') || '3', 10);
-        // Default to 120 degrees (3 acts) if something goes wrong, but try to use 360/numActs
-        const angle = numActs > 0 ? 360 / numActs : 120;
+        const segmentCount = parseInt(svg.getAttribute('data-segment-count') || svg.getAttribute('data-num-acts') || '3', 10);
+        const angle = getRotationStepDegrees(segmentCount);
 
         if (rotated) {
             rotatable.setAttribute('transform', `rotate(-${angle})`);
@@ -79,5 +82,4 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
     
     view.registerDomEvent(toggle as unknown as HTMLElement, 'click', clickHandler);
 }
-
 

@@ -4,6 +4,7 @@ import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromSc
 import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
 import { getReadabilityMultiplier } from '../../utils/readability';
 import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquareHelpers';
+import { getTimelineScope } from '../../utils/books';
 
 /**
  * Unified number square rendering function
@@ -51,7 +52,8 @@ export function renderNumberSquaresUnified(params: {
   let svg = '<g class="rt-number-squares">';
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1; // pad more aggressively when font grows
-  const totalActs = numActs ?? 3;
+  const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+  const totalActs = isSagaScope ? Math.max(1, numActs ?? 1) : Math.max(3, numActs ?? 3);
 
   scenes.forEach((scene, idx) => {
     if (isBeatNote(scene) || scene.itemType === 'Backdrop') return;
@@ -92,7 +94,9 @@ export function renderNumberSquaresUnified(params: {
 
       const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
       // When using When date sorting, all scenes are in act 0
-      const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
+      const actIndex = sortByWhen
+        ? 0
+        : (isSagaScope ? (typeof scene.bookIndex === 'number' ? scene.bookIndex : 0) : (sceneActNumber - 1));
 
       const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
       const filteredScenes = scenesInActAndSubplot.filter(s => !isBeatNote(s));
@@ -231,7 +235,8 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual, numActs } = params;
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1;
-  const totalActs = numActs ?? 3;
+  const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+  const totalActs = isSagaScope ? Math.max(1, numActs ?? 1) : Math.max(3, numActs ?? 3);
 
   // Check if using When date sorting
   const currentMode = (plugin.settings as any).currentMode || 'narrative';
@@ -254,7 +259,9 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     // When using When date sorting, all scenes are in act 0
     // When using manuscript order, use the scene's actual act
     const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-    const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
+    const actIndex = sortByWhen
+      ? 0
+      : (isSagaScope ? (typeof scene.bookIndex === 'number' ? scene.bookIndex : 0) : (sceneActNumber - 1));
 
     const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
     const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));

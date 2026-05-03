@@ -31,7 +31,7 @@ import {
 import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { isMatterNote } from '../utils/sceneHelpers';
-import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
+import { DEFAULT_BOOK_TITLE, getTimelineScope, getTimelineScopeTitle, isSagaScopeAvailable } from '../utils/books';
 import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
 import type { StructuralMoveHistoryEntry } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
@@ -42,6 +42,7 @@ import { tooltip as applyTooltip } from '../utils/tooltip';
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 const TIMELINE_REFRESH_DELAY_MS = 5000;
+const SAGA_SCOPE_OPTION = '__rt_saga__';
 
 // Namespace rule for Timeline view work:
 // - New Timeline chrome (legends, panels, badges, overlays, tooltips, controls) uses ert-timeline-*.
@@ -166,7 +167,7 @@ export class RadialTimelineView extends ItemView {
     }
     
     getDisplayText(): string {
-        const title = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
+        const title = getTimelineScopeTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
         return `Radial Timeline: ${title}`;
     }
     
@@ -235,9 +236,20 @@ export class RadialTimelineView extends ItemView {
 
             const select = document.createElement('select');
             select.className = 'rt-book-switcher__select';
-            this.registerDomEvent(select, 'change', () => {
+            this.registerDomEvent(select, 'change', async () => {
                 const nextId = select.value;
-                void this.plugin.setActiveBookId(nextId);
+                if (nextId === SAGA_SCOPE_OPTION) {
+                    await this.plugin.setTimelineScope('saga');
+                    if (getTimelineScope(this.plugin.settings) === 'saga') {
+                        this.currentMode = 'narrative';
+                    }
+                    this.updateBookSwitcherOptions();
+                    this.updateViewTitle();
+                    return;
+                }
+                await this.plugin.setActiveBookId(nextId);
+                this.updateBookSwitcherOptions();
+                this.updateViewTitle();
             });
 
             const manageBtn = document.createElement('button');
@@ -603,6 +615,14 @@ export class RadialTimelineView extends ItemView {
         }
 
         const books = this.plugin.settings.books || [];
+        const sagaAvailable = isSagaScopeAvailable(this.plugin.settings);
+        if (sagaAvailable) {
+            const sagaOption = document.createElement('option');
+            sagaOption.value = SAGA_SCOPE_OPTION;
+            sagaOption.textContent = 'Saga';
+            select.appendChild(sagaOption);
+        }
+
         books.forEach(book => {
             const option = document.createElement('option');
             option.value = book.id;
@@ -610,11 +630,13 @@ export class RadialTimelineView extends ItemView {
             select.appendChild(option);
         });
 
-        if (books.length > 0) {
+        if (getTimelineScope(this.plugin.settings) === 'saga' && sagaAvailable) {
+            select.value = SAGA_SCOPE_OPTION;
+        } else if (books.length > 0) {
             select.value = this.plugin.settings.activeBookId || books[0].id;
         }
 
-        select.toggleAttribute('disabled', books.length <= 1);
+        select.toggleAttribute('disabled', books.length <= 1 && !sagaAvailable);
     }
 
     private updateViewTitle(): void {
@@ -663,8 +685,8 @@ export class RadialTimelineView extends ItemView {
 
     // --- Helpers for number-square orientation/position (shared across modes) ---
     public applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void {
-        const numActs = parseInt(svg.getAttribute('data-num-acts') || '3', 10);
-        const angle = numActs > 0 ? 360 / numActs : 120; // Dynamic counter-rotation based on act count
+        const segmentCount = parseInt(svg.getAttribute('data-segment-count') || svg.getAttribute('data-num-acts') || '3', 10);
+        const angle = segmentCount > 0 ? 360 / segmentCount : 120; // Dynamic counter-rotation based on active segment count
         const orients = svg.querySelectorAll<SVGGElement>('.number-square-orient');
         orients.forEach((el) => {
             const base = (el.getAttribute('transform') || '').replace(/\s*rotate\([^)]*\)/g, '').trim();
@@ -780,6 +802,11 @@ export class RadialTimelineView extends ItemView {
     refreshTimeline() {
         if (!this.plugin) return;
 
+        if (getTimelineScope(this.plugin.settings) === 'saga' && this.currentMode !== 'narrative') {
+            this.currentMode = 'narrative';
+            this.plugin.settings.currentMode = 'narrative';
+        }
+
         const perfStart = performance.now();
         const container = this.containerEl.children[1] as HTMLElement;
         
@@ -787,7 +814,7 @@ export class RadialTimelineView extends ItemView {
         this.updateOpenFilesTracking();
         
         // Get the scene data using the plugin's method
-        this.plugin.getSceneData()
+        this.plugin.getTimelineSceneData()
             .then(async (sceneData) => {
                 const dataLoadTime = performance.now() - perfStart;
                 const timelineSceneData = sceneData.filter(item => !isMatterNote(item));
@@ -978,6 +1005,12 @@ export class RadialTimelineView extends ItemView {
             })
         );
         
+        if (getTimelineScope(this.plugin.settings) === 'saga' && this._currentMode !== 'narrative') {
+            this._currentMode = 'narrative';
+            this.plugin.settings.currentMode = 'narrative';
+            try { await this.plugin.saveSettings(); } catch { /* best effort */ }
+        }
+
         // If starting in Gossamer mode, initialize it before the first render
         if (this._currentMode === 'gossamer' && this.modeManager) {
             const { TimelineMode } = await import('../modes/ModeDefinition');

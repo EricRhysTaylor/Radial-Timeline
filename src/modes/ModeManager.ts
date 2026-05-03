@@ -17,6 +17,7 @@ import type RadialTimelinePlugin from '../main';
 import { TimelineMode, isTimelineMode } from './ModeDefinition';
 import { getModeDefinition } from './ModeRegistry';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
+import { getTimelineScope } from '../utils/books';
 
 /**
  * Mode Manager - Handles all mode transitions and lifecycle
@@ -52,6 +53,11 @@ export class ModeManager {
         
         // No-op if already in this mode
         if (currentMode === newMode) {
+            return;
+        }
+
+        if (getTimelineScope(this.plugin.settings) === 'saga' && newMode !== TimelineMode.NARRATIVE) {
+            new Notice('Saga Timeline is currently available in Narrative mode only.', 5000);
             return;
         }
 

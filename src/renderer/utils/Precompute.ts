@@ -24,6 +24,7 @@ import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
 import { getReadabilityScale } from '../../utils/readability';
 import { getConfiguredActCount } from '../../utils/acts';
+import { getSagaBooks, getTimelineScope } from '../../utils/books';
 
 export interface PrecomputedRenderValues {
     scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
@@ -49,6 +50,10 @@ export function computeCacheableValues(
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
     const isProgressMode = currentMode === 'progress';
+    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+    const segmentCount = isSagaScope
+        ? Math.max(1, getSagaBooks(plugin.settings as any).length)
+        : getConfiguredActCount(plugin.settings as any);
     const readabilityScale = getReadabilityScale(plugin.settings as any);
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
@@ -115,13 +120,15 @@ export function computeCacheableValues(
             scenesByActAndSubplot[0][subplot] = sortScenes(scenesByActAndSubplot[0][subplot], true, forceChronological);
         });
     } else {
-        const numActs = getConfiguredActCount(plugin.settings as any);
+        const numActs = segmentCount;
         for (let act = 0; act < numActs; act++) {
             scenesByActAndSubplot[act] = {};
         }
         scenes.forEach(scene => {
             if (scene.itemType === 'Backdrop' || isMatterNote(scene)) return;
-            const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0;
+            const act = isSagaScope
+                ? (typeof scene.bookIndex === 'number' ? scene.bookIndex : 0)
+                : (scene.actNumber !== undefined ? scene.actNumber - 1 : 0);
             const validAct = (act >= 0 && act < numActs) ? act : 0;
             const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             if (!scenesByActAndSubplot[validAct][subplot]) {
@@ -137,7 +144,7 @@ export function computeCacheableValues(
     }
 
     const allSubplotsMap = new Map<string, number>();
-    const actsToCheck = sortByWhen ? 1 : getConfiguredActCount(plugin.settings as any);
+    const actsToCheck = sortByWhen ? 1 : segmentCount;
 
     for (let actIndex = 0; actIndex < actsToCheck; actIndex++) {
         Object.entries(scenesByActAndSubplot[actIndex] || {}).forEach(([subplot, scenes]) => {

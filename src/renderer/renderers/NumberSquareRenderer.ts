@@ -8,7 +8,7 @@ import {
 import { makeSceneId } from '../../utils/numberSquareHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { resolveDominantScene } from '../components/SubplotDominanceIndicators';
-import { shouldShowAllScenesInOuterRing } from '../modules/ModeRenderingHelpers';
+import { shouldRenderStoryBeats, shouldShowAllScenesInOuterRing } from '../modules/ModeRenderingHelpers';
 import {
     renderOuterRingNumberSquares,
     renderInnerRingsNumberSquaresAllScenes,
@@ -17,6 +17,7 @@ import {
 import { parseSceneTitle } from '../../utils/text';
 import type { SceneNumberInfo } from '../../utils/constants';
 import { getConfiguredActCount } from '../../utils/acts';
+import { getTimelineScope } from '../../utils/books';
 
 // Define the interface for the number square visual resolver logic
 export type NumberSquareVisualResolver = (scene: TimelineItem) => { subplotIndex: number };
@@ -51,8 +52,11 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
     } = ctx;
 
     let svg = '';
+    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
     const NUM_RINGS = masterSubplotOrder.length;
-    const totalActs = Math.max(3, numActs || getConfiguredActCount(plugin.settings as any));
+    const totalActs = isSagaScope
+        ? Math.max(1, numActs || 1)
+        : Math.max(3, numActs || getConfiguredActCount(plugin.settings as any));
 
     if (shouldShowAllScenesInOuterRing(plugin)) {
         // In outer-ring-narrative mode, draw number squares for ALL rings
@@ -99,13 +103,15 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
                 // When using When date sorting, include all scenes (ignore Act)
                 // When using manuscript order, filter by Act
                 if (!sortByWhen) {
-                    const sAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+                    const sAct = isSagaScope
+                        ? (typeof s.bookIndex === 'number' ? s.bookIndex : 0)
+                        : (s.actNumber !== undefined ? s.actNumber - 1 : 0);
                     if (sAct !== act) return;
                 }
 
                 if (isBeatNote(s)) {
                     // Skip beats entirely in Chronologue mode - beats should never appear
-                    if (isChronologueMode) return;
+                    if (isChronologueMode || !shouldRenderStoryBeats(plugin)) return;
 
                     const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
                     if (seenPlotKeys.has(pKey)) return;

@@ -14,6 +14,7 @@ import { TimelineMode } from '../../modes/ModeDefinition';
 import { getModeDefinition } from '../../modes/ModeRegistry';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { t } from '../../i18n';
+import { getTimelineScope } from '../../utils/books';
 
 // Type alias for compatibility
 type PluginFacade = PluginRendererFacade;
@@ -25,6 +26,10 @@ type PluginFacade = PluginRendererFacade;
  * @returns true if beats should be shown, false if they should be hidden/removed
  */
 export function shouldRenderStoryBeats(plugin: PluginFacade): boolean {
+    if (getTimelineScope(plugin.settings as any) === 'saga') {
+        return false;
+    }
+
     const currentMode = (plugin.settings as any).currentMode || TimelineMode.NARRATIVE;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
@@ -105,4 +110,3 @@ export function getSubplotLabelText(plugin: PluginFacade, subplot: string, isOut
 
     return subplot.toUpperCase();
 }
-

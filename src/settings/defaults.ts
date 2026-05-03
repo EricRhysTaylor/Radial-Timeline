@@ -14,6 +14,7 @@ import { buildDefaultAuthorProgressSettings } from '../authorProgress/authorProg
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     books: [],
     activeBookId: undefined,
+    timelineScope: 'book',
     sourcePath: '',
     showSourcePathAsTitle: true, // @deprecated Legacy — book title from BookProfile after migration
     validFolderPaths: [], // Default empty array for folder path history

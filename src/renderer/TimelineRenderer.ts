@@ -100,7 +100,8 @@ import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { hasActiveAlerts } from '../settings/refactorAlerts';
-import { getConfiguredActCount, parseActLabels } from '../utils/acts';
+import { buildTimelineSegments } from './utils/TimelineSegments';
+import { getTimelineScope } from '../utils/books';
 import {
     buildTimelineChapterResolverItems,
     collapseTimelineChapterMarkersByResolvedBoundary,
@@ -255,10 +256,13 @@ export function createTimelineSVG(
     const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
 
     // Determine sorting method (needed for later logic; pulled out for readability)
-    const numActs = getConfiguredActCount(plugin.settings as any);
-    const actLabels = parseActLabels(plugin.settings as any, numActs);
+    const timelineSegments = buildTimelineSegments(plugin.settings as any);
+    const numActs = Math.max(1, timelineSegments.length);
+    const actLabels = timelineSegments.map(segment => segment.label);
+    const segmentKind = timelineSegments[0]?.kind ?? 'act';
     const isChronologueMode = currentMode === 'chronologue';
     const isProgressMode = currentMode === 'progress';
+    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
     const showChapterMarkers = isNarrativeMode && !sortByWhen && ((plugin.settings as any).showChapterMarkers ?? false);
@@ -268,7 +272,7 @@ export function createTimelineSVG(
 
     // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
     let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}" data-line-inner-radius="${lineInnerRadius}"
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}" data-segment-count="${numActs}" data-segment-kind="${segmentKind}" data-line-inner-radius="${lineInnerRadius}"
                        preserveAspectRatio="xMidYMid meet">`;
 
 
@@ -446,9 +450,6 @@ export function createTimelineSVG(
         const subplotIndex = masterSubplotOrder.indexOf(subplot);
         const ring = NUM_RINGS - 1 - subplotIndex;
 
-        // Handle undefined actNumber with a default of 1
-        const actNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-
         // Get the scenes for this act and subplot to determine correct index
         // When using When date sorting, all scenes are in act 0
         // When using manuscript order, use the scene's actual act
@@ -457,7 +458,9 @@ export function createTimelineSVG(
         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
 
         const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-        const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
+        const actIndex = sortByWhen
+            ? 0
+            : (isSagaScope ? (typeof scene.bookIndex === 'number' ? scene.bookIndex : 0) : (sceneActNumber - 1));
         const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
 
         // Never generate inner-ring synopses for Plot notes here

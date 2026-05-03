@@ -17,7 +17,7 @@ import {
     SceneAngleData,
     needsExpansion,
     calculateTargetSize,
-    getActBoundaries,
+    getSegmentBoundaries,
     redistributeAngles,
     buildArcPath,
     buildTextPath,
@@ -28,7 +28,7 @@ import {
 export class SceneInteractionManager {
     private svg: SVGSVGElement;
     private enabled: boolean = true;
-    private totalActs: number = 3;
+    private totalSegments: number = 3;
     
     // State tracking
     private currentGroup: Element | null = null;
@@ -52,9 +52,9 @@ export class SceneInteractionManager {
     
     constructor(view: RadialTimelineView, svg: SVGSVGElement, totalActs?: number) {
         this.svg = svg;
-        // Prefer act count from the rendered SVG (data-num-acts) so hover redistribution matches the actual geometry
-        const svgActs = this.getActCountFromSvg(svg);
-        this.totalActs = svgActs ?? Math.max(3, totalActs ?? 3);
+        // Prefer segment count from the rendered SVG so hover redistribution matches the actual geometry.
+        const svgSegments = this.getSegmentCountFromSvg(svg);
+        this.totalSegments = svgSegments ?? Math.max(3, totalActs ?? 3);
         this.registerFn = typeof (view as any).register === 'function' ? (view.register as any).bind(view) : null;
         
         // Create reusable text measurement element
@@ -72,16 +72,16 @@ export class SceneInteractionManager {
     }
 
     setActCount(count: number): void {
-        this.totalActs = Math.max(3, count);
+        this.totalSegments = Math.max(1, count);
     }
     /**
      * Read act count from the rendered SVG (authoritative for hover redistribution)
      */
-    private getActCountFromSvg(svg: SVGSVGElement): number | null {
-        const attr = svg.getAttribute('data-num-acts');
+    private getSegmentCountFromSvg(svg: SVGSVGElement): number | null {
+        const attr = svg.getAttribute('data-segment-count') ?? svg.getAttribute('data-num-acts');
         if (!attr) return null;
         const parsed = parseInt(attr, 10);
-        return Number.isFinite(parsed) && parsed >= 3 ? parsed : null;
+        return Number.isFinite(parsed) && parsed >= 1 ? parsed : null;
     }
 
     /**
@@ -102,9 +102,9 @@ export class SceneInteractionManager {
      * Ensure totalActs stays in sync with the rendered SVG
      */
     private refreshActCount(): void {
-        const svgActs = this.getActCountFromSvg(this.svg);
-        if (svgActs !== null) {
-            this.totalActs = svgActs;
+        const svgSegments = this.getSegmentCountFromSvg(this.svg);
+        if (svgSegments !== null) {
+            this.totalSegments = svgSegments;
         }
     }
 
@@ -494,7 +494,7 @@ export class SceneInteractionManager {
         // Get act boundaries
         this.refreshActCount();
         const actNum = Number(hoveredAct);
-        const actBounds = getActBoundaries(actNum, this.totalActs);
+        const actBounds = getSegmentBoundaries(actNum, this.totalSegments);
         
         // Redistribute angles
         const redistribution = redistributeAngles(

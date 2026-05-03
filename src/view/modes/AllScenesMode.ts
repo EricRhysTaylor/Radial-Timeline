@@ -80,10 +80,10 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     if (!svg) return;
     
     // Create scene interaction manager
-    // Prefer SVG's declared act count for accurate hover redistribution; fall back to settings.
-    const svgActsAttr = svg.getAttribute('data-num-acts');
+    // Prefer SVG's declared segment count for accurate hover redistribution; fall back to settings.
+    const svgActsAttr = svg.getAttribute('data-segment-count') ?? svg.getAttribute('data-num-acts');
     const svgActs = svgActsAttr ? parseInt(svgActsAttr, 10) : NaN;
-    const totalActs = Number.isFinite(svgActs) && svgActs >= 3
+    const totalActs = Number.isFinite(svgActs) && svgActs >= 1
         ? svgActs
         : Math.max(3, (view.plugin.settings as any).actCount ?? 3);
     const manager = new SceneInteractionManager(view as any, svg, totalActs);
@@ -194,6 +194,8 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
 }
 
 export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): void {
+    if ((view.plugin.settings as any)?.timelineScope === 'saga') return;
+
     const controller = new OuterRingDragController(view as any, svg, {
         onRefresh: () => {
             // Use direct refresh (bypasses debounce) for immediate update after drag operations

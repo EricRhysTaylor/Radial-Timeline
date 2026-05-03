@@ -70,6 +70,10 @@ export interface TimelineItem {
     date: string;
     path?: string;
     sceneId?: string;
+    bookId?: string;
+    bookTitle?: string;
+    bookIndex?: number;
+    bookSourceFolder?: string;
     subplot?: string;
     act?: string;
     pov?: string;

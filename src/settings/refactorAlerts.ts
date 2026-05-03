@@ -184,7 +184,7 @@ export function cleanupAdvancedTemplate(advancedTemplate: string): string {
 }
 
 /**
- * Stable id for the synthetic "PDF Templates Updated" alert. The alert is
+ * Stable id for the synthetic "PDF templates and front and back matter notes updated" alert. The alert is
  * generated dynamically from `settings.templateHotfixHistory` rather than
  * stored in the static `REFACTOR_ALERTS` list, so it can re-appear after a
  * future hotfix without polluting `dismissedAlerts`.
@@ -203,8 +203,8 @@ export function getTemplateHotfixAlert(settings: RadialTimelineSettings): Refact
         id: TEMPLATE_HOTFIX_ALERT_ID,
         severity: 'info',
         icon: 'file-check',
-        title: 'PDF Templates Updated',
-        description: 'Bundled PDF style templates were upgraded to the latest format. Re-export to apply the new formatting. No action required.',
+        title: 'PDF templates and front and back matter notes updated',
+        description: 'Bundled PDF style templates and inline LaTeX front/back matter examples were upgraded to the latest format. Re-export to apply the new formatting.',
     };
 }
 
@@ -212,7 +212,7 @@ export function getTemplateHotfixAlert(settings: RadialTimelineSettings): Refact
  * Get active refactor alerts that need user attention
  * Filters out dismissed alerts and alerts with no pending migrations (for migration alerts).
  * Info alerts without migrations are shown until dismissed.
- * Appends a synthetic 'PDF Templates Updated' alert when bundled-template
+ * Appends a synthetic template and matter update alert when bundled-template
  * hotfixes have run and the user hasn't yet acknowledged them.
  */
 export function getActiveRefactorAlerts(settings: RadialTimelineSettings): RefactorAlert[] {
