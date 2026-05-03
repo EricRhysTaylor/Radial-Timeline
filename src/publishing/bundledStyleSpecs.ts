@@ -30,6 +30,7 @@ export const BUNDLED_FICTION_IDS: readonly BundledFictionId[] = [
 ];
 
 const SHARED_FONT_FALLBACK_CHAIN = ['TeX Gyre Pagella', 'Times New Roman', 'Times'];
+const SHARED_SANS_FONT_FALLBACK_CHAIN = ['Helvetica Neue', 'Helvetica', 'TeX Gyre Heros'];
 
 const STANDARD_MANUSCRIPT_SPEC: DesignedStyleSpec = {
     specVersion: DESIGNED_STYLE_SPEC_VERSION,
@@ -37,8 +38,8 @@ const STANDARD_MANUSCRIPT_SPEC: DesignedStyleSpec = {
     paperSize: 'us-trade-6x9',
     margins: { topIn: 1.0, bottomIn: 1.0, leftIn: 1.0, rightIn: 1.0, mirrored: false },
     body: {
-        font: 'sorts-mill-goudy',
-        fontFallbackChain: SHARED_FONT_FALLBACK_CHAIN,
+        font: 'system-sans',
+        fontFallbackChain: SHARED_SANS_FONT_FALLBACK_CHAIN,
         sizePt: 11,
         lineSpacing: 1.5,
         paragraphIndentEm: 1.5,
@@ -62,8 +63,8 @@ const CONTEMPORARY_LITERARY_SPEC: DesignedStyleSpec = {
     paperSize: 'us-trade-6x9',
     margins: { topIn: 0.9, bottomIn: 1.0, leftIn: 0.9, rightIn: 0.9, mirrored: false },
     body: {
-        font: 'sorts-mill-goudy',
-        fontFallbackChain: SHARED_FONT_FALLBACK_CHAIN,
+        font: 'system-sans',
+        fontFallbackChain: SHARED_SANS_FONT_FALLBACK_CHAIN,
         sizePt: 11,
         lineSpacing: 1.5,
         paragraphIndentEm: 1.5,

@@ -775,7 +775,7 @@ interface ModernClassicState {
   enabled: boolean;
   currentActIndex: number | null;
   chapterIndex: number;
-  emittedSceneCount: number;
+  sceneIndexInAct: number;
   actEpigraphs: string[];
   actEpigraphAttributions: string[];
 }
@@ -893,7 +893,7 @@ function createModernClassicState(options?: ModernClassicStructureOptions): Mode
     enabled: options?.enabled === true,
     currentActIndex: null,
     chapterIndex: 0,
-    emittedSceneCount: 0,
+    sceneIndexInAct: 0,
     actEpigraphs: normalizeList(options?.actEpigraphs),
     actEpigraphAttributions: normalizeList(options?.actEpigraphAttributions),
   };
@@ -1213,14 +1213,12 @@ export async function assembleManuscript(
     const wordCount = countWords(countableBodyText);
 
     if (modernClassicState.enabled) {
-      let emittedStructureOpener = false;
-
       // RT terminology → structure mapping:
       //   Acts (from each scene's `Act:` frontmatter field, the canonical
       //         source that also drives the timeline ring partitions)
       //                                    → \rtPart{Roman}{quote}{attr} — Part page
       //   Chapters (from Chapter fields)   → \rtChapter{n}{Title} — chapter opener
-      //   Scenes (scene notes)             → \rtSceneSep — inline scene separator
+      //   Scenes (scene notes)             → \rtSceneSep{roman} — scene opener
       const nextActIndex = extractSceneActIndex(content);
       if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
         const actRoman = toRomanNumeral(nextActIndex);
@@ -1229,7 +1227,7 @@ export async function assembleManuscript(
           const epigraphAttribution = sanitizeModernClassicAttributionArg(modernClassicState.actEpigraphAttributions[nextActIndex - 1] || '');
           textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}{${epigraphQuote}}{${epigraphAttribution}}`));
           modernClassicState.currentActIndex = nextActIndex;
-          emittedStructureOpener = true;
+          modernClassicState.sceneIndexInAct = 0;
         }
       }
 
@@ -1241,15 +1239,15 @@ export async function assembleManuscript(
           modernClassicState.chapterIndex += 1;
           textParts.push(buildRawLatexBlock(`\\rtChapter{${modernClassicState.chapterIndex}}{${chapterTitle}}`));
         }
-        emittedStructureOpener = true;
-      } else if (modernClassicState.emittedSceneCount > 0 && !emittedStructureOpener) {
-        textParts.push(buildRawLatexBlock('\\rtSceneSep'));
       }
+
+      modernClassicState.sceneIndexInAct += 1;
+      const sceneRoman = toRomanNumeral(modernClassicState.sceneIndexInAct).toLowerCase();
+      textParts.push(buildRawLatexBlock(`\\rtSceneSep{${sceneRoman}}`));
 
       scenes.push({ title, bodyText, wordCount, sceneId, sourcePath: file.path });
       totalWords += wordCount;
       textParts.push(`${bodyText}\n\n`);
-      modernClassicState.emittedSceneCount += 1;
     } else {
       const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
       for (const marker of chapterMarkers) {

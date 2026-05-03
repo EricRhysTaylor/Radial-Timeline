@@ -267,6 +267,10 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).not.toContain('\\rtEpigraph');
         expect(assembled.text).toContain('\\rtChapter{1}{Boy with a Skull}');
         expect(assembled.text).toContain('\\rtChapter{2}{Everything of Possibility.}');
+        expect(assembled.text).toContain('\\rtSceneSep{i}');
+        expect(assembled.text).toContain('\\rtSceneSep{ii}');
+        const sceneSepArgs = Array.from(assembled.text.matchAll(/\\rtSceneSep\{([^}]+)\}/g)).map(match => match[1]);
+        expect(sceneSepArgs).toEqual(['i', 'ii', 'i']);
 
         const partOneIndex = assembled.text.indexOf('\\rtPart{I}{The beginning of all things.}{Anonymous}');
         const partTwoIndex = assembled.text.indexOf('\\rtPart{II}{A turn into possibility.}{The Narrator}');
@@ -276,7 +280,7 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(chapterTwoIndex).toBeGreaterThan(partTwoIndex);
 
         const sceneSepCount = (assembled.text.match(/\\rtSceneSep/g) || []).length;
-        expect(sceneSepCount).toBe(1);
+        expect(sceneSepCount).toBe(3);
 
         const emittedRtMacros = Array.from(new Set(
             Array.from(assembled.text.matchAll(/\\(rt[A-Za-z]+)/g)).map(match => match[1])

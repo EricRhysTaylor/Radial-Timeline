@@ -312,8 +312,11 @@ describe('one spec, three echoes — contract alignment', () => {
         // Chapters carry their titles (numbered-titled mode).
         expect(assembled.text).toContain('Boy with a Skull');
         expect(assembled.text).toContain('New Horizons');
-        // Scene separators: roman-with-rule path uses \rtSceneSep inline.
+        // Scene openers: roman-with-rule path uses explicit \rtSceneSep{roman}.
         expect(assembled.text).toContain('\\rtSceneSep');
+        expect((assembled.text.match(/\\rtSceneSep\{/g) || []).length).toBe(scenes.length);
+        expect(Array.from(assembled.text.matchAll(/\\rtSceneSep\{([^}]+)\}/g)).map(match => match[1]))
+            .toEqual(['i', 'ii', 'iii', 'iv', 'i', 'ii']);
         // Modern Classic does NOT use \rtSceneOpener (its opener is roman-with-rule, inline).
         expect(assembled.text).not.toContain('\\rtSceneOpener{');
         // Epigraphs are grouped into the Part opener, not emitted as a second page.

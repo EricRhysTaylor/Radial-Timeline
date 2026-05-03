@@ -106,6 +106,7 @@ const FONT_PRIMARY: Record<string, string> = {
     'eb-garamond':      'EB Garamond',
     'crimson':          'Crimson Text',
     'system-serif':     'TeX Gyre Pagella',
+    'system-sans':      'Arial',
 };
 
 export interface RenderFontspecOptions {
@@ -371,7 +372,7 @@ export function renderPartTitle(spec: DesignedStyleSpec): string {
     // boundary). Same fix applied in \rtChapter and \rtSceneOpener.
     lines.push('  \\null%');
     lines.push('  \\thispagestyle{rtEmpty}%');
-    lines.push('  \\vspace*{1.95in}%');
+    lines.push('  \\vspace*{1.55in}%');
     lines.push('  \\begin{center}');
     lines.push('    {\\sffamily\\bfseries\\Large #1}\\par');
     lines.push('    \\vspace{0.16in}%');
@@ -423,6 +424,10 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     const bottomVspace = sp?.bottomFraction != null
         ? `${sp.bottomFraction.toFixed(2)}\\textheight`
         : '0.9in';
+    const useModernClassicChapterTreatment =
+        spec.archetype === 'structured'
+        && spec.chapters.mode === 'numbered-titled'
+        && spec.scene.opener === 'roman-with-rule';
 
     // \rtChapter is the SOLE contract surface for chapter openers. The
     // assembler calls \rtChapter{N}{Title}; this macro owns the full page —
@@ -447,11 +452,15 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     lines.push(`  \\vspace*{${topVspace}}%`);
     lines.push('  \\begin{center}');
     if (spec.chapters.mode === 'numbered' || spec.chapters.mode === 'numbered-titled') {
-        lines.push('    {\\sffamily\\bfseries\\large Chapter~#1}\\par');
+        lines.push(useModernClassicChapterTreatment
+            ? '    {\\sffamily\\bfseries\\small Chapter~#1}\\par'
+            : '    {\\sffamily\\bfseries\\large Chapter~#1}\\par');
     }
     if (spec.chapters.mode === 'titled' || spec.chapters.mode === 'numbered-titled') {
         lines.push('    \\vspace{0.35in}%');
-        lines.push('    {\\rmfamily\\itshape\\Large #2}\\par');
+        lines.push(useModernClassicChapterTreatment
+            ? '    {\\rmfamily\\Huge #2}\\par'
+            : '    {\\rmfamily\\itshape\\Large #2}\\par');
     }
     lines.push('  \\end{center}');
     lines.push(`  \\vspace*{${bottomVspace}}%`);
@@ -524,17 +533,18 @@ export function renderSceneOpener(spec: DesignedStyleSpec): string {
             lines.push('}');
         }
     } else if (spec.scene.opener === 'roman-with-rule') {
-        lines.push('\\newcounter{rtscene}');
-        lines.push('\\setcounter{rtscene}{0}');
-        lines.push('\\newcommand{\\rtSceneSep}{%');
-        lines.push('  \\par\\bigskip');
-        lines.push('  \\stepcounter{rtscene}%');
+        lines.push('\\newcommand{\\rtSceneSep}[1]{%');
+        lines.push('  \\ifrtMainStarted\\else\\rtBeginMainArabic\\fi%');
+        lines.push('  \\clearpage');
+        lines.push('  \\null%');
+        lines.push('  \\thispagestyle{rtEmpty}%');
+        lines.push('  \\vspace*{0.78in}%');
         lines.push('  \\begin{center}');
-        lines.push('    {\\rmfamily\\small\\roman{rtscene}.}\\par');
+        lines.push('    {\\rmfamily\\small #1.}\\par');
         lines.push('    \\vspace{0.08in}%');
-        lines.push('    \\rule{1.2in}{0.4pt}%');
+        lines.push('    \\rule{0.46in}{0.4pt}%');
         lines.push('  \\end{center}');
-        lines.push('  \\bigskip\\par');
+        lines.push('  \\vspace*{0.82in}%');
         lines.push('}');
     }
 

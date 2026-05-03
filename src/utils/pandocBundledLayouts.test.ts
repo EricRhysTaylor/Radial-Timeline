@@ -144,7 +144,12 @@ describe('bundled pandoc layout export auto-install', () => {
         }
 
         // Contemporary Literary: macro-driven running headers, no literal labels.
+        const standard = getBundledPandocLayoutContent('bundled-fiction-classic-manuscript')!;
         const contemporary = getBundledPandocLayoutContent('bundled-fiction-contemporary-literary')!;
+        expect(standard).toContain('\\IfFontExistsTF{Arial}');
+        expect(standard).not.toContain('Sorts Mill Goudy');
+        expect(contemporary).toContain('\\IfFontExistsTF{Arial}');
+        expect(contemporary).not.toContain('Sorts Mill Goudy');
         expect(contemporary).toMatch(/\\fancyhead\[LE\]\{[^}]*\\BookTitle\}/);
         expect(contemporary).toMatch(/\\fancyhead\[RO\]\{[^}]*\\rtSceneRunningTitle\}/);
         expect(contemporary).not.toContain('\\nouppercase{title}');
@@ -170,7 +175,11 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(modernClassic).toContain('\\rule{0.46in}{0.4pt}');
         expect(modernClassic).not.toContain('PART~#1');
         expect(modernClassic).toContain('\\newcommand{\\rtChapter}[2]');
-        expect(modernClassic).toContain('\\newcommand{\\rtSceneSep}');
+        expect(modernClassic).toContain('{\\sffamily\\bfseries\\small Chapter~#1}\\par');
+        expect(modernClassic).toContain('{\\rmfamily\\Huge #2}\\par');
+        expect(modernClassic).not.toContain('{\\rmfamily\\itshape\\Large #2}\\par');
+        expect(modernClassic).toContain('\\newcommand{\\rtSceneSep}[1]');
+        expect(modernClassic).toMatch(/\\newcommand\{\\rtSceneSep\}\[1\][^]*\\thispagestyle\{rtEmpty\}/);
         expect(modernClassic).toContain('\\errmessage{Radial Timeline export requires Pandoc metadata: title}');
         expect(modernClassic).toContain('\\errmessage{Radial Timeline export requires Pandoc metadata: author}');
         expect(modernClassic).toContain('\\newcommand{\\BookTitle}{$if(title)$$title$$endif$}');

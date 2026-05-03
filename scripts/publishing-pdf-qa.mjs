@@ -89,29 +89,37 @@ Second scene body text follows the opener.
     {
         id: 'bundled-fiction-modern-classic',
         slug: 'modern-classic',
-        expectedPages: 6,
+        expectedPages: 7,
         expectedPageText: [
             { page: 1, text: 'I' },
             { page: 1, text: 'A precise line.' },
             { page: 1, text: 'AUTHOR A' },
+            { page: 3, text: 'i.' },
+            { page: 3, text: 'First paragraph of chapter one.' },
         ],
         forbiddenPageText: [
             { page: 1, text: 'PART I' },
             { page: 2, text: 'A precise line.' },
+            { page: 3, text: 'Audit Book' },
+            { page: 3, text: 'Audit Author' },
         ],
         body: String.raw`\rtPart{I}{A precise line.}{Author A}
 
 \rtChapter{1}{Boy with a Skull}
 
+\rtSceneSep{i}
+
 First paragraph of chapter one.
 
-\rtSceneSep
+\rtSceneSep{ii}
 
 Second scene body text follows an inline roman separator.
 
 \rtPart{II}{}{}
 
 \rtChapter{2}{New Horizons}
+
+\rtSceneSep{i}
 
 Third scene body text starts the second act.
 `,
@@ -255,6 +263,7 @@ function assertModernClassicNoBadLatinModernFallback(spec, fontRoot, layoutDir) 
         '',
         '\\rtPart{I}{A quote}{J. Name}',
         '\\rtChapter{1}{Chapter One}',
+        '\\rtSceneSep{ii}',
         'Modern Classic font smoke.',
     ].join('\n'));
     try {

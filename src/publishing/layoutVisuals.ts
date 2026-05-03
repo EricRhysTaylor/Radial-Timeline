@@ -13,7 +13,7 @@
  * RT terminology → export structure:
  *   Parts    = Acts (Act count → \rtPart{I}{quote}{attribution})
  *   Chapters = Timeline notes carrying a Chapter field
- *   Scenes   = Scene notes (primary unit; \rtSceneSep separators)
+ *   Scenes   = Scene notes (primary unit; \rtSceneSep{roman} openers)
  */
 import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneHeadingMode } from '../utils/manuscript';
@@ -165,6 +165,7 @@ function describeFont(spec: DesignedStyleSpec): string {
         case 'eb-garamond':      return 'EB Garamond (serif)';
         case 'crimson':          return 'Crimson Text (serif)';
         case 'system-serif':     return 'System serif';
+        case 'system-sans':      return 'System sans';
         default:                 return 'Serif';
     }
 }
@@ -266,7 +267,7 @@ export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureR
             return [
                 { label: 'Headers', value: 'Title centered (both pages)' },
                 { label: 'Folios', value: 'Bottom center' },
-                { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
+                { label: 'Font', value: 'System sans' },
                 { label: 'Spacing', value: '1.5 lines' },
                 { label: 'Scenes', value: 'New page — centered scene number only' },
             ];
@@ -294,8 +295,8 @@ export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureR
         case 'contemporary':
             return [
                 { label: 'Headers', value: 'Book title (left) · Scene title (right), sans' },
-                { label: 'Folios', value: 'Bottom center (serif)' },
-                { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
+                { label: 'Folios', value: 'Bottom center' },
+                { label: 'Font', value: 'System sans body and headers' },
                 { label: 'Spacing', value: '1.5 lines' },
                 { label: 'Scenes', value: 'New page — centered scene number only' },
                 { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
@@ -817,7 +818,7 @@ export function applySpreadValidation(
 
 export interface SpreadStatus {
     /** Stable id for dedup / ordering. */
-    id: 'parts-count' | 'chapters-count' | 'scene-titles-count';
+    id: 'parts-count' | 'epigraphs-populated' | 'chapters-count' | 'chapter-titles-count' | 'scene-titles-count';
     tone: 'info' | 'success';
     /** Short rendered text. */
     text: string;
@@ -829,15 +830,15 @@ export interface SpreadStatus {
  * scenes. Spreads already in warning state are skipped (the warning carries
  * the user-facing message). Pure / deterministic.
  *
- * Each spread emits a single line item:
+ * Each spread emits separate line items:
  *   • PART (any mode)        → "N Acts configured" (info)
- *                              upgraded to "...all epigraphs populated."
- *                              (success) when the layout advertises
- *                              epigraphs and every act has a quote.
+ *                              plus "Epigraphs populated." (success) when
+ *                              the layout advertises epigraphs and every act
+ *                              has a quote.
  *   • CHAPTER (any mode)     → "N Chapters configured" (info)
- *                              upgraded to "...all titled." (success)
- *                              when the layout advertises titled chapters
- *                              and every chapter has a title.
+ *                              plus "Chapter titles populated." (success)
+ *                              when the layout advertises titled chapters and
+ *                              every chapter has a title.
  *   • SCENE title-only       → "All selected scenes have titles." (success)
  *                              when ratio is 1.
  */
@@ -847,11 +848,10 @@ export function collectSpreadStatuses(
 ): SpreadStatus[] {
     const out: SpreadStatus[] = [];
 
-    // ── PART spread → "N Acts configured" (+ epigraph extension) ──
+    // ── PART spread → "N Acts configured" (+ epigraph completion) ──
     // Always emit when the layout has a PART spread, the spread isn't
-    // warning, and we know the act count. Append the "all epigraphs
-    // populated" qualifier only when the layout advertises epigraphs and
-    // every act has a quote — that flips tone from info → success.
+    // warning, and we know the act count. Emit epigraph completion as a
+    // separate line so the modal never hides it inside a combined sentence.
     const partSpread = rows.special.find(s => s.label === 'PART' && !s.sceneMode);
     if (partSpread && partSpread.warningLevel !== 'warning' && Number.isFinite(ctx.actCount) && ctx.actCount >= 2) {
         const advertisesEpigraph = !!partSpread.rightPage?.epigraphText || !!partSpread.leftPage?.epigraphText;
@@ -859,25 +859,24 @@ export function collectSpreadStatuses(
             advertisesEpigraph
             && typeof ctx.actEpigraphPopulatedCount === 'number'
             && ctx.actEpigraphPopulatedCount >= ctx.actCount;
+        out.push({
+            id: 'parts-count',
+            tone: 'info',
+            text: `${ctx.actCount} Acts configured.`,
+        });
         if (allEpigraphsPopulated) {
             out.push({
-                id: 'parts-count',
+                id: 'epigraphs-populated',
                 tone: 'success',
-                text: `${ctx.actCount} Acts configured, all epigraphs populated.`,
-            });
-        } else {
-            out.push({
-                id: 'parts-count',
-                tone: 'info',
-                text: `${ctx.actCount} Acts configured.`,
+                text: 'Epigraphs populated.',
             });
         }
     }
 
-    // ── CHAPTER spread → "N Chapters configured" (+ titled extension) ──
+    // ── CHAPTER spread → "N Chapters configured" (+ title completion) ──
     // Always emit when the layout has a CHAPTER spread, the spread isn't
-    // warning, and we know the chapter count. Append "all titled" only when
-    // the layout advertises titled chapters and every chapter has a title.
+    // warning, and we know the chapter count. Emit title completion as a
+    // separate line so it stays independently testable and visible.
     const chapterSpread = rows.special.find(s => s.label === 'CHAPTER' && !s.sceneMode);
     if (
         chapterSpread
@@ -890,17 +889,16 @@ export function collectSpreadStatuses(
             advertisesTitle
             && typeof ctx.chapterTitlePopulatedCount === 'number'
             && ctx.chapterTitlePopulatedCount >= ctx.chapterFieldCount;
+        out.push({
+            id: 'chapters-count',
+            tone: 'info',
+            text: `${ctx.chapterFieldCount} Chapters configured.`,
+        });
         if (allTitled) {
             out.push({
-                id: 'chapters-count',
+                id: 'chapter-titles-count',
                 tone: 'success',
-                text: `${ctx.chapterFieldCount} Chapters configured, all titled.`,
-            });
-        } else {
-            out.push({
-                id: 'chapters-count',
-                tone: 'info',
-                text: `${ctx.chapterFieldCount} Chapters configured.`,
+                text: 'Chapter titles populated.',
             });
         }
     }

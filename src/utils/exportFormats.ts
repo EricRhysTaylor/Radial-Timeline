@@ -611,6 +611,7 @@ const FONT_KEY_TO_DISPLAY: Record<DesignedStyleSpec['body']['font'], string> = {
     'eb-garamond':      'EB Garamond',
     'crimson':          'Crimson Text',
     'system-serif':     'TeX Gyre Pagella',
+    'system-sans':      'Arial',
 };
 
 const GOOGLE_FONTS_BY_KEY: Partial<Record<DesignedStyleSpec['body']['font'], string>> = {
@@ -735,7 +736,7 @@ export function getStructuredFontDiagnostic(
         };
     }
 
-    // System fonts (eb-garamond, crimson, system-serif): probe the catalog.
+    // System fonts (eb-garamond, crimson, system-serif, system-sans): probe the catalog.
     const catalog = loadSystemFontCatalog();
     const canVerify = Array.isArray(catalog);
     const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;

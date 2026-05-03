@@ -424,7 +424,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         // Apply generic modal shell + modal-specific class
         if (modalEl) {
-            modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
@@ -2183,6 +2183,7 @@ export class ManuscriptOptionsModal extends Modal {
         const resolvedFont = structuredFontDiag.state !== 'ok' && structuredFontDiag.resolvedFontName
             ? structuredFontDiag.resolvedFontName
             : this.buildFontDisplayName(displayRequestedFont, canVerifyFonts, hasPrimaryMissing, fallbackFont);
+        const fontSummaryLine = `Font: ${displayRequestedFont || resolvedFont || 'Default serif'}`;
         const layoutDesc = this.formatTemplateProfileName(selectedProfile) || selectedLayout.name || 'Custom';
         const willEmbed = fontDiagnostics.usesFontspec;
 
@@ -2265,6 +2266,10 @@ export class ManuscriptOptionsModal extends Modal {
             const readyIcon = readyLine.createSpan({ cls: 'ert-warning-icon ert-warning-icon--inline' });
             setIcon(readyIcon, iconName);
             readyLine.createSpan({ text: 'Export checks · Ready' });
+            content.createDiv({
+                cls: 'ert-pdf-output-line is-status is-status-info',
+                text: fontSummaryLine,
+            });
             // Informational status rows (non-alarmist counts) — always render
             // even in Ready state. Visually distinct from warnings via the
             // is-status modifier on the existing line class.
@@ -2290,6 +2295,10 @@ export class ManuscriptOptionsModal extends Modal {
         const titleIcon = titleRow.createSpan({ cls: 'ert-warning-icon ert-warning-icon--inline' });
         setIcon(titleIcon, iconName);
         titleRow.createSpan({ text: 'Export checks' });
+        content.createDiv({
+            cls: 'ert-pdf-output-line is-status is-status-info',
+            text: fontSummaryLine,
+        });
 
         if (hasAccessError) {
             const firstError = accessIssues.find(issue => issue.level === 'error');

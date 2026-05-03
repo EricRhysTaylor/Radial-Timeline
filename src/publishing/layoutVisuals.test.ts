@@ -659,7 +659,7 @@ describe('collectSpreadStatuses — always-emit base counts', () => {
         expect(ch?.text).not.toMatch(/all titled/i);
     });
 
-    it('emits "N Chapters configured, all titled." (success) for a titled layout with full population', () => {
+    it('emits separate chapter count and title-populated statuses for a titled layout with full population', () => {
         const ctx = {
             actCount: 3,
             chapterFieldCount: 5,
@@ -670,9 +670,31 @@ describe('collectSpreadStatuses — always-emit base counts', () => {
         const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), ctx);
         const statuses = collectSpreadStatuses(rows, ctx);
         const ch = statuses.find(s => s.id === 'chapters-count');
+        const titled = statuses.find(s => s.id === 'chapter-titles-count');
         expect(ch).toBeDefined();
-        expect(ch?.tone).toBe('success');
-        expect(ch?.text).toMatch(/5 Chapters configured, all titled/i);
+        expect(ch?.tone).toBe('info');
+        expect(ch?.text).toMatch(/5 Chapters configured/i);
+        expect(titled).toBeDefined();
+        expect(titled?.tone).toBe('success');
+        expect(titled?.text).toMatch(/Chapter titles populated/i);
+    });
+
+    it('orders Modern Classic readiness facts as separate export-check lines', () => {
+        const ctx = {
+            actCount: 3,
+            chapterFieldCount: 5,
+            actEpigraphPopulatedCount: 3,
+            chapterTitlePopulatedCount: 5,
+            sceneTitlePopulatedRatio: 1,
+        };
+        const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), ctx);
+        const statuses = collectSpreadStatuses(rows, ctx);
+        expect(statuses.map(s => s.text)).toEqual([
+            '3 Acts configured.',
+            'Epigraphs populated.',
+            '5 Chapters configured.',
+            'Chapter titles populated.',
+        ]);
     });
 
     it('emits NO chapter status when the layout has no CHAPTER spread (chapters mode off)', () => {

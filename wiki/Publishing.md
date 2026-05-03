@@ -26,7 +26,7 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 | Template | Structure | Best for |
 |---|---|---|
 | **Standard Manuscript** | Standard double-spaced submission format | Sending to agents / editors |
-| **Contemporary Literary** | Book-style with Sorts Mill Goudy body, running headers, chapter openers | A finished book look with simple chapters |
+| **Contemporary Literary** | Book-style with system sans body, running headers, chapter openers | A finished book look with simple chapters |
 | **Signature Literary** | Literary book style with refined typography | Polished prose fiction |
 | **Modern Classic** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
 

@@ -705,9 +705,9 @@
 
 .ert-ui.ert-scope--modal .ert-layout-page {
   --_picto-mono: 'SF Mono', 'Cascadia Mono', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
-  --_picto-font-size: 7px;
-  width: 72px;
-  height: 98px;
+  --_picto-font-size: 7.5px;
+  width: 86px;
+  height: 118px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
   background: var(--background-primary);
   display: flex;
@@ -742,7 +742,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 9px;
+  min-height: 10px;
   margin-bottom: calc(var(--ert-gap-2xs) + var(--ert-gap-3xs));
   flex-shrink: 0;
 }
@@ -884,7 +884,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  min-height: 9px;
+  min-height: 10px;
   margin-top: calc(var(--ert-gap-2xs) + var(--ert-gap-3xs));
   flex-shrink: 0;
 }

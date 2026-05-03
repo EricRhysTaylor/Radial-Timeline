@@ -133,7 +133,7 @@ Ends here ^scene-end`;
 \`\`\`
 
 \`\`\`{=latex}
-\\rtSceneSep
+\\rtSceneSep{ii}
 \`\`\``;
 
         const sanitized = sanitizeCompiledManuscript(input, {
@@ -145,7 +145,7 @@ Ends here ^scene-end`;
 
         expect(sanitized).toContain('\\rtPart{I}');
         expect(sanitized).toContain('\\rtEpigraph{A quote}{Author}');
-        expect(sanitized).toContain('\\rtSceneSep');
+        expect(sanitized).toContain('\\rtSceneSep{ii}');
     });
 
     it('removes markdown task-list boxes from PDF-bound manuscript text', () => {

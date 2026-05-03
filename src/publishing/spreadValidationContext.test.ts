@@ -258,10 +258,13 @@ describe('collectSpreadStatuses', () => {
         const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), ctx);
         const statuses = collectSpreadStatuses(rows, ctx);
         const parts = statuses.find(s => s.id === 'parts-count');
+        const epigraphs = statuses.find(s => s.id === 'epigraphs-populated');
         expect(parts).toBeDefined();
-        expect(parts?.tone).toBe('success');
+        expect(parts?.tone).toBe('info');
         expect(parts?.text).toMatch(/3 Acts configured/);
-        expect(parts?.text).toMatch(/all epigraphs populated/i);
+        expect(epigraphs).toBeDefined();
+        expect(epigraphs?.tone).toBe('success');
+        expect(epigraphs?.text).toMatch(/Epigraphs populated/i);
     });
 
     it('emits a success status when every chapter has a title', () => {
@@ -275,10 +278,13 @@ describe('collectSpreadStatuses', () => {
         const rows = applySpreadValidation(getLayoutPictogramRows('modernClassic'), ctx);
         const statuses = collectSpreadStatuses(rows, ctx);
         const ch = statuses.find(s => s.id === 'chapters-count');
+        const titled = statuses.find(s => s.id === 'chapter-titles-count');
         expect(ch).toBeDefined();
-        expect(ch?.tone).toBe('success');
+        expect(ch?.tone).toBe('info');
         expect(ch?.text).toMatch(/5 Chapters configured/);
-        expect(ch?.text).toMatch(/all titled/i);
+        expect(titled).toBeDefined();
+        expect(titled?.tone).toBe('success');
+        expect(titled?.text).toMatch(/Chapter titles populated/i);
     });
 
     it('emits NOTHING for spreads in warning state (dedup with warnings)', () => {
