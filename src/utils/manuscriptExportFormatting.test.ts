@@ -256,14 +256,20 @@ describe('assembleManuscript scene heading formatting', () => {
                 },
                 modernClassicStructure: {
                     enabled: true,
-                    actEpigraphs: ['The beginning of all things.', 'A turn into possibility.'],
+                    actEpigraphs: [
+                        'The beginning of all things.',
+                        'When we are strongest — who draws back?\nMost merry — who falls down laughing?\nWhen we are very bad, what can they do to us?',
+                    ],
                     actEpigraphAttributions: ['Anonymous', 'The Narrator'],
                 }
             }
         );
 
         expect(assembled.text).toContain('\\rtPart{I}{The beginning of all things.}{Anonymous}');
-        expect(assembled.text).toContain('\\rtPart{II}{A turn into possibility.}{The Narrator}');
+        const expectedActTwoEpigraph = String.raw`\rtPart{II}{When we are strongest — who draws back?\\
+Most merry — who falls down laughing?\\
+When we are very bad, what can they do to us?}{The Narrator}`;
+        expect(assembled.text).toContain(expectedActTwoEpigraph);
         expect(assembled.text).not.toContain('\\rtEpigraph');
         expect(assembled.text).toContain('\\rtChapter{1}{Boy with a Skull}');
         expect(assembled.text).toContain('\\rtChapter{2}{Everything of Possibility.}');
@@ -273,7 +279,7 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(sceneSepArgs).toEqual(['i', 'ii', 'i']);
 
         const partOneIndex = assembled.text.indexOf('\\rtPart{I}{The beginning of all things.}{Anonymous}');
-        const partTwoIndex = assembled.text.indexOf('\\rtPart{II}{A turn into possibility.}{The Narrator}');
+        const partTwoIndex = assembled.text.indexOf(expectedActTwoEpigraph);
         const chapterTwoIndex = assembled.text.indexOf('\\rtChapter{2}{Everything of Possibility.}');
         expect(partOneIndex).toBeGreaterThanOrEqual(0);
         expect(partTwoIndex).toBeGreaterThanOrEqual(0);

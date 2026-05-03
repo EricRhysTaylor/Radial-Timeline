@@ -96,6 +96,8 @@ Second scene body text follows the opener.
             { page: 1, text: 'AUTHOR A' },
             { page: 3, text: 'i.' },
             { page: 3, text: 'First paragraph of chapter one.' },
+            { page: 5, text: 'Most merry' },
+            { page: 5, text: 'ARTHUR RIMBAUD' },
         ],
         forbiddenPageText: [
             { page: 1, text: 'PART I' },
@@ -115,7 +117,9 @@ First paragraph of chapter one.
 
 Second scene body text follows an inline roman separator.
 
-\rtPart{II}{}{}
+\rtPart{II}{When we are strongest — who draws back?\\
+Most merry — who falls down laughing?\\
+When we are very bad, what can they do to us?}{Arthur Rimbaud}
 
 \rtChapter{2}{New Horizons}
 

@@ -292,10 +292,10 @@ export function renderFancyhdr(spec: DesignedStyleSpec): string {
         lines.push('\\newcommand{\\KernedText}[1]{{\\headerfont\\MakeUppercase{#1}}}');
         lines.push('\\newcommand{\\HeaderSeparator}{\\raisebox{0.2ex}{\\textbar}}');
     }
-    const sansPrefix = rh.font === 'sans' ? '\\sffamily\\footnotesize\\nouppercase' : '';
+    const headerPrefix = rh.font === 'sans' ? '\\normalfont\\footnotesize\\nouppercase' : '';
     const wrapText = (inner: string): string => {
         if (useKerned) return `\\KernedText{${inner}}`;
-        if (sansPrefix) return `${sansPrefix}{${inner}}`;
+        if (headerPrefix) return `${headerPrefix}{${inner}}`;
         return inner;
     };
     const wrapPage = (): string => useKerned ? '\\raisebox{0.2ex}{\\thepage}' : '\\thepage';
@@ -374,7 +374,7 @@ export function renderPartTitle(spec: DesignedStyleSpec): string {
     lines.push('  \\thispagestyle{rtEmpty}%');
     lines.push('  \\vspace*{1.55in}%');
     lines.push('  \\begin{center}');
-    lines.push('    {\\sffamily\\bfseries\\Large #1}\\par');
+    lines.push('    {\\normalfont\\bfseries\\Large #1}\\par');
     lines.push('    \\vspace{0.16in}%');
     lines.push('    \\rule{0.46in}{0.4pt}\\par');
     if (spec.parts.epigraph || spec.epigraph.enabled) {
@@ -453,14 +453,14 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     lines.push('  \\begin{center}');
     if (spec.chapters.mode === 'numbered' || spec.chapters.mode === 'numbered-titled') {
         lines.push(useModernClassicChapterTreatment
-            ? '    {\\sffamily\\bfseries\\small Chapter~#1}\\par'
-            : '    {\\sffamily\\bfseries\\large Chapter~#1}\\par');
+            ? '    {\\normalfont\\bfseries\\small Chapter~#1}\\par'
+            : '    {\\normalfont\\bfseries\\large Chapter~#1}\\par');
     }
     if (spec.chapters.mode === 'titled' || spec.chapters.mode === 'numbered-titled') {
         lines.push('    \\vspace{0.35in}%');
         lines.push(useModernClassicChapterTreatment
-            ? '    {\\rmfamily\\Huge #2}\\par'
-            : '    {\\rmfamily\\itshape\\Large #2}\\par');
+            ? '    {\\normalfont\\LARGE #2}\\par'
+            : '    {\\normalfont\\itshape\\Large #2}\\par');
     }
     lines.push('  \\end{center}');
     lines.push(`  \\vspace*{${bottomVspace}}%`);
@@ -540,7 +540,7 @@ export function renderSceneOpener(spec: DesignedStyleSpec): string {
         lines.push('  \\thispagestyle{rtEmpty}%');
         lines.push('  \\vspace*{0.78in}%');
         lines.push('  \\begin{center}');
-        lines.push('    {\\rmfamily\\small #1.}\\par');
+        lines.push('    {\\normalfont\\small #1.}\\par');
         lines.push('    \\vspace{0.08in}%');
         lines.push('    \\rule{0.46in}{0.4pt}%');
         lines.push('  \\end{center}');

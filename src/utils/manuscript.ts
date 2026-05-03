@@ -798,12 +798,48 @@ function toRomanNumeral(value: number): string {
   return output;
 }
 
-function sanitizeModernClassicMacroArg(value: string): string {
+function escapeModernClassicMacroText(value: string): string {
   return value
-    .replace(/[\\{}]/g, '')
-    .replace(/\r?\n/g, ' ')
+    .replace(/\\/g, '\\textbackslash{}')
+    .replace(/[{}]/g, '')
+    .replace(/&/g, '\\&')
+    .replace(/%/g, '\\%')
+    .replace(/\$/g, '\\$')
+    .replace(/#/g, '\\#')
+    .replace(/_/g, '\\_')
+    .replace(/\^/g, '\\textasciicircum{}')
+    .replace(/~/g, '\\textasciitilde{}');
+}
+
+function sanitizeModernClassicMacroArg(value: string): string {
+  return escapeModernClassicMacroText(value)
+    .replace(/\r?\n|\r/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function sanitizeModernClassicEpigraphArg(value: string): string {
+  const rawLines = value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
+  const renderedLines: string[] = [];
+  let pendingBlankGap = false;
+
+  for (const rawLine of rawLines) {
+    const line = escapeModernClassicMacroText(rawLine)
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+    if (!line) {
+      pendingBlankGap = renderedLines.length > 0;
+      continue;
+    }
+    if (renderedLines.length === 0) {
+      renderedLines.push(line);
+    } else {
+      renderedLines.push(`${pendingBlankGap ? '\\\\[0.35em]' : '\\\\'}\n${line}`);
+    }
+    pendingBlankGap = false;
+  }
+
+  return renderedLines.join('');
 }
 
 function sanitizeModernClassicAttributionArg(value: string): string {
@@ -1223,7 +1259,7 @@ export async function assembleManuscript(
       if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
         const actRoman = toRomanNumeral(nextActIndex);
         if (actRoman) {
-          const epigraphQuote = sanitizeModernClassicMacroArg(modernClassicState.actEpigraphs[nextActIndex - 1] || '');
+          const epigraphQuote = sanitizeModernClassicEpigraphArg(modernClassicState.actEpigraphs[nextActIndex - 1] || '');
           const epigraphAttribution = sanitizeModernClassicAttributionArg(modernClassicState.actEpigraphAttributions[nextActIndex - 1] || '');
           textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}{${epigraphQuote}}{${epigraphAttribution}}`));
           modernClassicState.currentActIndex = nextActIndex;

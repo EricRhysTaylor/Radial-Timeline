@@ -90,6 +90,9 @@ export class RadialTimelineView extends ItemView {
     private bookSwitcherEl?: HTMLElement;
     private bookSwitcherSelect?: HTMLSelectElement;
     private bookSwitcherManageBtn?: HTMLButtonElement;
+    private timelineSearchInput?: HTMLInputElement;
+    private timelineSearchButton?: HTMLButtonElement;
+    private timelineSearchButtonMode: 'search' | 'clear' = 'search';
     private timelineLegendTrigger?: HTMLButtonElement;
     private timelineLegendPanel?: HTMLElement;
     
@@ -179,6 +182,46 @@ export class RadialTimelineView extends ItemView {
             const actionsEl = headerEl.querySelector('.view-actions');
             const wrapper = document.createElement('div');
             wrapper.className = 'rt-book-switcher';
+
+            const searchShell = document.createElement('div');
+            searchShell.className = 'ert-timeline-search';
+
+            const searchBtn = document.createElement('button');
+            searchBtn.className = 'ert-timeline-search__button clickable-icon';
+            searchBtn.type = 'button';
+
+            const searchInput = document.createElement('input');
+            searchInput.className = 'ert-timeline-search__input';
+            searchInput.type = 'search';
+            searchInput.placeholder = 'Search timeline';
+            searchInput.autocomplete = 'off';
+            searchInput.spellcheck = false;
+            searchInput.setAttribute('aria-label', 'Search timeline');
+
+            this.registerDomEvent(searchBtn, 'mousedown', (evt: MouseEvent) => {
+                evt.preventDefault();
+            });
+            this.registerDomEvent(searchBtn, 'click', (evt: MouseEvent) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                if (this.timelineSearchButtonMode === 'clear') {
+                    this.clearTimelineSearchFromControl();
+                    return;
+                }
+                this.commitTimelineSearchFromInput();
+            });
+            this.registerDomEvent(searchInput, 'input', () => {
+                this.handleTimelineSearchInput();
+            });
+            this.registerDomEvent(searchInput, 'blur', () => {
+                this.commitTimelineSearchFromInput();
+            });
+            this.registerDomEvent(searchInput, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    this.commitTimelineSearchFromInput();
+                }
+            });
 
             const legendBtn = document.createElement('button');
             legendBtn.className = 'ert-timeline-legend__trigger clickable-icon';
@@ -295,6 +338,9 @@ export class RadialTimelineView extends ItemView {
                 }
             });
 
+            searchShell.appendChild(searchBtn);
+            searchShell.appendChild(searchInput);
+            wrapper.appendChild(searchShell);
             wrapper.appendChild(legendBtn);
             wrapper.appendChild(legendPanel);
             wrapper.appendChild(select);
@@ -311,12 +357,95 @@ export class RadialTimelineView extends ItemView {
             this.bookSwitcherEl = wrapper;
             this.bookSwitcherSelect = select;
             this.bookSwitcherManageBtn = manageBtn;
+            this.timelineSearchInput = searchInput;
+            this.timelineSearchButton = searchBtn;
             this.timelineLegendTrigger = legendBtn;
             this.timelineLegendPanel = legendPanel;
+            this.syncTimelineSearchControl();
         }
 
         this.updateBookSwitcherOptions();
         this.updateTimelineLegend();
+        this.syncTimelineSearchControl();
+    }
+
+    public focusTimelineSearchInput(): void {
+        this.ensureBookSwitcher();
+        if (!this.timelineSearchInput) return;
+        this.timelineSearchInput.focus();
+        this.timelineSearchInput.select();
+    }
+
+    public syncTimelineSearchControl(): void {
+        if (!this.timelineSearchInput || !this.timelineSearchButton) return;
+
+        if (this.plugin.searchActive && this.plugin.searchTerm) {
+            this.timelineSearchInput.value = this.plugin.searchTerm;
+            this.setTimelineSearchButtonMode('clear');
+            return;
+        }
+
+        this.timelineSearchInput.value = '';
+        this.setTimelineSearchButtonMode('search');
+    }
+
+    private setTimelineSearchButtonMode(mode: 'search' | 'clear'): void {
+        if (!this.timelineSearchButton) return;
+        this.timelineSearchButtonMode = mode;
+        this.timelineSearchButton.empty();
+        setIcon(this.timelineSearchButton, mode === 'clear' ? 'search-x' : 'search');
+        this.timelineSearchButton.setAttribute('aria-label', mode === 'clear' ? 'Clear timeline search' : 'Search timeline');
+        this.timelineSearchButton.setAttribute('title', mode === 'clear' ? 'Clear timeline search' : 'Search timeline');
+        this.timelineSearchButton.classList.toggle('is-clear', mode === 'clear');
+    }
+
+    private handleTimelineSearchInput(): void {
+        if (!this.timelineSearchInput) return;
+
+        const term = this.timelineSearchInput.value.trim();
+        if (!term) {
+            this.setTimelineSearchButtonMode('search');
+            if (this.plugin.searchActive || this.plugin.searchTerm) {
+                this.plugin.clearSearch();
+            }
+            return;
+        }
+
+        this.setTimelineSearchButtonMode(
+            this.plugin.searchActive && term === this.plugin.searchTerm ? 'clear' : 'search'
+        );
+    }
+
+    private commitTimelineSearchFromInput(): void {
+        if (!this.timelineSearchInput) return;
+
+        const term = this.timelineSearchInput.value.trim();
+        if (!term) {
+            if (this.plugin.searchActive || this.plugin.searchTerm) {
+                this.plugin.clearSearch();
+            } else {
+                this.setTimelineSearchButtonMode('search');
+            }
+            return;
+        }
+
+        if (this.plugin.searchActive && term === this.plugin.searchTerm && this.timelineSearchButtonMode === 'clear') {
+            return;
+        }
+
+        this.plugin.performSearch(term);
+        this.setTimelineSearchButtonMode('clear');
+    }
+
+    private clearTimelineSearchFromControl(): void {
+        if (this.timelineSearchInput) {
+            this.timelineSearchInput.value = '';
+            this.timelineSearchInput.focus();
+        }
+        this.setTimelineSearchButtonMode('search');
+        if (this.plugin.searchActive || this.plugin.searchTerm) {
+            this.plugin.clearSearch();
+        }
     }
 
     private openRadialTimelineCommands(): void {

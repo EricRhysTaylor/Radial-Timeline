@@ -174,10 +174,11 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(modernClassic).not.toContain('\\newcommand{\\rtEpigraph}[2]');
         expect(modernClassic).toContain('\\rule{0.46in}{0.4pt}');
         expect(modernClassic).not.toContain('PART~#1');
+        expect(modernClassic).toContain('{\\normalfont\\bfseries\\Large #1}\\par');
         expect(modernClassic).toContain('\\newcommand{\\rtChapter}[2]');
-        expect(modernClassic).toContain('{\\sffamily\\bfseries\\small Chapter~#1}\\par');
-        expect(modernClassic).toContain('{\\rmfamily\\Huge #2}\\par');
-        expect(modernClassic).not.toContain('{\\rmfamily\\itshape\\Large #2}\\par');
+        expect(modernClassic).toContain('{\\normalfont\\bfseries\\small Chapter~#1}\\par');
+        expect(modernClassic).toContain('{\\normalfont\\LARGE #2}\\par');
+        expect(modernClassic).not.toContain('{\\normalfont\\itshape\\Large #2}\\par');
         expect(modernClassic).toContain('\\newcommand{\\rtSceneSep}[1]');
         expect(modernClassic).toMatch(/\\newcommand\{\\rtSceneSep\}\[1\][^]*\\thispagestyle\{rtEmpty\}/);
         expect(modernClassic).toContain('\\errmessage{Radial Timeline export requires Pandoc metadata: title}');
@@ -189,6 +190,20 @@ describe('bundled pandoc layout export auto-install', () => {
         // Unsafe legacy chapter titleformat must not regress.
         expect(modernClassic).not.toContain('\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{%');
         expect(modernClassic).not.toContain('Chapter~\\thechapter');
+    });
+
+    it('spec-driven fiction templates do not switch away from the configured main font family', () => {
+        for (const layoutId of [
+            'bundled-fiction-classic-manuscript',
+            'bundled-fiction-contemporary-literary',
+            'bundled-fiction-signature-literary',
+            'bundled-fiction-modern-classic',
+        ]) {
+            const content = getBundledPandocLayoutContent(layoutId)!;
+            expect(content).not.toContain('\\sffamily');
+            expect(content).not.toContain('\\rmfamily');
+            expect(content).not.toContain('\\ttfamily');
+        }
     });
 
     /**

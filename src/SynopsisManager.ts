@@ -883,24 +883,39 @@ export default class SynopsisManager {
         return null;
       }
 
+      const cloneInlineTspan = (source: Node): Node => {
+        if (source.nodeType === Node.TEXT_NODE) {
+          return document.createTextNode(source.textContent ?? '');
+        }
+
+        if (source.nodeType !== Node.ELEMENT_NODE || (source as Element).tagName.toLowerCase() !== 'tspan') {
+          throw new Error('Unsupported pre-formatted synopsis node.');
+        }
+
+        const tspan = source as Element;
+        const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+
+        Array.from(tspan.attributes).forEach(attr => {
+          svgTspan.setAttribute(attr.name, attr.value);
+        });
+
+        if (tspan instanceof HTMLElement || tspan instanceof SVGElement) {
+          const style = (tspan as HTMLElement).getAttribute('style');
+          if (style) {
+            svgTspan.setAttribute('style', style);
+          }
+        }
+
+        Array.from(tspan.childNodes).forEach(child => {
+          svgTspan.appendChild(cloneInlineTspan(child));
+        });
+
+        return svgTspan;
+      };
+
       Array.from(textNode.childNodes).forEach(node => {
         if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
-          const tspan = node as Element;
-          const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-
-          Array.from(tspan.attributes).forEach(attr => {
-            svgTspan.setAttribute(attr.name, attr.value);
-          });
-
-          if (tspan instanceof HTMLElement || tspan instanceof SVGElement) {
-            const style = (tspan as HTMLElement).getAttribute('style');
-            if (style) {
-              svgTspan.setAttribute('style', style);
-            }
-          }
-
-          svgTspan.textContent = tspan.textContent;
-          titleTextElement.appendChild(svgTspan);
+          titleTextElement.appendChild(cloneInlineTspan(node));
 
         } else if (node.nodeType === Node.TEXT_NODE) {
           if (node.textContent) {
@@ -2555,6 +2570,31 @@ export default class SynopsisManager {
       parentElement.appendChild(svgTspan);
     };
 
+    const cloneSvgInlineNode = (source: Node): Node => {
+      if (source.nodeType === Node.TEXT_NODE) {
+        return document.createTextNode(source.textContent ?? '');
+      }
+
+      if (source.nodeType !== Node.ELEMENT_NODE) {
+        throw new Error('Unsupported node type found in synopsis content.');
+      }
+
+      const element = source as Element;
+      const tag = element.tagName.toLowerCase();
+      if (tag !== 'tspan' && tag !== 'span') {
+        throw new Error(`Unsupported element <${element.tagName}> in synopsis content.`);
+      }
+
+      const svgTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      Array.from(element.attributes).forEach(attr => {
+        svgTspan.setAttribute(attr.name, attr.value);
+      });
+      Array.from(element.childNodes).forEach(child => {
+        svgTspan.appendChild(cloneSvgInlineNode(child));
+      });
+      return svgTspan;
+    };
+
     nodes.forEach(node => {
       if (node.nodeType === Node.TEXT_NODE) {
         appendTextSpan(node.textContent ?? '');
@@ -2568,12 +2608,7 @@ export default class SynopsisManager {
           throw new Error(`Unsupported element <${element.tagName}> in synopsis content.`);
         }
 
-        const svgTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-        Array.from(element.attributes).forEach(attr => {
-          svgTspan.setAttribute(attr.name, attr.value);
-        });
-        svgTspan.textContent = element.textContent ?? '';
-        parentElement.appendChild(svgTspan);
+        parentElement.appendChild(cloneSvgInlineNode(element));
         return;
       }
 

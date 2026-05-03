@@ -264,13 +264,14 @@ describe('generateDesignedStyleTex', () => {
             }
         });
 
-        it('applies \\sffamily\\footnotesize\\nouppercase wrapping when font is sans', () => {
+        it('applies header sizing without switching away from the configured main font', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'reading-draft',
                 runningHeader: { mode: 'left-title-right-context', font: 'sans' },
             }));
-            expect(tex).toContain('\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}');
-            expect(tex).toContain('\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
+            expect(tex).toContain('\\fancyhead[LE]{\\normalfont\\footnotesize\\nouppercase{\\BookTitle}}');
+            expect(tex).toContain('\\fancyhead[RO]{\\normalfont\\footnotesize\\nouppercase{\\rtSceneRunningTitle}}');
+            expect(tex).not.toContain('\\sffamily');
         });
 
         it('declares the \\rtSceneRunningTitle macro and setter as hard template contracts', () => {

@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getActivePlanetaryProfile, convertFromEarth } from '../utils/planetaryTime';
 import { getBeatConfigForItem } from '../utils/beatsTemplates';
@@ -13,88 +13,36 @@ export class SearchService {
     }
 
     openSearchPrompt(): void {
-        const modal = new Modal(this.app);
-        const { modalEl, contentEl } = modal;
-        
-        // Apply generic modal shell + modal-specific class
-        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-        contentEl.empty();
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-search-modal');
-        
-        // Header
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ text: 'Find', cls: 'ert-modal-badge' });
-        header.createDiv({ text: 'Search timeline', cls: 'ert-modal-title' });
-        header.createDiv({ text: 'Search scenes by title, synopsis, characters, dates, and more.', cls: 'ert-modal-subtitle' });
-        
-        // Search input container
-        const searchContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });
-        const searchInput = new TextComponent(searchContainer);
-        searchInput.setPlaceholder('Enter search term (min 3 letters)');
-        searchInput.inputEl.classList.add('ert-search-input');
-        if (this.plugin.searchActive && this.plugin.searchTerm) searchInput.setValue(this.plugin.searchTerm);
-        
-        // Validation helper - shows red border if input is invalid
-        const validateInput = (): boolean => {
-            const term = searchInput.getValue().trim();
-            if (term.length > 0 && term.length < 3) {
-                searchInput.inputEl.classList.add('ert-input-error');
-                return false;
-            } else {
-                searchInput.inputEl.classList.remove('ert-input-error');
-                return true;
-            }
-        };
-        
-        // SAFE: Modal classes don't have registerDomEvent; cleanup via DOM removal on modal close
-        searchInput.inputEl.addEventListener('blur', () => {
-            validateInput();
-        });
-        
-        // Actions
-        const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        new ButtonComponent(buttonContainer)
-            .setButtonText('Search')
-            .setCta()
-            .onClick(() => {
-                const term = searchInput.getValue().trim();
-                if (term.length >= 3) { 
-                    searchInput.inputEl.classList.remove('ert-input-error');
-                    this.performSearch(term); 
-                    modal.close(); 
-                } else { 
-                    searchInput.inputEl.classList.add('ert-input-error');
-                    new Notice('Please enter at least 3 letters to search'); 
-                }
-            });
-        new ButtonComponent(buttonContainer)
-            .setButtonText('Reset')
-            .onClick(() => { searchInput.setValue(''); searchInput.inputEl.classList.remove('ert-input-error'); this.clearSearch(); modal.close(); });
-        // SAFE: Modal classes don't have registerDomEvent; cleanup via DOM removal on modal close
-        searchInput.inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const term = searchInput.getValue().trim();
-                if (term.length >= 3) { 
-                    searchInput.inputEl.classList.remove('ert-input-error');
-                    this.performSearch(term); 
-                    modal.close(); 
-                } else { 
-                    searchInput.inputEl.classList.add('ert-input-error');
-                    new Notice('Please enter at least 3 letters to search'); 
-                }
-            }
-        });
-        
-        modal.open();
-        // Focus input after modal opens
-        window.setTimeout(() => searchInput.inputEl.focus(), 50);
+        void this.focusTimelineSearchInput();
+    }
+
+    private async focusTimelineSearchInput(): Promise<void> {
+        let views = this.plugin.getTimelineViews();
+        if (views.length === 0) {
+            await this.plugin.getTimelineService().activateView();
+            views = this.plugin.getTimelineViews();
+        }
+
+        const activeLeafView = this.app.workspace.activeLeaf?.view;
+        const targetView = views.find(view => view === activeLeafView) || views[0];
+        if (!targetView) {
+            new Notice('Open the timeline view to search scenes.');
+            return;
+        }
+
+        window.setTimeout(() => targetView.focusTimelineSearchInput(), 50);
+    }
+
+    private syncTimelineSearchControls(): void {
+        this.plugin.getTimelineViews().forEach(view => view.syncTimelineSearchControl());
     }
 
     performSearch(term: string): void {
         if (!term || term.trim().length === 0) { this.clearSearch(); return; }
-        this.plugin.searchTerm = term;
+        this.plugin.searchTerm = term.trim();
         this.plugin.searchActive = true;
         this.plugin.searchResults.clear();
+        this.syncTimelineSearchControls();
 
         const containsWholePhrase = (haystack: string | undefined, phrase: string, isDate: boolean = false): boolean => {
             if (!haystack || !phrase || typeof haystack !== 'string') return false;
@@ -206,12 +154,12 @@ export class SearchService {
                     }
                 }
                 
-                const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
+                const textMatched = textFields.some(f => containsWholePhrase(f, this.plugin.searchTerm, false));
                 // Check both the numeric date format and the display format
                 const dateFieldNumeric = scene.when?.toLocaleDateString();
                 const dateFieldDisplay = formatDateForDisplay(scene.when);
-                const dateMatched = containsWholePhrase(dateFieldNumeric, term, true) || 
-                                   containsWholePhrase(dateFieldDisplay, term, false);
+                const dateMatched = containsWholePhrase(dateFieldNumeric, this.plugin.searchTerm, true) || 
+                                   containsWholePhrase(dateFieldDisplay, this.plugin.searchTerm, false);
                 if (textMatched || dateMatched) { if (scene.path) this.plugin.searchResults.add(scene.path); }
             });
             const timelineViews = this.plugin.getTimelineViews();
@@ -223,6 +171,7 @@ export class SearchService {
         this.plugin.searchActive = false;
         this.plugin.searchTerm = '';
         this.plugin.searchResults.clear();
+        this.syncTimelineSearchControls();
         const timelineViews = this.plugin.getTimelineViews();
         timelineViews.forEach(view => view.refreshTimeline());
     }

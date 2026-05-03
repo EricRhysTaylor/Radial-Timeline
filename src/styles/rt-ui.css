@@ -10313,20 +10313,13 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-special-panel {
-  margin: 0;
+  margin-top: var(--ert-gap-sm);
   padding: var(--ert-gap-sm) var(--ert-pad-sm) var(--ert-gap-sm);
-  border-left: 1px solid var(--ert-pro-border);
-  border-right: 1px solid var(--ert-pro-border);
-  border-bottom: 1px solid var(--ert-pro-border);
-  border-radius: 0 0 calc(var(--ert-control-radius) + 2px) calc(var(--ert-control-radius) + 2px);
+  border: 1px solid var(--ert-pro-border);
+  border-radius: calc(var(--ert-control-radius) + 2px);
   background: color-mix(in srgb, var(--background-secondary) 80%, color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%);
   display: grid;
   gap: var(--ert-gap-tight);
-}
-
-.ert-ui.ert-scope--settings .ert-layout-row.is-special-expanded .setting-item.ert-layout-row-setting {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-special-divider {
