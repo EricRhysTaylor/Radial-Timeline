@@ -369,6 +369,23 @@ function extractConditionalFontsFromTemplate(tex: string): string[] {
     return Array.from(fonts);
 }
 
+function extractHardRequiredConditionalFontsFromTemplate(tex: string): string[] {
+    const fonts = new Set<string>();
+    const conditionalPattern = /\\IfFontExistsTF\{([^}]+)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = conditionalPattern.exec(tex)) !== null) {
+        const font = match[1].trim();
+        if (!font) continue;
+        const nextConditional = tex.indexOf('\\IfFontExistsTF{', conditionalPattern.lastIndex);
+        const searchEnd = nextConditional === -1 ? tex.length : nextConditional;
+        const conditionalBody = tex.slice(conditionalPattern.lastIndex, searchEnd);
+        if (/\\errmessage\s*\{/.test(conditionalBody)) {
+            fonts.add(font);
+        }
+    }
+    return Array.from(fonts);
+}
+
 function extractFontsWithMissingExplicitPathFiles(tex: string, templatePath?: string): string[] {
     const missing = new Set<string>();
     const templateDir = templatePath && path.isAbsolute(templatePath) ? path.dirname(templatePath) : process.cwd();
@@ -461,9 +478,15 @@ export function getTemplateFontDiagnostics(templatePath?: string): TemplateFontD
     const tex = readTemplateText(templatePath);
     const usesFontspec = /\\usepackage\s*\{fontspec\}|\\setmainfont|\\newfontface|\\defaultfontfeatures/i.test(tex);
     const allFonts = extractFontFamiliesFromTemplate(tex);
-    const optionalFonts = extractConditionalFontsFromTemplate(tex);
+    const hardRequiredConditionalFonts = extractHardRequiredConditionalFontsFromTemplate(tex);
+    const hardRequiredConditionalSet = new Set(hardRequiredConditionalFonts.map(font => font.toLowerCase()));
+    const optionalFonts = extractConditionalFontsFromTemplate(tex)
+        .filter(font => !hardRequiredConditionalSet.has(font.toLowerCase()));
     const optionalSet = new Set(optionalFonts.map(font => font.toLowerCase()));
-    const requiredFonts = allFonts.filter(font => !optionalSet.has(font.toLowerCase()));
+    const requiredFonts = Array.from(new Set([
+        ...allFonts.filter(font => !optionalSet.has(font.toLowerCase())),
+        ...hardRequiredConditionalFonts,
+    ]));
     const missingExplicitPathFonts = extractFontsWithMissingExplicitPathFiles(tex, templatePath);
     const missingExplicitPathSet = new Set(missingExplicitPathFonts.map(font => font.toLowerCase()));
     const catalog = loadSystemFontCatalog();
@@ -497,11 +520,11 @@ export function getTemplateFontDiagnostics(templatePath?: string): TemplateFontD
 //
 // `FontDiagnostic` is the structured, action-affordance-friendly counterpart
 // to `TemplateFontDiagnostics`. Where the latter is the raw scan output, this
-// one classifies the result into `ok | fallback | missing-bundled` and adds
+// one classifies the result into `ok | missing-system | missing-bundled` and adds
 // an install hint suitable for surfacing as an inline link in the modal's
 // Export Checks panel.
 
-export type FontDiagnosticState = 'ok' | 'fallback' | 'missing-bundled';
+export type FontDiagnosticState = 'ok' | 'missing-system' | 'missing-bundled';
 
 export type FontDiagnosticPlatform = 'mac' | 'win' | 'linux';
 
@@ -600,7 +623,7 @@ export interface FontDiagnostic {
     state: FontDiagnosticState;
     /** Display name of the font the spec / template requested. */
     primaryFontName: string;
-    /** Font XeLaTeX will actually use after fallback resolution. */
+    /** Font XeLaTeX is expected to use. Missing fonts fail instead of falling back. */
     resolvedFontName: string;
     installHint?: FontDiagnosticInstallHint;
 }
@@ -608,6 +631,7 @@ export interface FontDiagnostic {
 const FONT_KEY_TO_DISPLAY: Record<DesignedStyleSpec['body']['font'], string> = {
     'sorts-mill-goudy': 'Sorts Mill Goudy',
     'latin-modern':     'Latin Modern Roman',
+    'source-serif':     'Source Serif 4',
     'eb-garamond':      'EB Garamond',
     'crimson':          'Crimson Text',
     'system-serif':     'TeX Gyre Pagella',
@@ -616,6 +640,7 @@ const FONT_KEY_TO_DISPLAY: Record<DesignedStyleSpec['body']['font'], string> = {
 
 const GOOGLE_FONTS_BY_KEY: Partial<Record<DesignedStyleSpec['body']['font'], string>> = {
     'sorts-mill-goudy': 'https://fonts.google.com/specimen/Sorts+Mill+Goudy',
+    'source-serif':     'https://fonts.google.com/specimen/Source+Serif+4',
     'eb-garamond':      'https://fonts.google.com/specimen/EB+Garamond',
     'crimson':          'https://fonts.google.com/specimen/Crimson+Text',
 };
@@ -671,7 +696,7 @@ function latinModernFontFilesPresent(): boolean {
  *
  * Returns the structured `FontDiagnostic` for a layout. The state is:
  *   - 'ok'              → primary font resolves by an explicit verified path
- *   - 'fallback'        → primary missing on the system; XeLaTeX will fall back to a system serif
+ *   - 'missing-system'  → required system font is not installed; export should fail
  *   - 'missing-bundled' → primary is a plugin-bundled font but the asset files
  *                         aren't on disk (build artifact missing)
  *
@@ -736,7 +761,7 @@ export function getStructuredFontDiagnostic(
         };
     }
 
-    // System fonts (eb-garamond, crimson, system-serif, system-sans): probe the catalog.
+    // System fonts (source-serif, eb-garamond, crimson, system-serif, system-sans): probe the catalog.
     const catalog = loadSystemFontCatalog();
     const canVerify = Array.isArray(catalog);
     const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;
@@ -749,23 +774,22 @@ export function getStructuredFontDiagnostic(
         };
     }
 
-    const fallbackName = spec.body.fontFallbackChain[0] || 'TeX Gyre Pagella';
     const url = GOOGLE_FONTS_BY_KEY[fontKey];
     const installHint: FontDiagnosticInstallHint = url
         ? buildGoogleFontsHint(primaryFontName, url, platform)
         : buildCtanHint(primaryFontName);
 
     return {
-        state: 'fallback',
+        state: 'missing-system',
         primaryFontName,
-        resolvedFontName: fallbackName,
+        resolvedFontName: primaryFontName,
         installHint,
     };
 }
 
 /**
  * Backward-compat string renderer for the structured diagnostic. Mirrors the
- * legacy "Font: Using X — install Y" copy so existing callers can adopt the
+ * legacy single-line copy so existing callers can adopt the
  * structured form incrementally.
  */
 export function renderFontDiagnosticLine(diag: FontDiagnostic): string | null {
@@ -773,11 +797,7 @@ export function renderFontDiagnosticLine(diag: FontDiagnostic): string | null {
     if (diag.state === 'missing-bundled') {
         return diag.installHint?.message || `Font: ${diag.primaryFontName} bundled asset missing.`;
     }
-    // fallback
-    if (diag.resolvedFontName && diag.resolvedFontName !== diag.primaryFontName) {
-        return `Font: Using ${diag.resolvedFontName} — install ${diag.primaryFontName} for the intended look.`;
-    }
-    return `Font: ${diag.primaryFontName} is not installed. Install it before exporting.`;
+    return diag.installHint?.message || `Font: ${diag.primaryFontName} is not installed. Install it before exporting.`;
 }
 
 function templateNeedsUnicodeEngine(templatePath?: string): boolean {

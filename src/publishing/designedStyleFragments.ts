@@ -103,6 +103,7 @@ export function renderGeometry(spec: DesignedStyleSpec): string {
 const FONT_PRIMARY: Record<string, string> = {
     'sorts-mill-goudy': 'Sorts Mill Goudy',
     'latin-modern':     'Latin Modern Roman',
+    'source-serif':     'Source Serif 4',
     'eb-garamond':      'EB Garamond',
     'crimson':          'Crimson Text',
     'system-serif':     'TeX Gyre Pagella',
@@ -130,10 +131,6 @@ export interface RenderFontspecOptions {
 
 export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecOptions = {}): string {
     const primary = FONT_PRIMARY[spec.body.font] || 'TeX Gyre Pagella';
-    const fallbacks = spec.body.fontFallbackChain.length > 0
-        ? spec.body.fontFallbackChain
-        : ['TeX Gyre Pagella', 'Times New Roman', 'Times'];
-
     const lines: string[] = [];
     lines.push('\\defaultfontfeatures{Ligatures=TeX}');
 
@@ -178,66 +175,43 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
     // fontspec directly at the .otf files via Path= — no system install required,
     // works on every machine with TeX installed regardless of whether the user
     // has Sorts Mill Goudy in Font Book.
-    if (spec.body.font === 'sorts-mill-goudy' && options.bundledFontPath) {
-        const root = options.bundledFontPath.endsWith('/')
-            ? options.bundledFontPath
-            : `${options.bundledFontPath}/`;
-        lines.push('\\setmainfont{Sorts Mill Goudy}[');
-        lines.push(`  Path = ${root}sorts-mill-goudy/ ,`);
-        lines.push('  UprightFont = SortsMillGoudy-Regular.ttf ,');
-        lines.push('  ItalicFont = SortsMillGoudy-Italic.ttf ,');
-        lines.push('  AutoFakeBold = 2.5 ,');
-        lines.push('  AutoFakeSlant = 0.2');
-        lines.push(']');
-        const letterSpacing = spec.runningHeader.letterSpacing;
-        if (typeof letterSpacing === 'number' && letterSpacing > 0) {
-            lines.push('\\newfontface\\headerfont{Sorts Mill Goudy}[');
+    if (spec.body.font === 'sorts-mill-goudy') {
+        if (options.bundledFontPath) {
+            const root = options.bundledFontPath.endsWith('/')
+                ? options.bundledFontPath
+                : `${options.bundledFontPath}/`;
+            lines.push('\\setmainfont{Sorts Mill Goudy}[');
             lines.push(`  Path = ${root}sorts-mill-goudy/ ,`);
             lines.push('  UprightFont = SortsMillGoudy-Regular.ttf ,');
-            lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
+            lines.push('  ItalicFont = SortsMillGoudy-Italic.ttf ,');
+            lines.push('  AutoFakeBold = 2.5 ,');
+            lines.push('  AutoFakeSlant = 0.2');
             lines.push(']');
+            const letterSpacing = spec.runningHeader.letterSpacing;
+            if (typeof letterSpacing === 'number' && letterSpacing > 0) {
+                lines.push('\\newfontface\\headerfont{Sorts Mill Goudy}[');
+                lines.push(`  Path = ${root}sorts-mill-goudy/ ,`);
+                lines.push('  UprightFont = SortsMillGoudy-Regular.ttf ,');
+                lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
+                lines.push(']');
+            }
+        } else {
+            lines.push('\\errmessage{Radial Timeline Signature Literary requires bundled Sorts Mill Goudy font files; run Install all in Settings > Publish}');
         }
         return lines.join('\n');
     }
 
-    // Build a nested IfFontExistsTF chain: primary -> fallback1 -> fallback2 -> ... -> Arial
-    const chain = [primary, ...fallbacks];
     const letterSpacing = spec.runningHeader.letterSpacing;
     const emitHeaderFont = typeof letterSpacing === 'number' && letterSpacing > 0;
 
-    let depth = 0;
-    for (let i = 0; i < chain.length; i++) {
-        const font = chain[i];
-        const indent = '  '.repeat(depth);
-        const inner = '  '.repeat(depth + 1);
-        if (i === chain.length - 1) {
-            // Last — terminal else uses Arial
-            if (emitHeaderFont) {
-                lines.push(`${indent}\\IfFontExistsTF{${font}}{`);
-                lines.push(`${inner}\\setmainfont{${font}}`);
-                lines.push(`${inner}\\newfontface\\headerfont{${font}}[LetterSpace=${letterSpacing.toFixed(1)}]`);
-                lines.push(`${indent}}{`);
-                lines.push(`${inner}\\setmainfont{Arial}`);
-                lines.push(`${inner}\\newfontface\\headerfont{Arial}[LetterSpace=${Math.max(8, letterSpacing / 2).toFixed(1)}]`);
-                lines.push(`${indent}}`);
-            } else {
-                lines.push(`${indent}\\IfFontExistsTF{${font}}{\\setmainfont{${font}}}{\\setmainfont{Arial}}`);
-            }
-        } else {
-            lines.push(`${indent}\\IfFontExistsTF{${font}}{`);
-            lines.push(`${inner}\\setmainfont{${font}}`);
-            if (emitHeaderFont) {
-                lines.push(`${inner}\\newfontface\\headerfont{${font}}[LetterSpace=${letterSpacing.toFixed(1)}]`);
-            }
-            lines.push(`${indent}}{`);
-            depth += 1;
-        }
+    lines.push(`\\IfFontExistsTF{${primary}}{`);
+    lines.push(`  \\setmainfont{${primary}}`);
+    if (emitHeaderFont) {
+        lines.push(`  \\newfontface\\headerfont{${primary}}[LetterSpace=${letterSpacing.toFixed(1)}]`);
     }
-    // Close all the open else-branches.
-    while (depth > 0) {
-        depth -= 1;
-        lines.push(`${'  '.repeat(depth)}}`);
-    }
+    lines.push('}{');
+    lines.push(`  \\errmessage{Radial Timeline PDF style requires ${primary}; install ${primary} or choose another PDF style}`);
+    lines.push('}');
     return lines.join('\n');
 }
 
@@ -380,7 +354,7 @@ export function renderPartTitle(spec: DesignedStyleSpec): string {
     if (spec.parts.epigraph || spec.epigraph.enabled) {
         lines.push('    \\ifstrempty{#2}{}{%%');
         lines.push('      \\vspace{0.28in}%');
-        lines.push('      \\begin{minipage}{0.68\\textwidth}');
+        lines.push('      \\begin{minipage}{\\textwidth}');
         lines.push('        \\centering');
         lines.push(spec.epigraph.italic ? '        {\\itshape #2}\\par' : '        {#2}\\par');
         lines.push('      \\end{minipage}\\par');
@@ -582,7 +556,7 @@ export function renderEpigraphMacros(spec: DesignedStyleSpec): string {
     const lines: string[] = [];
     lines.push('\\newcommand{\\rtEpigraph}[2]{%');
     lines.push('  \\begin{center}');
-    lines.push('    \\begin{minipage}{0.68\\textwidth}');
+    lines.push('    \\begin{minipage}{\\textwidth}');
     lines.push('      \\centering');
     lines.push(spec.epigraph.italic ? '      {\\itshape #1}\\par' : '      {#1}\\par');
     lines.push('      \\if\\relax\\detokenize{#2}\\relax\\else');

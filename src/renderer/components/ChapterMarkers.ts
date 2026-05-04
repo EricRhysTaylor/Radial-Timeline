@@ -1,51 +1,94 @@
 import type { TimelineChapterMarker } from '../../utils/timelineChapters';
 import { escapeXml, formatNumber } from '../../utils/svg';
+import { NARRATIVE_CHAPTER_MARKER_RADIUS } from '../layout/LayoutConstants';
 
 export interface OuterRingChapterBoundaryGeometry {
     startAngle: number;
     outerR: number;
 }
 
-const CHAPTER_TICK_INSET = 2;
-const CHAPTER_TICK_LENGTH = 8;
-const CHAPTER_TICK_PAIR_GAP_PX = 5;
-const CHAPTER_TICK_HIT_STROKE = 10;
+const CHAPTER_MARKER_BADGE_SIZE = 14;
+const CHAPTER_MARKER_COMBINED_BADGE_WIDTH = 30;
+const CHAPTER_MARKER_BADGE_CORNER_RADIUS = 2;
+
+export interface NarrativePartMarker {
+    startAngle: number;
+    tooltip: string;
+}
+
+interface AggregatedBoundaryMarker {
+    startAngle: number;
+    hasPart: boolean;
+    hasChapter: boolean;
+    chapterTitles: string[];
+    tooltipSections: string[];
+    scenePath?: string;
+}
 
 export function renderNarrativeChapterMarkers(params: {
     markers: TimelineChapterMarker[];
     boundaryGeometryByScenePath: Map<string, OuterRingChapterBoundaryGeometry>;
+    partMarkers?: NarrativePartMarker[];
 }): string {
-    const { markers, boundaryGeometryByScenePath } = params;
-    if (markers.length === 0 || boundaryGeometryByScenePath.size === 0) return '';
+    const { markers, boundaryGeometryByScenePath, partMarkers = [] } = params;
+    if ((markers.length === 0 || boundaryGeometryByScenePath.size === 0) && partMarkers.length === 0) return '';
 
-    const markerSvg = markers.map((marker) => {
-        const geometry = boundaryGeometryByScenePath.get(marker.resolvedScenePath);
-        if (!geometry) return '';
+    const markersByBoundary = new Map<string, AggregatedBoundaryMarker>();
 
-        const tickInnerRadius = geometry.outerR + CHAPTER_TICK_INSET;
-        const tickOuterRadius = tickInnerRadius + CHAPTER_TICK_LENGTH;
-        const midRadius = tickInnerRadius + (CHAPTER_TICK_LENGTH / 2);
-        const angleOffset = CHAPTER_TICK_PAIR_GAP_PX / Math.max(midRadius, 1);
-        const safeTitle = escapeXml(marker.title);
-        const tooltipText = escapeXml(`Chapter: ${marker.title}`);
-
-        const buildTickLine = (angle: number, className: string, strokeWidth: number): string => {
-            const x1 = formatNumber(tickInnerRadius * Math.cos(angle));
-            const y1 = formatNumber(tickInnerRadius * Math.sin(angle));
-            const x2 = formatNumber(tickOuterRadius * Math.cos(angle));
-            const y2 = formatNumber(tickOuterRadius * Math.sin(angle));
-            return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${className}" stroke-width="${strokeWidth}" />`;
+    const getBoundary = (startAngle: number): AggregatedBoundaryMarker => {
+        const key = startAngle.toFixed(6);
+        const existing = markersByBoundary.get(key);
+        if (existing) return existing;
+        const created: AggregatedBoundaryMarker = {
+            startAngle,
+            hasPart: false,
+            hasChapter: false,
+            chapterTitles: [],
+            tooltipSections: [],
         };
+        markersByBoundary.set(key, created);
+        return created;
+    };
+
+    for (const partMarker of partMarkers) {
+        const boundary = getBoundary(partMarker.startAngle);
+        boundary.hasPart = true;
+        boundary.tooltipSections.push(partMarker.tooltip);
+    }
+
+    for (const marker of markers) {
+        const geometry = boundaryGeometryByScenePath.get(marker.resolvedScenePath);
+        if (!geometry) continue;
+
+        const boundary = getBoundary(geometry.startAngle);
+        boundary.hasChapter = true;
+        boundary.chapterTitles.push(marker.title);
+        boundary.tooltipSections.push(`Chapter: ${marker.title}`);
+        boundary.scenePath = marker.resolvedScenePath;
+    }
+
+    const markerSvg = Array.from(markersByBoundary.values()).map((marker) => {
+        const label = marker.hasPart && marker.hasChapter
+            ? 'P•C'
+            : marker.hasPart
+                ? 'P'
+                : 'C';
+        const badgeWidth = label.length > 1 ? CHAPTER_MARKER_COMBINED_BADGE_WIDTH : CHAPTER_MARKER_BADGE_SIZE;
+        const badgeX = NARRATIVE_CHAPTER_MARKER_RADIUS * Math.cos(marker.startAngle);
+        const badgeY = NARRATIVE_CHAPTER_MARKER_RADIUS * Math.sin(marker.startAngle);
+        const tooltipText = escapeXml(marker.tooltipSections.join('\n\n'));
+        const markerClasses = `ert-chapter-marker rt-tooltip-target${label.length > 1 ? ' ert-chapter-marker--combined' : ''}`;
+        const titleAttr = marker.chapterTitles.length > 0 ? ` data-chapter-title="${escapeXml(marker.chapterTitles.join(' | '))}"` : '';
+        const scenePathAttr = marker.scenePath ? ` data-scene-path="${escapeXml(marker.scenePath)}"` : '';
 
         return `
-            <g class="rt-chapter-marker" data-scene-path="${escapeXml(marker.resolvedScenePath)}" data-chapter-title="${safeTitle}">
-                <line x1="${formatNumber(tickInnerRadius * Math.cos(geometry.startAngle))}" y1="${formatNumber(tickInnerRadius * Math.sin(geometry.startAngle))}" x2="${formatNumber(tickOuterRadius * Math.cos(geometry.startAngle))}" y2="${formatNumber(tickOuterRadius * Math.sin(geometry.startAngle))}" class="rt-chapter-marker-hit rt-tooltip-target" stroke-width="${CHAPTER_TICK_HIT_STROKE}" data-tooltip="${tooltipText}" data-tooltip-placement="top" />
-                ${buildTickLine(geometry.startAngle - (angleOffset / 2), 'rt-chapter-marker-line', 1.4)}
-                ${buildTickLine(geometry.startAngle + (angleOffset / 2), 'rt-chapter-marker-line', 1.4)}
+            <g class="${markerClasses}" transform="translate(${formatNumber(badgeX)}, ${formatNumber(badgeY)})"${scenePathAttr}${titleAttr} data-tooltip="${tooltipText}" data-tooltip-placement="top">
+                <rect x="${formatNumber(-badgeWidth / 2)}" y="${formatNumber(-CHAPTER_MARKER_BADGE_SIZE / 2)}" width="${badgeWidth}" height="${CHAPTER_MARKER_BADGE_SIZE}" rx="${CHAPTER_MARKER_BADGE_CORNER_RADIUS}" ry="${CHAPTER_MARKER_BADGE_CORNER_RADIUS}" class="ert-chapter-marker-badge" />
+                <text x="0" y="0" class="ert-chapter-marker-label" text-anchor="middle" dominant-baseline="middle" dy="0.08em">${label}</text>
             </g>
         `;
     }).filter(Boolean).join('');
 
     if (!markerSvg) return '';
-    return `<g class="rt-chapter-markers">${markerSvg}</g>`;
+    return `<g class="ert-chapter-markers">${markerSvg}</g>`;
 }

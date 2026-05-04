@@ -239,7 +239,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         bundled: true,
         tier: 'free',
         templateKind: 'book',
-        description: 'A polished reading draft for beta readers and proofers. Clean enough to feel like a finished book without committing to a final aesthetic. Comfortable spacing, sans-serif headers that track the scene title — readable without being precious.',
+        description: 'A polished reading draft for beta readers and proofers. Clean enough to feel like a finished book without committing to a final aesthetic. Contemporary serif body type, comfortable spacing, and clean headers that track the scene title.',
         get content(): string { return getGeneratedBundledFictionTex(BUNDLED_FICTION_CONTEMPORARY_ID); },
         get designedSpec() { return BUNDLED_FICTION_SPECS[BUNDLED_FICTION_CONTEMPORARY_ID]; },
     },

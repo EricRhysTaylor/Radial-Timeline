@@ -1647,6 +1647,27 @@
   background: color-mix(in srgb, var(--interactive-accent) 24%, var(--background-secondary));
 }
 
+.ert-ui.ert-scope--modal .ert-manuscript-output-format-pill[data-ert-toggle] {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  background: var(--background-secondary);
+  box-shadow: var(--ert-pill-shadow);
+}
+
+.ert-ui.ert-scope--modal .ert-manuscript-output-format-pill[data-ert-toggle]:hover:not(:disabled) {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+  background: var(--background-modifier-hover);
+}
+
+.ert-ui.ert-scope--modal .ert-manuscript-output-format-pill[data-ert-toggle].is-active,
+.ert-ui.ert-scope--modal .ert-manuscript-output-format-pill[data-ert-toggle].is-active:hover:not(:disabled) {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+  background: var(--background-modifier-hover);
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover);
+}
+
 .ert-ui.ert-scope--modal .ert-export-pill-icon {
   display: inline-flex;
   align-items: center;

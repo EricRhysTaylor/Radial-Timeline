@@ -91,6 +91,11 @@ export interface AssembleManuscriptOptions {
    * appended canonically). Empty/undefined → resolver canonical order.
    */
   bookPageOrder?: string[];
+  /**
+   * When false, suppress both physical matter notes and BookMeta-only Book
+   * Pages. Used by the Manuscript Export "Include front & back matter" toggle.
+   */
+  includeMatterPages?: boolean;
 }
 
 let matterOrderIgnoredWarned = false;
@@ -125,6 +130,13 @@ function warnMatterLikeWithoutClass(scene: TimelineItem): void {
  */
 export function extractBodyText(content: string): string {
   return content.replace(/\r\n?/g, '\n').trim();
+}
+
+function extractBodyTextAfterFrontmatter(content: string): string {
+  const normalized = content.replace(/\r\n?/g, '\n').trim();
+  const match = normalized.match(/^---\n[\s\S]*?\n---(?:\n|$)/);
+  if (!match) return normalized;
+  return normalized.slice(match[0].length).trim();
 }
 
 /**
@@ -172,7 +184,30 @@ function escapeLatex(value: string): string {
 
 function processBody(bodyText: string, bodyMode: MatterBodyMode): string {
   const trimmed = bodyText.trim();
-  return bodyMode === 'latex' ? trimmed : escapeLatex(trimmed);
+  return bodyMode === 'latex' ? preserveLatexMatterHardWraps(trimmed) : escapeLatex(trimmed);
+}
+
+function isLatexMatterProseLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('\\')) return false;
+  if (trimmed.startsWith('%')) return false;
+  if (trimmed.startsWith('<!--') || trimmed.startsWith('-->')) return false;
+  return true;
+}
+
+function hasExplicitLatexLineBreak(line: string): boolean {
+  return /\\\\\s*(?:%.*)?$/.test(line);
+}
+
+function preserveLatexMatterHardWraps(bodyText: string): string {
+  const lines = bodyText.split(/\r?\n/);
+  return lines.map((line, index) => {
+    if (!isLatexMatterProseLine(line) || hasExplicitLatexLineBreak(line)) return line;
+    const nextLine = lines[index + 1];
+    if (!nextLine || !isLatexMatterProseLine(nextLine)) return line;
+    return `${line}\\\\`;
+  }).join('\n');
 }
 
 function escapeRegex(value: string): string {
@@ -1125,7 +1160,10 @@ export async function assembleManuscript(
     };
   });
 
-  const resolved = resolveBookPages(bookMeta || undefined, matterSummaries);
+  const includeMatterPages = options?.includeMatterPages !== false;
+  const resolved = includeMatterPages
+    ? resolveBookPages(bookMeta || undefined, matterSummaries)
+    : [];
   const ordered = applyBookPageOrder(resolved, options?.bookPageOrder);
   const frontPages = ordered.filter(p => p.side === 'frontmatter');
   const backPages = ordered.filter(p => p.side === 'backmatter');
@@ -1157,7 +1195,7 @@ export async function assembleManuscript(
       const content = c.content || '';
       const meta = c.matterMeta!;
       beginMatterPage();
-      const bodyText = extractBodyText(content);
+      const bodyText = extractBodyTextAfterFrontmatter(content);
       const countableBodyText = extractCountableBodyText(content);
       const bodyMode = normalizeMatterBodyMode(meta.bodyMode);
       const role = meta.role;
@@ -1183,10 +1221,11 @@ export async function assembleManuscript(
         totalWords += wordCount;
         textParts.push(`${renderedFromBookMeta}\n\n`);
       } else if (bodyMode === 'latex') {
+        const renderedBody = preserveLatexMatterHardWraps(bodyText.trim());
         const wordCount = countWords(countableBodyText);
-        scenes.push({ title, bodyText, wordCount, sceneId });
+        scenes.push({ title, bodyText: renderedBody, wordCount, sceneId });
         totalWords += wordCount;
-        textParts.push(`${bodyText}\n\n`);
+        textParts.push(`${renderedBody}\n\n`);
       } else {
         // Plain matter note → default heading + body (markdown-h2 path).
         const wordCount = countWords(countableBodyText);

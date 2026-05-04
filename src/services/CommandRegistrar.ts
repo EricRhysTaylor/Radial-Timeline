@@ -22,7 +22,6 @@ import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFile
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getTemplateFontDiagnostics, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
-import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
@@ -211,8 +210,8 @@ export class CommandRegistrar {
     }
 
     private async handleManuscriptExport(result: ManuscriptModalResult): Promise<ManuscriptExportOutcome> {
-        if (this.requiresPro(result) && !hasProFeatureAccess(this.plugin)) {
-            new Notice('This export configuration requires Pro.');
+        if (this.isUnsupportedExportConfig(result)) {
+            new Notice('This export configuration is not available.');
             return {};
         }
 
@@ -234,7 +233,7 @@ export class CommandRegistrar {
                     layouts: this.plugin.settings.pandocLayouts || [],
                     selectedLayoutId: result.selectedLayoutId,
                     manuscriptPreset: result.manuscriptPreset || 'novel',
-                    hasProAccess: hasProFeatureAccess(this.plugin),
+                    hasProAccess: true,
                 })
                 : undefined;
             const selectedLayoutIdForExport = templateAccess?.effectiveLayout?.id || result.selectedLayoutId;
@@ -473,6 +472,7 @@ export class CommandRegistrar {
                             includeSceneIdInToc: result.includeSceneIdInToc === true,
                             includeSceneIdInHeading: result.includeSceneIdInHeading === true,
                             bookPageOrder,
+                            includeMatterPages: includeMatter,
                         }
                     );
 
@@ -609,6 +609,7 @@ export class CommandRegistrar {
                             }
                             : undefined,
                         bookPageOrder,
+                        includeMatterPages: includeMatter,
                     }
                 );
 
@@ -735,7 +736,6 @@ export class CommandRegistrar {
 
         const detailLines = [
             ...snapshot.preflightIssues.map(issue => `Preflight: ${issue.message}`),
-            ...snapshot.templateAccessIssues.map(issue => `Template Access: ${issue.message}`),
             ...snapshot.templateCompatibilityIssues.map(issue => `Template Compatibility: ${issue.message}`),
             ...(shouldBlockOnBookMeta
                 ? snapshot.activeBookMetaIssues.map(issue => `BookMeta: ${issue.message}`)
@@ -1012,11 +1012,8 @@ export class CommandRegistrar {
         }
     }
 
-    private requiresPro(options: ManuscriptModalResult): boolean {
-        if (options.exportType === 'outline') return true;
+    private isUnsupportedExportConfig(options: ManuscriptModalResult): boolean {
         if (options.outputFormat !== 'markdown' && options.outputFormat !== 'pdf') return true;
-        if (options.manuscriptPreset && (options.manuscriptPreset === 'screenplay' || options.manuscriptPreset === 'podcast')) return true;
-        if (options.outlinePreset && (options.outlinePreset === 'index-cards-csv' || options.outlinePreset === 'index-cards-json')) return true;
         return false;
     }
 

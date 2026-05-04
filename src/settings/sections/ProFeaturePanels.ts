@@ -11,6 +11,7 @@ import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
+import { createHash } from 'crypto'; // SAFE: exact retired starter sample fingerprinting
 import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
@@ -477,7 +478,7 @@ class StarterPublishingSetupModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: AUTO_CONFIGURE_BUTTON });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Configure your publishing environment, Book Details, book page slots, and PDF styles in one step.'
+            text: 'Configure your publishing environment, Book Details, optional inline LaTeX examples, and PDF styles in one step.'
         });
 
         const createdBlock = contentEl.createDiv({ cls: 'ert-template-pack-created ert-stack--tight' });
@@ -488,7 +489,7 @@ class StarterPublishingSetupModal extends Modal {
         const createdList = createdBlock.createEl('ol', { cls: 'ert-template-pack-list ert-template-pack-list--ordered' });
         const items = [
             'Book Details note',
-            'Book page slots connected to Book Details',
+            'Inline LaTeX front/back matter examples',
             'Core PDF layout files',
         ];
         items.forEach(item => {
@@ -1141,12 +1142,41 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
 
 /**
  * Generate the starter publishing setup in the user's vault:
- * Book Details note, BookMeta-backed page slots, and bundled PDF layout files.
- * Skips files that already exist. Auto-configures template paths in settings.
+ * Book Details note, optional inline LaTeX matter examples, and bundled PDF layout files.
+ * Refreshes only exact retired bundled samples. Edited author files are skipped.
+ * Auto-configures template paths in settings.
  */
+interface StarterPublishingSetupResult {
+    created: string[];
+    updatedGenerated: string[];
+    skippedExisting: string[];
+}
+
+const RETIRED_BUNDLED_PERSONAL_MATTER_SAMPLE_HASHES_BY_NAME: Record<string, readonly string[]> = {
+    '0.1 Alpha Readers.md': ['92a58ee02a57c6e631e219fe377905176ca2fa237b642cbeb98df05131829cf9'],
+    '0.2 Title Page.md': ['96b65423ba74a9bc39c22d4f760d912e558cc17524c080967656a20a0bed9ab1'],
+    '0.3 Copyright.md': ['458479c8c5a1dc88c2111fde4af4131846d96412eaf0364c88190707aa7d5de6'],
+    '0.4 Dedication.md': ['3767f96f1364ba2b6a6508d33d196ee3ff3769d5c14f4d8dd098ee0bb0a51c5f'],
+    '0.5 Epigraph.md': ['4dcdd0b12ce7a3b39dfd2f265b774fd634571fe6beda6985ffd95b9186aa9058'],
+    '0.6 Title 2.md': ['b2763cabbb18edfd6f26fb8404ca11841ab316314cb129d3e1d2c9bc58977f5b'],
+    '0.7 Quotation.md': ['67b7659c5ad7265faa5b7ccd3c9df8dd58518fd0c135c0e22d04d18d57350408'],
+    '0.8 Quotation 2.md': ['dba0ee40c15bc3100d735b0742bb21f705e1aa681230e62040d0962b316555c7'],
+    '0.9 Quotation 3.md': ['d36d9878a918effc060bf5c18710219cc6d498d5c0518c2d2fa7c478455ec62b'],
+    '200.1 Acknowledgments.md': ['22fc13c6ce137a5c53ddc29ff90ebeccb85f48c402576c25e83e2ed30dd587a5'],
+    '200.2 About the Author.md': ['6c8c14aa4f01caf826bc1525d13ea7a5ce3050cc610d0664aef7cc66ea9864f8'],
+};
+
+function getSha256Hex(content: string): string {
+    return createHash('sha256').update(content, 'utf8').digest('hex');
+}
+
+function isRetiredBundledPersonalMatterSample(name: string, content: string): boolean {
+    return RETIRED_BUNDLED_PERSONAL_MATTER_SAMPLE_HASHES_BY_NAME[name]?.includes(getSha256Hex(content)) ?? false;
+}
+
 async function generateSampleTemplates(
     plugin: RadialTimelinePlugin
-): Promise<string[]> {
+): Promise<StarterPublishingSetupResult> {
     const vault = plugin.app.vault;
     const baseFolder = resolveManuscriptOutputFolder(plugin);
     const pandocFolder = getConfiguredPandocFolder(plugin);
@@ -1173,6 +1203,8 @@ async function generateSampleTemplates(
     }
 
     const createdFiles: string[] = [];
+    const updatedGeneratedFiles: string[] = [];
+    const skippedExisting: string[] = [];
 
     const currentYear = new Date().getFullYear();
     const bookMetaSample = {
@@ -1212,27 +1244,75 @@ async function generateSampleTemplates(
         ].join('\n')
     };
 
-    const matterPageComment = [
+    const latexMatterComment = [
         '<!--',
-        'Book page slot.',
-        'Role + UseBookMeta tells Radial Timeline to render this page from Book Details.',
-        'Leave the body empty unless this page needs custom prose.',
-        'Use BodyMode: latex only for standalone LaTeX matter notes that provide their own page content.',
+        'Optional inline LaTeX Book Pages example.',
+        'This file is only an illustration of inline LaTeX and may be deleted at any time.',
+        'Book matter does not require a physical note file.',
+        'Regular title, copyright, dedication, epigraph, acknowledgments, and author pages can render directly from Book Details without note files.',
+        'Keep this kind of note only when a page needs custom LaTeX content.',
         '-->'
     ];
 
     const matterSamples: { name: string; content: string }[] = [
+        {
+            name: '0.1 Alpha Readers.md',
+            content: [
+                '---',
+                'Class: Frontmatter',
+                'BodyMode: latex',
+                '---',
+                '',
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\LARGE Alpha Readers',
+                '',
+                '\\vspace{4cm}',
+                '',
+                '\\normalsize Instructions for early readers.\\\\',
+                'QUESTIONS: Note what feels clear, confusing, compelling, or incomplete.',
+                '',
+                '',
+                '\\vfill',
+                '',
+                '\\end{center}',
+                '\\newpage',
+                '',
+            ].join('\n')
+        },
         {
             name: '0.2 Title Page.md',
             content: [
                 '---',
                 'Class: Frontmatter',
                 'Role: title-page',
-                'UseBookMeta: true',
-                'BodyMode: plain',
+                'BodyMode: latex',
                 '---',
                 '',
-                ...matterPageComment,
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\Huge TITLE\\\\',
+                '\\large Book 1',
+                '',
+                '\\vspace{1cm}',
+                '',
+                '\\rule{4cm}{0.4pt}',
+                '\\vspace{-.1cm}',
+                '',
+                'Author Name',
+                '\\vspace{-.4cm}',
+                '',
+                '\\rule{4cm}{0.4pt}',
+                '',
+                '\\vfill',
+                '\\end{center}',
+                '\\newpage',
                 '',
             ].join('\n')
         },
@@ -1242,11 +1322,52 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Frontmatter',
                 'Role: copyright',
-                'UseBookMeta: true',
-                'BodyMode: plain',
+                'BodyMode: latex',
                 '---',
                 '',
-                ...matterPageComment,
+                ...latexMatterComment,
+                '',
+                '\\begingroup',
+                '\\footnotesize',
+                '\\begin{center}',
+                '\\vspace*{1cm}',
+                '',
+                "This book is a work of fiction. Any references to historical events, real people, or real places are used fictitiously. Names, characters, and places are products of the author's imagination.",
+                '',
+                '\\vspace{.15cm}',
+                '',
+                'TITLE Copyright \\textcopyright{} 2026 Author Name\\\\',
+                'All rights reserved. No part of this publication may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the prior written permission of the publisher, except in the case of brief quotations embodied in critical reviews and certain other noncommercial uses permitted by copyright law. For permission requests, write to the publisher at the address below.',
+                '',
+                '\\vspace{.15cm}',
+                '',
+                'ISBN: 978-0-000000-0 (Paperback)\\\\',
+                'ISBN: 978-0-000000-0 (Hardcover)\\\\',
+                'Library of Congress Control Number: 00000000000',
+                '',
+                '\\vspace{.25cm}',
+                '',
+                '\\textit{Designed by Designer Name}',
+                '',
+                '\\vspace{.25cm}',
+                '',
+                'Printed by Example Printer in the United States of America.',
+                '',
+                '\\vspace{.25cm}',
+                '',
+                'First printing edition 2026.',
+                '',
+                '\\vspace{.25cm}',
+                '',
+                'Example Publisher\\\\',
+                '111 Address Street\\\\',
+                'City, State 12345\\\\',
+                'www.example.com',
+                '',
+                '\\vfill',
+                '\\end{center}',
+                '\\endgroup',
+                '\\newpage',
                 '',
             ].join('\n')
         },
@@ -1256,11 +1377,21 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Frontmatter',
                 'Role: dedication',
-                'UseBookMeta: true',
-                'BodyMode: plain',
+                'BodyMode: latex',
                 '---',
                 '',
-                ...matterPageComment,
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '',
+                '\\normalsize',
+                'For someone who made this work possible\\\\',
+                'and for those who helped it find its shape.',
+                '',
+                '\\end{center}',
+                '\\newpage',
                 '',
             ].join('\n')
         },
@@ -1270,11 +1401,119 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Frontmatter',
                 'Role: epigraph',
-                'UseBookMeta: true',
-                'BodyMode: plain',
+                'BodyMode: latex',
                 '---',
                 '',
-                ...matterPageComment,
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\normalsize',
+                'A short quoted passage can appear here\\\\',
+                'followed by a second line if needed.',
+                '',
+                '\\vspace*{0.5cm}',
+                '\\small',
+                '\\textit{---Source or Attribution}',
+                '',
+                '\\end{center}',
+                '\\newpage',
+                '',
+            ].join('\n')
+        },
+        {
+            name: '0.6 Title 2.md',
+            content: [
+                '---',
+                'Class: Frontmatter',
+                'BodyMode: latex',
+                '---',
+                '',
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\large THE BOOK TITLE\\\\',
+                '',
+                '\\end{center}',
+                '\\newpage',
+                '',
+            ].join('\n')
+        },
+        {
+            name: '0.7 Quotation.md',
+            content: [
+                '---',
+                'Class: Frontmatter',
+                'BodyMode: latex',
+                '---',
+                '',
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\normalsize',
+                'Various lines of quoted text can appear here.',
+                '',
+                '\\vspace{1cm}',
+                '',
+                '---Anonymous, \\textit{Example Source}',
+                '',
+                '\\end{center}',
+                '\\newpage',
+                '',
+            ].join('\n')
+        },
+        {
+            name: '0.8 Quotation 2.md',
+            content: [
+                '---',
+                'Class: Frontmatter',
+                'BodyMode: latex',
+                '---',
+                '',
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\normalsize',
+                'A second quotation can appear here for books that need another opening page.',
+                '',
+                '\\vspace{1cm}',
+                '',
+                '---Anonymous, \\textit{Second Example Source}',
+                '',
+                '\\end{center}',
+                '\\newpage',
+                '',
+            ].join('\n')
+        },
+        {
+            name: '0.9 Quotation 3.md',
+            content: [
+                '---',
+                'Class: Frontmatter',
+                'BodyMode: latex',
+                '---',
+                '',
+                ...latexMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\normalsize',
+                'A third quotation or content note can appear here when the book needs one.',
+                '',
+                '\\vspace{1cm}',
+                '',
+                '---Anonymous, \\textit{Third Example Source}',
+                '',
+                '\\end{center}',
+                '\\newpage',
                 '',
             ].join('\n')
         },
@@ -1284,11 +1523,22 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Backmatter',
                 'Role: acknowledgments',
-                'UseBookMeta: true',
-                'BodyMode: plain',
+                'BodyMode: latex',
                 '---',
                 '',
-                ...matterPageComment,
+                ...latexMatterComment,
+                '',
+                '\\vspace*{4cm}',
+                '',
+                '\\begin{center}',
+                '\\large ACKNOWLEDGMENTS',
+                '\\end{center}',
+                '',
+                '\\vspace{1em}',
+                '',
+                '\\normalsize',
+                '',
+                'Thank you to the readers, editors, family, friends, and collaborators who helped bring this manuscript into shape.',
                 '',
             ].join('\n')
         },
@@ -1298,30 +1548,64 @@ async function generateSampleTemplates(
                 '---',
                 'Class: Backmatter',
                 'Role: about-author',
-                'UseBookMeta: true',
-                'BodyMode: plain',
+                'BodyMode: latex',
                 '---',
                 '',
-                ...matterPageComment,
+                ...latexMatterComment,
+                '',
+                '\\vspace*{4cm}',
+                '',
+                '\\begin{center}',
+                '\\large ABOUT THE AUTHOR',
+                '\\end{center}',
+                '',
+                '\\vspace{1em}',
+                '',
+                '\\normalsize',
+                '',
+                'Add a short author biography here. Include relevant background, publications, interests, or where readers can learn more.',
                 '',
             ].join('\n')
         }
     ];
 
-    // Create all files (skip existing)
+    const createStarterFileIfMissing = async (folderPath: string, name: string, content: string): Promise<void> => {
+        const filePath = normalizePath(`${folderPath}/${name}`);
+        if (vault.getAbstractFileByPath(filePath)) {
+            skippedExisting.push(name);
+            return;
+        }
+        await vault.create(filePath, content);
+        createdFiles.push(name);
+    };
 
-    const bookMetaPath = normalizePath(`${matterTargetFolder}/${bookMetaSample.name}`);
-    if (!vault.getAbstractFileByPath(bookMetaPath)) {
-        await vault.create(bookMetaPath, bookMetaSample.content);
-        createdFiles.push(bookMetaSample.name);
-    }
+    await createStarterFileIfMissing(matterTargetFolder, bookMetaSample.name, bookMetaSample.content);
+
+    // Retired bundled personal examples are replaced only when still byte-for-byte unchanged.
+    const createOrRefreshStarterMatterFile = async (folderPath: string, name: string, content: string): Promise<void> => {
+        const filePath = normalizePath(`${folderPath}/${name}`);
+        const existing = vault.getAbstractFileByPath(filePath);
+        if (!existing) {
+            await vault.create(filePath, content);
+            createdFiles.push(name);
+            return;
+        }
+        if (existing instanceof TFile) {
+            const existingContent = await vault.read(existing);
+            if (existingContent === content) {
+                return;
+            }
+            if (isRetiredBundledPersonalMatterSample(name, existingContent)) {
+                await vault.modify(existing, content);
+                updatedGeneratedFiles.push(name);
+                return;
+            }
+        }
+        skippedExisting.push(name);
+    };
 
     for (const matter of matterSamples) {
-        const filePath = normalizePath(`${matterTargetFolder}/${matter.name}`);
-        if (!vault.getAbstractFileByPath(filePath)) {
-            await vault.create(filePath, matter.content);
-            createdFiles.push(matter.name);
-        }
+        await createOrRefreshStarterMatterFile(matterTargetFolder, matter.name, matter.content);
     }
 
     const bundledInstall = await installBundledPandocLayouts(plugin);
@@ -1332,7 +1616,7 @@ async function generateSampleTemplates(
     ensureBundledPandocLayoutsRegistered(plugin);
     await plugin.saveSettings();
 
-    return createdFiles;
+    return { created: createdFiles, updatedGenerated: updatedGeneratedFiles, skippedExisting };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2600,13 +2884,23 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             // ── Phase 2: Starter publishing setup ─────────────────────────
             const confirmed = await confirmStarterPublishingSetup(plugin.app);
             if (!confirmed) return;
-            const created = await generateSampleTemplates(plugin);
+            const setup = await generateSampleTemplates(plugin);
             const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
             const matterTargetLabel = sourceFolder || resolveManuscriptOutputFolder(plugin);
-            if (created.length > 0) {
-                new Notice(`Publishing configured. Created ${created.length} starter setup files. Book Details + page slots → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
+            if (setup.created.length > 0) {
+                new Notice(`Publishing configured. Created ${setup.created.length} starter setup files. Book Details + inline LaTeX examples → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
+            } else if (setup.updatedGenerated.length > 0) {
+                new Notice(`Publishing configured. Refreshed ${setup.updatedGenerated.length} generated inline LaTeX example file(s).`);
             } else {
-                new Notice(STARTER_PUBLISHING_SETUP_ALREADY_EXISTS);
+                new Notice(`${STARTER_PUBLISHING_SETUP_ALREADY_EXISTS} Existing author files were left untouched.`);
+            }
+            if (setup.updatedGenerated.length > 0 && setup.created.length > 0) {
+                new Notice(`Refreshed ${setup.updatedGenerated.length} generated inline LaTeX example file(s).`);
+            }
+            if (setup.skippedExisting.length > 0) {
+                const preview = setup.skippedExisting.slice(0, 5).join(', ');
+                const suffix = setup.skippedExisting.length > 5 ? `, +${setup.skippedExisting.length - 5} more` : '';
+                new Notice(`Skipped existing author file(s): ${preview}${suffix}.`);
             }
             renderLayoutRows();
             rerender();
@@ -3397,7 +3691,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         // Auto configure — rendered first (left position)
         setupButtonComponent = new ButtonComponent(setupActionRow)
             .setButtonText(AUTO_CONFIGURE_BUTTON)
-            .setTooltip('One-shot setup: detects Pandoc, installs templates, and seeds Book Details + front/back matter starter notes.')
+            .setTooltip('One-shot setup: detects Pandoc, installs templates, and seeds Book Details + optional inline LaTeX front/back matter examples.')
             .onClick(() => {
                 void runAutoConfigurePublishing();
             });

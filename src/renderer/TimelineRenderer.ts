@@ -16,7 +16,7 @@ import {
 import { renderRings, type RingRenderContext } from './renderers/RingRenderer';
 import { computeGridData } from './utils/GridData';
 import { renderNumberSquares, type NumberSquareRenderContext, type NumberSquareVisualResolver } from './renderers/NumberSquareRenderer';
-import type { TimelineItem } from '../types';
+import type { BookPublishingPreferences, ExportProfile, PandocLayoutTemplate, RadialTimelineSettings, TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber } from '../utils/text';
@@ -69,7 +69,7 @@ import { startPerfSegment } from './utils/Performance';
 import { getFillForScene } from './utils/SceneFill';
 import { estimatePixelsFromTitle } from './utils/LabelMetrics';
 import { renderCenterGrid } from './components/Grid';
-import { renderNarrativeChapterMarkers, type OuterRingChapterBoundaryGeometry } from './components/ChapterMarkers';
+import { renderNarrativeChapterMarkers, type NarrativePartMarker, type OuterRingChapterBoundaryGeometry } from './components/ChapterMarkers';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
 import { renderSubplotDominanceIndicators } from './components/SubplotDominanceIndicators';
@@ -101,7 +101,7 @@ import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readabil
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { hasActiveAlerts } from '../settings/refactorAlerts';
 import { buildTimelineSegments } from './utils/TimelineSegments';
-import { getTimelineScope } from '../utils/books';
+import { getActiveBook, getTimelineScope } from '../utils/books';
 import {
     buildTimelineChapterResolverItems,
     collapseTimelineChapterMarkersByResolvedBoundary,
@@ -131,6 +131,116 @@ function computeSceneTitleInset(fontScale: number): number {
     if (!Number.isFinite(fontScale) || fontScale <= 1) return SCENE_TITLE_INSET;
     const extraInset = (fontScale - 1) * 18;
     return SCENE_TITLE_INSET + extraInset;
+}
+
+function resolveActiveNovelPandocLayout(settings: RadialTimelineSettings): PandocLayoutTemplate | null {
+    const layouts = Array.isArray(settings.pandocLayouts) ? settings.pandocLayouts : [];
+    if (layouts.length === 0) return null;
+
+    const activeBook = getActiveBook(settings);
+    const publishingPreferences: BookPublishingPreferences | undefined = Array.isArray(settings.bookPublishingPreferences)
+        ? settings.bookPublishingPreferences.find(entry => entry.bookId === activeBook?.id)
+        : undefined;
+    const exportProfiles: ExportProfile[] = Array.isArray(settings.exportProfiles) ? settings.exportProfiles : [];
+    const preferredExportProfileId = publishingPreferences?.lastUsedExportProfileId
+        || settings.lastUsedExportProfileId
+        || publishingPreferences?.defaultExportProfileId;
+    const exportProfileTemplateId = preferredExportProfileId
+        ? exportProfiles.find(profile => profile.id === preferredExportProfileId)?.templateProfileId
+        : undefined;
+
+    const candidateIds = [
+        exportProfileTemplateId,
+        activeBook?.lastUsedPandocLayoutByPreset?.novel,
+        publishingPreferences?.preferredTemplateProfileIdByContext?.novel,
+        settings.lastUsedPandocLayoutByPreset?.novel,
+    ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+
+    for (const id of candidateIds) {
+        const layout = layouts.find(candidate => candidate.id === id);
+        if (layout) return layout;
+    }
+
+    return null;
+}
+
+function layoutSupportsPartMarkers(layout: PandocLayoutTemplate | null): boolean {
+    if (!layout) return false;
+    if (layout.designedSpec?.parts?.mode && layout.designedSpec.parts.mode !== 'off') return true;
+    return layout.usesModernClassicStructure === true;
+}
+
+function toRomanNumeral(value: number): string {
+    const numerals: Array<[number, string]> = [
+        [1000, 'M'],
+        [900, 'CM'],
+        [500, 'D'],
+        [400, 'CD'],
+        [100, 'C'],
+        [90, 'XC'],
+        [50, 'L'],
+        [40, 'XL'],
+        [10, 'X'],
+        [9, 'IX'],
+        [5, 'V'],
+        [4, 'IV'],
+        [1, 'I'],
+    ];
+    let remaining = Math.floor(value);
+    if (!Number.isFinite(remaining) || remaining <= 0) return String(value);
+    let output = '';
+    for (const [amount, glyph] of numerals) {
+        while (remaining >= amount) {
+            output += glyph;
+            remaining -= amount;
+        }
+    }
+    return output;
+}
+
+function buildNarrativePartMarkers(params: {
+    settings: RadialTimelineSettings;
+    layout: PandocLayoutTemplate | null;
+    timelineSegments: ReturnType<typeof buildTimelineSegments>;
+}): NarrativePartMarker[] {
+    const { settings, layout, timelineSegments } = params;
+    if (!layoutSupportsPartMarkers(layout)) return [];
+    if (getTimelineScope(settings) !== 'book') return [];
+
+    const actSegments = timelineSegments.filter(segment => segment.kind === 'act');
+    if (actSegments.length < 2) return [];
+
+    const activeBook = getActiveBook(settings);
+    const layoutOptions = layout ? activeBook?.layoutOptions?.[layout.id] : undefined;
+    const epigraphs = Array.isArray(layoutOptions?.actEpigraphs) ? layoutOptions.actEpigraphs : [];
+    const attributions = Array.isArray(layoutOptions?.actEpigraphAttributions) ? layoutOptions.actEpigraphAttributions : [];
+    const layoutName = layout?.name || 'Selected layout';
+    const advertisesEpigraph = layout?.designedSpec?.parts?.epigraph === true
+        || layout?.hasEpigraphs === true
+        || layout?.usesModernClassicStructure === true;
+
+    return actSegments.map((segment) => {
+        const actNumber = segment.index + 1;
+        const partLabel = `Part ${toRomanNumeral(actNumber)}`;
+        const quote = typeof epigraphs[segment.index] === 'string' ? epigraphs[segment.index].trim() : '';
+        const attribution = typeof attributions[segment.index] === 'string' ? attributions[segment.index].trim() : '';
+        const tooltipLines = [`${layoutName} ${partLabel}`];
+
+        if (advertisesEpigraph) {
+            tooltipLines.push(`Epigraph: ${quote || 'not configured'}`);
+            tooltipLines.push(`Attribution: ${attribution || 'not configured'}`);
+            if (!quote && !attribution) {
+                tooltipLines.push('Status: Part page will render without epigraph text.');
+            }
+        } else {
+            tooltipLines.push('Status: Part page enabled.');
+        }
+
+        return {
+            startAngle: segment.startAngle,
+            tooltip: tooltipLines.join('\n'),
+        };
+    });
 }
 
 /**
@@ -200,8 +310,9 @@ export function createTimelineSVG(
     const chronologueDateRadius = CHRONOLOGUE_DATE_RADIUS;
     const monthTickStart = MONTH_TICK_START;
     const monthTickEnd = MONTH_TICK_END;
-    const readabilityScale = getReadabilityScale(plugin.settings as any);
-    const fontScale = getReadabilityMultiplier(plugin.settings as any);
+    const settings = plugin.settings as RadialTimelineSettings;
+    const readabilityScale = getReadabilityScale(settings);
+    const fontScale = getReadabilityMultiplier(settings);
     const maxTextWidth = MAX_TEXT_WIDTH * fontScale;
     const readabilityClass = `rt-font-scale-${readabilityScale}`;
     const sceneTitleInset = computeSceneTitleInset(fontScale);
@@ -669,7 +780,7 @@ export function createTimelineSVG(
 
     // Add tick mark and label for the estimated completion date if available
     // (Moved here to draw AFTER center stats so it appears on top)
-    if (estimateResult && (plugin.settings as any).showCompletionEstimate !== false) {
+    if (estimateResult && settings.showCompletionEstimate !== false) {
         svg += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
     }
 
@@ -695,9 +806,16 @@ export function createTimelineSVG(
         const chapterMarkers = collapseTimelineChapterMarkersByResolvedBoundary(
             resolveTimelineChapterMarkers(chapterResolverItems)
         );
+        const activeNovelLayout = resolveActiveNovelPandocLayout(settings);
+        const partMarkers = buildNarrativePartMarkers({
+            settings,
+            layout: activeNovelLayout,
+            timelineSegments
+        });
         svg += renderNarrativeChapterMarkers({
             markers: chapterMarkers,
-            boundaryGeometryByScenePath: ringRenderContext.outerRingChapterBoundaryGeometry
+            boundaryGeometryByScenePath: ringRenderContext.outerRingChapterBoundaryGeometry,
+            partMarkers
         });
     }
 

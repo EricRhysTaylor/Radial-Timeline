@@ -161,10 +161,29 @@ describe('generateDesignedStyleTex', () => {
         expect(tex).toContain('\\thispagestyle{empty}');
     });
 
-    it('uses IfFontExistsTF fallback chain', () => {
+    it('hard-fails Signature Literary generation when bundled Sorts Mill Goudy is unavailable', () => {
         const tex = generateDesignedStyleTex(buildSpec());
-        expect(tex).toContain('\\IfFontExistsTF{Sorts Mill Goudy}');
-        expect(tex).toContain('\\setmainfont{Arial}'); // terminal fallback
+        expect(tex).toContain('\\errmessage{Radial Timeline Signature Literary requires bundled Sorts Mill Goudy font files');
+        expect(tex).not.toContain('\\setmainfont{Times}');
+        expect(tex).not.toContain('TeX Gyre Pagella');
+    });
+
+    it('checks exact system fonts without emitting fallbacks', () => {
+        const tex = generateDesignedStyleTex(buildSpec({
+            body: {
+                font: 'source-serif',
+                fontFallbackChain: ['Charter', 'Georgia'],
+                sizePt: 11,
+                lineSpacing: 1.5,
+                paragraphIndentEm: 1.5,
+            },
+        }));
+        expect(tex).toContain('\\IfFontExistsTF{Source Serif 4}');
+        expect(tex).toContain('\\setmainfont{Source Serif 4}');
+        expect(tex).toContain('\\errmessage{Radial Timeline PDF style requires Source Serif 4');
+        expect(tex).not.toContain('Charter');
+        expect(tex).not.toContain('Georgia');
+        expect(tex).not.toContain('\\setmainfont{Times}');
     });
 
     it('hard-fails Latin Modern generation when no verified TeX path is provided', () => {

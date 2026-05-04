@@ -20,8 +20,7 @@ import { isPathInFolderScope } from '../utils/pathScope';
 import { adaptPandocLayoutsToPublishingModel } from '../utils/publishingModel';
 import { BOOK_META_BACKED_ROLES } from '../utils/manuscript';
 import { validateRttsTemplateContent } from '../publishing/rttsValidation';
-import { getPandocLayoutSortRank, getPandocLayoutTier, resolveTemplateAccess } from '../publishing/templateTiering';
-import { hasProFeatureAccess } from '../settings/featureGate';
+import { getPandocLayoutSortRank, resolveTemplateAccess } from '../publishing/templateTiering';
 
 type ValidationScope = ValidationIssue['scope'];
 
@@ -387,7 +386,7 @@ export class PublishingValidationService {
                 layouts,
                 selectedLayoutId: selectedLayout.id,
                 manuscriptPreset: context.manuscriptPreset,
-                hasProAccess: hasProFeatureAccess(this.plugin),
+                hasProAccess: true,
             });
             snapshot.templateAccessIssues = access.issues;
             if (access.requestedLayout) {
@@ -686,12 +685,10 @@ export class PublishingValidationService {
         }
 
         if (context.manuscriptPreset) {
-            const hasProAccess = hasProFeatureAccess(this.plugin);
-            const layout = layouts
+            const sortedLayouts = layouts
                 .filter(item => item.preset === context.manuscriptPreset)
-                .sort((a, b) => getPandocLayoutSortRank(a) - getPandocLayoutSortRank(b) || a.name.localeCompare(b.name))
-                .find(item => hasProAccess || getPandocLayoutTier(item) === 'free')
-                || layouts.find(item => item.preset === context.manuscriptPreset);
+                .sort((a, b) => getPandocLayoutSortRank(a) - getPandocLayoutSortRank(b) || a.name.localeCompare(b.name));
+            const layout = sortedLayouts[0] || layouts.find(item => item.preset === context.manuscriptPreset);
             if (layout) return profiles.find(profile => profile.legacyLayoutId === layout.id);
         }
 

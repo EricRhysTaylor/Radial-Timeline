@@ -162,6 +162,7 @@ function describeFont(spec: DesignedStyleSpec): string {
     switch (spec.body.font) {
         case 'sorts-mill-goudy': return 'Sorts Mill Goudy (serif)';
         case 'latin-modern':     return 'Latin Modern (serif)';
+        case 'source-serif':     return 'Source Serif 4 (serif)';
         case 'eb-garamond':      return 'EB Garamond (serif)';
         case 'crimson':          return 'Crimson Text (serif)';
         case 'system-serif':     return 'System serif';
@@ -294,9 +295,9 @@ export function getLayoutFeatures(variant: FictionLayoutVariant): LayoutFeatureR
             ];
         case 'contemporary':
             return [
-                { label: 'Headers', value: 'Book title (left) · Scene title (right), sans' },
+                { label: 'Headers', value: 'Book title (left) · Scene title (right)' },
                 { label: 'Folios', value: 'Bottom center' },
-                { label: 'Font', value: 'System sans body and headers' },
+                { label: 'Font', value: 'Source Serif 4 (serif)' },
                 { label: 'Spacing', value: '1.5 lines' },
                 { label: 'Scenes', value: 'New page — centered scene number only' },
                 { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },

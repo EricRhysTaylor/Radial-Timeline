@@ -155,6 +155,25 @@ describe('getStructuredFontDiagnostic — Latin Modern', () => {
 
         fs.rmSync(tempRoot, { recursive: true, force: true });
     });
+
+    it('raw template diagnostics treat IfFontExistsTF plus errmessage as a required exact font', () => {
+        const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-font-required-'));
+        const templatePath = path.join(tempRoot, 'rt_exact_font.tex');
+        fs.writeFileSync(templatePath, [
+            '\\usepackage{fontspec}',
+            '\\IfFontExistsTF{Source Serif 4}{',
+            '  \\setmainfont{Source Serif 4}',
+            '}{',
+            '  \\errmessage{Radial Timeline PDF style requires Source Serif 4; install Source Serif 4 or choose another PDF style}',
+            '}',
+        ].join('\n'));
+
+        const diag = getTemplateFontDiagnostics(templatePath);
+        expect(diag.requiredFonts).toContain('Source Serif 4');
+        expect(diag.optionalFonts).not.toContain('Source Serif 4');
+
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+    });
 });
 
 describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
@@ -213,19 +232,19 @@ describe('getStructuredFontDiagnostic — structured shape', () => {
     it('has the expected shape: state + primaryFontName + resolvedFontName (+ optional installHint)', () => {
         // EB Garamond is non-bundled, non-system-special. On a CI runner
         // without a font catalog (or without EB Garamond installed) we expect
-        // either 'ok' (catalog miss → assume installed) or 'fallback' with
-        // a Google Fonts hint. Either shape is valid; the test pins the
+        // either 'ok' (catalog miss → assume installed) or 'missing-system'
+        // with a Google Fonts hint. Either shape is valid; the test pins the
         // type-shape so future refactors can't accidentally drop fields.
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'eb-garamond' } });
         const diag = getStructuredFontDiagnostic(layout);
 
-        expect(['ok', 'fallback', 'missing-bundled']).toContain(diag.state);
+        expect(['ok', 'missing-system', 'missing-bundled']).toContain(diag.state);
         expect(typeof diag.primaryFontName).toBe('string');
         expect(diag.primaryFontName.length).toBeGreaterThan(0);
         expect(typeof diag.resolvedFontName).toBe('string');
         expect(diag.resolvedFontName.length).toBeGreaterThan(0);
 
-        if (diag.state === 'fallback') {
+        if (diag.state === 'missing-system') {
             expect(diag.installHint).toBeDefined();
             expect(['google-fonts', 'ctan']).toContain(diag.installHint!.source);
             if (diag.installHint!.source === 'google-fonts') {
@@ -257,19 +276,19 @@ describe('renderFontDiagnosticLine', () => {
         })).toBeNull();
     });
 
-    it('renders a "Using X — install Y" sentence for fallback state', () => {
+    it('renders the install hint for missing system fonts', () => {
         const line = renderFontDiagnosticLine({
-            state: 'fallback',
+            state: 'missing-system',
             primaryFontName: 'EB Garamond',
-            resolvedFontName: 'TeX Gyre Pagella',
+            resolvedFontName: 'EB Garamond',
             installHint: {
                 source: 'google-fonts',
                 url: 'https://fonts.google.com/specimen/EB+Garamond',
-                message: 'Install EB Garamond from Google Fonts for the intended look.',
+                message: 'Install EB Garamond from Google Fonts.',
             },
         });
-        expect(line).toMatch(/Using TeX Gyre Pagella/);
-        expect(line).toMatch(/install EB Garamond/);
+        expect(line).toMatch(/Install EB Garamond/);
+        expect(line).not.toMatch(/Using TeX Gyre Pagella/);
     });
 
     it('renders the bundled-asset reinstall message for missing-bundled', () => {
@@ -356,22 +375,22 @@ describe('buildCtanHint — generic (no platform branching for unknown fonts)', 
 });
 
 describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
-    it('passes overridePlatform through to the install hint when in fallback state', () => {
+    it('passes overridePlatform through to the install hint when a system font is missing', () => {
         // Bundled fonts that are fully present always resolve to 'ok', and
         // Latin Modern always resolves to 'ok'. Non-bundled fonts hit the
         // system-catalog probe — depending on the test runner's environment
-        // we may land in 'ok' (catalog miss → assume installed) or 'fallback'
-        // (catalog hit + font not installed). When we DO land in 'fallback',
+        // we may land in 'ok' (catalog miss → assume installed) or 'missing-system'
+        // (catalog hit + font not installed). When we DO land in 'missing-system',
         // the hint MUST reflect the override platform.
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'eb-garamond' } });
         const diag = getStructuredFontDiagnostic(layout, 'mac');
-        if (diag.state === 'fallback' && diag.installHint?.source === 'google-fonts') {
+        if (diag.state === 'missing-system' && diag.installHint?.source === 'google-fonts') {
             expect(diag.installHint.steps).toBeDefined();
             expect(diag.installHint.message).toMatch(/Font Book/);
         }
         // The signature accepts overridePlatform without throwing — that's
         // the load-bearing assertion regardless of which branch fired.
-        expect(['ok', 'fallback', 'missing-bundled']).toContain(diag.state);
+        expect(['ok', 'missing-system', 'missing-bundled']).toContain(diag.state);
     });
 
     it('returns ok (no install hint) for a bundled font with assets present, regardless of platform', () => {

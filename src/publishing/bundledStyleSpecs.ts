@@ -29,9 +29,6 @@ export const BUNDLED_FICTION_IDS: readonly BundledFictionId[] = [
     'bundled-fiction-modern-classic',
 ];
 
-const SHARED_FONT_FALLBACK_CHAIN = ['TeX Gyre Pagella', 'Times New Roman', 'Times'];
-const SHARED_SANS_FONT_FALLBACK_CHAIN = ['Helvetica Neue', 'Helvetica', 'TeX Gyre Heros'];
-
 const STANDARD_MANUSCRIPT_SPEC: DesignedStyleSpec = {
     specVersion: DESIGNED_STYLE_SPEC_VERSION,
     archetype: 'submission',
@@ -39,7 +36,7 @@ const STANDARD_MANUSCRIPT_SPEC: DesignedStyleSpec = {
     margins: { topIn: 1.0, bottomIn: 1.0, leftIn: 1.0, rightIn: 1.0, mirrored: false },
     body: {
         font: 'system-sans',
-        fontFallbackChain: SHARED_SANS_FONT_FALLBACK_CHAIN,
+        fontFallbackChain: [],
         sizePt: 11,
         lineSpacing: 1.5,
         paragraphIndentEm: 1.5,
@@ -63,8 +60,8 @@ const CONTEMPORARY_LITERARY_SPEC: DesignedStyleSpec = {
     paperSize: 'us-trade-6x9',
     margins: { topIn: 0.9, bottomIn: 1.0, leftIn: 0.9, rightIn: 0.9, mirrored: false },
     body: {
-        font: 'system-sans',
-        fontFallbackChain: SHARED_SANS_FONT_FALLBACK_CHAIN,
+        font: 'source-serif',
+        fontFallbackChain: [],
         sizePt: 11,
         lineSpacing: 1.5,
         paragraphIndentEm: 1.5,
@@ -94,7 +91,7 @@ const SIGNATURE_LITERARY_SPEC: DesignedStyleSpec = {
     margins: { topIn: 0.85, bottomIn: 1.05, leftIn: 0.9, rightIn: 0.9, mirrored: false },
     body: {
         font: 'sorts-mill-goudy',
-        fontFallbackChain: SHARED_FONT_FALLBACK_CHAIN,
+        fontFallbackChain: [],
         sizePt: 11,
         lineSpacing: 1.5,
         paragraphIndentEm: 1.5,
@@ -123,7 +120,7 @@ const MODERN_CLASSIC_SPEC: DesignedStyleSpec = {
     margins: { topIn: 0.95, bottomIn: 1.15, leftIn: 0.98, rightIn: 0.98, mirrored: false },
     body: {
         font: 'latin-modern',
-        fontFallbackChain: SHARED_FONT_FALLBACK_CHAIN,
+        fontFallbackChain: [],
         sizePt: 11,
         lineSpacing: 1.18,
         microtype: true,

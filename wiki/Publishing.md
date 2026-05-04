@@ -26,9 +26,18 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 | Template | Structure | Best for |
 |---|---|---|
 | **Standard Manuscript** | Standard double-spaced submission format | Sending to agents / editors |
-| **Contemporary Literary** | Book-style with system sans body, running headers, chapter openers | A finished book look with simple chapters |
+| **Contemporary Literary** | Book-style with contemporary serif body, running headers, chapter openers | A finished book look with simple chapters |
 | **Signature Literary** | Literary book style with refined typography | Polished prose fiction |
 | **Modern Classic** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
+
+PDF layouts require their intended fonts rather than substituting fallbacks:
+
+| Template | Font |
+|---|---|
+| **Standard Manuscript** | Arial |
+| **Contemporary Literary** | Source Serif 4 |
+| **Signature Literary** | Sorts Mill Goudy |
+| **Modern Classic** | Latin Modern Roman |
 
 ### Other formats
 
@@ -49,22 +58,11 @@ Only installed templates can be used for export.
 
 ## Book Details and Matter Pages
 
-**Auto configure publishing** is part of Core. It creates a Book Details note, BookMeta-backed page slots, and Core PDF layout files.
+**Auto configure publishing** is part of Core. It creates a Book Details note, optional inline LaTeX Book Pages examples, and Core PDF layout files.
 
-BookMeta-backed page slots are lightweight ordering notes. They usually have an empty body and use:
+Standard Book Pages can render directly from Book Details. You do not need separate note files for title page, copyright, dedication, epigraph, acknowledgments, author note, about the author, or other works pages when the matching Book Details fields are filled in.
 
-```yaml
----
-Class: Frontmatter
-Role: title-page
-UseBookMeta: true
-BodyMode: plain
----
-```
-
-`UseBookMeta: true` tells Radial Timeline to fill that page from Book Details. The physical note controls whether the page appears and where it sits in the manuscript order.
-
-Standalone LaTeX matter notes are different. Use them only when you want the page body to be custom LaTeX:
+Use a standalone LaTeX matter note only when you want a custom page body:
 
 ```yaml
 ---
@@ -73,7 +71,23 @@ BodyMode: latex
 ---
 ```
 
-Those notes keep their own page content and do not need BookMeta values.
+Example body:
+
+```latex
+\begin{center}
+\vspace*{0.32\textheight}
+\begin{minipage}{0.72\textwidth}
+\itshape This optional front matter page is rendered as raw LaTeX.
+
+\vspace{0.8em}
+\raggedleft\normalfont --- Attribution
+\end{minipage}
+\vfill
+\end{center}
+\newpage
+```
+
+Inline LaTeX examples keep their own page content and do not require Book Details values.
 
 ## Duplicating a Template
 

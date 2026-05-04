@@ -7,7 +7,6 @@ import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode, type ManuscriptSceneHeadingMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics, getStructuredFontDiagnostic } from '../utils/exportFormats';
-import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, getActiveBookSourceFolder, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
@@ -21,7 +20,7 @@ import {
     buildTransientModalExportProfile,
     type ModalExportProfile,
 } from '../utils/exportProfileModel';
-import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
+import { getPandocLayoutSortRank } from '../publishing/templateTiering';
 import {
     applySpreadValidation,
     collectSpreadStatuses,
@@ -195,8 +194,6 @@ class DeleteExportTemplateModal extends Modal {
 export class ManuscriptOptionsModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onSubmit: (result: ManuscriptModalResult) => Promise<ManuscriptExportOutcome>;
-
-    private readonly isPro: boolean;
 
     private order: ManuscriptOrder = 'narrative';
     private tocMode: TocMode = 'markdown';
@@ -408,7 +405,6 @@ export class ManuscriptOptionsModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.onSubmit = onSubmit;
-        this.isPro = hasProFeatureAccess(plugin);
     }
 
     async onOpen(): Promise<void> {
@@ -504,7 +500,7 @@ export class ManuscriptOptionsModal extends Modal {
         exportTypeCol.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'What are you exporting?' });
         const exportRow = exportTypeCol.createDiv({ cls: 'ert-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
-        this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline', !this.isPro, true);
+        this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline');
 
         const formatCol = outputGrid.createDiv({ cls: 'ert-manuscript-output-col' });
         formatCol.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Output format' });
@@ -545,9 +541,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.layoutContainerEl = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-layout-picker ert-manuscript-preset-col ert-manuscript-preset-col--layout' });
 
         this.outlineOptionsCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        if (!this.isPro) {
-            this.outlineOptionsCard.addClass('ert-pro-locked');
-        }
         this.createSectionHeading(this.outlineOptionsCard, t('manuscriptModal.outlinePresetHeading'), 'layout-list');
         const outlinePresetRow = this.outlineOptionsCard.createDiv({ cls: 'ert-manuscript-input-container' });
         this.outlinePresetDropdown = new DropdownComponent(outlinePresetRow)
@@ -1567,28 +1560,18 @@ export class ManuscriptOptionsModal extends Modal {
         });
     }
 
-    private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false, isPro = false): void {
-        const pill = isPro
-            ? parent.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--pro' })
-            : parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
-        if (isPro) {
-            pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
-        } else {
-            pill.setText(label);
-        }
+    private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false): void {
+        const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        pill.setText(label);
         if (this.exportType === type) pill.addClass('is-active');
         if (disabled) {
-            if (isPro) pill.addClass('ert-pillBtn--used');
             pill.disabled = true;
-        }
-        if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
-            pill.addClass('ert-pro-locked');
         }
         this.exportTypePills.push({ el: pill, type });
 
         pill.onClickEvent(() => {
             if (disabled) {
-                new Notice(t('manuscriptModal.proRequired'));
+                new Notice('This export option is not available.');
                 return;
             }
             this.exportTypePills.forEach(p => p.el.removeClass('is-active'));
@@ -1599,10 +1582,11 @@ export class ManuscriptOptionsModal extends Modal {
         });
     }
 
-    private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both', isPro = false): void {
-        const pill = isPro
-            ? parent.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--pro', attr: { 'data-scope': scope } })
-            : parent.createEl('button', { attr: { 'data-scope': scope, 'data-ert-toggle': '' } });
+    private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both'): void {
+        const pill = parent.createEl('button', {
+            cls: 'ert-manuscript-output-format-pill',
+            attr: { 'data-scope': scope, 'data-ert-toggle': '' }
+        });
 
         // Add icon based on format
         const iconMap: Record<ExportFormat, string> = {
@@ -1612,34 +1596,22 @@ export class ManuscriptOptionsModal extends Modal {
             'json': 'code'
         };
         const iconName = iconMap[format];
-        if (isPro) {
-            if (iconName) {
-                const icon = pill.createSpan({ cls: 'ert-pillBtn__icon' });
-                setIcon(icon, iconName);
-            }
-            pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
-        } else {
-            if (iconName) {
-                const icon = pill.createSpan({ cls: 'ert-export-pill-icon' });
-                setIcon(icon, iconName);
-            }
-            pill.createSpan({ text: label });
+        if (iconName) {
+            const icon = pill.createSpan({ cls: 'ert-export-pill-icon' });
+            setIcon(icon, iconName);
         }
+        pill.createSpan({ text: label });
 
         const isActive = this.outputFormat === format;
         if (isActive) pill.addClass('is-active');
         if (disabled) {
-            if (isPro) pill.addClass('ert-pillBtn--used');
             pill.disabled = true;
-        }
-        if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
-            pill.addClass('ert-pro-locked');
         }
         this.outputFormatPills.push({ el: pill, format });
 
         pill.onClickEvent(() => {
             if (disabled) {
-                new Notice(t('manuscriptModal.proRequired'));
+                new Notice('This output format is not available.');
                 return;
             }
             const scopeMatch = scope === 'both' || scope === this.exportType;
@@ -1823,41 +1795,20 @@ export class ManuscriptOptionsModal extends Modal {
             const dd = new DropdownComponent(ddContainer);
             dd.selectEl.addClass('ert-input', 'ert-input--full');
             for (const l of layouts) {
-                const tierLabel = this.getTemplateProfileTierLabel(l);
-                const locked = !this.isPro && tierLabel === 'Pro';
-                // Native <select> options cannot embed real icons, so we
-                // prefix the option label with a Unicode tier glyph and set
-                // the option's `title` attribute to the tier name so screen
-                // readers and hover users still see "Core tier" / "Pro tier".
                 dd.addOption(l.id, this.formatTemplateProfileNameForDropdown(l) || l.name);
                 const option = dd.selectEl.querySelector<HTMLOptionElement>(`option[value="${CSS.escape(l.id)}"]`);
                 if (option) {
-                    option.title = locked ? `${tierLabel} tier — requires Pro` : `${tierLabel} tier`;
-                    option.setAttribute('aria-label', `${l.name}, ${tierLabel} tier`);
-                    if (locked) {
-                        option.disabled = true;
-                    }
+                    option.setAttribute('aria-label', l.name);
                 }
             }
             const hasTemplateSelection = activeProfileId && layouts.some(l => l.id === activeProfileId);
-            const activeProfile = layouts.find(l => l.id === activeProfileId);
-            const accessibleDefault = layouts.find(profile => this.isPro || this.getTemplateProfileTierLabel(profile) === 'Core');
-            const defaultId = hasTemplateSelection && (
-                this.isPro
-                || this.getTemplateProfileTierLabel(activeProfile) === 'Core'
-            )
+            const defaultId = hasTemplateSelection
                 ? activeProfileId!
-                : (accessibleDefault?.id || layouts[0].id);
+                : layouts[0].id;
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
             selectedLayoutProfile = layouts.find(l => l.id === defaultId);
             dd.onChange((val) => {
-                const nextProfile = layouts.find(l => l.id === val);
-                if (!this.isPro && this.getTemplateProfileTierLabel(nextProfile) === 'Pro') {
-                    new Notice('This PDF style requires Pro.');
-                    dd.setValue(this.selectedLayoutId || defaultId);
-                    return;
-                }
                 this.selectedLayoutId = val;
                 if (this.selectedExportProfile) {
                     this.selectedExportProfile = { ...this.selectedExportProfile, templateProfileId: val, selectedLayoutId: val };
@@ -1894,7 +1845,7 @@ export class ManuscriptOptionsModal extends Modal {
         const summary = desc.createDiv({ cls: 'ert-manuscript-layout-summary' });
         summary.createDiv({
             cls: 'ert-manuscript-layout-summary-title',
-            text: `${profile.name} · ${this.getTemplateProfileTierLabel(profile)}`,
+            text: profile.name,
         });
         summary.createDiv({
             cls: 'ert-manuscript-layout-summary-detail',
@@ -1915,16 +1866,6 @@ export class ManuscriptOptionsModal extends Modal {
                     }
                     : undefined
             );
-        }
-
-        const hasProTemplates = this.templateProfiles
-            .filter(item => item.usageContexts.includes(this.manuscriptPreset))
-            .some(item => this.getTemplateProfileTierLabel(item) === 'Pro');
-        if (!this.isPro && hasProTemplates) {
-            desc.createDiv({
-                cls: 'ert-manuscript-layout-pro-hint',
-                text: 'Pro styles add advanced typography, chapter treatments, and custom layouts.',
-            });
         }
     }
 
@@ -1985,49 +1926,23 @@ export class ManuscriptOptionsModal extends Modal {
         return this.plugin.settings.pandocLayouts?.find(layout => layout.id === profile.legacyLayoutId || layout.id === profile.id);
     }
 
-    private getTemplateProfileTierLabel(profile?: TemplateProfile): 'Core' | 'Pro' {
-        const sourceLayout = this.findLayoutForTemplateProfile(profile);
-        const tier = sourceLayout ? getPandocLayoutTier(sourceLayout) : profile?.tier;
-        return tier === 'free' ? 'Core' : 'Pro';
-    }
-
-    /**
-     * Glyph used as a tier indicator on dropdown options. Native HTML
-     * <select> options cannot render icons, so we prefix the option label
-     * with a Unicode glyph instead. Keep these distinct enough to be
-     * readable at small sizes in dark and light themes; the tier name is
-     * still surfaced via the option's title attribute for accessibility.
-     */
-    private getTemplateProfileTierGlyph(profile?: TemplateProfile): string {
-        return this.getTemplateProfileTierLabel(profile) === 'Pro' ? '◆' : '◇';
-    }
-
     private formatTemplateProfileName(profile?: TemplateProfile): string | undefined {
         if (!profile) return undefined;
-        return `${profile.name} (${this.getTemplateProfileTierLabel(profile)})`;
+        return profile.name;
     }
 
-    /**
-     * Dropdown-option label: glyph prefix instead of the parenthetical
-     * "(Core)" / "(Pro)" text. The native <select> cannot render icons,
-     * so a Unicode glyph stands in. Tier name is still set via the option's
-     * title attribute (see refreshLayoutOptions for the wiring).
-     */
     private formatTemplateProfileNameForDropdown(profile?: TemplateProfile): string | undefined {
         if (!profile) return undefined;
-        return `${this.getTemplateProfileTierGlyph(profile)} ${profile.name}`;
+        return profile.name;
     }
 
     private getTemplateProfileSummary(profile: TemplateProfile): string {
         const sourceLayout = this.findLayoutForTemplateProfile(profile);
-        if (this.getTemplateProfileTierLabel(profile) === 'Pro') {
-            if (sourceLayout?.usesModernClassicStructure) {
-                return 'Advanced book styling with part pages, epigraph support, and chapter treatments.';
-            }
-            if (sourceLayout?.hasSceneOpenerHeadingOptions) {
-                return 'Refined literary styling with scene opener controls and polished running heads.';
-            }
-            return 'Advanced PDF styling for custom, print-oriented, or specialized layouts.';
+        if (sourceLayout?.usesModernClassicStructure) {
+            return 'Book styling with part pages, epigraph support, and chapter treatments.';
+        }
+        if (sourceLayout?.hasSceneOpenerHeadingOptions) {
+            return 'Literary styling with scene opener controls and polished running heads.';
         }
         if (profile.id === 'bundled-fiction-contemporary-literary') {
             return 'A polished reading draft style with clean headers and comfortable book-page spacing.';
@@ -2063,17 +1978,6 @@ export class ManuscriptOptionsModal extends Modal {
 
     private collectTemplateTechnicalLines(): string[] {
         const lines: string[] = [];
-        const access = this.validationSnapshot?.templateAccess;
-        if (access) {
-            lines.push(`Access template: ${access.usedFallback
-                ? `${this.formatTemplateIdName(access.requestedTemplateId, access.requestedTemplateName)} -> ${this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName)}`
-                : this.formatTemplateIdName(access.effectiveTemplateId, access.effectiveTemplateName)
-            }`);
-        }
-        for (const issue of this.validationSnapshot?.templateAccessIssues || []) {
-            lines.push(`Access ${this.formatValidationIssue(issue)}`);
-        }
-
         const compatibility = this.validationSnapshot?.templateCompatibility;
         if (compatibility) {
             lines.push(`Template: ${this.formatTemplateIdName(compatibility.templateId, compatibility.templateName)}`);
@@ -2138,9 +2042,6 @@ export class ManuscriptOptionsModal extends Modal {
         if (!selectedProfile || !selectedLayout) return;
 
         const validation = validatePandocLayout(this.plugin, selectedLayout);
-        const accessIssues = this.validationSnapshot?.templateAccessIssues || [];
-        const hasAccessError = accessIssues.some(issue => issue.level === 'error');
-        const hasAccessWarning = accessIssues.some(issue => issue.level === 'warning');
         const compatibilityIssues = this.validationSnapshot?.templateCompatibilityIssues || [];
         const hasCompatibilityError = compatibilityIssues.some(issue => issue.level === 'error');
         const hasCompatibilityWarning = compatibilityIssues.some(issue => issue.level === 'warning');
@@ -2230,8 +2131,8 @@ export class ManuscriptOptionsModal extends Modal {
         //   error   → blocking, red, alert-circle
         //   warning → non-blocking warning, orange, alert-triangle
         //   ready   → everything passes, green, check-circle-2 (compact form)
-        const hasError = hasAccessError || hasCompatibilityError || hasFontRisk;
-        const hasWarning = !hasError && (hasCompatibilityWarning || hasAccessWarning || hasSpreadWarning);
+        const hasError = hasCompatibilityError || hasFontRisk;
+        const hasWarning = !hasError && (hasCompatibilityWarning || hasSpreadWarning);
         const isReady = !hasError && !hasWarning;
 
         // ── Render ───────────────────────────────────────────────────
@@ -2300,13 +2201,7 @@ export class ManuscriptOptionsModal extends Modal {
             text: fontSummaryLine,
         });
 
-        if (hasAccessError) {
-            const firstError = accessIssues.find(issue => issue.level === 'error');
-            content.createDiv({
-                cls: 'ert-pdf-output-line',
-                text: firstError?.message || 'Template access check failed.'
-            });
-        } else if (hasCompatibilityError) {
+        if (hasCompatibilityError) {
             const firstError = compatibilityIssues.find(issue => issue.level === 'error');
             content.createDiv({
                 cls: 'ert-pdf-output-line',
@@ -2314,8 +2209,8 @@ export class ManuscriptOptionsModal extends Modal {
             });
         } else if (hasFontRisk) {
             // Prefer the structured (spec-driven) diagnostic — it correctly
-            // models 'fallback' vs 'missing-bundled' and carries an install
-            // hint with a URL where applicable.
+            // models exact required fonts vs missing bundled assets and carries
+            // an install hint with a URL where applicable.
             if (structuredFontDiag.state !== 'ok') {
                 const line = content.createDiv({ cls: 'ert-pdf-output-line' });
                 if (structuredFontDiag.state === 'missing-bundled') {
@@ -2325,17 +2220,11 @@ export class ManuscriptOptionsModal extends Modal {
                         structuredFontDiag.installHint?.message || 'Plugin asset missing — reinstall plugin.'
                     );
                 } else {
-                    // 'fallback' — render the "Using X — install Y" sentence
-                    // followed by the OS-tailored install message, an inline
-                    // download link (when applicable), and a short bulleted
-                    // checklist of platform-specific install steps.
-                    const fallbackName = structuredFontDiag.resolvedFontName;
+                    // Missing system font — render the required-font message,
+                    // followed by the OS-tailored install hint, an inline
+                    // download link when applicable, and short install steps.
                     const primaryName = structuredFontDiag.primaryFontName;
-                    if (fallbackName && fallbackName !== primaryName) {
-                        line.appendText(`Font: Using ${fallbackName} — install ${primaryName} for the intended look.`);
-                    } else {
-                        line.appendText(`Font: ${primaryName} is not installed. Install it before exporting.`);
-                    }
+                    line.appendText(`Font: ${primaryName} is not installed. Install it before exporting.`);
                     const hint = structuredFontDiag.installHint;
                     if (hint) {
                         const hintLine = content.createDiv({ cls: 'ert-pdf-output-line' });
@@ -2373,12 +2262,6 @@ export class ManuscriptOptionsModal extends Modal {
                     text: `Font: ${primaryRequested} is not installed. Install it before exporting.`
                 });
             }
-        } else if (hasAccessWarning) {
-            const firstWarning = accessIssues.find(issue => issue.level === 'warning');
-            content.createDiv({
-                cls: 'ert-pdf-output-line',
-                text: firstWarning?.message || 'Template access changed for this export.'
-            });
         } else if (hasCompatibilityWarning) {
             const firstWarning = compatibilityIssues.find(issue => issue.level === 'warning');
             content.createDiv({

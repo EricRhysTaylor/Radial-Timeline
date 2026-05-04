@@ -1408,8 +1408,14 @@ export class OuterRingDragController {
         const y = r * Math.sin(centerAngle);
         // Rotate so horizontal arrows align with the ring tangent at this angle
         const rotDeg = (centerAngle * 180) / Math.PI + 90;
+        const subplotColor = this.resolveSubplotColorFromGroup(group);
 
         this.dragIndicator.setAttribute('transform', `translate(${x}, ${y}) rotate(${rotDeg})`);
+        if (subplotColor) {
+            this.dragIndicator.style.setProperty('--rt-drag-indicator-color', subplotColor);
+        } else {
+            this.dragIndicator.style.removeProperty('--rt-drag-indicator-color');
+        }
         this.dragIndicator.classList.add('rt-visible');
     }
 
@@ -1417,6 +1423,7 @@ export class OuterRingDragController {
     private hideDragIndicator(): void {
         if (this.dragIndicator) {
             this.dragIndicator.classList.remove('rt-visible');
+            this.dragIndicator.style.removeProperty('--rt-drag-indicator-color');
         }
     }
 

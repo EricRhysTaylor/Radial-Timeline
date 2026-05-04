@@ -148,7 +148,9 @@ describe('bundled pandoc layout export auto-install', () => {
         const contemporary = getBundledPandocLayoutContent('bundled-fiction-contemporary-literary')!;
         expect(standard).toContain('\\IfFontExistsTF{Arial}');
         expect(standard).not.toContain('Sorts Mill Goudy');
-        expect(contemporary).toContain('\\IfFontExistsTF{Arial}');
+        expect(contemporary).toContain('\\IfFontExistsTF{Source Serif 4}');
+        expect(contemporary).not.toContain('Charter');
+        expect(contemporary).not.toContain('\\setmainfont{Arial}');
         expect(contemporary).not.toContain('Sorts Mill Goudy');
         expect(contemporary).toMatch(/\\fancyhead\[LE\]\{[^}]*\\BookTitle\}/);
         expect(contemporary).toMatch(/\\fancyhead\[RO\]\{[^}]*\\rtSceneRunningTitle\}/);
@@ -173,6 +175,9 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(modernClassic).toContain('\\newcommand{\\rtPart}[3]');
         expect(modernClassic).not.toContain('\\newcommand{\\rtEpigraph}[2]');
         expect(modernClassic).toContain('\\rule{0.46in}{0.4pt}');
+        expect(modernClassic).toContain('\\begin{minipage}{\\textwidth}');
+        expect(modernClassic).not.toContain('\\begin{minipage}{0.86\\textwidth}');
+        expect(modernClassic).not.toContain('\\begin{minipage}{0.68\\textwidth}');
         expect(modernClassic).not.toContain('PART~#1');
         expect(modernClassic).toContain('{\\normalfont\\bfseries\\Large #1}\\par');
         expect(modernClassic).toContain('\\newcommand{\\rtChapter}[2]');
@@ -200,6 +205,7 @@ describe('bundled pandoc layout export auto-install', () => {
             'bundled-fiction-modern-classic',
         ]) {
             const content = getBundledPandocLayoutContent(layoutId)!;
+            expect(content).not.toMatch(/\\begin\{minipage\}\{0\.\d+\\textwidth\}/);
             expect(content).not.toContain('\\sffamily');
             expect(content).not.toContain('\\rmfamily');
             expect(content).not.toContain('\\ttfamily');

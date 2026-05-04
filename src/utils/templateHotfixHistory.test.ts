@@ -152,7 +152,7 @@ describe('getTemplateHotfixAlert / getActiveRefactorAlerts', () => {
         expect(alert).not.toBeNull();
         expect(alert!.id).toBe(TEMPLATE_HOTFIX_ALERT_ID);
         expect(alert!.severity).toBe('info');
-        expect(alert!.title).toBe('PDF templates and front and back matter notes updated');
+        expect(alert!.title).toBe('PDF templates and Book Pages examples updated');
     });
 
     it('appends the synthetic alert to getActiveRefactorAlerts when unacknowledged entries exist', () => {

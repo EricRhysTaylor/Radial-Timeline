@@ -22,26 +22,35 @@
   /* heavier for readability */
 }
 
-.radial-timeline-container .rt-chapter-marker-line {
-  fill: none;
-  stroke: color-mix(in srgb, var(--text-muted) 74%, transparent);
-  stroke-linecap: round;
-  opacity: 0.78;
+.radial-timeline-container .ert-chapter-marker {
+  cursor: default;
+  pointer-events: auto;
+}
+
+.radial-timeline-container .ert-chapter-marker-badge {
+  fill: var(--rt-max-publish-stage-color, var(--text-normal));
+  stroke: var(--background-primary);
+  stroke-width: 1px;
+  paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
+}
+
+.radial-timeline-container .ert-chapter-marker-label {
+  fill: var(--rt-color-empty);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0;
   pointer-events: none;
-  vector-effect: non-scaling-stroke;
+  user-select: none;
 }
 
-.radial-timeline-container .rt-chapter-marker-hit {
-  fill: none;
-  stroke: transparent;
-  pointer-events: stroke;
-  vector-effect: non-scaling-stroke;
+.radial-timeline-container .ert-chapter-marker--combined .ert-chapter-marker-label {
+  font-size: 8px;
 }
 
-.radial-timeline-container .rt-chapter-marker:hover .rt-chapter-marker-line,
-.radial-timeline-container .rt-chapter-marker:focus-within .rt-chapter-marker-line {
-  stroke: color-mix(in srgb, var(--text-normal) 68%, transparent);
-  opacity: 0.98;
+.radial-timeline-container .ert-chapter-marker:hover .ert-chapter-marker-badge,
+.radial-timeline-container .ert-chapter-marker:focus-within .ert-chapter-marker-badge {
+  stroke-width: 1.4px;
 }
 
 /* Rotation toggle base styles (timeline only; no animations) */
@@ -194,12 +203,12 @@
 }
 
 .rt-drag-reorder-indicator.rt-visible {
-  opacity: 0.7;
+  opacity: 0.92;
 }
 
 .rt-drag-reorder-indicator path,
 .rt-drag-reorder-indicator line {
-  stroke: var(--text-muted);
+  stroke: var(--rt-drag-indicator-color, var(--text-muted));
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -309,6 +318,17 @@
 }
 
 .rt-number-text.rt-scene-is-open.rt-non-selected {
+  fill: var(--rt-color-empty);
+  opacity: 1;
+}
+
+.rt-number-square.rt-missing-when {
+  fill: var(--rt-color-due);
+  stroke: var(--rt-color-due);
+  stroke-width: 2px;
+}
+
+.rt-number-text.rt-missing-when {
   fill: var(--rt-color-empty);
   opacity: 1;
 }
@@ -545,17 +565,6 @@
 
 .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: var(--rt-color-empty-selected);
-}
-
-.rt-number-square.rt-missing-when {
-  fill: var(--rt-color-due);
-  stroke: var(--rt-color-due);
-  stroke-width: 2px;
-}
-
-.rt-number-text.rt-missing-when {
-  fill: var(--rt-color-empty);
-  opacity: 1;
 }
 
 .rt-number-text.rt-has-edits.rt-selected,

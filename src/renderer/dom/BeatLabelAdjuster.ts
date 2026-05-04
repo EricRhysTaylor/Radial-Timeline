@@ -17,6 +17,14 @@ function getLabelSignature(container: HTMLElement): string {
     return ids;
 }
 
+function bringChapterMarkersToFront(container: HTMLElement): void {
+    const markerLayer = container.querySelector<SVGGElement>('#timeline-rotatable > .ert-chapter-markers');
+    const rotatable = markerLayer?.parentElement;
+    if (markerLayer && rotatable) {
+        rotatable.appendChild(markerLayer);
+    }
+}
+
 /**
  * Measures and adjusts plot label positions after SVG is rendered
  * Uses actual SVG getComputedTextLength() for perfect accuracy
@@ -25,7 +33,10 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
     const state = beatLabelAdjustState.get(container) || {};
     if (!container.isConnected) return;
     const labels = container.querySelectorAll('.rt-storybeat-title');
-    if (labels.length === 0) return;
+    if (labels.length === 0) {
+        bringChapterMarkersToFront(container);
+        return;
+    }
 
     const SPACE_BEFORE_DASH = 6;
     const SPACE_AFTER_DASH = 4;
@@ -187,6 +198,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
         }
     });
 
+    bringChapterMarkersToFront(container);
     state.success = true;
     beatLabelAdjustState.set(container, state);
 }

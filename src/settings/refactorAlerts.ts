@@ -184,7 +184,7 @@ export function cleanupAdvancedTemplate(advancedTemplate: string): string {
 }
 
 /**
- * Stable id for the synthetic "PDF templates and front and back matter notes updated" alert. The alert is
+ * Stable id for the synthetic "PDF templates and Book Pages examples updated" alert. The alert is
  * generated dynamically from `settings.templateHotfixHistory` rather than
  * stored in the static `REFACTOR_ALERTS` list, so it can re-appear after a
  * future hotfix without polluting `dismissedAlerts`.
@@ -203,8 +203,8 @@ export function getTemplateHotfixAlert(settings: RadialTimelineSettings): Refact
         id: TEMPLATE_HOTFIX_ALERT_ID,
         severity: 'info',
         icon: 'file-check',
-        title: 'PDF templates and front and back matter notes updated',
-        description: 'Bundled PDF style templates and inline LaTeX front/back matter examples were upgraded to the latest format. Re-export to apply the new formatting.',
+        title: 'PDF templates and Book Pages examples updated',
+        description: 'Bundled PDF style templates and inline LaTeX Book Pages examples were upgraded to the latest format. Re-export to apply the new formatting.',
     };
 }
 

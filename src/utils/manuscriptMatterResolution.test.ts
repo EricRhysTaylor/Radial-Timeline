@@ -100,6 +100,43 @@ describe('assembleManuscript: resolver-driven matter assembly', () => {
         expect(assembled.text).toContain(SCENE_BODY);
     });
 
+    it('suppresses physical and BookMeta-only matter pages when matter pages are disabled', async () => {
+        const titlePage = makeFile('Book/0.2 Title Page.md', '0.2 Title Page');
+        const scene = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const acknowledgments = makeFile('Book/200.1 Acknowledgments.md', '200.1 Acknowledgments');
+        const vault = makeVault({
+            [titlePage.path]: `---\nClass: Frontmatter\nRole: title-page\nBodyMode: plain\n---\n\n${NOTE_TITLE_PAGE_BODY}`,
+            [scene.path]: `---\nClass: Scene\n---\n\n${SCENE_BODY}`,
+            [acknowledgments.path]: `---\nClass: Backmatter\nRole: acknowledgments\nBodyMode: plain\n---\n\n${ACK_BODY}`,
+        });
+        const bookMeta: BookMeta = {
+            title: 'BOOKMETA-TITLE-PAGE-MARKER',
+            rights: { copyright_holder: 'BOOKMETA-COPYRIGHT-MARKER', year: 2026 },
+            frontmatter: { dedication: 'BOOKMETA-DEDICATION-MARKER' },
+            backmatter: { acknowledgments: 'BOOKMETA-ACK-MARKER' },
+        };
+
+        const assembled = await assembleManuscript(
+            [titlePage, scene, acknowledgments],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            bookMeta,
+            undefined,
+            { sceneHeadingRenderMode: 'markdown-h2', includeMatterPages: false }
+        );
+
+        expect(assembled.text).toContain(SCENE_BODY);
+        expect(assembled.text).not.toContain(NOTE_TITLE_PAGE_BODY);
+        expect(assembled.text).not.toContain(ACK_BODY);
+        expect(assembled.text).not.toContain('BOOKMETA-TITLE-PAGE-MARKER');
+        expect(assembled.text).not.toContain('BOOKMETA-COPYRIGHT-MARKER');
+        expect(assembled.text).not.toContain('BOOKMETA-DEDICATION-MARKER');
+        expect(assembled.text).not.toContain('BOOKMETA-ACK-MARKER');
+    });
+
     it('emits note-only roles (no BookMeta content for that role)', async () => {
         const titleNote = makeFile('Book/0.2 Title Page.md', '0.2 Title Page');
         const scene = makeFile('Scenes/1 Opening.md', '1 Opening');
@@ -312,6 +349,55 @@ describe('assembleManuscript: resolver-driven matter assembly', () => {
         // Custom note appears before the scene (frontmatter side).
         expect(assembled.text.indexOf('QUOTATION-BODY-MARKER'))
             .toBeLessThan(assembled.text.indexOf(SCENE_BODY));
+    });
+
+    it('preserves hard line wraps inside LaTeX matter prose runs', async () => {
+        const quotation = makeFile('Book/0.7 Quotation.md', '0.7 Quotation');
+        const scene = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const vault = makeVault({
+            [quotation.path]: [
+                '---',
+                'Class: Frontmatter',
+                'BodyMode: latex',
+                '---',
+                '',
+                '\\begin{center}',
+                '\\vspace*{4cm}',
+                '',
+                '\\normalsize',
+                'Line one',
+                'Line two',
+                'Line three',
+                '',
+                '\\vspace{1cm}',
+                '',
+                '—Anonymous, \\textit{Some Lunatic Active}',
+                '',
+                '\\end{center}',
+                '\\newpage',
+            ].join('\n'),
+            [scene.path]: `---\nClass: Scene\n---\n\n${SCENE_BODY}`,
+        });
+
+        const assembled = await assembleManuscript(
+            [quotation, scene],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            { sceneHeadingRenderMode: 'markdown-h2' }
+        );
+
+        expect(assembled.text).toContain('Line one\\\\\nLine two\\\\\nLine three');
+        expect(assembled.text).toContain('—Anonymous, \\textit{Some Lunatic Active}\n\n\\end{center}');
+        expect(assembled.text).not.toContain('Class: Frontmatter');
+        expect(assembled.text).not.toContain('BodyMode: latex');
+        expect(assembled.text).not.toContain('---\\\\');
+        expect(assembled.text).not.toContain('\\begin{center}\\\\');
+        expect(assembled.text).not.toContain('\\vspace*{4cm}\\\\');
     });
 
     it('synthetic vault: title-page note + BookMeta with title content → output contains the NOTE body, not the BookMeta-generated title page', async () => {

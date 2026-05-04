@@ -165,6 +165,9 @@ export const MONTH_TICK_START = 764;
 /** Where act labels are positioned (px from center) */
 export const ACT_LABEL_RADIUS = 790;
 
+/** Narrative-mode chapter marker badge radius; 792 keeps a 14px badge inside the 800px SVG edge. */
+export const NARRATIVE_CHAPTER_MARKER_RADIUS = 792;
+
 // =============================================================================
 // RADII - CHRONOLOGUE ARCS
 // =============================================================================
