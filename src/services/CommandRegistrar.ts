@@ -224,7 +224,7 @@ export class CommandRegistrar {
             if (activeBook) {
                 console.warn(`[RT Export] Source folder missing or invalid for book "${activeBook.title}" (id=${activeBook.id}), folder="${folder}"`);
             }
-            new Notice('Active book has no valid source folder. Open Settings → General → Books.');
+            new Notice('Active book has no valid source folder. Open Settings → Core → Books.');
             return {};
         }
 

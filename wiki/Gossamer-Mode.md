@@ -54,7 +54,7 @@ Use **Gossamer analysis** to run the built-in AI evaluation for the active signa
 <a name="story-beats-configuration"></a>
 ## Story Beats Configuration
 
-You can configure the underlying system that powers Gossamer Mode in **Settings → Story beats system**.
+You can configure the underlying system that powers Gossamer Mode in **Settings → Core → Story beats system**.
 
 ### 1. Select a System
 Choose a preset structure:
@@ -78,7 +78,7 @@ Row colors show the sync status between your beat list and the actual note files
 *   **No highlight** — new beat, no file yet.
 
 ### 3. Create & Merge
-*   **Create**: Generates beat set notes in your source folder, one per beat. Notes come pre-populated with properties (`Class: Beat`, `Purpose`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
+*   **Create**: Generates beat notes in the active book folder, one per beat. Notes come pre-populated with properties (`Class: Beat`, `Purpose`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
 *   **Merge**: Appears when beats are misaligned. Updates existing beat note frontmatter to match current act assignments (and fills missing Beat Model/Beat Id where applicable). It does not rename files or enforce numeric prefix conventions.
 
 > [!NOTE]

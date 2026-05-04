@@ -27,21 +27,11 @@ For the operating guide to the Inquiry View itself, see [Inquiry](Inquiry).
 
 ### How Inquiry Identifies Books
 
-Inquiry uses two methods to identify which folders are books:
+Inquiry uses the book profiles you configure in **Settings -> Core -> Books**.
 
-1.  **Folder name**: Folders named `Book 1`, `Book 2`, and so on are automatically recognized as books.
-2.  **Outline metadata**: Any folder that contains an Outline file with `scope: book` in its YAML frontmatter is recognized as a book regardless of the folder name.
+Each book profile contributes one book folder to Inquiry. In **Book** scope, Inquiry uses the active book profile. In **Saga** scope, it can scan across the included book profiles together.
 
-Example:
-
-```yaml
----
-class: Outline
-scope: book
----
-```
-
-The Outline file can be anywhere inside the book folder, including subfolders such as `Plot/`.
+**Inquiry scan folders** are separate. They add support material and other configured vault paths, but they are not the main way books are defined.
 
 <a name="prompts"></a>
 ## Inquiry Prompts

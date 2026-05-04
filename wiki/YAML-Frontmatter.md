@@ -1,4 +1,4 @@
-This page covers scene metadata (basic and advanced), beat notes, and backdrop notes. Radial Timeline reads metadata from **Obsidian properties** (YAML frontmatter) at the top of each note. If you prefer to keep things light, you can start with only the minimal fields and fill the rest later.
+This page covers scene properties (core and advanced), beat notes, and backdrop notes. Radial Timeline reads these from **Obsidian properties** at the top of each note. If you prefer to keep things light, you can start with only the minimal properties and fill in the rest later.
 
 ## Minimal Scene (Required Fields)
 
@@ -44,7 +44,7 @@ Obsidian links are supported in properties. Use the double-bracket wikilink form
 *   `pov: objective` — shows `Narrator°` for camera-eye scenes.
 *   `pov: two`, `pov: 4`, `pov: count`, `pov: all` — highlight multiple carriers.
 
-You can control how POV is displayed in **Settings → Point of view**.
+You can control how POV is displayed in **Settings → Core → Point of view**.
 
 <a name="advanced-scene-template"></a>
 ## Advanced Scene Properties
@@ -86,7 +86,7 @@ Summary Update:
 
 The Scene properties editor lets you tailor the advanced scene properties while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow.
 
-*   Enable **Settings → Scene properties & remapping → Scene properties editor**.
+*   Enable **Settings → Core → Scene properties → Scene properties editor**.
 *   Required base keys stay locked and auto-included in order.
 *   Optional keys can be drag-reordered, renamed, deleted, or added.
 *   RT-managed maintenance only governs the core and current advanced scene-property fields.
@@ -110,7 +110,7 @@ Gossamer2 Justification:
 
 > **Beat semantics**: Beats are structural, not temporal. They do not use the `When` field — ordering comes from Act assignment and filename prefix (`sceneInteger.minor`, for example `7.01`).
 
-Beat notes have their own **Beat properties editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat properties are stored per beat system.
+Beat notes have their own **Beat properties editor** in **Settings → Core → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat properties are stored per beat system.
 
 ## Backdrop Notes (YAML)
 
@@ -125,15 +125,15 @@ Backdrop notes can be extended using the **Backdrop properties editor** in Setti
 
 ## YAML Managers in Settings
 
-*   **Scene properties editor**: Customize the advanced scene properties (optional fields and hover metadata).
+*   **Scene properties editor**: In **Settings -> Core**, customize advanced scene properties and hover metadata.
 *   **Beat properties editor**: Customize beat note fields and beat hover metadata.
-*   **Custom Metadata Mapping**: Map your existing keys to Radial Timeline keys without rewriting your files.
+*   **Remap frontmatter field keys**: In **Settings -> Advanced -> Configuration**, map your existing keys to Radial Timeline keys without rewriting your files.
 
-See [Scene properties & remapping](Settings-Core#scene-properties-and-remapping) and [Story beats system](Settings-Core#story-beats-system) for configuration details.
+See [Scene properties](Settings-Core#scene-properties), [Configuration](Settings-Advanced#configuration), and [Story beats system](Settings-Core#story-beats-system) for configuration details.
 
-## Custom Metadata Mapping
+## Remap Frontmatter Field Keys
 
-If your vault already uses different frontmatter keys for scene metadata, you can map them to Radial Timeline's system keys in **Settings → Custom Metadata Mapping**.
+If your vault already uses different property names for scene notes, you can map them to Radial Timeline's system keys in **Settings -> Advanced -> Configuration** with **Remap frontmatter field keys**.
 
 Example: If you use `Timeline: 2024-01-01` instead of `When: 2024-01-01`, create a mapping from `Timeline` to `When`.
 

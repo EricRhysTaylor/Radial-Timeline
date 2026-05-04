@@ -179,7 +179,7 @@ export async function processWithModal(
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
     if (allScenes.length < 1) {
-        throw new Error('No valid scenes found in the specified source path.');
+        throw new Error('No valid scenes found in the active book folder.');
     }
 
     const processableScenes = allScenes.filter(scene => {
@@ -346,7 +346,7 @@ export async function processBySubplotOrder(
     try {
         const allScenes = await getAllSceneData(plugin, vault);
         if (allScenes.length < 1) {
-            new Notice('No valid scenes found in the specified source path.');
+            new Notice('No valid scenes found in the active book folder.');
             notice.hide();
             return;
         }
@@ -489,7 +489,7 @@ export async function processSubplotWithModal(
 ): Promise<void> {
     const allScenes = await getAllSceneData(plugin, vault);
     if (allScenes.length < 1) {
-        throw new Error('No valid scenes found in the specified source path.');
+        throw new Error('No valid scenes found in the active book folder.');
     }
 
     const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
@@ -646,7 +646,7 @@ export async function processEntireSubplotWithModalInternal(
 ): Promise<void> {
     const allScenes = await getAllSceneData(plugin, vault);
     if (allScenes.length < 1) {
-        throw new Error('No valid scenes found in the specified source path.');
+        throw new Error('No valid scenes found in the active book folder.');
     }
 
     const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));

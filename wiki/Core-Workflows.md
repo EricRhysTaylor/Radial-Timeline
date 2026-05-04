@@ -7,7 +7,7 @@ For first-time setup, start with [Fresh Vault Onboarding](Fresh-Vault-Onboarding
 *   Use [Scenes, Structure, and the Timeline](Scenes-Structure-Timeline) if you want the conceptual model first.
 *   Organize the manuscript around **Acts**, **Subplots**, and an optional **story beat system**.
 *   Use [Book Designer](Book-Designer) when you want a guided scaffold instead of creating every note by hand.
-*   Configure structure in [Settings → Acts](Settings-Core#acts) and [Settings → Story beats system](Settings-Core#story-beats-system).
+*   Configure structure in [Settings → Core → Acts](Settings-Core#acts) and [Settings → Core → Story beats system](Settings-Core#story-beats-system).
 
 ## Creating Scenes
 
@@ -37,4 +37,4 @@ For first-time setup, start with [Fresh Vault Onboarding](Fresh-Vault-Onboarding
 
 1.  Install [Pandoc](https://pandoc.org/installing.html).
 2.  Install a LaTeX distribution if you want PDF output.
-3.  Open **Settings → Publish** and configure paths, PDF styles, or bundled layouts as needed.
+3.  Open **Settings → Publish** for PDF styles and bundled layouts, and **Settings → Advanced → Configuration** for the export-path readout and logs.

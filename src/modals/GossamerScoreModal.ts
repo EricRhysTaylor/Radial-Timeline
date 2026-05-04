@@ -787,7 +787,7 @@ export class GossamerScoreModal extends Modal {
       // Gather manuscript evidence (same as automated flow)
       const { files: sceneFiles } = await getSortedSceneFiles(this.plugin);
       if (sceneFiles.length === 0) {
-        new Notice('No scenes found in source path. Configure your book source folder first.');
+        new Notice('No scenes found in the active book folder. Configure the book profile first.');
         return false;
       }
       const evidenceDocument = await buildGossamerEvidenceDocument({

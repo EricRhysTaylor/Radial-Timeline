@@ -73,7 +73,7 @@ export class CreateBeatSetModal extends Modal {
     const sourcePath = this.plugin.settings.sourcePath.trim();
     const locationText = sourcePath
       ? `Notes will be created in: ${sourcePath}/`
-      : 'Notes will be created in the vault root (no source path set)';
+      : 'Notes will be created in the vault root (no book folder set)';
 
     card.createDiv({ cls: 'ert-sub-card-note', text: locationText });
 

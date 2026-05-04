@@ -39,5 +39,5 @@ These are the main command-palette entries, listed in the same order as the pale
 Some commands only appear in the Command Palette when their required feature is enabled:
 
 *   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis, Inquiry omnibus pass): Require **AI LLM features** to be enabled in Settings → AI.
-*   **Runtime estimator**: Requires **Pro** to be active in Settings → PRO.
+*   **Runtime estimator**: Requires **Pro** access. Runtime configuration lives in Settings → Core.
 *   **Planetary time calculator**: Requires **Planetary time** to be enabled in Settings → Core.

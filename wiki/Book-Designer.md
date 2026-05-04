@@ -29,7 +29,7 @@ The panel is organized into three main sections:
 *   **Target location**: The folder path where your new book files will be created (e.g., `Book 1`). The folder will be created if it doesn't exist. Otherwise root of the vault will be used.
 *   **Scenes to generate**: The total number of scene files to create.
 *   **Target book length**: Used for numbering distribution. For example, if you generate 10 scenes with a target length of 60, scenes will be numbered 1, 7, 13, etc., leaving gaps for future scenes.
-*   **Acts to distribute scenes across**: Choose which acts (1..N) to populate, where **N** comes from your **Settings → Acts → Act count**. Scenes are distributed evenly across the selected acts.
+*   **Acts to distribute scenes across**: Choose which acts (1..N) to populate, where **N** comes from your **Settings → Core → Acts → Act count**. Scenes are distributed evenly across the selected acts.
 
 ### 2. Content Configuration
 *   **Subplots**: Enter your subplots, one per line. Scenes will be assigned to these subplots in a round-robin fashion. Each scene will belong to only one subplot.
@@ -58,7 +58,7 @@ Book Designer supports two built-in scene property profiles:
 
 ### Adding Custom Properties
 If your writing methodology uses fields beyond the built-in keys (for example Dramatica signposts or your own custom labels), you can add them to the advanced scene properties:
-1.  Go to **Settings → Scene properties & remapping**.
+1.  Go to **Settings → Core → Scene properties**.
 2.  Enable **Scene properties editor**.
 3.  Add your custom keys to the list.
 4.  In Book Designer, select **Advanced properties**.
@@ -68,7 +68,7 @@ If your writing methodology uses fields beyond the built-in keys (for example Dr
 ## Custom Beat Systems
 
 If you use a story structure not listed in the standard options:
-1.  Go to **Settings → Story beats system** and select **Custom**.
+1.  Go to **Settings → Core → Story beats system** and select **Custom**.
 2.  Name your beat system and add beats in the **Custom story beat system editor**. Assign each beat to an act.
 3.  In the Book Designer, enable **Generate Beats** to automatically generate beat notes for your custom system.
 
@@ -85,13 +85,13 @@ You can also create custom beat notes manually:
 *   Radial Timeline will detect these notes and display them in Gossamer mode. The `Beat Model` value must match the system name in settings to be recognized.
 
 > [!NOTE]
-> Custom beat notes use the same properties structure as preset systems. Use the **Beat properties editor** in Settings → Story beats system to add your own beat-specific fields and hover metadata. You can also save and switch between custom beat systems (saved sets).
+> Custom beat notes use the same properties structure as preset systems. Use the **Beat properties editor** in Settings → Core → Story beats system to add your own beat-specific fields and hover metadata. You can also save and switch between custom beat systems (saved sets).
 
 ## Advanced Metadata
 
 Some writing methodologies rely on tracking complex properties rather than just linear beats. You can accommodate this using **Advanced properties**:
 
-1.  Go to **Settings > Scene properties & remapping**.
+1.  Go to **Settings → Core → Scene properties**.
 2.  Enable **Scene properties editor**.
 3.  Add custom keys for your methodology.
 4.  When you generate or edit scenes, these properties will be preserved, allowing you to use the plugin's timeline to visualize your story while maintaining your specific data structure in the notes.

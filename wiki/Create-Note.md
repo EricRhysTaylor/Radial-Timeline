@@ -15,7 +15,7 @@ The picker is organized into three families:
 
 ## What Happens Next
 
-After you choose a subtype, Radial Timeline creates the file in the active book/source folder and opens it immediately.
+After you choose a subtype, Radial Timeline creates the file in the active book folder and opens it immediately.
 
 Scene creation includes built-in scaffolds:
 

@@ -9,16 +9,17 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 
 This page covers the existing vault flow. If you are starting fresh, see [Fresh Vault Onboarding](Fresh-Vault-Onboarding).
 
-## 1. Choose a source folder
-1. Decide the folder that contains your scene notes.
-2. Set **Source path** to that folder in Settings -> Core -> General.
-3. Keep non-scene notes outside the Source path if you want them ignored.
+## 1. Add a book profile
+1. Decide which folder contains the scene notes for this book.
+2. Open **Settings -> Core -> Books**.
+3. Add a book profile, set its title, and link its **Source folder** to that manuscript folder.
 
 ## 2. Map your metadata
-- Minimum fields for Radial Timeline View: `Class: Scene`, `Act`, `Synopsis`, `Subplot`.
-- Chronologue mode needs `When` and `Duration` to place scenes in time.
-- Progress mode needs `Status` and `Publish Stage` for progress tracking.
-- If your frontmatter uses different keys, use **Settings -> Custom Metadata Mapping**.
+- Your scene notes should use the `Scene` note type.
+- For Radial Timeline View, the main scene note properties are `Act`, `Synopsis`, and `Subplot`.
+- Chronologue uses `When` and `Duration`.
+- Progress uses `Status` and `Publish Stage`.
+- If your vault uses different property names, use **Settings -> Advanced -> Configuration** and enable **Remap frontmatter field keys**.
 
 See [Scene Properties (Core + Advanced)](YAML-Frontmatter) for the full schema.
 

@@ -3514,11 +3514,23 @@ body > .tooltip {
 
 .ert-style-wizard__preset-line-bar {
   height: 1px;
-  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  background-color: transparent;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--text-muted) 45%, transparent),
+      color-mix(in srgb, var(--text-muted) 45%, transparent)
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--text-muted) 45%, transparent),
+      color-mix(in srgb, var(--text-muted) 45%, transparent)
+    );
+  background-repeat: no-repeat, no-repeat;
+  background-position: left center, right center;
+  background-size: 46% 100%, 46% 100%;
 }
 
 .ert-style-wizard__preset-line-bar:last-child {
-  width: 60%;
+  background-size: 30% 100%, 30% 100%;
 }
 
 /* -- Header strip preview -- */
@@ -3568,34 +3580,76 @@ body > .tooltip {
   box-sizing: border-box;
 }
 
-/* -- Preview focus halos: subtle visual cue tying active category to the
-   live preview region. Opacity / border-color tweaks only — no layout
-   shift. -- */
+/* -- Folio position presets (card mocks where the page number sits) -- */
 
-.ert-style-wizard__preview--focus-page .ert-layout-page {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-accent) 35%, transparent);
+.ert-style-wizard__preset-folio-strip {
+  width: 80px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  padding: 0 var(--ert-gap-2xs);
+  box-sizing: border-box;
 }
 
-.ert-style-wizard__preview--focus-body .ert-layout-page-body {
-  background: color-mix(in srgb, var(--ert-accent) 4%, transparent);
+.ert-style-wizard__preset-folio-strip--with-num {
+  border-bottom-color: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
 }
 
-.ert-style-wizard__preview--focus-headers .ert-layout-page-header {
-  background: color-mix(in srgb, var(--ert-accent) 12%, transparent);
+.ert-style-wizard__preset-folio-body {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-gap-xs) var(--ert-gap-2xs) 0;
+  box-sizing: border-box;
 }
 
-.ert-style-wizard__preview--focus-folio .ert-layout-page-footer,
-.ert-style-wizard__preview--focus-folio .ert-layout-page-hdr-right {
-  background: color-mix(in srgb, var(--ert-accent) 12%, transparent);
+.ert-style-wizard__preset-folio-footer {
+  width: 80px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--ert-gap-2xs);
+  box-sizing: border-box;
 }
 
-.ert-style-wizard__preview--focus-parts .ert-layout-page-special-text,
-.ert-style-wizard__preview--focus-chapters .ert-layout-page-body.is-special,
-.ert-style-wizard__preview--focus-scenes .ert-layout-page-body.is-special {
-  outline: 1px dashed color-mix(in srgb, var(--ert-accent) 45%, transparent);
-  outline-offset: var(--ert-gap-3xs);
+.ert-style-wizard__preset-folio-footer--center {
+  justify-content: center;
 }
 
-.ert-style-wizard__preview--focus-epigraph .ert-layout-feature-value {
+.ert-style-wizard__preset-folio-num {
+  font-size: 0.55rem;
+  line-height: 1;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.ert-style-wizard__preset-card.is-active .ert-style-wizard__preset-folio-num {
   color: var(--text-normal);
 }
+
+/* -- Glossary footer (term — definition rows) -- */
+
+.ert-style-wizard__glossary {
+  margin-top: var(--ert-gap-md);
+  padding-top: var(--ert-gap-sm);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-2xs);
+}
+
+.ert-style-wizard__glossary-row {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.ert-style-wizard__glossary-term {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+

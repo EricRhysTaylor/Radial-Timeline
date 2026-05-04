@@ -41,7 +41,7 @@ The Inquiry glyph visualizes both scores as concentric rings, giving you a snaps
 
 ### Scope
 
-*   **Book** — Analyzes scenes within the current source path (single manuscript).
+*   **Book** — Analyzes scenes within the active book folder (single manuscript).
 *   **Saga (Σ)** — Expands analysis across multiple books using configured scan folders, ideal for series continuity checks.
 
 ---

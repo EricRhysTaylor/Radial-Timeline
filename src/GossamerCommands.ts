@@ -970,9 +970,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const { files: sceneFiles } = await getSortedSceneFiles(plugin);
 
     if (sceneFiles.length === 0) {
-      modal.addError('No scenes found in source path.');
+      modal.addError('No scenes found in the active book folder.');
       modal.completeProcessing(false, 'No scenes found');
-      new Notice('No scenes found in source path.');
+      new Notice('No scenes found in the active book folder.');
       return;
     }
 

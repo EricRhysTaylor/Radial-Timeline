@@ -97,7 +97,7 @@ The Runtime sub-mode is one of three sub-modes within Chronologue mode. It repla
 - **Scene selection** — Click scenes to compare their runtime visually
 
 **Usage:**
-1. Enable Runtime Estimation in Settings → PRO
+1. Enable Runtime Estimation in Settings → Core
 2. Switch to Chronologue mode (`3`)
 3. Click the `RT` button to enter the Runtime sub-mode
 4. Adjust the cap slider to tune visualization

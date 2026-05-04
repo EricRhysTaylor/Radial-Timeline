@@ -1,6 +1,6 @@
 **Keyboard Shortcut**: `2`
 
-Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story).
+Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Core → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story).
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/narrative.jpeg" alt="Narrative Mode Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
@@ -8,7 +8,7 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 
 ## Key Features
 
-*   **Structure**: Scenes are distributed across Act 1..Act N (based on your **Settings → Acts → Act count**).
+*   **Structure**: Scenes are distributed across Act 1..Act N (based on your **Settings → Core → Acts → Act count**).
 *   **Book or Saga scope**: Switch between one active book and a combined Saga view.
 *   **Subplot Colors**: The outer ring segments are colored by their subplot. This lets you quickly visualize which plot threads are dominant in each section of the book.
 *   **Publishing markers**: Optional outer-ring placards can show chapter starts and part boundaries from your active novel PDF layout.
@@ -54,6 +54,4 @@ When a scene belongs to multiple subplots, the outer All Scenes ring must choose
     *   **Missing** — the subplot is not assigned to this scene.
     *   **Gray** — the subplot is assigned but is not dominant.
     *   **Darker hue** of the subplot ring color — this subplot is dominant and expressed on the outer ring above all others.
-*   **Reset**: Use **Settings → Core → Configuration → Reset subplot color precedence** to clear all manually assigned dominance.
-
 This mode hides status and progress stage overlays to keep the focus on story structure and the weaving of subplots.

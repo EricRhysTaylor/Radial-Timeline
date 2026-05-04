@@ -181,7 +181,7 @@ The template file writes to `Radial Timeline/Pandoc/rt_modern_classic.tex` in yo
 
 ### Step 2 — Set your Act count
 
-**Settings → Acts → Act count**
+**Settings → Core → Acts → Act count**
 
 This is a global plugin setting (not a per-template one). Most novels use 3 acts; some use 4 or 5. Whatever you pick here is the number of Parts your book will have.
 
@@ -228,7 +228,7 @@ The exporter:
 4. Emits scene prose separated by ornaments inside each chapter.
 5. Hands the assembled markdown to Pandoc, which produces a PDF.
 
-Output goes to `Radial Timeline/Export/` by default (configurable in Settings → Publish → Export folder).
+Output goes to `Radial Timeline/Export/` by default. The export destination is shown in **Settings → Advanced → Configuration**.
 
 ### Minimum viable Modern Classic manuscript
 

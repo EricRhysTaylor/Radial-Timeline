@@ -2,8 +2,22 @@ The Advanced tab holds lower-level system and workflow controls.
 
 ## Configuration
 
-*   **Manuscript ripple rename**: Normalizes scene and active-beat filename prefixes after drag reorder. Scenes are resequenced as integers (`1`, `2`, `3`), while beats are resequenced as decimal minors (`1.01`, `1.02`, ...).
-*   **Auto-expand clipped scene titles**: Automatically expands truncated text in the radial view on hover.
-*   **Timeline readability scale**: Adjusts the global font size of the timeline (`Normal` or `Large`).
-*   **Metadata refresh debounce**: Adjust how often the timeline refreshes while typing (default `10000ms`).
-*   **Reset subplot color precedence**: Clears manually assigned dominant subplot colors.
+Advanced is currently grouped into three areas:
+
+### Timeline Display
+
+*   **Auto-expand clipped scene titles**: Automatically expands truncated scene titles on hover.
+*   **Show chapter markers**: Displays chapter boundaries on the Narrative all-scenes ring and reports how many active chapter markers exist in the current book.
+*   **Recent drag move overlay in narrative mode**: Shows the last committed scene and beat drag moves.
+*   **Readability size**: Switches curated timeline text sizing between `Normal` and `Large`.
+
+### Schema & Manuscript
+
+*   **Remap frontmatter field keys**: Map custom frontmatter keys to Radial Timeline scene core fields.
+*   **Manuscript ripple rename**: Normalizes scene and active-beat filename prefixes after drag reorder. Scenes stay integer-numbered; beats use decimal minors.
+
+### Logs
+
+*   **AI output folder**: Readout of the main RT logs location.
+*   **Export folder**: Readout of the manuscript/export destination.
+*   **Enable AI content logs**: When enabled, full prompts, materials, and API responses are written as content logs.

@@ -1,11 +1,14 @@
-The Core tab is the main structural control center for Radial Timeline. It covers manuscript scope, progress tracking, story beats, chronology, scene properties, POV, planetary time, and timeline color systems.
+The Core tab is the main structural control center for Radial Timeline. It covers book profiles, progress tracking, runtime estimation, story beats, scene properties, chronology, POV, planetary time, and ring colors.
 
-## General
+## Books
 
-*   **Source path**: The root folder in your vault containing your manuscript scene files (for example, `Book 1`). Leave blank to scan the entire vault.
-*   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays `Work in Progress`.
-*   **Logs & generated files output folder**: Storage location for AI logs and local LLM reports (default `Radial Timeline/Logs`).
-*   **Export folder**: Destination for manuscript, outline, and cue card exports — Markdown, PDF, beat sheets, and index cards (default `Radial Timeline/Export`).
+*   **Books manager**: Create one profile per book, set the title, and link each profile to its manuscript folder.
+*   **Active book**: The active book drives the timeline view, central title, and exports.
+*   **Source folder**: Each book profile stores its own linked folder. This is where Radial Timeline looks for that book's scene notes.
+*   **Scene count**: Each book card shows how many `Class: Scene` notes are currently found in that folder.
+*   **Reorder books**: Drag books to control saga order.
+*   **Create draft**: Make a sibling draft copy of a book folder and add it as a new book profile.
+*   **Remove profile**: Deletes the profile only. It does not delete files.
 
 ## Progress And Status
 
@@ -72,7 +75,7 @@ Configure the structural pacing guide for your story.
 
 *   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**) or choose **Custom**.
 *   **Custom story beat system editor**: Name your beat system, add beats, assign each beat to an act, and drag to reorder.
-*   **Create sets**: Generate beat set notes in your source folder.
+*   **Create beat notes**: Generate beat notes in the active book folder.
 *   **Beat filename numbering**: Generated beat notes use decimal minor prefixes (for example, `7.01 Midpoint.md`) so scene integer slots remain canonical.
 *   **Repair beat notes**: Updates frontmatter (`Act`, `Beat Model`, `Class`) only. Does not rename files.
 *   **Beat properties editor**: Customize additional beat properties and choose which fields appear in beat hover metadata. Stored per beat system.
@@ -93,19 +96,22 @@ Configure the high-level structure of your narrative ring.
 > [!NOTE]
 > See [Narrative Mode](Narrative-Mode) for how acts render in the timeline.
 
-<a name="scene-properties-and-remapping"></a>
-## Scene Properties And Remapping
+<a name="scene-properties"></a>
+## Scene Properties
 
-Manage how Radial Timeline reads and maintains scene metadata.
+Manage the scene note properties that Radial Timeline maintains and shows in hover metadata.
 
-*   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (for example, `story_date`) to RT system keys (for example, `When`) without changing your files.
-*   **Scene properties editor**: Customize the advanced scene properties, add optional fields, and control hover metadata icons/order.
+*   **Core properties**: Always included in scene notes and maintained automatically.
+*   **Advanced properties**: Optional scene note properties you can enable, edit, and reveal in hover.
+*   **Scene hover preview**: Preview how enabled scene note properties appear in hover metadata.
+*   **Scene note maintenance**: Check notes, add missing properties, add missing IDs, reorder maintained properties, and clean up duplicate IDs.
 
 Important behavior:
 
 *   RT-maintained scene normalization only manages the **core** and current **advanced** scene-property fields.
 *   External or foreign YAML properties from other plugins or your own custom workflows are **not deleted** by scene-property maintenance.
 *   During reorder, foreign keys stay anchored to the RT-managed item directly above them instead of being dumped into a generic end block.
+*   **Remap frontmatter field keys** now lives in [Settings → Advanced → Configuration](Settings-Advanced#configuration).
 
 > [!NOTE]
 > Use [Scene Properties (Core + Advanced)](YAML-Frontmatter) for the full schema and examples.

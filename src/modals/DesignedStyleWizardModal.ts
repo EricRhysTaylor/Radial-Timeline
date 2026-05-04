@@ -418,7 +418,6 @@ export class DesignedStyleWizardModal extends Modal {
         // Initial preview render — runs after saveButton is constructed so
         // the validation-driven disabled toggle is wired from the start.
         this.renderPreview();
-        this.applyPreviewFocusClass();
     }
 
     onClose(): void {
@@ -573,22 +572,6 @@ export class DesignedStyleWizardModal extends Modal {
     private activateCategory(category: WizardCategory): void {
         this.activeCategory = category;
         this.renderActiveCategoryPanel();
-        this.applyPreviewFocusClass();
-    }
-
-    /**
-     * Toggle a focus-* class on the preview column matching the active
-     * category. CSS subtly highlights the relevant region of the preview
-     * (page body, header strip, etc.) — opacity/border tweaks only, no
-     * layout shift.
-     */
-    private applyPreviewFocusClass(): void {
-        if (!this.previewColumn) return;
-        const all: ReadonlyArray<WizardCategory> = ['page', 'body', 'headers', 'folio', 'parts', 'chapters', 'scenes', 'epigraph'];
-        for (const cat of all) {
-            this.previewColumn.removeClass(`ert-style-wizard__preview--focus-${cat}`);
-        }
-        this.previewColumn.addClass(`ert-style-wizard__preview--focus-${this.activeCategory}`);
     }
 
     /** Render the form controls for the currently-selected category. */
@@ -1164,24 +1147,98 @@ export class DesignedStyleWizardModal extends Modal {
 
     private renderFolioSection(parent: HTMLElement): void {
         const body = this.createPanelBody(parent);
-        // Compact row: Position + Format side-by-side.
-        const folioRow = this.compactRow(body);
-        const positionCell = this.compactCell(folioRow, 'Position');
-        this.makeRadioGroup(positionCell, [
-            { value: 'bottom-center', label: 'Bottom center' },
-            { value: 'header',        label: 'In headers' },
-            { value: 'none',          label: 'None' },
-        ], this.spec.folio.position, (v) => {
-            this.mutateSpec((s) => { s.folio.position = v as DesignedStyleSpec['folio']['position']; });
-        });
 
-        const formatCell = this.compactCell(folioRow, 'Format');
+        // Visual position presets — each card mocks where the page number sits.
+        this.renderFolioPositionPresets(body);
+
+        // Format radio (Arabic / Roman frontmatter).
+        const formatRow = this.compactRow(body);
+        const formatCell = this.compactCell(formatRow, 'Format');
         this.makeRadioGroup(formatCell, [
             { value: 'arabic',            label: 'Arabic' },
             { value: 'roman-frontmatter', label: 'Roman (frontmatter only)' },
         ], this.spec.folio.format ?? 'arabic', (v) => {
             this.mutateSpec((s) => { s.folio.format = v as DesignedStyleSpec['folio']['format']; });
         });
+
+        this.renderPanelGlossary(body, [
+            { term: 'Folio',       definition: 'The printed page number that runs on each interior page.' },
+            { term: 'Frontmatter', definition: 'Pages before the main text (title page, copyright, dedication). Often numbered with Roman numerals (i, ii, iii) before switching to Arabic at chapter 1.' },
+        ]);
+    }
+
+    private renderFolioPositionPresets(parent: HTMLElement): void {
+        const current = this.spec.folio.position;
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        const presets: Array<{
+            value: DesignedStyleSpec['folio']['position'];
+            label: string;
+            render: (card: HTMLElement) => void;
+        }> = [
+            {
+                value: 'bottom-center', label: 'Bottom center',
+                render: (card) => {
+                    card.createDiv({ cls: 'ert-style-wizard__preset-folio-strip' });
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-folio-body' });
+                    for (let i = 0; i < 4; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                    const footer = card.createDiv({ cls: 'ert-style-wizard__preset-folio-footer ert-style-wizard__preset-folio-footer--center' });
+                    footer.createSpan({ cls: 'ert-style-wizard__preset-folio-num', text: '12' });
+                },
+            },
+            {
+                value: 'header', label: 'In headers',
+                render: (card) => {
+                    const strip = card.createDiv({ cls: 'ert-style-wizard__preset-folio-strip ert-style-wizard__preset-folio-strip--with-num' });
+                    strip.createSpan({ cls: 'ert-style-wizard__preset-folio-num', text: '12' });
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-folio-body' });
+                    for (let i = 0; i < 4; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                    card.createDiv({ cls: 'ert-style-wizard__preset-folio-footer' });
+                },
+            },
+            {
+                value: 'none', label: 'None',
+                render: (card) => {
+                    card.createDiv({ cls: 'ert-style-wizard__preset-folio-strip' });
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-folio-body' });
+                    for (let i = 0; i < 4; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                    card.createDiv({ cls: 'ert-style-wizard__preset-folio-footer' });
+                },
+            },
+        ];
+        presets.forEach(({ value, label, render }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Folio position: ${label}`);
+            if (current === value) card.addClass('is-active');
+            render(card);
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                this.mutateSpec((s) => { s.folio.position = value; });
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
+            });
+        });
+    }
+
+    /**
+     * Glossary footer — small term/definition rows at the bottom of a panel.
+     * Used to explain technical terms (folio, frontmatter, etc.) without
+     * cluttering the controls themselves.
+     */
+    private renderPanelGlossary(parent: HTMLElement, entries: Array<{ term: string; definition: string }>): void {
+        const block = parent.createDiv({ cls: 'ert-style-wizard__glossary' });
+        for (const entry of entries) {
+            const row = block.createDiv({ cls: 'ert-style-wizard__glossary-row' });
+            row.createSpan({ cls: 'ert-style-wizard__glossary-term', text: entry.term });
+            row.createSpan({ cls: 'ert-style-wizard__glossary-def', text: ` — ${entry.definition}` });
+        }
     }
 
     private renderPartsSection(parent: HTMLElement): void {

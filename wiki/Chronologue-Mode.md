@@ -76,7 +76,7 @@ Chronologue mode includes three sub-modes, each rendering a distinct wireframe o
 
 The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** — showing how long each scene takes to read or perform rather than how much story time passes.
 
-- Toggle with the `RT` button in Chronologue mode (requires Runtime Estimation enabled in Settings → PRO)
+- Toggle with the `RT` button in Chronologue mode (requires Runtime Estimation to be enabled in Settings → Core)
 - Blue wireframe overlay distinguishes it from Shift (gray) and Alt (red)
 - Duration arcs scale to show relative scene runtime — longer scenes have larger arcs
 - Use the **runtime cap slider** to adjust maximum arc size, emphasizing shorter or longer scenes
@@ -93,7 +93,7 @@ The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** 
 </div>
 
 **How to use:**
-1. Enable Runtime Estimation in **Settings → PRO**
+1. Enable Runtime Estimation in **Settings → Core**
 2. Configure a runtime profile matching your content type (Novel or Screenplay)
 3. Switch to Chronologue mode (`3`)
 4. Click the `RT` button to enter the Runtime sub-mode

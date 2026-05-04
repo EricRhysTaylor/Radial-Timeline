@@ -5651,14 +5651,14 @@ export function renderBeatPropertiesSection(params: {
         } else if (isTemplateMode) {
             setPrimaryDesignButton(
                 'Create missing beat notes',
-                'Create missing beat notes in your source path',
+                'Create missing beat notes in the active book folder',
                 !hasBeats,
                 async () => { await createBeatTemplates(); }
             );
         } else {
             setPrimaryDesignButton(
                 'Create beat notes',
-                'Create beat note files in your source path',
+                'Create beat note files in the active book folder',
                 !hasBeats,
                 async () => { await createBeatTemplates(); }
             );

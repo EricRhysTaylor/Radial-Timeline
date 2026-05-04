@@ -9,12 +9,13 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 
 This page covers the fresh vault flow. If you already have scenes, jump to [Existing Vault Onboarding](Existing-Vault-Onboarding).
 
-> **YAML (friendly definition)**: YAML does not refer to camels. It stands for **Yet Another Markup Language**. It is human-readable, designed to help, and gives you full control over the information you track in each note (scene, beat, backdrop, etc). It can feel intimidating at first, but most writers get comfortable quickly and appreciate the power it provides.
+> **Note properties**: Radial Timeline stores scene, beat, and backdrop details as note properties in Obsidian. You do not need to think about the YAML format unless you want to edit it directly.
 
-## 1. Install and point the plugin
+## 1. Install and set up your first book
 1. Install Radial Timeline from Community Plugins.
 2. Open Settings -> Community Plugins -> Radial Timeline.
-3. Set **Source path** to your Manuscript folder or vault root.
+3. Open **Settings -> Core -> Books**.
+4. Add a book profile and link its **Source folder** to your manuscript folder.
 
 ## 2. Generate your scaffold with Book Designer
 1. Open the command palette and run **Radial Timeline: Book designer**.
@@ -24,7 +25,7 @@ This page covers the fresh vault flow. If you already have scenes, jump to [Exis
 ## 3. Choose a beats system (or skip for now)
 - Pick Save the Cat, Hero's Journey, or Custom in Settings -> Core -> Story beats system.
 - For Custom: name your system, add beats, assign to acts, and drag to reorder.
-- If you skipped beats in Book Designer, use **Create** to generate beat set notes later. Use **Merge** to realign files after reordering or renaming.
+- If you skipped beats in Book Designer, use **Create** to generate beat notes later. Use **Merge** to realign files after reordering or renaming.
 
 ## 4. Orient to the key modes
 - Progress (1). Writing status and progress stage.

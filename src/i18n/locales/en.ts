@@ -930,14 +930,14 @@ export const en: TranslationKeys = {
     settings: {
         general: {
             sourcePath: {
-                name: 'Source path',
-                desc: 'Specify the root folder containing your manuscript scene files.',
+                name: 'Legacy: source path (deprecated)',
+                desc: 'This legacy field is no longer the main setup path. Configure book folders in Core → Books.',
                 placeholder: 'Example: Manuscript/Scenes',
             },
             /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
             showTitle: {
                 name: 'Legacy: source path title (deprecated)',
-                desc: 'This setting is no longer used. Book title is managed via Book Profiles in General settings.',
+                desc: 'This setting is no longer used. Book title is managed via Core → Books.',
             },
         },
         pov: {
@@ -1271,7 +1271,7 @@ export const en: TranslationKeys = {
                 name: 'Beat notes',
                 desc: 'Create beat note files in your vault based on the selected story structure system.',
                 createText: 'Create beat notes',
-                createTooltip: 'Create beat note files in your source path',
+                createTooltip: 'Create beat note files in the active book folder',
                 repairText: 'Repair beat notes',
                 repairTooltip: 'Update Act and Beat Model in frontmatter for misaligned beat notes. Prefix numbers are not changed.',
             },
