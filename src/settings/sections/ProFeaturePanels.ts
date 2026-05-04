@@ -1658,9 +1658,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
     const setupActionRow = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-action' });
 
-    const pandocPanel = section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    pandocPanel.style.order = '10';
-    const pandocHeading = addProRow(new Setting(pandocPanel))
+    const pandocIntroPanel = section.createDiv({ cls: ERT_CLASSES.STACK });
+    pandocIntroPanel.style.order = '10';
+    const pandocHeading = addProRow(new Setting(pandocIntroPanel))
         .setName('Export & publishing')
         .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below.')
         .setHeading();
@@ -1668,8 +1668,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     addWikiLink(pandocHeading, 'Settings#publish');
     applyErtHeaderLayout(pandocHeading);
 
-    const systemConfigPanel = pandocPanel.createDiv({
-        cls: ERT_CLASSES.STACK,
+    const systemConfigPanel = section.createDiv({
+        cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}`,
         attr: { [ERT_DATA.SECTION]: 'export-check' }
     });
     systemConfigPanel.style.order = '50';
@@ -1820,11 +1820,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     });
 
     // ── Layout Registry Subsection ──────────────────────────────────────────
-    const layoutPanel = pandocPanel.createDiv({
+    const layoutPanel = section.createDiv({
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'pdf-style' }
     });
-    layoutPanel.style.order = '30';
+    layoutPanel.style.order = '40';
     const layoutHeading = addProRow(new Setting(layoutPanel))
         .setName('PDF Style')
         .setDesc('Choose the style used for exported PDFs. Built-in and custom styles are listed below.')
@@ -2831,7 +2831,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         refreshPublishingStatusCard();
     };
 
-    const layoutManageSetting = addProRow(new Setting(layoutPanel));
+    // The Design + Install buttons attach to the section heading (layoutHeading)
+    // so they sit on the right margin of the same row as the "PDF Style" title
+    // and description, instead of in a separate row at the bottom.
     let installAllButton: ButtonComponent | null = null;
     let installAllButtonEl: HTMLButtonElement | null = null;
     const refreshInstallAllButtonState = (): void => {
@@ -2869,7 +2871,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     // can re-expose them later (or as a power-user escape hatch) without a
     // rebuild. To re-enable, restore this block.
     //
-    // layoutManageSetting.addButton(button => {
+    // layoutHeading.addButton(button => {
     //     button.setButtonText('Import Template');
     //     button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
     //     if (!isActive) {
@@ -2889,7 +2891,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     // a Pro user author a DesignedStyleSpec from scratch (or starting from one
     // of the four bundled archetypes). The .tex file is generated from the
     // spec on save.
-    layoutManageSetting.addButton(button => {
+    layoutHeading.addButton(button => {
         button.setButtonText('Design your own…');
         button.setTooltip('Design a new PDF style from scratch.');
         button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
@@ -2910,7 +2912,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             }).open();
         });
     });
-    layoutManageSetting.addButton(button => {
+    layoutHeading.addButton(button => {
         installAllButton = button;
         button.setButtonText('Install all');
         button.setTooltip('Install bundled PDF templates and their required font files to your Pandoc folder. Does not seed Book Details or Book Pages.');
@@ -3029,11 +3031,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     let activeBookMetaPreviewOverride: BookMeta | null = null;
     let activeBookMetaEditBusy = false;
     const expandedBookMetaSections = new Set<string>();
-    const bookMetaPreviewPanel = pandocPanel.createDiv({
+    const bookMetaPreviewPanel = section.createDiv({
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-details' }
     });
-    bookMetaPreviewPanel.style.order = '10';
+    bookMetaPreviewPanel.style.order = '20';
     const previewBody = bookMetaPreviewPanel.createDiv({ cls: 'ert-bookmeta-preview-body' });
     const renderBookMetaPreview = () => {
         previewBody.empty();
@@ -3734,11 +3736,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     renderBookMetaPreview();
 
     // ── Publishing Setup ────────────────────────────────────────────────────
-    const publishingSetupPanel = pandocPanel.createDiv({
+    const publishingSetupPanel = section.createDiv({
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-pages' }
     });
-    publishingSetupPanel.style.order = '20';
+    publishingSetupPanel.style.order = '30';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
         .setName('Book Pages')
         .setDesc('Review and reorder the pages that will be included in your manuscript.')
@@ -4176,7 +4178,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     }
 
     // ── "Advanced configuration" disclosure toggle ─────────────────────────
-    const advancedToggle = pandocPanel.createDiv({ cls: 'ert-advanced-config-toggle' });
+    const advancedToggle = section.createDiv({ cls: 'ert-advanced-config-toggle' });
     advancedToggle.style.order = '49';
     const advancedLink = advancedToggle.createEl('a', {
         cls: 'ert-advanced-config-link',

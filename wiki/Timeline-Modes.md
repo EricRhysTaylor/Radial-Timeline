@@ -6,13 +6,11 @@ Isolates each subplot into its own unitary radial pass — no combined outer rin
 ### Narrative Mode (`2`)
 Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around your configured **act count** (default 3) with scenes organized by act divisions (360° divided evenly across acts). This is your primary manuscript-order workspace showing **Narrative time** (reading order). Status/progress overlays are hidden so subplot colors remain dominant.
 
-Use the title-bar book selector to choose one book or **Saga**. Saga combines all configured Book Manager profiles into one multi-book Narrative timeline.
-
-When chapter markers are enabled, Narrative Mode can show publishing-aware **C** and **P** placards on the outer ring. **C** marks chapter starts from the `Chapter:` field. **P** marks part boundaries for the selected novel PDF layout when that layout prints Parts. **P/C** means both start at the same boundary.
-
 **Interactive Reordering**: You can reorder scenes by dragging them on the outer ring. See [Reorder Scenes](How-to#reorder-scenes) for details.
 
 **Tip**: For scenes in more than one subplot, click on a scene to make that subplot dominant in the outer ring color. The folded corner motif at the start of each subplot ring shows the state: missing (not assigned), gray (assigned but not dominant), or a darker hue of the subplot color (dominant and expressed on the outer ring).
+
+See [Narrative Mode](Narrative-Mode) for Saga scope, chapter/part placards, and dominant subplot behavior.
 
 ### Chronologue Mode (`3`)
 Displays scenes in chronological story order based on `When` field. **Removes act divisions** entirely—scenes are positioned across the full 360° circle based solely on when they occur in your story's timeline. Color styling mirrors Narrative mode (subplot colors only) to keep time comparisons clean.

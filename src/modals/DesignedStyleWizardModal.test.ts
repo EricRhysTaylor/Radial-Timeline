@@ -133,6 +133,22 @@ describe('validateDesignedStyleSpec', () => {
         const result = validateDesignedStyleSpec(spec, 'Test');
         expect(result.warnings.some(w => w.toLowerCase().includes('paper width'))).toBe(true);
     });
+
+    // Strict font policy (Phase 1): the validation banner surfaces a warning
+    // when the body font isn't resolvable. We pick `latin-modern` because the
+    // wizard's font diagnostic for that key only reports `ok` when the bundled
+    // path has been registered AND the four lmroman OTF files exist on disk.
+    // In a fresh test runner with no `setLatinModernPath` call, the diagnostic
+    // returns `missing-bundled` deterministically.
+    it('warns when the selected body font is not installed', () => {
+        const spec = freshSubmissionSpec();
+        spec.body.font = 'latin-modern';
+        const result = validateDesignedStyleSpec(spec, 'Test');
+        const hasFontWarning = result.warnings.some(w =>
+            w.includes('Latin Modern Roman') && w.toLowerCase().includes('not installed')
+        );
+        expect(hasFontWarning).toBe(true);
+    });
 });
 
 describe('applyHeaderPreset', () => {

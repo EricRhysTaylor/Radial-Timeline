@@ -6,16 +6,14 @@ The Radial Timeline View is the main authoring and analysis workspace in Radial 
 
 ## Overview
 
-The Radial Timeline View arranges your manuscript as a radial workspace and lets you switch between four modes depending on the question you are asking:
+The Radial Timeline View is a radial manuscript workspace with four modes:
 
 *   [Progress Mode](Progress-Mode) — drafting status, revision stages, and completion tracking
 *   [Narrative Mode](Narrative-Mode) — manuscript reading order and visual scene reordering
 *   [Chronologue Mode](Chronologue-Mode) — story-world chronology, time gaps, and duration relationships
 *   [Gossamer Mode](Gossamer-Mode) — beat-level scoring across Momentum, Tension, Activity, and Interiority
 
-## Working in the View
-
-Use the Radial Timeline View when you want to:
+## What You Can Do
 
 *   write and reorganize scenes
 *   switch between one book and Saga scope from the title-bar book selector
@@ -41,4 +39,9 @@ See the individual mode pages for full behavior and controls.
 
 The tab title bar includes a book selector. Choose an individual Book Manager profile to focus the timeline on one manuscript, or choose **Saga** to view all configured books together in Narrative Mode.
 
-Saga scope is intended for multi-book structure checks: act balance, subplot distribution, and series-wide scene order. Other timeline modes remain book-focused.
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/tab-bar-actions.png" alt="Radial Timeline tab bar actions and book selector" style="width: 720px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Tab title bar actions — book selector, mode controls, and quick view actions</div>
+</div>
+
+See [Narrative Mode](Narrative-Mode#book-and-saga-scope) for Saga behavior and limits.

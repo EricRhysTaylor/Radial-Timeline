@@ -2,13 +2,11 @@
 
 `Timeline order` opens the timeline order normalizer, also called the Timeline Repair wizard.
 
-Use it when your chronology needs a structured cleanup pass instead of manual scene-by-scene edits.
-
 > [!NOTE]
 > `Timeline order` is currently undergoing beta testing. It is not part of the public release build yet and remains available only in development/testing paths for now.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Timeline order.png" alt="Timeline order modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Timeline order.png" alt="Timeline order command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline order — scaffold, normalize, and review chronology changes before applying them</div>
 </div>
 

@@ -25,3 +25,9 @@ Pulse currently works best with the hosted AI providers:
 *   **Google Gemini**
 
 Local/OpenAI-compatible setups are documented separately in [Local LLM](Local-LLM). For Pulse itself, use the hosted providers above for now.
+
+For the command-specific batch workflows, see:
+
+*   [Scene pulse analysis (manuscript order)](Scene-Pulse-Analysis-Manuscript-Order)
+*   [Scene pulse analysis (subplot order)](Scene-Pulse-Analysis-Subplot-Order)
+*   [Summary refresh](Summary-Refresh)

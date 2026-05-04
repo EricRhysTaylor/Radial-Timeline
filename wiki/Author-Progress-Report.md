@@ -3,7 +3,7 @@
 The Author Progress Report is a shareable, spoiler-safe graphic that shows your book's progress without revealing story details. Perfect for Kickstarter updates, Patreon posts, newsletters, and social media.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Author progress report.png" alt="Author Progress Report modal with preview and export options" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Author progress report.png" alt="Author Progress Report panel with preview and export options" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Author Progress Report — configure, preview, and export your progress graphic</div>
 </div>
 

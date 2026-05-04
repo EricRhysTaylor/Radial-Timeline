@@ -2,8 +2,6 @@
 
 Access Radial Timeline settings in Obsidian via **Settings → Community Plugins → Radial Timeline**.
 
-This page is the settings index. Each tab now has its own full destination page so the documentation stays organized and does not drift across duplicate summaries.
-
 ## Settings Tabs
 
 *   [Core](Settings-Core) — Timeline structure, progress tracking, chronology, scene properties, POV, planetary time, and ring colors.

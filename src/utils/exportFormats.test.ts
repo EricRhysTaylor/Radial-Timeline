@@ -9,6 +9,7 @@ import {
     buildCtanHint,
     buildExportFilename,
     buildGoogleFontsHint,
+    getFontDiagnosticForFontKey,
     getStructuredFontDiagnostic,
     getTemplateFontDiagnostics,
     renderFontDiagnosticLine,
@@ -456,6 +457,77 @@ describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
             const diag = getStructuredFontDiagnostic(layout, platform);
             expect(diag.state).toBe('missing-bundled');
             expect(diag.installHint?.source).toBe('bundled');
+        }
+    });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// Strict Font Policy (Phase 1) — getFontDiagnosticForFontKey
+// ════════════════════════════════════════════════════════════════════════════
+//
+// These cover the spec-key-driven helper used by the Designed Style wizard's
+// live preview. The wizard works on a working spec with no persisted layout,
+// so it cannot use `getStructuredFontDiagnostic(layout)` directly.
+
+describe('getFontDiagnosticForFontKey — strict policy (Phase 1)', () => {
+    afterEach(() => {
+        setBundledFontPath(undefined);
+        setLatinModernPath(undefined);
+    });
+
+    it('returns ok with the default-serif placeholder when no font key is provided', () => {
+        const diag = getFontDiagnosticForFontKey(undefined);
+        expect(diag.state).toBe('ok');
+        expect(diag.primaryFontName).toBe('Default serif');
+        expect(diag.installHint).toBeUndefined();
+    });
+
+    it('returns missing-bundled with install hint when Latin Modern files are absent', () => {
+        const diag = getFontDiagnosticForFontKey('latin-modern');
+        expect(diag.state).toBe('missing-bundled');
+        expect(diag.primaryFontName).toBe('Latin Modern Roman');
+        expect(diag.installHint?.source).toBe('bundled');
+    });
+
+    it('returns missing-bundled for sorts-mill-goudy when bundled assets are absent', () => {
+        const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-strictsmg-'));
+        setBundledFontPath(tempRoot);
+        try {
+            const diag = getFontDiagnosticForFontKey('sorts-mill-goudy');
+            expect(diag.state).toBe('missing-bundled');
+            expect(diag.primaryFontName).toBe('Sorts Mill Goudy');
+            expect(diag.installHint?.source).toBe('bundled');
+            expect(diag.installHint?.message).toMatch(/sorts-mill-goudy/);
+        } finally {
+            fs.rmSync(tempRoot, { recursive: true, force: true });
+        }
+    });
+
+    it('returns ok for sorts-mill-goudy when bundled .ttf files exist on disk', () => {
+        const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-strictsmg-ok-'));
+        const fontDir = path.join(tempRoot, 'sorts-mill-goudy');
+        fs.mkdirSync(fontDir, { recursive: true });
+        fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Regular.ttf'), 'FAKE');
+        fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Italic.ttf'), 'FAKE');
+        setBundledFontPath(tempRoot);
+        try {
+            const diag = getFontDiagnosticForFontKey('sorts-mill-goudy');
+            expect(diag.state).toBe('ok');
+            expect(diag.installHint).toBeUndefined();
+        } finally {
+            fs.rmSync(tempRoot, { recursive: true, force: true });
+        }
+    });
+
+    it('classifies system fonts (eb-garamond) into ok or missing-system without falling back', () => {
+        // The runner may or may not have EB Garamond installed. Either state is
+        // acceptable; what we pin is that the helper NEVER reports a fallback.
+        const diag = getFontDiagnosticForFontKey('eb-garamond');
+        expect(['ok', 'missing-system']).toContain(diag.state);
+        expect(diag.primaryFontName).toBe('EB Garamond');
+        if (diag.state === 'missing-system') {
+            expect(diag.installHint?.source).toBe('google-fonts');
+            expect(diag.installHint?.url).toMatch(/^https:\/\/fonts\.google\.com\//);
         }
     });
 });

@@ -1,6 +1,6 @@
 # Advanced Tab
 
-The Advanced tab holds technical configuration and lower-level workflow controls that affect system behavior more than day-to-day writing.
+The Advanced tab holds lower-level system and workflow controls.
 
 ## Configuration
 

@@ -61,4 +61,4 @@ The Outline file can be anywhere inside the book folder, including subfolders su
 *   **Highlight completed docs with low substance**: Flags completed notes that remain in `Empty` or `Sketchy` tiers.
 
 > [!NOTE]
-> See [Corpus & Material Modes](Inquiry#corpus--material-modes) for how Inquiry uses these settings in actual runs.
+> See [Corpus & Material Modes](Inquiry#corpus-material-modes) for how Inquiry uses these settings in actual runs.

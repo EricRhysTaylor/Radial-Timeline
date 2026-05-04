@@ -27,7 +27,7 @@ For first-time setup, start with [Fresh Vault Onboarding](Fresh-Vault-Onboarding
 
 *   Use [Progress Mode](Progress-Mode) for daily drafting status and revision-stage tracking.
 *   Use [Author Progress Report](Author-Progress-Report) when you want a public, spoiler-safe progress graphic instead of an internal workflow view.
-*   Use **Zero Draft mode** if you want to capture revision notes without breaking drafting flow. See [Settings → Zero draft mode](Settings#zero-draft-mode).
+*   Use **Zero Draft mode** if you want to capture revision notes without breaking drafting flow. See [Settings → Progress and Status](Settings-Core#progress-and-status).
 
 ## Exporting a Manuscript
 

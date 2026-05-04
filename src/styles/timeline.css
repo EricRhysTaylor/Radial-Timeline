@@ -1036,22 +1036,28 @@
 }
 
 .ert-timeline-search {
-  --ert-timeline-search-space: 3px;
   --ert-timeline-search-input-x: 7px;
+  --ert-timeline-search-icon-slot: 22px;
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--ert-timeline-search-space);
   min-width: 0;
 }
 
 .ert-timeline-search__button.clickable-icon {
-  width: 24px;
-  height: 24px;
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
   color: var(--text-muted);
+  z-index: 2;
 }
 
 .ert-timeline-search__button.clickable-icon svg {
@@ -1068,7 +1074,7 @@
   width: clamp(112px, 14vw, 180px);
   height: 24px;
   min-width: 0;
-  padding: 0 var(--ert-timeline-search-input-x);
+  padding: 0 var(--ert-timeline-search-input-x) 0 var(--ert-timeline-search-icon-slot);
   box-sizing: border-box;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-s);
@@ -1140,14 +1146,39 @@
 .ert-timeline-legend {
   position: absolute;
   top: calc(100% + 8px);
-  right: calc(100% - 24px);
+  left: 0;
   width: min(330px, calc(100vw - 32px));
   z-index: var(--layer-popover, 1000);
   opacity: 0;
   transform: translateY(-4px);
-  transform-origin: top right;
+  transform-origin: top left;
   pointer-events: none;
   transition: opacity 120ms ease, transform 120ms ease;
+}
+
+/* Center the view title even when our header controls take width on the right */
+.view-header:has(.rt-book-switcher) {
+  position: relative;
+}
+
+.view-header:has(.rt-book-switcher) .view-header-title-container {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.view-header:has(.rt-book-switcher) .view-header-title-container .view-header-title,
+.view-header:has(.rt-book-switcher) .view-header-title-container .view-header-title-parent {
+  pointer-events: auto;
+}
+
+/* Keep our controls anchored to the right after pulling the title out of flow */
+.view-header:has(.rt-book-switcher) .rt-book-switcher {
+  margin-left: auto;
 }
 
 .ert-timeline-legend.is-visible {

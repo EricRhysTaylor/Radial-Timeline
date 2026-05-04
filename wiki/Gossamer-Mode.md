@@ -6,7 +6,7 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 *   **Ideal Range**: Beat `Range` values provide a visual target for **Momentum** only. They are not sent to the AI.
 *   **Manual score entry**: Enter scores for the current signal yourself, with or without external AI assistance.
 *   **Justification capture**: Each score line now records a brief justification so you know what the score was based on.
-*   **Normalize & repair**: Use **Normalize history** inside the modal to compact gaps and repair orphaned entries.
+*   **Normalize & repair**: Use **Normalize history** inside the score manager panel to compact gaps and repair orphaned entries.
 
 **Timeline mode**: Gossamer (key **4**)
 **Command**: `Gossamer score manager`
@@ -29,7 +29,7 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Gossamer score manager.png" alt="Gossamer score entry modal for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Gossamer score manager.png" alt="Gossamer score entry panel for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual entry for the active signal</div>
 </div>
 
@@ -44,7 +44,7 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 <a name="manual-entry"></a>
 ## Manual Entry
 
-Use **Gossamer score manager** to enter scores for the active signal. This is a manual workflow by design — you can score purely by your own judgment, or use an external AI tool to help draft scores and justifications, then paste those results into the modal.
+Use **Gossamer score manager** to enter scores for the active signal. This is a manual workflow by design — you can score purely by your own judgment, or use an external AI tool to help draft scores and justifications, then paste those results into the panel.
 
 <a name="ai-analysis"></a>
 ## AI Analysis

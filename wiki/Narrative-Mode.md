@@ -9,12 +9,12 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 ## Key Features
 
 *   **Structure**: Scenes are distributed across Act 1..Act N (based on your **Settings → Acts → Act count**).
-*   **Book or Saga scope**: Use the book selector in the tab title bar to view one active book or **Saga**, which combines all configured Book Manager profiles into one narrative-order timeline.
+*   **Book or Saga scope**: Switch between one active book and a combined Saga view.
 *   **Subplot Colors**: The outer ring segments are colored by their subplot. This lets you quickly visualize which plot threads are dominant in each section of the book.
-*   **Publishing markers**: When chapter markers are enabled, small outer-ring placards show publishing structure from your active PDF layout. **C** marks chapter starts and **P** marks part boundaries for layouts that print Parts.
+*   **Publishing markers**: Optional outer-ring placards can show chapter starts and part boundaries from your active novel PDF layout.
 *   **Story Beats**: Displays story beats (like Save the Cat) along the timeline, helping you pace your narrative structure.
 *   **Interactive Reordering**: You can drag scenes on the outer ring to reorder them. See [Reorder Scenes](How-to#reorder-scenes) for details.
-*   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [Settings → Advanced → Configuration](Settings#configuration).
+*   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [Settings → Advanced → Configuration](Settings-Advanced#configuration).
 
 ## Book and Saga Scope
 
@@ -25,6 +25,11 @@ The title-bar book selector controls which manuscript the timeline shows.
 *   Saga scope is available when more than one Book Manager profile is configured.
 *   Saga scope stays in Narrative Mode, because multi-book scene order is a narrative-structure view rather than a chronology or progress view.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/rt-saga.png" alt="Narrative Mode saga view across multiple books" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Saga view in Narrative Mode — multiple books combined into one manuscript-order timeline</div>
+</div>
+
 ## Chapter and Part Placards
 
 Narrative Mode can show publishing-aware placards on the outside of the scene ring:
@@ -33,7 +38,12 @@ Narrative Mode can show publishing-aware placards on the outside of the scene ri
 *   **P** — the selected PDF layout prints a Part opener at that act boundary.
 *   **P/C** — a Part and Chapter begin at the same boundary.
 
-These placards reflect the novel PDF layout selected in the Manuscript Export modal. For example, a layout that prints chapter openers can show **C** markers, while Modern Classic can also show **P** markers for Parts. Changing the selected export layout updates the timeline markers after the layout is saved.
+These placards reflect the novel PDF layout selected in the Manuscript Export panel. For example, a layout that prints chapter openers can show **C** markers, while Modern Classic can also show **P** markers for Parts. Changing the selected export layout updates the timeline markers after the layout is saved.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/parts-chapters.png" alt="Narrative Mode chapter and part markers around the perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Publishing markers on the perimeter — chapter starts, part boundaries, and combined Part/Chapter breaks</div>
+</div>
 
 ## Dominant Subplots
 

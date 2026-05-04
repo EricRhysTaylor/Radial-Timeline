@@ -1,11 +1,9 @@
 # Gossamer score manager
 
-`Gossamer score manager` opens the manual score-entry modal for the active signal.
-
-Use it when you want to enter or edit Gossamer scores directly instead of running AI scoring.
+`Gossamer score manager` opens the manual score-entry panel for the active signal.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Gossamer score manager.png" alt="Gossamer score manager modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Gossamer score manager.png" alt="Gossamer score manager panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual scores, justifications, and history cleanup</div>
 </div>
 

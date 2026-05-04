@@ -1,14 +1,12 @@
 # Timeline audit
 
-`Timeline audit` opens the timeline audit modal.
-
-Use it when you want a diagnostic pass over the manuscript timeline rather than a repair workflow.
+`Timeline audit` opens the timeline audit panel.
 
 > [!NOTE]
 > `Timeline audit` is currently undergoing beta testing. It is not part of the public release build yet and remains available only in development/testing paths for now.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Timeline audit.png" alt="Timeline audit modal" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Timeline audit.png" alt="Timeline audit panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline audit — inspect contradictions, missing dates, and continuity findings</div>
 </div>
 
@@ -32,7 +30,7 @@ When available, AI-enhanced findings are shown in the same review surface, but t
 
 ## What You Can Do
 
-From the audit modal, you can:
+From the audit panel, you can:
 
 *   filter findings by issue type
 *   inspect evidence and chronology placement

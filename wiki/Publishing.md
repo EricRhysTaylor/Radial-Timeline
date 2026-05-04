@@ -34,6 +34,11 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 
 The selected novel PDF layout also informs Narrative Mode publishing markers. Layouts that print chapters can show **C** placards on the timeline. Layouts that print Parts can show **P** placards at act boundaries.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/parts-chapters.png" alt="Chapter and part placards around the Narrative Mode perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Mode perimeter markers — chapter starts, part boundaries, and combined Part/Chapter breaks</div>
+</div>
+
 PDF layouts require their intended fonts rather than substituting fallbacks. Bundled fonts are installed into `Radial Timeline/Pandoc/fonts/` when you install the PDF styles.
 
 | Template | Font |
@@ -67,7 +72,7 @@ Settings → Publish is split around Core and Pro publishing work:
 *   **Core** includes Pandoc setup, output folders, Book Details, Book Pages, bundled Core PDF layouts, and Auto configure publishing.
 *   **Pro** adds advanced bundled layouts and deeper designed publishing controls.
 
-The export modal and **Settings → Publish** use the same template access rules. If a Core user selects a Pro-only layout, Radial Timeline falls back to a supported Core layout instead of leaving the export blocked.
+The export panel and **Settings → Publish** use the same template access rules. If a Core user selects a Pro-only layout, Radial Timeline falls back to a supported Core layout instead of leaving the export blocked.
 
 ## Book Details and Matter Pages
 
@@ -152,13 +157,7 @@ Not every template uses Parts. Only templates with `usesModernClassicStructure` 
 
 > Beats are not used to determine acts for export. The export reads each scene's own `Act:` field directly, the same way the timeline ring does, so Parts in the PDF always match the act partitioning you see in Narrative mode.
 
-When Narrative Mode chapter markers are enabled, these publishing structures can appear as outer-ring placards:
-
-*   **C** for chapter starts
-*   **P** for Part boundaries
-*   **P/C** when a Part and Chapter begin together
-
-The placards follow the active book's selected novel PDF layout.
+Narrative Mode can show these same publishing structures as outer-ring placards. See [Narrative Mode](Narrative-Mode#chapter-and-part-placards) for the UI behavior.
 
 ---
 
@@ -216,7 +215,7 @@ Epigraphs are **per-book** (stored against your active book profile), so differe
 
 ### Step 6 — Assign Modern Classic to the Novel format
 
-Open the export modal (Command Palette → **Manuscript export**). In the template dropdown for Novel, choose **Modern Classic**. The plugin remembers your last selection for next time.
+Open the export panel (Command Palette → **Manuscript export**). In the template dropdown for Novel, choose **Modern Classic**. The plugin remembers your last selection for next time.
 
 ### Step 7 — Export
 
@@ -262,7 +261,7 @@ Find this in **Settings → Publish → PDF Styles → [template] → +** (expan
 
 **Command Palette → Manuscript export**
 
-The export modal lets you:
+The export panel lets you:
 - Pick the output format (Novel, Screenplay, Podcast Script)
 - Choose the template for that format
 - Select which scenes to include (all, or filtered by act/subplot)

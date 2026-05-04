@@ -693,7 +693,8 @@
   gap: var(--ert-gap-sm);
 }
 
-.ert-ui.ert-scope--settings .ert-pro-pill {
+.ert-ui.ert-scope--settings .ert-pro-pill,
+.ert-ui.ert-scope--modal .ert-pro-pill {
   letter-spacing: 0.4px;
 }
 
@@ -1566,7 +1567,8 @@
 }
 
 .ert-ui.ert-skin--pro .ert-badgePill--pro,
-.ert-ui .ert-skin--pro .ert-badgePill--pro {
+.ert-ui .ert-skin--pro .ert-badgePill--pro,
+.ert-ui.ert-scope--modal .ert-badgePill--pro {
   background: var(--ert-pro-gradient-primary);
   border: none;
   color: var(--ert-color-white);

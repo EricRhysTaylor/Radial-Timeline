@@ -22,7 +22,7 @@ Manage your project milestones and status tracking.
 
 Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
 
-*   **Zero draft mode**: A focused mode for first-draft writing. Intercepts clicks on scenes with `Publish Stage = Zero` and `Status = Complete` to open a `Pending Edits` modal instead of the full note.
+*   **Zero draft mode**: A focused mode for first-draft writing. Intercepts clicks on scenes with `Publish Stage = Zero` and `Status = Complete` to open a `Pending Edits` panel instead of the full note.
 *   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
 *   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active stage within the last N days / N (scenes/day).
 
@@ -45,7 +45,7 @@ Runtime estimation is a Pro workflow configured from the Core tab.
 *   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime sub-mode.
 *   **Default runtime profile**: The profile used when no per-scene override is set.
 *   **Edit profile**: Manage multiple profiles with different settings for various project types.
-*   **Profile label**: Display name shown in pickers and the runtime modal.
+*   **Profile label**: Display name shown in pickers and the runtime panel.
 *   **Content type**: Choose between Novel/Audiobook (unified narration pace) or Screenplay (separate dialogue/action pacing).
 
 **Screenplay mode settings:**

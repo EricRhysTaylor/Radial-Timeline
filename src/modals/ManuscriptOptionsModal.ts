@@ -21,7 +21,7 @@ import {
     buildTransientModalExportProfile,
     type ModalExportProfile,
 } from '../utils/exportProfileModel';
-import { getPandocLayoutSortRank } from '../publishing/templateTiering';
+import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
 import {
     applySpreadValidation,
     collectSpreadStatuses,
@@ -34,6 +34,7 @@ import {
 } from '../publishing/layoutVisuals';
 import { buildSpreadValidationContext, collectSpreadWarningTooltips } from '../publishing/spreadValidationContext';
 import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
+import { ERT_CLASSES } from '../ui/classes';
 import type {
     BookProfile,
     BookPublishingPreferences,
@@ -1854,7 +1855,14 @@ export class ManuscriptOptionsModal extends Modal {
         const sourceLayout = this.findLayoutForTemplateProfile(profile);
         const variant = getFictionVariantForLayout(sourceLayout);
         const summary = desc.createDiv({ cls: 'ert-manuscript-layout-summary' });
-        summary.createDiv({
+        const titleRow = summary.createDiv({ cls: 'ert-manuscript-layout-summary-titleRow' });
+        if (sourceLayout && getPandocLayoutTier(sourceLayout) === 'pro') {
+            const proPill = titleRow.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_PRO} ert-pro-pill`,
+            });
+            proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+        }
+        titleRow.createDiv({
             cls: 'ert-manuscript-layout-summary-title',
             text: profile.name,
         });

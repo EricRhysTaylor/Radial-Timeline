@@ -86,11 +86,11 @@ This method automatically updates ordering for you.
 ### Manage Subplots in Bulk
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/subplot-manager.png" alt="Subplot Manager modal with rename and delete options" style="width: 450px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/subplot-manager.png" alt="Subplot Manager panel with rename and delete options" style="width: 450px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Manager — rename or delete subplots across all scenes</div>
 </div>
 
-Need to rename or delete a subplot across dozens of scenes? Use the **`Manage subplots`** command (command palette → "Radial Timeline: Manage subplots"). The modal lets you:
+Need to rename or delete a subplot across dozens of scenes? Use the **`Manage subplots`** command (command palette → "Radial Timeline: Manage subplots"). The panel lets you:
 
 * Rename a subplot and automatically update the frontmatter of every scene using it.
 * Delete a subplot and strip the tag from all scenes in one action.
@@ -125,7 +125,7 @@ You can filter scenes by searching for text content across multiple fields. Sear
 *   **Visuals**:
     *   **Scene Numbers**: Highlighted in yellow on all subplot rings.
     *   **Text**: Matching text within the synopsis hover metadata is highlighted in yellow.
-*   **Clear**: Click the clear button in the modal.
+*   **Clear**: Click the clear button in the panel.
 
 > **Note**: Status, Publish Stage, Due date, Pending Edits, and Gossamer scores are not included in search.
 

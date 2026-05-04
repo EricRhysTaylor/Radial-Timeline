@@ -541,6 +541,13 @@
   color: var(--text-normal);
 }
 
+.ert-ui.ert-scope--modal .ert-manuscript-layout-summary-titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  flex-wrap: wrap;
+}
+
 .ert-manuscript-layout-summary-detail {
   color: var(--text-muted);
   line-height: 1.45;
@@ -2839,14 +2846,16 @@ body > .tooltip {
 
 .ert-ui.ert-style-wizard-modal.modal,
 .ert-ui .ert-style-wizard-modal.modal {
-  width: min(1100px, 96vw);
+  width: min(1050px, 96vw);
   max-width: 96vw;
+  max-height: calc(100vh - var(--ert-pad-3xl) - var(--ert-pad-3xl) - var(--ert-pad-xl));
 }
 
 .ert-style-wizard {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-md);
+  padding: var(--ert-pad-md);
 }
 
 .ert-style-wizard__header {
@@ -2857,10 +2866,6 @@ body > .tooltip {
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-xs);
-  padding: var(--ert-pad-md);
-  border: 1px solid var(--ert-panel-border);
-  border-radius: var(--ert-panel-radius);
-  background: var(--ert-panel-bg-soft, transparent);
 }
 
 .ert-style-wizard__meta-row {
@@ -2869,11 +2874,6 @@ body > .tooltip {
   gap: var(--ert-gap-xs);
 }
 
-.ert-style-wizard__tier-row {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--ert-gap-sm);
-}
 
 .ert-style-wizard__meta-label {
   font-size: 0.85rem;
@@ -2891,25 +2891,56 @@ body > .tooltip {
   min-height: 50px;
 }
 
-.ert-style-wizard__columns {
+.ert-style-wizard__top-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
   gap: var(--ert-gap-md);
   align-items: stretch;
-  min-height: 540px;
-  max-height: min(70vh, 760px);
 }
 
 @media (max-width: 900px) {
-  .ert-style-wizard__columns {
+  .ert-style-wizard__top-row {
     grid-template-columns: 1fr;
-    max-height: none;
   }
 }
 
-.ert-style-wizard__config,
+.ert-style-wizard__top-meta {
+  padding: var(--ert-pad-sm);
+  border: 1px solid var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+  background: var(--ert-panel-bg-soft, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
 .ert-style-wizard__preview {
-  overflow-y: auto;
+  padding: var(--ert-pad-sm);
+  border: 1px solid var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+  background: var(--ert-panel-bg-soft, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+/* Side-by-side feature column + pictogram column inside the preview. The
+ * preview never scrolls — if it needs more room it pushes the config
+ * sections below it further down the modal. */
+.ert-style-wizard__preview-grid {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) minmax(0, 1fr);
+  gap: var(--ert-gap-md);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .ert-style-wizard__preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ert-style-wizard__config {
   padding: var(--ert-pad-sm);
   border: 1px solid var(--ert-panel-border);
   border-radius: var(--ert-panel-radius);
@@ -3084,8 +3115,56 @@ body > .tooltip {
   color: var(--text-muted);
 }
 
+.ert-style-wizard__font-status.is-installed {
+  color: var(--text-success, var(--color-green));
+}
+
 .ert-style-wizard__font-status.is-missing {
   color: var(--text-warning, var(--text-error));
+  font-weight: 500;
+}
+
+.ert-style-wizard__font-install {
+  background: transparent;
+  border: 1px solid var(--text-warning, var(--text-error));
+  color: var(--text-warning, var(--text-error));
+  padding: var(--ert-gap-2xs) var(--ert-gap-sm);
+  font-size: 0.75rem;
+  border-radius: var(--radius-s, 4px);
+  cursor: pointer;
+  margin-left: var(--ert-gap-tight, 6px);
+}
+
+.ert-style-wizard__font-install:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Per-card font diagnostic on Settings > Publish layout cards. */
+.ert-layout-font-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-tight, 6px);
+  margin-top: var(--ert-gap-tight, 6px);
+  font-size: 0.8rem;
+}
+
+.ert-layout-font-status--missing .ert-layout-font-status-badge {
+  color: var(--text-error, var(--text-warning));
+  font-weight: 500;
+}
+
+.ert-layout-font-install {
+  background: transparent;
+  border: 1px solid var(--text-error, var(--text-warning));
+  color: var(--text-error, var(--text-warning));
+  padding: var(--ert-gap-2xs) var(--ert-gap-sm);
+  font-size: 0.75rem;
+  border-radius: var(--radius-s, 4px);
+  cursor: pointer;
+}
+
+.ert-layout-font-install:hover {
+  background: var(--background-modifier-hover);
 }
 
 .ert-style-wizard__toggle {
@@ -3229,4 +3308,62 @@ body > .tooltip {
 .ert-style-wizard__actions {
   justify-content: flex-end;
   gap: var(--ert-gap-sm);
+  padding: var(--ert-pad-sm) var(--ert-pad-xs);
+}
+
+/* Compact horizontal field row — used when several short controls share a row. */
+.ert-style-wizard__field-row--compact {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--ert-gap-md);
+}
+
+.ert-style-wizard__field-row--compact .ert-style-wizard__field-label {
+  min-width: 0;
+}
+
+.ert-style-wizard__field-row--compact .ert-style-wizard__field-value {
+  justify-content: flex-start;
+}
+
+/* Cross widget — Framer-style margin input grid. */
+.ert-style-wizard__margin-cross {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: auto auto auto;
+  gap: var(--ert-gap-xs);
+  align-items: center;
+  justify-items: center;
+  padding: var(--ert-pad-sm) 0;
+}
+
+.ert-style-wizard__margin-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-style-wizard__margin-cell--top    { grid-column: 2; grid-row: 1; }
+.ert-style-wizard__margin-cell--left   { grid-column: 1; grid-row: 2; justify-self: end; }
+.ert-style-wizard__margin-cell--center { grid-column: 2; grid-row: 2; }
+.ert-style-wizard__margin-cell--right  { grid-column: 3; grid-row: 2; justify-self: start; }
+.ert-style-wizard__margin-cell--bottom { grid-column: 2; grid-row: 3; }
+
+.ert-style-wizard__margin-input {
+  width: 70px;
+}
+
+.ert-style-wizard__margin-axis {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.ert-style-wizard__margin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  padding: var(--ert-pad-xs);
 }

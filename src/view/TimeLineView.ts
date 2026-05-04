@@ -352,9 +352,9 @@ export class RadialTimelineView extends ItemView {
 
             searchShell.appendChild(searchBtn);
             searchShell.appendChild(searchInput);
-            wrapper.appendChild(searchShell);
             wrapper.appendChild(legendBtn);
             wrapper.appendChild(legendPanel);
+            wrapper.appendChild(searchShell);
             wrapper.appendChild(select);
             wrapper.appendChild(commandPaletteBtn);
             wrapper.appendChild(exportBtn);

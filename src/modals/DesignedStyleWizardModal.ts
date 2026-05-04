@@ -231,7 +231,7 @@ export class DesignedStyleWizardModal extends Modal {
     private previewColumn: HTMLElement | null = null;
     private saveButton: ButtonComponent | null = null;
     private validationBannerEl: HTMLElement | null = null;
-    private columnsEl: HTMLElement | null = null;
+    private topRowEl: HTMLElement | null = null;
     private archetypeOverlayEl: HTMLElement | null = null;
 
     constructor(app: App, plugin: RadialTimelinePlugin, options: DesignedStyleWizardOptions) {
@@ -265,7 +265,14 @@ export class DesignedStyleWizardModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-style-wizard');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header ert-style-wizard__header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: this.isEditMode ? 'EDIT' : 'DESIGN' });
+        const badgeRow = header.createDiv({ cls: 'ert-modal-badge-row' });
+        const proPill = badgeRow.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`,
+        });
+        const proPillIcon = proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(proPillIcon, 'signature');
+        proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+        badgeRow.createSpan({ cls: 'ert-modal-badge', text: this.isEditMode ? 'EDIT' : 'DESIGN' });
         header.createDiv({
             cls: 'ert-modal-title',
             text: this.isEditMode ? 'Edit designed style' : 'Design your own style',
@@ -275,13 +282,15 @@ export class DesignedStyleWizardModal extends Modal {
             text: 'Configure page, body, headers, folio, parts, chapters, scenes, and epigraph. The preview updates live.',
         });
 
-        // Save metadata block (always visible, never collapsed).
-        const metaBlock = contentEl.createDiv({ cls: 'ert-style-wizard__meta' });
+        // Top row: metadata (left) + preview (right) side-by-side.
+        this.topRowEl = contentEl.createDiv({ cls: 'ert-style-wizard__top-row' });
+        const metaWrap = this.topRowEl.createDiv({ cls: 'ert-style-wizard__top-meta' });
+        const metaBlock = metaWrap.createDiv({ cls: 'ert-style-wizard__meta' });
         this.renderMetaBlock(metaBlock);
+        this.previewColumn = this.topRowEl.createDiv({ cls: 'ert-style-wizard__preview' });
 
-        this.columnsEl = contentEl.createDiv({ cls: 'ert-style-wizard__columns' });
-        this.configColumn = this.columnsEl.createDiv({ cls: 'ert-style-wizard__config' });
-        this.previewColumn = this.columnsEl.createDiv({ cls: 'ert-style-wizard__preview' });
+        // Configuration column: full-width below the top row.
+        this.configColumn = contentEl.createDiv({ cls: 'ert-style-wizard__config' });
 
         // If we have no initial spec, show the archetype overlay first.
         if (!this.archetypePicked) {
@@ -308,7 +317,7 @@ export class DesignedStyleWizardModal extends Modal {
         this.previewColumn = null;
         this.saveButton = null;
         this.validationBannerEl = null;
-        this.columnsEl = null;
+        this.topRowEl = null;
         this.archetypeOverlayEl = null;
     }
 
@@ -337,12 +346,6 @@ export class DesignedStyleWizardModal extends Modal {
             this.description = descInput.value;
         });
 
-        const tierRow = parent.createDiv({ cls: 'ert-style-wizard__meta-row ert-style-wizard__tier-row' });
-        tierRow.createEl('label', { cls: 'ert-style-wizard__meta-label', text: 'Tier' });
-        const tierBadge = tierRow.createSpan({
-            cls: `ert-badgePill ert-badgePill--sm ${ERT_CLASSES.BADGE_PILL_PRO}`,
-        });
-        tierBadge.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
     }
 
     private renderArchetypeOverlay(): void {
@@ -411,6 +414,7 @@ export class DesignedStyleWizardModal extends Modal {
             return;
         }
 
+        // Default-open the first section ("Page") — only one open at a time.
         this.renderPageSection(this.configColumn);
         this.renderBodySection(this.configColumn);
         this.renderHeaderSection(this.configColumn);
@@ -419,6 +423,21 @@ export class DesignedStyleWizardModal extends Modal {
         this.renderChaptersSection(this.configColumn);
         this.renderScenesSection(this.configColumn);
         this.renderEpigraphSection(this.configColumn);
+        this.wireAccordion(this.configColumn);
+    }
+
+    /** Enforce single-open accordion across the top-level disclosure sections. */
+    private wireAccordion(container: HTMLElement): void {
+        const sections = Array.from(
+            container.querySelectorAll(':scope > details.ert-style-wizard__section'),
+        ) as HTMLDetailsElement[];
+        sections.forEach((details) => {
+            details.addEventListener('toggle', () => {
+                if (details.open) {
+                    sections.forEach((other) => { if (other !== details) other.open = false; });
+                }
+            });
+        });
     }
 
     private createSection(parent: HTMLElement, label: string, opts: { open?: boolean } = {}): HTMLElement {
@@ -430,7 +449,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderPageSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Page');
+        const body = this.createSection(parent, 'Page', { open: true });
         const paperRow = this.fieldRow(body, 'Paper size');
         const paperOptions: Array<{ value: string; label: string }> = [
             { value: 'us-trade-6x9', label: '6x9 trade' },
@@ -465,25 +484,61 @@ export class DesignedStyleWizardModal extends Modal {
             });
         }
 
-        const topRow = this.fieldRow(body, 'Top margin (in)');
-        this.numberInput(topRow, this.spec.margins.topIn, 0.25, 2.5, 0.05, (n) => {
-            this.mutateSpec((s) => { s.margins.topIn = n; });
-        });
-        const bottomRow = this.fieldRow(body, 'Bottom margin (in)');
-        this.numberInput(bottomRow, this.spec.margins.bottomIn, 0.25, 2.5, 0.05, (n) => {
-            this.mutateSpec((s) => { s.margins.bottomIn = n; });
-        });
-        const leftRow = this.fieldRow(body, 'Left/Inner margin (in)');
-        this.numberInput(leftRow, this.spec.margins.leftIn, 0.25, 2.5, 0.05, (n) => {
-            this.mutateSpec((s) => { s.margins.leftIn = n; });
-        });
-        const rightRow = this.fieldRow(body, 'Right/Outer margin (in)');
-        this.numberInput(rightRow, this.spec.margins.rightIn, 0.25, 2.5, 0.05, (n) => {
-            this.mutateSpec((s) => { s.margins.rightIn = n; });
-        });
+        // Cross widget for margins (T / L · center · R / B).
+        this.renderMarginCross(body);
+
         const mirroredRow = this.fieldRow(body, 'Mirrored margins (book binding)');
         this.toggleInput(mirroredRow, !!this.spec.margins.mirrored, (v) => {
             this.mutateSpec((s) => { s.margins.mirrored = v; });
+        });
+    }
+
+    /** Framer-style cross widget for the four page margins. */
+    private renderMarginCross(parent: HTMLElement): void {
+        const cross = parent.createDiv({ cls: 'ert-style-wizard__margin-cross' });
+
+        const cellTop = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--top' });
+        this.marginInput(cellTop, this.spec.margins.topIn, (n) => {
+            this.mutateSpec((s) => { s.margins.topIn = n; });
+        });
+        cellTop.createSpan({ cls: 'ert-style-wizard__margin-axis', text: 'T' });
+
+        const cellLeft = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--left' });
+        this.marginInput(cellLeft, this.spec.margins.leftIn, (n) => {
+            this.mutateSpec((s) => { s.margins.leftIn = n; });
+        });
+        cellLeft.createSpan({ cls: 'ert-style-wizard__margin-axis', text: 'L' });
+
+        const cellCenter = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--center' });
+        const iconWrap = cellCenter.createSpan({ cls: 'ert-style-wizard__margin-icon' });
+        try { setIcon(iconWrap, 'rectangle-vertical'); } catch { /* test env */ }
+
+        const cellRight = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--right' });
+        cellRight.createSpan({ cls: 'ert-style-wizard__margin-axis', text: 'R' });
+        this.marginInput(cellRight, this.spec.margins.rightIn, (n) => {
+            this.mutateSpec((s) => { s.margins.rightIn = n; });
+        });
+
+        const cellBot = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--bottom' });
+        this.marginInput(cellBot, this.spec.margins.bottomIn, (n) => {
+            this.mutateSpec((s) => { s.margins.bottomIn = n; });
+        });
+        cellBot.createSpan({ cls: 'ert-style-wizard__margin-axis', text: 'B' });
+    }
+
+    private marginInput(
+        parent: HTMLElement,
+        value: number,
+        onChange: (value: number) => void,
+    ): void {
+        const input = parent.createEl('input', {
+            cls: 'ert-input ert-style-wizard__margin-input',
+            attr: { type: 'number', min: '0.25', max: '2.5', step: '0.05' },
+        });
+        input.value = String(value);
+        input.addEventListener('change', () => {
+            const parsed = parseFloat(input.value);
+            if (Number.isFinite(parsed)) onChange(parsed);
         });
     }
 
@@ -560,12 +615,14 @@ export class DesignedStyleWizardModal extends Modal {
             refreshFontStatus();
         });
 
-        const sizeRow = this.fieldRow(body, 'Size (pt)');
-        this.numberInput(sizeRow, this.spec.body.sizePt, 8, 14, 1, (n) => {
+        // Compact row: Size (pt) + Line spacing radio (+ Custom spacing input when active).
+        const sizeLineRow = this.compactRow(body);
+        const sizeCell = this.compactCell(sizeLineRow, 'Size (pt)');
+        this.numberInput(sizeCell, this.spec.body.sizePt, 8, 14, 1, (n) => {
             this.mutateSpec((s) => { s.body.sizePt = n; });
         });
 
-        const lineRow = this.fieldRow(body, 'Line spacing');
+        const lineRow = this.compactCell(sizeLineRow, 'Line spacing');
         const lineOptions: Array<{ value: string; label: string }> = [
             { value: '1.0',    label: 'Single' },
             { value: '1.18',   label: '1.18' },
@@ -590,8 +647,8 @@ export class DesignedStyleWizardModal extends Modal {
             this.refreshConfigOnly();
         });
         if (currentLineKey === 'custom') {
-            const customRow = this.fieldRow(body, 'Custom spacing');
-            this.numberInput(customRow, this.spec.body.lineSpacing, 0.8, 3, 0.05, (n) => {
+            const customCell = this.compactCell(sizeLineRow, 'Custom spacing');
+            this.numberInput(customCell, this.spec.body.lineSpacing, 0.8, 3, 0.05, (n) => {
                 this.mutateSpec((s) => { s.body.lineSpacing = n; });
             });
         }
@@ -745,8 +802,10 @@ export class DesignedStyleWizardModal extends Modal {
 
     private renderFolioSection(parent: HTMLElement): void {
         const body = this.createSection(parent, 'Folio');
-        const positionRow = this.fieldRow(body, 'Position');
-        this.makeRadioGroup(positionRow, [
+        // Compact row: Position + Format side-by-side.
+        const folioRow = this.compactRow(body);
+        const positionCell = this.compactCell(folioRow, 'Position');
+        this.makeRadioGroup(positionCell, [
             { value: 'bottom-center', label: 'Bottom center' },
             { value: 'header',        label: 'In headers' },
             { value: 'none',          label: 'None' },
@@ -754,8 +813,8 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.folio.position = v as DesignedStyleSpec['folio']['position']; });
         });
 
-        const formatRow = this.fieldRow(body, 'Format');
-        this.makeRadioGroup(formatRow, [
+        const formatCell = this.compactCell(folioRow, 'Format');
+        this.makeRadioGroup(formatCell, [
             { value: 'arabic',            label: 'Arabic' },
             { value: 'roman-frontmatter', label: 'Roman (frontmatter only)' },
         ], this.spec.folio.format ?? 'arabic', (v) => {
@@ -765,9 +824,11 @@ export class DesignedStyleWizardModal extends Modal {
 
     private renderPartsSection(parent: HTMLElement): void {
         const body = this.createSection(parent, 'Parts (Acts)');
-        const renderRow = this.fieldRow(body, 'Render Part / Act pages');
+        // Compact row: Render toggle + (when on) Numeral style radio inline.
+        const headerRow = this.compactRow(body);
+        const renderCell = this.compactCell(headerRow, 'Render Part / Act pages');
         const partsOn = this.spec.parts.mode !== 'off';
-        this.toggleInput(renderRow, partsOn, (v) => {
+        this.toggleInput(renderCell, partsOn, (v) => {
             this.mutateSpec((s) => {
                 if (!v) s.parts.mode = 'off';
                 else if (s.parts.mode === 'off') s.parts.mode = 'roman';
@@ -776,8 +837,8 @@ export class DesignedStyleWizardModal extends Modal {
         });
 
         if (partsOn) {
-            const numeralRow = this.fieldRow(body, 'Numeral style');
-            this.makeRadioGroup(numeralRow, [
+            const numeralCell = this.compactCell(headerRow, 'Numeral style');
+            this.makeRadioGroup(numeralCell, [
                 { value: 'roman',  label: 'Roman' },
                 { value: 'arabic', label: 'Arabic' },
                 { value: 'word',   label: 'Word' },
@@ -786,29 +847,31 @@ export class DesignedStyleWizardModal extends Modal {
             });
         }
 
-        const breakRow = this.fieldRow(body, 'Page break before each part');
-        this.toggleInput(breakRow, this.spec.parts.pageBreak, (v) => {
+        // Compact row: page-break, epigraph, openAny toggles + placement radio.
+        const togglesRow = this.compactRow(body);
+        const breakCell = this.compactCell(togglesRow, 'Page break before part');
+        this.toggleInput(breakCell, this.spec.parts.pageBreak, (v) => {
             this.mutateSpec((s) => { s.parts.pageBreak = v; });
         });
 
-        const epRow = this.fieldRow(body, 'Show epigraph after part');
-        this.toggleInput(epRow, this.spec.parts.epigraph, (v) => {
+        const epCell = this.compactCell(togglesRow, 'Epigraph after part');
+        this.toggleInput(epCell, this.spec.parts.epigraph, (v) => {
             this.mutateSpec((s) => { s.parts.epigraph = v; });
         });
 
-        const placementRow = this.fieldRow(body, 'Epigraph placement');
-        this.makeRadioGroup(placementRow, [
+        const openAnyCell = this.compactCell(togglesRow, 'Allow openany');
+        this.toggleInput(openAnyCell, !!this.spec.parts.openAny, (v) => {
+            this.mutateSpec((s) => { s.parts.openAny = v; });
+        });
+
+        const placementCell = this.compactCell(togglesRow, 'Epigraph placement');
+        this.makeRadioGroup(placementCell, [
             { value: 'inline',   label: 'Inline' },
             { value: 'own-page', label: 'Own page' },
         ], this.spec.parts.epigraphPlacement ?? 'inline', (v) => {
             this.mutateSpec((s) => {
                 s.parts.epigraphPlacement = v as 'inline' | 'own-page';
             });
-        });
-
-        const openAnyRow = this.fieldRow(body, 'Allow openany (advanced)');
-        this.toggleInput(openAnyRow, !!this.spec.parts.openAny, (v) => {
-            this.mutateSpec((s) => { s.parts.openAny = v; });
         });
     }
 
@@ -834,15 +897,17 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.chapters.resetSceneCounter = v; });
         });
 
-        const topRow = this.fieldRow(body, 'Top spacing (% page)');
-        this.sliderInput(topRow, this.spec.chapters.spacing?.topFraction ?? 0, 0, 0.6, 0.02, (n) => {
+        // Compact row: Top spacing + Bottom spacing sliders.
+        const spacingRow = this.compactRow(body);
+        const topCell = this.compactCell(spacingRow, 'Top spacing (% page)');
+        this.sliderInput(topCell, this.spec.chapters.spacing?.topFraction ?? 0, 0, 0.6, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.chapters.spacing = { ...(s.chapters.spacing ?? {}), topFraction: n };
             });
         });
 
-        const botRow = this.fieldRow(body, 'Bottom spacing (% page)');
-        this.sliderInput(botRow, this.spec.chapters.spacing?.bottomFraction ?? 0, 0, 0.3, 0.02, (n) => {
+        const botCell = this.compactCell(spacingRow, 'Bottom spacing (% page)');
+        this.sliderInput(botCell, this.spec.chapters.spacing?.bottomFraction ?? 0, 0, 0.3, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.chapters.spacing = { ...(s.chapters.spacing ?? {}), bottomFraction: n };
             });
@@ -968,6 +1033,22 @@ export class DesignedStyleWizardModal extends Modal {
         return valueWrap;
     }
 
+    /**
+     * Compact horizontal row: a single row that holds multiple short controls
+     * side-by-side. Each control is grouped with its own inline label. Returns
+     * the row element so callers can append cells via `compactCell`.
+     */
+    private compactRow(parent: HTMLElement): HTMLElement {
+        return parent.createDiv({ cls: 'ert-style-wizard__field-row ert-style-wizard__field-row--compact' });
+    }
+
+    /** Append a labeled cell inside a compact row, returning the value wrap. */
+    private compactCell(row: HTMLElement, label: string): HTMLElement {
+        const cell = row.createDiv({ cls: 'ert-style-wizard__field-value' });
+        cell.createSpan({ cls: 'ert-style-wizard__field-label', text: label });
+        return cell;
+    }
+
     private makeRadioGroup(
         parent: HTMLElement,
         options: Array<{ value: string; label: string }>,
@@ -1071,14 +1152,22 @@ export class DesignedStyleWizardModal extends Modal {
             cls: 'ert-style-wizard__preview-title',
             text: this.styleName.trim() || 'Untitled style',
         });
-        const tier = headerEl.createSpan({
-            cls: `ert-badgePill ert-badgePill--sm ${ERT_CLASSES.BADGE_PILL_PRO}`,
-        });
-        tier.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
         headerEl.createSpan({ cls: 'ert-style-wizard__preview-meta', text: 'Preview' });
 
-        // Pictogram block.
-        const visual = this.previewColumn.createDiv({ cls: 'ert-layout-visual ert-layout-visual--cards-only' });
+        // Side-by-side: features on the left (specs), pictograms on the right.
+        // Mirrors the settings PDF Style card pattern; preview never scrolls.
+        const previewGrid = this.previewColumn.createDiv({ cls: 'ert-style-wizard__preview-grid' });
+        const featureCell = previewGrid.createDiv({ cls: 'ert-style-wizard__preview-features' });
+        const visualCell = previewGrid.createDiv({ cls: 'ert-style-wizard__preview-visual' });
+
+        try {
+            const features = getLayoutFeaturesFromSpec(this.spec);
+            renderLayoutFeatureList(featureCell, features);
+        } catch {
+            // ignore — pictogram error (if any) shown below.
+        }
+
+        const visual = visualCell.createDiv({ cls: 'ert-layout-visual ert-layout-visual--cards-only' });
         try {
             const rows = getPictogramRowsFromSpec(this.spec);
             renderLayoutPictograms(visual, rows, this.spec.scene.headingMode);
@@ -1086,14 +1175,6 @@ export class DesignedStyleWizardModal extends Modal {
             visual.createDiv({ cls: 'ert-style-wizard__preview-error' }).setText(
                 `Could not render preview: ${(err as Error).message ?? String(err)}`,
             );
-        }
-
-        // Feature list.
-        try {
-            const features = getLayoutFeaturesFromSpec(this.spec);
-            renderLayoutFeatureList(this.previewColumn, features);
-        } catch {
-            // ignore — pictogram error already shown.
         }
 
         // Validation banner.

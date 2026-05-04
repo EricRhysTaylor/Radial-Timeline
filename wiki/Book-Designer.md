@@ -2,8 +2,6 @@
 
 Book Designer is the guided setup panel behind the **`Book designer`** command. It generates a manuscript scaffold tailored to your project: scene files, act distribution, subplot rotation, characters, and optional beat notes.
 
-Use it when you want a clean starting structure without building dozens of notes by hand.
-
 <a href="https://youtu.be/0vkLaI_LewM?si=-02Gem1HQwbI0E9E" target="_blank" rel="noopener">
   <p align="center">
     <img src="https://i.ytimg.com/vi/0vkLaI_LewM/maxresdefault.jpg" alt="Book Designer walkthrough" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
@@ -21,7 +19,7 @@ You can open Book Designer in two ways:
 2.  **Welcome Screen**: If your timeline is empty, click the **Book Designer** button on the welcome screen.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Book designer.png" alt="Book Designer modal with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/Book designer.png" alt="Book Designer panel with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and scene properties with live preview</div>
 </div>
 
