@@ -1344,6 +1344,8 @@ export function renderAiSection(params: {
     let lastPreviewCertificateContext: PreviewCertificateContext | null = null;
 
     const formatPreviewReasonLabel = (status?: string, reason?: string): string => {
+        if (reason === 'quota_exceeded') return 'Quota exceeded';
+        if (reason === 'spend_cap') return 'Spend cap reached';
         const normalizedReason = (reason ?? status ?? '')
             .trim()
             .replace(/_/g, ' ')
@@ -1454,6 +1456,7 @@ export function renderAiSection(params: {
 
         if (resultStatus && resultStatus !== 'success') {
             const isWarning = resultStatus === 'degraded';
+            const quotaFailure = latestSession.result.aiReason === 'quota_exceeded';
             return {
                 tone: isWarning ? 'warning' : 'error',
                 comparatorLabel: 'Last run',
@@ -1461,7 +1464,9 @@ export function renderAiSection(params: {
                 statusIcon: isWarning ? 'alert-triangle' : 'x-circle',
                 statusText: isWarning
                     ? 'Validation surfaced issues on the latest Inquiry run.'
-                    : 'Latest Inquiry run failed and needs attention.',
+                    : quotaFailure
+                        ? 'Latest Inquiry run failed because API quota was exceeded.'
+                        : 'Latest Inquiry run failed and needs attention.',
                 extraPills
             };
         }

@@ -7789,6 +7789,7 @@ export class InquiryView extends ItemView {
         const status = result.aiStatus;
         const reason = result.aiReason;
         if (status === 'rejected' && reason === 'spend_cap') return 'Monthly spend cap reached.';
+        if (status === 'rejected' && reason === 'quota_exceeded') return 'OpenAI API quota exceeded.';
         if (status === 'rejected' && reason === 'invalid_response') return 'Briefing received with errors.';
         if (status === 'rejected' && reason === 'citation_binding_failed') return 'AI response could not be matched to this corpus.';
         if (status === 'rejected' && reason === 'multi_pass_failed') return 'Multi-pass analysis could not complete.';
@@ -7806,6 +7807,9 @@ export class InquiryView extends ItemView {
             const reset = this.extractSpendCapResetDate(result.aiErrorDetail);
             const resetLine = reset ? ` Resets ${reset}.` : '';
             return `This is your own monthly spending cap in the Anthropic Console (Limits → Spend limits) — not an API tier rate limit.${resetLine} Raise it in Console → Limits, or wait for the reset.`;
+        }
+        if (result.aiReason === 'quota_exceeded') {
+            return 'Your OpenAI API account has run out of quota, credits, or billing allowance. Add funds or raise the API billing limit in the OpenAI dashboard, then retry. ChatGPT subscription quota is separate from API billing.';
         }
         if (result.aiErrorDetail) return result.aiErrorDetail;
         if (result.aiReason === 'citation_binding_failed') return 'No findings could be placed on the minimap.';

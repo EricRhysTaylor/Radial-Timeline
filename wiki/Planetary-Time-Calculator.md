@@ -1,7 +1,7 @@
 `Planetary time calculator` opens the planetary conversion panel.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Planetary time calculator.png" alt="Planetary time calculator panel" style="width: 440px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/planet-calculator.png" alt="Planetary time calculator panel" style="width: 440px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary time calculator — convert Earth dates to the active local profile</div>
 </div>
 

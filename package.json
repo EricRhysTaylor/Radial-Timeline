@@ -38,6 +38,7 @@
 		"scan-ert": "node scripts/scan-ert-classes.mjs",
 		"verify": "node scripts/verify.mjs",
 		"audit:sanitation": "node scripts/audit/run-scan.ts",
+		"audit:spec-coverage": "node scripts/audit-spec-coverage.mjs",
 		"audit:tsc-unused": "mkdir -p docs/audits && tsc -p tsconfig.audit.json --noEmit > docs/audits/tsc-unused.txt 2>&1 || true",
 		"audit:eslint": "mkdir -p docs/audits && eslint . > docs/audits/eslint.txt 2>&1 || true",
 		"audit:all": "npm run audit:sanitation && npm run audit:tsc-unused && npm run audit:eslint"

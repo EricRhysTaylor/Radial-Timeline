@@ -244,6 +244,13 @@ describe('AI settings models table', () => {
         expect(source.includes('sizeText: requestText')).toBe(true);
     });
 
+    it('renders OpenAI quota failures as quota exceeded in the preview card', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("if (reason === 'quota_exceeded') return 'Quota exceeded';")).toBe(true);
+        expect(source.includes("const quotaFailure = latestSession.result.aiReason === 'quota_exceeded';")).toBe(true);
+        expect(source.includes('Latest Inquiry run failed because API quota was exceeded.')).toBe(true);
+    });
+
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'))")).toBe(true);

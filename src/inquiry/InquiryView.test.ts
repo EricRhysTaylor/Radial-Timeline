@@ -260,6 +260,13 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline' && entry.class !== 'book');")).toBe(true);
     });
 
+    it('uses explicit OpenAI quota-exceeded copy for provider quota failures', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes("reason === 'quota_exceeded') return 'OpenAI API quota exceeded.'")).toBe(true);
+        expect(viewSource.includes('Your OpenAI API account has run out of quota, credits, or billing allowance.')).toBe(true);
+        expect(viewSource.includes('ChatGPT subscription quota is separate from API billing.')).toBe(true);
+    });
+
     it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes("this.plugin.settingsTab.setActiveTab('ai');\n            }\n            const uniqueTargets")).toBe(true);

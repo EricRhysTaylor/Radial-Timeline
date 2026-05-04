@@ -59,17 +59,6 @@ Chronologue mode includes three sub-modes, each rendering a distinct wireframe o
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Shift sub-mode — gray wireframe view</div>
 </div>
 
-<a name="alt-sub-mode"></a>
-### Alt sub-mode (alien/planetary overlay)
-- Use `Alt` to enter the planetary wireframe for your active local time profile.
-- `Alt + Shift` mirrors the Shift sub-mode but tinted red for alien time — great for comparing Earth vs local calendars.
-- All scene timings still derive from Earth timestamps; the overlay is a translation layer.
-
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/alt.jpg" alt="Alt planetary wireframe overlay in Chronologue" style="width: 420; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Alt sub-mode — planetary wireframe overlay</div>
-</div>
-
 <a name="runtime-sub-mode"></a>
 <a name="runtime-mode-pro"></a>
 ### Runtime sub-mode ✦ Pro
@@ -97,7 +86,6 @@ The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** 
 2. Configure a runtime profile matching your content type (Novel or Screenplay)
 3. Switch to Chronologue mode (`3`)
 4. Click the `RT` button to enter the Runtime sub-mode
-5. Adjust the cap slider to tune the visualization
 
 > [!NOTE]
 > Runtime estimates appear in scene hover tooltips when Runtime Estimation is enabled. See [Settings → Runtime estimation](Settings-Core#runtime-estimation) for configuration and [Pro](Pro) for full Pro documentation.
@@ -128,6 +116,7 @@ For lighter-weight context that doesn't need its own note file, **micro-backdrop
 
 ---
 
+<a name="alt-sub-mode"></a>
 <a name="planetary-time"></a>
 ### Planetary Time
 
@@ -142,12 +131,19 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
     *   **Custom Labels**: Define custom names for months and days of the week.
 *   **Synopsis Hover**: In Chronologue mode, hover over a scene to see its date converted to your active planetary profile.
 *   **Calculator**: Use the command palette (`Cmd + P` on Mac, `Ctrl + P` on Windows/Linux) and search for **"Radial Timeline: Planetary time calculator"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
-
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/planetary-calculator.png" alt="Planetary Time calculator converting Earth dates to alien calendars" style="width: 400px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time calculator — convert Earth dates to your world's calendar</div>
-</div>
-*   **Alt sub-mode**: The `Alt + Shift` red-tinted wireframe reveals the alien timeline and elapsed time between scenes — a mirror of the standard Shift sub-mode for your alien location.
+*   **Alt overlay**: Press `Alt` to enter the planetary wireframe for your active local time profile.
+*   **Alt + Shift**: This mirrors the standard Shift sub-mode in red, so you can compare elapsed time and discontinuities in local planetary time.
 *   **Active profile**: The selected profile in Settings controls which calendar is used for hover and conversion outputs.
+*   **Translation layer**: Scene timings still derive from Earth timestamps; Planetary Time converts them for display and writing support.
 
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/planet.jpg" alt="Planetary Time overlay in Chronologue" style="width: 420; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time — red planetary overlay for the active local time profile</div>
+</div>
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/planet-elapsed.png" alt="Planetary Time elapsed-time comparison in Chronologue" style="width: 420; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time — click two scenes to compare elapsed time in local planetary time</div>
+</div>

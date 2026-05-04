@@ -73,6 +73,16 @@ const isSpendCapMessage = (normalized: string): boolean => {
     return false;
 };
 
+const isQuotaExceededMessage = (normalized: string): boolean => {
+    if (!normalized) return false;
+    if (normalized.includes('insufficient_quota')) return true;
+    if (normalized.includes('exceeded your current quota')) return true;
+    if (normalized.includes('check your plan and billing')) return true;
+    if (normalized.includes('quota') && normalized.includes('billing')) return true;
+    if (normalized.includes('quota') && normalized.includes('credits')) return true;
+    return false;
+};
+
 export function classifyProviderError(err: unknown): ProviderErrorClassification {
     const envelope: ErrorEnvelope = typeof err === 'object' && err !== null
         ? err as ErrorEnvelope
@@ -84,6 +94,10 @@ export function classifyProviderError(err: unknown): ProviderErrorClassification
 
     if (isSpendCapMessage(normalized)) {
         return { aiStatus: 'rejected', aiReason: 'spend_cap' };
+    }
+
+    if (isQuotaExceededMessage(normalized)) {
+        return { aiStatus: 'rejected', aiReason: 'quota_exceeded' };
     }
 
     if (status === 429 || normalized.includes('rate limit') || normalized.includes('too many requests') || normalized.includes('overloaded')) {

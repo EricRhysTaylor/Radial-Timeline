@@ -5,7 +5,6 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 
 - Existing manuscript folder inside a larger vault.
 - Multi-book vault with one folder per book plus shared worldbuilding.
-- Multiple vaults, one per project, with shared sets.
 
 This page covers the existing vault flow. If you are starting fresh, see [Fresh Vault Onboarding](Fresh-Vault-Onboarding).
 
@@ -33,9 +32,3 @@ See [Scene Properties (Core + Advanced)](YAML-Frontmatter) for the full schema.
 - For custom systems: name your system, add beats, assign to acts, and drag to reorder.
 - Use **Create** to generate beat set notes, or **Merge** to realign existing files after changes.
 - Switch to Gossamer mode to compare beat-level scoring across the active signal.
-
-## 5. Verify with key features
-- Search timeline to confirm your fields are indexed.
-- Manage subplots to clean up naming.
-- Chronologue Shift sub-mode to check time gaps.
-- Inquiry for corpus-level issues.
