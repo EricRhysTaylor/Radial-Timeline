@@ -206,6 +206,7 @@ import {
 } from '../ai/tokens/inputTokenEstimate';
 import {
     estimateCorpusCost,
+    estimateUsageCost,
     formatApproxUsdCost
 } from '../ai/cost/estimateCorpusCost';
 import { resolveInquirySourceRoots } from './utils/sourceRoots';
@@ -3690,8 +3691,24 @@ export class InquiryView extends ItemView {
         return {
             citationsRequested,
             citationCount: sourcesVM.totalCount,
-            tokenUsage: result.tokenUsage
+            tokenUsage: result.tokenUsage,
+            actualCostUSD: this.getActualUsageCostForResult(result)
         };
+    }
+
+    private getActualUsageCostForResult(result: InquiryResult): number | undefined {
+        const provider = (result.aiProvider ?? '').trim().toLowerCase();
+        if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'google') return undefined;
+        const modelId = result.aiModelResolved || result.aiModelRequested;
+        if (!modelId || !result.tokenUsage) return undefined;
+        try {
+            const breakdown = estimateUsageCost(provider, modelId, result.tokenUsage);
+            return typeof breakdown?.totalCostUSD === 'number' && Number.isFinite(breakdown.totalCostUSD)
+                ? breakdown.totalCostUSD
+                : undefined;
+        } catch {
+            return undefined;
+        }
     }
 
     /**

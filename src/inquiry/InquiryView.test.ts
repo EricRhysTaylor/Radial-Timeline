@@ -267,6 +267,13 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('ChatGPT subscription quota is separate from API billing.')).toBe(true);
     });
 
+    it('passes actual usage-based cost into the engine popover recent-run snapshot', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('actualCostUSD: this.getActualUsageCostForResult(result)')).toBe(true);
+        expect(viewSource.includes('private getActualUsageCostForResult(result: InquiryResult): number | undefined')).toBe(true);
+        expect(viewSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(true);
+    });
+
     it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes("this.plugin.settingsTab.setActiveTab('ai');\n            }\n            const uniqueTargets")).toBe(true);

@@ -9,6 +9,8 @@ export type EngineRecentRunSnapshot = {
     citationCount: number;
     /** Token usage from the provider's response, including cache breakdown. */
     tokenUsage?: TokenUsage;
+    /** Usage-based provider cost once the run returns token usage. */
+    actualCostUSD?: number;
 };
 
 export type EngineCacheWindowSnapshot = {
@@ -149,6 +151,11 @@ type TtlPillState = {
     tooltip: string;
 };
 
+type ActualCostPillState = {
+    label: string;
+    tooltip: string;
+};
+
 /**
  * Compute the cache pill from the most recent run's token usage.
  *
@@ -164,7 +171,14 @@ export function computeCachePillState(usage: TokenUsage | undefined): CachePillS
     if (!usage) return null;
     const cacheRead = usage.cacheReadInputTokens ?? 0;
     const cacheCreation = usage.cacheCreationInputTokens ?? 0;
-    const totalInput = (usage.inputTokens ?? 0) + cacheRead + cacheCreation;
+    const reportedInput = usage.inputTokens ?? 0;
+    // Provider usage shapes differ:
+    // - OpenAI/Gemini report inputTokens as total prompt input, including cached tokens.
+    // - Some cache-aware paths can report only fresh/raw input plus separate cache fields.
+    // Use the provider total when it already covers cached tokens; otherwise reconstruct it.
+    const totalInput = reportedInput >= (cacheRead + cacheCreation)
+        ? reportedInput
+        : reportedInput + cacheRead + cacheCreation;
     if (cacheRead > 0) {
         const reusePct = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) : 0;
         return {
@@ -188,6 +202,14 @@ export function computeCachePillState(usage: TokenUsage | undefined): CachePillS
         };
     }
     return null;
+}
+
+export function computeActualCostPillState(actualCostUSD: number | undefined): ActualCostPillState | null {
+    if (typeof actualCostUSD !== 'number' || !Number.isFinite(actualCostUSD) || actualCostUSD < 0) return null;
+    return {
+        label: `Actual cost · $${actualCostUSD.toFixed(2)}`,
+        tooltip: 'Usage-based cost from the provider token report for the last completed run.'
+    };
 }
 
 /**
@@ -320,6 +342,15 @@ function renderEnginePostRunPills(
             text: ttlPill.label
         });
         el.setAttr('title', ttlPill.tooltip);
+    }
+
+    const actualCostPill = computeActualCostPillState(args.recentRun?.actualCostUSD);
+    if (actualCostPill) {
+        const el = pillRow.createSpan({
+            cls: 'ert-inquiry-engine-pill ert-inquiry-engine-pill--actual-cost is-confirmed',
+            text: actualCostPill.label
+        });
+        el.setAttr('title', actualCostPill.tooltip);
     }
 
     // Citation pill is hard-disabled while inline provider citations are

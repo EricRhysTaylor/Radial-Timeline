@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { computeCachePillState, computeCitationPillState, computeTtlPillState } from './inquiryEngineRenderer';
+import { computeActualCostPillState, computeCachePillState, computeCitationPillState, computeTtlPillState } from './inquiryEngineRenderer';
 
 describe('inquiryEngineRenderer wording', () => {
     it('uses eligible/validation wording for blocked Local LLM Inquiry state', () => {
@@ -34,6 +34,15 @@ describe('computeCachePillState', () => {
         expect(pill?.tooltip).toContain('8,000');
     });
 
+    it('does not double-count OpenAI cached tokens when input already includes cache reads', () => {
+        const pill = computeCachePillState({
+            inputTokens: 258_554,
+            cacheReadInputTokens: 258_432
+        });
+        expect(pill?.state).toBe('confirmed');
+        expect(pill?.label).toBe('Cache reused · 100%');
+    });
+
     it('reports primed when cache_creation > 0 but cache_read == 0', () => {
         const pill = computeCachePillState({
             inputTokens: 5_000,
@@ -59,6 +68,19 @@ describe('computeCachePillState', () => {
             cacheCreationInputTokens: 100_000
         });
         expect(pill?.state).toBe('primed');
+    });
+});
+
+describe('computeActualCostPillState', () => {
+    it('shows the usage-based actual cost from the last completed run', () => {
+        const pill = computeActualCostPillState(0.1042);
+        expect(pill?.label).toBe('Actual cost · $0.10');
+        expect(pill?.tooltip).toContain('provider token report');
+    });
+
+    it('does not render without a finite usage-based cost', () => {
+        expect(computeActualCostPillState(undefined)).toBeNull();
+        expect(computeActualCostPillState(Number.NaN)).toBeNull();
     });
 });
 
