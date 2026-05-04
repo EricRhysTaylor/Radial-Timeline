@@ -150,8 +150,8 @@ function resolveActiveNovelPandocLayout(settings: RadialTimelineSettings): Pando
         : undefined;
 
     const candidateIds = [
-        exportProfileTemplateId,
         activeBook?.lastUsedPandocLayoutByPreset?.novel,
+        exportProfileTemplateId,
         publishingPreferences?.preferredTemplateProfileIdByContext?.novel,
         settings.lastUsedPandocLayoutByPreset?.novel,
     ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);

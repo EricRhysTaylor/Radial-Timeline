@@ -1788,6 +1788,7 @@ export class ManuscriptOptionsModal extends Modal {
                 text: this.formatTemplateProfileName(layouts[0])
             });
             this.selectedLayoutId = activeProfileId || layouts[0].id;
+            void this.rememberSelectedLayoutForTimeline(this.selectedLayoutId);
             selectedLayoutProfile = layouts[0];
         } else {
             // Multiple layouts — dropdown
@@ -1807,9 +1808,11 @@ export class ManuscriptOptionsModal extends Modal {
                 : layouts[0].id;
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
+            void this.rememberSelectedLayoutForTimeline(defaultId);
             selectedLayoutProfile = layouts.find(l => l.id === defaultId);
             dd.onChange((val) => {
                 this.selectedLayoutId = val;
+                void this.rememberSelectedLayoutForTimeline(val);
                 if (this.selectedExportProfile) {
                     this.selectedExportProfile = { ...this.selectedExportProfile, templateProfileId: val, selectedLayoutId: val };
                     this.selectedExportProfileId = this.selectedExportProfile.id;
@@ -1883,6 +1886,18 @@ export class ManuscriptOptionsModal extends Modal {
         if (!active) return null;
         const index = (this.plugin.settings.books || []).findIndex(book => book.id === active.id);
         return index >= 0 ? this.plugin.settings.books[index] : null;
+    }
+
+    private async rememberSelectedLayoutForTimeline(layoutId?: string): Promise<void> {
+        if (!layoutId || this.manuscriptPreset !== 'novel') return;
+        const activeBook = this.getActiveBookReference();
+        if (!activeBook) return;
+        if (!activeBook.lastUsedPandocLayoutByPreset) {
+            activeBook.lastUsedPandocLayoutByPreset = {};
+        }
+        if (activeBook.lastUsedPandocLayoutByPreset.novel === layoutId) return;
+        activeBook.lastUsedPandocLayoutByPreset.novel = layoutId;
+        await this.plugin.saveSettings();
     }
 
     private async setActiveSceneHeadingMode(

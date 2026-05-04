@@ -171,19 +171,39 @@ describe('generateDesignedStyleTex', () => {
     it('checks exact system fonts without emitting fallbacks', () => {
         const tex = generateDesignedStyleTex(buildSpec({
             body: {
-                font: 'source-serif',
+                font: 'eb-garamond',
                 fontFallbackChain: ['Charter', 'Georgia'],
                 sizePt: 11,
                 lineSpacing: 1.5,
                 paragraphIndentEm: 1.5,
             },
         }));
-        expect(tex).toContain('\\IfFontExistsTF{Source Serif 4}');
-        expect(tex).toContain('\\setmainfont{Source Serif 4}');
-        expect(tex).toContain('\\errmessage{Radial Timeline PDF style requires Source Serif 4');
+        expect(tex).toContain('\\IfFontExistsTF{EB Garamond}');
+        expect(tex).toContain('\\setmainfont{EB Garamond}');
+        expect(tex).toContain('\\errmessage{Radial Timeline PDF style requires EB Garamond');
         expect(tex).not.toContain('Charter');
         expect(tex).not.toContain('Georgia');
         expect(tex).not.toContain('\\setmainfont{Times}');
+    });
+
+    it('uses bundled Source Serif 4 files when the bundled font path is supplied', () => {
+        const tex = generateDesignedStyleTex(buildSpec({
+            body: {
+                font: 'source-serif',
+                fontFallbackChain: [],
+                sizePt: 11,
+                lineSpacing: 1.5,
+                paragraphIndentEm: 1.5,
+            },
+        }), {
+            bundledFontPath: '/tmp/radial-timeline/assets/fonts',
+        });
+
+        expect(tex).toContain('\\setmainfont{Source Serif 4}[');
+        expect(tex).toContain('Path = /tmp/radial-timeline/assets/fonts/source-serif-4/');
+        expect(tex).toContain('UprightFont = SourceSerif4-Regular.otf');
+        expect(tex).toContain('BoldItalicFont = SourceSerif4-BoldIt.otf');
+        expect(tex).not.toContain('\\IfFontExistsTF{Source Serif 4}');
     });
 
     it('hard-fails Latin Modern generation when no verified TeX path is provided', () => {

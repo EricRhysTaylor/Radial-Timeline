@@ -30,6 +30,7 @@ function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimeli
     const fontFixtures: Record<string, string[]> = {
         'sorts-mill-goudy': ['SortsMillGoudy-Regular.ttf', 'SortsMillGoudy-Italic.ttf'],
         'latin-modern': ['lmroman10-regular.otf', 'lmroman10-italic.otf', 'lmroman10-bold.otf', 'lmroman10-bolditalic.otf'],
+        'source-serif-4': ['SourceSerif4-Regular.otf', 'SourceSerif4-It.otf', 'SourceSerif4-Bold.otf', 'SourceSerif4-BoldIt.otf', 'LICENSE.md', 'README.md'],
     };
     for (const [family, fontFiles] of Object.entries(fontFixtures)) {
         const dir = path.join(assetFonts, family);
@@ -148,7 +149,10 @@ describe('bundled pandoc layout export auto-install', () => {
         const contemporary = getBundledPandocLayoutContent('bundled-fiction-contemporary-literary')!;
         expect(standard).toContain('\\IfFontExistsTF{Arial}');
         expect(standard).not.toContain('Sorts Mill Goudy');
-        expect(contemporary).toContain('\\IfFontExistsTF{Source Serif 4}');
+        expect(contemporary).toContain('\\setmainfont{Source Serif 4}[');
+        expect(contemporary).toContain('Path = ');
+        expect(contemporary).toContain('source-serif-4/');
+        expect(contemporary).not.toContain('\\IfFontExistsTF{Source Serif 4}');
         expect(contemporary).not.toContain('Charter');
         expect(contemporary).not.toContain('\\setmainfont{Arial}');
         expect(contemporary).not.toContain('Sorts Mill Goudy');

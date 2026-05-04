@@ -640,7 +640,6 @@ const FONT_KEY_TO_DISPLAY: Record<DesignedStyleSpec['body']['font'], string> = {
 
 const GOOGLE_FONTS_BY_KEY: Partial<Record<DesignedStyleSpec['body']['font'], string>> = {
     'sorts-mill-goudy': 'https://fonts.google.com/specimen/Sorts+Mill+Goudy',
-    'source-serif':     'https://fonts.google.com/specimen/Source+Serif+4',
     'eb-garamond':      'https://fonts.google.com/specimen/EB+Garamond',
     'crimson':          'https://fonts.google.com/specimen/Crimson+Text',
 };
@@ -658,18 +657,27 @@ function specForLayout(layout?: PandocLayoutTemplate): DesignedStyleSpec | undef
 }
 
 /**
- * Verify that the bundled `.ttf` files for a font key are actually present on
- * disk. Today only Sorts Mill Goudy is bundled — extend this map when more
- * fonts ship with the plugin.
+ * Verify that bundled font files for a font key are actually present on disk.
  */
 function bundledFontFilesPresent(fontKey: DesignedStyleSpec['body']['font']): boolean {
-    if (fontKey !== 'sorts-mill-goudy') return false;
     const root = getBundledFontPath();
     if (!root) return false;
-    const regular = path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Regular.ttf');
-    const italic = path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Italic.ttf');
+    const requiredByFont: Partial<Record<DesignedStyleSpec['body']['font'], string[]>> = {
+        'sorts-mill-goudy': [
+            path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Regular.ttf'),
+            path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Italic.ttf'),
+        ],
+        'source-serif': [
+            path.join(root, 'source-serif-4', 'SourceSerif4-Regular.otf'),
+            path.join(root, 'source-serif-4', 'SourceSerif4-It.otf'),
+            path.join(root, 'source-serif-4', 'SourceSerif4-Bold.otf'),
+            path.join(root, 'source-serif-4', 'SourceSerif4-BoldIt.otf'),
+        ],
+    };
+    const required = requiredByFont[fontKey];
+    if (!required) return false;
     try {
-        return fs.existsSync(regular) && fs.existsSync(italic);
+        return required.every(file => fs.existsSync(file));
     } catch {
         return false;
     }
@@ -742,7 +750,7 @@ export function getStructuredFontDiagnostic(
     // Bundled fonts: when the plugin's asset files are present, the export
     // pipeline points fontspec at them via `Path=` — system install is not
     // required. When absent (build artifact missing), state is 'missing-bundled'.
-    if (fontKey === 'sorts-mill-goudy') {
+    if (fontKey === 'sorts-mill-goudy' || fontKey === 'source-serif') {
         if (bundledFontFilesPresent(fontKey)) {
             return {
                 state: 'ok',
@@ -761,7 +769,7 @@ export function getStructuredFontDiagnostic(
         };
     }
 
-    // System fonts (source-serif, eb-garamond, crimson, system-serif, system-sans): probe the catalog.
+    // System fonts (eb-garamond, crimson, system-serif, system-sans): probe the catalog.
     const catalog = loadSystemFontCatalog();
     const canVerify = Array.isArray(catalog);
     const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;

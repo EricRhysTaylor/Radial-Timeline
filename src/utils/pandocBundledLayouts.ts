@@ -412,6 +412,14 @@ const BUNDLED_PANDOC_FONT_FILES: Record<string, string[]> = {
         'lmroman10-bold.otf',
         'lmroman10-bolditalic.otf',
     ],
+    'source-serif-4': [
+        'SourceSerif4-Regular.otf',
+        'SourceSerif4-It.otf',
+        'SourceSerif4-Bold.otf',
+        'SourceSerif4-BoldIt.otf',
+        'LICENSE.md',
+        'README.md',
+    ],
 };
 
 export function setPandocFontPathsForVault(plugin: RadialTimelinePlugin): void {

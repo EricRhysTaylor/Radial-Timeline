@@ -201,6 +201,32 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
         return lines.join('\n');
     }
 
+    if (spec.body.font === 'source-serif') {
+        if (options.bundledFontPath) {
+            const root = options.bundledFontPath.endsWith('/')
+                ? options.bundledFontPath
+                : `${options.bundledFontPath}/`;
+            lines.push('\\setmainfont{Source Serif 4}[');
+            lines.push(`  Path = ${root}source-serif-4/ ,`);
+            lines.push('  UprightFont = SourceSerif4-Regular.otf ,');
+            lines.push('  ItalicFont = SourceSerif4-It.otf ,');
+            lines.push('  BoldFont = SourceSerif4-Bold.otf ,');
+            lines.push('  BoldItalicFont = SourceSerif4-BoldIt.otf');
+            lines.push(']');
+            const letterSpacing = spec.runningHeader.letterSpacing;
+            if (typeof letterSpacing === 'number' && letterSpacing > 0) {
+                lines.push('\\newfontface\\headerfont{Source Serif 4}[');
+                lines.push(`  Path = ${root}source-serif-4/ ,`);
+                lines.push('  UprightFont = SourceSerif4-Regular.otf ,');
+                lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
+                lines.push(']');
+            }
+        } else {
+            lines.push('\\errmessage{Radial Timeline Contemporary Literary requires bundled Source Serif 4 font files; run Install all in Settings > Publish}');
+        }
+        return lines.join('\n');
+    }
+
     const letterSpacing = spec.runningHeader.letterSpacing;
     const emitHeaderFont = typeof letterSpacing === 'number' && letterSpacing > 0;
 

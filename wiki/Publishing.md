@@ -30,7 +30,7 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 | **Signature Literary** | Literary book style with refined typography | Polished prose fiction |
 | **Modern Classic** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
 
-PDF layouts require their intended fonts rather than substituting fallbacks:
+PDF layouts require their intended fonts rather than substituting fallbacks. Bundled fonts are installed into `Radial Timeline/Pandoc/fonts/` when you install the PDF styles.
 
 | Template | Font |
 |---|---|

@@ -226,6 +226,36 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         const diag = getStructuredFontDiagnostic(layout);
         expect(diag.state).toBe('missing-bundled');
     });
+
+    it('returns state: ok for bundled Source Serif 4 when required OTF files are present', () => {
+        const fontDir = path.join(tempRoot, 'source-serif-4');
+        fs.mkdirSync(fontDir, { recursive: true });
+        for (const file of [
+            'SourceSerif4-Regular.otf',
+            'SourceSerif4-It.otf',
+            'SourceSerif4-Bold.otf',
+            'SourceSerif4-BoldIt.otf',
+        ]) {
+            fs.writeFileSync(path.join(fontDir, file), 'FAKE');
+        }
+        setBundledFontPath(tempRoot);
+
+        const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'source-serif' } });
+        const diag = getStructuredFontDiagnostic(layout);
+        expect(diag.state).toBe('ok');
+        expect(diag.primaryFontName).toBe('Source Serif 4');
+        expect(diag.resolvedFontName).toBe('Source Serif 4');
+        expect(diag.installHint).toBeUndefined();
+    });
+
+    it('returns state: missing-bundled for Source Serif 4 when bundled files are absent', () => {
+        setBundledFontPath(tempRoot);
+
+        const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'source-serif' } });
+        const diag = getStructuredFontDiagnostic(layout);
+        expect(diag.state).toBe('missing-bundled');
+        expect(diag.installHint?.source).toBe('bundled');
+    });
 });
 
 describe('getStructuredFontDiagnostic — structured shape', () => {
