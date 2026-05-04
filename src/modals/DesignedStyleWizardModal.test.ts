@@ -278,9 +278,9 @@ describe('deriveHeaderStyle', () => {
         expect(deriveHeaderStyle(spec)).toBe('literary');
     });
 
-    it('returns "custom" for the contemporary "left-title-right-context" mode', () => {
+    it('returns "contemporary" for the "left-title-right-context" mode', () => {
         const spec = freshSubmissionSpec();
         spec.runningHeader.mode = 'left-title-right-context';
-        expect(deriveHeaderStyle(spec)).toBe('custom');
+        expect(deriveHeaderStyle(spec)).toBe('contemporary');
     });
 });

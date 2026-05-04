@@ -255,6 +255,11 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('mtime: 0,\n                    class: \'book\'')).toBe(true);
     });
 
+    it('keeps synthetic saga book anchors out of the visible corpus strip', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes("const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline' && entry.class !== 'book');")).toBe(true);
+    });
+
     it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes("this.plugin.settingsTab.setActiveTab('ai');\n            }\n            const uniqueTargets")).toBe(true);

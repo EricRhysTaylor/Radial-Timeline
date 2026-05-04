@@ -10637,8 +10637,8 @@
 /* -- Spine / Gutter -- */
 
 .ert-ui.ert-scope--settings .ert-layout-spread-spine {
-  width: 3px;
-  background: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  width: 1px;
+  background: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
   flex-shrink: 0;
 }
 

@@ -5125,7 +5125,7 @@ export class InquiryView extends ItemView {
         });
         const sceneEntries = manifest.entries.filter(entry => entry.class === 'scene');
         const outlineEntries = manifest.entries.filter(entry => entry.class === 'outline');
-        const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
+        const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline' && entry.class !== 'book');
         const bookOutlineEntries = outlineEntries
             .filter(entry => entry.scope !== 'saga');
         const sagaOutlineEntries = this.state.scope === 'saga'

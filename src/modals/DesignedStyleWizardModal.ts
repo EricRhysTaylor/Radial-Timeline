@@ -79,7 +79,7 @@ const WIZARD_CATEGORIES: ReadonlyArray<{ value: WizardCategory; label: string }>
 // ──────────────────────────────────────────────────────────────────────────
 export type PageFeel = 'compact' | 'balanced' | 'airy' | 'custom';
 export type LineSpacingPreset = 'tight' | 'standard' | 'airy' | 'custom';
-export type HeaderStyle = 'none' | 'minimal' | 'literary' | 'custom';
+export type HeaderStyle = 'none' | 'minimal' | 'literary' | 'contemporary' | 'custom';
 
 const PAGE_FEEL_MARGIN_INCHES: Record<Exclude<PageFeel, 'custom'>, number> = {
     compact:  0.75,
@@ -97,9 +97,10 @@ const HEADER_STYLE_MODES: Record<
     Exclude<HeaderStyle, 'custom'>,
     DesignedStyleSpec['runningHeader']['mode']
 > = {
-    none:     'none',
-    minimal:  'centered-title',
-    literary: 'split-author-page-title-page',
+    none:         'none',
+    minimal:      'centered-title',
+    literary:     'split-author-page-title-page',
+    contemporary: 'left-title-right-context',
 };
 
 /**
@@ -129,15 +130,15 @@ export function deriveSpacingPreset(spec: DesignedStyleSpec): LineSpacingPreset 
 }
 
 /**
- * Derive the header-style preset from `runningHeader.mode`. Modes outside the
- * three preset values (e.g. `'left-title-right-context'`) collapse to
- * `'custom'`.
+ * Derive the header-style preset from `runningHeader.mode`. Returns 'custom'
+ * only when the mode is none of the four named presets.
  */
 export function deriveHeaderStyle(spec: DesignedStyleSpec): HeaderStyle {
     const mode = spec.runningHeader.mode;
-    if (mode === HEADER_STYLE_MODES.none)     return 'none';
-    if (mode === HEADER_STYLE_MODES.minimal)  return 'minimal';
-    if (mode === HEADER_STYLE_MODES.literary) return 'literary';
+    if (mode === HEADER_STYLE_MODES.none)         return 'none';
+    if (mode === HEADER_STYLE_MODES.minimal)      return 'minimal';
+    if (mode === HEADER_STYLE_MODES.literary)     return 'literary';
+    if (mode === HEADER_STYLE_MODES.contemporary) return 'contemporary';
     return 'custom';
 }
 
@@ -333,6 +334,7 @@ export class DesignedStyleWizardModal extends Modal {
     private saveButton: ButtonComponent | null = null;
     private validationBannerEl: HTMLElement | null = null;
     private activeCategory: WizardCategory = 'page';
+    private activeCornerKey: 'evenLeft' | 'evenCenter' | 'evenRight' | 'oddLeft' | 'oddCenter' | 'oddRight' = 'evenLeft';
 
     constructor(app: App, plugin: RadialTimelinePlugin, options: DesignedStyleWizardOptions) {
         super(app);
@@ -553,7 +555,7 @@ export class DesignedStyleWizardModal extends Modal {
             text: 'Category',
         });
         const select = parent.createEl('select', {
-            cls: 'ert-input ert-input--md ert-style-wizard__select ert-style-wizard__category-select',
+            cls: 'ert-input ert-input--md',
         });
         WIZARD_CATEGORIES.forEach(({ value, label }) => {
             const opt = select.createEl('option', { value, text: label });
@@ -640,7 +642,16 @@ export class DesignedStyleWizardModal extends Modal {
         const mirroredRow = this.fieldRow(body, 'Mirrored margins (book binding)');
         this.toggleInput(mirroredRow, !!this.spec.margins.mirrored, (v) => {
             this.mutateSpec((s) => { s.margins.mirrored = v; });
+            // Cross widget relabels L/R → Inner/Outer; re-render the panel so
+            // the labels swap immediately.
+            this.refreshConfigOnly();
         });
+
+        this.renderPanelGlossary(body, [
+            { term: 'Paper size',         definition: 'The trim size of the printed page. 6×9 trade is standard for novels; A4 / US Letter are typical for manuscripts; Custom unlocks free width/height.' },
+            { term: 'Margins',            definition: 'White space around the text block. Compact / Balanced / Airy snap all four to a uniform value; the cross widget below sets each side individually.' },
+            { term: 'Mirrored margins',   definition: 'When on, the L value becomes the inner (binding/gutter) margin and R becomes the outer; the cross relabels to Inner/Outer. Values stay the same — geometry just flips on facing pages so the gutter is always toward the spine.' },
+        ]);
     }
 
     /**
@@ -653,23 +664,26 @@ export class DesignedStyleWizardModal extends Modal {
     private renderPageFeelRow(parent: HTMLElement): void {
         const current = derivePageFeel(this.spec);
         const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
-        const presets: Array<{ value: Exclude<PageFeel, 'custom'>; label: string; lines: 'dense' | 'normal' | 'sparse' }> = [
-            { value: 'compact',  label: 'Compact',  lines: 'dense'  },
-            { value: 'balanced', label: 'Balanced', lines: 'normal' },
-            { value: 'airy',     label: 'Airy',     lines: 'sparse' },
+        const presets: Array<{ value: Exclude<PageFeel, 'custom'>; label: string }> = [
+            { value: 'compact',  label: 'Compact'  },
+            { value: 'balanced', label: 'Balanced' },
+            { value: 'airy',     label: 'Airy'     },
         ];
-        presets.forEach(({ value, label, lines }) => {
+        presets.forEach(({ value, label }) => {
             const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
             card.tabIndex = 0;
             card.setAttribute('role', 'button');
             card.setAttribute('aria-label', `${label} margins`);
             if (current === value) card.addClass('is-active');
-            // Mini page diagram: outer page rectangle + inset body block.
+            // Mini page diagram: outer page rectangle (paper) + inner bordered
+            // block (text frame). Four measurement ticks span each margin so the
+            // card reads as a margin-width comparison, not line density.
             const diagram = card.createDiv({ cls: `ert-style-wizard__preset-page ert-style-wizard__preset-page--${value}` });
-            const block = diagram.createDiv({ cls: 'ert-style-wizard__preset-page-block' });
-            for (let i = 0; i < 4; i += 1) {
-                block.createDiv({ cls: `ert-style-wizard__preset-page-line ert-style-wizard__preset-page-line--${lines}` });
-            }
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--top' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--right' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--bottom' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--left' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-block' });
             card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
             const apply = () => {
                 const inches = PAGE_FEEL_MARGIN_INCHES[value];
@@ -693,19 +707,19 @@ export class DesignedStyleWizardModal extends Modal {
             const card = row.createDiv({ cls: 'ert-style-wizard__preset-card is-active is-readonly' });
             card.setAttribute('aria-disabled', 'true');
             const diagram = card.createDiv({ cls: 'ert-style-wizard__preset-page ert-style-wizard__preset-page--custom' });
-            const block = diagram.createDiv({ cls: 'ert-style-wizard__preset-page-block' });
-            for (let i = 0; i < 4; i += 1) {
-                block.createDiv({ cls: 'ert-style-wizard__preset-page-line ert-style-wizard__preset-page-line--normal' });
-            }
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--top' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--right' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--bottom' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-tick ert-style-wizard__preset-page-tick--left' });
+            diagram.createDiv({ cls: 'ert-style-wizard__preset-page-block' });
             card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: 'Custom' });
         }
     }
 
     /**
-     * Line-spacing visual preset row. Three chips (Tight 1.0 / Standard 1.5
-     * / Airy 2.0). The existing radio + custom number input below cover
-     * non-preset values like 1.18 (Modern Classic), which derive to
-     * `'custom'` here and render a non-interactive feedback chip.
+     * Line-spacing visual preset row. Four cards (Tight 1.0 / Standard 1.5
+     * / Airy 2.0 / Custom). Custom is interactive — clicking it puts the spec
+     * in custom mode and reveals a numeric input below the row.
      */
     private renderLineSpacingPresetRow(parent: HTMLElement): void {
         const current = deriveSpacingPreset(this.spec);
@@ -739,15 +753,33 @@ export class DesignedStyleWizardModal extends Modal {
                 }
             });
         });
-        if (current === 'custom') {
-            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card is-active is-readonly' });
-            card.setAttribute('aria-disabled', 'true');
-            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-lines ert-style-wizard__preset-lines--standard' });
-            for (let i = 0; i < 5; i += 1) {
-                stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
-            }
-            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: 'Custom' });
+
+        // Custom card — interactive. Clicking it puts the spec in custom mode
+        // (default 1.18 if currently a preset value) and the parent renderer
+        // reveals the numeric input below this row.
+        const customCard = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+        customCard.tabIndex = 0;
+        customCard.setAttribute('role', 'button');
+        customCard.setAttribute('aria-label', 'Custom line spacing');
+        if (current === 'custom') customCard.addClass('is-active');
+        const customStack = customCard.createDiv({ cls: 'ert-style-wizard__preset-lines ert-style-wizard__preset-lines--standard' });
+        for (let i = 0; i < 5; i += 1) {
+            customStack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
         }
+        customCard.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: 'Custom' });
+        const applyCustom = () => {
+            // If we're already custom, no-op — the input below is the editor.
+            if (deriveSpacingPreset(this.spec) === 'custom') return;
+            this.mutateSpec((s) => { s.body.lineSpacing = 1.18; });
+            this.refreshConfigOnly();
+        };
+        customCard.addEventListener('click', applyCustom);
+        customCard.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                applyCustom();
+            }
+        });
     }
 
     /**
@@ -782,6 +814,16 @@ export class DesignedStyleWizardModal extends Modal {
                     right.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
                 },
             },
+            {
+                // Contemporary — book title flush left on even pages, scene
+                // context flush right on odd pages. The strip mocks just one
+                // page (no two-page split) since each side is asymmetric.
+                value: 'contemporary', label: 'Contemporary',
+                render: (strip) => {
+                    const left = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--left' });
+                    left.createDiv({ cls: 'ert-style-wizard__preset-header-text' });
+                },
+            },
         ];
         presets.forEach(({ value, label, render }) => {
             const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
@@ -792,8 +834,12 @@ export class DesignedStyleWizardModal extends Modal {
             const strip = card.createDiv({ cls: 'ert-style-wizard__preset-header-strip' });
             render(strip);
             // Filler page-body lines below the header strip so each card looks
-            // like a tiny page top.
-            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-header-body' });
+            // like a tiny page top. Literary uses a two-page split because the
+            // strip itself shows facing-page running heads (left + right marks).
+            const bodyCls = value === 'literary'
+                ? 'ert-style-wizard__preset-header-body ert-style-wizard__preset-header-body--two-page'
+                : 'ert-style-wizard__preset-header-body';
+            const stack = card.createDiv({ cls: bodyCls });
             for (let i = 0; i < 4; i += 1) {
                 stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
             }
@@ -819,7 +865,7 @@ export class DesignedStyleWizardModal extends Modal {
             left.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
             const right = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--right' });
             right.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
-            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-header-body' });
+            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-header-body ert-style-wizard__preset-header-body--two-page' });
             for (let i = 0; i < 4; i += 1) {
                 stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
             }
@@ -827,8 +873,13 @@ export class DesignedStyleWizardModal extends Modal {
         }
     }
 
-    /** Framer-style cross widget for the four page margins. */
+    /** Framer-style cross widget for the four page margins. When mirrored is
+     *  on, the L/R cells relabel to Inner/Outer to match the LaTeX
+     *  `geometry` semantics (leftIn → inner=, rightIn → outer=). */
     private renderMarginCross(parent: HTMLElement): void {
+        const mirrored = !!this.spec.margins.mirrored;
+        const leftLabel  = mirrored ? 'Inner' : 'L';
+        const rightLabel = mirrored ? 'Outer' : 'R';
         const cross = parent.createDiv({ cls: 'ert-style-wizard__margin-cross' });
 
         const cellTop = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--top' });
@@ -841,14 +892,16 @@ export class DesignedStyleWizardModal extends Modal {
         this.marginInput(cellLeft, this.spec.margins.leftIn, (n) => {
             this.mutateSpec((s) => { s.margins.leftIn = n; });
         });
-        cellLeft.createSpan({ cls: 'ert-style-wizard__margin-axis', text: 'L' });
+        cellLeft.createSpan({ cls: 'ert-style-wizard__margin-axis', text: leftLabel });
 
         const cellCenter = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--center' });
         const iconWrap = cellCenter.createSpan({ cls: 'ert-style-wizard__margin-icon' });
-        try { setIcon(iconWrap, 'rectangle-vertical'); } catch { /* test env */ }
+        // Mirrored on → book-open-check signals "this is the recto (right) page —
+        // its left edge is the inner (binding) margin." Off → plain page rect.
+        try { setIcon(iconWrap, mirrored ? 'book-open-check' : 'rectangle-vertical'); } catch { /* test env */ }
 
         const cellRight = cross.createDiv({ cls: 'ert-style-wizard__margin-cell ert-style-wizard__margin-cell--right' });
-        cellRight.createSpan({ cls: 'ert-style-wizard__margin-axis', text: 'R' });
+        cellRight.createSpan({ cls: 'ert-style-wizard__margin-axis', text: rightLabel });
         this.marginInput(cellRight, this.spec.margins.rightIn, (n) => {
             this.mutateSpec((s) => { s.margins.rightIn = n; });
         });
@@ -880,7 +933,7 @@ export class DesignedStyleWizardModal extends Modal {
         const body = this.createPanelBody(parent);
 
         const fontRow = this.fieldRow(body, 'Font');
-        const fontSelect = fontRow.createEl('select', { cls: 'ert-input ert-style-wizard__select' });
+        const fontSelect = fontRow.createEl('select', { cls: 'ert-input ert-input--md' });
         FONT_OPTIONS.forEach((option) => {
             const opt = fontSelect.createEl('option', { value: option.value, text: option.label });
             if (option.value === this.spec.body.font) opt.selected = true;
@@ -949,51 +1002,26 @@ export class DesignedStyleWizardModal extends Modal {
             refreshFontStatus();
         });
 
-        // Line-spacing visual presets (Tight / Standard / Airy). Quick-pick
-        // chips above the existing radio. The radio + custom number input
-        // remain below for non-preset values like 1.18 (Modern Classic).
+        // Line-spacing visual presets (Tight / Standard / Airy / Custom). The
+        // Custom card is interactive — clicking it puts the spec in custom mode
+        // and reveals the numeric input below the row. No separate radio.
         this.renderLineSpacingPresetRow(body);
 
-        // Compact row: Size (pt) + Line spacing radio (+ Custom spacing input when active).
-        const sizeLineRow = this.compactRow(body);
-        const sizeCell = this.compactCell(sizeLineRow, 'Size (pt)');
-        this.numberInput(sizeCell, this.spec.body.sizePt, 8, 14, 1, (n) => {
-            this.mutateSpec((s) => { s.body.sizePt = n; });
-        });
-
-        const lineRow = this.compactCell(sizeLineRow, 'Line spacing');
-        const lineOptions: Array<{ value: string; label: string }> = [
-            { value: '1.0',    label: 'Single' },
-            { value: '1.18',   label: '1.18' },
-            { value: '1.5',    label: '1.5' },
-            { value: '2.0',    label: 'Double' },
-            { value: 'custom', label: 'Custom' },
-        ];
-        const presetValues = new Set(['1.0', '1.18', '1.5', '2.0']);
-        const currentLineKey = presetValues.has(this.spec.body.lineSpacing.toFixed(2))
-            ? this.spec.body.lineSpacing.toFixed(2).replace(/\.0+$/, '.0').replace('1.50', '1.5').replace('2.00', '2.0').replace('1.00', '1.0')
-            : presetValues.has(String(this.spec.body.lineSpacing))
-                ? String(this.spec.body.lineSpacing)
-                : 'custom';
-        this.makeRadioGroup(lineRow, lineOptions, currentLineKey, (v) => {
-            this.mutateSpec((s) => {
-                if (v !== 'custom') {
-                    s.body.lineSpacing = parseFloat(v);
-                } else if (s.body.lineSpacing < 0.8 || s.body.lineSpacing > 3) {
-                    s.body.lineSpacing = 1.5;
-                }
-            });
-            this.refreshConfigOnly();
-        });
-        if (currentLineKey === 'custom') {
-            const customCell = this.compactCell(sizeLineRow, 'Custom spacing');
-            this.numberInput(customCell, this.spec.body.lineSpacing, 0.8, 3, 0.05, (n) => {
+        // Custom spacing input — appears below the cards only when current is custom.
+        if (deriveSpacingPreset(this.spec) === 'custom') {
+            const customRow = this.fieldRow(body, 'Custom line spacing');
+            this.numberInput(customRow, this.spec.body.lineSpacing, 0.8, 3, 0.05, (n) => {
                 this.mutateSpec((s) => { s.body.lineSpacing = n; });
             });
         }
 
-        const indentRow = this.fieldRow(body, 'Paragraph indent (em)');
-        this.numberInput(indentRow, this.spec.body.paragraphIndentEm ?? 0, 0, 3, 0.5, (n) => {
+        const sizeRow = this.fieldRow(body, 'Size (pt)');
+        this.numberInput(sizeRow, this.spec.body.sizePt, 8, 14, 1, (n) => {
+            this.mutateSpec((s) => { s.body.sizePt = n; });
+        });
+
+        const indentRow = this.fieldRow(body, 'Paragraph indent (em — typical 1.0–1.5)');
+        this.numberInput(indentRow, this.spec.body.paragraphIndentEm ?? 0, 0, 3, 0.1, (n) => {
             this.mutateSpec((s) => {
                 if (n === 0) delete s.body.paragraphIndentEm;
                 else s.body.paragraphIndentEm = n;
@@ -1005,71 +1033,102 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.body.firstLineIndentSuppressedAfterBreak = v; });
         });
 
-        const microRow = this.fieldRow(body, 'Microtype');
-        this.toggleInput(microRow, !!this.spec.body.microtype, (v) => {
-            this.mutateSpec((s) => { s.body.microtype = v; });
-        });
+        // Microtype is universally good — always emit, no toggle.
+
+        this.renderPanelGlossary(body, [
+            { term: 'Body font',          definition: 'The typeface used for paragraph text. Each option is a real font you must have installed; the wizard reports missing fonts in red.' },
+            { term: 'Line spacing',       definition: 'Vertical space between baselines. Tight (1.0) is single-spaced; Standard (1.5) reads cleanly in print; Airy (2.0) is the editor-friendly double-space; Custom lets you dial in any value 0.8–3.' },
+            { term: 'Paragraph indent',   definition: 'First-line indent on every paragraph, measured in `em` (the width of a capital M). Typical book setting: 1.0–1.5 em; 0 disables indent.' },
+            { term: 'Suppress indent after break', definition: 'When on, the very first paragraph after a scene break or chapter heading does NOT get an indent — a print convention.' },
+        ]);
     }
 
     private renderHeaderSection(parent: HTMLElement): void {
         const body = this.createPanelBody(parent);
 
-        // Header style visual presets (None / Minimal / Literary). Quick-pick
-        // strips above the existing preset radio. The radio retains
-        // `'left-title-right-context'` (Contemporary's split mode) which has
-        // no visual preset and derives to `'custom'`.
+        // Header style visual presets (None / Minimal / Literary / Contemporary).
+        // These cards drive `runningHeader.mode` via applyHeaderPreset, which
+        // also populates the 6 per-corner fields.
         this.renderHeaderStyleRow(body);
 
-        const presetRow = this.fieldRow(body, 'Preset');
-        const presetOptions: Array<{ value: DesignedStyleSpec['runningHeader']['mode']; label: string }> = [
-            { value: 'none',                          label: 'None' },
-            { value: 'centered-title',                label: 'Centered title' },
-            { value: 'split-author-page-title-page',  label: 'Page+Author / Title+Page' },
-            { value: 'left-title-right-context',      label: 'Left title / Right scene' },
-        ];
-        this.makeRadioGroup(
-            presetRow,
-            presetOptions.map(o => ({ value: o.value, label: o.label })),
-            this.spec.runningHeader.mode,
-            (v) => {
-                this.mutateSpec((s) => applyHeaderPreset(s, v as DesignedStyleSpec['runningHeader']['mode']));
-                this.refreshConfigOnly();
-            },
-        );
-
-        // Per-corner editor (collapsed disclosure).
-        const cornerDetails = body.createEl('details', { cls: 'ert-style-wizard__subsection' });
-        cornerDetails.createEl('summary', {
-            cls: 'ert-style-wizard__subsection-summary',
+        // Per-corner editor — always visible (no disclosure). 6 mini-cards
+        // (no per-card dropdown) drive a single shared dropdown below:
+        // clicking a card selects it as the editing target; the dropdown
+        // reads/writes only that corner. The preset cards above populate all
+        // 6 corners; this section is for fine-tuning after preset selection.
+        const cornerSection = body.createDiv({ cls: 'ert-style-wizard__subsection' });
+        cornerSection.createDiv({
+            cls: 'ert-style-wizard__subsection-heading',
             text: 'Customize per corner',
         });
-        const cornerBody = cornerDetails.createDiv({ cls: 'ert-style-wizard__corner-grid' });
+        const cornerBody = cornerSection.createDiv({ cls: 'ert-style-wizard__corner-grid' });
 
-        const cornerLabels: Array<{ key: keyof DesignedStyleSpec['runningHeader']; label: string }> = [
-            { key: 'evenLeft', label: 'Even L' },
-            { key: 'evenCenter', label: 'Even C' },
-            { key: 'evenRight', label: 'Even R' },
-            { key: 'oddLeft', label: 'Odd L' },
-            { key: 'oddCenter', label: 'Odd C' },
-            { key: 'oddRight', label: 'Odd R' },
+        type CornerKey = 'evenLeft' | 'evenCenter' | 'evenRight' | 'oddLeft' | 'oddCenter' | 'oddRight';
+        type CornerSlot = 'left' | 'center' | 'right';
+        const cornerCards: Array<{ key: CornerKey; label: string; page: 'even' | 'odd'; slot: CornerSlot }> = [
+            { key: 'evenLeft',   label: 'Even L', page: 'even', slot: 'left'   },
+            { key: 'evenCenter', label: 'Even C', page: 'even', slot: 'center' },
+            { key: 'evenRight',  label: 'Even R', page: 'even', slot: 'right'  },
+            { key: 'oddLeft',    label: 'Odd L',  page: 'odd',  slot: 'left'   },
+            { key: 'oddCenter',  label: 'Odd C',  page: 'odd',  slot: 'center' },
+            { key: 'oddRight',   label: 'Odd R',  page: 'odd',  slot: 'right'  },
         ];
-        cornerLabels.forEach(({ key, label }) => {
-            const row = cornerBody.createDiv({ cls: 'ert-style-wizard__corner-row' });
-            row.createSpan({ cls: 'ert-style-wizard__corner-label', text: label });
-            this.headerFieldDropdown(
-                row,
-                this.spec.runningHeader[key] as DesignedHeaderField | undefined,
-                (next) => {
-                    this.mutateSpec((s) => {
-                        if (next === 'empty' || next === undefined) {
-                            delete (s.runningHeader as Record<string, unknown>)[key as string];
-                        } else {
-                            (s.runningHeader as Record<string, unknown>)[key as string] = next;
-                        }
-                    });
-                },
-            );
+        cornerCards.forEach(({ key, label, page, slot }) => {
+            // Corner cards reuse the same chrome as the None/Minimal/Literary
+            // header preset cards above: header strip + body lines + label.
+            // The active slot (L/C/R) gets a header-text mark; other slots
+            // are empty so each card visually communicates which corner it
+            // edits.
+            const card = cornerBody.createDiv({ cls: 'ert-style-wizard__preset-card ert-style-wizard__corner-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Edit ${label} header`);
+            if (this.activeCornerKey === key) card.addClass('is-active');
+            const strip = card.createDiv({ cls: 'ert-style-wizard__preset-header-strip' });
+            const cell = strip.createDiv({ cls: `ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--${slot}` });
+            cell.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
+            // Body lines below the strip — single-page layout (no two-page
+            // split) since each corner card represents one page (even or odd).
+            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-header-body' });
+            for (let i = 0; i < 4; i += 1) {
+                stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            // Mark even/odd via a data attr in case future styling distinguishes
+            // them visually (e.g. binding edge accent).
+            card.setAttribute('data-page', page);
+            const select = () => {
+                this.activeCornerKey = key;
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', select);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    select();
+                }
+            });
         });
+
+        // Single shared editor — drives whichever corner is currently selected.
+        const editorRow = cornerSection.createDiv({ cls: 'ert-style-wizard__corner-editor' });
+        const editorLabel = editorRow.createSpan({ cls: 'ert-style-wizard__corner-editor-label' });
+        const activeMeta = cornerCards.find(c => c.key === this.activeCornerKey);
+        editorLabel.setText(`Editing: ${activeMeta?.label ?? ''}`);
+        this.headerFieldDropdown(
+            editorRow,
+            this.spec.runningHeader[this.activeCornerKey] as DesignedHeaderField | undefined,
+            (next) => {
+                const key = this.activeCornerKey;
+                this.mutateSpec((s) => {
+                    if (next === 'empty' || next === undefined) {
+                        delete (s.runningHeader as Record<string, unknown>)[key];
+                    } else {
+                        (s.runningHeader as Record<string, unknown>)[key] = next;
+                    }
+                });
+            },
+        );
 
         const fontRow = this.fieldRow(body, 'Header font');
         this.makeRadioGroup(fontRow, [
@@ -1089,6 +1148,13 @@ export class DesignedStyleWizardModal extends Modal {
                 else s.runningHeader.letterSpacing = n;
             });
         });
+
+        this.renderPanelGlossary(body, [
+            { term: 'Running header',     definition: 'The repeating text at the top of every interior page (book title, author, scene context, page number, etc.). Even and odd pages can carry different content on facing-page books.' },
+            { term: 'Preset',             definition: 'Common header layouts wired up in one click. Use Customize per corner below to override individual slots.' },
+            { term: 'Header font',        definition: '"Inherit body" reuses the body typeface. "Sans" switches headers to a sans-serif (a Contemporary Literary convention).' },
+            { term: 'Letter spacing',     definition: 'Extra tracking between letters in running heads, in fontspec units (e.g. 15.0 produces the wide-set caps in Signature Literary). 0 means default tracking.' },
+        ]);
     }
 
     private headerFieldDropdown(
@@ -1096,7 +1162,7 @@ export class DesignedStyleWizardModal extends Modal {
         current: DesignedHeaderField | undefined,
         onChange: (next: DesignedHeaderField | undefined) => void,
     ): void {
-        const select = parent.createEl('select', { cls: 'ert-input ert-style-wizard__select' });
+        const select = parent.createEl('select', { cls: 'ert-input ert-input--md' });
         const options: Array<{ value: string; label: string }> = [
             { value: 'empty',         label: '(empty)' },
             { value: 'page',          label: 'Page #' },
@@ -1151,12 +1217,13 @@ export class DesignedStyleWizardModal extends Modal {
         // Visual position presets — each card mocks where the page number sits.
         this.renderFolioPositionPresets(body);
 
-        // Format radio (Arabic / Roman frontmatter).
+        // Format radio (Arabic / Roman frontmatter) — labels include sample
+        // numerals so the user sees the actual glyph style on the button.
         const formatRow = this.compactRow(body);
         const formatCell = this.compactCell(formatRow, 'Format');
         this.makeRadioGroup(formatCell, [
-            { value: 'arabic',            label: 'Arabic' },
-            { value: 'roman-frontmatter', label: 'Roman (frontmatter only)' },
+            { value: 'arabic',            label: 'Arabic  1  2  3' },
+            { value: 'roman-frontmatter', label: 'Roman  i  ii  iii  (frontmatter only)' },
         ], this.spec.folio.format ?? 'arabic', (v) => {
             this.mutateSpec((s) => { s.folio.format = v as DesignedStyleSpec['folio']['format']; });
         });
@@ -1258,9 +1325,9 @@ export class DesignedStyleWizardModal extends Modal {
         if (partsOn) {
             const numeralCell = this.compactCell(headerRow, 'Numeral style');
             this.makeRadioGroup(numeralCell, [
-                { value: 'roman',  label: 'Roman' },
-                { value: 'arabic', label: 'Arabic' },
-                { value: 'word',   label: 'Word' },
+                { value: 'roman',  label: 'Roman   I  II  III' },
+                { value: 'arabic', label: 'Arabic  1  2  3' },
+                { value: 'word',   label: 'Word  One Two' },
             ], this.spec.parts.mode, (v) => {
                 this.mutateSpec((s) => { s.parts.mode = v as DesignedStyleSpec['parts']['mode']; });
             });
@@ -1292,6 +1359,14 @@ export class DesignedStyleWizardModal extends Modal {
                 s.parts.epigraphPlacement = v as 'inline' | 'own-page';
             });
         });
+
+        this.renderPanelGlossary(body, [
+            { term: 'Part / Act',         definition: 'A top-level division grouping multiple chapters or scenes (e.g. Part I, Part II). Often introduced with a dedicated opener page.' },
+            { term: 'Numeral style',      definition: 'How the part number is rendered: I II III (Roman), 1 2 3 (Arabic), or One Two (Word).' },
+            { term: 'Page break',         definition: 'When on, every Part heading starts on a fresh page (`\\cleardoublepage`). Off keeps Parts inline in the running text.' },
+            { term: 'Epigraph',           definition: 'A short quote (with optional attribution) printed under the Part heading. Inline keeps it on the Part page; Own page floats it onto a dedicated leaf.' },
+            { term: 'openany',            definition: 'LaTeX `book[openany]` — chapters can start on either left or right pages instead of always recto. Saves blank pages in shorter books.' },
+        ]);
     }
 
     private renderChaptersSection(parent: HTMLElement): void {
@@ -1310,34 +1385,18 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.chapters.resetSceneCounter = v; });
         });
 
-        // Compact row: Top spacing + Bottom spacing sliders.
-        const spacingRow = this.compactRow(body);
-        const topCell = this.compactCell(spacingRow, 'Top spacing (% page)');
-        this.sliderInput(topCell, this.spec.chapters.spacing?.topFraction ?? 0, 0, 0.6, 0.02, (n) => {
+        const topRow = this.fieldRow(body, 'Heading top spacing (% page)');
+        this.sliderInput(topRow, this.spec.chapters.spacing?.topFraction ?? 0, 0, 0.6, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.chapters.spacing = { ...(s.chapters.spacing ?? {}), topFraction: n };
             });
         }, (v) => `${Math.round(v * 100)}%`);
 
-        const botCell = this.compactCell(spacingRow, 'Bottom spacing (% page)');
-        this.sliderInput(botCell, this.spec.chapters.spacing?.bottomFraction ?? 0, 0, 0.3, 0.02, (n) => {
-            this.mutateSpec((s) => {
-                s.chapters.spacing = { ...(s.chapters.spacing ?? {}), bottomFraction: n };
-            });
-        }, (v) => `${Math.round(v * 100)}%`);
-
-        const numRow = this.fieldRow(body, 'Section number depth (advanced)');
-        this.makeRadioGroup(numRow, [
-            { value: '0', label: '0 (no auto numbers)' },
-            { value: '1', label: '1 (numbered scenes)' },
-        ], String(this.spec.chapters.secnumdepth ?? 0), (v) => {
-            this.mutateSpec((s) => { s.chapters.secnumdepth = (v === '1' ? 1 : 0); });
-        });
-
         this.renderPanelGlossary(body, [
-            { term: 'Chapter style', definition: 'Whether each chapter heading shows a number, a title, both, or nothing.' },
-            { term: 'Top / bottom spacing', definition: 'How far down the page the chapter heading sits, and the gap below it before body text starts. Driven by % of page height.' },
-            { term: 'Section number depth', definition: 'LaTeX `\\setcounter{secnumdepth}{n}` — when 1, scene-level sections get auto-numbers; when 0, no auto numbering.' },
+            { term: 'Chapter style',         definition: 'Whether each chapter heading shows a number, a title, both, or nothing.' },
+            { term: 'Heading top spacing',   definition: 'How far down the page the chapter heading sits, as a percentage of page height. 0% = top of page; 46% pushes the heading deep into the page (Contemporary Literary convention).' },
+            { term: 'Page break before chapter', definition: 'When on, every chapter heading starts on a fresh page. Off keeps chapters running inline.' },
+            { term: 'Reset scene counter',   definition: 'When on, the scene number resets to 1 at every chapter boundary; otherwise scenes number continuously through the book.' },
         ]);
     }
 
@@ -1404,15 +1463,8 @@ export class DesignedStyleWizardModal extends Modal {
     private renderScenesSection(parent: HTMLElement): void {
         const body = this.createPanelBody(parent);
 
-        const openerRow = this.fieldRow(body, 'Opener style');
-        this.makeRadioGroup(openerRow, [
-            { value: 'inline-separator', label: 'Inline separator' },
-            { value: 'dedicated-page',   label: 'Dedicated page' },
-            { value: 'roman-with-rule',  label: 'Roman with rule' },
-        ], this.spec.scene.opener, (v) => {
-            this.mutateSpec((s) => { s.scene.opener = v as DesignedStyleSpec['scene']['opener']; });
-            this.refreshConfigOnly();
-        });
+        // Visual opener-style preset cards.
+        this.renderOpenerStylePresets(body);
 
         if (this.spec.scene.opener === 'inline-separator') {
             const sepRow = this.fieldRow(body, 'Separator glyph');
@@ -1426,14 +1478,8 @@ export class DesignedStyleWizardModal extends Modal {
             });
         }
 
-        const headingRow = this.fieldRow(body, 'Heading mode');
-        this.makeRadioGroup(headingRow, [
-            { value: 'scene-number',       label: 'Number only' },
-            { value: 'scene-number-title', label: 'Number + title' },
-            { value: 'title-only',         label: 'Title only' },
-        ], this.spec.scene.headingMode, (v) => {
-            this.mutateSpec((s) => { s.scene.headingMode = v as ManuscriptSceneHeadingMode; });
-        });
+        // Visual heading-mode preset cards.
+        this.renderHeadingModePresets(body);
 
         const suppressRow = this.fieldRow(body, 'Suppress headers/footers on opener');
         this.toggleInput(suppressRow, this.spec.scene.suppressHeaderFooterOnOpener, (v) => {
@@ -1470,11 +1516,126 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => {
                 s.scene.openerSpacing = { ...(s.scene.openerSpacing ?? {}), topFraction: n };
             });
-        });
+        }, (v) => `${Math.round(v * 100)}%`);
         const botRow = this.fieldRow(body, 'Opener bottom spacing');
         this.sliderInput(botRow, this.spec.scene.openerSpacing?.bottomFraction ?? 0, 0, 0.5, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.scene.openerSpacing = { ...(s.scene.openerSpacing ?? {}), bottomFraction: n };
+            });
+        }, (v) => `${Math.round(v * 100)}%`);
+
+        this.renderPanelGlossary(body, [
+            { term: 'Opener',           definition: 'How a new scene begins on the page — either inline (a separator inside the page) or on its own dedicated page.' },
+            { term: 'Heading mode',     definition: 'What the scene heading shows: a number, a title, or both. Only applies when openers use a dedicated page.' },
+            { term: 'Multi-mode pages', definition: 'Signature Literary lets the same export emit different opener flavors per scene. Tick the modes you want available; pick at export time.' },
+        ]);
+    }
+
+    private renderOpenerStylePresets(parent: HTMLElement): void {
+        const current = this.spec.scene.opener;
+        parent.createDiv({ cls: 'ert-style-wizard__preset-row-label', text: 'Opener style' });
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        type Opener = DesignedStyleSpec['scene']['opener'];
+        const presets: Array<{ value: Opener; label: string; render: (card: HTMLElement) => void }> = [
+            {
+                value: 'inline-separator', label: 'Inline separator',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-scene-body' });
+                    for (let i = 0; i < 2; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                    const sep = stack.createDiv({ cls: 'ert-style-wizard__preset-scene-sep' });
+                    sep.createSpan({ cls: 'ert-style-wizard__preset-scene-sep-glyph', text: '* * *' });
+                    for (let i = 0; i < 2; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                },
+            },
+            {
+                value: 'dedicated-page', label: 'Dedicated page',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-scene-body ert-style-wizard__preset-scene-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-scene-num', text: '3' });
+                    const linesWrap = stack.createDiv({ cls: 'ert-style-wizard__preset-scene-lines' });
+                    for (let i = 0; i < 2; i += 1) linesWrap.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                },
+            },
+            {
+                value: 'roman-with-rule', label: 'Roman with rule',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-scene-body' });
+                    for (let i = 0; i < 2; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                    const sep = stack.createDiv({ cls: 'ert-style-wizard__preset-scene-sep' });
+                    sep.createSpan({ cls: 'ert-style-wizard__preset-scene-sep-roman', text: 'ii.' });
+                    sep.createDiv({ cls: 'ert-style-wizard__preset-scene-sep-rule' });
+                    for (let i = 0; i < 2; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                },
+            },
+        ];
+        presets.forEach(({ value, label, render }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Opener style: ${label}`);
+            if (current === value) card.addClass('is-active');
+            render(card);
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                this.mutateSpec((s) => { s.scene.opener = value; });
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
+            });
+        });
+    }
+
+    private renderHeadingModePresets(parent: HTMLElement): void {
+        const current = this.spec.scene.headingMode;
+        parent.createDiv({ cls: 'ert-style-wizard__preset-row-label', text: 'Heading mode' });
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        const presets: Array<{ value: ManuscriptSceneHeadingMode; label: string; render: (card: HTMLElement) => void }> = [
+            {
+                value: 'scene-number', label: 'Number only',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-scene-body ert-style-wizard__preset-scene-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-scene-num', text: '3' });
+                },
+            },
+            {
+                value: 'scene-number-title', label: 'Number + title',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-scene-body ert-style-wizard__preset-scene-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-scene-num', text: '3' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-scene-title', text: '(The Escape)' });
+                },
+            },
+            {
+                value: 'title-only', label: 'Title only',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-scene-body ert-style-wizard__preset-scene-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-scene-title', text: 'The Escape' });
+                },
+            },
+        ];
+        presets.forEach(({ value, label, render }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Heading mode: ${label}`);
+            if (current === value) card.addClass('is-active');
+            render(card);
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                this.mutateSpec((s) => { s.scene.headingMode = value; });
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
             });
         });
     }
@@ -1499,6 +1660,12 @@ export class DesignedStyleWizardModal extends Modal {
         ], this.spec.epigraph.attributionStyle, (v) => {
             this.mutateSpec((s) => { s.epigraph.attributionStyle = v as DesignedStyleSpec['epigraph']['attributionStyle']; });
         });
+
+        this.renderPanelGlossary(body, [
+            { term: 'Epigraph',        definition: 'A short quotation placed under a Part or Chapter heading, typically italicized, with an attribution below.' },
+            { term: 'Italic',          definition: 'When on, the quote body is set in italics — the standard print convention for epigraphs.' },
+            { term: 'Em-dash + caps',  definition: 'Attribution rendered as `—NAME` in small/all caps. Plain renders the name as-is, no dash, no case change.' },
+        ]);
     }
 
     // ──────────────────────────────────────────────────────────────────────

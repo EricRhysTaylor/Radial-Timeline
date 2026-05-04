@@ -84,6 +84,8 @@ export type PictogramPageSide = {
     separatorText?: string;
     linesBeforeSeparator?: number;
     linesAfterSeparator?: number;
+    /** When false, the short rule below the separator text is suppressed. */
+    separatorRule?: boolean;
     /**
      * Positioning hint for the special heading on dedicated scene-opener pages.
      * When 'top', the heading anchors near the top of the page card and body
@@ -188,6 +190,32 @@ function describeSpacing(spec: DesignedStyleSpec): string {
     return `${ls}×`;
 }
 
+/** Paper row — describes trim size including custom dimensions. */
+function describePaper(spec: DesignedStyleSpec): string {
+    const ps = spec.paperSize;
+    if (typeof ps === 'string') {
+        switch (ps) {
+            case 'us-trade-6x9': return '6×9 in (trade)';
+            case 'us-letter':    return '8.5×11 in (US Letter)';
+            case 'a4':           return 'A4 (210×297 mm)';
+            default:             return ps;
+        }
+    }
+    return `${ps.widthIn}×${ps.heightIn} in (custom)`;
+}
+
+/** Margins row — uniform vs. mirrored vs. asymmetric. */
+function describeMargins(spec: DesignedStyleSpec): string {
+    const m = spec.margins;
+    const fmt = (n: number) => Number.isInteger(n) ? `${n}` : `${n}`;
+    const allEqual = m.topIn === m.bottomIn && m.topIn === m.leftIn && m.topIn === m.rightIn;
+    if (allEqual) return `${fmt(m.topIn)} in (uniform)`;
+    if (m.mirrored) {
+        return `${fmt(m.topIn)} / ${fmt(m.rightIn)} / ${fmt(m.bottomIn)} / ${fmt(m.leftIn)} in (T/Outer/B/Inner, mirrored)`;
+    }
+    return `${fmt(m.topIn)} / ${fmt(m.rightIn)} / ${fmt(m.bottomIn)} / ${fmt(m.leftIn)} in (T/R/B/L)`;
+}
+
 /** Parts row — derived from parts.mode + parts.epigraph + placement + flags. Returns null when off. */
 function describeParts(spec: DesignedStyleSpec): string | null {
     if (spec.parts.mode === 'off') return null;
@@ -243,10 +271,12 @@ function describeScenes(spec: DesignedStyleSpec): string {
  */
 export function getLayoutFeaturesFromSpec(spec: DesignedStyleSpec): LayoutFeatureRow[] {
     const rows: LayoutFeatureRow[] = [];
-    rows.push({ label: 'Headers', value: describeHeaders(spec) });
-    rows.push({ label: 'Folios',  value: describeFolios(spec) });
-    rows.push({ label: 'Font',    value: describeFont(spec) });
-    rows.push({ label: 'Spacing', value: describeSpacing(spec) });
+    rows.push({ label: 'Paper',        value: describePaper(spec) });
+    rows.push({ label: 'Margins',      value: describeMargins(spec) });
+    rows.push({ label: 'Headers',      value: describeHeaders(spec) });
+    rows.push({ label: 'Folios',       value: describeFolios(spec) });
+    rows.push({ label: 'Font',         value: describeFont(spec) });
+    rows.push({ label: 'Line spacing', value: describeSpacing(spec) });
 
     const partsRow = describeParts(spec);
     if (partsRow) rows.push({ label: 'Parts', value: partsRow });
@@ -444,9 +474,22 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
         }
     }
 
-    // Scene opener spread (top row) — emitted when opener is dedicated-page or roman-with-rule.
+    // Scene opener spread (top row) — every opener style gets a representative
+    // pictogram so the left column never empties when the user picks an opener.
     let scene: PictogramSpread | null = null;
-    if (spec.scene.opener === 'dedicated-page' && (!spec.scene.openerHeadingModes || spec.scene.openerHeadingModes.length === 0)) {
+    if (spec.scene.opener === 'inline-separator') {
+        scene = {
+            label: 'SCENE',
+            leftPage: null,
+            rightPage: {
+                bodyLines: 0,
+                separatorText: spec.scene.separatorGlyph ?? '* * *',
+                separatorRule: false,
+                linesBeforeSeparator: 4,
+                linesAfterSeparator: 4,
+            },
+        };
+    } else if (spec.scene.opener === 'dedicated-page' && (!spec.scene.openerHeadingModes || spec.scene.openerHeadingModes.length === 0)) {
         scene = {
             label: 'SCENE',
             leftPage: null,
@@ -971,7 +1014,9 @@ function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClas
         }
         const sep = body.createDiv({ cls: 'ert-layout-page-separator' });
         sep.createSpan({ cls: 'ert-layout-page-separator-text', text: side.separatorText });
-        sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
+        if (side.separatorRule !== false) {
+            sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
+        }
         for (let i = 0; i < (side.linesAfterSeparator ?? 3); i++) {
             body.createDiv({ cls: 'ert-layout-page-line' });
         }
@@ -1084,10 +1129,17 @@ export function renderLayoutPictograms(
     if (rows.scene) renderLayoutSpread(primaryRow, rows.scene);
     renderLayoutSpread(primaryRow, rows.body);
 
-    const hasSceneModes = rows.special.some(spread => spread.sceneMode);
-    if (rows.special.length > 0) {
+    // Split special spreads into two rows so Signature's three scene-mode
+    // pictograms don't share a row with PART/CHAPTER (which would overflow
+    // the column). Row 1: PART/CHAPTER + non-sceneMode spreads. Row 2: the
+    // sceneMode-bearing spreads.
+    const partChapterSpreads = rows.special.filter(s => !s.sceneMode);
+    const sceneModeSpreads   = rows.special.filter(s => !!s.sceneMode);
+    const hasSceneModes = sceneModeSpreads.length > 0;
+
+    const renderRow = (spreads: PictogramSpread[]) => {
         const specialRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
-        for (const spread of rows.special) {
+        for (const spread of spreads) {
             const spreadEl = renderLayoutSpread(specialRow, spread);
             if (hasSceneModes && spread.sceneMode && activeSceneMode) {
                 spreadEl.addClass(spread.sceneMode === activeSceneMode ? 'is-scene-active' : 'is-scene-dimmed');
@@ -1111,7 +1163,10 @@ export function renderLayoutPictograms(
                 });
             }
         }
-    }
+    };
+
+    if (partChapterSpreads.length > 0) renderRow(partChapterSpreads);
+    if (sceneModeSpreads.length > 0)   renderRow(sceneModeSpreads);
 }
 
 export function renderLayoutFeatureList(parent: HTMLElement, features: LayoutFeatureRow[]): HTMLElement {
