@@ -22,7 +22,7 @@ The Inquiry View is the manuscript-level analysis workspace. It focuses on corpu
 
 The two views complement each other at different altitudes:
 
-*   **Radial Timeline View** — Scene-level work: writing, ordering, tracking status, chronology, beats, and [AI Pulse Triplet Analysis](AI-Pulse-Analysis).
+*   **Radial Timeline View** — Scene-level work: writing, ordering, tracking status, chronology, beats, Saga-scale Narrative Mode, and [AI Pulse Triplet Analysis](AI-Pulse-Analysis).
 *   **Inquiry View** — Manuscript-level work: corpus controls, briefings, scene citations, and structural analysis across one book or a saga.
 
 A typical workflow might be: draft and arrange scenes in the Radial Timeline View, then open Inquiry View to check the structural health of your manuscript.

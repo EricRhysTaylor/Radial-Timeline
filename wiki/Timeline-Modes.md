@@ -1,10 +1,14 @@
-Radial Timeline has two co-equal **[Views](Views)**: the [Radial Timeline View](Radial-Timeline-View) and the [Inquiry View](Inquiry-View). Within the Radial Timeline View, four **modes** let you examine your story from different structural perspectives. Switch modes using the keyboard shortcuts or the top-right navigation.
+Radial Timeline has two co-equal **[Views](Views)**: the [Radial Timeline View](Radial-Timeline-View) and the [Inquiry View](Inquiry-View). Within the Radial Timeline View, four **modes** let you examine your story from different structural perspectives: **Progress**, **Narrative**, **Chronologue**, and **Gossamer**. Switch modes using the keyboard shortcuts or the top-right navigation.
 
 ### Progress Mode (`1`)
 Isolates each subplot into its own unitary radial pass — no combined outer ring — so you can focus on one thread at a time. Scenes inherit the author workflow palette (Todo plaid, Working pink, Overdue red, Complete = progress-stage color) along with progress-stage indicators. Removes story beats for a cleaner view. Structured around your configured **act count** (default 3) with acts spanning equal segments of the 360° circle. Emphasizes **Author time** (writing status) and **Progress stages** (revision stages) and completion readiness. Use the top-right navigation or press `1` to cycle between subplots.
 
 ### Narrative Mode (`2`)
 Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around your configured **act count** (default 3) with scenes organized by act divisions (360° divided evenly across acts). This is your primary manuscript-order workspace showing **Narrative time** (reading order). Status/progress overlays are hidden so subplot colors remain dominant.
+
+Use the title-bar book selector to choose one book or **Saga**. Saga combines all configured Book Manager profiles into one multi-book Narrative timeline.
+
+When chapter markers are enabled, Narrative Mode can show publishing-aware **C** and **P** placards on the outer ring. **C** marks chapter starts from the `Chapter:` field. **P** marks part boundaries for the selected novel PDF layout when that layout prints Parts. **P/C** means both start at the same boundary.
 
 **Interactive Reordering**: You can reorder scenes by dragging them on the outer ring. See [Reorder Scenes](How-to#reorder-scenes) for details.
 

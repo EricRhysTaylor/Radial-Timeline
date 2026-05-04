@@ -18,9 +18,17 @@ The export workflow can produce:
 *   outline-style exports
 *   filtered or ranged exports by order and subplot
 
-Core includes compiled Markdown and Pandoc PDF export. Pro adds extra templates and deeper publishing customization.
+Core includes compiled Markdown and Pandoc PDF export with bundled Core layouts. Pro adds additional bundled layouts and deeper publishing customization.
 
 The modal supports ordering, selection range, output presets, and publishing-oriented layout decisions in one place.
+
+## PDF Layouts
+
+For PDF exports, choose a novel PDF layout from the layout picker. The selected layout controls the page style, required font checks, chapter opener behavior, and whether the export prints Part pages.
+
+The preview cards show the expected chapter, part, and body-page structure before export. Export checks report missing Pandoc, LaTeX, bundled fonts, and layout-token problems before you generate the PDF.
+
+The selected novel PDF layout is remembered per book. Narrative Mode uses that setting to show publishing-aware **C** and **P** placards on the timeline when chapter markers are enabled.
 
 ## Related Docs
 

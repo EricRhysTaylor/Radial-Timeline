@@ -18,6 +18,7 @@ The Radial Timeline View arranges your manuscript as a radial workspace and lets
 Use the Radial Timeline View when you want to:
 
 *   write and reorganize scenes
+*   switch between one book and Saga scope from the title-bar book selector
 *   compare subplot balance and structure
 *   check chronology and elapsed time
 *   score beats and compare Gossamer runs
@@ -35,3 +36,9 @@ Each mode highlights a different layer of the same manuscript:
 | **Gossamer** | `4` | Beat-level scoring and comparison |
 
 See the individual mode pages for full behavior and controls.
+
+## Book Selector
+
+The tab title bar includes a book selector. Choose an individual Book Manager profile to focus the timeline on one manuscript, or choose **Saga** to view all configured books together in Narrative Mode.
+
+Saga scope is intended for multi-book structure checks: act balance, subplot distribution, and series-wide scene order. Other timeline modes remain book-focused.

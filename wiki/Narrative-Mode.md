@@ -9,10 +9,31 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 ## Key Features
 
 *   **Structure**: Scenes are distributed across Act 1..Act N (based on your **Settings → Acts → Act count**).
+*   **Book or Saga scope**: Use the book selector in the tab title bar to view one active book or **Saga**, which combines all configured Book Manager profiles into one narrative-order timeline.
 *   **Subplot Colors**: The outer ring segments are colored by their subplot. This lets you quickly visualize which plot threads are dominant in each section of the book.
+*   **Publishing markers**: When chapter markers are enabled, small outer-ring placards show publishing structure from your active PDF layout. **C** marks chapter starts and **P** marks part boundaries for layouts that print Parts.
 *   **Story Beats**: Displays story beats (like Save the Cat) along the timeline, helping you pace your narrative structure.
 *   **Interactive Reordering**: You can drag scenes on the outer ring to reorder them. See [Reorder Scenes](How-to#reorder-scenes) for details.
 *   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [Settings → Advanced → Configuration](Settings#configuration).
+
+## Book and Saga Scope
+
+The title-bar book selector controls which manuscript the timeline shows.
+
+*   Choose a book to inspect one Book Manager profile.
+*   Choose **Saga** to combine all configured books into one multi-book Narrative timeline.
+*   Saga scope is available when more than one Book Manager profile is configured.
+*   Saga scope stays in Narrative Mode, because multi-book scene order is a narrative-structure view rather than a chronology or progress view.
+
+## Chapter and Part Placards
+
+Narrative Mode can show publishing-aware placards on the outside of the scene ring:
+
+*   **C** — a `Chapter:` field starts a chapter at that scene.
+*   **P** — the selected PDF layout prints a Part opener at that act boundary.
+*   **P/C** — a Part and Chapter begin at the same boundary.
+
+These placards reflect the novel PDF layout selected in the Manuscript Export modal. For example, a layout that prints chapter openers can show **C** markers, while Modern Classic can also show **P** markers for Parts. Changing the selected export layout updates the timeline markers after the layout is saved.
 
 ## Dominant Subplots
 

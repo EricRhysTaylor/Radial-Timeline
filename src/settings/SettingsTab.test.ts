@@ -28,6 +28,8 @@ describe('settings section navigation anchors', () => {
 
         expect(settingsSource.includes('CORE_ALERTS_SECTION_KEY')).toBe(true);
         expect(settingsSource.includes('_hasExplicitTabRequest')).toBe(true);
+        expect(settingsSource.includes('updateRenderedTabState')).toBe(true);
+        expect(settingsSource.includes('this.updateRenderedTabState();')).toBe(true);
         expect(settingsSource.includes("[ERT_DATA.SECTION]: CORE_ALERTS_SECTION_KEY")).toBe(true);
         expect(controllerSource.includes("revealSettingsSection('core', CORE_ALERTS_SECTION_KEY)")).toBe(true);
         expect(controllerSource.includes('lastSettingsTab')).toBe(false);

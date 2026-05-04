@@ -1,14 +1,16 @@
 Radial Timeline turns your scene notes into a finished manuscript using **Pandoc** and **LaTeX**. You pick a template that defines the look of the page — fonts, headers, chapter openers, part dividers — and the plugin assembles your scenes into that format and hands the result to Pandoc to produce a PDF.
 
-**Core includes Pandoc-based PDF export.** Core users can export PDFs with the bundled Core publishing layouts. **Pro** extends that system with extra templates and more advanced publishing customization.
+**Core includes Pandoc-based PDF export.** Core users can export PDFs with the bundled Core publishing layouts. **Pro** extends that system with extra bundled PDF layouts and more advanced publishing customization.
 
 This page covers:
 - The template catalog (what's bundled and what each one looks like)
-- Installing, duplicating, and importing templates
+- Installing and duplicating templates
+- Book Details, Book Pages, and inline LaTeX matter examples
 - The `Chapter:` field — how you mark chapter breaks
 - Parts — how they're generated from Acts
 - Setting up **Modern Classic** (advanced book-style structure)
 - Act epigraphs, scene opener headings
+- Export checks and template readiness
 - Exporting
 
 > **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [Setting Up Pandoc Export](Core-Workflows#setting-up-pandoc-export) for the one-time install.
@@ -19,7 +21,7 @@ This page covers:
 
 Bundled templates live in **Settings → Publish → PDF Styles**. Each row shows a status pill (**Installed** / **Not installed**), a preview card, and buttons for **Install** and **Duplicate**.
 
-Core includes the standard publishing layouts needed for Pandoc PDF export. Pro adds additional advanced layouts and deeper template customization/import workflows.
+Core includes the standard publishing layouts needed for Pandoc PDF export. Pro adds additional advanced layouts and deeper publishing controls.
 
 ### Novel templates
 
@@ -29,6 +31,8 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 | **Contemporary Literary** | Book-style with contemporary serif body, running headers, chapter openers | A finished book look with simple chapters |
 | **Signature Literary** | Literary book style with refined typography | Polished prose fiction |
 | **Modern Classic** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
+
+The selected novel PDF layout also informs Narrative Mode publishing markers. Layouts that print chapters can show **C** placards on the timeline. Layouts that print Parts can show **P** placards at act boundaries.
 
 PDF layouts require their intended fonts rather than substituting fallbacks. Bundled fonts are installed into `Radial Timeline/Pandoc/fonts/` when you install the PDF styles.
 
@@ -52,13 +56,22 @@ PDF layouts require their intended fonts rather than substituting fallbacks. Bun
 
 1. Open **Settings → Publish → PDF Styles**.
 2. Find the template you want in the list. If the pill says **Not installed**, click **Install**.
-3. The plugin copies the template's `.tex` file into `Radial Timeline/Pandoc/` inside your vault. The pill changes to **Installed**.
+3. The plugin copies the template's `.tex` file into `Radial Timeline/Pandoc/` inside your vault and installs bundled fonts into `Radial Timeline/Pandoc/fonts/`. The pill changes to **Installed**.
 
 Only installed templates can be used for export.
 
+## Core and Pro Publishing Tiers
+
+Settings → Publish is split around Core and Pro publishing work:
+
+*   **Core** includes Pandoc setup, output folders, Book Details, Book Pages, bundled Core PDF layouts, and Auto configure publishing.
+*   **Pro** adds advanced bundled layouts and deeper designed publishing controls.
+
+The export modal and **Settings → Publish** use the same template access rules. If a Core user selects a Pro-only layout, Radial Timeline falls back to a supported Core layout instead of leaving the export blocked.
+
 ## Book Details and Matter Pages
 
-**Auto configure publishing** is part of Core. It creates a Book Details note, optional inline LaTeX Book Pages examples, and Core PDF layout files.
+**Auto configure publishing** is part of Core. It creates a Book Details note, optional inline LaTeX Book Pages examples, bundled PDF layout files, and required bundled fonts.
 
 Standard Book Pages can render directly from Book Details. You do not need separate note files for title page, copyright, dedication, epigraph, acknowledgments, author note, about the author, or other works pages when the matching Book Details fields are filled in.
 
@@ -89,23 +102,13 @@ Example body:
 
 Inline LaTeX examples keep their own page content and do not require Book Details values.
 
+Auto configure publishing refreshes exact retired starter examples while preserving edited author files. If a matter note no longer matches the old bundled starter content, Radial Timeline treats it as author-owned.
+
 ## Duplicating a Template
 
 Every bundled template has a **Duplicate** button next to Install. Duplicating copies the `.tex` into your vault under a new name (e.g., `rt_modern_classic-copy.tex`), gives it a new display name ("Modern Classic Copy"), and leaves the original untouched.
 
 Use Duplicate when you want to tweak a bundled template — change margins, swap a font, add a custom title page — without losing the original. The copy shows the same preview card as the bundled template and accepts edits to its `.tex` file directly in your vault.
-
-## Importing Your Own LaTeX Template
-
-If you already have a LaTeX template you've built elsewhere, use **Import Template** in the PDF Styles section. The plugin:
-1. Reads the `.tex` file you pick.
-2. Runs detection to classify its style (literary, manuscript, chaptered).
-3. Flags validation issues if the file looks incomplete.
-4. Adds it to your template list as an imported layout.
-
-Imported templates appear alongside bundled ones and can be assigned to any compatible format.
-
----
 
 ## The `Chapter:` Field
 
@@ -148,6 +151,14 @@ You don't type "Part I" anywhere. Parts are generated automatically from your **
 Not every template uses Parts. Only templates with `usesModernClassicStructure` (currently **Modern Classic**) print Part divider pages. Simpler templates ignore act boundaries and flow straight through.
 
 > Beats are not used to determine acts for export. The export reads each scene's own `Act:` field directly, the same way the timeline ring does, so Parts in the PDF always match the act partitioning you see in Narrative mode.
+
+When Narrative Mode chapter markers are enabled, these publishing structures can appear as outer-ring placards:
+
+*   **C** for chapter starts
+*   **P** for Part boundaries
+*   **P/C** when a Part and Chapter begin together
+
+The placards follow the active book's selected novel PDF layout.
 
 ---
 
@@ -256,6 +267,8 @@ The export modal lets you:
 - Choose the template for that format
 - Select which scenes to include (all, or filtered by act/subplot)
 - Toggle Markdown-only vs. PDF
+- Review export checks for missing templates, missing fonts, template compatibility, and layout-specific warnings
+- Preview the selected layout's page structure before generating a PDF
 
 Files land in `Radial Timeline/Export/` unless you've set a custom export folder.
 
@@ -274,3 +287,5 @@ For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX is
 **Duplicated template looks different from the original.** If you're on an older plugin build, duplicates lost their preview card due to a bug. Update to the latest build — duplicates now render with the same preview card as the original and can be edited in place.
 
 **Epigraph fields are greyed out.** Epigraphs are per-book. Make sure you have an **active book** selected before editing them.
+
+**Export checks say a bundled font is missing.** Click **Install fonts** or **Install all** in Settings → Publish. Bundled layouts use exact fonts; Radial Timeline does not silently substitute a different body font.

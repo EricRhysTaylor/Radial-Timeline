@@ -59,11 +59,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _hasExplicitTabRequest = false;
     private _forceExpandCoreCompletionPreview = false;
     private _pendingSectionRevealTimer: number | null = null;
+    private _tabEls: Partial<Record<RadialTimelineSettingsTabId, HTMLElement>> = {};
+    private _tabContentEls: Partial<Record<RadialTimelineSettingsTabId, HTMLElement>> = {};
 
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: RadialTimelineSettingsTabId): void {
         this._activeTab = tab;
         this._hasExplicitTabRequest = true;
+        this.updateRenderedTabState();
     }
 
     public revealSettingsSection(
@@ -72,6 +75,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     ): void {
         this._activeTab = tab;
         this._hasExplicitTabRequest = true;
+        this.updateRenderedTabState();
         if (this._pendingSectionRevealTimer !== null) {
             window.clearTimeout(this._pendingSectionRevealTimer);
             this._pendingSectionRevealTimer = null;
@@ -193,6 +197,18 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             void this.plugin.saveSettings();
             // Notification appears in the alerts panel - user can dismiss after reading
         }
+    }
+
+    private updateRenderedTabState(): void {
+        const tabEntries = Object.entries(this._tabEls) as Array<[RadialTimelineSettingsTabId, HTMLElement | undefined]>;
+        const contentEntries = Object.entries(this._tabContentEls) as Array<[RadialTimelineSettingsTabId, HTMLElement | undefined]>;
+
+        tabEntries.forEach(([tab, el]) => {
+            el?.toggleClass('ert-settings-tab-active', this._activeTab === tab);
+        });
+        contentEntries.forEach(([tab, el]) => {
+            el?.toggleClass('ert-hidden', this._activeTab !== tab);
+        });
     }
 
     private async scheduleKeyValidation(provider: 'anthropic' | 'google' | 'openai' | 'ollama') {
@@ -860,21 +876,23 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: `ert-settings-tab-content ert-settings-pro-content ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
         });
 
-        const updateTabState = () => {
-            coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
-            socialTab.toggleClass('ert-settings-tab-active', this._activeTab === 'social');
-            inquiryTab.toggleClass('ert-settings-tab-active', this._activeTab === 'inquiry');
-            publishingTab.toggleClass('ert-settings-tab-active', this._activeTab === 'publishing');
-            aiTab.toggleClass('ert-settings-tab-active', this._activeTab === 'ai');
-            advancedTab.toggleClass('ert-settings-tab-active', this._activeTab === 'advanced');
-            proTab.toggleClass('ert-settings-tab-active', this._activeTab === 'pro');
-            coreContent.toggleClass('ert-hidden', this._activeTab !== 'core');
-            socialContent.toggleClass('ert-hidden', this._activeTab !== 'social');
-            inquiryContent.toggleClass('ert-hidden', this._activeTab !== 'inquiry');
-            publishingContent.toggleClass('ert-hidden', this._activeTab !== 'publishing');
-            aiContent.toggleClass('ert-hidden', this._activeTab !== 'ai');
-            advancedContent.toggleClass('ert-hidden', this._activeTab !== 'advanced');
-            proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
+        this._tabEls = {
+            core: coreTab,
+            social: socialTab,
+            inquiry: inquiryTab,
+            publishing: publishingTab,
+            ai: aiTab,
+            advanced: advancedTab,
+            pro: proTab
+        };
+        this._tabContentEls = {
+            core: coreContent,
+            social: socialContent,
+            inquiry: inquiryContent,
+            publishing: publishingContent,
+            ai: aiContent,
+            advanced: advancedContent,
+            pro: proContent
         };
 
         // Persist tab selection so Settings reopens on the user's last tab.
@@ -884,7 +902,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             this._activeTab = tab;
             this.plugin.settings.lastSettingsTab = tab;
             void this.plugin.saveSettings();
-            updateTabState();
+            this.updateRenderedTabState();
         };
         this.plugin.registerDomEvent(coreTab, 'click', () => persistTab('core'));
         this.plugin.registerDomEvent(socialTab, 'click', () => persistTab('social'));
@@ -893,7 +911,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.plugin.registerDomEvent(aiTab, 'click', () => persistTab('ai'));
         this.plugin.registerDomEvent(advancedTab, 'click', () => persistTab('advanced'));
         this.plugin.registerDomEvent(proTab, 'click', () => persistTab('pro'));
-        updateTabState();
+        this.updateRenderedTabState();
 
         const proEntitlement = getProEntitlement(this.plugin);
         proTab.toggleClass('is-pro-active', proEntitlement.isProActive);
