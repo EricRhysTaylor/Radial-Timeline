@@ -42,3 +42,6 @@ release/
 # Generated audit reports (regenerated every build)
 scripts/models/feature-audit.json
 release-ts/
+
+# Publishing PDF QA artifact directory — regenerated on every smoke run.
+tmp/publishing-pdf-qa/
