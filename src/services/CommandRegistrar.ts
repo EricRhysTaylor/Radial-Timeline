@@ -31,6 +31,7 @@ import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { resolveBookPages, type MatterNoteSummary } from '../utils/bookPagesResolver';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { getLayoutAbbreviation, resolveTemplateAccess, TEMPLATE_ACCESS_FALLBACK_MESSAGE } from '../publishing/templateTiering';
+import { hasProFeatureAccess } from '../settings/featureGate';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript, sanitizeCompiledManuscriptForPdf } from '../utils/manuscriptSanitize';
 import { getManuscriptLayoutExportBehavior } from '../utils/manuscriptLayoutExport';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
@@ -233,7 +234,7 @@ export class CommandRegistrar {
                     layouts: this.plugin.settings.pandocLayouts || [],
                     selectedLayoutId: result.selectedLayoutId,
                     manuscriptPreset: result.manuscriptPreset || 'novel',
-                    hasProAccess: true,
+                    hasProAccess: hasProFeatureAccess(this.plugin),
                 })
                 : undefined;
             const selectedLayoutIdForExport = templateAccess?.effectiveLayout?.id || result.selectedLayoutId;
@@ -700,7 +701,7 @@ export class CommandRegistrar {
             if (isSplitRun) {
                 new Notice(`Export successful: ${renderedPaths.length} PDFs`);
             } else {
-                new Notice(`Export successful: ${renderedPaths[0]?.split('/').pop() || 'PDF'}`);
+                new Notice(`Export successful: ${renderedPaths[0].split('/').pop()}`);
             }
 
             return {

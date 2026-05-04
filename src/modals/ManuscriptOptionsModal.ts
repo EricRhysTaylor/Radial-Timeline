@@ -2240,7 +2240,7 @@ export class ManuscriptOptionsModal extends Modal {
             const firstError = compatibilityIssues.find(issue => issue.level === 'error');
             content.createDiv({
                 cls: 'ert-pdf-output-line',
-                text: firstError?.message || 'Template compatibility check failed.'
+                text: firstError?.message
             });
         } else if (hasFontRisk) {
             // Prefer the structured (spec-driven) diagnostic — it correctly
@@ -2300,7 +2300,7 @@ export class ManuscriptOptionsModal extends Modal {
             const firstWarning = compatibilityIssues.find(issue => issue.level === 'warning');
             content.createDiv({
                 cls: 'ert-pdf-output-line',
-                text: firstWarning?.message || 'Template compatibility changed for this export.'
+                text: firstWarning?.message
             });
         }
 

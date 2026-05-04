@@ -16,6 +16,7 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getBundledFontPath, getLatinModernPath } from './pandocBundledLayouts';
 import type { DesignedStyleSpec } from '../publishing/designedStyle';
 import { BUNDLED_FICTION_SPECS, isBundledFictionId } from '../publishing/bundledStyleSpecs';
+import { assertNever } from './assertNever';
 
 export type ExportType = 'manuscript' | 'outline';
 export type ManuscriptPreset = 'screenplay' | 'podcast' | 'novel';
@@ -50,9 +51,35 @@ export function getLayoutsForPreset(plugin: RadialTimelinePlugin, preset: Manusc
     return (plugin.settings.pandocLayouts || []).filter(l => l.preset === preset);
 }
 
-function getPandocFolder(plugin: RadialTimelinePlugin): string {
-    const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
-    return normalizePath((plugin.settings.pandocFolder || defaultPandocFolder).trim() || defaultPandocFolder);
+/**
+ * Resolve the configured Pandoc folder, falling back to the default literal
+ * baked into `DEFAULT_SETTINGS`. `pandocFolder` is required by the settings
+ * type and the defaults const always populates it, so this single coalesce
+ * covers both the "user blanked the field" and "settings merge succeeded"
+ * cases.
+ */
+export function getPandocFolder(plugin: RadialTimelinePlugin): string {
+    return normalizePath(plugin.settings.pandocFolder.trim() || DEFAULT_SETTINGS.pandocFolder);
+}
+
+export function readResolvedTemplateText(templatePath: string): { text: string; error?: string } {
+    if (!templatePath.trim()) return { text: '', error: 'No template path configured.' };
+    if (!path.isAbsolute(templatePath) || !fs.existsSync(templatePath)) {
+        return { text: '', error: `Template file not found: ${templatePath}` };
+    }
+    try {
+        return { text: fs.readFileSync(templatePath, 'utf8') };
+    } catch (error) {
+        return {
+            text: '',
+            error: (error as Error)?.message || `Unable to read template: ${templatePath}`,
+        };
+    }
+}
+
+export function isConfiguredExecutablePathMissing(configuredPath: string): boolean {
+    const trimmed = configuredPath.trim();
+    return Boolean(trimmed && (path.isAbsolute(trimmed) || trimmed.includes('/')) && !fs.existsSync(trimmed));
 }
 
 function getTemplatePathCandidates(plugin: RadialTimelinePlugin, templatePath: string): string[] {
@@ -152,7 +179,7 @@ function getOrderAcronym(order: ManuscriptOrder): string {
         case 'reverse-narrative': return 'RevN';
         case 'chronological': return 'Chro';
         case 'reverse-chronological': return 'RevC';
-        default: return 'Narr';
+        default: return assertNever(order, 'getOrderAcronym');
     }
 }
 
@@ -163,7 +190,7 @@ function getOutlinePresetAcronym(preset: OutlinePreset): string {
         case 'shooting-schedule': return 'ShSc';
         case 'index-cards-csv': return 'IdxC';
         case 'index-cards-json': return 'IdxJ';
-        default: return 'BtSh';
+        default: return assertNever(preset, 'getOutlinePresetAcronym');
     }
 }
 
@@ -172,7 +199,7 @@ function getManuscriptPresetAcronym(preset: ManuscriptPreset): string {
         case 'screenplay': return 'Scrn';
         case 'podcast': return 'Podc';
         case 'novel': return 'Novl';
-        default: return 'Novl';
+        default: return assertNever(preset, 'getManuscriptPresetAcronym');
     }
 }
 

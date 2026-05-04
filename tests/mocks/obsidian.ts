@@ -315,8 +315,21 @@ export class Workspace {
   on(_event: string, _handler: unknown): unknown { return {}; }
 }
 
+// FileSystemAdapter (desktop adapter)
+export class FileSystemAdapter {
+  private basePath: string;
+
+  constructor(basePath = '') {
+    this.basePath = basePath;
+  }
+
+  getBasePath(): string { return this.basePath; }
+  setBasePath(basePath: string): void { this.basePath = basePath; }
+}
+
 // Vault
 export class Vault {
+  adapter: FileSystemAdapter | null = null;
   getAbstractFileByPath(_path: string): TAbstractFile | null { return null; }
   getMarkdownFiles(): TFile[] { return []; }
   read(_file: TFile): Promise<string> { return Promise.resolve(''); }

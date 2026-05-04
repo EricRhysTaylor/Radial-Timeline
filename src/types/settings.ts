@@ -29,6 +29,18 @@ export interface BookDesignerTemplate {
 
 export type ManuscriptSceneHeadingMode = 'scene-number' | 'scene-number-title' | 'title-only';
 export type UsageContext = 'novel' | 'screenplay' | 'podcast';
+/**
+ * Closed enumeration of book-meta fields that profiles may declare as
+ * required/recommended. Adding a new field forces an exhaustive case in
+ * `collectMissingBookMetaFields` (compile-time error via assertNever).
+ */
+export type BookMetaFieldKey =
+    | 'Book.title'
+    | 'Book.author'
+    | 'Rights.year'
+    | 'Rights.copyright_holder'
+    | 'Publisher.name'
+    | 'Identifiers.isbn_paperback';
 export type OutputIntent = 'print-book' | 'submission-manuscript' | 'screenplay-pdf' | 'podcast-script' | 'epub' | 'web';
 export type TemplateSource = 'bundled' | 'vault' | 'imported';
 export type ValidationLevel = 'info' | 'warning' | 'error';
@@ -127,8 +139,8 @@ export interface TemplateProfile {
     guidance?: string;
     previewMode: 'static' | 'generated';
     capabilities: TemplateCapability[];
-    requiredBookMetaFields: string[];
-    recommendedBookMetaFields: string[];
+    requiredBookMetaFields: BookMetaFieldKey[];
+    recommendedBookMetaFields: BookMetaFieldKey[];
     supportedMatterRoles: string[];
     status: 'ready' | 'draft' | 'invalid';
 }
@@ -857,7 +869,7 @@ export interface RadialTimelineSettings {
 
     // Export / Pandoc (Pro)
     pandocPath?: string;
-    pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts
+    pandocFolder: string;  // Vault path for Pandoc templates and compile scripts (always populated via DEFAULT_SETTINGS merge)
     pandocLayouts?: PandocLayoutTemplate[];
     /** @deprecated Migrated to BookProfile.lastUsedPandocLayoutByPreset. Kept for one migration cycle. */
     lastUsedPandocLayoutByPreset?: Record<string, string>;

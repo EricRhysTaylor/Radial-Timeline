@@ -314,7 +314,7 @@ describe('PublishingValidationService template compatibility', () => {
         expect(snapshot.preflightIssues.some(issue => issue.level === 'error')).toBe(false);
     });
 
-    it('keeps the selected PDF layout instead of falling back to Standard Manuscript', () => {
+    it('reports a Standard Manuscript fallback when a non-Pro user has a saved Pro template selected', () => {
         const basic = makeNovelLayout('$body$', {
             id: 'bundled-fiction-classic-manuscript',
             name: 'Standard Manuscript',
@@ -340,20 +340,20 @@ describe('PublishingValidationService template compatibility', () => {
 
         expect(snapshot.templateAccess).toMatchObject({
             requestedTemplateName: 'Signature Literary',
-            effectiveTemplateName: 'Signature Literary',
-            usedFallback: false,
+            effectiveTemplateName: 'Standard Manuscript',
+            usedFallback: true,
         });
         expect(snapshot.templateAccessIssues).toEqual(expect.arrayContaining([
             expect.objectContaining({
-                level: 'info',
-                code: 'template_access_requires_pro',
+                level: 'warning',
+                code: 'template_access_fallback_to_basic',
             }),
         ]));
-        expect(snapshot.templateCompatibility?.templateId).toBe(signature.id);
+        expect(snapshot.templateCompatibility?.templateId).toBe(basic.id);
         expect(snapshot.preflightIssues.some(issue => issue.level === 'error')).toBe(false);
     });
 
-    it('keeps the selected higher-tier template for users with full access', () => {
+    it('keeps the selected Pro template for Pro users', () => {
         const modernClassic = makeNovelLayout('$title$\n$author$\n$body$', {
             id: 'bundled-fiction-modern-classic',
             name: 'Modern Classic',

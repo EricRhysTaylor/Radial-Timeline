@@ -3,10 +3,10 @@ import * as fs from 'fs'; // SAFE: Node fs copies bundled plugin font assets int
 import * as path from 'path'; // SAFE: Node path builds absolute desktop font paths required by XeLaTeX templates.
 import type RadialTimelinePlugin from '../main';
 import type { HotfixHistoryEntry, PandocLayoutTemplate } from '../types';
-import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getPandocLayoutSortRank } from '../publishing/templateTiering';
 import { generateDesignedStyleTex } from '../publishing/designedStyle';
 import { BUNDLED_FICTION_SPECS, type BundledFictionId } from '../publishing/bundledStyleSpecs';
+import { getPandocFolder } from './exportFormats';
 
 interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
     bundled: true;
@@ -375,11 +375,6 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
     return changed;
 }
 
-function getPandocFolder(plugin: RadialTimelinePlugin): string {
-    const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
-    return normalizePath((plugin.settings.pandocFolder || defaultPandocFolder).trim() || defaultPandocFolder);
-}
-
 function resolveBundledVaultPath(plugin: RadialTimelinePlugin, relativePath: string): string {
     const normalized = normalizePath(relativePath.replace(/^\/+/, ''));
     const pandocFolder = getPandocFolder(plugin);
@@ -484,7 +479,7 @@ async function ensureFolderPath(plugin: RadialTimelinePlugin, folderPath: string
 }
 
 export function isBundledPandocLayoutInstalled(plugin: RadialTimelinePlugin, layout: PandocLayoutTemplate): boolean {
-    const trimmed = (layout.path || '').trim();
+    const trimmed = layout.path.trim();
     if (!trimmed) return false;
 
     if (isAbsolutePath(trimmed)) return false;

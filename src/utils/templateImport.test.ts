@@ -4,6 +4,8 @@ import type RadialTimelinePlugin from '../main';
 import type { RadialTimelineSettings } from '../types';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { buildImportedTemplateCandidate, buildImportedTemplateId, compactTemplatePathForStorage } from './templateImport';
+import { getBundledPandocLayoutContent } from './pandocBundledLayouts';
+import { detectTemplateProfile } from '../publishing/templateDetection';
 
 function createPluginWithFiles(files: Record<string, string>): RadialTimelinePlugin {
     const fileMap = new Map<string, { file: TFile; content: string }>();
@@ -99,6 +101,71 @@ describe('templateImport helper', () => {
         const plugin = createPluginWithFiles({});
         const absolutePath = '/tmp/absolute-template.tex';
         expect(compactTemplatePathForStorage(plugin, absolutePath)).toBe(absolutePath);
+    });
+
+    it('detects rich formatting from a vault TFile when no sourceContent override is supplied', async () => {
+        // Regression: simulates the Import wizard picking a .tex file from a deep vault
+        // path (not under the configured pandocFolder). The build pipeline must read
+        // the TFile content and feed it to the heuristic — not silently fall back to
+        // empty content (which would yield "Custom · Custom LaTeX styling" + low confidence).
+        const richContent = getBundledPandocLayoutContent('bundled-fiction-modern-classic') || '';
+        expect(richContent.length).toBeGreaterThan(200);
+        const deepVaultPath = 'Author/New/Fresh/Jane Austin/Sherlock Holmes/Pandoc/rt_modern_classic.tex';
+        const plugin = createPluginWithFiles({ [deepVaultPath]: richContent });
+
+        const candidate = await buildImportedTemplateCandidate(plugin, { sourcePath: deepVaultPath });
+
+        expect(candidate.detectedTemplate.styleHint).not.toBe('custom');
+        expect(candidate.detectedTemplate.confidence).not.toBe('low');
+        expect(candidate.detectedTemplate.traits.length).toBeGreaterThanOrEqual(3);
+        expect(candidate.canActivate).toBe(true);
+    });
+
+    it('detects rich formatting when the picked file lives under the configured pandoc folder', async () => {
+        // Regression: when the source file is inside `Radial Timeline/Pandoc/`,
+        // compactTemplatePathForStorage strips the prefix from layout.path. The read
+        // pipeline must still locate the TFile via the original picked path or via
+        // resolveTemplatePath; otherwise content reads as empty and detection collapses
+        // to "Custom · Custom LaTeX styling" with low confidence (the reported symptom).
+        const richContent = getBundledPandocLayoutContent('bundled-fiction-modern-classic') || '';
+        const pickedPath = 'Radial Timeline/Pandoc/rt_modern_classic.tex';
+        const plugin = createPluginWithFiles({ [pickedPath]: richContent });
+
+        const candidate = await buildImportedTemplateCandidate(plugin, { sourcePath: pickedPath });
+
+        expect(candidate.layout.path).toBe('rt_modern_classic.tex');
+        expect(candidate.detectedTemplate.styleHint).not.toBe('custom');
+        expect(candidate.detectedTemplate.confidence).not.toBe('low');
+        expect(candidate.detectedTemplate.traits.length).toBeGreaterThanOrEqual(3);
+        expect(candidate.canActivate).toBe(true);
+    });
+
+    it('returns the minimal Custom profile when the vault file cannot be read', async () => {
+        // When no TFile resolves to the requested sourcePath and no sourceContent
+        // override is provided, content reads as empty and the detector returns
+        // the minimal Custom profile. This is the documented end-of-the-line
+        // behavior — not a regression to mask with fallbacks.
+        const plugin = createPluginWithFiles({});
+
+        const candidate = await buildImportedTemplateCandidate(plugin, {
+            sourcePath: 'Missing/Folder/never-installed.tex',
+        });
+
+        expect(candidate.detectedTemplate.styleHint).toBe('custom');
+        expect(candidate.detectedTemplate.confidence).toBe('low');
+        expect(candidate.detectedTemplate.traits).toEqual(['Custom LaTeX styling']);
+    });
+
+    it('detects rich formatting on the canonical Modern Classic bundled spec content', () => {
+        // Sanity check: the detector itself produces a confident, multi-trait profile
+        // when given the live spec-generated bundled .tex output.
+        const richContent = getBundledPandocLayoutContent('bundled-fiction-modern-classic') || '';
+        expect(richContent.length).toBeGreaterThan(200);
+        const profile = detectTemplateProfile(richContent);
+
+        expect(profile.styleHint).not.toBe('custom');
+        expect(['medium', 'high']).toContain(profile.confidence);
+        expect(profile.traits.length).toBeGreaterThanOrEqual(3);
     });
 
     it('detects rich formatting from provided template content', async () => {

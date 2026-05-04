@@ -100,7 +100,7 @@ export function renderGeometry(spec: DesignedStyleSpec): string {
     ].join('\n');
 }
 
-const FONT_PRIMARY: Record<string, string> = {
+const FONT_PRIMARY: Record<DesignedStyleSpec['body']['font'], string> = {
     'sorts-mill-goudy': 'Sorts Mill Goudy',
     'latin-modern':     'Latin Modern Roman',
     'source-serif':     'Source Serif 4',
@@ -130,7 +130,7 @@ export interface RenderFontspecOptions {
 }
 
 export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecOptions = {}): string {
-    const primary = FONT_PRIMARY[spec.body.font] || 'TeX Gyre Pagella';
+    const primary = FONT_PRIMARY[spec.body.font];
     const lines: string[] = [];
     lines.push('\\defaultfontfeatures{Ligatures=TeX}');
 

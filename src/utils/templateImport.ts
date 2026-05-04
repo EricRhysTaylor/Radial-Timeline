@@ -1,4 +1,4 @@
-import { FileSystemAdapter, normalizePath, TFile } from 'obsidian';
+import { normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type {
     PandocLayoutTemplate,
@@ -79,19 +79,6 @@ function isAbsolutePath(value: string): boolean {
 
 function basenameOfPath(value: string): string {
     return value.split(/[\\/]/).pop() || value;
-}
-
-function getVaultRelativePath(plugin: RadialTimelinePlugin, maybeAbsolutePath: string): string {
-    const normalized = normalizePath(maybeAbsolutePath);
-    if (!isAbsolutePath(normalized)) return normalized;
-    const adapter = plugin.app.vault.adapter;
-    if (adapter instanceof FileSystemAdapter) {
-        const basePath = normalizePath(adapter.getBasePath());
-        const prefix = `${basePath}/`;
-        if (normalized === basePath) return '';
-        if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
-    }
-    return normalized;
 }
 
 export function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawPath: string): string {
@@ -176,7 +163,11 @@ export async function buildImportedTemplateCandidate(
     }
 
     const resolvedPath = resolveTemplatePath(plugin, layout.path);
-    const content = input.sourceContent ?? await readTemplateText(plugin, resolvedPath);
+    // rawPath is the user's selection from the suggest modal — already a
+    // vault-relative TFile path. Read it directly; no path round-tripping.
+    // (resolvedPath is kept for the pandoc-engine check below; that's a
+    // separate concern from reading vault content.)
+    const content = input.sourceContent ?? await readVaultFile(plugin, rawPath);
     if (content && !/\$body\$/i.test(content)) {
         issues.push({
             code: 'import_missing_body',
@@ -264,19 +255,15 @@ function buildPreviewLines(content: string): string[] {
         .slice(0, 6);
 }
 
-async function readTemplateText(plugin: RadialTimelinePlugin, resolvedPath: string): Promise<string> {
-    if (!resolvedPath) return '';
-    const vaultPath = getVaultRelativePath(plugin, resolvedPath);
-    const abstract = plugin.app.vault.getAbstractFileByPath(vaultPath);
-    if (abstract instanceof TFile) {
-        try {
-            return await plugin.app.vault.read(abstract);
-        } catch {
-            return '';
-        }
+async function readVaultFile(plugin: RadialTimelinePlugin, vaultPath: string): Promise<string> {
+    if (!vaultPath) return '';
+    const file = plugin.app.vault.getAbstractFileByPath(normalizePath(vaultPath));
+    if (!(file instanceof TFile)) return '';
+    try {
+        return await plugin.app.vault.read(file);
+    } catch {
+        return '';
     }
-
-    return '';
 }
 
 function stripTemplateExtension(name: string): string {

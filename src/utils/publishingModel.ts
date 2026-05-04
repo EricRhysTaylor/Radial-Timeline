@@ -1,4 +1,5 @@
 import type {
+    BookMetaFieldKey,
     OutputIntent,
     PandocLayoutTemplate,
     ProfileOrigin,
@@ -27,6 +28,16 @@ const CAPABILITY_LABELS: Record<TemplateCapability['key'], string> = {
     actEpigraphs: 'Act epigraphs',
     modernClassicStructure: 'Modern classic structure',
     semanticMatter: 'Semantic matter support',
+};
+
+/**
+ * Per-usage-context guidance string. Adding a new UsageContext member forces
+ * a compile-time error here until a guidance entry is supplied.
+ */
+const PROFILE_GUIDANCE_BY_USAGE_CONTEXT: Record<UsageContext, string> = {
+    novel: 'Pairs with the current Pandoc + LaTeX pipeline and the existing matter workflow.',
+    screenplay: 'Uses the current Pandoc + LaTeX pipeline without changing the export engine.',
+    podcast: 'Uses the current Pandoc + LaTeX pipeline without changing the export engine.',
 };
 
 export interface AdaptedPublishingModel {
@@ -95,15 +106,15 @@ function getCapabilities(layout: PandocLayoutTemplate): TemplateCapability[] {
     return capabilities;
 }
 
-function getRecommendedBookMetaFields(layout: PandocLayoutTemplate, capabilities: TemplateCapability[]): string[] {
-    const fields = ['Book.title', 'Book.author'];
+function getRecommendedBookMetaFields(layout: PandocLayoutTemplate, capabilities: TemplateCapability[]): BookMetaFieldKey[] {
+    const fields: BookMetaFieldKey[] = ['Book.title', 'Book.author'];
     if (capabilities.some(item => item.key === 'semanticMatter')) {
         fields.push('Rights.year', 'Rights.copyright_holder', 'Publisher.name', 'Identifiers.isbn_paperback');
     }
     return fields;
 }
 
-function getRequiredBookMetaFields(layout: PandocLayoutTemplate, capabilities: TemplateCapability[]): string[] {
+function getRequiredBookMetaFields(layout: PandocLayoutTemplate, capabilities: TemplateCapability[]): BookMetaFieldKey[] {
     if (layout.preset !== 'novel') return [];
     if (!capabilities.some(item => item.key === 'semanticMatter')) return [];
     return ['Book.title', 'Book.author'];
@@ -150,9 +161,7 @@ export function adaptPandocLayoutToTemplateProfile(layout: PandocLayoutTemplate)
         recommendedUse: getPandocLayoutRecommendedUse(layout),
         styleKey: getStyleKey(layout),
         summary: description,
-        guidance: layout.preset === 'novel'
-            ? 'Pairs with the current Pandoc + LaTeX pipeline and the existing matter workflow.'
-            : 'Uses the current Pandoc + LaTeX pipeline without changing the export engine.',
+        guidance: PROFILE_GUIDANCE_BY_USAGE_CONTEXT[layout.preset],
         previewMode: 'static',
         capabilities,
         requiredBookMetaFields: getRequiredBookMetaFields(layout, capabilities),

@@ -1,8 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import type RadialTimelinePlugin from '../main';
 import type {
     BookMeta,
+    BookMetaFieldKey,
     BookProfile,
     BookPublishingPreferences,
     OutputIntent,
@@ -13,14 +12,16 @@ import type {
     ValidationIssue,
     ValidationSummary,
 } from '../types';
-import { getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout } from '../utils/exportFormats';
+import { assertNever } from '../utils/assertNever';
+import { getAutoPdfEngineSelection, isConfiguredExecutablePathMissing, readResolvedTemplateText, resolveTemplatePath, validatePandocLayout } from '../utils/exportFormats';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { adaptPandocLayoutsToPublishingModel } from '../utils/publishingModel';
 import { BOOK_META_BACKED_ROLES } from '../utils/manuscript';
 import { validateRttsTemplateContent } from '../publishing/rttsValidation';
-import { getPandocLayoutSortRank, resolveTemplateAccess } from '../publishing/templateTiering';
+import { getPandocLayoutSortRank, getPandocLayoutTier, resolveTemplateAccess } from '../publishing/templateTiering';
+import { hasProFeatureAccess } from '../settings/featureGate';
 
 type ValidationScope = ValidationIssue['scope'];
 
@@ -339,21 +340,6 @@ function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sour
     };
 }
 
-function readTemplateFile(templatePath: string): { text: string; error?: string } {
-    if (!templatePath.trim()) return { text: '', error: 'No template path configured.' };
-    if (!path.isAbsolute(templatePath) || !fs.existsSync(templatePath)) {
-        return { text: '', error: `Template file not found: ${templatePath}` };
-    }
-    try {
-        return { text: fs.readFileSync(templatePath, 'utf8') };
-    } catch (error) {
-        return {
-            text: '',
-            error: (error as Error)?.message || `Unable to read template: ${templatePath}`,
-        };
-    }
-}
-
 export class PublishingValidationService {
     constructor(private readonly plugin: RadialTimelinePlugin) {}
 
@@ -386,7 +372,7 @@ export class PublishingValidationService {
                 layouts,
                 selectedLayoutId: selectedLayout.id,
                 manuscriptPreset: context.manuscriptPreset,
-                hasProAccess: true,
+                hasProAccess: hasProFeatureAccess(this.plugin),
             });
             snapshot.templateAccessIssues = access.issues;
             if (access.requestedLayout) {
@@ -437,7 +423,7 @@ export class PublishingValidationService {
             }
 
             const resolvedPath = resolveTemplatePath(this.plugin, layout.path);
-            const templateRead = readTemplateFile(resolvedPath);
+            const templateRead = readResolvedTemplateText(resolvedPath);
             if (templateRead.error && layoutValidation.valid) {
                 pushIssue(issues, 'asset', 'error', 'asset_unreadable', templateRead.error, {
                     actionable: true,
@@ -577,7 +563,7 @@ export class PublishingValidationService {
                 }
 
                 const resolvedPath = resolveTemplatePath(this.plugin, selectedLayout.path);
-                const templateRead = readTemplateFile(resolvedPath);
+                const templateRead = readResolvedTemplateText(resolvedPath);
                 const declaredCapabilities = (selectedProfile?.capabilities || []).map(capability => capability.key);
                 const rtts = validateRttsTemplateContent(templateRead.text, {
                     declaredCapabilities,
@@ -613,7 +599,7 @@ export class PublishingValidationService {
                 }
             }
             const pandocPath = (this.plugin.settings.pandocPath || '').trim();
-            if (pandocPath && (path.isAbsolute(pandocPath) || pandocPath.includes('/')) && !fs.existsSync(pandocPath)) {
+            if (isConfiguredExecutablePathMissing(pandocPath)) {
                 pushIssue(snapshot.preflightIssues, 'export', 'error', 'export_pandoc_missing', 'Configured Pandoc binary could not be found.', {
                     actionable: true,
                     field: 'pandocPath',
@@ -685,10 +671,12 @@ export class PublishingValidationService {
         }
 
         if (context.manuscriptPreset) {
-            const sortedLayouts = layouts
+            const hasProAccess = hasProFeatureAccess(this.plugin);
+            const layout = layouts
                 .filter(item => item.preset === context.manuscriptPreset)
-                .sort((a, b) => getPandocLayoutSortRank(a) - getPandocLayoutSortRank(b) || a.name.localeCompare(b.name));
-            const layout = sortedLayouts[0] || layouts.find(item => item.preset === context.manuscriptPreset);
+                .sort((a, b) => getPandocLayoutSortRank(a) - getPandocLayoutSortRank(b) || a.name.localeCompare(b.name))
+                .find(item => hasProAccess || getPandocLayoutTier(item) === 'free')
+                || layouts.find(item => item.preset === context.manuscriptPreset);
             if (layout) return profiles.find(profile => profile.legacyLayoutId === layout.id);
         }
 
@@ -709,7 +697,7 @@ export class PublishingValidationService {
         return outputIntent === 'print-book' || outputIntent === 'submission-manuscript';
     }
 
-    private collectMissingBookMetaFields(bookMeta: BookMeta | null, fields: string[]): string[] {
+    private collectMissingBookMetaFields(bookMeta: BookMeta | null, fields: BookMetaFieldKey[]): BookMetaFieldKey[] {
         return fields.filter(field => {
             switch (field) {
                 case 'Book.title':
@@ -725,7 +713,7 @@ export class PublishingValidationService {
                 case 'Identifiers.isbn_paperback':
                     return !(bookMeta?.identifiers?.isbn_paperback || '').trim();
                 default:
-                    return false;
+                    return assertNever(field, 'collectMissingBookMetaFields');
             }
         });
     }

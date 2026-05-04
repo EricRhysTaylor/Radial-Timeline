@@ -113,11 +113,9 @@ const BOOK_META_FIELD_DEFINITIONS: Record<EditableBookMetaFieldKey, EditableBook
     },
 };
 
-export interface BookMetaEditNormalizationResult {
-    ok: boolean;
-    normalizedValue: string | number | null;
-    error?: string;
-}
+export type BookMetaEditNormalizationResult =
+    | { ok: true; normalizedValue: string | number | null }
+    | { ok: false; normalizedValue: string | number | null; error: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);

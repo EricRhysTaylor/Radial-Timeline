@@ -14,7 +14,7 @@ import { execFile } from 'child_process'; // SAFE: Node child_process for system
 import { createHash } from 'crypto'; // SAFE: exact retired starter sample fingerprinting
 import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
 import { DEFAULT_SETTINGS } from '../defaults';
-import { getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
+import { getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem, getPandocFolder } from '../../utils/exportFormats';
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
@@ -267,10 +267,7 @@ const STARTER_PUBLISHING_SETUP_ALREADY_EXISTS = 'Starter publishing files alread
 const AUTO_CONFIGURE_BUTTON = 'Auto configure publishing';
 const AUTO_CONFIGURE_BUSY = 'Configuring publishing…';
 
-function getConfiguredPandocFolder(plugin: RadialTimelinePlugin): string {
-    const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
-    return normalizePath((plugin.settings.pandocFolder || defaultPandocFolder).trim() || defaultPandocFolder);
-}
+const getConfiguredPandocFolder = getPandocFolder;
 
 function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawPath: string): string {
     const trimmed = rawPath.trim();
@@ -2793,21 +2790,26 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             );
         }
     };
-    layoutManageSetting.addButton(button => {
-        button.setButtonText('Import Template');
-        button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
-        if (!isActive) {
-            button.buttonEl.addClass('ert-pro-locked');
-            button.setTooltip('Importing custom templates requires Pro.');
-        }
-        button.onClick(() => {
-            if (!isActive) {
-                new Notice('Importing custom templates requires Pro.');
-                return;
-            }
-            new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
-        });
-    });
+    // Import Template entry point hidden until the Designed Style wizard ships.
+    // The ImportTemplateModal + templateImport pipeline remain in place so we
+    // can re-expose them later (or as a power-user escape hatch) without a
+    // rebuild. To re-enable, restore this block.
+    //
+    // layoutManageSetting.addButton(button => {
+    //     button.setButtonText('Import Template');
+    //     button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
+    //     if (!isActive) {
+    //         button.buttonEl.addClass('ert-pro-locked');
+    //         button.setTooltip('Importing custom templates requires Pro.');
+    //     }
+    //     button.onClick(() => {
+    //         if (!isActive) {
+    //             new Notice('Importing custom templates requires Pro.');
+    //             return;
+    //         }
+    //         new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
+    //     });
+    // });
     layoutManageSetting.addButton(button => {
         installAllButton = button;
         button.setButtonText('Install all');
@@ -3115,7 +3117,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             activeBookMetaEditBusy = false;
 
             if (!result.ok) {
-                new Notice(result.error || 'Book Details could not be updated.');
+                new Notice(result.error);
                 if (mode === 'enter') {
                     renderBookMetaPreview();
                     return;
@@ -3146,7 +3148,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             activeBookMetaEditBusy = false;
 
             if (!result.ok) {
-                new Notice(result.error || 'Book Details could not be updated.');
+                new Notice(result.error);
                 renderBookMetaPreview();
                 return;
             }

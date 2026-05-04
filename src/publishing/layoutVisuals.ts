@@ -1071,9 +1071,9 @@ export function renderLayoutPictograms(
                 spreadEl.setAttribute('role', 'button');
                 spreadEl.setAttribute('tabindex', '0');
                 spreadEl.setAttribute('aria-pressed', selected ? 'true' : 'false');
-                spreadEl.setAttribute('aria-label', `Use ${spread.label || mode} scene opener heading`);
+                spreadEl.setAttribute('aria-label', `Use ${spread.label} scene opener heading`);
                 if (!spread.warningTooltip) {
-                    spreadEl.setAttribute('title', `Use ${spread.label || mode} scene opener heading`);
+                    spreadEl.setAttribute('title', `Use ${spread.label} scene opener heading`);
                 }
                 spreadEl.addEventListener('click', () => options.onSceneModeSelect?.(mode));
                 spreadEl.addEventListener('keydown', (event: KeyboardEvent) => {
