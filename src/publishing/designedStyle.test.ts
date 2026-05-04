@@ -163,9 +163,11 @@ describe('generateDesignedStyleTex', () => {
 
     it('hard-fails Signature Literary generation when bundled Sorts Mill Goudy is unavailable', () => {
         const tex = generateDesignedStyleTex(buildSpec());
-        expect(tex).toContain('\\errmessage{Radial Timeline Signature Literary requires bundled Sorts Mill Goudy font files');
+        expect(tex).toContain('\\PackageError{rt-font}');
+        expect(tex).toContain("Required font 'Sorts Mill Goudy' is not installed");
         expect(tex).not.toContain('\\setmainfont{Times}');
         expect(tex).not.toContain('TeX Gyre Pagella');
+        expect(tex).not.toContain('\\setmainfont{Arial}');
     });
 
     it('checks exact system fonts without emitting fallbacks', () => {
@@ -180,9 +182,29 @@ describe('generateDesignedStyleTex', () => {
         }));
         expect(tex).toContain('\\IfFontExistsTF{EB Garamond}');
         expect(tex).toContain('\\setmainfont{EB Garamond}');
-        expect(tex).toContain('\\errmessage{Radial Timeline PDF style requires EB Garamond');
+        expect(tex).toContain('\\PackageError{rt-font}');
+        expect(tex).toContain("Required font 'EB Garamond' is not installed");
         expect(tex).not.toContain('Charter');
         expect(tex).not.toContain('Georgia');
+        expect(tex).not.toContain('\\setmainfont{Times}');
+        expect(tex).not.toContain('\\setmainfont{Arial}');
+    });
+
+    it('emits a single (non-cascading) IfFontExistsTF guard for system fonts under the strict policy', () => {
+        const tex = generateDesignedStyleTex(buildSpec({
+            body: {
+                font: 'eb-garamond',
+                fontFallbackChain: ['Charter', 'Georgia', 'Times New Roman', 'Arial'],
+                sizePt: 11,
+                lineSpacing: 1.5,
+                paragraphIndentEm: 1.5,
+            },
+        }));
+        const matches = tex.match(/\\IfFontExistsTF\{EB Garamond\}/g);
+        expect(matches?.length ?? 0).toBe(1);
+        // Cascading fallback names must never appear in the emitted .tex.
+        expect(tex).not.toContain('\\setmainfont{Times New Roman}');
+        expect(tex).not.toContain('\\setmainfont{Arial}');
         expect(tex).not.toContain('\\setmainfont{Times}');
     });
 
@@ -219,7 +241,8 @@ describe('generateDesignedStyleTex', () => {
             bundledFontPath: '/tmp/radial-timeline/assets/fonts',
         });
 
-        expect(tex).toContain('\\errmessage{Radial Timeline Modern Classic requires a verified Latin Modern font path');
+        expect(tex).toContain('\\PackageError{rt-font}');
+        expect(tex).toContain("Required font 'Latin Modern Roman' is not installed");
         expect(tex).not.toContain('assets/fonts/latin-modern');
         expect(tex).not.toContain('\\setmainfont{lmroman10-regular.otf}');
         expect(tex).not.toContain('Path = /tmp/radial-timeline/assets/fonts/latin-modern');

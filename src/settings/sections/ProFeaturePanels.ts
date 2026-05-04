@@ -2548,6 +2548,50 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 s.setDesc(buildLayoutDescription(layout));
             }
 
+            // ── Per-card font diagnostic (strict policy, Phase 1) ──────
+            // Surfaces a red "Missing: <FontName>" badge with an inline
+            // Install button when the layout's required font is not
+            // installed. Subtle green check when installed. Layouts with
+            // no spec render nothing here (no_spec / cannot_verify are
+            // omitted intentionally — neutral states should not add chrome).
+            if (s.descEl) {
+                const fontDiag = getStructuredFontDiagnostic(layout);
+                if (fontDiag.state === 'missing-system' || fontDiag.state === 'missing-bundled') {
+                    const row = s.descEl.createDiv({ cls: 'ert-layout-font-status ert-layout-font-status--missing' });
+                    row.createSpan({
+                        cls: 'ert-layout-font-status-badge',
+                        text: `Missing: ${fontDiag.primaryFontName}`,
+                    });
+                    const installBtn = row.createEl('button', {
+                        cls: 'ert-layout-font-install ert-link-accent',
+                        text: 'Install',
+                    });
+                    installBtn.type = 'button';
+                    installBtn.addEventListener('click', (ev) => {
+                        ev.preventDefault();
+                        const hint = fontDiag.installHint;
+                        const fragment = document.createDocumentFragment();
+                        const wrapper = fragment.createDiv();
+                        wrapper.createDiv({
+                            text: `${fontDiag.primaryFontName}: ${hint?.message ?? 'Install instructions unavailable.'}`,
+                        });
+                        if (hint?.url) {
+                            const link = wrapper.createEl('a', { href: hint.url, text: hint.url });
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener');
+                        }
+                        if (hint?.steps?.length) {
+                            const ul = wrapper.createEl('ul');
+                            for (const step of hint.steps) ul.createEl('li', { text: step });
+                        }
+                        wrapper.createDiv({
+                            text: 'After installing, re-open Settings to refresh status.',
+                        });
+                        new Notice(fragment, 12000);
+                    });
+                }
+            }
+
             if (isBundled && !installed) {
                 s.addButton(btn => {
                     btn.setButtonText('Install');

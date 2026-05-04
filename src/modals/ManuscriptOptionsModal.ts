@@ -281,6 +281,12 @@ export class ManuscriptOptionsModal extends Modal {
     private cleanupCalloutsToggle?: ToggleComponent;
     private cleanupBlockIdsToggle?: ToggleComponent;
     private templateWarningEl?: HTMLElement;
+    /**
+     * Strict font policy (Phase 1): true when PDF format is selected and the
+     * spec-driven font diagnostic reports the required font is missing. The
+     * Export button is disabled in this state — see updateActionButtonDisabledState.
+     */
+    private isPdfFontBlocked: boolean = false;
     private layoutHeaderEl?: HTMLElement;
     private layoutContainerEl?: HTMLElement;
     private selectedLayoutId?: string;
@@ -2033,11 +2039,18 @@ export class ManuscriptOptionsModal extends Modal {
      * Update PDF Output summary based on current preset and format
      */
     private updateTemplateWarning(): void {
+        // Reset font-block flag at the top of every render. The block is only
+        // re-asserted when the spec-driven diagnostic reports state !== 'ok'
+        // for the currently-selected PDF layout.
+        const previousBlocked = this.isPdfFontBlocked;
+        this.isPdfFontBlocked = false;
+
         if (!this.templateWarningEl || this.exportType !== 'manuscript') {
             if (this.templateWarningEl) {
                 this.templateWarningEl.empty();
                 this.templateWarningEl.addClass('ert-manuscript-preset-status--hidden');
             }
+            if (previousBlocked) this.updateActionButtonDisabledState();
             return;
         }
 
@@ -2052,6 +2065,7 @@ export class ManuscriptOptionsModal extends Modal {
         // Only check templates for PDF format
         if (this.outputFormat === 'markdown') {
             this.templateWarningEl.addClass('ert-manuscript-preset-status--hidden');
+            if (previousBlocked) this.updateActionButtonDisabledState();
             return; // No template needed for markdown
         }
         this.templateWarningEl.removeClass('ert-manuscript-preset-status--hidden');
@@ -2101,6 +2115,12 @@ export class ManuscriptOptionsModal extends Modal {
         // Modern (lmodern) and bundled-Sorts-Mill-Goudy special cases.
         const structuredFontDiag = getStructuredFontDiagnostic(selectedLayout);
         this.ensureBundledFontsForLayout(selectedLayout, structuredFontDiag.state);
+        // STRICT FONT POLICY (Phase 1): when the spec-driven diagnostic reports
+        // a missing font for the selected PDF layout, hard-block the Export
+        // button. The action-button disabled-state code consumes this flag.
+        // (We're guaranteed to be in PDF format here — the markdown branch
+        // returned above.)
+        this.isPdfFontBlocked = structuredFontDiag.state !== 'ok';
         const primaryRequested = fontDiagnostics.optionalFonts[0] || fontDiagnostics.requiredFonts[0] || null;
         const hasPrimaryMissing = canVerifyFonts && primaryRequested
             ? fontDiagnostics.missingOptionalFonts.includes(primaryRequested) || fontDiagnostics.missingRequiredFonts.includes(primaryRequested)
@@ -2335,6 +2355,10 @@ export class ManuscriptOptionsModal extends Modal {
                 detailsContent.createDiv({ text: line });
             }
         }
+
+        // Re-evaluate action-button disabled state — the font-block flag may
+        // have flipped this render. Cheap idempotent call when nothing changed.
+        this.updateActionButtonDisabledState();
     }
 
     /**
@@ -2536,7 +2560,15 @@ Sarah stood at the window, watching the world wake up.`;
     private updateActionButtonDisabledState(): void {
         if (!this.actionButton || this.exportCompleted) return;
         const splitInvalid = !this.isSplitSelectionValid();
-        this.actionButton.setDisabled(this.totalScenes === 0 || splitInvalid);
+        // STRICT FONT POLICY (Phase 1): block Export when PDF format is
+        // selected and the layout's required font is not installed.
+        // The export-checks panel renders an "Install" affordance with
+        // platform-specific instructions; the user must resolve the missing
+        // font (or pick a different layout) before the button re-enables.
+        const fontBlocked = this.isPdfFontBlocked && this.outputFormat === 'pdf';
+        this.actionButton.setDisabled(
+            this.totalScenes === 0 || splitInvalid || fontBlocked
+        );
     }
 
     /**

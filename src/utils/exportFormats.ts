@@ -749,6 +749,79 @@ function getBundledFontInstallMessage(fontKey: DesignedStyleSpec['body']['font']
  * resolved a concrete TeX font directory and all four lmroman OTF faces must
  * exist there. No font-name or filename fallback is treated as ready.
  */
+/**
+ * Spec-key driven font diagnostic. Identical resolution logic to
+ * `getStructuredFontDiagnostic` but takes a `body.font` enum value directly
+ * rather than a full layout. Used by the Designed Style wizard's live
+ * preview where the user is editing a working spec that has not yet been
+ * persisted as a layout.
+ *
+ * Strict policy (Phase 1): no fallback resolution. The state is exactly
+ * what the export pipeline will see when this font key is selected.
+ */
+export function getFontDiagnosticForFontKey(
+    fontKey: DesignedStyleSpec['body']['font'] | undefined,
+    overridePlatform?: FontDiagnosticPlatform
+): FontDiagnostic {
+    return resolveFontDiagnosticForKey(fontKey, overridePlatform);
+}
+
+function resolveFontDiagnosticForKey(
+    fontKey: DesignedStyleSpec['body']['font'] | undefined,
+    overridePlatform?: FontDiagnosticPlatform
+): FontDiagnostic {
+    const platform = overridePlatform ?? getCurrentPlatform();
+    if (!fontKey) {
+        return { state: 'ok', primaryFontName: 'Default serif', resolvedFontName: 'Default serif' };
+    }
+    const primaryFontName = FONT_KEY_TO_DISPLAY[fontKey];
+
+    if (fontKey === 'latin-modern') {
+        if (latinModernFontFilesPresent()) {
+            return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
+        }
+        return {
+            state: 'missing-bundled',
+            primaryFontName,
+            resolvedFontName: primaryFontName,
+            installHint: {
+                source: 'bundled',
+                message: 'Modern Classic requires bundled Latin Modern files in Radial Timeline/Pandoc/fonts/latin-modern. Run Install all in Settings > Publish.',
+            },
+        };
+    }
+
+    if (fontKey === 'sorts-mill-goudy' || fontKey === 'source-serif') {
+        if (bundledFontFilesPresent(fontKey)) {
+            return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
+        }
+        return {
+            state: 'missing-bundled',
+            primaryFontName,
+            resolvedFontName: primaryFontName,
+            installHint: {
+                source: 'bundled',
+                message: getBundledFontInstallMessage(fontKey),
+            },
+        };
+    }
+
+    const catalog = loadSystemFontCatalog();
+    const canVerify = Array.isArray(catalog);
+    const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;
+
+    if (installed) {
+        return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
+    }
+
+    const url = GOOGLE_FONTS_BY_KEY[fontKey];
+    const installHint: FontDiagnosticInstallHint = url
+        ? buildGoogleFontsHint(primaryFontName, url, platform)
+        : buildCtanHint(primaryFontName);
+
+    return { state: 'missing-system', primaryFontName, resolvedFontName: primaryFontName, installHint };
+}
+
 export function getStructuredFontDiagnostic(
     layout?: PandocLayoutTemplate,
     overridePlatform?: FontDiagnosticPlatform

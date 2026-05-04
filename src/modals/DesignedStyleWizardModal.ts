@@ -41,7 +41,7 @@ import {
 } from '../publishing/layoutVisuals';
 import type { ManuscriptSceneHeadingMode, PandocLayoutTemplate } from '../types';
 import { compactTemplatePathForStorage } from '../utils/templateImport';
-import { getPandocFolder, getTemplateFontDiagnostics, slugifyToFileStem } from '../utils/exportFormats';
+import { getFontDiagnosticForFontKey, getPandocFolder, slugifyToFileStem } from '../utils/exportFormats';
 
 export interface DesignedStyleWizardResult {
     name: string;
@@ -193,6 +193,21 @@ export function validateDesignedStyleSpec(
 
     if (options.existingDesignedNames && options.existingDesignedNames.has(name.trim().toLowerCase())) {
         warnings.push('A style with this name already exists; the saved name will be suffixed (e.g. "-2").');
+    }
+
+    // Strict font policy (Phase 1): when the body font isn't installed (or the
+    // bundled assets are missing on disk), surface a warning in the validation
+    // banner so the user sees the issue alongside other spec problems. The
+    // wizard's font-row inline status renders the precise install affordance.
+    try {
+        const fontDiag = getFontDiagnosticForFontKey(spec.body.font);
+        if (fontDiag.state !== 'ok') {
+            warnings.push(`${fontDiag.primaryFontName} is not installed. Click Install next to the Font row, or pick a different font — the export will fail until this is resolved.`);
+        }
+    } catch {
+        // Probing the font catalog can fail in headless / sandboxed
+        // environments. The banner stays clean rather than fabricating an
+        // alarm; the export pipeline still hard-blocks when needed.
     }
 
     return { errors, warnings };
@@ -486,13 +501,52 @@ export class DesignedStyleWizardModal extends Modal {
             fontStatus.empty();
             const selected = FONT_OPTIONS.find(o => o.value === this.spec.body.font);
             if (!selected) return;
+            // Strict font policy (Phase 1): per-font precise status. There is
+            // NO fallback — a missing font is a hard export blocker.
             try {
-                const diag = getTemplateFontDiagnostics();
-                // We don't have a generated path on disk yet. Heuristic: surface a generic indicator.
-                const isMissing = diag.canVerifySystemFonts
-                    && diag.missingRequiredFonts.some(f => f.toLowerCase().includes(selected.familyHint.split(/\s+/)[0].toLowerCase()));
-                fontStatus.setText(isMissing ? 'Not installed — will fall back' : 'Available');
-                fontStatus.toggleClass('is-missing', isMissing);
+                const diag = getFontDiagnosticForFontKey(this.spec.body.font);
+                if (diag.state === 'ok') {
+                    fontStatus.setText('Installed');
+                    fontStatus.removeClass('is-missing');
+                    fontStatus.addClass('is-installed');
+                    return;
+                }
+                fontStatus.removeClass('is-installed');
+                fontStatus.addClass('is-missing');
+                fontStatus.setText(`Missing: ${diag.primaryFontName}`);
+                // Inline "Install" affordance — Phase 1 opens a Notice with
+                // platform-specific instructions and a clickable URL when one
+                // is available. Phase 2 will perform an actual download.
+                const installBtn = fontRow.createEl('button', {
+                    cls: 'ert-style-wizard__font-install ert-link-accent',
+                    text: 'Install',
+                });
+                installBtn.type = 'button';
+                installBtn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    const hint = diag.installHint;
+                    // Build the Notice body as a DocumentFragment with a wrapper
+                    // div — DocumentFragment itself doesn't expose Obsidian's
+                    // createDiv/createEl helpers, but its child HTMLElement does.
+                    const fragment = document.createDocumentFragment();
+                    const wrapper = fragment.createDiv();
+                    wrapper.createDiv({
+                        text: `${diag.primaryFontName}: ${hint?.message ?? 'Install instructions unavailable.'}`,
+                    });
+                    if (hint?.url) {
+                        const link = wrapper.createEl('a', { href: hint.url, text: hint.url });
+                        link.setAttribute('target', '_blank');
+                        link.setAttribute('rel', 'noopener');
+                    }
+                    if (hint?.steps?.length) {
+                        const ul = wrapper.createEl('ul');
+                        for (const step of hint.steps) ul.createEl('li', { text: step });
+                    }
+                    wrapper.createDiv({
+                        text: 'After installing, re-open the wizard to refresh status.',
+                    });
+                    new Notice(fragment, 12000);
+                });
             } catch {
                 fontStatus.setText('');
             }
@@ -500,6 +554,9 @@ export class DesignedStyleWizardModal extends Modal {
         refreshFontStatus();
         fontSelect.addEventListener('change', () => {
             this.mutateSpec((s) => { s.body.font = fontSelect.value as DesignedStyleSpec['body']['font']; });
+            // Remove any prior Install button before re-rendering — refreshFontStatus
+            // re-creates the affordance when the new selection is missing.
+            fontRow.querySelectorAll('.ert-style-wizard__font-install').forEach(el => el.remove());
             refreshFontStatus();
         });
 

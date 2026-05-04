@@ -165,7 +165,11 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
                 lines.push(']');
             }
         } else {
-            lines.push('\\errmessage{Radial Timeline Modern Classic requires a verified Latin Modern font path; kpsewhich lmroman10-regular.otf did not resolve during plugin load}');
+            // Strict policy: hard fail, no fallback. \PackageError halts XeLaTeX
+            // with both a primary message and help text.
+            lines.push('\\PackageError{rt-font}{Required font \'Latin Modern Roman\' is not installed.\\MessageBreak Install the font and re-run the export.}{%');
+            lines.push('  The Radial Timeline Modern Classic template requires Latin Modern Roman and will not fall back to a substitute.\\MessageBreak Install MacTeX/TeX Live or run Install all in Settings > Publish.%');
+            lines.push('}');
         }
         return lines.join('\n');
     }
@@ -196,7 +200,10 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
                 lines.push(']');
             }
         } else {
-            lines.push('\\errmessage{Radial Timeline Signature Literary requires bundled Sorts Mill Goudy font files; run Install all in Settings > Publish}');
+            // Strict policy: hard fail, no fallback. \PackageError halts XeLaTeX.
+            lines.push('\\PackageError{rt-font}{Required font \'Sorts Mill Goudy\' is not installed.\\MessageBreak Install the font and re-run the export.}{%');
+            lines.push('  The Radial Timeline Signature Literary template requires bundled Sorts Mill Goudy and will not fall back to a substitute.\\MessageBreak Run Install all in Settings > Publish.%');
+            lines.push('}');
         }
         return lines.join('\n');
     }
@@ -222,21 +229,36 @@ export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecO
                 lines.push(']');
             }
         } else {
-            lines.push('\\errmessage{Radial Timeline Contemporary Literary requires bundled Source Serif 4 font files; run Install all in Settings > Publish}');
+            // Strict policy: hard fail, no fallback. \PackageError halts XeLaTeX.
+            lines.push('\\PackageError{rt-font}{Required font \'Source Serif 4\' is not installed.\\MessageBreak Install the font and re-run the export.}{%');
+            lines.push('  The Radial Timeline Contemporary Literary template requires bundled Source Serif 4 and will not fall back to a substitute.\\MessageBreak Run Install all in Settings > Publish.%');
+            lines.push('}');
         }
         return lines.join('\n');
     }
 
+    // Strict font policy: every font emit MUST be a single \setmainfont
+    // declaration guarded by \IfFontExistsTF. When the requested font is not
+    // installed, the LaTeX run fails with a hard \PackageError — no fallback,
+    // no substitute. The error help text directs the user to install the font.
+    // (See: docs/engineering/standards/code-doctrine.md — surfaces > silent drift.)
+    //
+    // Note on `body.fontFallbackChain`: this spec field is incompatible with
+    // the new strict policy and is intentionally ignored here. It will be
+    // removed in a future spec version (v2). Do NOT use it to emit cascading
+    // \IfFontExistsTF blocks.
     const letterSpacing = spec.runningHeader.letterSpacing;
     const emitHeaderFont = typeof letterSpacing === 'number' && letterSpacing > 0;
 
-    lines.push(`\\IfFontExistsTF{${primary}}{`);
-    lines.push(`  \\setmainfont{${primary}}`);
+    lines.push(`\\IfFontExistsTF{${primary}}{%`);
+    lines.push(`  \\setmainfont{${primary}}%`);
     if (emitHeaderFont) {
-        lines.push(`  \\newfontface\\headerfont{${primary}}[LetterSpace=${letterSpacing.toFixed(1)}]`);
+        lines.push(`  \\newfontface\\headerfont{${primary}}[LetterSpace=${letterSpacing.toFixed(1)}]%`);
     }
-    lines.push('}{');
-    lines.push(`  \\errmessage{Radial Timeline PDF style requires ${primary}; install ${primary} or choose another PDF style}`);
+    lines.push('}{%');
+    lines.push(`  \\PackageError{rt-font}{Required font '${primary}' is not installed.\\MessageBreak Install the font and re-run the export.}{%`);
+    lines.push(`    The Radial Timeline template requires this font and will not fall back to a substitute.\\MessageBreak See Settings > Publish in Obsidian for install help.%`);
+    lines.push('  }%');
     lines.push('}');
     return lines.join('\n');
 }

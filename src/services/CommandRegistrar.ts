@@ -21,7 +21,7 @@ import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
-import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getTemplateFontDiagnostics, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
+import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getStructuredFontDiagnostic, getTemplateFontDiagnostics, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
@@ -579,6 +579,27 @@ export class CommandRegistrar {
                 const fontWarning = `Missing required system font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}. Install them or switch layouts before exporting.`;
                 statusMessages.push(fontWarning);
                 new Notice(fontWarning);
+            }
+
+            // ── STRICT FONT POLICY (Phase 1) ──────────────────────────────
+            // Belt-and-suspenders defense — even if the modal's Export-button
+            // gating is bypassed, the actual export call must refuse to
+            // compile when the layout's required font is not installed. The
+            // generator emits a hard `\PackageError` for the same condition,
+            // but we surface a clean Obsidian-level error here so the user
+            // never sees a raw LaTeX failure.
+            //
+            // Triggers only for PDF format. Markdown export already returned
+            // earlier in this method.
+            const structuredFontDiag = getStructuredFontDiagnostic(layout);
+            if (structuredFontDiag.state !== 'ok') {
+                const primary = structuredFontDiag.primaryFontName;
+                const hint = structuredFontDiag.installHint?.message
+                    ?? 'Install the font and try again.';
+                const blockMessage = `Cannot export PDF: required font '${primary}' is not installed. ${hint}`;
+                new Notice(blockMessage, 8000);
+                statusMessages.push(blockMessage);
+                throw new Error(blockMessage);
             }
 
             new Notice('Running Pandoc...');
