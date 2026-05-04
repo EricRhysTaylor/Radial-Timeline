@@ -6,6 +6,7 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import { BUNDLED_FICTION_SPECS } from '../src/publishing/bundledStyleSpecs.ts';
 import { generateDesignedStyleTex } from '../src/publishing/designedStyle.ts';
+import { WIZARD_FIXTURES } from './wizard-pdf-fixtures.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
@@ -13,6 +14,7 @@ const args = new Set(process.argv.slice(2));
 const updateBaselines = args.has('--update-baselines');
 const visual = args.has('--visual') || updateBaselines;
 const keepOutput = args.has('--keep-output');
+const wizardOnly = args.has('--wizard-fixtures');
 
 const outputArgIndex = process.argv.indexOf('--output');
 const outputRoot = outputArgIndex >= 0 && process.argv[outputArgIndex + 1]
@@ -305,6 +307,61 @@ Do not edit baseline PNGs by hand.
     writeFileSync(join(baselineRoot, 'README.md'), readme);
 }
 
+/**
+ * Compile-gate runner for wizard-shaped specs. Iterates WIZARD_FIXTURES,
+ * generates .tex via the same generator the wizard uses (no bundledLayoutId),
+ * runs pandoc + xelatex, asserts the PDF compiles and has at least
+ * minExpectedPages. Failures collect into the shared `failures` array.
+ */
+function runWizardFixtures(failures, lmPath) {
+    for (const fixture of WIZARD_FIXTURES) {
+        const layoutDir = join(outputRoot, fixture.slug);
+        mkdirSync(layoutDir, { recursive: true });
+        const texPath = join(layoutDir, `${fixture.slug}.tex`);
+        const mdPath  = join(layoutDir, `${fixture.slug}.md`);
+        const pdfPath = join(layoutDir, `${fixture.slug}.pdf`);
+        try {
+            const tex = generateDesignedStyleTex(fixture.spec, {
+                bundledFontPath: fontRoot,
+                ...(lmPath ? { latinModernPath: lmPath } : {}),
+            });
+            writeFileSync(texPath, tex);
+            writeFileSync(mdPath, fixture.body);
+            run('pandoc', [
+                mdPath,
+                '--from=markdown+raw_tex',
+                '--pdf-engine=xelatex',
+                `--template=${texPath}`,
+                '-V', 'title=Wizard Fixture',
+                '-V', 'author=Wizard Author',
+                '-o', pdfPath,
+            ]);
+            const info = pdfInfo(pdfPath);
+            if (info.pages < fixture.minExpectedPages) {
+                throw new Error(`${fixture.slug} expected at least ${fixture.minExpectedPages} pages, got ${info.pages}`);
+            }
+            console.log(`✓ ${fixture.slug}: ${info.pages} pages`);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            failures.push(`${fixture.slug}: ${msg}`);
+            console.error(`✗ ${fixture.slug}: ${msg}`);
+        }
+    }
+}
+
+/** Shared exit handling — used by both main() and the wizard branch. */
+function finalize(failures) {
+    if (failures.length > 0) {
+        if (!keepOutput) console.error(`Artifacts preserved for debugging: ${outputRoot}`);
+        process.exitCode = 1;
+        return;
+    }
+    if (!keepOutput && !updateBaselines) {
+        rmSync(outputRoot, { recursive: true, force: true });
+    }
+    console.log(`Publishing PDF QA passed.${keepOutput ? ` Artifacts: ${outputRoot}` : ''}`);
+}
+
 function main() {
     requireCommand('pandoc', 'Install Pandoc first.');
     requireCommand('xelatex', 'Install a TeX distribution with XeLaTeX first.');
@@ -318,6 +375,16 @@ function main() {
     mkdirSync(outputRoot, { recursive: true });
     const lmPath = latinModernPath();
     const failures = [];
+
+    // --wizard-fixtures swaps in the wizard-shaped spec set instead of the
+    // bundled-template QA. The wizard set is a compile-gate floor: each spec
+    // must produce a PDF with at least minExpectedPages. No text-content or
+    // visual-baseline assertions — the property test + bundled QA cover those.
+    if (wizardOnly) {
+        runWizardFixtures(failures, lmPath);
+        finalize(failures);
+        return;
+    }
 
     for (const layout of layouts) {
         const spec = BUNDLED_FICTION_SPECS[layout.id];
