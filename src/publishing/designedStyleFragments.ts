@@ -59,12 +59,23 @@ function paperGeometry(spec: DesignedStyleSpec): { width: string; height: string
     }
 }
 
+/**
+ * `book` only natively supports 10/11/12pt as documentclass options. Pick the
+ * closest one; if the spec asks for something else (8/9/13/14), the precise
+ * value is enforced via a \fontsize override emitted from renderBodySetup.
+ */
+function pickDocumentClassSize(sizePt: number): '10pt' | '11pt' | '12pt' {
+    if (sizePt <= 10) return '10pt';
+    if (sizePt >= 12) return '12pt';
+    return '11pt';
+}
+
 export function renderDocumentClass(spec: DesignedStyleSpec): string {
     // Use 'book' so chapters/parts are available. Twoside is required whenever
     // mirrored margins are on OR the running header is split (different even/odd
     // content) — `oneside` collapses page-side awareness and would break the
     // even/odd header pair.
-    const opts = ['11pt'];
+    const opts: string[] = [pickDocumentClassSize(spec.body.sizePt)];
     const needsTwoside = spec.margins.mirrored
         || spec.runningHeader.mode === 'split-author-page-title-page'
         || spec.runningHeader.mode === 'left-title-right-context';
@@ -399,7 +410,12 @@ export function renderPartTitle(spec: DesignedStyleSpec): string {
     lines.push('    {\\normalfont\\bfseries\\Large #1}\\par');
     lines.push('    \\vspace{0.16in}%');
     lines.push('    \\rule{0.46in}{0.4pt}\\par');
-    if (spec.parts.epigraph || spec.epigraph.enabled) {
+
+    const wantsEpigraph = spec.parts.epigraph || spec.epigraph.enabled;
+    const ownPage = spec.parts.epigraphPlacement === 'own-page';
+
+    if (wantsEpigraph && !ownPage) {
+        // Inline placement — quote sits under the rule on the same page.
         lines.push('    \\ifstrempty{#2}{}{%%');
         lines.push('      \\vspace{0.28in}%');
         lines.push('      \\begin{minipage}{\\textwidth}');
@@ -415,8 +431,35 @@ export function renderPartTitle(spec: DesignedStyleSpec): string {
         }
         lines.push('    }%');
     }
+
     lines.push('  \\end{center}');
     lines.push('  \\vspace*{1.2in}%');
+
+    if (wantsEpigraph && ownPage) {
+        // Own-page placement — the part heading lives on the recto, then a
+        // \cleardoublepage flips to a fresh page where the epigraph stands
+        // alone, centered vertically. Headers/folios are suppressed on both.
+        lines.push('  \\ifstrempty{#2}{}{%%');
+        lines.push('    \\cleardoublepage%');
+        lines.push('    \\null%');
+        lines.push('    \\thispagestyle{rtEmpty}%');
+        lines.push('    \\vspace*{2.5in}%');
+        lines.push('    \\begin{center}%');
+        lines.push('      \\begin{minipage}{0.7\\textwidth}%');
+        lines.push('        \\centering');
+        lines.push(spec.epigraph.italic ? '        {\\itshape #2}\\par' : '        {#2}\\par');
+        lines.push('        \\ifstrempty{#3}{}{%%');
+        if (spec.epigraph.attributionStyle === 'em-dash-caps') {
+            lines.push('          \\vspace{0.22in}{\\small\\MakeUppercase{---#3}}\\par');
+        } else {
+            lines.push('          \\vspace{0.22in}{\\small #3}\\par');
+        }
+        lines.push('        }%');
+        lines.push('      \\end{minipage}%');
+        lines.push('    \\end{center}%');
+        lines.push('  }%');
+    }
+
     if (spec.parts.pageBreak) lines.push(`  ${breakCommand}`);
     lines.push('}');
     return lines.join('\n');
@@ -622,6 +665,23 @@ export function renderEpigraphMacros(spec: DesignedStyleSpec): string {
 
 export function renderBodySetup(spec: DesignedStyleSpec): string {
     const lines: string[] = [];
+
+    // Body font size — when the wizard picks a non-standard size (8/9/13/14),
+    // the documentclass option is rounded to the nearest of 10/11/12, so we
+    // override \normalsize here to enforce the exact requested size. Skipping
+    // when sizePt matches the documentclass keeps the .tex clean for the
+    // common case.
+    const sizePt = spec.body.sizePt;
+    const docClassSize = parseInt(pickDocumentClassSize(sizePt));
+    if (sizePt !== docClassSize) {
+        // \fontsize{<size>}{<leading>} — leading defaults to 1.2× size, then
+        // \linespread (below) further scales it. Applying \normalsize after
+        // the redefinition forces the new size to take effect for body text.
+        const leading = (sizePt * 1.2).toFixed(1);
+        lines.push(`\\renewcommand{\\normalsize}{\\fontsize{${sizePt}pt}{${leading}pt}\\selectfont}`);
+        lines.push('\\normalsize');
+    }
+
     const ls = spec.body.lineSpacing;
     if (Math.abs(ls - 1.5) < 0.001) {
         lines.push('\\onehalfspacing');
@@ -641,6 +701,16 @@ export function renderBodySetup(spec: DesignedStyleSpec): string {
     lines.push('\\hyphenpenalty=200');
     if (spec.body.paragraphIndentEm != null) {
         lines.push(`\\setlength{\\parindent}{${spec.body.paragraphIndentEm}em}`);
+    }
+    // First-paragraph-after-break indent. LaTeX's default suppresses the
+    // first-paragraph indent after sectioning commands (chapter, section,
+    // scene break). The `indentfirst` package overrides that and indents
+    // every paragraph including the first. So:
+    //   firstLineIndentSuppressedAfterBreak === true   → default behavior, no package
+    //   firstLineIndentSuppressedAfterBreak === false  → load indentfirst
+    //   undefined                                      → default behavior, no package
+    if (spec.body.firstLineIndentSuppressedAfterBreak === false) {
+        lines.push('\\usepackage{indentfirst}');
     }
     if (spec.folio.format === 'roman-frontmatter') {
         // No-op; pandoc-driven frontmatter not modelled here.
