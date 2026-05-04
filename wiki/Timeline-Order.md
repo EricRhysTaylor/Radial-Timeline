@@ -1,5 +1,3 @@
-# Timeline order
-
 `Timeline order` opens the timeline order normalizer, also called the Timeline Repair wizard.
 
 > [!NOTE]

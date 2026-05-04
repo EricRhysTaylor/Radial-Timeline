@@ -1,5 +1,3 @@
-# Workflow Overview
-
 This page stays intentionally short. It outlines the main Radial Timeline workflow and points to the deeper pages when you need detail.
 
 For first-time setup, start with [Fresh Vault Onboarding](Fresh-Vault-Onboarding) or [Existing Vault Onboarding](Existing-Vault-Onboarding).

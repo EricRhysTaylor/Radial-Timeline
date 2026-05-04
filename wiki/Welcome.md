@@ -1,5 +1,3 @@
-# Welcome to Radial Timeline
-
 Radial Timeline is a writing system that transforms how you visualize, organize, and structure narrative work. Think of it as a living manuscript where your story breathes and evolves alongside your creativity.
 
 <div style="display: flex; justify-content: center; margin: 20px 0;">

@@ -1,5 +1,3 @@
-# Create note…
-
 `Create note…` opens the guided RT note picker.
 
 <div style="text-align: center; margin: 20px 0;">

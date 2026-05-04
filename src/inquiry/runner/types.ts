@@ -33,6 +33,7 @@ export interface InquiryOmnibusQuestion {
 
 export interface CorpusManifestEntry {
     path: string;
+    /** Canonical primary reference id for scenes and non-evidence anchors such as Saga books. */
     sceneId?: string;
     mtime: number;
     class: EvidenceClass;

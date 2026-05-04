@@ -237,8 +237,27 @@ describe('InquiryView payload accounting', () => {
     it('keeps scene-targeted pending edits on their resolved scene and preserves multiple notes per scene', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('if (filePath) {\n                addNote(filePath, note);\n                return;\n            }')).toBe(true);
-        expect(viewSource.includes('if (outlinePath) {\n                addNote(outlinePath, note);\n            }')).toBe(true);
+        expect(viewSource.includes('const outlinePath = this.resolveInquiryOutlinePathForFinding(result, finding, activeBookId);')).toBe(true);
+        expect(viewSource.includes('private resolveSagaOutlinePath(): string | null')).toBe(true);
         expect(viewSource.includes('const handledScenes = new Set<string>();')).toBe(false);
+    });
+
+    it('preserves saga book anchors through legacy result normalization', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes("if (scope === 'saga') {")).toBe(true);
+        expect(viewSource.includes("/^book_[a-z0-9][a-z0-9_-]{1,80}$/i.test(trimmed)")).toBe(true);
+        expect(viewSource.includes('book.sceneId?.toLowerCase() === lower')).toBe(true);
+    });
+
+    it('keeps saga book anchor mtimes stable so estimate fingerprints can settle', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('Book rows are Saga minimap anchors, not evidence-bearing files.')).toBe(true);
+        expect(viewSource.includes('mtime: 0,\n                    class: \'book\'')).toBe(true);
+    });
+
+    it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes("this.plugin.settingsTab.setActiveTab('ai');\n            }\n            const uniqueTargets")).toBe(true);
     });
 
     it('re-arms matching sessions for fresh pending-edits writeback after a purge', () => {

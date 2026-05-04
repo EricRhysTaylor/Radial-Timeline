@@ -6,6 +6,7 @@ import { getScenePrefixNumber } from '../../utils/text';
 import { readSceneId } from '../../utils/sceneIds';
 import { resolveBookManagerInquiryBooks } from './bookResolution';
 import { resolveInquirySourceRoots } from '../utils/sourceRoots';
+import { buildInquiryBookAnchorId } from './canonicalInquiryCorpus';
 
 export type InquiryCorpusItem = {
     id: string;
@@ -103,6 +104,7 @@ export class InquiryCorpusResolver {
                 id: book.rootPath,
                 rootPath: book.rootPath,
                 filePaths: [book.rootPath],
+                sceneId: buildInquiryBookAnchorId(book.rootPath),
                 displayLabel: `B${this.clampLabelNumber(book.bookNumber ?? index + 1)}`,
                 bookNumber: book.bookNumber
             }));

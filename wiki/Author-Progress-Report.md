@@ -1,5 +1,3 @@
-# Author Progress Report (APR)
-
 The Author Progress Report is a shareable, spoiler-safe graphic that shows your book's progress without revealing story details. Perfect for Kickstarter updates, Patreon posts, newsletters, and social media.
 
 <div style="text-align: center; margin: 20px 0;">

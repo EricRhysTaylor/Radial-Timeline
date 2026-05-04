@@ -2848,7 +2848,9 @@ body > .tooltip {
 .ert-ui .ert-style-wizard-modal.modal {
   width: min(1050px, 96vw);
   max-width: 96vw;
-  max-height: calc(100vh - var(--ert-pad-3xl) - var(--ert-pad-3xl) - var(--ert-pad-xl));
+  /* Was: calc(100vh - 3xl - 3xl - xl) = 100vh − 104px.
+   * Now: calc(100vh - xs)            = 100vh − 8px → ≈ 96px taller. */
+  max-height: calc(100vh - var(--ert-pad-xs));
 }
 
 .ert-style-wizard {
@@ -2891,27 +2893,49 @@ body > .tooltip {
   min-height: 50px;
 }
 
-.ert-style-wizard__top-row {
+.ert-style-wizard__main {
   display: grid;
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  /* Asymmetric split: left column gets +100px (identity + large preview);
+   * right column shrinks by 100px (just the dropdown + active panel). */
+  grid-template-columns: minmax(0, calc(50% + 50px)) minmax(0, calc(50% - 50px));
   gap: var(--ert-gap-md);
   align-items: stretch;
 }
 
 @media (max-width: 900px) {
-  .ert-style-wizard__top-row {
+  .ert-style-wizard__main {
     grid-template-columns: 1fr;
   }
 }
 
-.ert-style-wizard__top-meta {
+.ert-style-wizard__col-left,
+.ert-style-wizard__col-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-md);
+  min-width: 0;
+}
+
+.ert-style-wizard__col-left .ert-style-wizard__preview {
+  flex: 1 1 auto;
+}
+
+.ert-style-wizard__category-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+}
+
+/* Category dropdown width comes from the canonical ert-input--md utility
+ * (~18ch). No override needed here. */
+
+.ert-style-wizard__active-panel {
   padding: var(--ert-pad-sm);
   border: 1px solid var(--ert-panel-border);
   border-radius: var(--ert-panel-radius);
   background: var(--ert-panel-bg-soft, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-sm);
+  overflow-y: auto;
+  max-height: calc(100vh - var(--ert-pad-3xl) - var(--ert-pad-3xl) - var(--ert-pad-3xl));
 }
 
 .ert-style-wizard__preview {
@@ -2926,28 +2950,34 @@ body > .tooltip {
 
 /* Side-by-side feature column + pictogram column inside the preview. The
  * preview never scrolls — if it needs more room it pushes the config
- * sections below it further down the modal. */
+ * sections below it further down the modal. Both columns use min-width: 0
+ * so long feature values wrap inside their cell instead of bleeding under
+ * the pictogram column. */
 .ert-style-wizard__preview-grid {
   display: grid;
-  grid-template-columns: minmax(140px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   gap: var(--ert-gap-md);
   align-items: start;
+}
+
+.ert-style-wizard__preview-features {
+  min-width: 0;
+}
+
+.ert-style-wizard__preview-features .ert-layout-feature-value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ert-style-wizard__preview-visual {
+  min-width: 0;
 }
 
 @media (max-width: 720px) {
   .ert-style-wizard__preview-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.ert-style-wizard__config {
-  padding: var(--ert-pad-sm);
-  border: 1px solid var(--ert-panel-border);
-  border-radius: var(--ert-panel-radius);
-  background: var(--ert-panel-bg-soft, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-sm);
 }
 
 .ert-style-wizard__archetype {
@@ -3002,14 +3032,24 @@ body > .tooltip {
   color: var(--text-muted);
 }
 
-.ert-style-wizard__section {
-  border: 1px solid var(--ert-panel-border);
-  border-radius: var(--ert-panel-radius);
-  padding: 0;
-  background: var(--ert-panel-bg, transparent);
+/* Body container for one category's controls, rendered into the active
+   panel. The category dropdown supplies the navigation; this container
+   just stacks the controls vertically. */
+.ert-style-wizard__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
 }
 
-.ert-style-wizard__section-summary,
+/* The Headers section still uses a <details> "Customize per corner"
+   sub-disclosure, since per-corner editing is itself secondary to the
+   preset. */
+.ert-style-wizard__subsection {
+  border: 1px dashed var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+  margin-top: var(--ert-gap-xs);
+}
+
 .ert-style-wizard__subsection-summary {
   cursor: pointer;
   padding: var(--ert-pad-sm) var(--ert-pad-md);
@@ -3017,12 +3057,10 @@ body > .tooltip {
   list-style: none;
 }
 
-.ert-style-wizard__section-summary::-webkit-details-marker,
 .ert-style-wizard__subsection-summary::-webkit-details-marker {
   display: none;
 }
 
-.ert-style-wizard__section-summary::before,
 .ert-style-wizard__subsection-summary::before {
   content: '▸';
   display: inline-block;
@@ -3030,23 +3068,8 @@ body > .tooltip {
   transition: transform 120ms ease;
 }
 
-.ert-style-wizard__section[open] > .ert-style-wizard__section-summary::before,
 .ert-style-wizard__subsection[open] > .ert-style-wizard__subsection-summary::before {
   transform: rotate(90deg);
-}
-
-.ert-style-wizard__section-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-xs);
-  padding: var(--ert-pad-sm) var(--ert-pad-md) var(--ert-pad-md);
-  border-top: 1px solid var(--ert-panel-border);
-}
-
-.ert-style-wizard__subsection {
-  border: 1px dashed var(--ert-panel-border);
-  border-radius: var(--ert-panel-radius);
-  margin-top: var(--ert-gap-xs);
 }
 
 .ert-style-wizard__field-row {
@@ -3073,29 +3096,28 @@ body > .tooltip {
 
 .ert-style-wizard__radio-group {
   display: inline-flex;
-  border: 1px solid var(--ert-panel-border);
-  border-radius: var(--ert-panel-radius);
-  overflow: hidden;
   flex-wrap: wrap;
+  gap: var(--ert-gap-sm);
 }
 
 .ert-style-wizard__radio-btn {
-  background: transparent;
-  border: 0;
-  padding: var(--ert-gap-xs) var(--ert-pad-cozy);
+  background: var(--background-modifier-hover, transparent);
+  border: 1px solid var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+  padding: var(--ert-pad-tight) var(--ert-pad-md);
   font-size: 0.85rem;
   cursor: pointer;
   color: var(--text-normal);
-  border-right: 1px solid var(--ert-panel-border);
 }
 
-.ert-style-wizard__radio-btn:last-child {
-  border-right: 0;
+.ert-style-wizard__radio-btn:hover {
+  background: var(--background-modifier-hover);
 }
 
 .ert-style-wizard__radio-btn.is-active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
 }
 
 .ert-style-wizard__number-input {
@@ -3280,35 +3302,53 @@ body > .tooltip {
   color: var(--text-warning, var(--text-muted));
 }
 
-.ert-style-wizard__latex {
-  border: 1px solid var(--ert-panel-border);
-  border-radius: var(--ert-panel-radius);
-  padding: 0;
+/* LatexPreviewModal — full-LaTeX viewer launched from the wizard footer. */
+.ert-ui.ert-latex-preview-modal.modal,
+.ert-ui .ert-latex-preview-modal.modal {
+  width: min(820px, 94vw);
+  max-width: 94vw;
+  max-height: calc(100vh - var(--ert-pad-3xl) - var(--ert-pad-3xl) - var(--ert-pad-xl));
 }
 
-.ert-style-wizard__latex > summary {
-  cursor: pointer;
-  padding: var(--ert-pad-xs) var(--ert-pad-sm);
-  font-size: 0.85rem;
-  color: var(--text-muted);
+.ert-latex-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-md);
+  padding: var(--ert-pad-md);
 }
 
-.ert-style-wizard__latex-pre {
-  max-height: 220px;
+.ert-latex-preview__pre {
+  max-height: 60vh;
   overflow: auto;
   margin: 0;
   padding: var(--ert-pad-sm);
   font-family: var(--font-monospace);
-  font-size: 0.78rem;
-  white-space: pre-wrap;
+  font-size: 0.8rem;
+  white-space: pre;
   background: var(--background-primary-alt, transparent);
-  border-top: 1px solid var(--ert-panel-border);
+  border: 1px solid var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+}
+
+.ert-latex-preview__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ert-gap-sm);
 }
 
 .ert-style-wizard__actions {
-  justify-content: flex-end;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: var(--ert-gap-sm);
   padding: var(--ert-pad-sm) var(--ert-pad-xs);
+}
+
+.ert-style-wizard__actions-left,
+.ert-style-wizard__actions-right {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
 }
 
 /* Compact horizontal field row — used when several short controls share a row. */
@@ -3366,4 +3406,196 @@ body > .tooltip {
   justify-content: center;
   color: var(--text-muted);
   padding: var(--ert-pad-xs);
+}
+
+/* Visual preset rows (Wizard UX v1.2) — Page Feel, Line Spacing, Headers.
+   Token-only spacing; small DOM (no canvas, no SVG). */
+
+.ert-style-wizard__preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-sm);
+  padding: var(--ert-pad-xs) 0;
+}
+
+.ert-style-wizard__preset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-pad-xs) var(--ert-pad-tight);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  border-radius: var(--ert-pad-xs);
+  background: var(--background-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.ert-style-wizard__preset-card:hover,
+.ert-style-wizard__preset-card:focus-visible {
+  border-color: color-mix(in srgb, var(--ert-accent) 65%, transparent);
+  outline: none;
+}
+
+.ert-style-wizard__preset-card.is-active {
+  border-color: var(--ert-accent);
+  box-shadow: inset 0 0 0 1px var(--ert-accent);
+  background: color-mix(in srgb, var(--ert-accent) 8%, var(--background-primary));
+}
+
+.ert-style-wizard__preset-card.is-readonly {
+  cursor: default;
+}
+
+.ert-style-wizard__preset-card-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ert-style-wizard__preset-card.is-active .ert-style-wizard__preset-card-label {
+  color: var(--text-normal);
+}
+
+/* -- Page Feel mini-page diagram -- */
+
+.ert-style-wizard__preset-page {
+  width: 56px;
+  height: 72px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  background: var(--background-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.ert-style-wizard__preset-page--compact  { padding: var(--ert-gap-2xs); }
+.ert-style-wizard__preset-page--balanced { padding: var(--ert-gap-tight); }
+.ert-style-wizard__preset-page--airy     { padding: var(--ert-gap-cozy); }
+.ert-style-wizard__preset-page--custom   { padding: var(--ert-gap-tight); }
+
+.ert-style-wizard__preset-page-block {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ert-gap-2xs);
+  background: color-mix(in srgb, var(--background-primary) 80%, transparent);
+}
+
+.ert-style-wizard__preset-page-line {
+  height: 1px;
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+
+.ert-style-wizard__preset-page-line--dense  { margin: var(--ert-gap-3xs) 0; }
+.ert-style-wizard__preset-page-line--normal { margin: var(--ert-gap-2xs) 0; }
+.ert-style-wizard__preset-page-line--sparse { margin: var(--ert-gap-xs) 0; }
+
+/* -- Line spacing line stack -- */
+
+.ert-style-wizard__preset-lines {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  background: var(--background-secondary);
+  padding: var(--ert-gap-tight);
+  box-sizing: border-box;
+}
+
+.ert-style-wizard__preset-lines--tight    { gap: var(--ert-gap-3xs); }
+.ert-style-wizard__preset-lines--standard { gap: var(--ert-gap-xs); }
+.ert-style-wizard__preset-lines--airy     { gap: var(--ert-gap-cozy); }
+
+.ert-style-wizard__preset-line-bar {
+  height: 1px;
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+}
+
+.ert-style-wizard__preset-line-bar:last-child {
+  width: 60%;
+}
+
+/* -- Header strip preview -- */
+
+.ert-style-wizard__preset-header-strip {
+  width: 80px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  padding: 0 var(--ert-gap-2xs);
+  box-sizing: border-box;
+  gap: var(--ert-gap-2xs);
+}
+
+.ert-style-wizard__preset-header--none {
+  border-bottom-color: transparent;
+}
+
+.ert-style-wizard__preset-header-cell {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+.ert-style-wizard__preset-header-cell--center { justify-content: center; }
+.ert-style-wizard__preset-header-cell--left   { justify-content: flex-start; }
+.ert-style-wizard__preset-header-cell--right  { justify-content: flex-end; }
+
+.ert-style-wizard__preset-header-text {
+  height: 2px;
+  width: 30px;
+  background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+}
+
+.ert-style-wizard__preset-header-text--short {
+  width: 14px;
+}
+
+.ert-style-wizard__preset-header-body {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-gap-xs) var(--ert-gap-2xs) 0;
+  box-sizing: border-box;
+}
+
+/* -- Preview focus halos: subtle visual cue tying active category to the
+   live preview region. Opacity / border-color tweaks only — no layout
+   shift. -- */
+
+.ert-style-wizard__preview--focus-page .ert-layout-page {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-accent) 35%, transparent);
+}
+
+.ert-style-wizard__preview--focus-body .ert-layout-page-body {
+  background: color-mix(in srgb, var(--ert-accent) 4%, transparent);
+}
+
+.ert-style-wizard__preview--focus-headers .ert-layout-page-header {
+  background: color-mix(in srgb, var(--ert-accent) 12%, transparent);
+}
+
+.ert-style-wizard__preview--focus-folio .ert-layout-page-footer,
+.ert-style-wizard__preview--focus-folio .ert-layout-page-hdr-right {
+  background: color-mix(in srgb, var(--ert-accent) 12%, transparent);
+}
+
+.ert-style-wizard__preview--focus-parts .ert-layout-page-special-text,
+.ert-style-wizard__preview--focus-chapters .ert-layout-page-body.is-special,
+.ert-style-wizard__preview--focus-scenes .ert-layout-page-body.is-special {
+  outline: 1px dashed color-mix(in srgb, var(--ert-accent) 45%, transparent);
+  outline-offset: var(--ert-gap-3xs);
+}
+
+.ert-style-wizard__preview--focus-epigraph .ert-layout-feature-value {
+  color: var(--text-normal);
 }

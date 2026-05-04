@@ -1,5 +1,3 @@
-# Timeline audit
-
 `Timeline audit` opens the timeline audit panel.
 
 > [!NOTE]

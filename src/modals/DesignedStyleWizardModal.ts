@@ -4,12 +4,15 @@
  * generated `.tex` file is a derived artifact, regenerated on save.
  *
  * Architecture:
- *  - Configuration column (left): collapsible disclosure sections
- *    (Page, Body, Headers, Folio, Parts, Chapters, Scenes, Epigraph) plus
- *    a non-collapsible "Save metadata" header.
- *  - Live preview column (right): pictograms + feature rows + validation
- *    banner + collapsed generated-LaTeX peek. Re-rendered on every spec
- *    mutation via renderPreview().
+ *  - Left column: style identity (name + description) on top, large
+ *    live preview filling the rest of the column.
+ *  - Right column: a Category dropdown (Page, Body, Headers, Folio, Parts,
+ *    Chapters, Scenes, Epigraph) drives a single active-panel container —
+ *    only the selected category's controls render at any moment. Before an
+ *    archetype has been picked the right column hosts the archetype picker
+ *    instead of the dropdown.
+ *  - Footer: "View LaTeX" on the left opens LatexPreviewModal with the full
+ *    generated LaTeX; "Save / Cancel" on the right.
  *  - Pure helpers (validateDesignedStyleSpec, generateUniqueDesignedSlug,
  *    cloneArchetypeSpec, applyHeaderPreset) are exported for unit tests.
  */
@@ -42,6 +45,101 @@ import {
 import type { ManuscriptSceneHeadingMode, PandocLayoutTemplate } from '../types';
 import { compactTemplatePathForStorage } from '../utils/templateImport';
 import { getFontDiagnosticForFontKey, getPandocFolder, slugifyToFileStem } from '../utils/exportFormats';
+import { assertNever } from '../utils/assertNever';
+import { LatexPreviewModal } from './LatexPreviewModal';
+
+type WizardCategory =
+    | 'page'
+    | 'body'
+    | 'headers'
+    | 'folio'
+    | 'parts'
+    | 'chapters'
+    | 'scenes'
+    | 'epigraph';
+
+const WIZARD_CATEGORIES: ReadonlyArray<{ value: WizardCategory; label: string }> = [
+    { value: 'page',     label: 'Page' },
+    { value: 'body',     label: 'Body' },
+    { value: 'headers',  label: 'Headers' },
+    { value: 'folio',    label: 'Folio' },
+    { value: 'parts',    label: 'Parts' },
+    { value: 'chapters', label: 'Chapters' },
+    { value: 'scenes',   label: 'Scenes' },
+    { value: 'epigraph', label: 'Epigraph' },
+];
+
+// ──────────────────────────────────────────────────────────────────────────
+// Visual-preset state model (Wizard UX v1.2)
+//
+// Three preset axes derived from the current spec. Each render call
+// re-derives — there is NO redundant state stored on the modal. When values
+// don't match a preset exactly, the derived state is `'custom'` (not
+// clickable; shown only as visual feedback).
+// ──────────────────────────────────────────────────────────────────────────
+export type PageFeel = 'compact' | 'balanced' | 'airy' | 'custom';
+export type LineSpacingPreset = 'tight' | 'standard' | 'airy' | 'custom';
+export type HeaderStyle = 'none' | 'minimal' | 'literary' | 'custom';
+
+const PAGE_FEEL_MARGIN_INCHES: Record<Exclude<PageFeel, 'custom'>, number> = {
+    compact:  0.75,
+    balanced: 1.0,
+    airy:     1.25,
+};
+
+const LINE_SPACING_VALUES: Record<Exclude<LineSpacingPreset, 'custom'>, number> = {
+    tight:    1.0,
+    standard: 1.5,
+    airy:     2.0,
+};
+
+const HEADER_STYLE_MODES: Record<
+    Exclude<HeaderStyle, 'custom'>,
+    DesignedStyleSpec['runningHeader']['mode']
+> = {
+    none:     'none',
+    minimal:  'centered-title',
+    literary: 'split-author-page-title-page',
+};
+
+/**
+ * Derive the Page Feel preset from a spec by exact-equality across the 4
+ * margins. Any divergence (mirrored asymmetric cases like Signature) returns
+ * `'custom'`.
+ */
+export function derivePageFeel(spec: DesignedStyleSpec): PageFeel {
+    const m = spec.margins;
+    if (m.topIn !== m.bottomIn || m.topIn !== m.leftIn || m.topIn !== m.rightIn) {
+        return 'custom';
+    }
+    const v = m.topIn;
+    if (v === PAGE_FEEL_MARGIN_INCHES.compact)  return 'compact';
+    if (v === PAGE_FEEL_MARGIN_INCHES.balanced) return 'balanced';
+    if (v === PAGE_FEEL_MARGIN_INCHES.airy)     return 'airy';
+    return 'custom';
+}
+
+/** Derive the line-spacing preset by exact-equality on body.lineSpacing. */
+export function deriveSpacingPreset(spec: DesignedStyleSpec): LineSpacingPreset {
+    const v = spec.body.lineSpacing;
+    if (v === LINE_SPACING_VALUES.tight)    return 'tight';
+    if (v === LINE_SPACING_VALUES.standard) return 'standard';
+    if (v === LINE_SPACING_VALUES.airy)     return 'airy';
+    return 'custom';
+}
+
+/**
+ * Derive the header-style preset from `runningHeader.mode`. Modes outside the
+ * three preset values (e.g. `'left-title-right-context'`) collapse to
+ * `'custom'`.
+ */
+export function deriveHeaderStyle(spec: DesignedStyleSpec): HeaderStyle {
+    const mode = spec.runningHeader.mode;
+    if (mode === HEADER_STYLE_MODES.none)     return 'none';
+    if (mode === HEADER_STYLE_MODES.minimal)  return 'minimal';
+    if (mode === HEADER_STYLE_MODES.literary) return 'literary';
+    return 'custom';
+}
 
 export interface DesignedStyleWizardResult {
     name: string;
@@ -227,12 +325,14 @@ export class DesignedStyleWizardModal extends Modal {
     private readonly isEditMode: boolean;
     private archetypePicked: boolean;
 
-    private configColumn: HTMLElement | null = null;
     private previewColumn: HTMLElement | null = null;
+    private rightColumn: HTMLElement | null = null;
+    private categoryRow: HTMLElement | null = null;
+    private activePanel: HTMLElement | null = null;
+    private categorySelect: HTMLSelectElement | null = null;
     private saveButton: ButtonComponent | null = null;
     private validationBannerEl: HTMLElement | null = null;
-    private topRowEl: HTMLElement | null = null;
-    private archetypeOverlayEl: HTMLElement | null = null;
+    private activeCategory: WizardCategory = 'page';
 
     constructor(app: App, plugin: RadialTimelinePlugin, options: DesignedStyleWizardOptions) {
         super(app);
@@ -282,43 +382,68 @@ export class DesignedStyleWizardModal extends Modal {
             text: 'Configure page, body, headers, folio, parts, chapters, scenes, and epigraph. The preview updates live.',
         });
 
-        // Top row: metadata (left) + preview (right) side-by-side.
-        this.topRowEl = contentEl.createDiv({ cls: 'ert-style-wizard__top-row' });
-        const metaWrap = this.topRowEl.createDiv({ cls: 'ert-style-wizard__top-meta' });
-        const metaBlock = metaWrap.createDiv({ cls: 'ert-style-wizard__meta' });
+        // Two-column main grid.
+        const main = contentEl.createDiv({ cls: 'ert-style-wizard__main' });
+
+        // Left column: identity (name/description) + live preview.
+        const colLeft = main.createDiv({ cls: 'ert-style-wizard__col-left' });
+        const metaBlock = colLeft.createDiv({ cls: 'ert-style-wizard__meta' });
         this.renderMetaBlock(metaBlock);
-        this.previewColumn = this.topRowEl.createDiv({ cls: 'ert-style-wizard__preview' });
+        this.previewColumn = colLeft.createDiv({ cls: 'ert-style-wizard__preview' });
 
-        // Configuration column: full-width below the top row.
-        this.configColumn = contentEl.createDiv({ cls: 'ert-style-wizard__config' });
+        // Right column: category selector + active-panel.
+        this.rightColumn = main.createDiv({ cls: 'ert-style-wizard__col-right' });
+        this.categoryRow = this.rightColumn.createDiv({ cls: 'ert-style-wizard__category-row' });
+        this.activePanel = this.rightColumn.createDiv({ cls: 'ert-style-wizard__active-panel' });
 
-        // If we have no initial spec, show the archetype overlay first.
-        if (!this.archetypePicked) {
-            this.renderArchetypeOverlay();
-        }
+        this.renderRightColumn();
 
-        this.renderConfigSections();
-        this.renderPreview();
+        // Footer: View LaTeX (left) + Save/Cancel (right).
+        const footer = contentEl.createDiv({ cls: 'ert-modal-actions ert-style-wizard__actions' });
+        const footerLeft = footer.createDiv({ cls: 'ert-style-wizard__actions-left' });
+        const footerRight = footer.createDiv({ cls: 'ert-style-wizard__actions-right' });
 
-        // Action buttons.
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-style-wizard__actions' });
-        this.saveButton = new ButtonComponent(actions)
+        new ButtonComponent(footerLeft)
+            .setButtonText('View LaTeX')
+            .onClick(() => { this.openLatexPreview(); });
+
+        this.saveButton = new ButtonComponent(footerRight)
             .setButtonText(this.isEditMode ? 'Update style' : 'Save style')
             .setCta()
             .onClick(() => { void this.handleSave(); });
-        new ButtonComponent(actions)
+        new ButtonComponent(footerRight)
             .setButtonText('Cancel')
             .onClick(() => this.close());
+
+        // Initial preview render — runs after saveButton is constructed so
+        // the validation-driven disabled toggle is wired from the start.
+        this.renderPreview();
+        this.applyPreviewFocusClass();
     }
 
     onClose(): void {
         this.contentEl.empty();
-        this.configColumn = null;
         this.previewColumn = null;
+        this.rightColumn = null;
+        this.categoryRow = null;
+        this.activePanel = null;
+        this.categorySelect = null;
         this.saveButton = null;
         this.validationBannerEl = null;
-        this.topRowEl = null;
-        this.archetypeOverlayEl = null;
+    }
+
+    private openLatexPreview(): void {
+        let latex: string;
+        try {
+            latex = generateDesignedStyleTex(this.spec);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            new Notice(`Generator error: ${msg}`);
+            return;
+        }
+        const trimmed = this.styleName.trim();
+        const title = trimmed.length > 0 ? trimmed : 'Untitled style';
+        new LatexPreviewModal(this.app, { latex, title }).open();
     }
 
     private renderMetaBlock(parent: HTMLElement): void {
@@ -348,16 +473,15 @@ export class DesignedStyleWizardModal extends Modal {
 
     }
 
-    private renderArchetypeOverlay(): void {
-        if (!this.configColumn) return;
-        const overlay = this.configColumn.createDiv({ cls: 'ert-style-wizard__archetype' });
+    private renderArchetypeOverlay(parent: HTMLElement): void {
+        const overlay = parent.createDiv({ cls: 'ert-style-wizard__archetype' });
         overlay.createDiv({
             cls: 'ert-style-wizard__archetype-title',
             text: 'Start from an archetype',
         });
         overlay.createDiv({
             cls: 'ert-style-wizard__archetype-subtitle',
-            text: 'Pick a starting point — every value is editable below.',
+            text: 'Pick a starting point — every value is editable afterward.',
         });
         const grid = overlay.createDiv({ cls: 'ert-style-wizard__archetype-grid' });
         (Object.keys(ARCHETYPE_INFO) as DesignArchetype[]).forEach((archetype) => {
@@ -384,19 +508,14 @@ export class DesignedStyleWizardModal extends Modal {
                 }
             });
         });
-        this.archetypeOverlayEl = overlay;
     }
 
     private refreshFromArchetype(): void {
-        // Re-render everything: meta block (name field), config sections, preview.
+        // Re-render: meta block (name field reflects new default), right
+        // column (now shows category dropdown + active panel), and preview.
         const meta = this.contentEl.querySelector('.ert-style-wizard__meta') as HTMLElement | null;
         if (meta) this.renderMetaBlock(meta);
-        if (this.archetypeOverlayEl) {
-            this.archetypeOverlayEl.remove();
-            this.archetypeOverlayEl = null;
-        }
-        if (this.configColumn) this.configColumn.empty();
-        this.renderConfigSections();
+        this.renderRightColumn();
         this.renderPreview();
     }
 
@@ -405,51 +524,94 @@ export class DesignedStyleWizardModal extends Modal {
         this.renderPreview();
     }
 
-    private renderConfigSections(): void {
-        if (!this.configColumn) return;
-        this.configColumn.empty();
+    /**
+     * Render the right column. Before an archetype is picked the active panel
+     * hosts the archetype picker and the dropdown is hidden. After a pick,
+     * the dropdown drives a single category panel.
+     */
+    private renderRightColumn(): void {
+        const categoryRow = this.categoryRow;
+        const activePanel = this.activePanel;
+        if (!categoryRow || !activePanel) return;
+        categoryRow.empty();
+        activePanel.empty();
 
         if (!this.archetypePicked) {
-            this.renderArchetypeOverlay();
+            categoryRow.addClass('ert-hidden');
+            this.categorySelect = null;
+            this.renderArchetypeOverlay(activePanel);
             return;
         }
 
-        // Default-open the first section ("Page") — only one open at a time.
-        this.renderPageSection(this.configColumn);
-        this.renderBodySection(this.configColumn);
-        this.renderHeaderSection(this.configColumn);
-        this.renderFolioSection(this.configColumn);
-        this.renderPartsSection(this.configColumn);
-        this.renderChaptersSection(this.configColumn);
-        this.renderScenesSection(this.configColumn);
-        this.renderEpigraphSection(this.configColumn);
-        this.wireAccordion(this.configColumn);
+        categoryRow.removeClass('ert-hidden');
+        this.renderCategorySelector(categoryRow);
+        this.renderActiveCategoryPanel();
     }
 
-    /** Enforce single-open accordion across the top-level disclosure sections. */
-    private wireAccordion(container: HTMLElement): void {
-        const sections = Array.from(
-            container.querySelectorAll(':scope > details.ert-style-wizard__section'),
-        ) as HTMLDetailsElement[];
-        sections.forEach((details) => {
-            details.addEventListener('toggle', () => {
-                if (details.open) {
-                    sections.forEach((other) => { if (other !== details) other.open = false; });
-                }
-            });
+    private renderCategorySelector(parent: HTMLElement): void {
+        parent.createEl('label', {
+            cls: 'ert-style-wizard__field-label',
+            text: 'Category',
         });
+        const select = parent.createEl('select', {
+            cls: 'ert-input ert-input--md ert-style-wizard__select ert-style-wizard__category-select',
+        });
+        WIZARD_CATEGORIES.forEach(({ value, label }) => {
+            const opt = select.createEl('option', { value, text: label });
+            if (value === this.activeCategory) opt.selected = true;
+        });
+        select.addEventListener('change', () => {
+            // select.value is constrained to one of the rendered option
+            // values, which exactly enumerate WizardCategory; the cast is
+            // safe and exhaustive without any literal fallback.
+            const next = select.value as WizardCategory;
+            this.activateCategory(next);
+        });
+        this.categorySelect = select;
     }
 
-    private createSection(parent: HTMLElement, label: string, opts: { open?: boolean } = {}): HTMLElement {
-        const details = parent.createEl('details', { cls: 'ert-style-wizard__section' });
-        if (opts.open) details.setAttribute('open', '');
-        const summary = details.createEl('summary', { cls: 'ert-style-wizard__section-summary' });
-        summary.createSpan({ cls: 'ert-style-wizard__section-title', text: label });
-        return details.createDiv({ cls: 'ert-style-wizard__section-body' });
+    private activateCategory(category: WizardCategory): void {
+        this.activeCategory = category;
+        this.renderActiveCategoryPanel();
+        this.applyPreviewFocusClass();
+    }
+
+    /**
+     * Toggle a focus-* class on the preview column matching the active
+     * category. CSS subtly highlights the relevant region of the preview
+     * (page body, header strip, etc.) — opacity/border tweaks only, no
+     * layout shift.
+     */
+    private applyPreviewFocusClass(): void {
+        if (!this.previewColumn) return;
+        const all: ReadonlyArray<WizardCategory> = ['page', 'body', 'headers', 'folio', 'parts', 'chapters', 'scenes', 'epigraph'];
+        for (const cat of all) {
+            this.previewColumn.removeClass(`ert-style-wizard__preview--focus-${cat}`);
+        }
+        this.previewColumn.addClass(`ert-style-wizard__preview--focus-${this.activeCategory}`);
+    }
+
+    /** Render the form controls for the currently-selected category. */
+    private renderActiveCategoryPanel(): void {
+        const panel = this.activePanel;
+        if (!panel) return;
+        panel.empty();
+        const cat = this.activeCategory;
+        switch (cat) {
+            case 'page':     this.renderPageSection(panel);     return;
+            case 'body':     this.renderBodySection(panel);     return;
+            case 'headers':  this.renderHeaderSection(panel);   return;
+            case 'folio':    this.renderFolioSection(panel);    return;
+            case 'parts':    this.renderPartsSection(panel);    return;
+            case 'chapters': this.renderChaptersSection(panel); return;
+            case 'scenes':   this.renderScenesSection(panel);   return;
+            case 'epigraph': this.renderEpigraphSection(panel); return;
+        }
+        assertNever(cat, 'renderActiveCategoryPanel');
     }
 
     private renderPageSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Page', { open: true });
+        const body = this.createPanelBody(parent);
         const paperRow = this.fieldRow(body, 'Paper size');
         const paperOptions: Array<{ value: string; label: string }> = [
             { value: 'us-trade-6x9', label: '6x9 trade' },
@@ -484,6 +646,11 @@ export class DesignedStyleWizardModal extends Modal {
             });
         }
 
+        // Page Feel visual presets — quick-pick row above the cross. The
+        // numeric cross stays below for fine-tune; presets snap all four
+        // margins to a uniform value.
+        this.renderPageFeelRow(body);
+
         // Cross widget for margins (T / L · center · R / B).
         this.renderMarginCross(body);
 
@@ -491,6 +658,190 @@ export class DesignedStyleWizardModal extends Modal {
         this.toggleInput(mirroredRow, !!this.spec.margins.mirrored, (v) => {
             this.mutateSpec((s) => { s.margins.mirrored = v; });
         });
+    }
+
+    /**
+     * Page Feel quick-pick row. Three icon cards (Compact / Balanced / Airy)
+     * snap all four margins to a uniform inch value. A fourth "Custom" card
+     * is rendered only when the current margins don't match any preset; it's
+     * non-interactive — purely visual feedback that the user has fine-tuned
+     * via the cross.
+     */
+    private renderPageFeelRow(parent: HTMLElement): void {
+        const current = derivePageFeel(this.spec);
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        const presets: Array<{ value: Exclude<PageFeel, 'custom'>; label: string; lines: 'dense' | 'normal' | 'sparse' }> = [
+            { value: 'compact',  label: 'Compact',  lines: 'dense'  },
+            { value: 'balanced', label: 'Balanced', lines: 'normal' },
+            { value: 'airy',     label: 'Airy',     lines: 'sparse' },
+        ];
+        presets.forEach(({ value, label, lines }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `${label} margins`);
+            if (current === value) card.addClass('is-active');
+            // Mini page diagram: outer page rectangle + inset body block.
+            const diagram = card.createDiv({ cls: `ert-style-wizard__preset-page ert-style-wizard__preset-page--${value}` });
+            const block = diagram.createDiv({ cls: 'ert-style-wizard__preset-page-block' });
+            for (let i = 0; i < 4; i += 1) {
+                block.createDiv({ cls: `ert-style-wizard__preset-page-line ert-style-wizard__preset-page-line--${lines}` });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                const inches = PAGE_FEEL_MARGIN_INCHES[value];
+                this.mutateSpec((s) => {
+                    s.margins.topIn = inches;
+                    s.margins.bottomIn = inches;
+                    s.margins.leftIn = inches;
+                    s.margins.rightIn = inches;
+                });
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
+            });
+        });
+        if (current === 'custom') {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card is-active is-readonly' });
+            card.setAttribute('aria-disabled', 'true');
+            const diagram = card.createDiv({ cls: 'ert-style-wizard__preset-page ert-style-wizard__preset-page--custom' });
+            const block = diagram.createDiv({ cls: 'ert-style-wizard__preset-page-block' });
+            for (let i = 0; i < 4; i += 1) {
+                block.createDiv({ cls: 'ert-style-wizard__preset-page-line ert-style-wizard__preset-page-line--normal' });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: 'Custom' });
+        }
+    }
+
+    /**
+     * Line-spacing visual preset row. Three chips (Tight 1.0 / Standard 1.5
+     * / Airy 2.0). The existing radio + custom number input below cover
+     * non-preset values like 1.18 (Modern Classic), which derive to
+     * `'custom'` here and render a non-interactive feedback chip.
+     */
+    private renderLineSpacingPresetRow(parent: HTMLElement): void {
+        const current = deriveSpacingPreset(this.spec);
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        const presets: Array<{ value: Exclude<LineSpacingPreset, 'custom'>; label: string; lineCount: number }> = [
+            { value: 'tight',    label: 'Tight',    lineCount: 6 },
+            { value: 'standard', label: 'Standard', lineCount: 5 },
+            { value: 'airy',     label: 'Airy',     lineCount: 4 },
+        ];
+        presets.forEach(({ value, label, lineCount }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `${label} line spacing`);
+            if (current === value) card.addClass('is-active');
+            const stack = card.createDiv({ cls: `ert-style-wizard__preset-lines ert-style-wizard__preset-lines--${value}` });
+            for (let i = 0; i < lineCount; i += 1) {
+                stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                const lineSpacing = LINE_SPACING_VALUES[value];
+                this.mutateSpec((s) => { s.body.lineSpacing = lineSpacing; });
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
+            });
+        });
+        if (current === 'custom') {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card is-active is-readonly' });
+            card.setAttribute('aria-disabled', 'true');
+            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-lines ert-style-wizard__preset-lines--standard' });
+            for (let i = 0; i < 5; i += 1) {
+                stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: 'Custom' });
+        }
+    }
+
+    /**
+     * Header-style visual preset row. Three header strips (None / Minimal /
+     * Literary). Selecting one calls `applyHeaderPreset` with the
+     * corresponding mode. Modes outside the three (e.g.
+     * `'left-title-right-context'`) derive to `'custom'`.
+     */
+    private renderHeaderStyleRow(parent: HTMLElement): void {
+        const current = deriveHeaderStyle(this.spec);
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        const presets: Array<{ value: Exclude<HeaderStyle, 'custom'>; label: string; render: (strip: HTMLElement) => void }> = [
+            {
+                value: 'none', label: 'None',
+                render: (strip) => {
+                    strip.addClass('ert-style-wizard__preset-header--none');
+                },
+            },
+            {
+                value: 'minimal', label: 'Minimal',
+                render: (strip) => {
+                    const center = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--center' });
+                    center.createDiv({ cls: 'ert-style-wizard__preset-header-text' });
+                },
+            },
+            {
+                value: 'literary', label: 'Literary',
+                render: (strip) => {
+                    const left = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--left' });
+                    left.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
+                    const right = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--right' });
+                    right.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
+                },
+            },
+        ];
+        presets.forEach(({ value, label, render }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `${label} header`);
+            if (current === value) card.addClass('is-active');
+            const strip = card.createDiv({ cls: 'ert-style-wizard__preset-header-strip' });
+            render(strip);
+            // Filler page-body lines below the header strip so each card looks
+            // like a tiny page top.
+            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-header-body' });
+            for (let i = 0; i < 4; i += 1) {
+                stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                const mode = HEADER_STYLE_MODES[value];
+                this.mutateSpec((s) => applyHeaderPreset(s, mode));
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
+            });
+        });
+        if (current === 'custom') {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card is-active is-readonly' });
+            card.setAttribute('aria-disabled', 'true');
+            const strip = card.createDiv({ cls: 'ert-style-wizard__preset-header-strip' });
+            const left = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--left' });
+            left.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
+            const right = strip.createDiv({ cls: 'ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--right' });
+            right.createDiv({ cls: 'ert-style-wizard__preset-header-text ert-style-wizard__preset-header-text--short' });
+            const stack = card.createDiv({ cls: 'ert-style-wizard__preset-header-body' });
+            for (let i = 0; i < 4; i += 1) {
+                stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+            }
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: 'Custom' });
+        }
     }
 
     /** Framer-style cross widget for the four page margins. */
@@ -543,7 +894,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderBodySection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Body');
+        const body = this.createPanelBody(parent);
 
         const fontRow = this.fieldRow(body, 'Font');
         const fontSelect = fontRow.createEl('select', { cls: 'ert-input ert-style-wizard__select' });
@@ -615,6 +966,11 @@ export class DesignedStyleWizardModal extends Modal {
             refreshFontStatus();
         });
 
+        // Line-spacing visual presets (Tight / Standard / Airy). Quick-pick
+        // chips above the existing radio. The radio + custom number input
+        // remain below for non-preset values like 1.18 (Modern Classic).
+        this.renderLineSpacingPresetRow(body);
+
         // Compact row: Size (pt) + Line spacing radio (+ Custom spacing input when active).
         const sizeLineRow = this.compactRow(body);
         const sizeCell = this.compactCell(sizeLineRow, 'Size (pt)');
@@ -673,7 +1029,13 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderHeaderSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Headers');
+        const body = this.createPanelBody(parent);
+
+        // Header style visual presets (None / Minimal / Literary). Quick-pick
+        // strips above the existing preset radio. The radio retains
+        // `'left-title-right-context'` (Contemporary's split mode) which has
+        // no visual preset and derives to `'custom'`.
+        this.renderHeaderStyleRow(body);
 
         const presetRow = this.fieldRow(body, 'Preset');
         const presetOptions: Array<{ value: DesignedStyleSpec['runningHeader']['mode']; label: string }> = [
@@ -801,7 +1163,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderFolioSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Folio');
+        const body = this.createPanelBody(parent);
         // Compact row: Position + Format side-by-side.
         const folioRow = this.compactRow(body);
         const positionCell = this.compactCell(folioRow, 'Position');
@@ -823,7 +1185,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderPartsSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Parts (Acts)');
+        const body = this.createPanelBody(parent);
         // Compact row: Render toggle + (when on) Numeral style radio inline.
         const headerRow = this.compactRow(body);
         const renderCell = this.compactCell(headerRow, 'Render Part / Act pages');
@@ -876,7 +1238,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderChaptersSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Chapters');
+        const body = this.createPanelBody(parent);
         const modeRow = this.fieldRow(body, 'Chapter style');
         this.makeRadioGroup(modeRow, [
             { value: 'off',              label: 'Off' },
@@ -923,7 +1285,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderScenesSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Scenes');
+        const body = this.createPanelBody(parent);
 
         const openerRow = this.fieldRow(body, 'Opener style');
         this.makeRadioGroup(openerRow, [
@@ -1001,7 +1363,7 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderEpigraphSection(parent: HTMLElement): void {
-        const body = this.createSection(parent, 'Epigraph');
+        const body = this.createPanelBody(parent);
 
         const enabledRow = this.fieldRow(body, 'Enabled');
         this.toggleInput(enabledRow, this.spec.epigraph.enabled, (v) => {
@@ -1025,6 +1387,16 @@ export class DesignedStyleWizardModal extends Modal {
     // ──────────────────────────────────────────────────────────────────────
     // Field primitives
     // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a vertically-stacked container for one category's controls.
+     * The category dropdown serves as the navigation, so no header/title is
+     * rendered here — section names would just duplicate the dropdown's
+     * current value.
+     */
+    private createPanelBody(parent: HTMLElement): HTMLElement {
+        return parent.createDiv({ cls: 'ert-style-wizard__section-body' });
+    }
 
     private fieldRow(parent: HTMLElement, label: string): HTMLElement {
         const row = parent.createDiv({ cls: 'ert-style-wizard__field-row' });
@@ -1132,8 +1504,13 @@ export class DesignedStyleWizardModal extends Modal {
     // Re-render helpers
     // ──────────────────────────────────────────────────────────────────────
 
+    /**
+     * Redraw the active category panel — used when a control flips a flag
+     * that should add/remove sibling controls in the same panel (e.g.
+     * choosing "custom" paper size reveals width/height inputs).
+     */
     private refreshConfigOnly(): void {
-        this.renderConfigSections();
+        this.renderActiveCategoryPanel();
         this.renderPreview();
     }
 
@@ -1197,14 +1574,11 @@ export class DesignedStyleWizardModal extends Modal {
             this.validationBannerEl = null;
         }
 
-        // Generated LaTeX preview (collapsed).
+        // Sanity-check LaTeX generation — surface any generator error in the
+        // preview column. The actual full-LaTeX viewer is opened from the
+        // footer "View LaTeX" button (LatexPreviewModal).
         try {
-            const latex = generateDesignedStyleTex(this.spec);
-            const lines = latex.split('\n').slice(0, 30).join('\n');
-            const details = this.previewColumn.createEl('details', { cls: 'ert-style-wizard__latex' });
-            details.createEl('summary', { text: 'View generated LaTeX (first 30 lines)' });
-            const pre = details.createEl('pre', { cls: 'ert-style-wizard__latex-pre' });
-            pre.setText(lines);
+            generateDesignedStyleTex(this.spec);
         } catch (err) {
             const errBox = this.previewColumn.createDiv({ cls: 'ert-style-wizard__validation ert-warning-warning' });
             errBox.setText(`Generator error: ${(err as Error).message ?? String(err)}`);

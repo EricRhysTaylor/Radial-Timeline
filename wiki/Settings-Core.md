@@ -1,5 +1,3 @@
-# Core Tab
-
 The Core tab is the main structural control center for Radial Timeline. It covers manuscript scope, progress tracking, story beats, chronology, scene properties, POV, planetary time, and timeline color systems.
 
 ## General

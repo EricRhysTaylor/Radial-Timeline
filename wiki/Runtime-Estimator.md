@@ -1,5 +1,3 @@
-# Runtime estimator
-
 `Runtime estimator` opens the runtime estimation panel.
 
 <div style="text-align: center; margin: 20px 0;">

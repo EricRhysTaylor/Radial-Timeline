@@ -1,5 +1,3 @@
-# Search timeline
-
 `Search timeline` opens the timeline search bar.
 
 <div style="text-align: center; margin: 20px 0;">

@@ -1,5 +1,3 @@
-# Inquiry
-
 Inquiry is the main operating guide for the Inquiry View. While the [Radial Timeline View](Radial-Timeline-View) focuses on scene-level work, Inquiry takes a higher-altitude perspective — scanning your manuscript corpus and worldbuilding to surface structural signals, loose ends, continuity issues, and pressure gaps across a book or saga.
 
 <div style="text-align: center; margin: 20px 0;">

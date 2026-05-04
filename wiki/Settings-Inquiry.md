@@ -1,5 +1,3 @@
-# Inquiry Tab
-
 The Inquiry tab controls how Inquiry scans your vault, saves briefings, writes action notes, and manages prompts and corpus thresholds.
 
 For the operating guide to the Inquiry View itself, see [Inquiry](Inquiry).

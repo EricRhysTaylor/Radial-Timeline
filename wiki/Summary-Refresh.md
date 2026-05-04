@@ -1,5 +1,3 @@
-# Summary refresh
-
 `Summary refresh` regenerates scene summaries with AI.
 
 <div style="text-align: center; margin: 20px 0;">

@@ -1,5 +1,3 @@
-# Local LLM
-
 This page covers Radial Timeline's local or OpenAI-compatible AI configuration, including Ollama, LM Studio, and similar endpoints.
 
 Local AI is a separate topic from [AI Pulse Triplet Analysis](AI-Pulse-Analysis). Pulse currently works best with the hosted providers and should be configured there with Anthropic, OpenAI, or Gemini for now.

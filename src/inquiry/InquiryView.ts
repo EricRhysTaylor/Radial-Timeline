@@ -141,7 +141,7 @@ import {
     type EvidenceModeKey
 } from './services/inquiryTimingPrediction';
 import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
-import { scopeEntriesToActiveInquiryTarget } from './services/canonicalInquiryCorpus';
+import { buildInquiryBookAnchorId, scopeEntriesToActiveInquiryTarget } from './services/canonicalInquiryCorpus';
 import type {
     TokenTier,
     InquiryCurrentCorpusContext,
@@ -1106,6 +1106,9 @@ export class InquiryView extends ItemView {
             setting.openTabById('radial-timeline');
         }
         window.setTimeout(() => {
+            if (this.plugin.settingsTab) {
+                this.plugin.settingsTab.setActiveTab('ai');
+            }
             const uniqueTargets = Array.from(new Set(targets));
             uniqueTargets.forEach((target, index) => {
                 window.setTimeout(() => this.scrollAndPulseAiSetting(target, index === 0), index * 120);
@@ -7402,7 +7405,7 @@ export class InquiryView extends ItemView {
         const verdict = result.verdict;
         let refNormalizationCount = 0;
         const findings = result.findings.map(legacy => {
-            const normalizedRef = this.normalizeResultRefId(legacy.refId);
+            const normalizedRef = this.normalizeResultRefId(legacy.refId, result.scope);
             if (normalizedRef.wasNormalized) refNormalizationCount++;
             const role: InquiryFinding['role'] = legacy.role === 'target'
                 ? 'target'
@@ -7414,7 +7417,11 @@ export class InquiryView extends ItemView {
                 kind: legacy.kind,
                 headline: legacy.headline,
                 bullets: legacy.bullets,
+                ...(legacy.subject ? { subject: legacy.subject } : {}),
+                ...(legacy.span ? { span: legacy.span } : {}),
+                ...(legacy.evidenceQuote ? { evidenceQuote: legacy.evidenceQuote } : {}),
                 related: legacy.related,
+                ...(legacy.supportingRefs?.length ? { supportingRefs: legacy.supportingRefs } : {}),
                 evidenceType: legacy.evidenceType,
                 lens: legacy.lens,
                 role,
@@ -7447,9 +7454,25 @@ export class InquiryView extends ItemView {
         return normalized;
     }
 
-    private normalizeResultRefId(refId: string | undefined): { refId: string; wasNormalized: boolean } {
+    private normalizeResultRefId(refId: string | undefined, scope: InquiryScope = this.state.scope): { refId: string; wasNormalized: boolean } {
         const trimmed = typeof refId === 'string' ? refId.trim() : '';
         if (!trimmed) return { refId: '', wasNormalized: false };
+        if (scope === 'saga') {
+            if (/^book_[a-z0-9][a-z0-9_-]{1,80}$/i.test(trimmed)) {
+                return { refId: trimmed.toLowerCase(), wasNormalized: false };
+            }
+            const lower = trimmed.toLowerCase();
+            const bookMatch = this.corpus?.books?.find(book =>
+                book.id.toLowerCase() === lower
+                || book.displayLabel.toLowerCase() === lower
+                || book.sceneId?.toLowerCase() === lower
+                || book.filePaths?.some(path => path.toLowerCase() === lower)
+            );
+            if (bookMatch?.sceneId) {
+                return { refId: bookMatch.sceneId.toLowerCase(), wasNormalized: true };
+            }
+            return { refId: trimmed, wasNormalized: false };
+        }
         if (!this.corpus?.scenes?.length) {
             return { refId: isStableSceneId(trimmed) ? trimmed.toLowerCase() : '', wasNormalized: false };
         }
@@ -7598,8 +7621,6 @@ export class InquiryView extends ItemView {
             });
         }
 
-        const outlinePath = this.resolveBookOutlinePath(activeBookId);
-
         const items = this.getResultItems(result);
         const referenceLabels = this.buildInquiryReferenceLabelMap(items);
 
@@ -7620,6 +7641,7 @@ export class InquiryView extends ItemView {
                 addNote(filePath, note);
                 return;
             }
+            const outlinePath = this.resolveInquiryOutlinePathForFinding(result, finding, activeBookId);
             if (outlinePath) {
                 addNote(outlinePath, note);
             }
@@ -7634,6 +7656,31 @@ export class InquiryView extends ItemView {
         });
 
         return notesByMaterial;
+    }
+
+    private resolveInquiryOutlinePathForFinding(
+        result: InquiryResult,
+        finding: InquiryFinding,
+        activeBookId?: string
+    ): string | null {
+        if (result.scope !== 'saga') {
+            return this.resolveBookOutlinePath(activeBookId);
+        }
+        if (finding.span && /b\d+\s*[-–]\s*b?\d+/i.test(finding.span)) {
+            return this.resolveSagaOutlinePath() ?? this.resolveBookOutlinePath(activeBookId);
+        }
+        const refId = finding.refId?.trim().toLowerCase();
+        if (!refId) return this.resolveSagaOutlinePath() ?? this.resolveBookOutlinePath(activeBookId);
+        const book = this.getResultItems(result).find(item =>
+            item.sceneId?.toLowerCase() === refId
+            || item.id.toLowerCase() === refId
+            || item.displayLabel.toLowerCase() === refId
+            || item.filePaths?.some(path => path.toLowerCase() === refId)
+        );
+        if (book?.id) {
+            return this.resolveBookOutlinePath(book.id) ?? this.resolveSagaOutlinePath();
+        }
+        return this.resolveSagaOutlinePath() ?? this.resolveBookOutlinePath(activeBookId);
     }
 
     private buildBriefPendingActions(
@@ -7664,6 +7711,11 @@ export class InquiryView extends ItemView {
         const outlineFiles = this.getOutlineFiles();
         const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book');
         const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
+        return outline?.path ?? null;
+    }
+
+    private resolveSagaOutlinePath(): string | null {
+        const outline = this.getOutlineFiles().find(file => this.getOutlineScope(file) === 'saga');
         return outline?.path ?? null;
     }
 
@@ -8234,12 +8286,32 @@ export class InquiryView extends ItemView {
             });
         });
 
+        const scopedEntries = scopeEntriesToActiveInquiryTarget({
+            entries,
+            scope: this.state.scope,
+            activeBookId
+        });
+
+        if (this.state.scope === 'saga') {
+            bookResolution.includedBooks.forEach(book => {
+                scopedEntries.push({
+                    path: book.rootPath,
+                    sceneId: buildInquiryBookAnchorId(book.rootPath),
+                    // Book rows are Saga minimap anchors, not evidence-bearing files.
+                    // Keep mtime stable so the corpus fingerprint does not churn
+                    // between estimate builds and make the UI look stuck on 0/estimating.
+                    mtime: 0,
+                    class: 'book',
+                    scope: 'saga',
+                    bookId: book.rootPath,
+                    mode: 'excluded',
+                    isTarget: false
+                });
+            });
+        }
+
         return {
-            entries: scopeEntriesToActiveInquiryTarget({
-                entries,
-                scope: this.state.scope,
-                activeBookId
-            }),
+            entries: scopedEntries,
             resolvedRoots
         };
     }
@@ -10809,7 +10881,7 @@ export class InquiryView extends ItemView {
         const activeBookId = this.getCanonicalActiveBookId();
         const sceneEntries = entries.filter(entry => entry.class === 'scene');
         const outlineEntries = entries.filter(entry => entry.class === 'outline');
-        const referenceEntries = entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
+        const referenceEntries = entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline' && entry.class !== 'book');
 
         const bookOutlineEntries = outlineEntries
             .filter(entry => entry.scope !== 'saga');
@@ -11537,17 +11609,22 @@ export class InquiryView extends ItemView {
         const orderedFindings = this.getOrderedFindings(result, result.mode);
         const findings = orderedFindings
             .filter(finding => this.isFindingHit(finding))
-            .map(finding => ({
-                headline: this.normalizeInquiryBriefText(normalizeInquiryHeadline(finding.headline), referenceLabels),
-                role: this.getFindingRole(finding),
-                lens: finding.lens === 'both'
-                    ? 'Flow / Depth'
-                    : formatBriefLabel(finding.lens || result.mode || 'flow'),
-                bullets: (finding.bullets || [])
+            .map(finding => {
+                const sagaContext = result.scope === 'saga'
+                    ? [finding.subject ? `Subject: ${finding.subject}` : '', finding.span ? `Span: ${finding.span}` : ''].filter(Boolean)
+                    : [];
+                return {
+                    headline: this.normalizeInquiryBriefText(normalizeInquiryHeadline(finding.headline), referenceLabels),
+                    role: this.getFindingRole(finding),
+                    lens: finding.lens === 'both'
+                        ? 'Flow / Depth'
+                        : formatBriefLabel(finding.lens || result.mode || 'flow'),
+                    bullets: [...sagaContext, ...(finding.bullets || [])]
                     .filter(Boolean)
                     .slice(0, 3)
                     .map(entry => this.normalizeInquiryBriefText(entry, referenceLabels))
-            }));
+                };
+            });
 
         const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta, result.findings);
         const sources = sourcesVM.items.map(item => ({

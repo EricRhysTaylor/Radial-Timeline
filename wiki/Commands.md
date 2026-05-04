@@ -1,5 +1,3 @@
-# Command Palette
-
 Radial Timeline provides commands through the Obsidian Command Palette.
 
 To open the Command Palette:

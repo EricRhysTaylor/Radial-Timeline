@@ -35,14 +35,17 @@ describe('Inquiry JSON schemas', () => {
         const schema = buildInquiryJsonSchema() as Record<string, any>;
         const findingItems = schema.properties.findings.items;
         expect(findingItems.required).toEqual(expect.arrayContaining(['ref_id', 'ref_label', 'ref_path']));
+        expect(findingItems.required).toEqual(expect.arrayContaining(['subject', 'span', 'supporting_refs']));
         expect(findingItems.properties.ref_label).toEqual({ type: 'string' });
         expect(findingItems.properties.ref_path).toEqual({ type: 'string' });
+        expect(findingItems.properties.supporting_refs.items.required).toEqual(['ref_id', 'ref_label', 'ref_path', 'quote']);
     });
 
     it('requires ref_id, ref_label, and ref_path on omnibus findings', () => {
         const schema = buildInquiryOmnibusJsonSchema() as Record<string, any>;
         const findingItems = schema.properties.results.items.properties.findings.items;
         expect(findingItems.required).toEqual(expect.arrayContaining(['ref_id', 'ref_label', 'ref_path']));
+        expect(findingItems.required).toEqual(expect.arrayContaining(['subject', 'span', 'supporting_refs']));
         expect(findingItems.properties.ref_label).toEqual({ type: 'string' });
         expect(findingItems.properties.ref_path).toEqual({ type: 'string' });
     });

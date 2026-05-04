@@ -1,5 +1,3 @@
-**Constructing Your Story Timeline**
-
 <a href="https://www.youtube.com/watch?v=XKWq32LB0d0" target="_blank" rel="noopener">
   <p align="center">
     <img src="https://i.ytimg.com/vi/XKWq32LB0d0/maxresdefault.jpg" alt="Chronologue Mode walkthrough" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />

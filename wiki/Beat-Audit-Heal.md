@@ -1,5 +1,3 @@
-# Beat Audit + Heal — Current Behavior
-
 ## Overview
 
 Beat Audit checks beat note health against the active beat system. Beat Heal (Repair) updates existing beat notes to match the configured beat list. Both operate on **structural correctness only** — they do not treat filename prefix numbers as errors.

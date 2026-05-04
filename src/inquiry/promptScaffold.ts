@@ -1,11 +1,12 @@
 import { INQUIRY_SCHEMA_VERSION } from './constants';
-import type { InquiryLens, InquirySelectionMode } from './state';
+import type { InquiryLens, InquiryScope, InquirySelectionMode } from './state';
 
 export const INQUIRY_ROLE_TEMPLATE_GUARDRAIL =
     "Do not reinterpret or expand the user's question. Answer it directly. The role template provides tonal and contextual framing only.";
 
 export type InquiryPromptScaffoldInput = {
     task: string;
+    scope?: InquiryScope;
     lens: InquiryLens;
     selectionMode: InquirySelectionMode;
     targetSceneIds: string[];
@@ -17,6 +18,7 @@ function normalizePromptInput(input: string | InquiryPromptScaffoldInput): Inqui
     if (typeof input === 'string') {
         return {
             task: '',
+            scope: 'book',
             lens: 'flow',
             selectionMode: 'discover',
             targetSceneIds: [],
@@ -26,6 +28,7 @@ function normalizePromptInput(input: string | InquiryPromptScaffoldInput): Inqui
     }
     return {
         task: input.task,
+        scope: input.scope === 'saga' ? 'saga' : 'book',
         lens: input.lens,
         selectionMode: input.selectionMode,
         targetSceneIds: Array.isArray(input.targetSceneIds) ? input.targetSceneIds : [],
@@ -63,11 +66,14 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '      "ref_id": "scn_a1b2c3d4",',
         '      "ref_label": "3 Turning Point.md",',
         '      "ref_path": "Book 1 Example Novel/3 Turning Point.md",',
-        '      "kind": "loose_end|continuity|escalation|conflict|unclear|strength",',
+        '      "kind": "thread|arc|payoff|structure|loose_end|continuity|escalation|conflict|unclear|strength",',
         '      "lens": "flow|depth|both|",',
         '      "headline": "short line",',
         '      "bullets": ["specific", "supporting points"],',
-        '      "evidence_quote": "verbatim sentence or phrase from the cited scene that grounds this finding (empty string if scene has no quotable prose)",',
+        '      "subject": "thread, arc, or big-picture subject (empty string if not needed)",',
+        '      "span": "book span such as B1-B3 or B2 (empty string if not needed)",',
+        '      "evidence_quote": "verbatim sentence or phrase from the cited or supporting evidence that grounds this finding (empty string if no quotable prose)",',
+        '      "supporting_refs": [{ "ref_id": "scn_a1b2c3d4", "ref_label": "3 Turning Point.md", "ref_path": "Book 1 Example Novel/3 Turning Point.md", "quote": "short verbatim support quote" }],',
         '      "role": "target|context|"',
         '    }',
         '  ]',
@@ -84,15 +90,29 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
         'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
         'If conclusions align, still phrase summaries to match the active lens emphasis.',
-        'All findings must be anchored to specific scenes.',
+        ...(normalized.scope === 'saga'
+            ? [
+                'Saga scope: analyze series-level threads, arcs, continuity chains, setup/payoff movement, escalation, and structural pressure across books.',
+                'Saga findings must be big-picture observations anchored to books, not scene-level repair tickets.',
+                'Every primary finding MUST anchor to the most relevant book row in the CORPUS MANIFEST where class=book.',
+                'Primary ref_id/ref_label/ref_path must come from a class=book manifest row. Do not use scene ids as primary refs in Saga scope.',
+                'Use supporting_refs for scene or book evidence that substantiates the book-level finding.',
+                'Prefer fewer, larger findings over many local scene observations.',
+                'Set subject to the thread, arc, relationship, world-rule, promise/payoff chain, or structural concern being assessed.',
+                'Set span to the relevant book range, such as B1-B3, B2, or B1-B4.',
+                'Book anchor rows are placement anchors for the Saga minimap; they may be cited as primary refs even if their mode is excluded.'
+            ]
+            : [
+                'All findings must be anchored to specific scenes.',
+                'Every finding must map to a concrete scene from the CORPUS MANIFEST.'
+            ]),
         'Citation fidelity is mandatory. Every finding MUST include ref_id, ref_label, and ref_path, copied VERBATIM from a single entry in the CORPUS MANIFEST.',
-        'Do not invent, shorten, rename, translate, paraphrase, or infer scene references. Copy all three fields character-for-character from the manifest line you selected.',
-        'If no matching corpus entry exists for a scene you would like to cite, do NOT cite it. Omit the finding rather than fabricate a reference.',
+        'Do not invent, shorten, rename, translate, paraphrase, or infer references. Copy all three fields character-for-character from the manifest line you selected.',
+        'If no matching corpus entry exists for a reference you would like to cite, do NOT cite it. Omit the finding rather than fabricate a reference.',
         'The three fields must be consistent: ref_id, ref_label, and ref_path must come from the SAME manifest row. Do not mix fields across rows.',
         'Canonical scene ids are YAML IDs in the form scn_<hash> and must match ^scn_[a-f0-9]{8,10}$.',
         'When identifying absences (e.g. missing setup, weak foreshadowing, underdeveloped elements): reference the scene where the absence is most visible to the reader, or the scene where the missing element should have been established.',
         'Avoid abstract identifiers such as gap_001 or similar constructs.',
-        'Every finding must map to a concrete scene from the CORPUS MANIFEST.',
         'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
         'Evidence headings include "(Summary)" or "(Full)".',
         'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
@@ -104,7 +124,9 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Use role: "target" for author-selected target scenes and role: "context" for supporting context when helpful. Use an empty string when role is not needed.',
         'Set lens to flow, depth, or both when helpful. Use an empty string when no lens tag is needed.',
         'Always return bullets as an array. Use [] when one short headline is sufficient.',
-        'evidence_quote is REQUIRED for every finding and MUST be a verbatim sentence or phrase copied character-for-character from the cited scene. Do not paraphrase, summarize, translate, or compose new prose. Pick the exact span that most directly grounds your headline. Keep it short (one or two sentences). evidence_quote may only be the empty string when the cited scene has zero prose at all (it is purely a placeholder, a header, or an authorial note like "TODO write this"). If you cannot produce a verbatim quote because no quotable prose exists, omit the finding instead of returning an empty quote — the Sources block exists to surface verifiable spans, not commentary.',
+        'Always return subject and span as strings. Use an empty string when not needed.',
+        'Always return supporting_refs as an array. Use [] when there are no secondary citations.',
+        'evidence_quote is REQUIRED for every finding and MUST be a verbatim sentence or phrase copied character-for-character from the cited or supporting evidence. Do not paraphrase, summarize, translate, or compose new prose. Pick the exact span that most directly grounds your headline. Keep it short (one or two sentences). evidence_quote may only be the empty string when no cited/supporting evidence has quotable prose. If you cannot produce a verbatim quote because no quotable prose exists, omit the finding instead of returning an empty quote — the Sources block exists to surface verifiable spans, not commentary.',
         ...(normalized.selectionMode === 'focused'
             ? [
                 'Focused selection mode: treat target scenes as the primary subject of analysis.',
@@ -128,7 +150,9 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
     const manifestText = normalized.corpusManifestLines.length
         ? [
             'CORPUS MANIFEST:',
-            'Every cited scene MUST come from this list. Copy ref_id, ref_label, and ref_path verbatim from one row.',
+            normalized.scope === 'saga'
+                ? 'Primary Saga findings MUST cite class=book rows. Supporting refs may cite scene/book rows. Copy ref_id, ref_label, and ref_path verbatim from one row.'
+                : 'Every cited scene MUST come from this list. Copy ref_id, ref_label, and ref_path verbatim from one row.',
             ...normalized.corpusManifestLines.map(line => `- ${line}`)
         ].join('\n')
         : '';

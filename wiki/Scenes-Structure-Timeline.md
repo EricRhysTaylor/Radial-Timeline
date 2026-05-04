@@ -1,5 +1,3 @@
-# Scenes, Structure, and the Timeline
-
 If you’re starting a fresh vault, you can keep this simple. Radial Timeline is built around three ideas that work together: scenes, structure, and the timeline view.
 
 ## Scenes

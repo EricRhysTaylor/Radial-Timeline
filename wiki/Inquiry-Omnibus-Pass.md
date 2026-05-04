@@ -1,5 +1,3 @@
-# Inquiry omnibus pass
-
 `Inquiry omnibus pass` runs all enabled Inquiry questions in one batch.
 
 > [!NOTE]

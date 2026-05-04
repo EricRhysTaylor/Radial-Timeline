@@ -1,5 +1,3 @@
-# Book Designer
-
 Book Designer is the guided setup panel behind the **`Book designer`** command. It generates a manuscript scaffold tailored to your project: scene files, act distribution, subplot rotation, characters, and optional beat notes.
 
 <a href="https://youtu.be/0vkLaI_LewM?si=-02Gem1HQwbI0E9E" target="_blank" rel="noopener">

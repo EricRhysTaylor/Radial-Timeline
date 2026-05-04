@@ -53,9 +53,11 @@ export interface InquiryVerdict {
 
 export interface InquiryFinding {
     refId: string;
-    kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error' | 'strength';
+    kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error' | 'strength' | 'thread' | 'arc' | 'payoff' | 'structure';
     headline: string;
     bullets: string[];
+    subject?: string;
+    span?: string;
     /**
      * Verbatim sentence/phrase from the cited scene that grounds this finding.
      * Empty string when the cited scene is authorial notes/placeholder with no
@@ -64,6 +66,12 @@ export interface InquiryFinding {
      */
     evidenceQuote?: string;
     related: string[];
+    supportingRefs?: Array<{
+        refId: string;
+        refLabel?: string;
+        refPath?: string;
+        quote?: string;
+    }>;
     evidenceType: 'scene' | 'outline' | 'mixed';
     lens?: 'flow' | 'depth' | 'both';
     role?: FindingRole;

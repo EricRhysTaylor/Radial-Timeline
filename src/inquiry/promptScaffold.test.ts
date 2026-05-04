@@ -5,6 +5,7 @@ describe('buildInquiryPromptParts', () => {
     it('recombines into the canonical inquiry scaffold and isolates the schema block', () => {
         const input = {
             task: 'Assess setup coherence.',
+            scope: 'book' as const,
             lens: 'flow' as const,
             selectionMode: 'focused' as const,
             targetSceneIds: ['scn_target_01'],
@@ -20,5 +21,34 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.userPrompt.includes('SELECTION MODE')).toBe(false);
         expect(parts.userPrompt.includes('TARGET SCENES:\n- scn_target_01')).toBe(true);
         expect(INQUIRY_ROLE_TEMPLATE_GUARDRAIL.includes('role template')).toBe(true);
+    });
+
+    it('keeps book scope scene-anchored and makes saga scope book-anchored', () => {
+        const book = buildInquiryPromptParts({
+            task: 'Find continuity issues.',
+            scope: 'book',
+            lens: 'depth',
+            selectionMode: 'discover',
+            targetSceneIds: [],
+            corpusManifestLines: ['ref_id=scn_a1b2c3d4 | ref_label=1.md | ref_path=Book 1/1.md | class=scene | mode=summary | isTarget=false'],
+            evidenceText: 'Evidence'
+        });
+        const saga = buildInquiryPromptParts({
+            task: 'Find series thread issues.',
+            scope: 'saga',
+            lens: 'depth',
+            selectionMode: 'discover',
+            targetSceneIds: [],
+            corpusManifestLines: [
+                'ref_id=book_aaaaaaaa | ref_label=B1 | ref_path=Book 1 | class=book | mode=excluded | isTarget=false',
+                'ref_id=scn_a1b2c3d4 | ref_label=1.md | ref_path=Book 1/1.md | class=scene | mode=summary | isTarget=false'
+            ],
+            evidenceText: 'Evidence'
+        });
+
+        expect(book.instructionText).toContain('All findings must be anchored to specific scenes.');
+        expect(saga.instructionText).toContain('Saga findings must be big-picture observations anchored to books');
+        expect(saga.instructionText).toContain('Primary ref_id/ref_label/ref_path must come from a class=book manifest row');
+        expect(saga.manifestText).toContain('Primary Saga findings MUST cite class=book rows');
     });
 });

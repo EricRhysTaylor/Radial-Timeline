@@ -1,5 +1,3 @@
-# Advanced Tab
-
 The Advanced tab holds lower-level system and workflow controls.
 
 ## Configuration

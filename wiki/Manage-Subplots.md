@@ -1,5 +1,3 @@
-# Manage subplots
-
 `Manage subplots` opens the subplot manager for bulk cleanup.
 
 Use it when subplot names have drifted and you want to rename or remove them across the manuscript in one place.

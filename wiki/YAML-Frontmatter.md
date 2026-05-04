@@ -1,5 +1,3 @@
-# Scene Properties (Core + Advanced)
-
 This page covers scene metadata (basic and advanced), beat notes, and backdrop notes. Radial Timeline reads metadata from **Obsidian properties** (YAML frontmatter) at the top of each note. If you prefer to keep things light, you can start with only the minimal fields and fill the rest later.
 
 ## Minimal Scene (Required Fields)

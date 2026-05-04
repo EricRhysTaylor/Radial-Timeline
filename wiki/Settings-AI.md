@@ -1,5 +1,3 @@
-# AI Tab
-
 The AI tab configures provider access, model selection, and scene-analysis behavior across Radial Timeline.
 
 ## AI LLM For Scene Analysis

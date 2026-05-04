@@ -1,5 +1,3 @@
-# Gossamer analysis
-
 `Gossamer analysis` runs the built-in AI scoring workflow for the active Gossamer signal.
 
 Use it when you want AI-generated beat scoring for the currently selected signal rather than manual entry.

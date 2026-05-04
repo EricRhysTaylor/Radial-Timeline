@@ -28,10 +28,26 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                         lens: { type: 'string' },
                         headline: { type: 'string' },
                         bullets: { type: 'array', items: { type: 'string' } },
+                        subject: { type: 'string' },
+                        span: { type: 'string' },
                         evidence_quote: { type: 'string' },
+                        supporting_refs: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                additionalProperties: false,
+                                properties: {
+                                    ref_id: { type: 'string' },
+                                    ref_label: { type: 'string' },
+                                    ref_path: { type: 'string' },
+                                    quote: { type: 'string' }
+                                },
+                                required: ['ref_id', 'ref_label', 'ref_path', 'quote']
+                            }
+                        },
                         role: { type: 'string' }
                     },
-                    required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'evidence_quote', 'role']
+                    required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'subject', 'span', 'evidence_quote', 'supporting_refs', 'role']
                 }
             }
         },
@@ -76,10 +92,26 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                                     lens: { type: 'string' },
                                     headline: { type: 'string' },
                                     bullets: { type: 'array', items: { type: 'string' } },
+                                    subject: { type: 'string' },
+                                    span: { type: 'string' },
                                     evidence_quote: { type: 'string' },
+                                    supporting_refs: {
+                                        type: 'array',
+                                        items: {
+                                            type: 'object',
+                                            additionalProperties: false,
+                                            properties: {
+                                                ref_id: { type: 'string' },
+                                                ref_label: { type: 'string' },
+                                                ref_path: { type: 'string' },
+                                                quote: { type: 'string' }
+                                            },
+                                            required: ['ref_id', 'ref_label', 'ref_path', 'quote']
+                                        }
+                                    },
                                     role: { type: 'string' }
                                 },
-                                required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'evidence_quote', 'role']
+                                required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'subject', 'span', 'evidence_quote', 'supporting_refs', 'role']
                             }
                         }
                     },

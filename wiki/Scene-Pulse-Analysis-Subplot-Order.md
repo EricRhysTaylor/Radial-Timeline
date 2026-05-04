@@ -1,5 +1,3 @@
-# Scene pulse analysis (subplot order)
-
 `Scene pulse analysis (subplot order)` opens the subplot pulse picker first, then runs pulse analysis for a selected subplot.
 
 <div style="text-align: center; margin: 20px 0;">

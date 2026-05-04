@@ -1,5 +1,3 @@
-# Radial Timeline View
-
 The Radial Timeline View is the main authoring and analysis workspace in Radial Timeline. It is where you work directly with scenes, subplots, chronology, beats, and scene-level AI feedback.
 
 **Open**: Command palette → **`Radial Timeline: Open`**, or click the shell icon in the ribbon.

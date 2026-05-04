@@ -1,5 +1,3 @@
-# Settings
-
 Access Radial Timeline settings in Obsidian via **Settings → Community Plugins → Radial Timeline**.
 
 ## Settings Tabs

@@ -33,6 +33,7 @@ import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
 import { buildInquiryJsonSchema, buildInquiryOmnibusJsonSchema } from '../jsonSchema';
 import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
+import { buildInquiryBookAnchorId } from '../services/canonicalInquiryCorpus';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -92,8 +93,18 @@ type RawInquiryFinding = {
     lens?: string;
     headline?: string;
     bullets?: string[];
+    subject?: string;
+    span?: string;
     evidence_quote?: string;
+    supporting_refs?: RawInquirySupportingRef[];
     role?: string;
+};
+
+type RawInquirySupportingRef = {
+    ref_id?: string;
+    ref_label?: string;
+    ref_path?: string;
+    quote?: string;
 };
 
 type RawInquiryResponse = {
@@ -180,6 +191,27 @@ type ChunkPromptPlan = {
 type SceneRefLedger = {
     allowedSceneIds: Set<string>;
     synthesisBlock: string;
+};
+
+type BookRefEntry = {
+    bookId: string;
+    path: string;
+    label?: string;
+    title?: string;
+    aliases?: string[];
+};
+
+type BookRefIndex = {
+    byBookId: Map<string, BookRefEntry>;
+    byPath: Map<string, BookRefEntry>;
+    byLabel: Map<string, BookRefEntry>;
+    byNormalizedKey: Map<string, BookRefEntry[]>;
+};
+
+type RefVerificationOptions = {
+    primaryRefType?: 'scene' | 'book';
+    supportingSceneRefIndex?: ReturnType<typeof buildSceneRefIndex>;
+    supportingBookRefIndex?: BookRefIndex;
 };
 
 type UsageAccumulator = {
@@ -499,7 +531,7 @@ export class InquiryRunnerService implements InquiryRunner {
             .filter(entry => entry.class === 'outline')
             .filter(entry => this.isModeActive(entry.mode));
         const referenceEntries = allEntries
-            .filter(entry => entry.class !== 'scene' && entry.class !== 'outline')
+            .filter(entry => entry.class !== 'scene' && entry.class !== 'outline' && entry.class !== 'book')
             .filter(entry => this.isModeActive(entry.mode));
 
         if (input.scope === 'saga') {
@@ -749,11 +781,17 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private buildCorpusManifestLines(entries: CorpusManifestEntry[]): string[] {
+        let bookAnchorIndex = 0;
         return entries.map(entry => {
             const mode = this.normalizeEntryMode(entry.mode);
             const isTarget = entry.isTarget === true;
             const subject = this.buildManifestSubjectLabel(entry);
-            const filename = entry.path.split('/').pop() || entry.path;
+            if (entry.class === 'book') {
+                bookAnchorIndex += 1;
+            }
+            const filename = entry.class === 'book'
+                ? this.buildBookLabelForEntry(entry, bookAnchorIndex || 1)
+                : (entry.path.split('/').pop() || entry.path);
             const refIdPart = entry.sceneId ? `ref_id=${subject}` : `ref_id=${subject}`;
             return `${refIdPart} | ref_label=${filename} | ref_path=${entry.path} | class=${entry.class} | mode=${mode} | isTarget=${isTarget}`;
         });
@@ -768,6 +806,7 @@ export class InquiryRunnerService implements InquiryRunner {
         }).join('\n\n');
         const scaffoldInput = {
             task: input.questionText,
+            scope: input.scope,
             lens: input.mode,
             selectionMode: input.selectionMode,
             targetSceneIds: input.targetSceneIds,
@@ -840,11 +879,14 @@ export class InquiryRunnerService implements InquiryRunner {
             '          "ref_id": "scn_a1b2c3d4",',
             '          "ref_label": "3 Turning Point.md",',
             '          "ref_path": "Book 1 Example Novel/3 Turning Point.md",',
-            '          "kind": "loose_end|continuity|escalation|conflict|unclear|strength",',
+            '          "kind": "thread|arc|payoff|structure|loose_end|continuity|escalation|conflict|unclear|strength",',
             '          "lens": "flow|depth|both|",',
             '          "headline": "short line",',
             '          "bullets": ["specific", "supporting points"],',
-            '          "evidence_quote": "verbatim sentence or phrase from the cited scene (empty string if no quotable prose)",',
+            '          "subject": "thread, arc, or big-picture subject (empty string if not needed)",',
+            '          "span": "book span such as B1-B3 or B2 (empty string if not needed)",',
+            '          "evidence_quote": "verbatim sentence or phrase from the cited or supporting evidence (empty string if no quotable prose)",',
+            '          "supporting_refs": [{ "ref_id": "scn_a1b2c3d4", "ref_label": "3 Turning Point.md", "ref_path": "Book 1 Example Novel/3 Turning Point.md", "quote": "short verbatim support quote" }],',
             '          "role": "target|context|"',
             '        }',
             '      ]',
@@ -863,6 +905,7 @@ export class InquiryRunnerService implements InquiryRunner {
         });
         const { instructionText, manifestText } = buildInquiryPromptParts({
             task: questionLines.join('\n'),
+            scope: input.scope,
             lens: input.mode,
             selectionMode: input.selectionMode,
             targetSceneIds: input.targetSceneIds,
@@ -1977,7 +2020,17 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
-        const partition = this.verifyFindingRefs(findings, sceneRefIndex);
+        const bookRefIndex = input.scope === 'saga' ? this.buildCanonicalBookRefIndex(input) : undefined;
+        const partition = input.scope === 'saga' && bookRefIndex
+            ? this.verifyFindingRefs(findings, bookRefIndex, {
+                primaryRefType: 'book',
+                supportingSceneRefIndex: sceneRefIndex,
+                supportingBookRefIndex: bookRefIndex
+            })
+            : this.verifyFindingRefs(findings, sceneRefIndex, {
+                primaryRefType: 'scene',
+                supportingSceneRefIndex: sceneRefIndex
+            });
         const roleValidation = this.computeRoleValidation(input.selectionMode, partition.verified);
 
         const summaryFlow = parsed.summaryFlow
@@ -2126,7 +2179,8 @@ export class InquiryRunnerService implements InquiryRunner {
      */
     private verifyFindingRefs(
         rawFindings: RawInquiryFinding[],
-        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
+        primaryRefIndex: ReturnType<typeof buildSceneRefIndex> | BookRefIndex,
+        options: RefVerificationOptions = {}
     ): {
         verified: InquiryFinding[];
         unverified: UnverifiedCitation[];
@@ -2135,17 +2189,24 @@ export class InquiryRunnerService implements InquiryRunner {
         const verified: InquiryFinding[] = [];
         const unverified: UnverifiedCitation[] = [];
         const warnings: CitationIntegrityWarning[] = [];
+        const primaryRefType = options.primaryRefType ?? 'scene';
 
         rawFindings.forEach(raw => {
             const rawRefId = raw.ref_id ? String(raw.ref_id) : undefined;
             const rawRefLabel = raw.ref_label ? String(raw.ref_label) : undefined;
             const rawRefPath = raw.ref_path ? String(raw.ref_path) : undefined;
 
-            const normalized = normalizeSceneRef({
-                ref_id: rawRefId,
-                ref_label: rawRefLabel,
-                ref_path: rawRefPath
-            }, sceneRefIndex);
+            const normalized = primaryRefType === 'book'
+                ? this.normalizeBookRef({
+                    ref_id: rawRefId,
+                    ref_label: rawRefLabel,
+                    ref_path: rawRefPath
+                }, primaryRefIndex as BookRefIndex)
+                : normalizeSceneRef({
+                    ref_id: rawRefId,
+                    ref_label: rawRefLabel,
+                    ref_path: rawRefPath
+                }, primaryRefIndex as ReturnType<typeof buildSceneRefIndex>);
 
             const kind = this.normalizeFindingKind(raw.kind);
             const lens = this.normalizeFindingLens(raw.lens);
@@ -2154,6 +2215,8 @@ export class InquiryRunnerService implements InquiryRunner {
             const bullets = Array.isArray(raw.bullets)
                 ? raw.bullets.map(value => String(value)).filter(Boolean)
                 : [];
+            const subject = typeof raw.subject === 'string' ? raw.subject.trim() : '';
+            const span = typeof raw.span === 'string' ? raw.span.trim() : '';
             const evidenceQuote = typeof raw.evidence_quote === 'string'
                 ? raw.evidence_quote.trim()
                 : '';
@@ -2193,7 +2256,10 @@ export class InquiryRunnerService implements InquiryRunner {
                 kind,
                 headline,
                 bullets,
+                ...(subject ? { subject } : {}),
+                ...(span ? { span } : {}),
                 related: [],
+                ...this.normalizeSupportingRefs(raw.supporting_refs, options, warnings),
                 evidenceType: 'mixed',
                 lens,
                 role,
@@ -2211,11 +2277,17 @@ export class InquiryRunnerService implements InquiryRunner {
                 });
             }
 
-            const mismatch = this.detectRefMismatch(
-                { rawRefId, rawRefLabel, rawRefPath },
-                normalized.ref.ref_id,
-                sceneRefIndex
-            );
+            const mismatch = primaryRefType === 'book'
+                ? this.detectBookRefMismatch(
+                    { rawRefId, rawRefLabel, rawRefPath },
+                    normalized.ref.ref_id,
+                    primaryRefIndex as BookRefIndex
+                )
+                : this.detectRefMismatch(
+                    { rawRefId, rawRefLabel, rawRefPath },
+                    normalized.ref.ref_id,
+                    primaryRefIndex as ReturnType<typeof buildSceneRefIndex>
+                );
             if (mismatch) {
                 warnings.push(mismatch);
                 finding.rawRef = {
@@ -2230,6 +2302,62 @@ export class InquiryRunnerService implements InquiryRunner {
         });
 
         return { verified, unverified, warnings };
+    }
+
+    private normalizeSupportingRefs(
+        rawRefs: RawInquirySupportingRef[] | undefined,
+        options: RefVerificationOptions,
+        warnings: CitationIntegrityWarning[]
+    ): Pick<InquiryFinding, 'supportingRefs'> {
+        if (!Array.isArray(rawRefs) || rawRefs.length === 0) return {};
+        const supportingRefs: NonNullable<InquiryFinding['supportingRefs']> = [];
+        rawRefs.forEach(raw => {
+            const rawRefId = raw.ref_id ? String(raw.ref_id) : undefined;
+            const rawRefLabel = raw.ref_label ? String(raw.ref_label) : undefined;
+            const rawRefPath = raw.ref_path ? String(raw.ref_path) : undefined;
+            const quote = typeof raw.quote === 'string' ? raw.quote.trim() : '';
+
+            const sceneResolved = options.supportingSceneRefIndex
+                ? normalizeSceneRef({
+                    ref_id: rawRefId,
+                    ref_label: rawRefLabel,
+                    ref_path: rawRefPath
+                }, options.supportingSceneRefIndex)
+                : null;
+            if (sceneResolved && !sceneResolved.unresolved) {
+                supportingRefs.push({
+                    refId: sceneResolved.ref.ref_id,
+                    ...(sceneResolved.ref.ref_label ? { refLabel: sceneResolved.ref.ref_label } : {}),
+                    ...(sceneResolved.ref.ref_path ? { refPath: sceneResolved.ref.ref_path } : {}),
+                    ...(quote ? { quote } : {})
+                });
+                return;
+            }
+
+            const bookResolved = options.supportingBookRefIndex
+                ? this.normalizeBookRef({
+                    ref_id: rawRefId,
+                    ref_label: rawRefLabel,
+                    ref_path: rawRefPath
+                }, options.supportingBookRefIndex)
+                : null;
+            if (bookResolved && !bookResolved.unresolved) {
+                supportingRefs.push({
+                    refId: bookResolved.ref.ref_id,
+                    ...(bookResolved.ref.ref_label ? { refLabel: bookResolved.ref.ref_label } : {}),
+                    ...(bookResolved.ref.ref_path ? { refPath: bookResolved.ref.ref_path } : {}),
+                    ...(quote ? { quote } : {})
+                });
+                return;
+            }
+
+            const offendingRef = rawRefId || rawRefLabel || rawRefPath || '(missing supporting ref)';
+            warnings.push({
+                stage: 'unresolved_ref',
+                message: `AI supporting citation "${offendingRef}" could not be matched to the active corpus. Keeping the primary finding bound.`
+            });
+        });
+        return supportingRefs.length ? { supportingRefs } : {};
     }
 
     /**
@@ -2257,6 +2385,28 @@ export class InquiryRunnerService implements InquiryRunner {
         return {
             stage: 'ref_label_mismatch',
             message: `AI returned a valid scene id with mismatched label/path metadata: ref_id ${resolvedRefId}, but ${descriptor} points to ${nonIdResolved.ref.ref_id}. Trusting ref_id.`
+        };
+    }
+
+    private detectBookRefMismatch(
+        raw: { rawRefId?: string; rawRefLabel?: string; rawRefPath?: string },
+        resolvedRefId: string,
+        bookRefIndex: BookRefIndex
+    ): CitationIntegrityWarning | null {
+        if (!raw.rawRefLabel && !raw.rawRefPath) return null;
+        const nonIdResolved = this.normalizeBookRef({
+            ref_label: raw.rawRefLabel,
+            ref_path: raw.rawRefPath
+        }, bookRefIndex);
+        if (nonIdResolved.unresolved) return null;
+        if (!nonIdResolved.ref.ref_id) return null;
+        if (nonIdResolved.ref.ref_id === resolvedRefId) return null;
+        const labelDesc = raw.rawRefLabel ? `ref_label="${raw.rawRefLabel}"` : '';
+        const pathDesc = raw.rawRefPath ? `ref_path="${raw.rawRefPath}"` : '';
+        const descriptor = [labelDesc, pathDesc].filter(Boolean).join(' / ');
+        return {
+            stage: 'ref_label_mismatch',
+            message: `AI returned a valid book id with mismatched label/path metadata: ref_id ${resolvedRefId}, but ${descriptor} points to ${nonIdResolved.ref.ref_id}. Trusting ref_id.`
         };
     }
 
@@ -2304,6 +2454,162 @@ export class InquiryRunnerService implements InquiryRunner {
             });
 
         return buildSceneRefIndex(entries);
+    }
+
+    private buildCanonicalBookRefIndex(input: InquiryRunnerInput): BookRefIndex {
+        const entries: BookRefEntry[] = [];
+        const seen = new Set<string>();
+        input.corpus.entries
+            .filter(entry => entry.class === 'book')
+            .forEach(entry => {
+                const path = entry.path.trim();
+                if (!path || seen.has(path)) return;
+                seen.add(path);
+                const bookId = this.resolveCanonicalBookId(entry.sceneId) ?? buildInquiryBookAnchorId(path);
+                const label = this.buildBookLabelForEntry(entry, entries.length + 1);
+                entries.push({
+                    bookId,
+                    path,
+                    label,
+                    title: label,
+                    aliases: [path, label, `Book ${entries.length + 1}`]
+                });
+            });
+        return this.buildBookRefIndex(entries);
+    }
+
+    private buildBookLabelForEntry(entry: CorpusManifestEntry, fallbackIndex: number): string {
+        const number = this.extractBookNumberFromPath(entry.path) ?? fallbackIndex;
+        return `B${this.clampLabelNumber(number)}`;
+    }
+
+    private extractBookNumberFromPath(path: string): number | undefined {
+        const parts = path.split('/').filter(Boolean);
+        for (const part of parts) {
+            const match = BOOK_FOLDER_REGEX.exec(part);
+            if (!match) continue;
+            const parsed = Number(match[1]);
+            if (Number.isFinite(parsed)) return Math.max(1, Math.floor(parsed));
+        }
+        return undefined;
+    }
+
+    private buildBookRefIndex(entries: BookRefEntry[]): BookRefIndex {
+        const byBookId = new Map<string, BookRefEntry>();
+        const byPath = new Map<string, BookRefEntry>();
+        const byLabel = new Map<string, BookRefEntry>();
+        const byNormalizedKey = new Map<string, BookRefEntry[]>();
+        entries.forEach(entry => {
+            const bookId = this.resolveCanonicalBookId(entry.bookId);
+            const path = this.normalizeRefText(entry.path);
+            if (!bookId || !path) return;
+            const canonical: BookRefEntry = {
+                bookId,
+                path,
+                label: this.normalizeRefText(entry.label),
+                title: this.normalizeRefText(entry.title),
+                aliases: (entry.aliases || []).map(alias => this.normalizeRefText(alias)).filter((alias): alias is string => !!alias)
+            };
+            byBookId.set(bookId.toLowerCase(), canonical);
+            byPath.set(path.toLowerCase(), canonical);
+            if (canonical.label) {
+                byLabel.set(canonical.label.toLowerCase(), canonical);
+            }
+            this.addBookNormalizedKey(byNormalizedKey, canonical, canonical.bookId);
+            this.addBookNormalizedKey(byNormalizedKey, canonical, canonical.path);
+            this.addBookNormalizedKey(byNormalizedKey, canonical, canonical.label);
+            this.addBookNormalizedKey(byNormalizedKey, canonical, canonical.title);
+            (canonical.aliases || []).forEach(alias => this.addBookNormalizedKey(byNormalizedKey, canonical, alias));
+        });
+        return { byBookId, byPath, byLabel, byNormalizedKey };
+    }
+
+    private normalizeBookRef(
+        input: { ref_id?: string; ref_label?: string; ref_path?: string },
+        index: BookRefIndex
+    ): {
+        ref: { ref_id: string; ref_label?: string; ref_path?: string };
+        normalizedFromLegacy: boolean;
+        unresolved: boolean;
+        warning?: string;
+    } {
+        const rawRefId = this.normalizeRefText(input.ref_id);
+        const rawRefPath = this.normalizeRefText(input.ref_path);
+        const rawRefLabel = this.normalizeRefText(input.ref_label);
+        if (rawRefId && index.byBookId.has(rawRefId.toLowerCase())) {
+            return {
+                ref: { ref_id: rawRefId.toLowerCase(), ref_label: rawRefLabel, ref_path: rawRefPath },
+                normalizedFromLegacy: false,
+                unresolved: false
+            };
+        }
+        const candidates = [rawRefId, rawRefPath, rawRefLabel].filter((value): value is string => !!value);
+        for (const candidate of candidates) {
+            const resolved = this.resolveBookCandidate(candidate, index);
+            if (resolved) {
+                return {
+                    ref: {
+                        ref_id: resolved.bookId,
+                        ref_label: rawRefLabel ?? resolved.label,
+                        ref_path: rawRefPath ?? resolved.path
+                    },
+                    normalizedFromLegacy: true,
+                    unresolved: false,
+                    warning: `Normalized book reference "${candidate}" to ${resolved.bookId}.`
+                };
+            }
+        }
+        return {
+            ref: { ref_id: '', ref_label: rawRefLabel, ref_path: rawRefPath },
+            normalizedFromLegacy: true,
+            unresolved: true,
+            warning: rawRefId
+                ? `Could not resolve "${rawRefId}" to a canonical book id; leaving finding unbound.`
+                : 'Missing book reference id; leaving finding unbound.'
+        };
+    }
+
+    private resolveBookCandidate(candidate: string, index: BookRefIndex): BookRefEntry | undefined {
+        const exact = candidate.toLowerCase();
+        const byBookId = index.byBookId.get(exact);
+        if (byBookId) return byBookId;
+        const byPath = index.byPath.get(exact);
+        if (byPath) return byPath;
+        const byLabel = index.byLabel.get(exact);
+        if (byLabel) return byLabel;
+        const normalized = this.normalizeBookLookupKey(candidate);
+        if (!normalized) return undefined;
+        const matches = index.byNormalizedKey.get(normalized);
+        return matches?.length === 1 ? matches[0] : undefined;
+    }
+
+    private addBookNormalizedKey(map: Map<string, BookRefEntry[]>, entry: BookRefEntry, raw: string | undefined): void {
+        const key = this.normalizeBookLookupKey(raw);
+        if (!key) return;
+        const existing = map.get(key) || [];
+        if (!existing.some(candidate => candidate.bookId === entry.bookId)) {
+            existing.push(entry);
+        }
+        map.set(key, existing);
+    }
+
+    private normalizeBookLookupKey(raw: string | undefined): string | undefined {
+        const text = this.normalizeRefText(raw);
+        if (!text) return undefined;
+        return text.toLowerCase().replace(/\.[a-z0-9]+$/i, '').replace(/[^a-z0-9]+/g, '');
+    }
+
+    private normalizeRefText(value: string | undefined): string | undefined {
+        if (typeof value !== 'string') return undefined;
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+    }
+
+    private resolveCanonicalBookId(value: string | undefined): string | undefined {
+        const normalized = this.normalizeRefText(value);
+        if (!normalized) return undefined;
+        if (!/^book_[a-z0-9][a-z0-9_-]{1,80}$/i.test(normalized)) return undefined;
+        return normalized.toLowerCase();
     }
 
     private resolveFindingFallbackRefId(input: InquiryRunnerInput): string {
@@ -2462,7 +2768,11 @@ export class InquiryRunnerService implements InquiryRunner {
             'conflict',
             'unclear',
             'error',
-            'strength'
+            'strength',
+            'thread',
+            'arc',
+            'payoff',
+            'structure'
         ];
         if (allowed.includes(normalized as InquiryFinding['kind'])) {
             return normalized as InquiryFinding['kind'];

@@ -9,9 +9,10 @@ import { buildSceneRefIndex } from '../../ai/references/sceneRefNormalizer';
 
 type Verifier = (
     rawFindings: Array<Record<string, unknown>>,
-    sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
+    sceneRefIndex: ReturnType<typeof buildSceneRefIndex> | Record<string, unknown>,
+    options?: Record<string, unknown>
 ) => {
-    verified: Array<{ refId: string; headline: string; rawRef?: Record<string, string> }>;
+    verified: Array<{ refId: string; headline: string; rawRef?: Record<string, string>; subject?: string; span?: string; supportingRefs?: Array<{ refId: string }> }>;
     unverified: Array<{ rawRefId?: string; rawRefLabel?: string; rawRefPath?: string; headline: string; warning: string }>;
     warnings: Array<{ stage: string; message: string }>;
 };
@@ -55,6 +56,26 @@ function twoScenesDifferentBooksIndex() {
             aliases: []
         }
     ]);
+}
+
+function twoBookIndex() {
+    const b1 = { bookId: 'book_aaaaaaaa', path: 'Books/Book 1', label: 'B1', title: 'B1', aliases: ['Book 1'] };
+    const b2 = { bookId: 'book_bbbbbbbb', path: 'Books/Book 2', label: 'B2', title: 'B2', aliases: ['Book 2'] };
+    return {
+        byBookId: new Map([[b1.bookId, b1], [b2.bookId, b2]]),
+        byPath: new Map([[b1.path.toLowerCase(), b1], [b2.path.toLowerCase(), b2]]),
+        byLabel: new Map([[b1.label.toLowerCase(), b1], [b2.label.toLowerCase(), b2]]),
+        byNormalizedKey: new Map([
+            ['bookaaaaaaaa', [b1]],
+            ['bookbbbbbbbb', [b2]],
+            ['booksbook1', [b1]],
+            ['booksbook2', [b2]],
+            ['b1', [b1]],
+            ['b2', [b2]],
+            ['book1', [b1]],
+            ['book2', [b2]]
+        ])
+    };
 }
 
 describe('verifyFindingRefs', () => {
@@ -245,5 +266,81 @@ describe('verifyFindingRefs', () => {
         );
 
         expect(out.warnings.length).toBe(0);
+    });
+
+    it('verifies saga primary refs against book anchors instead of scene anchors', () => {
+        const verify = getVerifier();
+        const out = verify(
+            [{
+                ref_id: 'book_aaaaaaaa',
+                ref_label: 'B1',
+                ref_path: 'Books/Book 1',
+                kind: 'thread',
+                headline: 'Thread loses pressure between books',
+                subject: 'Succession thread',
+                span: 'B1-B2',
+                bullets: ['Book 2 inherits the premise without enough pressure.'],
+                supporting_refs: [{
+                    ref_id: 'scn_a1b2c3d4',
+                    ref_label: '3 Party.md',
+                    ref_path: 'Book 1 Shail + Trisan/3 Party.md',
+                    quote: 'A quoted setup.'
+                }]
+            }],
+            twoBookIndex(),
+            {
+                primaryRefType: 'book',
+                supportingBookRefIndex: twoBookIndex(),
+                supportingSceneRefIndex: singleSceneIndex()
+            }
+        );
+
+        expect(out.verified).toHaveLength(1);
+        expect(out.verified[0].refId).toBe('book_aaaaaaaa');
+        expect(out.verified[0].subject).toBe('Succession thread');
+        expect(out.verified[0].span).toBe('B1-B2');
+        expect(out.verified[0].supportingRefs?.[0].refId).toBe('scn_a1b2c3d4');
+        expect(out.unverified).toHaveLength(0);
+    });
+
+    it('quarantines saga findings that use scene ids as primary refs', () => {
+        const verify = getVerifier();
+        const out = verify(
+            [{
+                ref_id: 'scn_a1b2c3d4',
+                ref_label: '3 Party.md',
+                ref_path: 'Book 1 Shail + Trisan/3 Party.md',
+                kind: 'arc',
+                headline: 'Too local for saga primary anchor',
+                bullets: []
+            }],
+            twoBookIndex(),
+            { primaryRefType: 'book', supportingBookRefIndex: twoBookIndex(), supportingSceneRefIndex: singleSceneIndex() }
+        );
+
+        expect(out.verified).toHaveLength(0);
+        expect(out.unverified).toHaveLength(1);
+        expect(out.warnings[0].message).toContain('could not be matched');
+    });
+
+    it('keeps a saga finding bound when one supporting ref is invalid', () => {
+        const verify = getVerifier();
+        const out = verify(
+            [{
+                ref_id: 'book_bbbbbbbb',
+                ref_label: 'B2',
+                ref_path: 'Books/Book 2',
+                kind: 'payoff',
+                headline: 'Payoff is deferred without pressure',
+                bullets: [],
+                supporting_refs: [{ ref_id: 'scn_deadbeef', ref_label: 'Missing.md', ref_path: 'Nope/Missing.md', quote: 'Ghost.' }]
+            }],
+            twoBookIndex(),
+            { primaryRefType: 'book', supportingBookRefIndex: twoBookIndex(), supportingSceneRefIndex: singleSceneIndex() }
+        );
+
+        expect(out.verified).toHaveLength(1);
+        expect(out.verified[0].refId).toBe('book_bbbbbbbb');
+        expect(out.warnings.some(w => w.message.includes('supporting citation'))).toBe(true);
     });
 });

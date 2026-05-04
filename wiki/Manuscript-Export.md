@@ -1,5 +1,3 @@
-# Manuscript export
-
 `Manuscript export` opens the export panel for compiled manuscript and outline outputs.
 
 <div style="text-align: center; margin: 20px 0;">

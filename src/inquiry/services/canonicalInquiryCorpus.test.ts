@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scopeEntriesToActiveInquiryTarget, summarizeScopedInquiryEntries } from './canonicalInquiryCorpus';
+import { buildInquiryBookAnchorId, scopeEntriesToActiveInquiryTarget, summarizeScopedInquiryEntries } from './canonicalInquiryCorpus';
 import type { CorpusManifestEntry } from '../runner/types';
 
 function makeSceneEntries(bookPath: string, count: number): CorpusManifestEntry[] {
@@ -13,6 +13,12 @@ function makeSceneEntries(bookPath: string, count: number): CorpusManifestEntry[
 }
 
 describe('scopeEntriesToActiveInquiryTarget', () => {
+    it('builds stable book anchors for saga minimap refs', () => {
+        expect(buildInquiryBookAnchorId('Books/Book 1')).toMatch(/^book_[a-f0-9]{8}$/);
+        expect(buildInquiryBookAnchorId('Books/Book 1')).toBe(buildInquiryBookAnchorId('books/book 1'));
+        expect(buildInquiryBookAnchorId('Books/Book 1')).not.toBe(buildInquiryBookAnchorId('Books/Book 2'));
+    });
+
     it('keeps the active book corpus at 53 scenes instead of broadening to 91', () => {
         const entries: CorpusManifestEntry[] = [
             ...makeSceneEntries('Books/Book 1', 53),

@@ -1,5 +1,3 @@
-# Gossamer score manager
-
 `Gossamer score manager` opens the manual score-entry panel for the active signal.
 
 <div style="text-align: center; margin: 20px 0;">

@@ -1,5 +1,3 @@
-# Migrating from Scrivener & Other Apps
-
 If you are coming from Scrivener, Ulysses, or a traditional manuscript tool, Obsidian will feel different because it is a note-based, markdown-first app. Radial Timeline works with that model by reading and writing **scene metadata** in properties at the top of each note.
 
 > **YAML (friendly definition)**: YAML does not refer to camels. It stands for **Yet Another Markup Language**. It is human-readable, designed to help, and gives you full control over the information you track in each note (scene, beat, backdrop, etc). It can feel intimidating at first, but most writers get comfortable quickly and appreciate the power it provides.

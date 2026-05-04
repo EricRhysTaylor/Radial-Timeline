@@ -105,8 +105,8 @@ export const INQUIRY_GUIDANCE_LAYOUT = {
 } as const;
 
 export const INQUIRY_FINDING_ORDER = {
-    flow: ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'] as InquiryFinding['kind'][],
-    depth: ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'] as InquiryFinding['kind'][]
+    flow: ['thread', 'arc', 'escalation', 'conflict', 'payoff', 'structure', 'continuity', 'loose_end', 'unclear', 'error', 'none'] as InquiryFinding['kind'][],
+    depth: ['arc', 'thread', 'continuity', 'payoff', 'structure', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'] as InquiryFinding['kind'][]
 } as const;
 
 export const GLYPH_PLACEHOLDER_FLOW = INQUIRY_GLYPH_LAYOUT.placeholderFlow;

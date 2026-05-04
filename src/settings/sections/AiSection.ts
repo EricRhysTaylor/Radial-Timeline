@@ -1859,10 +1859,16 @@ export function renderAiSection(params: {
         }
         const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
         const citationsSuffix = citationsOn ? ' (includes citation wrappers)' : '';
+        const requestText = currentCorpus.requestTokens > 0
+            ? `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}${citationsSuffix}`
+            : `Full Request: Estimating...${citationsSuffix}`;
+        const corpusText = currentCorpus.corpus.estimatedTokens > 0
+            ? `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`
+            : 'Corpus: Estimating...';
         return {
-            sizeText: `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}${citationsSuffix}`,
+            sizeText: requestText,
             structureText: [
-                `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
+                corpusText,
                 formatCorpusStructureSummary(
                     currentCorpus.corpus.sceneCount,
                     currentCorpus.corpus.outlineCount

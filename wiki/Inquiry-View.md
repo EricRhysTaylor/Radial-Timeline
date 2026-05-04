@@ -1,5 +1,3 @@
-# Inquiry View
-
 The Inquiry View is the second major workspace in Radial Timeline. It is designed for corpus-level manuscript analysis rather than scene-by-scene editing.
 
 **Open**: Command palette → **`Radial Timeline: Open Inquiry`**, or click the waves icon in the ribbon.

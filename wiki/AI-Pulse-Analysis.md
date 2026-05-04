@@ -1,5 +1,3 @@
-**AI Pulse Triplet Analysis**
-
 *   **Scene-by-scene evaluation**: AI analyzes individual scenes in triplets (previous/current/next) to provide story pulse assessment and grade evaluation.
 *   **Multiple ordering options**: Run analysis in manuscript order (Narrative mode) or by subplot order to get different perspectives on narrative scene flow.
 *   **Editorial signal at a glance**: This is the Radial Timeline bread-and-butter evaluation system shown in scene hover meta, giving valuable editorial feedback on what is working and what is not in the manuscript.

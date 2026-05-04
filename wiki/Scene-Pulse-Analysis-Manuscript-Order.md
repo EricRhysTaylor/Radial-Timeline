@@ -1,5 +1,3 @@
-# Scene pulse analysis (manuscript order)
-
 `Scene pulse analysis (manuscript order)` opens the pulse command panel for manuscript-order analysis.
 
 <div style="text-align: center; margin: 20px 0;">

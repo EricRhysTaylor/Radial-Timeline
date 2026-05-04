@@ -1,5 +1,3 @@
-# Planetary time calculator
-
 `Planetary time calculator` opens the planetary conversion panel.
 
 <div style="text-align: center; margin: 20px 0;">

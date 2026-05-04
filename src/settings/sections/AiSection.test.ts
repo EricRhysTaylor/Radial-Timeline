@@ -235,6 +235,15 @@ describe('AI settings models table', () => {
         expect(source.includes("return `${Math.max(60, aiSettings.cacheWindows?.googleTtlSeconds ?? 900) / 60}m`;")).toBe(true);
     });
 
+    it('shows pending Inquiry corpus estimates as estimating instead of a real zero-token request', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('const requestText = currentCorpus.requestTokens > 0')).toBe(true);
+        expect(source.includes("`Full Request: Estimating...${citationsSuffix}`")).toBe(true);
+        expect(source.includes('const corpusText = currentCorpus.corpus.estimatedTokens > 0')).toBe(true);
+        expect(source.includes("'Corpus: Estimating...'")).toBe(true);
+        expect(source.includes('sizeText: requestText')).toBe(true);
+    });
+
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'))")).toBe(true);

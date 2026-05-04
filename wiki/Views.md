@@ -1,5 +1,3 @@
-# Views
-
 Radial Timeline has two co-equal views in Obsidian.
 
 ## Radial Timeline View

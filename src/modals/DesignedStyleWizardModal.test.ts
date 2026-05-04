@@ -10,6 +10,9 @@ import { describe, expect, it } from 'vitest';
 import {
     applyHeaderPreset,
     cloneArchetypeSpec,
+    derivePageFeel,
+    deriveHeaderStyle,
+    deriveSpacingPreset,
     generateUniqueDesignedSlug,
     validateDesignedStyleSpec,
 } from './DesignedStyleWizardModal';
@@ -195,5 +198,89 @@ describe('applyHeaderPreset', () => {
         expect(spec.runningHeader.oddRight).toBeUndefined();
         expect(spec.runningHeader.evenCenter).toBeUndefined();
         expect(spec.runningHeader.oddCenter).toBeUndefined();
+    });
+});
+
+describe('derivePageFeel', () => {
+    it('returns "balanced" when all four margins are 1.0in', () => {
+        const spec = freshSubmissionSpec();
+        spec.margins = { topIn: 1.0, bottomIn: 1.0, leftIn: 1.0, rightIn: 1.0 };
+        expect(derivePageFeel(spec)).toBe('balanced');
+    });
+
+    it('returns "compact" when all four margins are 0.75in', () => {
+        const spec = freshSubmissionSpec();
+        spec.margins = { topIn: 0.75, bottomIn: 0.75, leftIn: 0.75, rightIn: 0.75 };
+        expect(derivePageFeel(spec)).toBe('compact');
+    });
+
+    it('returns "airy" when all four margins are 1.25in', () => {
+        const spec = freshSubmissionSpec();
+        spec.margins = { topIn: 1.25, bottomIn: 1.25, leftIn: 1.25, rightIn: 1.25 };
+        expect(derivePageFeel(spec)).toBe('airy');
+    });
+
+    it('returns "custom" for Signature-style asymmetric margins', () => {
+        const spec = freshSubmissionSpec();
+        spec.margins = { topIn: 0.85, bottomIn: 1.05, leftIn: 0.9, rightIn: 0.9 };
+        expect(derivePageFeel(spec)).toBe('custom');
+    });
+
+    it('returns "custom" when one margin diverges from the others', () => {
+        const spec = freshSubmissionSpec();
+        spec.margins = { topIn: 1.0, bottomIn: 1.0, leftIn: 1.0, rightIn: 0.9 };
+        expect(derivePageFeel(spec)).toBe('custom');
+    });
+});
+
+describe('deriveSpacingPreset', () => {
+    it('returns "standard" for 1.5', () => {
+        const spec = freshSubmissionSpec();
+        spec.body.lineSpacing = 1.5;
+        expect(deriveSpacingPreset(spec)).toBe('standard');
+    });
+
+    it('returns "tight" for 1.0', () => {
+        const spec = freshSubmissionSpec();
+        spec.body.lineSpacing = 1.0;
+        expect(deriveSpacingPreset(spec)).toBe('tight');
+    });
+
+    it('returns "airy" for 2.0', () => {
+        const spec = freshSubmissionSpec();
+        spec.body.lineSpacing = 2.0;
+        expect(deriveSpacingPreset(spec)).toBe('airy');
+    });
+
+    it('returns "custom" for Modern Classic\'s 1.18', () => {
+        const spec = freshSubmissionSpec();
+        spec.body.lineSpacing = 1.18;
+        expect(deriveSpacingPreset(spec)).toBe('custom');
+    });
+});
+
+describe('deriveHeaderStyle', () => {
+    it('returns "none" when runningHeader.mode is "none"', () => {
+        const spec = freshSubmissionSpec();
+        spec.runningHeader.mode = 'none';
+        expect(deriveHeaderStyle(spec)).toBe('none');
+    });
+
+    it('returns "minimal" when runningHeader.mode is "centered-title"', () => {
+        const spec = freshSubmissionSpec();
+        spec.runningHeader.mode = 'centered-title';
+        expect(deriveHeaderStyle(spec)).toBe('minimal');
+    });
+
+    it('returns "literary" when runningHeader.mode is "split-author-page-title-page"', () => {
+        const spec = freshSubmissionSpec();
+        spec.runningHeader.mode = 'split-author-page-title-page';
+        expect(deriveHeaderStyle(spec)).toBe('literary');
+    });
+
+    it('returns "custom" for the contemporary "left-title-right-context" mode', () => {
+        const spec = freshSubmissionSpec();
+        spec.runningHeader.mode = 'left-title-right-context';
+        expect(deriveHeaderStyle(spec)).toBe('custom');
     });
 });
