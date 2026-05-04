@@ -10731,6 +10731,11 @@
   gap: var(--ert-gap-xs);
 }
 
+.ert-ui.ert-scope--settings .ert-layout-page-body.is-special.is-heading-offset {
+  justify-content: flex-start;
+  padding-top: var(--ert-layout-heading-top, 0);
+}
+
 /* Heading-at-top layout: heading anchors near the top + body lines flow
    below after a clear gap. The body-lines wrapper is a flex column with the
    same line-row gap as the default body so individual lines render distinctly

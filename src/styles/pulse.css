@@ -805,6 +805,11 @@
   align-items: center;
 }
 
+.ert-ui.ert-scope--modal .ert-layout-page-body.is-special.is-heading-offset {
+  justify-content: flex-start;
+  padding-top: var(--ert-layout-heading-top, 0);
+}
+
 /* Heading-at-top layout: scene-opener cards where the heading anchors near
    the top of the page and body lines flow below after a clear gap. Used by
    Standard / Contemporary scene cards and by the three Signature scene-mode
@@ -3629,6 +3634,39 @@ body > .tooltip {
 
 .ert-style-wizard__preset-card.is-active .ert-style-wizard__preset-folio-num {
   color: var(--text-normal);
+}
+
+/* -- Chapter style presets (each card mocks the chapter heading layout) -- */
+
+.ert-style-wizard__preset-chapter-body {
+  width: 80px;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--ert-gap-2xs);
+  padding: var(--ert-gap-sm) var(--ert-gap-2xs);
+  box-sizing: border-box;
+}
+
+.ert-style-wizard__preset-chapter-body--heading {
+  justify-content: center;
+}
+
+.ert-style-wizard__preset-chapter-num {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-normal);
+  letter-spacing: 0.04em;
+}
+
+.ert-style-wizard__preset-chapter-title {
+  font-size: 0.55rem;
+  font-style: italic;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
 }
 
 /* -- Glossary footer (term — definition rows) -- */

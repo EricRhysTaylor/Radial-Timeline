@@ -92,6 +92,14 @@ export type PictogramPageSide = {
      * page). When omitted, the heading is centered (legacy is-special layout).
      */
     headingPosition?: 'top';
+    /**
+     * Vertical offset of the special heading from the top of the page,
+     * expressed as a fraction (0..1) of the page height. Drives the
+     * `--ert-layout-heading-top` CSS variable on the body wrapper, used by
+     * the chapter pictogram to mirror the spec's `chapters.spacing.topFraction`.
+     * Ignored when `headingPosition === 'top'` (which uses its own offset).
+     */
+    headingTopFraction?: number;
 };
 
 export type PictogramSpread = {
@@ -180,15 +188,23 @@ function describeSpacing(spec: DesignedStyleSpec): string {
     return `${ls}×`;
 }
 
-/** Parts row — derived from parts.mode + parts.epigraph. Returns null when off. */
+/** Parts row — derived from parts.mode + parts.epigraph + placement + flags. Returns null when off. */
 function describeParts(spec: DesignedStyleSpec): string | null {
     if (spec.parts.mode === 'off') return null;
     const numbering = spec.parts.mode === 'roman' ? 'Roman numeral'
         : spec.parts.mode === 'arabic' ? 'Arabic number'
         : spec.parts.mode === 'word' ? 'Word'
         : 'Numbered';
-    const epigraph = spec.parts.epigraph ? ' with optional epigraph' : '';
-    return `Act opener — ${numbering}${epigraph}`;
+    const flags: string[] = [];
+    if (spec.parts.epigraph) {
+        flags.push(spec.parts.epigraphPlacement === 'own-page'
+            ? 'epigraph on own page'
+            : 'inline epigraph');
+    }
+    if (spec.parts.openAny) flags.push('openany');
+    if (!spec.parts.pageBreak) flags.push('no page break');
+    const tail = flags.length ? ` — ${flags.join(', ')}` : '';
+    return `Act opener — ${numbering}${tail}`;
 }
 
 /** Chapters row — derived from chapters.mode. Returns null when off. */
@@ -386,6 +402,11 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
             specialText: 'Chapter 1',
             ...(isTitled ? { specialSubtext: 'Boy with a Skull' } : {}),
         };
+        // Mirror the spec's vertical offset (Contemporary's deep top-padding,
+        // user-driven slider value, etc.) so the pictogram tracks the slider live.
+        if (typeof spec.chapters.spacing?.topFraction === 'number') {
+            chapterPage.headingTopFraction = spec.chapters.spacing.topFraction;
+        }
         // Contemporary's chapter-only page (no chapter title) — drop subtext.
         if (spec.chapters.mode === 'numbered' && spec.chapters.spacing) {
             chapterPage.specialText = 'Chapter';
@@ -974,6 +995,13 @@ function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClas
             }
         } else {
             body.addClass('is-special');
+            // When the spec carries a top-fraction offset (chapter spacing), apply
+            // it as a CSS custom property the stylesheet consumes to push the
+            // heading down from the top instead of vertically centering it.
+            if (typeof side.headingTopFraction === 'number' && side.headingTopFraction > 0) {
+                body.addClass('is-heading-offset');
+                body.style.setProperty('--ert-layout-heading-top', `${Math.round(side.headingTopFraction * 100)}%`);
+            }
             body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
             if (side.specialRule) {
                 body.createDiv({ cls: 'ert-layout-page-separator-rule' });

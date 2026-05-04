@@ -1296,15 +1296,9 @@ export class DesignedStyleWizardModal extends Modal {
 
     private renderChaptersSection(parent: HTMLElement): void {
         const body = this.createPanelBody(parent);
-        const modeRow = this.fieldRow(body, 'Chapter style');
-        this.makeRadioGroup(modeRow, [
-            { value: 'off',              label: 'Off' },
-            { value: 'numbered',         label: 'Numbered' },
-            { value: 'titled',           label: 'Titled' },
-            { value: 'numbered-titled',  label: 'Numbered + titled' },
-        ], this.spec.chapters.mode, (v) => {
-            this.mutateSpec((s) => { s.chapters.mode = v as DesignedStyleSpec['chapters']['mode']; });
-        });
+
+        // Visual chapter-style preset cards (replaces the radio).
+        this.renderChapterStylePresets(body);
 
         const breakRow = this.fieldRow(body, 'Page break before chapter');
         this.toggleInput(breakRow, this.spec.chapters.pageBreak, (v) => {
@@ -1323,14 +1317,14 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => {
                 s.chapters.spacing = { ...(s.chapters.spacing ?? {}), topFraction: n };
             });
-        });
+        }, (v) => `${Math.round(v * 100)}%`);
 
         const botCell = this.compactCell(spacingRow, 'Bottom spacing (% page)');
         this.sliderInput(botCell, this.spec.chapters.spacing?.bottomFraction ?? 0, 0, 0.3, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.chapters.spacing = { ...(s.chapters.spacing ?? {}), bottomFraction: n };
             });
-        });
+        }, (v) => `${Math.round(v * 100)}%`);
 
         const numRow = this.fieldRow(body, 'Section number depth (advanced)');
         this.makeRadioGroup(numRow, [
@@ -1338,6 +1332,72 @@ export class DesignedStyleWizardModal extends Modal {
             { value: '1', label: '1 (numbered scenes)' },
         ], String(this.spec.chapters.secnumdepth ?? 0), (v) => {
             this.mutateSpec((s) => { s.chapters.secnumdepth = (v === '1' ? 1 : 0); });
+        });
+
+        this.renderPanelGlossary(body, [
+            { term: 'Chapter style', definition: 'Whether each chapter heading shows a number, a title, both, or nothing.' },
+            { term: 'Top / bottom spacing', definition: 'How far down the page the chapter heading sits, and the gap below it before body text starts. Driven by % of page height.' },
+            { term: 'Section number depth', definition: 'LaTeX `\\setcounter{secnumdepth}{n}` — when 1, scene-level sections get auto-numbers; when 0, no auto numbering.' },
+        ]);
+    }
+
+    private renderChapterStylePresets(parent: HTMLElement): void {
+        const current = this.spec.chapters.mode;
+        const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
+        const presets: Array<{
+            value: DesignedStyleSpec['chapters']['mode'];
+            label: string;
+            render: (card: HTMLElement) => void;
+        }> = [
+            {
+                value: 'off', label: 'Off',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-chapter-body' });
+                    for (let i = 0; i < 5; i += 1) stack.createDiv({ cls: 'ert-style-wizard__preset-line-bar' });
+                },
+            },
+            {
+                value: 'numbered', label: 'Numbered',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-chapter-body ert-style-wizard__preset-chapter-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-chapter-num', text: 'Chapter 1' });
+                },
+            },
+            {
+                value: 'titled', label: 'Titled',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-chapter-body ert-style-wizard__preset-chapter-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-chapter-title', text: 'Boy with a Skull' });
+                },
+            },
+            {
+                value: 'numbered-titled', label: 'Numbered + titled',
+                render: (card) => {
+                    const stack = card.createDiv({ cls: 'ert-style-wizard__preset-chapter-body ert-style-wizard__preset-chapter-body--heading' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-chapter-num', text: 'Chapter 1' });
+                    stack.createSpan({ cls: 'ert-style-wizard__preset-chapter-title', text: 'Boy with a Skull' });
+                },
+            },
+        ];
+        presets.forEach(({ value, label, render }) => {
+            const card = row.createDiv({ cls: 'ert-style-wizard__preset-card' });
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Chapter style: ${label}`);
+            if (current === value) card.addClass('is-active');
+            render(card);
+            card.createDiv({ cls: 'ert-style-wizard__preset-card-label', text: label });
+            const apply = () => {
+                this.mutateSpec((s) => { s.chapters.mode = value; });
+                this.refreshConfigOnly();
+            };
+            card.addEventListener('click', apply);
+            card.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    apply();
+                }
+            });
         });
     }
 
@@ -1485,15 +1545,21 @@ export class DesignedStyleWizardModal extends Modal {
         onChange: (value: string) => void,
     ): void {
         const group = parent.createDiv({ cls: 'ert-style-wizard__radio-group' });
+        let activeValue = current;
+        const buttons: Array<{ value: string; el: HTMLElement }> = [];
         options.forEach((option) => {
             const btn = group.createEl('button', {
                 cls: 'ert-style-wizard__radio-btn',
                 text: option.label,
             });
             btn.type = 'button';
-            if (option.value === current) btn.addClass('is-active');
+            if (option.value === activeValue) btn.addClass('is-active');
+            buttons.push({ value: option.value, el: btn });
             btn.addEventListener('click', () => {
-                if (option.value === current) return;
+                if (option.value === activeValue) return;
+                buttons.forEach(b => b.el.removeClass('is-active'));
+                btn.addClass('is-active');
+                activeValue = option.value;
                 onChange(option.value);
             });
         });
@@ -1537,6 +1603,7 @@ export class DesignedStyleWizardModal extends Modal {
         max: number,
         step: number,
         onChange: (value: number) => void,
+        format?: (value: number) => string,
     ): void {
         const wrapper = parent.createDiv({ cls: 'ert-style-wizard__slider' });
         const input = wrapper.createEl('input', {
@@ -1548,11 +1615,12 @@ export class DesignedStyleWizardModal extends Modal {
             },
         });
         input.value = String(value);
-        const display = wrapper.createSpan({ cls: 'ert-style-wizard__slider-value', text: value.toFixed(2) });
+        const fmt = format ?? ((v: number) => v.toFixed(2));
+        const display = wrapper.createSpan({ cls: 'ert-style-wizard__slider-value', text: fmt(value) });
         input.addEventListener('input', () => {
             const parsed = parseFloat(input.value);
             if (!Number.isFinite(parsed)) return;
-            display.setText(parsed.toFixed(2));
+            display.setText(fmt(parsed));
             onChange(parsed);
         });
     }
