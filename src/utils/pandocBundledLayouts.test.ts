@@ -12,6 +12,7 @@ import {
     ensureBundledLayoutInstalledForExport,
     ensureBundledPandocLayoutsRegistered,
     ensureSpecDrivenBundledFictionTemplatesCurrent,
+    getBundledFontPath,
     getBundledPandocLayoutContent,
     getBundledPandocLayouts,
     installBundledPandocLayouts,
@@ -131,6 +132,24 @@ describe('bundled pandoc layout export auto-install', () => {
 
         const after = validatePandocLayout(plugin, layout);
         expect(after.valid).toBe(true);
+    });
+
+    it('refreshes bundled font assets even when the .tex template is already installed', async () => {
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
+        const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
+        const canonical = getBundledPandocLayoutContent(layout.id)!;
+        const fontDir = path.join(getBundledFontPath()!, 'source-serif-4');
+
+        await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
+        await (plugin.app.vault as any).create(target, canonical);
+        fs.rmSync(fontDir, { recursive: true, force: true });
+        expect(fs.existsSync(path.join(fontDir, 'SourceSerif4-Regular.otf'))).toBe(false);
+
+        const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
+        expect(result.installed).toBe(false);
+        expect(result.failed).toBe(false);
+        expect(fs.existsSync(path.join(fontDir, 'SourceSerif4-Regular.otf'))).toBe(true);
+        expect(fs.existsSync(path.join(fontDir, 'SourceSerif4-BoldIt.otf'))).toBe(true);
     });
 
     it('canonical spec-driven content for each bundled fiction layout has the spec-generator semantic markers', () => {

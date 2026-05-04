@@ -7,6 +7,7 @@ import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode, type ManuscriptSceneHeadingMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics, getStructuredFontDiagnostic } from '../utils/exportFormats';
+import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { getActiveBook, getActiveBookTitle, getActiveBookSourceFolder, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
@@ -283,6 +284,7 @@ export class ManuscriptOptionsModal extends Modal {
     private layoutHeaderEl?: HTMLElement;
     private layoutContainerEl?: HTMLElement;
     private selectedLayoutId?: string;
+    private bundledFontInstallAttempted: Set<string> = new Set();
     private manuscriptPresetDescEl?: HTMLElement;
     private manuscriptPresetGridEl?: HTMLElement;
     private outlinePresetDescEl?: HTMLElement;
@@ -1898,6 +1900,7 @@ export class ManuscriptOptionsModal extends Modal {
         if (activeBook.lastUsedPandocLayoutByPreset.novel === layoutId) return;
         activeBook.lastUsedPandocLayoutByPreset.novel = layoutId;
         await this.plugin.saveSettings();
+        this.plugin.refreshTimelineIfNeeded(null);
     }
 
     private async setActiveSceneHeadingMode(
@@ -2010,6 +2013,22 @@ export class ManuscriptOptionsModal extends Modal {
         return lines;
     }
 
+    private ensureBundledFontsForLayout(layout: PandocLayoutTemplate, state: string): void {
+        if (!layout.bundled || state !== 'missing-bundled') return;
+        if (this.bundledFontInstallAttempted.has(layout.id)) return;
+        this.bundledFontInstallAttempted.add(layout.id);
+
+        void ensureBundledLayoutInstalledForExport(this.plugin, layout).then(() => {
+            if (
+                this.selectedLayoutId === layout.id
+                && this.exportType === 'manuscript'
+                && this.outputFormat === 'pdf'
+            ) {
+                this.updateTemplateWarning();
+            }
+        });
+    }
+
     /**
      * Update PDF Output summary based on current preset and format
      */
@@ -2081,6 +2100,7 @@ export class ManuscriptOptionsModal extends Modal {
         // authoritative font-state summary — it correctly handles the Latin
         // Modern (lmodern) and bundled-Sorts-Mill-Goudy special cases.
         const structuredFontDiag = getStructuredFontDiagnostic(selectedLayout);
+        this.ensureBundledFontsForLayout(selectedLayout, structuredFontDiag.state);
         const primaryRequested = fontDiagnostics.optionalFonts[0] || fontDiagnostics.requiredFonts[0] || null;
         const hasPrimaryMissing = canVerifyFonts && primaryRequested
             ? fontDiagnostics.missingOptionalFonts.includes(primaryRequested) || fontDiagnostics.missingRequiredFonts.includes(primaryRequested)
@@ -2229,10 +2249,9 @@ export class ManuscriptOptionsModal extends Modal {
             if (structuredFontDiag.state !== 'ok') {
                 const line = content.createDiv({ cls: 'ert-pdf-output-line' });
                 if (structuredFontDiag.state === 'missing-bundled') {
-                    // Build asset missing — should never happen in normal use,
-                    // so the affordance is "reinstall plugin", not a download.
                     line.appendText(
-                        structuredFontDiag.installHint?.message || 'Plugin asset missing — reinstall plugin.'
+                        structuredFontDiag.installHint?.message
+                        || 'Required bundled font files are missing from Radial Timeline/Pandoc/fonts. Click Install fonts in Settings > Publish.'
                     );
                 } else {
                     // Missing system font — render the required-font message,

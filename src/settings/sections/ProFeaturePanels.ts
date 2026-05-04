@@ -52,6 +52,7 @@ import {
     collectSpreadStatuses,
     getFictionVariantForLayout,
     getLayoutFeatures,
+    getLayoutFeaturesFromSpec,
     getLayoutPictogramRows,
     renderLayoutFeatureList,
     renderLayoutPictograms,
@@ -1954,7 +1955,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const visual = container.createDiv({ cls: 'ert-layout-visual' });
         const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
 
-        const features = getLayoutFeatures(variant);
+        // Prefer spec-driven feature rows when the layout carries a designedSpec
+        // (every bundled fiction template + every Designed style). Falls back to
+        // the variant-keyed legacy rows for imports / unknown layouts that don't
+        // carry a spec — same pattern as the pictogram cutover.
+        const features = options.layout?.designedSpec
+            ? getLayoutFeaturesFromSpec(options.layout.designedSpec)
+            : getLayoutFeatures(variant);
         const featureCol = renderLayoutFeatureList(cols, features);
 
         // Description row: appended below feature rows, separated by a subtle rule.

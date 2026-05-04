@@ -699,6 +699,16 @@ function latinModernFontFilesPresent(): boolean {
     }
 }
 
+function getBundledFontInstallMessage(fontKey: DesignedStyleSpec['body']['font']): string {
+    if (fontKey === 'source-serif') {
+        return 'Contemporary Literary requires bundled Source Serif 4 files in Radial Timeline/Pandoc/fonts/source-serif-4. Click Install fonts in Settings > Publish.';
+    }
+    if (fontKey === 'sorts-mill-goudy') {
+        return 'Signature Literary requires bundled Sorts Mill Goudy files in Radial Timeline/Pandoc/fonts/sorts-mill-goudy. Click Install fonts in Settings > Publish.';
+    }
+    return 'Required bundled font files are missing from Radial Timeline/Pandoc/fonts. Click Install fonts in Settings > Publish.';
+}
+
 /**
  * Spec-driven font diagnostic.
  *
@@ -764,7 +774,7 @@ export function getStructuredFontDiagnostic(
             resolvedFontName: primaryFontName,
             installHint: {
                 source: 'bundled',
-                message: 'Plugin asset missing — reinstall plugin.',
+                message: getBundledFontInstallMessage(fontKey),
             },
         };
     }

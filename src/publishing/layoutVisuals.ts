@@ -927,7 +927,7 @@ export function collectSpreadStatuses(
 // the standard HTMLElement API plus Obsidian's createDiv/createSpan
 // augmentations (active wherever 'obsidian' is imported in the consumer).
 
-export function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClass: string): void {
+function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClass: string): void {
     const page = parent.createDiv({ cls: `ert-layout-page ${sideClass}` });
 
     const hdr = page.createDiv({ cls: 'ert-layout-page-header' });
@@ -1009,7 +1009,7 @@ export function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, s
     }
 }
 
-export function renderLayoutSpread(parent: HTMLElement, spread: PictogramSpread): HTMLElement {
+function renderLayoutSpread(parent: HTMLElement, spread: PictogramSpread): HTMLElement {
     const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
     if (spread.warningLevel === 'warning') {
         spreadEl.addClass('ert-layout-spread--warning');

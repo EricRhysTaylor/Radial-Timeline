@@ -31,6 +31,7 @@ function makeSnapshot(overrides: Partial<TimelineSnapshot> = {}): TimelineSnapsh
     activeBookTitle: 'Untitled Book',
     readabilityScale: 'normal',
     showChapterMarkers: false,
+    activeNovelPandocLayoutId: '',
     recentMovesHash: '',
     timestamp: 1,
     ...overrides
@@ -78,5 +79,21 @@ describe('detectChanges', () => {
     expect(result.changeTypes.has(ChangeType.TARGET_DATES)).toBe(true);
     expect(result.canUseSelectiveUpdate).toBe(true);
     expect(result.updateStrategy).toBe('selective');
+  });
+
+  it('forces a full render when the active novel PDF layout changes', () => {
+    const prev = makeSnapshot({
+      activeNovelPandocLayoutId: 'bundled-fiction-signature-literary'
+    });
+    const current = makeSnapshot({
+      activeNovelPandocLayoutId: 'bundled-fiction-modern-classic',
+      timestamp: 2
+    });
+
+    const result = detectChanges(prev, current);
+
+    expect(result.changeTypes.has(ChangeType.SETTINGS)).toBe(true);
+    expect(result.canUseSelectiveUpdate).toBe(false);
+    expect(result.updateStrategy).toBe('full');
   });
 });

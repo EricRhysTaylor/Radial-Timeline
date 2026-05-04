@@ -207,7 +207,7 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         expect(diag.installHint).toBeUndefined();
     });
 
-    it('returns state: missing-bundled with reinstall hint when files are absent', () => {
+    it('returns state: missing-bundled with install hint when files are absent', () => {
         // Point at a directory that doesn't contain the bundled font files.
         setBundledFontPath(tempRoot);
 
@@ -215,7 +215,7 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         const diag = getStructuredFontDiagnostic(layout);
         expect(diag.state).toBe('missing-bundled');
         expect(diag.installHint?.source).toBe('bundled');
-        expect(diag.installHint?.message).toMatch(/reinstall/i);
+        expect(diag.installHint?.message).toMatch(/Install fonts/i);
         expect(diag.installHint?.url).toBeUndefined();
     });
 
@@ -255,6 +255,7 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         const diag = getStructuredFontDiagnostic(layout);
         expect(diag.state).toBe('missing-bundled');
         expect(diag.installHint?.source).toBe('bundled');
+        expect(diag.installHint?.message).toMatch(/source-serif-4/);
     });
 });
 
@@ -321,17 +322,17 @@ describe('renderFontDiagnosticLine', () => {
         expect(line).not.toMatch(/Using TeX Gyre Pagella/);
     });
 
-    it('renders the bundled-asset reinstall message for missing-bundled', () => {
+    it('renders the bundled-asset install message for missing-bundled', () => {
         const line = renderFontDiagnosticLine({
             state: 'missing-bundled',
             primaryFontName: 'Sorts Mill Goudy',
             resolvedFontName: 'Sorts Mill Goudy',
             installHint: {
                 source: 'bundled',
-                message: 'Plugin asset missing — reinstall plugin.',
+                message: 'Signature Literary requires bundled Sorts Mill Goudy files in Radial Timeline/Pandoc/fonts/sorts-mill-goudy. Click Install fonts in Settings > Publish.',
             },
         });
-        expect(line).toMatch(/reinstall/i);
+        expect(line).toMatch(/Install fonts/i);
     });
 });
 

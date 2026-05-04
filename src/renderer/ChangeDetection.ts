@@ -8,7 +8,7 @@ import type { TimelineItem, RadialTimelineSettings } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
-import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
+import { DEFAULT_BOOK_TITLE, getActiveBook, getActiveBookTitle } from '../utils/books';
 import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
 
 /**
@@ -66,6 +66,7 @@ export interface TimelineSnapshot {
     timelineScope: string;
     readabilityScale: string;
     showChapterMarkers: boolean;
+    activeNovelPandocLayoutId: string;
     
     // Gossamer
     gossamerRunExists: boolean;
@@ -230,6 +231,7 @@ export function createSnapshot(
         timelineScope: settings.timelineScope ?? 'book',
         readabilityScale: settings.readabilityScale ?? 'normal',
         showChapterMarkers: settings.showChapterMarkers ?? false,
+        activeNovelPandocLayoutId: getActiveNovelPandocLayoutId(settings),
         gossamerRunExists: !!gossamerRun,
         gossamerRunHash,
         updateAvailable: getVersionCheckService()?.isUpdateAvailable() ?? false,
@@ -298,7 +300,8 @@ export function detectChanges(
         prev.activeBookTitle !== current.activeBookTitle ||
         prev.timelineScope !== current.timelineScope ||
         prev.readabilityScale !== current.readabilityScale ||
-        prev.showChapterMarkers !== current.showChapterMarkers) {
+        prev.showChapterMarkers !== current.showChapterMarkers ||
+        prev.activeNovelPandocLayoutId !== current.activeNovelPandocLayoutId) {
         changeTypes.add(ChangeType.SETTINGS);
     }
     
@@ -374,6 +377,16 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
 
 function stringifyPovForHash(pov: TimelineItem['pov']): string {
     return typeof pov === 'string' ? pov : '';
+}
+
+function getActiveNovelPandocLayoutId(settings: RadialTimelineSettings): string {
+    const activeBook = getActiveBook(settings);
+    const bookLayoutId = activeBook?.lastUsedPandocLayoutByPreset?.novel;
+    if (typeof bookLayoutId === 'string' && bookLayoutId.trim()) {
+        return bookLayoutId.trim();
+    }
+    const globalLayoutId = settings.lastUsedPandocLayoutByPreset?.novel;
+    return typeof globalLayoutId === 'string' ? globalLayoutId.trim() : '';
 }
 
 /**

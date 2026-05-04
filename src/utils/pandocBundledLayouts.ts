@@ -670,6 +670,12 @@ export async function ensureBundledLayoutInstalledForExport(
 ): Promise<{ installed: boolean; failed: boolean }> {
     if (!layout.bundled) return { installed: false, failed: false };
 
+    // Export can be reached long after a bundled .tex template was installed.
+    // Refresh the vault-local font assets every time so newly bundled fonts
+    // self-heal without asking users to delete or move files by hand.
+    await installBundledPandocFonts(plugin);
+    setPandocFontPathsForVault(plugin);
+
     // For spec-driven bundled fiction layouts, the .tex on disk is a derived
     // artifact: source of truth is the spec generator. Compare on-disk content
     // against the canonical output and overwrite if it differs. One read, one
