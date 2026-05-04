@@ -18,6 +18,7 @@ import { getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem, g
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
+import { DesignedStyleWizardModal } from '../../modals/DesignedStyleWizardModal';
 import { confirmWithErtModal } from '../../modals/ErtConfirmModal';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
@@ -2596,6 +2597,35 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 });
             }
 
+            // Edit pencil for designed-origin layouts: opens the wizard
+            // pre-filled with the saved spec so the user can iterate.
+            if (layout.origin === 'designed' && layout.designedSpec) {
+                s.addExtraButton(btn => {
+                    btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-designed-edit');
+                    btn.setIcon('pencil');
+                    btn.setTooltip('Edit designed style');
+                    if (!isActive) {
+                        btn.extraSettingsEl.addClass('ert-pro-locked');
+                    }
+                    btn.onClick(() => {
+                        if (!isActive) {
+                            new Notice('Editing designed styles requires Pro.');
+                            return;
+                        }
+                        new DesignedStyleWizardModal(app, plugin, {
+                            initialSpec: layout.designedSpec!,
+                            initialName: layout.name,
+                            initialDescription: layout.description ?? '',
+                            initialLayoutId: layout.id,
+                            onSave: async () => {
+                                renderLayoutRows();
+                                refreshPublishingStatusCard();
+                            },
+                        }).open();
+                    });
+                });
+            }
+
             if (!isBundled) {
                 s.addExtraButton(btn => {
                     if (isImported) {
@@ -2810,6 +2840,32 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     //         new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
     //     });
     // });
+
+    // Designed Style Wizard entry point — opens a two-column modal that lets
+    // a Pro user author a DesignedStyleSpec from scratch (or starting from one
+    // of the four bundled archetypes). The .tex file is generated from the
+    // spec on save.
+    layoutManageSetting.addButton(button => {
+        button.setButtonText('Design your own…');
+        button.setTooltip('Design a new PDF style from scratch.');
+        button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
+        if (!isActive) {
+            button.buttonEl.addClass('ert-pro-locked');
+            button.setTooltip('Designing custom styles requires Pro.');
+        }
+        button.onClick(() => {
+            if (!isActive) {
+                new Notice('Designing custom styles requires Pro.');
+                return;
+            }
+            new DesignedStyleWizardModal(app, plugin, {
+                onSave: async () => {
+                    renderLayoutRows();
+                    refreshPublishingStatusCard();
+                },
+            }).open();
+        });
+    });
     layoutManageSetting.addButton(button => {
         installAllButton = button;
         button.setButtonText('Install all');
