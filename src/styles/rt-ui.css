@@ -7730,7 +7730,10 @@
 }
 
 .ert-ui.ert-scope--modal .ert-modal-header {
-  margin-bottom: 0;
+  /* Breathing room between the header block (badges + title + subtitle) and
+     whatever form / preview / content follows. Previously 0; that led every
+     modal to crowd its description right against the next form field. */
+  margin-bottom: var(--ert-gap-lg);
   gap: var(--ert-gap-sm);
 }
 
@@ -10745,6 +10748,12 @@
   gap: var(--ert-gap-cozy);
   padding-top: var(--ert-gap-sm);
 }
+.ert-ui.ert-scope--settings .ert-layout-page-body.is-heading-top.is-heading-offset {
+  padding-top: var(--ert-layout-heading-top, var(--ert-gap-sm));
+}
+.ert-ui.ert-scope--settings .ert-layout-page-body.is-heading-top.is-heading-bottom-spaced {
+  gap: var(--ert-layout-heading-bottom, var(--ert-gap-cozy));
+}
 .ert-ui.ert-scope--settings .ert-layout-page-lines-after-heading {
   display: flex;
   flex-direction: column;
@@ -10799,12 +10808,15 @@
 .ert-ui.ert-scope--settings .ert-layout-page-epigraph-text {
   font-family: var(--_picto-mono);
   font-size: var(--_picto-font-size);
-  font-style: italic;
   line-height: 1;
   color: var(--text-muted);
   text-align: center;
   white-space: nowrap;
   margin-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-page-epigraph-text.is-italic {
+  font-style: italic;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-epigraph-attr {

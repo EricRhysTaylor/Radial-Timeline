@@ -39,11 +39,23 @@ function standardPageBreak(): string {
     return '\\clearpage';
 }
 
-function escapeForLatex(value: string): string {
-    return value
-        .replace(/\\/g, '\\textbackslash{}')
-        .replace(/[{}]/g, '')
-        .replace(/[#$%&_^~]/g, m => `\\${m}`);
+/**
+ * Escape user-supplied text for safe insertion into LaTeX. Covers all 10
+ * special characters; output passes the LaTeX text-mode contract.
+ *
+ * Single-pass replacement so the braces / backslashes we introduce don't
+ * get re-escaped by a subsequent pass. Previously braces were silently
+ * stripped; now they round-trip as visible glyphs.
+ */
+export function escapeForLatex(value: string): string {
+    return value.replace(/[\\{}#$%&_^~]/g, (m) => {
+        switch (m) {
+            case '\\': return '\\textbackslash{}';
+            case '^':  return '\\textasciicircum{}';
+            case '~':  return '\\textasciitilde{}';
+            default:   return `\\${m}`;
+        }
+    });
 }
 
 function paperGeometry(spec: DesignedStyleSpec): { width: string; height: string } {

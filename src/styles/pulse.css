@@ -822,6 +822,16 @@
   gap: var(--ert-gap-cozy);
   padding-top: var(--ert-gap-sm);
 }
+/* scene.openerSpacing.topFraction → push the heading further down from the
+   top of the page. Overrides the default xs padding when the slider is > 0. */
+.ert-ui.ert-scope--modal .ert-layout-page-body.is-heading-top.is-heading-offset {
+  padding-top: var(--ert-layout-heading-top, var(--ert-gap-sm));
+}
+/* scene.openerSpacing.bottomFraction → expand the gap between the heading
+   and the body lines below. */
+.ert-ui.ert-scope--modal .ert-layout-page-body.is-heading-top.is-heading-bottom-spaced {
+  gap: var(--ert-layout-heading-bottom, var(--ert-gap-cozy));
+}
 .ert-ui.ert-scope--modal .ert-layout-page-lines-after-heading {
   display: flex;
   flex-direction: column;
@@ -862,8 +872,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-align: center;
-  font-style: italic;
   margin-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal .ert-layout-page-epigraph-text.is-italic {
+  font-style: italic;
 }
 
 .ert-ui.ert-scope--modal .ert-layout-page-epigraph-attr {
@@ -2865,8 +2878,36 @@ body > .tooltip {
   padding: var(--ert-pad-md);
 }
 
-.ert-style-wizard__header {
-  margin-bottom: var(--ert-gap-sm);
+/* Wizard header spacing now lives on the canonical .ert-modal-header rule
+   (rt-ui.css), so every modal — not just this one — gets breathing room
+   between description and content. No wizard override needed. */
+
+/* Combined mode badge — nested PRO chip + DESIGN/EDIT label in one pill.
+   PRO is downsized so it reads as a "stamp" on the larger badge. */
+.ert-ui .ert-modal-badge--with-pro {
+  padding-left: var(--ert-gap-3xs);
+}
+.ert-ui .ert-modal-badge--with-pro .ert-modal-badge__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Match canonical .ert-badgePill--sm horizontal padding (gap-sm = 8px) so
+   the PRO text has real breathing room from the pill edges, but a touch
+   tighter vertically since the badge already constrains height. */
+.ert-ui .ert-modal-badge__pro-inline {
+  font-size: 0.65rem;
+  padding: var(--ert-gap-2xs) var(--ert-gap-sm);
+  line-height: 1;
+}
+.ert-ui .ert-modal-badge__pro-inline .ert-badgePill__icon {
+  width: 10px;
+  height: 10px;
+}
+.ert-ui .ert-modal-badge__pro-inline .ert-badgePill__icon svg {
+  width: 10px;
+  height: 10px;
 }
 
 .ert-style-wizard__meta {
@@ -2928,8 +2969,26 @@ body > .tooltip {
 .ert-style-wizard__category-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--ert-gap-sm);
+}
+
+.ert-style-wizard__category-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-tight);
+}
+
+.ert-style-wizard__category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.ert-style-wizard__category-icon .svg-icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* Category dropdown width comes from the canonical ert-input--md utility
@@ -3726,6 +3785,30 @@ body > .tooltip {
   color: var(--text-muted);
   margin-top: var(--ert-gap-sm);
   margin-bottom: var(--ert-gap-2xs);
+}
+
+/* Header-style preset heading: row label on the left, "modified" badge on
+   the right when the preset has been customized via per-corner overrides. */
+.ert-style-wizard__preset-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-style-wizard__preset-modified-badge {
+  font-size: 0.72rem;
+  color: var(--ert-alert-warning-color);
+  font-style: italic;
+}
+
+/* When a preset card is active AND the user has overridden corners, the card
+   gets a softer dashed accent so the user can see the preset is the
+   "starting point" but no longer pure. */
+.ert-style-wizard__preset-card.is-active.is-modified {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ert-alert-warning-color) 70%, var(--ert-accent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ert-alert-warning-color) 50%, transparent);
 }
 
 .ert-style-wizard__preset-scene-body {

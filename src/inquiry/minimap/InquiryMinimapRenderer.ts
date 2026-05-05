@@ -252,6 +252,7 @@ export class InquiryMinimapRenderer {
     private minimapTicks: SVGGElement[] = [];
     private minimapGroup?: SVGGElement;
     private minimapLayout?: { startX: number; length: number };
+    private lastTokenCapFillRatio = 0;
 
     // ── Backbone ─────────────────────────────────────────────────────
 
@@ -800,6 +801,7 @@ export class InquiryMinimapRenderer {
         formatTokenEstimate?: (value: number) => string
     ): void {
         if (!this.minimapTokenCapBar || !this.minimapLayout) return;
+        this.lastTokenCapFillRatio = fillRatio;
         const length = this.minimapLayout.length;
         const filledWidth = length * Math.min(Math.max(fillRatio, 0), 1);
         this.minimapTokenCapBar.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
@@ -1125,6 +1127,7 @@ export class InquiryMinimapRenderer {
         if (!this.minimapGroup) return;
         const reuseState = advanced?.reuseState ?? 'idle';
         this.minimapGroup.setAttribute('data-reuse-state', reuseState);
+        this.updateTokenCapCachedOverlay(this.lastTokenCapFillRatio, advanced);
     }
 
     // ── Preview panel position ───────────────────────────────────────

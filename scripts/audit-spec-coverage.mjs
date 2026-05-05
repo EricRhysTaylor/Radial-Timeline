@@ -155,11 +155,7 @@ const KNOWN_PREVIEW_HIDDEN = new Map([
     ['chapters.secnumdepth',                       'Compile-time numbering, not previewable.'],
     ['scene.suppressHeaderFooterOnOpener',         'Visualized via suppressHeader/suppressFooter on the SCENE pictogram.'],
     ['scene.firstWordEmphasisOnOpener',            'Subtle typography; not visualized.'],
-    ['scene.openerSpacing.topFraction',            'Not yet wired into pictogram; LaTeX-only.'],
-    ['scene.openerSpacing.bottomFraction',         'Not yet wired into pictogram; LaTeX-only.'],
-    ['epigraph.enabled',                           'Surfaced via Parts epigraph descriptor.'],
-    ['epigraph.italic',                            'Surfaced via Parts epigraph descriptor.'],
-    ['epigraph.attributionStyle',                  'Surfaced via Parts epigraph descriptor.'],
+    ['epigraph.attributionStyle',                  'Em-dash + caps vs plain — minor styling, not visualized in the small pictogram.'],
 ]);
 
 // GENERATOR_HIDDEN — extremely rare; a field that consciously has no LaTeX

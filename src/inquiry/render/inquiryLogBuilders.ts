@@ -17,6 +17,43 @@ const PROVIDER_LABELS = {
     ollama: 'Ollama'
 } as const;
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function getNonEmptyString(record: Record<string, unknown> | null, key: string): string | null {
+    const value = record?.[key];
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function formatCacheTransportDiagnostic(provider: string, requestPayload: unknown): string {
+    const payload = asRecord(requestPayload);
+    if (!payload) return '- Cache transport: request payload not captured';
+
+    if (provider === 'openai') {
+        const promptCacheKey = getNonEmptyString(payload, 'prompt_cache_key');
+        return `- OpenAI prompt_cache_key: ${promptCacheKey ?? 'not present in request payload'}`; // SAFE: log diagnostic must explicitly say when captured payload lacks OpenAI cache key
+    }
+
+    if (provider === 'google') {
+        const cachedContent = getNonEmptyString(payload, 'cachedContent');
+        return `- Gemini cachedContent: ${cachedContent ?? 'not present in request payload'}`; // SAFE: log diagnostic must explicitly say when captured payload lacks Gemini cachedContent
+    }
+
+    if (provider === 'anthropic') {
+        const dispatchDiagnostics = asRecord(payload.dispatchDiagnostics);
+        const requestedCacheTtl = getNonEmptyString(dispatchDiagnostics, 'requestedCacheTtl');
+        const cacheBoundaryIndex = dispatchDiagnostics?.cacheBoundaryIndex;
+        const hasCacheBoundary = typeof cacheBoundaryIndex === 'number' && Number.isFinite(cacheBoundaryIndex) && cacheBoundaryIndex >= 0;
+        if (hasCacheBoundary || (requestedCacheTtl && requestedCacheTtl !== 'none')) {
+            return `- Anthropic cache_control: present${requestedCacheTtl ? ` · ttl=${requestedCacheTtl}` : ''}`;
+        }
+        return '- Anthropic cache_control: not present in request payload';
+    }
+
+    return '- Cache transport: not applicable for this provider';
+}
+
 type InquiryLogCostEstimateInput = {
     executionInputTokens: number;
     expectedOutputTokens: number;
@@ -372,29 +409,22 @@ export function buildInquiryLogContent(args: {
     }
 
     if (!isSimulated) {
-        // Cache diagnostics — emitted so two back-to-back runs can be compared
-        // to confirm whether the prompt_cache_key was actually stable. Compare
-        // these fields between two runs of the same question on the same corpus:
-        // if cacheReuseFingerprint differs, the cache key drifted (most likely
-        // because file mtime drifted), so OpenAI/Anthropic placed the requests
-        // in different cache scopes and could not serve a hit.
-        const requestPayload = trace.requestPayload as Record<string, unknown> | undefined;
-        const promptCacheKeySent = requestPayload && typeof requestPayload === 'object'
-            ? (requestPayload as { prompt_cache_key?: unknown }).prompt_cache_key
-            : undefined;
+        // Cache diagnostics are provider-specific. Avoid implying a transport was
+        // unsupported when it simply is not used by this provider.
+        const requestPayload = trace.requestPayload;
         const rawUsageRecord = trace.response?.responseData
             && typeof trace.response.responseData === 'object'
                 ? (trace.response.responseData as { usage?: unknown }).usage
                 : undefined;
         const rawUsageJson = rawUsageRecord !== undefined
             ? JSON.stringify(rawUsageRecord)
-            : 'unavailable';
+            : (usage ? 'not captured; normalized token usage available' : 'not captured');
         const userPromptChars = typeof trace.userPrompt === 'string' ? trace.userPrompt.length : 0;
         const evidenceChars = typeof trace.evidenceText === 'string' ? trace.evidenceText.length : 0;
         const prefixChars = Math.max(0, userPromptChars - evidenceChars);
         lines.push('## Cache Diagnostics');
-        lines.push(`- cacheReuseFingerprint: ${result.cacheReuseFingerprint ?? '(unset)'}`);
-        lines.push(`- prompt_cache_key sent: ${typeof promptCacheKeySent === 'string' && promptCacheKeySent.length > 0 ? promptCacheKeySent : '(none — bypassProviderReuse or unsupported)'}`);
+        lines.push(`- cacheReuseFingerprint: ${result.cacheReuseFingerprint ?? '(unset)'}`); // SAFE: log diagnostic, not analysis input
+        lines.push(formatCacheTransportDiagnostic(result.aiProvider ?? '', requestPayload)); // SAFE: provider may be absent on malformed/error legacy logs
         lines.push(`- Cacheable prefix chars (user prompt minus evidence): ${prefixChars}`);
         lines.push(`- User prompt chars (total): ${userPromptChars}`);
         lines.push(`- Raw provider usage JSON: ${rawUsageJson}`);

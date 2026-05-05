@@ -251,6 +251,13 @@ describe('AI settings models table', () => {
         expect(source.includes('Latest Inquiry run failed because API quota was exceeded.')).toBe(true);
     });
 
+    it('lets observed provider cache hits override static cache-off preview copy', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("const observedCachePills: PreviewPill[] = cacheLabel")).toBe(true);
+        expect(source.includes("basePreviewPills.filter(pill => !/^Cache off\\b/i.test(pill.text))")).toBe(true);
+        expect(source.includes("extraPills: [...extraPills, ...observedCachePills]")).toBe(true);
+    });
+
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'))")).toBe(true);

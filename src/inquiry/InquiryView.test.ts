@@ -210,6 +210,19 @@ describe('InquiryView payload accounting', () => {
         expect(cssSource.includes('fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 92%, #dfffe7 8%);')).toBe(true);
     });
 
+    it('repaints the minimap cache overlay when a persisted provider cache certificate appears', () => {
+        const minimapSource = readFileSync(resolve(process.cwd(), 'src/inquiry/minimap/InquiryMinimapRenderer.ts'), 'utf8');
+        expect(minimapSource.includes('private lastTokenCapFillRatio = 0;')).toBe(true);
+        expect(minimapSource.includes('this.lastTokenCapFillRatio = fillRatio;')).toBe(true);
+        expect(minimapSource.includes('this.updateTokenCapCachedOverlay(this.lastTokenCapFillRatio, advanced);')).toBe(true);
+    });
+
+    it('does not describe hard Inquiry failures as fallback results', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('Inquiry failed before results were produced.')).toBe(true);
+        expect(viewSource.includes('Inquiry failed; fallback result returned.')).toBe(false);
+    });
+
     it('renders the warm cache HUD countdown as a green flame icon plus timer text', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const domSource = readFileSync(resolve(process.cwd(), 'src/inquiry/dom/inquiryDomFactory.ts'), 'utf8');

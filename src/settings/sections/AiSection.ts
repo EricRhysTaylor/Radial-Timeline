@@ -1472,6 +1472,9 @@ export function renderAiSection(params: {
         }
 
         if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
+            const observedCachePills: PreviewPill[] = cacheLabel
+                ? [{ text: cacheLabel, extraCls: 'ert-ai-pill--active' }]
+                : [];
             return {
                 tone: 'success',
                 comparatorLabel: null,
@@ -1484,7 +1487,7 @@ export function renderAiSection(params: {
                     : (hasCurrentCorpusMatch
                         ? `Cache ready for current corpus • ${cacheRemainingLabel ?? 'active'}`
                         : `Cache ready on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`),
-                extraPills,
+                extraPills: [...extraPills, ...observedCachePills],
                 cacheRatio,
                 cacheLabel
             };
@@ -1504,11 +1507,16 @@ export function renderAiSection(params: {
         resetResolvedPreviewCertificateUi();
         if (!lastResolvedPreviewState) return;
         const certificate = resolvePreviewCertificateState(lastPreviewCertificateContext);
-        const previewPills = resolvePreviewSignals({
+        const basePreviewPills = resolvePreviewSignals({
             citationLabel: lastResolvedPreviewState.citationLabel,
             reuseLabel: lastResolvedPreviewState.reuseLabel,
             passBehaviorLabel: lastResolvedPreviewState.passBehaviorLabel
-        }).concat(certificate.extraPills);
+        });
+        const previewPills = (
+            typeof certificate.cacheRatio === 'number' && certificate.cacheRatio > 0
+                ? basePreviewPills.filter(pill => !/^Cache off\b/i.test(pill.text))
+                : basePreviewPills
+        ).concat(certificate.extraPills);
         renderResolvedPreviewPills(previewPills);
 
         if (certificate.comparatorLabel) {

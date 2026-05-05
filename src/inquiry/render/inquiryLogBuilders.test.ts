@@ -89,4 +89,96 @@ describe('buildInquiryLogContent', () => {
         expect(content.indexOf('## Corpus TOC')).toBeGreaterThan(content.indexOf('## Suggested Fixes'));
         expect(content.indexOf('## Corpus TOC')).toBeLessThan(content.indexOf('Content Log: written'));
     });
+
+    it('reports Gemini cache transport without OpenAI prompt-cache fallback claims', () => {
+        const content = buildInquiryLogContent({
+            result: {
+                scope: 'saga',
+                scopeLabel: 'Σ',
+                aiProvider: 'google',
+                aiModelResolved: 'gemini-2.5-pro',
+                aiModelRequested: 'gemini-2.5-pro',
+                findings: [],
+                verdict: {
+                    flow: 85,
+                    depth: 80
+                },
+                cacheReuseFingerprint: 'h540625845'
+            } as never,
+            trace: {
+                userPrompt: 'stable prefix\n\nscene text',
+                evidenceText: 'scene text',
+                tokenUsageKnown: true,
+                tokenUsageScope: 'known',
+                cacheReuseState: 'warm',
+                cacheStatus: 'hit',
+                cachedStableRatio: 1,
+                cachedStableTokens: 281000,
+                requestPayload: {
+                    cachedContent: 'cachedContents/abc123'
+                },
+                response: null,
+                usage: {
+                    inputTokens: 264606,
+                    outputTokens: 531,
+                    totalTokens: 270000,
+                    cacheReadInputTokens: 264584
+                }
+            } as never,
+            manifest: {
+                entries: [],
+                classCounts: {
+                    scene: 56,
+                    outline: 0
+                }
+            } as never,
+            deps,
+            contentLogWritten: true
+        });
+
+        expect(content).toContain('- Gemini cachedContent: cachedContents/abc123');
+        expect(content).toContain('- Raw provider usage JSON: not captured; normalized token usage available');
+        expect(content).not.toContain('prompt_cache_key sent');
+        expect(content).not.toContain('unsupported');
+    });
+
+    it('reports OpenAI prompt cache keys only for OpenAI payloads', () => {
+        const content = buildInquiryLogContent({
+            result: {
+                scope: 'book',
+                scopeLabel: 'B1',
+                aiProvider: 'openai',
+                aiModelResolved: 'gpt-5.4',
+                aiModelRequested: 'gpt-5.4',
+                findings: [],
+                verdict: {
+                    flow: 68,
+                    depth: 74
+                },
+                cacheReuseFingerprint: 'h578972009'
+            } as never,
+            trace: {
+                userPrompt: 'stable prefix\n\nscene text',
+                evidenceText: 'scene text',
+                tokenUsageKnown: true,
+                tokenUsageScope: 'known',
+                requestPayload: {
+                    prompt_cache_key: 'h578972009'
+                },
+                response: null,
+                usage: {
+                    inputTokens: 258554,
+                    outputTokens: 2190,
+                    totalTokens: 260744,
+                    cacheReadInputTokens: 258432
+                }
+            } as never,
+            manifest: null,
+            deps,
+            contentLogWritten: true
+        });
+
+        expect(content).toContain('- OpenAI prompt_cache_key: h578972009');
+        expect(content).not.toContain('bypassProviderReuse or unsupported');
+    });
 });

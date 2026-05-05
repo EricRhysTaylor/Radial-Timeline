@@ -104,4 +104,20 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(buildTokenEstimateBlock).not.toContain("?? 'heuristic_chars'");
         expect(buildTokenEstimateBlock).not.toContain('estimateTokensFromChars');
     });
+
+    it('does not fabricate scores or findings for failed provider results', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
+        const stubBlock = source.slice(
+            source.indexOf('private buildStubResult('),
+            source.indexOf('private getAiMetaFromResponse(')
+        );
+        expect(stubBlock).toBeTruthy();
+        expect(stubBlock).toContain("kind: isFailure ? 'error' : 'unclear'");
+        expect(stubBlock).toContain('flow: isFailure ? 0 : 0.6');
+        expect(stubBlock).toContain('depth: isFailure ? 0 : 0.55');
+        expect(enLocale).toContain('AI response unavailable; no findings were produced.');
+        expect(enLocale).toContain('Inquiry run failed.');
+        expect(enLocale).not.toContain('Stub result returned (AI unavailable).');
+    });
 });

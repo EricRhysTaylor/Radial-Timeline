@@ -24,6 +24,7 @@ import {
     type DesignedStyleSpec,
     type DesignedHeaderField,
 } from './designedStyle';
+import { escapeForLatex } from './designedStyleFragments';
 import type { ManuscriptSceneHeadingMode } from '../utils/manuscript';
 
 // ─── Seeded PRNG (mulberry32) ────────────────────────────────────────────────
@@ -331,6 +332,48 @@ describe('generateDesignedStyleTex — property tests', () => {
         const partMatch = tex.match(/\\newcommand\{\\rtPart\}\[3\]\{[\s\S]+?\n\}/);
         expect(partMatch).toBeTruthy();
         expect(partMatch![0]).toContain('\\cleardoublepage');
+    });
+
+    it('escapeForLatex: round-trips every special character without data loss', () => {
+        // Each special character becomes a safe text-mode form. Regression:
+        // braces used to be silently stripped; now they survive as visible
+        // glyphs so user-typed `f(x){y}` doesn't lose information.
+        expect(escapeForLatex('a & b')).toBe('a \\& b');
+        expect(escapeForLatex('100% off')).toBe('100\\% off');
+        expect(escapeForLatex('$cost')).toBe('\\$cost');
+        expect(escapeForLatex('snake_case')).toBe('snake\\_case');
+        expect(escapeForLatex('#hash')).toBe('\\#hash');
+        expect(escapeForLatex('{open}')).toBe('\\{open\\}');
+        expect(escapeForLatex('a^b')).toBe('a\\textasciicircum{}b');
+        expect(escapeForLatex('a~b')).toBe('a\\textasciitilde{}b');
+        expect(escapeForLatex('back\\slash')).toBe('back\\textbackslash{}slash');
+        // Combined: every special char survives in one pass.
+        expect(escapeForLatex('${&%}_#^~\\'))
+            .toBe('\\$\\{\\&\\%\\}\\_\\#\\textasciicircum{}\\textasciitilde{}\\textbackslash{}');
+    });
+
+    it('regression: scene separator glyph with special chars escapes through generator', () => {
+        // scene.separatorGlyph is the most reliable user-input path through
+        // the generator — it always emits when opener=inline-separator, and
+        // its escape pass routes through escapeForLatex.
+        // (Per-corner runningHeader literals are also escape-routed, but the
+        // current generator's renderFancyhdr ignores per-corner overrides for
+        // every wizard-exposed mode — see notes in designedStyleFragments.ts.)
+        const spec = baseSpec({
+            scene: {
+                opener: 'inline-separator',
+                headingMode: 'scene-number',
+                suppressHeaderFooterOnOpener: false,
+                separatorGlyph: '~ ^ & %',
+            },
+        });
+        const tex = generateDesignedStyleTex(spec);
+        // Raw `&` and `%` would break compile; ~ and ^ would silently produce
+        // accented output in text mode. All four must be escape-routed.
+        expect(tex).toContain('\\textasciitilde{}');
+        expect(tex).toContain('\\textasciicircum{}');
+        expect(tex).toContain('\\&');
+        expect(tex).toContain('\\%');
     });
 
     it('regression: parts.epigraphPlacement=inline does NOT emit a second \\cleardoublepage block', () => {

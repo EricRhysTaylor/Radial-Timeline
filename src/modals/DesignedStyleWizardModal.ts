@@ -58,15 +58,18 @@ type WizardCategory =
     | 'scenes'
     | 'epigraph';
 
-const WIZARD_CATEGORIES: ReadonlyArray<{ value: WizardCategory; label: string }> = [
-    { value: 'page',     label: 'Page' },
-    { value: 'body',     label: 'Body' },
-    { value: 'headers',  label: 'Headers' },
-    { value: 'folio',    label: 'Folio' },
-    { value: 'parts',    label: 'Parts' },
-    { value: 'chapters', label: 'Chapters' },
-    { value: 'scenes',   label: 'Scenes' },
-    { value: 'epigraph', label: 'Epigraph' },
+// Icons chosen for legibility at 16px and so each one reads distinctly from
+// its neighbours. `panel-top` was visually ambiguous (rendered as a thin top
+// bar) — `heading-1` makes Headers immediately recognisable, etc.
+const WIZARD_CATEGORIES: ReadonlyArray<{ value: WizardCategory; label: string; icon: string }> = [
+    { value: 'page',     label: 'Page',     icon: 'file-text' },
+    { value: 'body',     label: 'Body',     icon: 'align-left' },
+    { value: 'headers',  label: 'Headers',  icon: 'heading-1' },
+    { value: 'folio',    label: 'Folio',    icon: 'hash' },
+    { value: 'parts',    label: 'Parts',    icon: 'bookmark' },
+    { value: 'chapters', label: 'Chapters', icon: 'book-open' },
+    { value: 'scenes',   label: 'Scenes',   icon: 'clapperboard' },
+    { value: 'epigraph', label: 'Epigraph', icon: 'quote' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -142,6 +145,60 @@ export function deriveHeaderStyle(spec: DesignedStyleSpec): HeaderStyle {
     return 'custom';
 }
 
+/**
+ * Per-preset baseline for axes the wizard surfaces (font, letter spacing).
+ * `applyHeaderPreset` only resets the per-corner slots and the mode; it
+ * does NOT touch font or letterSpacing. So those persist across preset
+ * switches and the modified-state check has to compare against this static
+ * map of "what the preset implies" rather than what the function would
+ * produce at runtime.
+ */
+const HEADER_PRESET_DEFAULTS: Record<Exclude<HeaderStyle, 'custom'>, {
+    font: DesignedStyleSpec['runningHeader']['font'];
+    letterSpacing: number | undefined;
+}> = {
+    none:         { font: undefined, letterSpacing: undefined },
+    minimal:      { font: undefined, letterSpacing: undefined },
+    literary:     { font: undefined, letterSpacing: 15.0 },
+    contemporary: { font: 'sans',    letterSpacing: undefined },
+};
+
+/**
+ * Has the user customized any per-corner field, font, or letterSpacing
+ * after picking a preset?
+ *
+ * Two checks:
+ *   1. Per-corner slots — clone the spec, re-run `applyHeaderPreset`, compare.
+ *   2. Font + letterSpacing — compare against the static preset defaults map
+ *      since `applyHeaderPreset` doesn't manage those axes.
+ *
+ * Returns false for 'custom' mode (no baseline to diverge from).
+ */
+export function isHeaderPresetModified(spec: DesignedStyleSpec): boolean {
+    const style = deriveHeaderStyle(spec);
+    if (style === 'custom') return false;
+
+    // Per-corner comparison via re-applied clone.
+    const clone = JSON.parse(JSON.stringify(spec)) as DesignedStyleSpec;
+    applyHeaderPreset(clone, spec.runningHeader.mode);
+    const slots: Array<keyof DesignedStyleSpec['runningHeader']> = [
+        'evenLeft', 'evenCenter', 'evenRight',
+        'oddLeft',  'oddCenter',  'oddRight',
+    ];
+    for (const slot of slots) {
+        const live  = JSON.stringify(spec.runningHeader[slot]  ?? null);
+        const fresh = JSON.stringify(clone.runningHeader[slot] ?? null);
+        if (live !== fresh) return true;
+    }
+
+    // Font + letterSpacing comparison via the static preset defaults map.
+    const expected = HEADER_PRESET_DEFAULTS[style];
+    if ((spec.runningHeader.font ?? undefined) !== expected.font) return true;
+    if ((spec.runningHeader.letterSpacing ?? undefined) !== expected.letterSpacing) return true;
+
+    return false;
+}
+
 export interface DesignedStyleWizardResult {
     name: string;
     description: string;
@@ -213,6 +270,11 @@ export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSp
     // Clear all corner overrides; presets re-populate as needed.
     delete rh.evenLeft; delete rh.evenCenter; delete rh.evenRight;
     delete rh.oddLeft;  delete rh.oddCenter;  delete rh.oddRight;
+    // Reset font + letterSpacing so re-applying the preset is a true "reset
+    // to pure preset" — otherwise these axes silently linger across preset
+    // switches and trigger the modified-state badge.
+    delete rh.font;
+    delete rh.letterSpacing;
     if (mode === 'centered-title') {
         rh.evenCenter = 'title';
         rh.oddCenter = 'title';
@@ -221,9 +283,13 @@ export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSp
         rh.evenRight = 'author';
         rh.oddLeft = 'title';
         rh.oddRight = 'page';
+        // Literary preset implies wide-set caps via letterSpacing.
+        rh.letterSpacing = 15.0;
     } else if (mode === 'left-title-right-context') {
         rh.evenLeft = 'title';
         rh.oddRight = 'scene-context';
+        // Contemporary preset uses sans-serif headers.
+        rh.font = 'sans';
     }
 }
 
@@ -257,8 +323,21 @@ export function validateDesignedStyleSpec(
         paperHeightIn = spec.paperSize.heightIn;
         if (paperWidthIn <= 0) errors.push('Custom paper width must be greater than 0.');
         if (paperHeightIn <= 0) errors.push('Custom paper height must be greater than 0.');
-        if (paperWidthIn < 4 || paperWidthIn > 12) {
-            warnings.push('Custom paper width is outside common print sizes (4–12 inches).');
+        if (paperWidthIn > 0 && (paperWidthIn < 4 || paperWidthIn > 12)) {
+            warnings.push(`Custom paper width (${paperWidthIn} in) is outside the common print range (4–12 in).`);
+        }
+        if (paperHeightIn > 0 && (paperHeightIn < 6 || paperHeightIn > 14)) {
+            warnings.push(`Custom paper height (${paperHeightIn} in) is outside the common print range (6–14 in).`);
+        }
+        // Aspect ratio sanity — most novels and trade books are taller than
+        // they are wide, with H/W between ~1.3 and ~1.7. Flag extreme cases.
+        if (paperWidthIn > 0 && paperHeightIn > 0) {
+            const ratio = paperHeightIn / paperWidthIn;
+            if (ratio < 1.0) {
+                warnings.push('Custom paper is wider than tall (landscape) — unusual for prose books.');
+            } else if (ratio > 2.0) {
+                warnings.push('Custom paper is more than twice as tall as wide — unusual proportion.');
+            }
         }
     }
 
@@ -268,6 +347,15 @@ export function validateDesignedStyleSpec(
     }
     if (paperWidthIn > 0 && (m.leftIn + m.rightIn) >= paperWidthIn) {
         errors.push('Left + right margins leave no room for body text.');
+    }
+    // Mirrored books: convention is that the inner (binding) margin is wider
+    // than the outer to compensate for the spine. When mirrored is on, leftIn
+    // is the inner edge — flagging when it's narrower than rightIn.
+    if (m.mirrored && m.leftIn < m.rightIn) {
+        warnings.push(
+            `Inner margin (${m.leftIn} in) is narrower than outer (${m.rightIn} in). ` +
+            `Print convention is the opposite — the binding edge usually has more space.`,
+        );
     }
 
     if (spec.body.sizePt < 6 || spec.body.sizePt > 24) {
@@ -331,6 +419,7 @@ export class DesignedStyleWizardModal extends Modal {
     private categoryRow: HTMLElement | null = null;
     private activePanel: HTMLElement | null = null;
     private categorySelect: HTMLSelectElement | null = null;
+    private categoryIconEl: HTMLElement | null = null;
     private saveButton: ButtonComponent | null = null;
     private validationBannerEl: HTMLElement | null = null;
     private activeCategory: WizardCategory = 'page';
@@ -368,13 +457,17 @@ export class DesignedStyleWizardModal extends Modal {
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header ert-style-wizard__header' });
         const badgeRow = header.createDiv({ cls: 'ert-modal-badge-row' });
-        const proPill = badgeRow.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`,
+        // Single combined pill: PRO chip nested inside the modal-mode badge
+        // (DESIGN / EDIT). PRO downsized via the --inline modifier so it fits
+        // visually as a "stamp" on the larger badge.
+        const modeBadge = badgeRow.createSpan({ cls: 'ert-modal-badge ert-modal-badge--with-pro' });
+        const proPill = modeBadge.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ert-modal-badge__pro-inline`,
         });
         const proPillIcon = proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(proPillIcon, 'signature');
         proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-        badgeRow.createSpan({ cls: 'ert-modal-badge', text: this.isEditMode ? 'EDIT' : 'DESIGN' });
+        modeBadge.createSpan({ cls: 'ert-modal-badge__label', text: this.isEditMode ? 'EDIT' : 'DESIGN' });
         header.createDiv({
             cls: 'ert-modal-title',
             text: this.isEditMode ? 'Edit designed style' : 'Design your own style',
@@ -550,12 +643,23 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderCategorySelector(parent: HTMLElement): void {
+        // Label hugs the left edge; the icon + dropdown pair hugs the right.
+        // The space-between layout is enforced by .category-row CSS.
         parent.createEl('label', {
             cls: 'ert-style-wizard__field-label',
             text: 'Category',
         });
-        const select = parent.createEl('select', {
-            cls: 'ert-input ert-input--md',
+        const right = parent.createDiv({ cls: 'ert-style-wizard__category-control' });
+
+        // Icon reflects the active category — sits OUTSIDE the dropdown so it
+        // doesn't affect the dropdown's internal width.
+        const iconWrap = right.createSpan({ cls: 'ert-style-wizard__category-icon' });
+        this.categoryIconEl = iconWrap;
+        const activeMeta = WIZARD_CATEGORIES.find(c => c.value === this.activeCategory);
+        try { setIcon(iconWrap, activeMeta?.icon ?? 'square'); } catch { /* test env */ }
+
+        const select = right.createEl('select', {
+            cls: 'ert-input ert-input--sm',
         });
         WIZARD_CATEGORIES.forEach(({ value, label }) => {
             const opt = select.createEl('option', { value, text: label });
@@ -573,6 +677,15 @@ export class DesignedStyleWizardModal extends Modal {
 
     private activateCategory(category: WizardCategory): void {
         this.activeCategory = category;
+        // Update the category icon next to the dropdown — the icon is stored
+        // by ref so we don't have to rebuild the whole categoryRow.
+        const iconEl = this.categoryIconEl;
+        if (iconEl) {
+            iconEl.empty();
+            const meta = WIZARD_CATEGORIES.find(c => c.value === category);
+            if (!meta) throw new Error(`Unknown wizard category: ${category}`);
+            setIcon(iconEl, meta.icon);
+        }
         this.renderActiveCategoryPanel();
     }
 
@@ -790,6 +903,16 @@ export class DesignedStyleWizardModal extends Modal {
      */
     private renderHeaderStyleRow(parent: HTMLElement): void {
         const current = deriveHeaderStyle(this.spec);
+        const modified = current !== 'custom' && isHeaderPresetModified(this.spec);
+        // Heading above the row so it's clear what these cards control.
+        const headingRow = parent.createDiv({ cls: 'ert-style-wizard__preset-heading-row' });
+        headingRow.createDiv({ cls: 'ert-style-wizard__preset-row-label', text: 'Header style' });
+        if (modified) {
+            headingRow.createSpan({
+                cls: 'ert-style-wizard__preset-modified-badge',
+                text: '✱ modified — corners customized below',
+            });
+        }
         const row = parent.createDiv({ cls: 'ert-style-wizard__preset-row' });
         const presets: Array<{ value: Exclude<HeaderStyle, 'custom'>; label: string; render: (strip: HTMLElement) => void }> = [
             {
@@ -830,7 +953,10 @@ export class DesignedStyleWizardModal extends Modal {
             card.tabIndex = 0;
             card.setAttribute('role', 'button');
             card.setAttribute('aria-label', `${label} header`);
-            if (current === value) card.addClass('is-active');
+            if (current === value) {
+                card.addClass('is-active');
+                if (modified) card.addClass('is-modified');
+            }
             const strip = card.createDiv({ cls: 'ert-style-wizard__preset-header-strip' });
             render(strip);
             // Filler page-body lines below the header strip so each card looks
@@ -1491,7 +1617,7 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.scene.firstWordEmphasisOnOpener = v; });
         });
 
-        const modesRow = this.fieldRow(body, 'Multi-mode opener pages (Signature)');
+        const modesRow = this.fieldRow(body, 'Special feature: multi-mode opener pages');
         const modesGroup = modesRow.createDiv({ cls: 'ert-style-wizard__checkbox-group' });
         const modeOptions: ManuscriptSceneHeadingMode[] = ['scene-number', 'scene-number-title', 'title-only'];
         const activeModes = new Set(this.spec.scene.openerHeadingModes ?? []);
@@ -1527,7 +1653,7 @@ export class DesignedStyleWizardModal extends Modal {
         this.renderPanelGlossary(body, [
             { term: 'Opener',           definition: 'How a new scene begins on the page — either inline (a separator inside the page) or on its own dedicated page.' },
             { term: 'Heading mode',     definition: 'What the scene heading shows: a number, a title, or both. Only applies when openers use a dedicated page.' },
-            { term: 'Multi-mode pages', definition: 'Signature Literary lets the same export emit different opener flavors per scene. Tick the modes you want available; pick at export time.' },
+            { term: 'Special feature: multi-mode opener pages', definition: 'When at least one mode is ticked, the template ships with all selected mode macros pre-defined. The settings PDF Style card surfaces a per-book picker so you choose ONE active mode at export time. Today this is a book-level switch (every scene uses the chosen mode); per-scene override is not yet supported.' },
         ]);
     }
 

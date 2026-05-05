@@ -80,6 +80,8 @@ export type PictogramPageSide = {
     epigraphText?: string;
     /** Attribution line below epigraph — rendered all-caps with em-dash prefix */
     epigraphAttribution?: string;
+    /** When true, the epigraph quote is rendered italic. Mirrors spec.epigraph.italic. */
+    epigraphItalic?: boolean;
     /** Body lines before a scene separator, separator, then more body lines */
     separatorText?: string;
     linesBeforeSeparator?: number;
@@ -97,11 +99,20 @@ export type PictogramPageSide = {
     /**
      * Vertical offset of the special heading from the top of the page,
      * expressed as a fraction (0..1) of the page height. Drives the
-     * `--ert-layout-heading-top` CSS variable on the body wrapper, used by
-     * the chapter pictogram to mirror the spec's `chapters.spacing.topFraction`.
-     * Ignored when `headingPosition === 'top'` (which uses its own offset).
+     * `--ert-layout-heading-top` CSS variable on the body wrapper. Used by
+     * the chapter pictogram (`is-special` layout) AND the scene pictogram
+     * (`is-heading-top` layout) to mirror the spec's spacing axes —
+     * `chapters.spacing.topFraction` and `scene.openerSpacing.topFraction`
+     * respectively.
      */
     headingTopFraction?: number;
+    /**
+     * Vertical gap between the heading and the body lines below, expressed
+     * as a fraction (0..1) of the page height. Drives the
+     * `--ert-layout-heading-bottom` CSS variable. Mainly used by the scene
+     * pictogram for `scene.openerSpacing.bottomFraction`.
+     */
+    headingBottomFraction?: number;
 };
 
 export type PictogramSpread = {
@@ -408,16 +419,21 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
 
     // PART spread — emitted when parts are on (Modern Classic).
     if (spec.parts.mode !== 'off') {
+        // Generator emits the epigraph block when EITHER parts.epigraph or
+        // epigraph.enabled is true; mirror that union here so the preview
+        // matches what the .tex output will produce.
+        const showsEpigraph = spec.parts.epigraph || spec.epigraph.enabled;
         const partPage: PictogramPageSide = {
             bodyLines: 0,
             suppressHeader: true,
             suppressFooter: true,
             specialText: 'I',
-            specialRule: spec.parts.epigraph,
+            specialRule: showsEpigraph,
         };
-        if (spec.parts.epigraph) {
+        if (showsEpigraph) {
             partPage.epigraphText = 'a quote';
             partPage.epigraphAttribution = '—J. Name';
+            partPage.epigraphItalic = !!spec.epigraph.italic;
         }
         special.push({ label: 'PART', leftPage: null, rightPage: partPage });
     }
@@ -490,6 +506,7 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
             },
         };
     } else if (spec.scene.opener === 'dedicated-page' && (!spec.scene.openerHeadingModes || spec.scene.openerHeadingModes.length === 0)) {
+        const sceneOpenerSpacing = spec.scene.openerSpacing;
         scene = {
             label: 'SCENE',
             leftPage: null,
@@ -502,6 +519,16 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
                 // after a clear gap. Mirrors the generator behavior where
                 // \rtSceneOpener emits the title, then \vspace, then body text.
                 headingPosition: 'top',
+                // openerSpacing.{top,bottom}Fraction → inline CSS vars on the
+                // body wrapper. The Scenes panel sliders update spec values,
+                // which flow here and visibly shift the heading position +
+                // body gap in real time.
+                ...(typeof sceneOpenerSpacing?.topFraction === 'number'
+                    ? { headingTopFraction: sceneOpenerSpacing.topFraction }
+                    : {}),
+                ...(typeof sceneOpenerSpacing?.bottomFraction === 'number'
+                    ? { headingBottomFraction: sceneOpenerSpacing.bottomFraction }
+                    : {}),
             },
         };
     } else if (spec.scene.opener === 'roman-with-rule') {
@@ -1028,6 +1055,17 @@ function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClas
         // Signature scene-mode pages — heading owns the whole page).
         if (side.headingPosition === 'top') {
             body.addClass('is-heading-top');
+            // openerSpacing → CSS vars on the body wrapper. The stylesheet
+            // consumes them to override the default padding-top + heading→body
+            // gap, so the Scenes panel sliders move the heading visibly.
+            if (typeof side.headingTopFraction === 'number' && side.headingTopFraction > 0) {
+                body.addClass('is-heading-offset');
+                body.style.setProperty('--ert-layout-heading-top', `${Math.round(side.headingTopFraction * 100)}%`);
+            }
+            if (typeof side.headingBottomFraction === 'number' && side.headingBottomFraction > 0) {
+                body.addClass('is-heading-bottom-spaced');
+                body.style.setProperty('--ert-layout-heading-bottom', `${Math.round(side.headingBottomFraction * 100)}%`);
+            }
             body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
             if (side.specialSubtext) {
                 body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
@@ -1055,7 +1093,8 @@ function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClas
                 body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
             }
             if (side.epigraphText) {
-                body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
+                const epi = body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
+                if (side.epigraphItalic) epi.addClass('is-italic');
             }
             if (side.epigraphAttribution) {
                 body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });

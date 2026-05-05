@@ -8095,9 +8095,9 @@ export class InquiryView extends ItemView {
             questionText,
             questionPromptForm,
             questionZone: question.zone,
-            summary: 'Inquiry failed; fallback result returned.',
-            summaryFlow: 'Inquiry failed; fallback result returned.',
-            summaryDepth: 'Inquiry failed; fallback result returned.',
+            summary: 'Inquiry failed before results were produced.',
+            summaryFlow: 'Inquiry failed before results were produced.',
+            summaryDepth: 'Inquiry failed before results were produced.',
             verdict: {
                 flow: 0,
                 depth: 0

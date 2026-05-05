@@ -312,6 +312,10 @@ Do not edit baseline PNGs by hand.
  * generates .tex via the same generator the wizard uses (no bundledLayoutId),
  * runs pandoc + xelatex, asserts the PDF compiles and has at least
  * minExpectedPages. Failures collect into the shared `failures` array.
+ *
+ * When `--visual` is set, also rasterizes each PDF and pixel-diffs against
+ * baselines in `tests/fixtures/publishing-pdf-baselines/<slug>/`. When
+ * `--update-baselines` is set, regenerates them.
  */
 function runWizardFixtures(failures, lmPath) {
     for (const fixture of WIZARD_FIXTURES) {
@@ -340,6 +344,17 @@ function runWizardFixtures(failures, lmPath) {
             if (info.pages < fixture.minExpectedPages) {
                 throw new Error(`${fixture.slug} expected at least ${fixture.minExpectedPages} pages, got ${info.pages}`);
             }
+            if (visual) {
+                const actualPages = rasterize(pdfPath, join(layoutDir, 'pages'));
+                if (updateBaselines) {
+                    updateBaseline(fixture.slug, actualPages);
+                } else {
+                    const diffPixels = compareBaseline(fixture.slug, actualPages, join(layoutDir, 'diffs'));
+                    if (diffPixels > 0) {
+                        throw new Error(`${fixture.slug} visual baseline differs by ${diffPixels} pixels. Diffs: ${join(layoutDir, 'diffs')}`);
+                    }
+                }
+            }
             console.log(`✓ ${fixture.slug}: ${info.pages} pages`);
         } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -347,6 +362,7 @@ function runWizardFixtures(failures, lmPath) {
             console.error(`✗ ${fixture.slug}: ${msg}`);
         }
     }
+    if (updateBaselines) writeReadme();
 }
 
 /** Shared exit handling — used by both main() and the wizard branch. */

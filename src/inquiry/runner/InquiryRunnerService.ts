@@ -2649,9 +2649,10 @@ export class InquiryRunnerService implements InquiryRunner {
         const bullets = message ? [t('inquiry.findings.stubBulletNote', { message })] : [t('inquiry.findings.stubBulletPlaceholder')];
         const fallbackRefId = this.resolveFindingFallbackRefId(input);
 
+        const isFailure = aiMeta.aiStatus !== undefined && aiMeta.aiStatus !== 'success' && aiMeta.aiStatus !== 'degraded';
         const findings: InquiryFinding[] = [{
             refId: fallbackRefId,
-            kind: 'unclear',
+            kind: isFailure ? 'error' : 'unclear',
             headline: t('inquiry.findings.stubInquiryHeadline'),
             bullets,
             related: [],
@@ -2673,8 +2674,8 @@ export class InquiryRunnerService implements InquiryRunner {
             summaryFlow: summary,
             summaryDepth: summary,
             verdict: {
-                flow: 0.6,
-                depth: 0.55
+                flow: isFailure ? 0 : 0.6,
+                depth: isFailure ? 0 : 0.55
             },
             findings,
             corpusFingerprint: input.corpus.fingerprint,
