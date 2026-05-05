@@ -36,6 +36,14 @@ export function addHighlightRectangles(view: SearchView): void {
     const searchTerm = view.plugin.searchTerm;
     const escapedPattern = escapeRegExp(searchTerm);
     const svg = view.contentEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+    const isCurrentScenePulseElement = (element: Element): boolean => {
+        const pulseText = element.closest('[data-pulse-section]');
+        return pulseText?.getAttribute('data-pulse-section') === 'currentSceneAnalysis';
+    };
+    const isSearchableSynopsisTextElement = (element: Element): boolean => {
+        if (element.getAttribute('data-synopsis-line') === 'true') return true;
+        return isCurrentScenePulseElement(element);
+    };
 
     const highlightTspan = (tspan: Element, originalText: string, fillColor: string | null) => {
         while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
@@ -103,6 +111,7 @@ export function addHighlightRectangles(view: SearchView): void {
     // Synopsis text elements (only those without tspan children)
     view.contentEl.querySelectorAll('svg .rt-synopsis-text text').forEach((textEl) => {
         if (textEl.querySelector('tspan')) return;
+        if (!isSearchableSynopsisTextElement(textEl)) return;
         const originalText = textEl.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = (textEl as SVGTextElement).getAttribute('fill');
@@ -130,6 +139,7 @@ export function addHighlightRectangles(view: SearchView): void {
 
     // Unhandled tspans under synopsis
     view.contentEl.querySelectorAll('svg .rt-synopsis-text text tspan:not([data-item-type])').forEach((tspan) => {
+        if (!isSearchableSynopsisTextElement(tspan)) return;
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = (tspan as SVGTSpanElement).getAttribute('fill');
@@ -158,4 +168,3 @@ export function addHighlightRectangles(view: SearchView): void {
         if (numberText) numberText.classList.add('rt-search-result');
     });
 }
-

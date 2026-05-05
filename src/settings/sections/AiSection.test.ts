@@ -156,10 +156,11 @@ describe('AI settings models table', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("setName(t('settings.ai.largeHandling.name'))")).toBe(true);
         expect(source.includes('Fresh estimate*')).toBe(true);
+        expect(source.includes('Cached estimate**')).toBe(true);
         expect(source.includes('* Based on published provider pricing. Actual charges may differ due to caching, credits, or account-level adjustments.')).toBe(true);
         expect(source.includes("createSpan({ text: 'See provider pricing: ' })")).toBe(true);
         expect(source.includes("appendText(' runs on your machine with no API charges.')")).toBe(true);
-        expect(source.includes("createEl('strong', { text: 'Gemini cache note: ' })")).toBe(true);
+        expect(source.includes("createEl('strong', { text: '** Gemini cache note: ' })")).toBe(true);
         expect(source.includes('explicit cache may add storage fees for cached corpus tokens during the active cache window')).toBe(true);
         expect(source.includes('Gemini cache windows default to 15m')).toBe(true);
         expect(source.includes('cache usually only pays off when you run another question before the window expires')).toBe(true);
@@ -253,7 +254,7 @@ describe('AI settings models table', () => {
         expect(source.includes('formatProviderCacheWindowLabel(provider, ensureCanonicalAiSettings())')).toBe(true);
         expect(cacheWindowSource.includes('export function formatProviderCacheWindowLabel')).toBe(true);
         expect(cacheWindowSource.includes('normalizeGeminiCacheTtlSeconds(windows.googleTtlSeconds)')).toBe(true);
-        expect(source.includes("'Fresh estimate*', 'Cached estimate*'")).toBe(true);
+        expect(source.includes("'Fresh estimate*', 'Cached estimate**'")).toBe(true);
     });
 
     it('shows pending Inquiry corpus estimates as estimating instead of a real zero-token request', () => {

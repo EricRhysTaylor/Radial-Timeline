@@ -341,7 +341,7 @@ export function renderAiSection(params: {
     costEstimateFootnote.createEl('strong', { text: 'Local LLM' });
     costEstimateFootnote.appendText(' runs on your machine with no API charges.');
     costEstimateFootnote.createEl('br');
-    costEstimateFootnote.createEl('strong', { text: 'Gemini cache note: ' });
+    costEstimateFootnote.createEl('strong', { text: '** Gemini cache note: ' });
     costEstimateFootnote.appendText(
         'explicit cache may add storage fees for cached corpus tokens during the active cache window; Gemini cache windows default to 15m, and cache usually only pays off when you run another question before the window expires.'
     );
@@ -1899,7 +1899,7 @@ export function renderAiSection(params: {
         const activeCacheRowKey = getActiveCostComparisonCacheRowKey();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh estimate*', 'Cached estimate*', 'Expected Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh estimate*', 'Cached estimate**', 'Expected Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -2107,11 +2107,12 @@ export function renderAiSection(params: {
             // Mirror the cached-run TTL suffix so the price label is honest
             // about what's baked in.
             const freshSuffix = model.provider === 'anthropic' && cacheWindowLabel ? ` (${cacheWindowLabel})` : '';
+            const storageFootnote = model.provider === 'google' ? '**' : '';
             return {
                 model,
                 freshText: `${formatUsdCost(cost.freshCostUSD)}${freshSuffix}`,
                 cachedText: activeCacheReuseRatio !== null && typeof cost.cachedCostUSD === 'number'
-                    ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`
+                    ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}${storageFootnote}`
                     : 'No active cache',
                 passesText: passLabel,
                 promoLabel

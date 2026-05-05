@@ -2857,6 +2857,7 @@ export default class SynopsisManager {
       const makeLine = (titlePart: string | null, commentPart: string | null) => {
         const lineText = document.createElementNS("http://www.w3.org/2000/svg", "text");
         lineText.setAttribute("class", "pulse-text");
+        lineText.setAttribute("data-pulse-section", beatKey);
         lineText.setAttribute("x", "0");
         lineText.setAttribute("y", String(currentY));
         lineText.setAttribute("text-anchor", "start");
