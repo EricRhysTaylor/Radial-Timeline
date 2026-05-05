@@ -147,39 +147,23 @@ export function deriveHeaderStyle(spec: DesignedStyleSpec): HeaderStyle {
 }
 
 /**
- * Per-preset baseline for axes the wizard surfaces (font, letter spacing).
- * `applyHeaderPreset` only resets the per-corner slots and the mode; it
- * does NOT touch font or letterSpacing. So those persist across preset
- * switches and the modified-state check has to compare against this static
- * map of "what the preset implies" rather than what the function would
- * produce at runtime.
- */
-const HEADER_PRESET_DEFAULTS: Record<Exclude<HeaderStyle, 'custom'>, {
-    font: DesignedStyleSpec['runningHeader']['font'];
-    letterSpacing: number | undefined;
-}> = {
-    none:         { font: undefined, letterSpacing: undefined },
-    minimal:      { font: undefined, letterSpacing: undefined },
-    literary:     { font: undefined, letterSpacing: 15.0 },
-    contemporary: { font: 'sans',    letterSpacing: undefined },
-};
-
-/**
- * Has the user customized any per-corner field, font, or letterSpacing
- * after picking a preset?
+ * Has the user explicitly overridden any per-corner field after picking a
+ * preset? Returns false for:
+ *   - 'custom' mode (no baseline to diverge from)
+ *   - any corner that's `undefined` on the live spec (means "no opinion,
+ *     use whatever the named-mode emits") — this is critical for bundled
+ *     templates that ship with `runningHeader: { mode: 'centered-title' }`
+ *     and no per-corner fields, which would otherwise immediately read as
+ *     modified since `applyHeaderPreset` populates corners on the clone.
  *
- * Two checks:
- *   1. Per-corner slots — clone the spec, re-run `applyHeaderPreset`, compare.
- *   2. Font + letterSpacing — compare against the static preset defaults map
- *      since `applyHeaderPreset` doesn't manage those axes.
- *
- * Returns false for 'custom' mode (no baseline to diverge from).
+ * Font and letterSpacing are NOT compared — they're independent axes that
+ * the bundled spec controls (e.g. Modern Classic and Signature share a
+ * mode but differ in letterSpacing). Changing them doesn't trigger the
+ * modified badge in v1.
  */
 export function isHeaderPresetModified(spec: DesignedStyleSpec): boolean {
-    const style = deriveHeaderStyle(spec);
-    if (style === 'custom') return false;
+    if (deriveHeaderStyle(spec) === 'custom') return false;
 
-    // Per-corner comparison via re-applied clone.
     const clone = JSON.parse(JSON.stringify(spec)) as DesignedStyleSpec;
     applyHeaderPreset(clone, spec.runningHeader.mode);
     const slots: Array<keyof DesignedStyleSpec['runningHeader']> = [
@@ -187,15 +171,13 @@ export function isHeaderPresetModified(spec: DesignedStyleSpec): boolean {
         'oddLeft',  'oddCenter',  'oddRight',
     ];
     for (const slot of slots) {
-        const live  = JSON.stringify(spec.runningHeader[slot]  ?? null);
-        const fresh = JSON.stringify(clone.runningHeader[slot] ?? null);
-        if (live !== fresh) return true;
+        const liveVal = spec.runningHeader[slot];
+        // "No opinion" (undefined) is never a modification — the named mode
+        // baseline still emits whatever the preset would emit for that slot.
+        if (liveVal === undefined) continue;
+        const presetVal = clone.runningHeader[slot];
+        if (JSON.stringify(liveVal) !== JSON.stringify(presetVal ?? null)) return true;
     }
-
-    // Font + letterSpacing comparison via the static preset defaults map.
-    const expected = HEADER_PRESET_DEFAULTS[style];
-    if ((spec.runningHeader.font ?? undefined) !== expected.font) return true;
-    if ((spec.runningHeader.letterSpacing ?? undefined) !== expected.letterSpacing) return true;
 
     return false;
 }
@@ -1065,29 +1047,33 @@ export class DesignedStyleWizardModal extends Modal {
         const body = this.createPanelBody(parent);
 
         const fontRow = this.fieldRow(body, 'Font');
+        // Pull the label sibling so the missing-font warning can sit next to
+        // "Font" rather than wrapping below the dropdown.
+        const fontLabelEl = fontRow.parentElement?.querySelector('.ert-style-wizard__field-label') as HTMLElement | null;
+        const fontStatus = fontLabelEl
+            ? fontLabelEl.createSpan({ cls: 'ert-style-wizard__font-status' })
+            : fontRow.createSpan({ cls: 'ert-style-wizard__font-status' });
         const fontSelect = fontRow.createEl('select', { cls: 'ert-input ert-input--md' });
         FONT_OPTIONS.forEach((option) => {
             const opt = fontSelect.createEl('option', { value: option.value, text: option.label });
             if (option.value === this.spec.body.font) opt.selected = true;
         });
-        const fontStatus = fontRow.createSpan({ cls: 'ert-style-wizard__font-status' });
         const refreshFontStatus = () => {
             fontStatus.empty();
             const selected = FONT_OPTIONS.find(o => o.value === this.spec.body.font);
             if (!selected) return;
             // Strict font policy (Phase 1): per-font precise status. There is
-            // NO fallback — a missing font is a hard export blocker.
+            // NO fallback — a missing font is a hard export blocker. We only
+            // surface the missing case; an installed font shows nothing
+            // (silence = healthy state, less visual noise).
             try {
                 const diag = getFontDiagnosticForFontKey(this.spec.body.font);
                 if (diag.state === 'ok') {
-                    fontStatus.setText('Installed');
                     fontStatus.removeClass('is-missing');
-                    fontStatus.addClass('is-installed');
                     return;
                 }
-                fontStatus.removeClass('is-installed');
                 fontStatus.addClass('is-missing');
-                fontStatus.setText(`Missing: ${diag.primaryFontName}`);
+                fontStatus.setText(` — Missing: ${diag.primaryFontName}`);
                 // Inline "Install" affordance — Phase 1 opens a Notice with
                 // platform-specific instructions and a clickable URL when one
                 // is available. Phase 2 will perform an actual download.
@@ -1257,8 +1243,15 @@ export class DesignedStyleWizardModal extends Modal {
         const editorRow = cornerSection.createDiv({ cls: 'ert-style-wizard__corner-editor' });
         const editorLabel = editorRow.createSpan({ cls: 'ert-style-wizard__corner-editor-label' });
         const activeMeta = cornerCards.find(c => c.key === this.activeCornerKey);
+        // Short form so the label fits in the panel without forcing horizontal
+        // scroll — full verso/recto explanation lives in the per-card tooltip
+        // and the panel glossary at the bottom.
+        const pageShort: Record<'even' | 'odd', string> = {
+            even: 'left page',
+            odd:  'right page',
+        };
         const activeText = activeMeta
-            ? `Editing: ${activeMeta.label} — ${slotName[activeMeta.slot]} corner of the ${pageDesc[activeMeta.page]}`
+            ? `Editing: ${activeMeta.label} (${pageShort[activeMeta.page]})`
             : 'Editing:';
         editorLabel.setText(activeText);
         this.headerFieldDropdown(
@@ -1532,18 +1525,23 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.chapters.resetSceneCounter = v; });
         });
 
-        const topRow = this.fieldRow(body, 'Heading top spacing (% page)');
-        this.sliderInput(topRow, this.spec.chapters.spacing?.topFraction ?? 0, 0, 0.6, 0.02, (n) => {
+        // Heading position slider — 0% = top of page, 50% = centered (the
+        // sensible default), 100% = near bottom. When the spec hasn't set
+        // an explicit topFraction, default the slider to 50% so the user
+        // sees the centered baseline rather than a 0% snap-to-top reading.
+        const topRow = this.fieldRow(body, 'Heading top position (% page)');
+        const currentTop = this.spec.chapters.spacing?.topFraction ?? 0.5;
+        this.sliderInput(topRow, currentTop, 0, 1, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.chapters.spacing = { ...(s.chapters.spacing ?? {}), topFraction: n };
             });
         }, (v) => `${Math.round(v * 100)}%`);
 
         this.renderPanelGlossary(body, [
-            { term: 'Chapter style',         definition: 'Whether each chapter heading shows a number, a title, both, or nothing.' },
-            { term: 'Heading top spacing',   definition: 'How far down the page the chapter heading sits, as a percentage of page height. 0% = top of page; 46% pushes the heading deep into the page (Contemporary Literary convention).' },
+            { term: 'Chapter style',           definition: 'Whether each chapter heading shows a number, a title, both, or nothing.' },
+            { term: 'Heading top position',    definition: 'Where the chapter heading sits on the page, as a percentage from the top. 0% = top edge, 50% = centered (default), 100% = bottom edge. Contemporary uses ~46% for a deep-on-page feel.' },
             { term: 'Page break before chapter', definition: 'When on, every chapter heading starts on a fresh page. Off keeps chapters running inline.' },
-            { term: 'Reset scene counter',   definition: 'When on, the scene number resets to 1 at every chapter boundary; otherwise scenes number continuously through the book.' },
+            { term: 'Reset scene counter',     definition: 'When on, the scene number resets to 1 at every chapter boundary; otherwise scenes number continuously through the book.' },
         ]);
     }
 
@@ -1638,43 +1636,36 @@ export class DesignedStyleWizardModal extends Modal {
             this.mutateSpec((s) => { s.scene.firstWordEmphasisOnOpener = v; });
         });
 
-        const modesRow = this.fieldRow(body, 'Special feature: multi-mode opener pages');
-        const modesGroup = modesRow.createDiv({ cls: 'ert-style-wizard__checkbox-group' });
-        const modeOptions: ManuscriptSceneHeadingMode[] = ['scene-number', 'scene-number-title', 'title-only'];
-        const activeModes = new Set(this.spec.scene.openerHeadingModes ?? []);
-        modeOptions.forEach((mode) => {
-            const label = modesGroup.createEl('label', { cls: 'ert-style-wizard__checkbox-label' });
-            const cb = label.createEl('input', { attr: { type: 'checkbox' } });
-            cb.checked = activeModes.has(mode);
-            label.createSpan({ text: mode });
-            cb.addEventListener('change', () => {
-                this.mutateSpec((s) => {
-                    const next = new Set(s.scene.openerHeadingModes ?? []);
-                    if (cb.checked) next.add(mode);
-                    else next.delete(mode);
-                    if (next.size === 0) delete s.scene.openerHeadingModes;
-                    else s.scene.openerHeadingModes = Array.from(next);
-                });
-            });
-        });
+        // Multi-mode opener pages (the `scene.openerHeadingModes` array) is
+        // intentionally NOT exposed in the v1 wizard — it overlapped with the
+        // singular "Heading mode" row above and confused the model. The spec
+        // field still flows through the generator + pictogram for bundled
+        // Signature Literary (which sets it inline), but custom user designs
+        // can't enable it from this UI in v1. Defer to v2.
 
+        // Slider defaults match the .tex generator's fallback (0.2 above,
+        // 0.2 below). Templates can override; the slider now reads the
+        // template's actual value rather than snapping to 0%.
         const topRow = this.fieldRow(body, 'Opener top spacing');
-        this.sliderInput(topRow, this.spec.scene.openerSpacing?.topFraction ?? 0, 0, 0.5, 0.02, (n) => {
+        const currentOpenerTop = this.spec.scene.openerSpacing?.topFraction ?? 0.2;
+        this.sliderInput(topRow, currentOpenerTop, 0, 0.5, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.scene.openerSpacing = { ...(s.scene.openerSpacing ?? {}), topFraction: n };
             });
         }, (v) => `${Math.round(v * 100)}%`);
         const botRow = this.fieldRow(body, 'Opener bottom spacing');
-        this.sliderInput(botRow, this.spec.scene.openerSpacing?.bottomFraction ?? 0, 0, 0.5, 0.02, (n) => {
+        const currentOpenerBottom = this.spec.scene.openerSpacing?.bottomFraction ?? 0.2;
+        this.sliderInput(botRow, currentOpenerBottom, 0, 0.5, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.scene.openerSpacing = { ...(s.scene.openerSpacing ?? {}), bottomFraction: n };
             });
         }, (v) => `${Math.round(v * 100)}%`);
 
         this.renderPanelGlossary(body, [
-            { term: 'Opener',           definition: 'How a new scene begins on the page — either inline (a separator inside the page) or on its own dedicated page.' },
-            { term: 'Heading mode',     definition: 'What the scene heading shows: a number, a title, or both. Only applies when openers use a dedicated page.' },
-            { term: 'Special feature: multi-mode opener pages', definition: 'When at least one mode is ticked, the template ships with all selected mode macros pre-defined. The settings PDF Style card surfaces a per-book picker so you choose ONE active mode at export time. Today this is a book-level switch (every scene uses the chosen mode); per-scene override is not yet supported.' },
+            { term: 'Opener',                definition: 'How a new scene begins on the page — either inline (a separator inside the page) or on its own dedicated page.' },
+            { term: 'Heading mode',          definition: 'What the scene heading shows: a number, a title, or both. Only applies when openers use a dedicated page.' },
+            { term: 'Opener top spacing',    definition: 'Vertical space ABOVE the scene heading on its dedicated page. Pushes the heading down from the top — and because body text follows the heading, body shifts down with it.' },
+            { term: 'Opener bottom spacing', definition: 'Vertical gap BELOW the scene heading, before the body text starts. Only the body moves down; the heading stays put.' },
         ]);
     }
 

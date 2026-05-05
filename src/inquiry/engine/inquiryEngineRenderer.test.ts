@@ -74,8 +74,13 @@ describe('computeCachePillState', () => {
 describe('computeActualCostPillState', () => {
     it('shows the usage-based actual cost from the last completed run', () => {
         const pill = computeActualCostPillState(0.1042);
-        expect(pill?.label).toBe('Actual cost · $0.10');
+        expect(pill?.label).toBe('Last run cost · $0.104');
         expect(pill?.tooltip).toContain('provider token report');
+    });
+
+    it('keeps sub-cent usage costs visible instead of rounding them to zero', () => {
+        const pill = computeActualCostPillState(0.0042);
+        expect(pill?.label).toBe('Last run cost · $0.0042');
     });
 
     it('does not render without a finite usage-based cost', () => {

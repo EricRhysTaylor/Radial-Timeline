@@ -142,6 +142,45 @@ describe('estimateCorpusCost', () => {
         expect(result?.totalCostUSD).toBeCloseTo(0.17005, 6);
     });
 
+    it('prices Gemini 2.5 Pro long-context cache hits at the context-cache rate', () => {
+        const result = estimateUsageCost('google', 'gemini-2.5-pro', {
+            inputTokens: 264_606,
+            outputTokens: 5_409,
+            cacheReadInputTokens: 264_584
+        });
+
+        expect(result?.rawInputCostUSD).toBeCloseTo(0.000055, 6);
+        expect(result?.cacheReadCostUSD).toBeCloseTo(0.066146, 6);
+        expect(result?.outputTokens).toBe(5_409);
+        expect(result?.outputCostUSD).toBeCloseTo(0.081135, 6);
+        expect(result?.totalCostUSD).toBeCloseTo(0.147336, 6);
+    });
+
+    it('recovers Gemini thinking-token output cost from total tokens for saved legacy sessions', () => {
+        const result = estimateUsageCost('google', 'gemini-2.5-pro', {
+            inputTokens: 264_606,
+            outputTokens: 531,
+            totalTokens: 270_015,
+            cacheReadInputTokens: 264_584
+        });
+
+        expect(result?.outputTokens).toBe(5_409);
+        expect(result?.outputCostUSD).toBeCloseTo(0.081135, 6);
+        expect(result?.totalCostUSD).toBeCloseTo(0.147336, 6);
+    });
+
+    it('does not claim an actual cached cost when cache-read pricing is unavailable', () => {
+        const result = estimateUsageCost('openai', 'gpt-5.4-pro', {
+            inputTokens: 61_600,
+            outputTokens: 8_000,
+            cacheReadInputTokens: 46_200
+        });
+
+        expect(result?.cacheReadCostUSD).toBeUndefined();
+        expect(result?.inputCostUSD).toBeUndefined();
+        expect(result?.totalCostUSD).toBeUndefined();
+    });
+
     it('throws when pricing is missing', () => {
         expect(() => estimateCorpusCost(
             'openai',

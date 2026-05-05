@@ -181,6 +181,7 @@ describe('InquiryView payload accounting', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('private getLatestCacheSessionForResolvedEngine(): InquirySession | null {')).toBe(true);
         expect(viewSource.includes("return 'Cache expired';")).toBe(true);
+        expect(viewSource.includes('scope: this.state.scope')).toBe(true);
         expect(viewSource.includes("const hasLiveContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();")).toBe(true);
         expect(viewSource.includes('this.reconcileEngineTimerInterval(hasLiveContextCountdown);')).toBe(true);
     });
@@ -305,7 +306,20 @@ describe('InquiryView payload accounting', () => {
     it('keeps session history visible across Inquiry and Settings before debounced disk save', () => {
         const storeSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquirySessionStore.ts'), 'utf8');
         expect(storeSource.includes('getLatestSessionForEngineInScope(provider: string, modelId: string, scope: InquiryScope)')).toBe(true);
+        expect(storeSource.includes('scope?: InquiryScope;')).toBe(true);
+        expect(storeSource.includes('if (sessionScope !== options.scope) return false;')).toBe(true);
         expect(storeSource.includes('this.plugin.settings.inquirySessionCache = this.cache;\n        if (this.saveTimeout)')).toBe(true);
+    });
+
+    it('passes operational citation state into Inquiry estimates and provider runs', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const forecastSource = readFileSync(resolve(process.cwd(), 'src/ai/forecast/estimateTokensFromVault.ts'), 'utf8');
+        expect(viewSource.includes("import { resolveCitationsEnabled } from '../ai/caps/computeCaps';")).toBe(true);
+        expect(viewSource.includes('private areInquiryProviderCitationsEnabled(')).toBe(true);
+        expect(viewSource.includes('citationsEnabled: this.areInquiryProviderCitationsEnabled(providerChoice.provider)')).toBe(true);
+        expect(viewSource.includes('citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false')).toBe(false);
+        expect(forecastSource.includes("import { resolveCitationsEnabled } from '../caps/computeCaps';")).toBe(true);
+        expect(forecastSource.includes("citationsEnabled: resolveCitationsEnabled(provider, 'inquiry'")).toBe(true);
     });
 
     it('self-heals stale applied writeback flags by checking current pending-edits markers before disabling the session action', () => {

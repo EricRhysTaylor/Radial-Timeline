@@ -197,14 +197,20 @@ export function estimateUsageCost(
     const pricing = resolveProviderModelPricing(provider, modelId, totalInputTokens);
     const hasCacheRead = hasCacheReadPricing(pricing);
     const hasExplicitCacheWrite = hasExplicitCacheWritePricing(pricing);
+    const cacheReadInputTokenCount = typeof usage.cacheReadInputTokens === 'number' ? usage.cacheReadInputTokens : 0;
+    const cacheCreationInputTokenCount = typeof usage.cacheCreationInputTokens === 'number' ? usage.cacheCreationInputTokens : 0;
     const cacheCreation5mInputTokens = usage.cacheCreation5mInputTokens;
     const cacheCreation1hInputTokens = usage.cacheCreation1hInputTokens;
-    const cacheCreationKnownByTtl = (cacheCreation5mInputTokens ?? 0) + (cacheCreation1hInputTokens ?? 0);
-    const cacheCreationFallbackTokens = Math.max(0, (usage.cacheCreationInputTokens ?? 0) - cacheCreationKnownByTtl);
+    const cacheCreation5mInputTokenCount = typeof cacheCreation5mInputTokens === 'number' ? cacheCreation5mInputTokens : 0;
+    const cacheCreation1hInputTokenCount = typeof cacheCreation1hInputTokens === 'number' ? cacheCreation1hInputTokens : 0;
+    const hasPositiveCacheRead = cacheReadInputTokenCount > 0;
+    const cacheCreationKnownByTtl = cacheCreation5mInputTokenCount + cacheCreation1hInputTokenCount;
+    const cacheCreationFallbackTokens = Math.max(0, cacheCreationInputTokenCount - cacheCreationKnownByTtl);
+    const hasPositiveCacheCreation = cacheCreationKnownByTtl > 0 || cacheCreationFallbackTokens > 0;
     const inferredRawInputTokens = typeof usage.rawInputTokens === 'number'
         ? usage.rawInputTokens
         : (typeof usage.inputTokens === 'number'
-            ? Math.max(0, usage.inputTokens - (usage.cacheReadInputTokens ?? 0) - (usage.cacheCreationInputTokens ?? 0))
+            ? Math.max(0, usage.inputTokens - cacheReadInputTokenCount - cacheCreationInputTokenCount)
             : undefined);
     const hasDetailedInputUsage = typeof inferredRawInputTokens === 'number'
         || typeof usage.cacheReadInputTokens === 'number'
@@ -220,24 +226,36 @@ export function estimateUsageCost(
         : undefined;
     const cacheCreationCostUSD = hasExplicitCacheWrite
         ? (
-            toUsd(cacheCreation5mInputTokens ?? 0, pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M)
-            + toUsd(cacheCreation1hInputTokens ?? 0, pricing.cacheWrite1hPer1M ?? pricing.cacheWrite5mPer1M)
-            + toUsd(cacheCreationFallbackTokens, pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M)
+            toUsd(cacheCreation5mInputTokenCount, typeof pricing.cacheWrite5mPer1M === 'number' ? pricing.cacheWrite5mPer1M : pricing.cacheWrite1hPer1M)
+            + toUsd(cacheCreation1hInputTokenCount, typeof pricing.cacheWrite1hPer1M === 'number' ? pricing.cacheWrite1hPer1M : pricing.cacheWrite5mPer1M)
+            + toUsd(cacheCreationFallbackTokens, typeof pricing.cacheWrite5mPer1M === 'number' ? pricing.cacheWrite5mPer1M : pricing.cacheWrite1hPer1M)
         )
         : undefined;
-    const inputCostUSD = (hasCacheRead || hasExplicitCacheWrite)
-        ? (hasDetailedInputUsage
+    const rawInputCostForTotal = typeof rawInputCostUSD === 'number' ? rawInputCostUSD : 0;
+    const cacheReadCostForTotal = typeof cacheReadCostUSD === 'number' ? cacheReadCostUSD : 0;
+    const cacheCreationCostForTotal = typeof cacheCreationCostUSD === 'number' ? cacheCreationCostUSD : 0;
+    const canPriceDetailedInput = hasDetailedInputUsage
+        && (typeof inferredRawInputTokens !== 'number' || typeof rawInputCostUSD === 'number')
+        && (!hasPositiveCacheRead || typeof cacheReadCostUSD === 'number')
+        && (!hasPositiveCacheCreation || typeof cacheCreationCostUSD === 'number');
+    const inputCostUSD = hasDetailedInputUsage
+        ? (canPriceDetailedInput
             ? (
-                (rawInputCostUSD ?? 0)
-                + (cacheReadCostUSD ?? 0)
-                + (cacheCreationCostUSD ?? 0)
+                rawInputCostForTotal
+                + cacheReadCostForTotal
+                + cacheCreationCostForTotal
             )
             : undefined)
         : (typeof usage.inputTokens === 'number'
             ? toUsd(usage.inputTokens, pricing.inputPer1M)
             : undefined);
-    const outputCostUSD = typeof usage.outputTokens === 'number'
-        ? toUsd(usage.outputTokens, pricing.outputPer1M)
+    const billableOutputTokens = typeof usage.outputTokens === 'number'
+        ? (provider === 'google' && typeof usage.inputTokens === 'number' && typeof usage.totalTokens === 'number'
+            ? Math.max(usage.outputTokens, usage.totalTokens - usage.inputTokens)
+            : usage.outputTokens)
+        : undefined;
+    const outputCostUSD = typeof billableOutputTokens === 'number'
+        ? toUsd(billableOutputTokens, pricing.outputPer1M)
         : undefined;
     const totalCostUSD = typeof inputCostUSD === 'number' && typeof outputCostUSD === 'number'
         ? inputCostUSD + outputCostUSD
@@ -245,7 +263,7 @@ export function estimateUsageCost(
 
     return {
         inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
+        outputTokens: billableOutputTokens,
         rawInputTokens: usage.rawInputTokens,
         cacheReadInputTokens: usage.cacheReadInputTokens,
         cacheCreationInputTokens: usage.cacheCreationInputTokens,
@@ -262,6 +280,15 @@ export function estimateUsageCost(
 
 export function formatUsdCost(value: number): string {
     return `$${value.toFixed(2)}`;
+}
+
+export function formatExactUsdCost(value: number): string {
+    if (!Number.isFinite(value) || value < 0) return 'unavailable';
+    if (value === 0) return '$0.00';
+    if (value >= 1) return `$${value.toFixed(2)}`;
+    if (value >= 0.01) return `$${value.toFixed(3)}`;
+    if (value >= 0.001) return `$${value.toFixed(4)}`;
+    return `$${value.toFixed(6)}`;
 }
 
 export function formatApproxUsdCost(value: number): string {

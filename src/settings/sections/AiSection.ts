@@ -13,7 +13,7 @@ import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
 import { selectModel } from '../../ai/router/selectModel';
-import { computeCaps } from '../../ai/caps/computeCaps';
+import { computeCaps, resolveCitationsEnabled } from '../../ai/caps/computeCaps';
 import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { getLocalLlmClient } from '../../ai/localLlm/client';
@@ -33,9 +33,11 @@ import {
 } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
+    estimateUsageCost,
+    formatExactUsdCost,
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
-import { getProviderPricing, getActivePricingMeta, getActivePromos, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
+import { getActivePricingMeta, getActivePromos, getPricingFreshnessLabel, getActivePricingTable } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
 import { buildUnifiedBeatAnalysisPromptParts, getUnifiedBeatAnalysisJsonSchema } from '../../ai/prompts/unifiedBeatAnalysis';
 import { resolveActiveRoleTemplate } from '../../ai/roleTemplate';
@@ -353,15 +355,22 @@ export function renderAiSection(params: {
 
     const getSelectedProvider = (): Exclude<AIProviderId, 'none'> => {
         const provider = ensureCanonicalAiSettings().provider;
-        if (provider === 'anthropic' || provider === 'google' || provider === 'openai' || provider === 'ollama') {
+        // Sequential === checks let TypeScript narrow via control flow.
+        // Array.includes() doesn't narrow, so the previous form silently
+        // returned the broad AIProviderId (including 'none') here.
+        if (provider === 'anthropic'
+            || provider === 'google'
+            || provider === 'openai'
+            || provider === 'ollama') {
             return provider;
         }
         return 'openai';
     };
 
-    const getOllamaBaseUrl = (): string => (
-        getLocalLlmSettings(ensureCanonicalAiSettings()).baseUrl.trim() || 'http://localhost:11434/v1'
-    );
+    const getOllamaBaseUrl = (): string => {
+        const configuredBaseUrl = getLocalLlmSettings(ensureCanonicalAiSettings()).baseUrl.trim();
+        return configuredBaseUrl ? configuredBaseUrl : 'http://localhost:11434/v1';
+    };
     const buildLocalServerOptionLabel = (backend: LocalLlmBackendId, baseUrl: string): string => {
         const normalizedUrl = normalizeLocalLlmServerBaseUrl(baseUrl);
         try {
@@ -384,7 +393,8 @@ export function renderAiSection(params: {
             );
             if (pinned?.id) return pinned.id;
         }
-        return BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.status === 'stable')?.id || 'llama3';
+        const stableModel = BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.status === 'stable')?.id;
+        return stableModel ? stableModel : 'llama3';
     };
 
     const setOllamaModelId = (modelId: string): void => {
@@ -438,7 +448,10 @@ export function renderAiSection(params: {
         }
 
         if (!options.length) {
-            options.push({ value: selectedModelId || 'local-model', label: selectedModelId || 'Local model' });
+            options.push({
+                value: selectedModelId ? selectedModelId : 'local-model',
+                label: selectedModelId ? selectedModelId : 'Local model'
+            });
         }
 
         return options;
@@ -483,7 +496,8 @@ export function renderAiSection(params: {
         if (assessment.featureSupport.inquiry === 'yes') parts.push('Inquiry eligible');
         else if (assessment.featureSupport.inquiry === 'partial') parts.push('Inquiry (possibly eligible)');
 
-        return parts.join(' · ') || 'Summary not supported';
+        const summary = parts.join(' · ');
+        return summary ? summary : 'Summary not supported';
     };
     const setLocalLlmConfigurationMode = (mode: LocalLlmConfigurationMode): void => {
         const aiSettings = ensureCanonicalAiSettings();
@@ -496,7 +510,8 @@ export function renderAiSection(params: {
     let isSyncingRoutingUi = false;
 
     const attachAiCollapseButton = (detailsEl: HTMLDetailsElement, summaryEl: HTMLElement): void => {
-        const summaryLabel = summaryEl.textContent?.trim() || 'section';
+        const rawSummaryLabel = summaryEl.textContent?.trim();
+        const summaryLabel = rawSummaryLabel ? rawSummaryLabel : 'section';
         detailsEl.addClass('ert-ai-collapsible');
         summaryEl.empty();
         summaryEl.addClass('ert-ai-collapsible-summary');
@@ -663,10 +678,16 @@ export function renderAiSection(params: {
                     // when citations are enabled and the active model does not have
                     // the cache-vs-citations exclusive constraint. OpenAI / Google /
                     // Ollama never wrap evidence in citation wrappers.
-                    const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
                     const activeModel = (counts?.provider && counts?.modelId)
                         ? BUILTIN_MODELS.find(m => m.provider === counts.provider && m.id === counts.modelId)
                         : undefined;
+                    const citationsOn = activeModel
+                        ? resolveCitationsEnabled(
+                            activeModel.provider,
+                            'inquiry',
+                            ensureCanonicalAiSettings().citationsEnabled !== false
+                        )
+                        : false;
                     const exclusive = activeModel?.constraints?.cacheVsCitationsExclusive === true;
                     const usesCitationWrappers = counts?.provider === 'anthropic'
                         && citationsOn
@@ -957,14 +978,18 @@ export function renderAiSection(params: {
         if (!label) return null;
         const cacheAvailable = /^Reuse\s*·\s*Provider cache$/i.test(label);
         const exclusiveWithCitations = model.constraints?.cacheVsCitationsExclusive === true;
-        const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
+        const citationsOn = resolveCitationsEnabled(
+            model.provider,
+            'inquiry',
+            ensureCanonicalAiSettings().citationsEnabled !== false
+        );
         if (exclusiveWithCitations && cacheAvailable) {
             return citationsOn
                 ? { text: 'Cache off (exclusive of citations)', extraCls: 'ert-ai-pill--muted' }
-                : { text: 'Cache on', extraCls: 'ert-ai-pill--active' };
+                : { text: 'Cache enabled', extraCls: 'ert-ai-pill--active' };
         }
         return cacheAvailable
-            ? { text: label, extraCls: 'ert-ai-pill--active' }
+            ? { text: 'Provider cache enabled', extraCls: 'ert-ai-pill--active' }
             : { text: label, extraCls: 'ert-ai-pill--muted' };
     };
 
@@ -1412,7 +1437,17 @@ export function renderAiSection(params: {
     const resolvePreviewCertificateState = (
         context: PreviewCertificateContext | null
     ): PreviewCertificateState => {
-        if (!context || !context.modelId || context.provider === 'none' || context.provider === 'ollama') {
+        if (!context || !context.modelId) {
+            return {
+                tone: 'default',
+                comparatorLabel: null,
+                comparatorValue: null,
+                statusIcon: null,
+                statusText: null,
+                extraPills: []
+            };
+        }
+        if (context.provider === 'none' || context.provider === 'ollama') {
             return {
                 tone: 'default',
                 comparatorLabel: null,
@@ -1443,18 +1478,32 @@ export function renderAiSection(params: {
 
         const currentFingerprint = currentCorpus?.cacheReuseFingerprint?.trim() || getPreviewCurrentCacheReuseFingerprint();
         const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId, {
-            cacheReuseFingerprint: currentFingerprint ?? undefined
+            cacheReuseFingerprint: currentFingerprint ?? undefined,
+            scope: currentCorpus?.scope
         });
-        const fallbackCacheSession = !activeCacheSession
-            ? inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId)
-            : undefined;
-        const cacheSession = activeCacheSession ?? fallbackCacheSession;
+        const cacheSession = activeCacheSession;
         const hasCurrentCorpusMatch = !!activeCacheSession;
         const latestScope = latestSession.scope ?? latestSession.result.scope;
         const latestScopeLabel = latestScope === 'saga' ? 'Saga' : 'Book';
         const resultStatus = latestSession.result.aiStatus;
         const reasonLabel = formatPreviewReasonLabel(resultStatus, latestSession.result.aiReason);
         const extraPills: PreviewPill[] = [];
+        const hasUsagePricing = !!getActivePricingTable()[context.provider]?.[context.modelId];
+        const latestUsageCost = hasUsagePricing
+            ? estimateUsageCost(context.provider, context.modelId, latestSession.result.tokenUsage)?.totalCostUSD
+            : undefined;
+        if (typeof latestUsageCost === 'number' && Number.isFinite(latestUsageCost)) {
+            extraPills.push({
+                text: `Last run cost · ${formatExactUsdCost(latestUsageCost)}`,
+                extraCls: 'ert-ai-pill--active'
+            });
+        }
+        if (latestSession.cacheWindowExpiresAt && latestSession.cacheWindowExpiresAt <= Date.now()) {
+            extraPills.push({
+                text: 'Cache window expired',
+                extraCls: 'ert-ai-pill--muted'
+            });
+        }
         const cacheRemainingLabel = cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()
             ? formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now())
             : null;
@@ -1484,6 +1533,10 @@ export function renderAiSection(params: {
             const observedCachePills: PreviewPill[] = cacheLabel
                 ? [{ text: cacheLabel, extraCls: 'ert-ai-pill--active' }]
                 : [];
+            const activeCacheTimeLabel = cacheRemainingLabel;
+            if (!activeCacheTimeLabel) {
+                throw new Error('Active cache session is missing a countdown label.');
+            }
             return {
                 tone: 'success',
                 comparatorLabel: null,
@@ -1491,11 +1544,11 @@ export function renderAiSection(params: {
                 statusIcon: 'badge-check',
                 statusText: cacheSession.cacheReuseState === 'warm'
                     ? (hasCurrentCorpusMatch
-                        ? `Warm cache confirmed for current corpus • ${cacheRemainingLabel ?? 'active'}`
-                        : `Warm cache confirmed on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`)
+                        ? `Warm cache confirmed for current corpus • ${activeCacheTimeLabel}`
+                        : `Warm cache confirmed on last Inquiry corpus • ${activeCacheTimeLabel}`)
                     : (hasCurrentCorpusMatch
-                        ? `Cache ready for current corpus • ${cacheRemainingLabel ?? 'active'}`
-                        : `Cache ready on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`),
+                        ? `Cache ready for current corpus • ${activeCacheTimeLabel}`
+                        : `Cache ready on last Inquiry corpus • ${activeCacheTimeLabel}`),
                 extraPills: [...extraPills, ...observedCachePills],
                 cacheRatio,
                 cacheLabel
@@ -1508,7 +1561,7 @@ export function renderAiSection(params: {
             comparatorValue: null,
             statusIcon: 'check-circle-2',
             statusText: `Latest ${latestScopeLabel} Inquiry run completed at ${formatPreviewRunCompletedAt(latestSession.createdAt || latestSession.lastAccessed)}.`,
-            extraPills: []
+            extraPills
         };
     };
 
@@ -1530,7 +1583,7 @@ export function renderAiSection(params: {
 
         if (certificate.comparatorLabel) {
             resolvedPreviewComparatorLabel.setText(certificate.comparatorLabel);
-            resolvedPreviewComparatorValue.setText(certificate.comparatorValue ?? '');
+            resolvedPreviewComparatorValue.setText(certificate.comparatorValue ? certificate.comparatorValue : '');
             resolvedPreviewComparatorValue.toggleClass('ert-settings-hidden', !certificate.comparatorValue);
             resolvedPreviewComparator.toggleClass('ert-settings-hidden', false);
         }
@@ -1656,31 +1709,32 @@ export function renderAiSection(params: {
     const getCostComparisonRowKey = (provider: AIProviderId, modelId: string): string =>
         `${provider}::${modelId}`;
 
-    const getProviderCacheTtlLabel = (provider: AIProviderId): string => {
+    const getProviderCacheWindowLabel = (provider: AIProviderId): string | null => {
         const aiSettings = ensureCanonicalAiSettings();
-        switch (provider) {
-            case 'anthropic':
-                return ANTHROPIC_REQUESTED_CACHE_TTL;
-            case 'openai':
-                return aiSettings.cacheWindows?.openaiRetention === '24h'
-                    ? '24h'
-                    : `${Math.max(5, aiSettings.cacheWindows?.openaiInMemoryWindowMinutes ?? 10)}m`;
-            case 'google':
-                return `${Math.max(60, aiSettings.cacheWindows?.googleTtlSeconds ?? 900) / 60}m`;
-            default: return '';
+        if (provider === 'anthropic') {
+            return `${ANTHROPIC_REQUESTED_CACHE_TTL} cache window`;
         }
+        if (provider === 'openai') {
+            if (aiSettings.cacheWindows?.openaiRetention === '24h') {
+                return '24h cache window';
+            }
+            const configuredMinutes = aiSettings.cacheWindows?.openaiInMemoryWindowMinutes;
+            const cacheMinutes = typeof configuredMinutes === 'number' ? configuredMinutes : 10;
+            return `${Math.max(5, cacheMinutes)}m cache window`;
+        }
+        if (provider === 'google') {
+            const configuredSeconds = aiSettings.cacheWindows?.googleTtlSeconds;
+            const cacheSeconds = typeof configuredSeconds === 'number' ? configuredSeconds : 900;
+            return `${Math.max(60, cacheSeconds) / 60}m cache window`;
+        }
+        return null;
     };
 
     const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
 
     const supportsCostComparisonModel = (provider: AIProviderId, modelId: string): boolean => {
         if (provider === 'none' || provider === 'ollama') return false;
-        try {
-            getProviderPricing(provider, modelId);
-            return true;
-        } catch {
-            return false;
-        }
+        return !!getActivePricingTable()[provider]?.[modelId];
     };
 
     const getCostComparisonModels = (registryModels?: ModelInfo[]): CostComparisonModel[] => {
@@ -1757,14 +1811,20 @@ export function renderAiSection(params: {
         const currentFingerprint = getPreviewCurrentCacheReuseFingerprint();
         if (!currentFingerprint) return null;
         const activeEngine = lastPreviewCertificateContext;
-        if (!activeEngine || activeEngine.provider === 'none' || activeEngine.provider === 'ollama' || !activeEngine.modelId) {
+        if (!activeEngine || !activeEngine.modelId) {
+            return null;
+        }
+        if (activeEngine.provider === 'none' || activeEngine.provider === 'ollama') {
             return null;
         }
         const inquirySessionStore = getInquirySessionStoreSnapshot();
         const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(
             activeEngine.provider,
             activeEngine.modelId,
-            { cacheReuseFingerprint: currentFingerprint }
+            {
+                cacheReuseFingerprint: currentFingerprint,
+                scope: getCurrentCorpusContext()?.scope
+            }
         );
         if (!activeCacheSession?.cacheWindowExpiresAt || activeCacheSession.cacheWindowExpiresAt <= Date.now()) {
             return null;
@@ -1793,7 +1853,11 @@ export function renderAiSection(params: {
             vault: app.vault,
             metadataCache: app.metadataCache,
             frontmatterMappings: getActiveFrontmatterMappings(plugin.settings),
-            citationsEnabled: ensureCanonicalAiSettings().citationsEnabled !== false
+            citationsEnabled: resolveCitationsEnabled(
+                params.provider,
+                'inquiry',
+                ensureCanonicalAiSettings().citationsEnabled !== false
+            )
         });
     };
 
@@ -1803,7 +1867,7 @@ export function renderAiSection(params: {
         const activeCacheRowKey = getActiveCostComparisonCacheRowKey();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh Run*', 'Context (cache) Run', 'Expected Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh estimate*', 'Cached estimate*', 'Expected Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -1880,7 +1944,14 @@ export function renderAiSection(params: {
         if (!currentCorpus) {
             throw new Error(COST_ESTIMATE_CORPUS_UNAVAILABLE);
         }
-        const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
+        const activeModel = lastResolvedPreviewState;
+        const citationsOn = activeModel
+            ? resolveCitationsEnabled(
+                activeModel.provider,
+                'inquiry',
+                ensureCanonicalAiSettings().citationsEnabled !== false
+            )
+            : false;
         const citationsSuffix = citationsOn ? ' (includes citation wrappers)' : '';
         const requestText = currentCorpus.requestTokens > 0
             ? `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}${citationsSuffix}`
@@ -1901,6 +1972,50 @@ export function renderAiSection(params: {
     };
 
     const computeCostComparisonRows = async (registryModels?: ModelInfo[]): Promise<CostComparisonRow[]> => {
+        const currentCorpus = getCurrentCorpusContext();
+        const currentFingerprint = getPreviewCurrentCacheReuseFingerprint();
+        const getBillableOutputTokensFromUsage = (
+            provider: AIProviderId,
+            usage: { outputTokens?: number; inputTokens?: number; totalTokens?: number } | undefined
+        ): number | null => {
+            if (!usage || typeof usage.outputTokens !== 'number') return null;
+            if (!Number.isFinite(usage.outputTokens) || usage.outputTokens <= 0) return null;
+            if (
+                provider === 'google'
+                && typeof usage.inputTokens === 'number'
+                && Number.isFinite(usage.inputTokens)
+                && typeof usage.totalTokens === 'number'
+                && Number.isFinite(usage.totalTokens)
+            ) {
+                return Math.max(usage.outputTokens, usage.totalTokens - usage.inputTokens);
+            }
+            return Math.floor(usage.outputTokens);
+        };
+        const getLatestOutputSampleForModel = (model: CostComparisonModel): number | null => {
+            if (!currentCorpus || model.provider === 'ollama' || model.provider === 'none') return null;
+            const session = getInquirySessionStoreSnapshot().getLatestSessionForEngineInScope(
+                model.provider,
+                model.modelId,
+                currentCorpus.scope
+            );
+            if (!session) return null;
+            return getBillableOutputTokensFromUsage(model.provider, session.result.tokenUsage);
+        };
+        const getActiveCacheReuseRatioForModel = (model: CostComparisonModel): number | null => {
+            if (!currentCorpus || !currentFingerprint) return null;
+            if (model.provider === 'ollama' || model.provider === 'none') return null;
+            const session = getInquirySessionStoreSnapshot().getLatestActiveCacheSessionForEngine(
+                model.provider,
+                model.modelId,
+                {
+                    cacheReuseFingerprint: currentFingerprint,
+                    scope: currentCorpus.scope
+                }
+            );
+            if (!session?.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= Date.now()) return null;
+            if (typeof session.cachedStableRatio !== 'number' || !Number.isFinite(session.cachedStableRatio) || session.cachedStableRatio <= 0) return null;
+            return Math.min(1, Math.max(0, session.cachedStableRatio));
+        };
         return await Promise.all(getCostComparisonModels(registryModels).map(async model => {
             const executionEstimate = await buildCurrentInquiryExecutionEstimate({
                 provider: model.provider,
@@ -1919,38 +2034,53 @@ export function renderAiSection(params: {
                     passesText: passLabel
                 };
             }
-            const predictedOutput = plugin.getOutputProfileStore().getExpectedOutputForCost(
+            const learnedOutput = plugin.getOutputProfileStore().predictExpectedOutput(
                 model.provider,
                 model.modelId,
                 executionEstimate.estimatedTokens
             );
+            const latestOutput = learnedOutput !== null ? learnedOutput : getLatestOutputSampleForModel(model);
+            if (latestOutput === null) {
+                const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
+                return {
+                    model,
+                    freshText: 'Output sample needed',
+                    cachedText: 'Output sample needed',
+                    passesText: passLabel
+                };
+            }
+            const activeCacheReuseRatio = getActiveCacheReuseRatioForModel(model);
+            const cacheReuseRatio = activeCacheReuseRatio !== null ? activeCacheReuseRatio : 0;
             const cost = estimateCorpusCost(
                 model.provider,
                 model.modelId,
                 executionEstimate.estimatedTokens,
-                Math.min(predictedOutput, executionEstimate.maxOutputTokens),
+                Math.min(latestOutput, executionEstimate.maxOutputTokens),
                 executionEstimate.expectedPassCount,
                 // Anthropic Inquiry runs always request 1h cache (per
                 // ANTHROPIC_REQUESTED_CACHE_TTL). Without this, the cost
                 // panel would price the priming pass at the 5m rate and
                 // under-estimate by ~33% on the first run.
-                model.provider === 'anthropic' ? { cacheWriteTtl: '1h' } : undefined
+                {
+                    ...(model.provider === 'anthropic' ? { cacheWriteTtl: '1h' as const } : {}),
+                    cacheReuseRatio
+                }
             );
             const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
             const promoLabel = cost.promo?.label;
-            const ttlLabel = getProviderCacheTtlLabel(model.provider);
-            const cachedSuffix = ttlLabel && typeof cost.cachedCostUSD === 'number' ? ` (${ttlLabel})` : '';
+            const cacheWindowLabel = getProviderCacheWindowLabel(model.provider);
+            const cachedSuffix = activeCacheReuseRatio !== null && cacheWindowLabel && typeof cost.cachedCostUSD === 'number' ? ` (${cacheWindowLabel})` : '';
             // Anthropic Inquiry primes the cache on the first run, so the
             // "Fresh Run" estimate includes the 1h cache-write surcharge.
             // Mirror the cached-run TTL suffix so the price label is honest
             // about what's baked in.
-            const freshSuffix = model.provider === 'anthropic' && ttlLabel ? ` (${ttlLabel})` : '';
+            const freshSuffix = model.provider === 'anthropic' && cacheWindowLabel ? ` (${cacheWindowLabel})` : '';
             return {
                 model,
                 freshText: `${formatUsdCost(cost.freshCostUSD)}${freshSuffix}`,
-                cachedText: typeof cost.cachedCostUSD === 'number'
+                cachedText: activeCacheReuseRatio !== null && typeof cost.cachedCostUSD === 'number'
                     ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`
-                    : '—',
+                    : 'No active cache',
                 passesText: passLabel,
                 promoLabel
             };

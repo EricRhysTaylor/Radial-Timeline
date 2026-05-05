@@ -147,16 +147,18 @@ export function getVariantForArchetype(archetype: DesignArchetype): FictionLayou
  * depends on this — `renderFancyhdr` clones the spec and re-runs this to
  * compute the preset baseline, then layers user per-corner overrides on top.
  *
- * Re-applying the same preset is a true "reset" — clears all 6 corner
- * overrides AND resets font / letterSpacing to the preset's defaults.
+ * Resets per-corner overrides and re-populates them per the named mode.
+ * Does NOT touch font or letterSpacing — those are independent axes whose
+ * values are controlled by the bundled spec, not the preset name. (Two
+ * bundled templates can share the same mode but use different letterSpacing
+ * — Modern Classic vs Signature Literary both use split-author-page-title-page
+ * but only Signature opts into the wide-set caps.)
  */
 export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSpec['runningHeader']['mode']): void {
     const rh = spec.runningHeader;
     rh.mode = mode;
     delete rh.evenLeft; delete rh.evenCenter; delete rh.evenRight;
     delete rh.oddLeft;  delete rh.oddCenter;  delete rh.oddRight;
-    delete rh.font;
-    delete rh.letterSpacing;
     if (mode === 'centered-title') {
         rh.evenCenter = 'title';
         rh.oddCenter = 'title';
@@ -165,11 +167,9 @@ export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSp
         rh.evenRight = 'author';
         rh.oddLeft = 'title';
         rh.oddRight = 'page';
-        rh.letterSpacing = 15.0;
     } else if (mode === 'left-title-right-context') {
         rh.evenLeft = 'title';
         rh.oddRight = 'scene-context';
-        rh.font = 'sans';
     }
 }
 

@@ -75,6 +75,7 @@ describe('AI settings models table', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('const getInquirySessionStoreSnapshot = (): InquirySessionStore => new InquirySessionStore(plugin);')).toBe(true);
         expect(source.includes('getLatestSessionForEngineInScope(context.provider, context.modelId, currentCorpus.scope)')).toBe(true);
+        expect(source.includes('scope: currentCorpus?.scope')).toBe(true);
         expect(source.includes('Latest ${latestScopeLabel} Inquiry run completed at')).toBe(true);
         expect(source.includes('Latest Inquiry run completed at')).toBe(false);
     });
@@ -154,7 +155,7 @@ describe('AI settings models table', () => {
     it('renders cloud transparency sections while hiding them for the Local provider path', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("setName(t('settings.ai.largeHandling.name'))")).toBe(true);
-        expect(source.includes('Fresh Run*')).toBe(true);
+        expect(source.includes('Fresh estimate*')).toBe(true);
         expect(source.includes('* Based on published provider pricing. Actual charges may differ due to caching, credits, or account-level adjustments.')).toBe(true);
         expect(source.includes("createSpan({ text: 'See provider pricing: ' })")).toBe(true);
         expect(source.includes("appendText(' runs on your machine with no API charges.')")).toBe(true);
@@ -237,10 +238,11 @@ describe('AI settings models table', () => {
 
     it('uses configured cache-window settings for context-run labels instead of hardcoded provider defaults', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('const getProviderCacheTtlLabel = (provider: AIProviderId): string => {')).toBe(true);
-        expect(source.includes("case 'anthropic':\n                return ANTHROPIC_REQUESTED_CACHE_TTL;")).toBe(true);
-        expect(source.includes("return aiSettings.cacheWindows?.openaiRetention === '24h'")).toBe(true);
-        expect(source.includes("return `${Math.max(60, aiSettings.cacheWindows?.googleTtlSeconds ?? 900) / 60}m`;")).toBe(true);
+        expect(source.includes('const getProviderCacheWindowLabel = (provider: AIProviderId): string | null => {')).toBe(true);
+        expect(source.includes("if (provider === 'anthropic')")).toBe(true);
+        expect(source.includes('const configuredMinutes = aiSettings.cacheWindows?.openaiInMemoryWindowMinutes;')).toBe(true);
+        expect(source.includes('const configuredSeconds = aiSettings.cacheWindows?.googleTtlSeconds;')).toBe(true);
+        expect(source.includes("'Fresh estimate*', 'Cached estimate*'")).toBe(true);
     });
 
     it('shows pending Inquiry corpus estimates as estimating instead of a real zero-token request', () => {
@@ -264,6 +266,41 @@ describe('AI settings models table', () => {
         expect(source.includes("const observedCachePills: PreviewPill[] = cacheLabel")).toBe(true);
         expect(source.includes("basePreviewPills.filter(pill => !/^Cache off\\b/i.test(pill.text))")).toBe(true);
         expect(source.includes("extraPills: [...extraPills, ...observedCachePills]")).toBe(true);
+    });
+
+    it('surfaces provider usage cost in the AI model preview when exact usage pricing is available', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('estimateUsageCost(context.provider, context.modelId, latestSession.result.tokenUsage)')).toBe(true);
+        expect(source.includes('text: `Last run cost · ${formatExactUsdCost(latestUsageCost)}`')).toBe(true);
+        expect(source.includes('extraPills')).toBe(true);
+    });
+
+    it('does not substitute same-engine cache sessions when the current fingerprint is not active', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('const cacheSession = activeCacheSession;')).toBe(true);
+        expect(source.includes('fallbackCacheSession')).toBe(false);
+        expect(source.includes("cachedText: 'Output sample needed'")).toBe(true);
+        expect(source.includes("'No active cache'")).toBe(true);
+    });
+
+    it('distinguishes static cache capability from an expired cache window in the preview card', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("text: 'Cache enabled'")).toBe(true);
+        expect(source.includes("text: 'Provider cache enabled'")).toBe(true);
+        expect(source.includes("text: 'Cache window expired'")).toBe(true);
+    });
+
+    it('routes disabled provider citations through the operational resolver so Gemini cache is not locked off', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        const capsSource = readFileSync(resolve(process.cwd(), 'src/ai/caps/computeCaps.ts'), 'utf8');
+        const settingsSource = readFileSync(resolve(process.cwd(), 'src/ai/settings/aiSettings.ts'), 'utf8');
+        const validateSource = readFileSync(resolve(process.cwd(), 'src/ai/settings/validateAiSettings.ts'), 'utf8');
+        expect(source.includes('import { computeCaps, resolveCitationsEnabled }')).toBe(true);
+        expect(source.includes('const citationsOn = resolveCitationsEnabled(')).toBe(true);
+        expect(source.includes('citationsEnabled: resolveCitationsEnabled(')).toBe(true);
+        expect(capsSource.includes('export function resolveCitationsEnabled(')).toBe(true);
+        expect(settingsSource.includes('citationsEnabled: false')).toBe(true);
+        expect(validateSource.includes('forcing cache-compatible citation setting off')).toBe(true);
     });
 
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {

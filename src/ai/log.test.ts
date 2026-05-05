@@ -70,11 +70,11 @@ describe('buildUsageCostBreakdown', () => {
         // under-estimated by ~33%; $1.25 matches the actual 1h pricing
         // that the live run is billed at.
         expect(lines).toContain('- Estimated fresh: $1.25');
-        expect(lines).toContain('- Estimated cached: $0.46');
-        expect(lines).toContain('- Effective cost: $0.52');
+        expect(lines).toContain('- Estimated cached: $0.459');
+        expect(lines).toContain('- Actual usage cost: $0.524');
         expect(lines).toContain('## Cost Accuracy');
-        expect(lines).toContain('- Estimated: $0.46');
-        expect(lines).toContain('- Actual: $0.52');
+        expect(lines).toContain('- Estimated: $0.459');
+        expect(lines).toContain('- Actual usage cost: $0.524');
         expect(lines).toContain('- Delta: -12.5%');
     });
 
@@ -97,7 +97,7 @@ describe('buildUsageCostBreakdown', () => {
         expect(estimatedFreshLine).toBeTruthy();
         expect(estimatedCachedLine).toBeTruthy();
         expect(estimatedLine).toBe(estimatedFreshLine?.replace('- Estimated fresh: ', '- Estimated: '));
-        expect(lines.some(line => line.startsWith('- Actual: $'))).toBe(true);
+        expect(lines.some(line => line.startsWith('- Actual usage cost: $'))).toBe(true);
     });
 
     it('omits cost accuracy when actual cost is unavailable', () => {
@@ -112,7 +112,7 @@ describe('buildUsageCostBreakdown', () => {
         expect(lines).toContain('## Cost Breakdown');
         expect(lines).toContain('- Billed input total: unavailable');
         expect(lines).toContain('- Raw input: unavailable');
-        expect(lines).toContain('- Effective cost: unavailable');
+        expect(lines).toContain('- Actual usage cost: unavailable');
         expect(lines).not.toContain('## Cost Accuracy');
     });
 

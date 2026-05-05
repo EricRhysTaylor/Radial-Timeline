@@ -85,6 +85,7 @@ export class InquirySessionStore {
         options?: {
             now?: number;
             cacheReuseFingerprint?: string;
+            scope?: InquiryScope;
         }
     ): InquirySession | undefined {
         const normalizedProvider = provider.trim().toLowerCase();
@@ -100,6 +101,10 @@ export class InquirySessionStore {
             const requestedModel = (session.result.aiModelRequested || '').trim();
             const modelMatches = resolvedModel === normalizedModelId || requestedModel === normalizedModelId;
             if (!modelMatches) return false;
+            if (options?.scope) {
+                const sessionScope = session.scope ?? session.result.scope;
+                if (sessionScope !== options.scope) return false;
+            }
             if (normalizedReuseFingerprint) {
                 const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();
                 if (sessionReuseFingerprint !== normalizedReuseFingerprint) return false;

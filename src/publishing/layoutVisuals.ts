@@ -449,10 +449,10 @@ export function getPictogramRowsFromSpec(spec: DesignedStyleSpec): LayoutPictogr
             ...(isTitled ? { specialSubtext: 'Boy with a Skull' } : {}),
         };
         // Mirror the spec's vertical offset (Contemporary's deep top-padding,
-        // user-driven slider value, etc.) so the pictogram tracks the slider live.
-        if (typeof spec.chapters.spacing?.topFraction === 'number') {
-            chapterPage.headingTopFraction = spec.chapters.spacing.topFraction;
-        }
+        // user-driven slider value, etc.) so the pictogram tracks the slider
+        // live. Default to 0.5 (centered) when undefined — matches the .tex
+        // generator's centered fallback and keeps the slider/preview in sync.
+        chapterPage.headingTopFraction = spec.chapters.spacing?.topFraction ?? 0.5;
         // Contemporary's chapter-only page (no chapter title) — drop subtext.
         if (spec.chapters.mode === 'numbered' && spec.chapters.spacing) {
             chapterPage.specialText = 'Chapter';
@@ -1058,11 +1058,14 @@ function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClas
             // openerSpacing → CSS vars on the body wrapper. The stylesheet
             // consumes them to override the default padding-top + heading→body
             // gap, so the Scenes panel sliders move the heading visibly.
-            if (typeof side.headingTopFraction === 'number' && side.headingTopFraction > 0) {
+            // Always apply when defined (even at 0%) — earlier `> 0` guard
+            // caused a snap from CSS-default to flex-start when the slider
+            // crossed 0; smooth gradient now matches user expectation.
+            if (typeof side.headingTopFraction === 'number') {
                 body.addClass('is-heading-offset');
                 body.style.setProperty('--ert-layout-heading-top', `${Math.round(side.headingTopFraction * 100)}%`);
             }
-            if (typeof side.headingBottomFraction === 'number' && side.headingBottomFraction > 0) {
+            if (typeof side.headingBottomFraction === 'number') {
                 body.addClass('is-heading-bottom-spaced');
                 body.style.setProperty('--ert-layout-heading-bottom', `${Math.round(side.headingBottomFraction * 100)}%`);
             }
@@ -1078,10 +1081,12 @@ function renderLayoutPage(parent: HTMLElement, side: PictogramPageSide, sideClas
             }
         } else {
             body.addClass('is-special');
-            // When the spec carries a top-fraction offset (chapter spacing), apply
-            // it as a CSS custom property the stylesheet consumes to push the
-            // heading down from the top instead of vertically centering it.
-            if (typeof side.headingTopFraction === 'number' && side.headingTopFraction > 0) {
+            // Always apply the heading offset when defined (even at 0% =
+            // top-of-page or 50% = centered). Previous `> 0` guard caused
+            // a snap from CSS-centered to flex-start whenever the slider
+            // crossed 0; now the position is a smooth gradient driven
+            // entirely by the fraction.
+            if (typeof side.headingTopFraction === 'number') {
                 body.addClass('is-heading-offset');
                 body.style.setProperty('--ert-layout-heading-top', `${Math.round(side.headingTopFraction * 100)}%`);
             }

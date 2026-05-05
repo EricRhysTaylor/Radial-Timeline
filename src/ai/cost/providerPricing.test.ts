@@ -100,6 +100,22 @@ describe('providerPricing', () => {
         expect(longContext.cacheReadPer1M).toBe(0.5);
     });
 
+    it('stores Gemini Pro cache-read pricing and long-context thresholds', () => {
+        const gemini25Standard = resolveProviderModelPricing('google', 'gemini-2.5-pro', 200_000);
+        const gemini25Long = resolveProviderModelPricing('google', 'gemini-2.5-pro', 200_001);
+        const gemini31Long = resolveProviderModelPricing('google', 'gemini-3.1-pro-preview', 200_001);
+
+        expect(gemini25Standard.inputPer1M).toBe(1.25);
+        expect(gemini25Standard.outputPer1M).toBe(10);
+        expect(gemini25Standard.cacheReadPer1M).toBe(0.125);
+        expect(gemini25Long.inputPer1M).toBe(2.5);
+        expect(gemini25Long.outputPer1M).toBe(15);
+        expect(gemini25Long.cacheReadPer1M).toBe(0.25);
+        expect(gemini31Long.inputPer1M).toBe(4);
+        expect(gemini31Long.outputPer1M).toBe(18);
+        expect(gemini31Long.cacheReadPer1M).toBe(0.4);
+    });
+
     it('does not assume newer Anthropic versions are more expensive', () => {
         const sonnet45 = getProviderPricing('anthropic', 'claude-sonnet-4-5-20250929');
         const sonnet46 = getProviderPricing('anthropic', 'claude-sonnet-4-6');

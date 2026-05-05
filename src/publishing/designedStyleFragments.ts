@@ -544,12 +544,15 @@ export function renderChapterTitle(spec: DesignedStyleSpec): string {
     // ~46% down the page for a centered-feel chapter opener). Otherwise fall
     // back to fixed inches that work for traditional manuscript layouts.
     const sp = spec.chapters.spacing;
+    // Default to 0.5\textheight (centered) when undefined — matches the
+    // wizard slider's centered default. Bundled templates that want a
+    // different position (e.g. Contemporary's deep 0.46) set explicit values.
     const topVspace = sp?.topFraction != null
         ? `${sp.topFraction.toFixed(2)}\\textheight`
-        : '1.9in';
+        : '0.5\\textheight';
     const bottomVspace = sp?.bottomFraction != null
         ? `${sp.bottomFraction.toFixed(2)}\\textheight`
-        : '0.9in';
+        : '0.08\\textheight';
     const useModernClassicChapterTreatment =
         spec.archetype === 'structured'
         && spec.chapters.mode === 'numbered-titled'

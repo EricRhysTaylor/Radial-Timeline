@@ -93,7 +93,13 @@ function readGeminiUsage(responseData: Record<string, unknown>): TokenUsage | nu
     if (!usage || typeof usage !== 'object') return null;
     const usageData = usage as Record<string, unknown>;
     const inputTokens = readUsageNumber(usageData.promptTokenCount);
-    const outputTokens = readUsageNumber(usageData.candidatesTokenCount);
+    const candidatesTokenCount = readUsageNumber(usageData.candidatesTokenCount);
+    const thoughtsTokenCount = readUsageNumber(usageData.thoughtsTokenCount);
+    const outputPieces = [candidatesTokenCount, thoughtsTokenCount]
+        .filter((value): value is number => typeof value === 'number');
+    const outputTokens = outputPieces.length > 0
+        ? outputPieces.reduce((sum, value) => sum + value, 0)
+        : undefined;
     const cacheReadInputTokens = readUsageNumber(usageData.cachedContentTokenCount);
     const totalTokens = readUsageNumber(usageData.totalTokenCount)
         ?? (typeof inputTokens === 'number' && typeof outputTokens === 'number'
@@ -106,7 +112,7 @@ function readGeminiUsage(responseData: Record<string, unknown>): TokenUsage | nu
 export function extractTokenUsage(provider: string | null | undefined, responseData: unknown): TokenUsage | null {
     if (!responseData || typeof responseData !== 'object') return null;
     const data = responseData as Record<string, unknown>;
-    const normalizedProvider = (provider || '').trim().toLowerCase();
+    const normalizedProvider = typeof provider === 'string' ? provider.trim().toLowerCase() : '';
 
     if (normalizedProvider === 'anthropic') {
         return readAnthropicUsage(data);

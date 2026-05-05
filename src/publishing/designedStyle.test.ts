@@ -404,16 +404,17 @@ describe('generateDesignedStyleTex', () => {
             expect(tex).not.toMatch(/\\preto\\chapter\{/);
         });
 
-        it('falls back to fixed inches when spec.chapters.spacing is omitted', () => {
+        it('falls back to centered (0.5\\textheight) when spec.chapters.spacing is omitted', () => {
             const tex = generateDesignedStyleTex(buildSpec({
                 archetype: 'submission',
                 chapters: { mode: 'numbered-titled', pageBreak: true, resetSceneCounter: false },
             }));
-            // No textheight-fraction spacing emitted when spacing is unset.
-            expect(tex).not.toMatch(/\\vspace\*\{0\.\d+\\textheight\}.*\\rtChapter/s);
-            // Default fixed-inch spacing is present inside the macro.
+            // Default centered spacing is present inside the macro. Was 1.9in
+            // (heading in upper third); now 0.5\textheight (centered) so the
+            // wizard slider's 50% default and the .tex output stay in sync.
             const macroBody = tex.split('\\newcommand{\\rtChapter}')[1] ?? '';
-            expect(macroBody).toContain('\\vspace*{1.9in}');
+            expect(macroBody).toContain('\\vspace*{0.5\\textheight}');
+            expect(macroBody).toContain('\\vspace*{0.08\\textheight}');
         });
     });
 

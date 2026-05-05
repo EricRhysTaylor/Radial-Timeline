@@ -122,6 +122,7 @@ const KNOWN_UI_HIDDEN = new Map([
     ['body.microtype',                             'Always-on per product decision; toggle removed.'],
     ['chapters.spacing.bottomFraction',            'Removed from UI per product decision; emitted in .tex via spacing.'],
     ['chapters.secnumdepth',                       'Advanced LaTeX setting; only set automatically by Signature template.'],
+    ['scene.openerHeadingModes',                   'Removed from v1 UI for simplicity (overlapped with singular Heading mode); bundled Signature still sets it inline. Defer to v2.'],
 ]);
 
 // PREVIEW_HIDDEN — no pictogram / feature-list representation. Spec values

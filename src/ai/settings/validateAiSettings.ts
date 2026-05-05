@@ -270,6 +270,11 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         }
     }
 
+    if (value.citationsEnabled !== false) {
+        warnings.push('Provider citations are temporarily disabled; forcing cache-compatible citation setting off.');
+        value.citationsEnabled = false;
+    }
+
     value.migrationWarnings = [...new Set([...(value.migrationWarnings || []), ...warnings])];
 
     return { value, warnings };

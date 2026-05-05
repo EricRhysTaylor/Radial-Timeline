@@ -134,7 +134,14 @@ const MODERN_CLASSIC_SPEC: DesignedStyleSpec = {
         epigraphPlacement: 'inline',
         openAny: true,
     },
-    chapters: { mode: 'numbered-titled', pageBreak: true, resetSceneCounter: false },
+    chapters: {
+        mode: 'numbered-titled',
+        pageBreak: true,
+        resetSceneCounter: false,
+        // Explicit centered position so wizard slider reads 50% on open.
+        // Locks the v1 default — earlier the .tex used a 1.9in fixed offset.
+        spacing: { topFraction: 0.5, bottomFraction: 0.08 },
+    },
     scene: {
         opener: 'roman-with-rule',
         headingMode: 'scene-number',

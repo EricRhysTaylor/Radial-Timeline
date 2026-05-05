@@ -143,16 +143,37 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
     },
     google: {
         'gemini-3.1-pro-preview': {
-            inputPer1M: 2.5,
-            outputPer1M: 15.0
+            inputPer1M: 2.0,
+            outputPer1M: 12.0,
+            cacheReadPer1M: 0.2,
+            longContext: {
+                thresholdInputTokens: 200_000,
+                inputPer1M: 4.0,
+                outputPer1M: 18.0,
+                cacheReadPer1M: 0.4
+            }
         },
         'gemini-pro-latest': {
-            inputPer1M: 2.5,
-            outputPer1M: 15.0
+            inputPer1M: 2.0,
+            outputPer1M: 12.0,
+            cacheReadPer1M: 0.2,
+            longContext: {
+                thresholdInputTokens: 200_000,
+                inputPer1M: 4.0,
+                outputPer1M: 18.0,
+                cacheReadPer1M: 0.4
+            }
         },
         'gemini-2.5-pro': {
-            inputPer1M: 2.5,
-            outputPer1M: 15.0
+            inputPer1M: 1.25,
+            outputPer1M: 10.0,
+            cacheReadPer1M: 0.125,
+            longContext: {
+                thresholdInputTokens: 200_000,
+                inputPer1M: 2.5,
+                outputPer1M: 15.0,
+                cacheReadPer1M: 0.25
+            }
         }
     }
 };
@@ -243,7 +264,8 @@ function formatPricingDate(isoDate: string): string {
     const hours = d.getHours();
     const minutes = d.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'pm' : 'am';
-    const hour12 = hours % 12 || 12;
+    const hourModulo = hours % 12;
+    const hour12 = hourModulo === 0 ? 12 : hourModulo;
     return `${month} ${day}, ${hour12}:${minutes}${ampm}`;
 }
 

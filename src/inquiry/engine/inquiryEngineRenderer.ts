@@ -1,6 +1,7 @@
 import type { InquiryAdvisoryContext } from '../services/inquiryAdvisory';
 import type { InquiryEnginePopoverState, InquiryReadinessUiState, PassPlanResult } from '../types';
 import type { TokenUsage } from '../../ai/usage/providerUsage';
+import { formatExactUsdCost } from '../../ai/cost/estimateCorpusCost';
 
 export type EngineRecentRunSnapshot = {
     /** Whether the last run requested citation anchors. */
@@ -207,7 +208,7 @@ export function computeCachePillState(usage: TokenUsage | undefined): CachePillS
 export function computeActualCostPillState(actualCostUSD: number | undefined): ActualCostPillState | null {
     if (typeof actualCostUSD !== 'number' || !Number.isFinite(actualCostUSD) || actualCostUSD < 0) return null;
     return {
-        label: `Actual cost · $${actualCostUSD.toFixed(2)}`,
+        label: `Last run cost · ${formatExactUsdCost(actualCostUSD)}`,
         tooltip: 'Usage-based cost from the provider token report for the last completed run.'
     };
 }

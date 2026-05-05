@@ -20,6 +20,7 @@ import { readSceneId } from '../../utils/sceneIds';
 import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
 import type { AIProviderId } from '../types';
 import { getAIClient } from '../runtime/aiClient';
+import { resolveCitationsEnabled } from '../caps/computeCaps';
 import { buildUnifiedBeatAnalysisPrompt, type UnifiedBeatInfo, getUnifiedBeatAnalysisJsonSchema } from '../prompts/unifiedBeatAnalysis';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
@@ -321,7 +322,7 @@ export const buildCanonicalExecutionEstimate = async (
             modelId: params.modelId,
             modelLabel: params.modelId
         },
-        citationsEnabled: params.citationsEnabled ?? true
+        citationsEnabled: resolveCitationsEnabled(provider, 'inquiry', params.citationsEnabled ?? true)
     });
     const estimatedTokens = trace.tokenEstimate.inputTokens;
     const chunkPlanPassCount = runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
@@ -561,7 +562,11 @@ export async function estimateInquiryTokens(params: {
                 vault: params.vault,
                 metadataCache: params.metadataCache,
                 frontmatterMappings: params.frontmatterMappings,
-                citationsEnabled: params.plugin.settings?.aiSettings?.citationsEnabled !== false
+                citationsEnabled: resolveCitationsEnabled(
+                    params.provider,
+                    'inquiry',
+                    params.plugin.settings?.aiSettings?.citationsEnabled !== false
+                )
             });
         } catch {
             // Keep heuristic execution estimate when canonical execution estimate cannot be prepared.

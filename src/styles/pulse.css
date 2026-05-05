@@ -2869,6 +2869,14 @@ body > .tooltip {
   /* Was: calc(100vh - 3xl - 3xl - xl) = 100vh − 104px.
    * Now: calc(100vh - xs)            = 100vh − 8px → ≈ 96px taller. */
   max-height: calc(100vh - var(--ert-pad-xs));
+  /* Anchor the modal at a fixed distance from the top so it doesn't
+     re-center as the active panel's content height changes. Without this,
+     each category dropdown change re-centers the modal vertically and the
+     entire window jumps. We override Obsidian's default
+     `top: 50%; transform: translate(-50%, -50%)` to keep the horizontal
+     centering but pin the top edge — only the bottom resizes. */
+  top: var(--ert-gap-md);
+  transform: translateX(-50%);
 }
 
 .ert-style-wizard {
@@ -3195,15 +3203,10 @@ body > .tooltip {
 
 .ert-style-wizard__font-status {
   font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.ert-style-wizard__font-status.is-installed {
-  color: var(--text-success, var(--color-green));
 }
 
 .ert-style-wizard__font-status.is-missing {
-  color: var(--text-warning, var(--text-error));
+  color: var(--ert-alert-warning-color);
   font-weight: 500;
 }
 

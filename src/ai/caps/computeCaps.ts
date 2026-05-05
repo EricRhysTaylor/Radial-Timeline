@@ -98,7 +98,7 @@ function resolveThinkingBudget(
  *  extraction, Sources rendering) is intact. To re-enable, restore the
  *  earlier provider/feature gate below — no other code path needs to change.
  */
-function resolveCitationsEnabled(
+export function resolveCitationsEnabled(
     _provider: AIProviderId,
     _feature: string,
     _userCitationsEnabled?: boolean

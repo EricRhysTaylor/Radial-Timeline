@@ -113,7 +113,7 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
             ...DEFAULT_CREDENTIAL_SECRET_IDS
         },
         connections: {},
-        citationsEnabled: true,
+        citationsEnabled: false,
         migrationWarnings: [],
         upgradedBannerPending: false
     };

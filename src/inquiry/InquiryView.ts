@@ -102,6 +102,7 @@ import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
 // computeCaps, INPUT_TOKEN_GUARD_FACTOR: now used in inquiryReadinessBuilder.ts
+import { resolveCitationsEnabled } from '../ai/caps/computeCaps';
 import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
@@ -1051,7 +1052,7 @@ export class InquiryView extends ItemView {
             readinessReason: readinessUi.reason,
             runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel),
             cacheTtlLabel: this.getProviderCacheTtlLabel(engine.provider),
-            citationsRequested: this.getCanonicalAiSettings().citationsEnabled !== false,
+            citationsRequested: this.areInquiryProviderCitationsEnabled(engine.provider),
             providerSupportsCitations: engine.provider !== 'none' && engine.provider !== 'ollama'
                 ? providerSupportsCitations(engine.provider)
                 : false,
@@ -1170,7 +1171,7 @@ export class InquiryView extends ItemView {
     public getCurrentCorpusContext(): InquiryCurrentCorpusContext {
         const manifest = this.buildCorpusManifest('estimate-snapshot');
         const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        const currentCitationsEnabled = this.getCanonicalAiSettings().citationsEnabled !== false;
+        const currentCitationsEnabled = this.areInquiryProviderCitationsEnabled();
         // Scope/book match is the precondition for any reuse from the snapshot.
         const sameScope = !!snapshot
             && snapshot.scope === this.state.scope
@@ -1279,6 +1280,14 @@ export class InquiryView extends ItemView {
         const validated = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings());
         this.plugin.settings.aiSettings = validated.value;
         return validated.value;
+    }
+
+    private areInquiryProviderCitationsEnabled(provider: AIProviderId = this.getResolvedEngine().provider): boolean {
+        return resolveCitationsEnabled(
+            provider,
+            'inquiry',
+            this.getCanonicalAiSettings().citationsEnabled !== false
+        );
     }
 
     private getAccessTierForProvider(provider: AIProviderId, aiSettings: AiSettingsV1): AccessTier {
@@ -3657,12 +3666,10 @@ export class InquiryView extends ItemView {
     }
 
     private getProviderCacheTtlLabel(provider: string): string {
-        switch (provider) {
-            case 'anthropic': return ANTHROPIC_REQUESTED_CACHE_TTL;
-            case 'openai': return '24h';
-            case 'google': return '24h';
-            default: return '';
-        }
+        if (provider === 'anthropic') return ANTHROPIC_REQUESTED_CACHE_TTL;
+        if (provider === 'openai') return '24h';
+        if (provider === 'google') return '24h';
+        return '';
     }
 
     /**
@@ -3682,7 +3689,7 @@ export class InquiryView extends ItemView {
     private buildEngineRecentRunSnapshot(): EngineRecentRunSnapshot | undefined {
         const result = this.state.activeResult;
         if (!result || this.isErrorResult(result)) return undefined;
-        const citationsRequested = this.getCanonicalAiSettings().citationsEnabled !== false;
+        const citationsRequested = this.areInquiryProviderCitationsEnabled();
         const sourcesVM = buildInquirySourcesViewModel(
             result.citations,
             result.evidenceDocumentMeta,
@@ -3728,7 +3735,10 @@ export class InquiryView extends ItemView {
         const session = this.sessionStore.getLatestActiveCacheSessionForEngine(
             engine.provider,
             engine.modelId,
-            { cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined }
+            {
+                cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined,
+                scope: this.state.scope
+            }
         );
         if (!session?.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= Date.now()) return undefined;
         const cachedTokens = typeof session.cachedStableTokens === 'number' && Number.isFinite(session.cachedStableTokens)
@@ -4921,13 +4931,11 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCcHeaderDisplayLabel(className: string): string {
-        switch (className) {
-            case 'outline-saga': return 'Saga Outline';
-            case 'character': return 'Character';
-            case 'scene': return 'Scene';
-            case 'outline': return 'Outline';
-            default: return 'Class';
-        }
+        if (className === 'outline-saga') return 'Saga Outline';
+        if (className === 'character') return 'Character';
+        if (className === 'scene') return 'Scene';
+        if (className === 'outline') return 'Outline';
+        return 'Class';
     }
 
     private getCorpusClassShort(className: string): string {
@@ -6432,7 +6440,7 @@ export class InquiryView extends ItemView {
                 modelId: engineSelection.modelId,
                 modelLabel: engineSelection.modelLabel
             },
-            citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
+            citationsEnabled: this.areInquiryProviderCitationsEnabled(simulationProvider)
         };
         const runToken = this.beginInquiryRunToken();
         try {
@@ -6743,7 +6751,7 @@ export class InquiryView extends ItemView {
                 modelId: providerChoice.modelId,
                 modelLabel: providerChoice.modelLabel
             },
-            citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
+            citationsEnabled: this.areInquiryProviderCitationsEnabled(providerChoice.provider)
         };
 
         this.state.isRunning = true;
@@ -6943,7 +6951,7 @@ export class InquiryView extends ItemView {
                         modelId: providerChoice.modelId,
                         modelLabel: providerChoice.modelLabel
                     },
-                    citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
+                    citationsEnabled: this.areInquiryProviderCitationsEnabled(providerChoice.provider)
                 };
                 const submittedAt = new Date();
                 let result: InquiryResult;
@@ -7911,13 +7919,21 @@ export class InquiryView extends ItemView {
         }
         const provider = result.aiProvider as AIProviderId | undefined;
         const modelId = result.aiModelResolved ?? result.aiModelRequested;
-        const predicted = provider && provider !== 'none' && modelId
-            ? this.plugin.getOutputProfileStore().getExpectedOutputForCost(provider, modelId, executionInputTokens)
+        const usageOutputTokens = result.tokenUsage && typeof result.tokenUsage.outputTokens === 'number'
+            ? (provider === 'google'
+                && typeof result.tokenUsage.inputTokens === 'number'
+                && typeof result.tokenUsage.totalTokens === 'number'
+                ? Math.max(result.tokenUsage.outputTokens, result.tokenUsage.totalTokens - result.tokenUsage.inputTokens)
+                : result.tokenUsage.outputTokens)
             : null;
+        const predicted = typeof usageOutputTokens === 'number' && Number.isFinite(usageOutputTokens) && usageOutputTokens > 0
+            ? usageOutputTokens
+            : (provider && provider !== 'none' && modelId
+                ? this.plugin.getOutputProfileStore().predictExpectedOutput(provider, modelId, executionInputTokens)
+                : null);
+        if (predicted === null) return null;
         const cap = Number.isFinite(trace.outputTokenCap) ? Math.max(0, Math.floor(trace.outputTokenCap)) : 0;
-        const expectedOutputTokens = predicted != null
-            ? Math.min(predicted, cap || predicted)
-            : cap;
+        const expectedOutputTokens = Math.min(predicted, cap || predicted);
         const expectedPasses = Number.isFinite(trace.tokenEstimate?.expectedPassCount)
             ? Math.max(1, Math.floor(trace.tokenEstimate.expectedPassCount as number))
             : (Number.isFinite(trace.executionPassCount) ? Math.max(1, Math.floor(trace.executionPassCount as number)) : 1);
@@ -8009,7 +8025,7 @@ export class InquiryView extends ItemView {
                 modelId: resolvedEngine.modelId,
                 modelLabel: resolvedEngine.modelLabel
             },
-            citationsEnabled: this.getCanonicalAiSettings().citationsEnabled !== false
+            citationsEnabled: this.areInquiryProviderCitationsEnabled(simulationProvider)
         };
         const submittedAt = new Date();
         this.state.isRunning = true;
@@ -9281,7 +9297,7 @@ export class InquiryView extends ItemView {
         const overrides = this.getCorpusOverrideSummary();
         const manifest = this.buildCorpusManifest('estimate-snapshot');
         const targetSceneIds = this.getActiveTargetSceneIds();
-        const citationsEnabled = this.getCanonicalAiSettings().citationsEnabled !== false;
+        const citationsEnabled = this.areInquiryProviderCitationsEnabled(engine.provider);
 
         this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
 
@@ -9782,31 +9798,15 @@ export class InquiryView extends ItemView {
         return context?.cacheReuseFingerprint?.trim() || null;
     }
 
-    private tryBackfillActiveSessionCacheReuseFingerprint(): InquirySession | null {
-        const activeSessionId = this.state.activeSessionId;
-        if (!activeSessionId || !this.state.corpusFingerprint) return null;
-        const session = this.sessionStore.peekSession(activeSessionId);
-        if (!session?.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= Date.now()) return null;
-        if ((session.cacheReuseFingerprint || session.result.cacheReuseFingerprint)?.trim()) {
-            return session;
-        }
-        if (session.result.corpusFingerprint !== this.state.corpusFingerprint) return null;
-        const cacheReuseFingerprint = this.getCurrentCacheReuseFingerprint();
-        if (!cacheReuseFingerprint) return null;
-        session.cacheReuseFingerprint = cacheReuseFingerprint;
-        session.result.cacheReuseFingerprint = cacheReuseFingerprint;
-        this.sessionStore.setSession(session);
-        return session;
-    }
-
     private getPersistedReuseAdvancedContext(): AIRunAdvancedContext | null {
         const engine = this.getResolvedEngine();
         if (!engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') {
             return null;
         }
         const session = this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
-            cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined
-        }) ?? this.tryBackfillActiveSessionCacheReuseFingerprint();
+            cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined,
+            scope: this.state.scope
+        });
         if (!session || session.result.aiProvider?.trim().toLowerCase() !== engine.provider) {
             return null;
         }
@@ -9896,8 +9896,9 @@ export class InquiryView extends ItemView {
             return null;
         }
         return this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
-            cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined
-        }) ?? this.tryBackfillActiveSessionCacheReuseFingerprint() ?? null;
+            cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined,
+            scope: this.state.scope
+        }) ?? null;
     }
 
     private buildContextCountdownLabel(): string | null {
@@ -11188,28 +11189,37 @@ export class InquiryView extends ItemView {
             return 'Cost · Estimating…';
         }
         try {
-            const expectedOutputTokens = this.plugin.getOutputProfileStore().getExpectedOutputForCost(
+            const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(
                 engine.provider,
                 engine.modelId,
                 snapshot.estimate.estimatedInputTokens
             );
+            if (learnedOutputTokens === null) {
+                return 'Cost · Run once for exact cost';
+            }
+            const cacheSession = this.getLatestCacheSessionForResolvedEngine();
+            const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt
+                && cacheSession.cacheWindowExpiresAt > Date.now();
+            const cacheReuseRatio = nextRunCanReuseCache && typeof cacheSession.cachedStableRatio === 'number' && Number.isFinite(cacheSession.cachedStableRatio)
+                ? Math.min(1, Math.max(0, cacheSession.cachedStableRatio))
+                : 0;
             const cost = estimateCorpusCost(
                 engine.provider,
                 engine.modelId,
                 snapshot.estimate.estimatedInputTokens,
-                Math.min(expectedOutputTokens, snapshot.estimate.maxOutputTokens),
+                Math.min(learnedOutputTokens, snapshot.estimate.maxOutputTokens),
                 snapshot.estimate.expectedPassCount,
                 // Inquiry on Anthropic always primes a 1h cache; pass the
                 // matching write rate so the priming pass isn't priced as 5m.
-                engine.provider === 'anthropic' ? { cacheWriteTtl: '1h' } : undefined
+                {
+                    ...(engine.provider === 'anthropic' ? { cacheWriteTtl: '1h' as const } : {}),
+                    cacheReuseRatio
+                }
             );
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);
             const cachedLabel = typeof cost.cachedCostUSD === 'number'
                 ? formatApproxUsdCost(cost.cachedCostUSD)
                 : '—';
-            const cacheSession = this.getLatestCacheSessionForResolvedEngine();
-            const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt
-                && cacheSession.cacheWindowExpiresAt > Date.now();
             const corpusWasRun = snapshot.corpus.corpusFingerprint === this.state.corpusFingerprint;
             if (nextRunCanReuseCache) {
                 return `Cost · ${cachedLabel} cached`;

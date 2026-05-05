@@ -84,4 +84,23 @@ describe('extractTokenUsage', () => {
             cacheReadInputTokens: 900
         });
     });
+
+    it('includes Gemini thinking tokens in billed output usage', () => {
+        const usage = extractTokenUsage('google', {
+            usageMetadata: {
+                promptTokenCount: 264_606,
+                candidatesTokenCount: 531,
+                thoughtsTokenCount: 4_878,
+                totalTokenCount: 270_015,
+                cachedContentTokenCount: 264_584
+            }
+        });
+
+        expect(usage).toEqual({
+            inputTokens: 264_606,
+            outputTokens: 5_409,
+            totalTokens: 270_015,
+            cacheReadInputTokens: 264_584
+        });
+    });
 });

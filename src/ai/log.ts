@@ -8,8 +8,10 @@ import { getModelDisplayName } from '../utils/modelResolver';
 import {
     type CorpusCostEstimate,
     estimateCorpusCost,
-    estimateUsageCost
+    estimateUsageCost,
+    formatExactUsdCost
 } from './cost/estimateCorpusCost';
+import { getActivePricingTable } from './cost/providerPricing';
 import { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
 
 export { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
@@ -98,7 +100,7 @@ const DEFAULT_LOGS_ROOT = 'Radial Timeline/Logs';
 const CONTENT_LOGS_FOLDER_NAME = 'Content';
 
 function normalizePricingProvider(provider?: string | null): 'anthropic' | 'openai' | 'google' | null {
-    const normalized = (provider || '').trim().toLowerCase();
+    const normalized = typeof provider === 'string' ? provider.trim().toLowerCase() : '';
     if (normalized === 'anthropic') return 'anthropic';
     if (normalized === 'openai') return 'openai';
     if (normalized === 'google') return 'google';
@@ -113,12 +115,8 @@ export function buildUsageCostBreakdown(
     if (!usage) return null;
     const pricingProvider = normalizePricingProvider(provider);
     if (!pricingProvider || !modelId) return null;
-
-    try {
-        return estimateUsageCost(pricingProvider, modelId, usage);
-    } catch {
-        return null;
-    }
+    if (!getActivePricingTable()[pricingProvider]?.[modelId]) return null;
+    return estimateUsageCost(pricingProvider, modelId, usage);
 }
 
 export interface LogCostEstimateInput {
@@ -170,7 +168,7 @@ export function formatUsageCostBreakdownLines(
     };
     const formatCost = (value?: number): string => {
         if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
-        return `$${value.toFixed(2)}`;
+        return formatExactUsdCost(value);
     };
     const lines = [
         '## Cost Breakdown',
@@ -182,7 +180,7 @@ export function formatUsageCostBreakdownLines(
         '',
         `- Estimated fresh: ${formatCost(estimate?.freshCostUSD)}`,
         `- Estimated cached: ${formatCost(estimate?.cachedCostUSD)}`,
-        `- Effective cost: ${formatCost(breakdown?.totalCostUSD)}`
+        `- Actual usage cost: ${formatCost(breakdown?.totalCostUSD)}`
     ];
     if (
         estimate
@@ -196,7 +194,7 @@ export function formatUsageCostBreakdownLines(
             lines.push('');
             lines.push('## Cost Accuracy');
             lines.push(`- Estimated: ${formatCost(estimatedEffectiveCost)}`);
-            lines.push(`- Actual: ${formatCost(breakdown.totalCostUSD)}`);
+            lines.push(`- Actual usage cost: ${formatCost(breakdown.totalCostUSD)}`);
             lines.push(`- Delta: ${formatDeltaPercent(estimatedEffectiveCost, breakdown.totalCostUSD)}`);
         }
     }
