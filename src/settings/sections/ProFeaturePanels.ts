@@ -60,6 +60,7 @@ import {
     type FictionLayoutVariant,
 } from '../../publishing/layoutVisuals';
 import { buildSpreadValidationContext } from '../../publishing/spreadValidationContext';
+import { BUNDLED_FICTION_SPECS, isBundledFictionId } from '../../publishing/bundledStyleSpecs';
 import { replayTransientClass } from '../../utils/domClassEffects';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1953,12 +1954,21 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const visual = container.createDiv({ cls: 'ert-layout-visual' });
         const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
 
-        // Prefer spec-driven feature rows when the layout carries a designedSpec
-        // (every bundled fiction template + every Designed style). Falls back to
-        // the variant-keyed legacy rows for imports / unknown layouts that don't
-        // carry a spec — same pattern as the pictogram cutover.
-        const features = options.layout?.designedSpec
-            ? getLayoutFeaturesFromSpec(options.layout.designedSpec)
+        // Prefer spec-driven feature rows when a spec is reachable. Order:
+        //   1. Layout carries a designedSpec directly (Designed Pro styles).
+        //   2. Layout is a bundled fiction template — look up the canonical spec
+        //      by ID so saved layouts that lost the inline designedSpec still
+        //      get the same rich Paper / Margins / Line-spacing rows the wizard
+        //      shows. (Without this, bundled cards fell through to the legacy
+        //      variant-keyed table which omitted Paper + Margins.)
+        //   3. Last resort: legacy variant-keyed rows (custom imports, etc.).
+        const layoutId = options.layout?.id;
+        const bundledSpec = layoutId && isBundledFictionId(layoutId)
+            ? BUNDLED_FICTION_SPECS[layoutId]
+            : undefined;
+        const resolvedSpec = options.layout?.designedSpec ?? bundledSpec;
+        const features = resolvedSpec
+            ? getLayoutFeaturesFromSpec(resolvedSpec)
             : getLayoutFeatures(variant);
         const featureCol = renderLayoutFeatureList(cols, features);
 

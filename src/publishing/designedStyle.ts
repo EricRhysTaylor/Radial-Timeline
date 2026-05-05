@@ -141,6 +141,39 @@ export function getVariantForArchetype(archetype: DesignArchetype): FictionLayou
 }
 
 /**
+ * Apply a header preset to spec.runningHeader (mutates in place).
+ *
+ * Lives on the spec module (not the wizard) because the .tex generator
+ * depends on this — `renderFancyhdr` clones the spec and re-runs this to
+ * compute the preset baseline, then layers user per-corner overrides on top.
+ *
+ * Re-applying the same preset is a true "reset" — clears all 6 corner
+ * overrides AND resets font / letterSpacing to the preset's defaults.
+ */
+export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSpec['runningHeader']['mode']): void {
+    const rh = spec.runningHeader;
+    rh.mode = mode;
+    delete rh.evenLeft; delete rh.evenCenter; delete rh.evenRight;
+    delete rh.oddLeft;  delete rh.oddCenter;  delete rh.oddRight;
+    delete rh.font;
+    delete rh.letterSpacing;
+    if (mode === 'centered-title') {
+        rh.evenCenter = 'title';
+        rh.oddCenter = 'title';
+    } else if (mode === 'split-author-page-title-page') {
+        rh.evenLeft = 'page';
+        rh.evenRight = 'author';
+        rh.oddLeft = 'title';
+        rh.oddRight = 'page';
+        rh.letterSpacing = 15.0;
+    } else if (mode === 'left-title-right-context') {
+        rh.evenLeft = 'title';
+        rh.oddRight = 'scene-context';
+        rh.font = 'sans';
+    }
+}
+
+/**
  * Generate a .tex file string from a DesignedStyleSpec.
  *
  * The output is composed from named fragment producers and is intended to

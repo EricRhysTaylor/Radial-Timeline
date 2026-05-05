@@ -2883,9 +2883,11 @@ body > .tooltip {
    between description and content. No wizard override needed. */
 
 /* Combined mode badge — nested PRO chip + DESIGN/EDIT label in one pill.
-   PRO is downsized so it reads as a "stamp" on the larger badge. */
+   PRO is downsized so it reads as a "stamp" on the larger badge. The
+   left padding is gap-tight (6px) so the inset PRO pill has breathing
+   room from the outer badge's left border — earlier 1px felt cramped. */
 .ert-ui .ert-modal-badge--with-pro {
-  padding-left: var(--ert-gap-3xs);
+  padding-left: var(--ert-gap-tight);
 }
 .ert-ui .ert-modal-badge--with-pro .ert-modal-badge__label {
   font-size: 0.7rem;
@@ -2893,21 +2895,13 @@ body > .tooltip {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-/* Match canonical .ert-badgePill--sm horizontal padding (gap-sm = 8px) so
-   the PRO text has real breathing room from the pill edges, but a touch
-   tighter vertically since the badge already constrains height. */
+/* Uniformly scale down the canonical PRO pill so interior proportions
+   (icon size, padding, border-radius, font weight, kerning) all scale
+   together. `zoom` also shrinks the layout box, so we don't reserve
+   full-size space. No manual font/padding overrides — the canonical
+   .ert-badgePill rules do the work. */
 .ert-ui .ert-modal-badge__pro-inline {
-  font-size: 0.65rem;
-  padding: var(--ert-gap-2xs) var(--ert-gap-sm);
-  line-height: 1;
-}
-.ert-ui .ert-modal-badge__pro-inline .ert-badgePill__icon {
-  width: 10px;
-  height: 10px;
-}
-.ert-ui .ert-modal-badge__pro-inline .ert-badgePill__icon svg {
-  width: 10px;
-  height: 10px;
+  zoom: 0.7;
 }
 
 .ert-style-wizard__meta {

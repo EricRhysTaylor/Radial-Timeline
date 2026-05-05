@@ -1339,9 +1339,10 @@ export function renderAiSection(params: {
         cacheLabel?: string | null;
     };
 
-    const inquirySessionStore = new InquirySessionStore(plugin);
     let lastResolvedPreviewState: ResolvedPreviewRenderState | null = null;
     let lastPreviewCertificateContext: PreviewCertificateContext | null = null;
+
+    const getInquirySessionStoreSnapshot = (): InquirySessionStore => new InquirySessionStore(plugin);
 
     const formatPreviewReasonLabel = (status?: string, reason?: string): string => {
         if (reason === 'quota_exceeded') return 'Quota exceeded';
@@ -1422,7 +1423,13 @@ export function renderAiSection(params: {
             };
         }
 
-        const latestSession = inquirySessionStore.getLatestSessionForEngine(context.provider, context.modelId);
+        const inquirySessionStore = getInquirySessionStoreSnapshot();
+        const currentCorpus = getCurrentCorpusContext();
+        const latestCurrentScopeSession = currentCorpus
+            ? inquirySessionStore.getLatestSessionForEngineInScope(context.provider, context.modelId, currentCorpus.scope)
+            : undefined;
+        const latestSession = latestCurrentScopeSession
+            ?? inquirySessionStore.getLatestSessionForEngine(context.provider, context.modelId);
         if (!latestSession) {
             return {
                 tone: 'default',
@@ -1434,7 +1441,7 @@ export function renderAiSection(params: {
             };
         }
 
-        const currentFingerprint = getPreviewCurrentCacheReuseFingerprint();
+        const currentFingerprint = currentCorpus?.cacheReuseFingerprint?.trim() || getPreviewCurrentCacheReuseFingerprint();
         const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId, {
             cacheReuseFingerprint: currentFingerprint ?? undefined
         });
@@ -1443,6 +1450,8 @@ export function renderAiSection(params: {
             : undefined;
         const cacheSession = activeCacheSession ?? fallbackCacheSession;
         const hasCurrentCorpusMatch = !!activeCacheSession;
+        const latestScope = latestSession.scope ?? latestSession.result.scope;
+        const latestScopeLabel = latestScope === 'saga' ? 'Saga' : 'Book';
         const resultStatus = latestSession.result.aiStatus;
         const reasonLabel = formatPreviewReasonLabel(resultStatus, latestSession.result.aiReason);
         const extraPills: PreviewPill[] = [];
@@ -1463,10 +1472,10 @@ export function renderAiSection(params: {
                 comparatorValue: isWarning ? `Degraded · ${reasonLabel}` : `Failed · ${reasonLabel}`,
                 statusIcon: isWarning ? 'alert-triangle' : 'x-circle',
                 statusText: isWarning
-                    ? 'Validation surfaced issues on the latest Inquiry run.'
+                    ? `Validation surfaced issues on the latest ${latestScopeLabel} Inquiry run.`
                     : quotaFailure
-                        ? 'Latest Inquiry run failed because API quota was exceeded.'
-                        : 'Latest Inquiry run failed and needs attention.',
+                        ? `Latest ${latestScopeLabel} Inquiry run failed because API quota was exceeded.`
+                        : `Latest ${latestScopeLabel} Inquiry run failed and needs attention.`,
                 extraPills
             };
         }
@@ -1498,7 +1507,7 @@ export function renderAiSection(params: {
             comparatorLabel: null,
             comparatorValue: null,
             statusIcon: 'check-circle-2',
-            statusText: `Latest Inquiry run completed at ${formatPreviewRunCompletedAt(latestSession.createdAt || latestSession.lastAccessed)}.`,
+            statusText: `Latest ${latestScopeLabel} Inquiry run completed at ${formatPreviewRunCompletedAt(latestSession.createdAt || latestSession.lastAccessed)}.`,
             extraPills: []
         };
     };
@@ -1751,6 +1760,7 @@ export function renderAiSection(params: {
         if (!activeEngine || activeEngine.provider === 'none' || activeEngine.provider === 'ollama' || !activeEngine.modelId) {
             return null;
         }
+        const inquirySessionStore = getInquirySessionStoreSnapshot();
         const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(
             activeEngine.provider,
             activeEngine.modelId,

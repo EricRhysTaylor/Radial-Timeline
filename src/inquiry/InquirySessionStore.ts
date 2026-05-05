@@ -50,6 +50,24 @@ export class InquirySessionStore {
         const normalizedModelId = modelId.trim();
         if (!normalizedProvider || !normalizedModelId) return undefined;
         const matches = this.cache.sessions.filter(session => {
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase(); // SAFE: legacy sessions may predate provider metadata
+            if (sessionProvider !== normalizedProvider) return false;
+            const resolvedModel = (session.result.aiModelResolved || '').trim(); // SAFE: engine history lookup checks both optional model fields
+            const requestedModel = (session.result.aiModelRequested || '').trim(); // SAFE: engine history lookup checks both optional model fields
+            return resolvedModel === normalizedModelId || requestedModel === normalizedModelId;
+        });
+        if (!matches.length) return undefined;
+        matches.sort((a, b) => (b.createdAt || b.lastAccessed) - (a.createdAt || a.lastAccessed));
+        return matches[0];
+    }
+
+    getLatestSessionForEngineInScope(provider: string, modelId: string, scope: InquiryScope): InquirySession | undefined {
+        const normalizedProvider = provider.trim().toLowerCase();
+        const normalizedModelId = modelId.trim();
+        if (!normalizedProvider || !normalizedModelId) return undefined;
+        const matches = this.cache.sessions.filter(session => {
+            const sessionScope = session.scope ?? session.result.scope;
+            if (sessionScope !== scope) return false;
             const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
             if (sessionProvider !== normalizedProvider) return false;
             const resolvedModel = (session.result.aiModelResolved || '').trim();
@@ -194,12 +212,12 @@ export class InquirySessionStore {
     }
 
     private scheduleSave(): void {
+        this.plugin.settings.inquirySessionCache = this.cache;
         if (this.saveTimeout) {
             window.clearTimeout(this.saveTimeout);
         }
         this.saveTimeout = window.setTimeout(() => {
             this.saveTimeout = null;
-            this.plugin.settings.inquirySessionCache = this.cache;
             void this.plugin.saveSettings();
         }, 600);
     }

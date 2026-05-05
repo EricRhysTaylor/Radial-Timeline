@@ -29,6 +29,7 @@ import {
 import type RadialTimelinePlugin from '../main';
 import { ERT_CLASSES } from '../ui/classes';
 import {
+    applyHeaderPreset,
     DESIGNED_STYLE_SPEC_VERSION,
     generateDesignedStyleTex,
     type DesignArchetype,
@@ -263,35 +264,10 @@ export function generateUniqueDesignedSlug(name: string, existingIds: ReadonlySe
     return `${baseSlug}-${counter}`;
 }
 
-/** Apply a header preset to spec.runningHeader (mutates in place). */
-export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSpec['runningHeader']['mode']): void {
-    const rh = spec.runningHeader;
-    rh.mode = mode;
-    // Clear all corner overrides; presets re-populate as needed.
-    delete rh.evenLeft; delete rh.evenCenter; delete rh.evenRight;
-    delete rh.oddLeft;  delete rh.oddCenter;  delete rh.oddRight;
-    // Reset font + letterSpacing so re-applying the preset is a true "reset
-    // to pure preset" — otherwise these axes silently linger across preset
-    // switches and trigger the modified-state badge.
-    delete rh.font;
-    delete rh.letterSpacing;
-    if (mode === 'centered-title') {
-        rh.evenCenter = 'title';
-        rh.oddCenter = 'title';
-    } else if (mode === 'split-author-page-title-page') {
-        rh.evenLeft = 'page';
-        rh.evenRight = 'author';
-        rh.oddLeft = 'title';
-        rh.oddRight = 'page';
-        // Literary preset implies wide-set caps via letterSpacing.
-        rh.letterSpacing = 15.0;
-    } else if (mode === 'left-title-right-context') {
-        rh.evenLeft = 'title';
-        rh.oddRight = 'scene-context';
-        // Contemporary preset uses sans-serif headers.
-        rh.font = 'sans';
-    }
-}
+// applyHeaderPreset moved to src/publishing/designedStyle.ts so the .tex
+// generator can use it to compute the preset baseline. Re-export here so
+// existing imports of `applyHeaderPreset` from this module keep working.
+export { applyHeaderPreset } from '../publishing/designedStyle';
 
 export interface DesignedStyleSpecValidation {
     errors: string[];
@@ -376,6 +352,36 @@ export function validateDesignedStyleSpec(
         && spec.scene.opener !== 'dedicated-page'
     ) {
         warnings.push('Multiple scene heading modes only apply to dedicated-page openers.');
+    }
+
+    // Header / Folio conflict detection. The page number can be emitted
+    // both by the header (when a per-corner override uses the 'page' field
+    // OR a named preset like Literary already bakes \thepage into CE/CO)
+    // AND by renderFolio (only when folio.position === 'bottom-center' —
+    // 'header' position is purely a declarative hint and emits nothing).
+    //
+    // Real-world conflict shapes:
+    //   • bottom-center folio + per-corner override using 'page'
+    //     → page # appears once in the footer AND once in the corner
+    //   • Literary preset (which bakes \thepage into CE/CO) + per-corner
+    //     override that ALSO uses 'page' in another corner
+    //     → page # appears in two header positions
+    //
+    // We catch both shapes via a single check: a corner uses 'page' AND
+    // another emission (footer OR named-mode bake-in) is also active.
+    const cornerKeys: Array<keyof DesignedStyleSpec['runningHeader']> = [
+        'evenLeft', 'evenCenter', 'evenRight',
+        'oddLeft',  'oddCenter',  'oddRight',
+    ];
+    const cornerWithPage = cornerKeys.find(k => spec.runningHeader[k] === 'page');
+    const namedModeAlreadyEmitsPage = spec.runningHeader.mode === 'split-author-page-title-page';
+    if (cornerWithPage && (spec.folio.position === 'bottom-center' || namedModeAlreadyEmitsPage)) {
+        const otherSource = namedModeAlreadyEmitsPage
+            ? 'the active header preset already emits the page number'
+            : 'the folio is shown at the bottom of the page';
+        warnings.push(
+            `Header corner ${cornerWithPage} uses "Page #" but ${otherSource} — the page number will appear twice. Pick a non-page field for that corner, or change the conflicting setting.`,
+        );
     }
 
     if (options.existingDesignedNames && options.existingDesignedNames.has(name.trim().toLowerCase())) {
@@ -1191,6 +1197,15 @@ export class DesignedStyleWizardModal extends Modal {
 
         type CornerKey = 'evenLeft' | 'evenCenter' | 'evenRight' | 'oddLeft' | 'oddCenter' | 'oddRight';
         type CornerSlot = 'left' | 'center' | 'right';
+        // Print convention: even page numbers fall on the LEFT (verso) side
+        // of an open spread; odd numbers fall on the RIGHT (recto). Page 1
+        // is always recto. Reflected in label text and tooltips so users
+        // don't have to remember verso/recto vocabulary.
+        const slotName: Record<CornerSlot, string> = { left: 'Left', center: 'Center', right: 'Right' };
+        const pageDesc: Record<'even' | 'odd', string> = {
+            even: 'left page (verso, even page numbers)',
+            odd:  'right page (recto, odd page numbers)',
+        };
         const cornerCards: Array<{ key: CornerKey; label: string; page: 'even' | 'odd'; slot: CornerSlot }> = [
             { key: 'evenLeft',   label: 'Even L', page: 'even', slot: 'left'   },
             { key: 'evenCenter', label: 'Even C', page: 'even', slot: 'center' },
@@ -1208,7 +1223,9 @@ export class DesignedStyleWizardModal extends Modal {
             const card = cornerBody.createDiv({ cls: 'ert-style-wizard__preset-card ert-style-wizard__corner-card' });
             card.tabIndex = 0;
             card.setAttribute('role', 'button');
-            card.setAttribute('aria-label', `Edit ${label} header`);
+            const tooltip = `${slotName[slot]} corner of the ${pageDesc[page]}`;
+            card.setAttribute('aria-label', tooltip);
+            card.setAttribute('title', tooltip);
             if (this.activeCornerKey === key) card.addClass('is-active');
             const strip = card.createDiv({ cls: 'ert-style-wizard__preset-header-strip' });
             const cell = strip.createDiv({ cls: `ert-style-wizard__preset-header-cell ert-style-wizard__preset-header-cell--${slot}` });
@@ -1240,7 +1257,10 @@ export class DesignedStyleWizardModal extends Modal {
         const editorRow = cornerSection.createDiv({ cls: 'ert-style-wizard__corner-editor' });
         const editorLabel = editorRow.createSpan({ cls: 'ert-style-wizard__corner-editor-label' });
         const activeMeta = cornerCards.find(c => c.key === this.activeCornerKey);
-        editorLabel.setText(`Editing: ${activeMeta?.label ?? ''}`);
+        const activeText = activeMeta
+            ? `Editing: ${activeMeta.label} — ${slotName[activeMeta.slot]} corner of the ${pageDesc[activeMeta.page]}`
+            : 'Editing:';
+        editorLabel.setText(activeText);
         this.headerFieldDropdown(
             editorRow,
             this.spec.runningHeader[this.activeCornerKey] as DesignedHeaderField | undefined,
@@ -1277,7 +1297,8 @@ export class DesignedStyleWizardModal extends Modal {
 
         this.renderPanelGlossary(body, [
             { term: 'Running header',     definition: 'The repeating text at the top of every interior page (book title, author, scene context, page number, etc.). Even and odd pages can carry different content on facing-page books.' },
-            { term: 'Preset',             definition: 'Common header layouts wired up in one click. Use Customize per corner below to override individual slots.' },
+            { term: 'Even vs Odd page',   definition: 'Print convention: EVEN page numbers (2, 4, 6 …) sit on the LEFT (verso) side of an open spread; ODD numbers (1, 3, 5 …) sit on the RIGHT (recto). Page 1 is always recto. Hover any corner card for its specific page side.' },
+            { term: 'Preset',             definition: 'Common header layouts wired up in one click. Use Customize per corner below to override individual slots — overrides layer on top of the preset.' },
             { term: 'Header font',        definition: '"Inherit body" reuses the body typeface. "Sans" switches headers to a sans-serif (a Contemporary Literary convention).' },
             { term: 'Letter spacing',     definition: 'Extra tracking between letters in running heads, in fontspec units (e.g. 15.0 produces the wide-set caps in Signature Literary). 0 means default tracking.' },
         ]);

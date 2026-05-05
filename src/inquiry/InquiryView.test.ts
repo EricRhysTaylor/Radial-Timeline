@@ -302,6 +302,12 @@ describe('InquiryView payload accounting', () => {
         expect(storeSource.includes("session.pendingEditsApplied = false;")).toBe(true);
     });
 
+    it('keeps session history visible across Inquiry and Settings before debounced disk save', () => {
+        const storeSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquirySessionStore.ts'), 'utf8');
+        expect(storeSource.includes('getLatestSessionForEngineInScope(provider: string, modelId: string, scope: InquiryScope)')).toBe(true);
+        expect(storeSource.includes('this.plugin.settings.inquirySessionCache = this.cache;\n        if (this.saveTimeout)')).toBe(true);
+    });
+
     it('self-heals stale applied writeback flags by checking current pending-edits markers before disabling the session action', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('const pendingEditsApplied = this.syncPendingEditsAppliedState(session, pendingPlan.notesByMaterial);')).toBe(true);

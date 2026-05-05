@@ -9,7 +9,43 @@
  * not byte-match the bundled templates. Patterns adapted from
  * src/utils/pandocBundledLayouts.ts.
  */
+import { applyHeaderPreset } from './designedStyle';
 import type { DesignedHeaderField, DesignedStyleSpec } from './designedStyle';
+
+type HeaderCornerKey =
+    | 'evenLeft' | 'evenCenter' | 'evenRight'
+    | 'oddLeft'  | 'oddCenter'  | 'oddRight';
+
+const HEADER_CORNER_POSITIONS: Array<[fancyhdrPos: string, cornerKey: HeaderCornerKey]> = [
+    ['LE', 'evenLeft'], ['CE', 'evenCenter'], ['RE', 'evenRight'],
+    ['LO', 'oddLeft'],  ['CO', 'oddCenter'],  ['RO', 'oddRight'],
+];
+
+/**
+ * Returns the per-corner overrides — corners whose live value diverges from
+ * what `applyHeaderPreset` would set for the active mode. Each entry is a
+ * tuple of [fancyhdr position code, current field value].
+ *
+ * The named-mode branches in renderFancyhdr emit baseline content; this
+ * function feeds the override-emission loop that runs AFTER, so user-set
+ * corners overwrite preset defaults.
+ */
+function computeCornerOverrides(spec: DesignedStyleSpec): Array<[string, DesignedHeaderField | undefined]> {
+    // Clone the spec, apply the preset cleanly, compare each corner.
+    const clone = JSON.parse(JSON.stringify(spec)) as DesignedStyleSpec;
+    applyHeaderPreset(clone, spec.runningHeader.mode);
+    const overrides: Array<[string, DesignedHeaderField | undefined]> = [];
+    for (const [pos, key] of HEADER_CORNER_POSITIONS) {
+        const liveField   = spec.runningHeader[key]   as DesignedHeaderField | undefined;
+        const presetField = clone.runningHeader[key]  as DesignedHeaderField | undefined;
+        const liveJson    = JSON.stringify(liveField   ?? null);
+        const presetJson  = JSON.stringify(presetField ?? null);
+        if (liveJson !== presetJson) {
+            overrides.push([pos, liveField]);
+        }
+    }
+    return overrides;
+}
 
 const DOC_PREAMBLE_LINES = [
     '\\providecommand{\\tightlist}{%',
@@ -325,9 +361,22 @@ export function renderFancyhdr(spec: DesignedStyleSpec): string {
     lines.push('\\renewcommand{\\headrulewidth}{0pt}');
     lines.push('\\renewcommand{\\footrulewidth}{0pt}');
 
+    // Compute per-corner overrides — corners whose live value differs from
+    // what `applyHeaderPreset` would set for the active mode are treated as
+    // user overrides and emitted AFTER the named-mode baseline so they win
+    // (later \fancyhead[POS] declarations replace earlier ones in fancyhdr).
+    const cornerOverrides = computeCornerOverrides(spec);
+
     if (rh.mode === 'none') {
-        lines.push('\\pagestyle{empty}');
-        return lines.join('\n');
+        // Mode 'none' produces no headers — UNLESS the user has set per-corner
+        // content explicitly (which the wizard's Customize-per-corner section
+        // allows). Honor those if present; otherwise stay clean.
+        if (cornerOverrides.length === 0) {
+            lines.push('\\pagestyle{empty}');
+            return lines.join('\n');
+        }
+        // Fall through to the corner-emission block below; skip the named-mode
+        // baselines (none doesn't have one).
     }
 
     // Letter-spacing: use \KernedText{\MakeUppercase{...}} via the \headerfont face.
@@ -354,16 +403,16 @@ export function renderFancyhdr(spec: DesignedStyleSpec): string {
     } else if (rh.mode === 'left-title-right-context') {
         lines.push(`\\fancyhead[LE]{${wrapText('\\BookTitle')}}`);
         lines.push(`\\fancyhead[RO]{${wrapText('\\rtSceneRunningTitle')}}`);
-    } else {
-        // Custom field-by-field placement.
-        const places: Array<[string, DesignedHeaderField | undefined]> = [
-            ['LE', rh.evenLeft],   ['CE', rh.evenCenter], ['RE', rh.evenRight],
-            ['LO', rh.oddLeft],    ['CO', rh.oddCenter],  ['RO', rh.oddRight],
-        ];
-        for (const [pos, field] of places) {
-            const rendered = renderHeaderField(field);
-            if (rendered) lines.push(`\\fancyhead[${pos}]{${wrapText(rendered)}}`);
-        }
+    }
+    // Per-corner overrides — emitted AFTER the named-mode baseline. Later
+    // \fancyhead[POS] declarations replace earlier ones, so any corner the
+    // user has changed in the wizard's "Customize per corner" panel wins
+    // over the preset default. Empty values clear the slot (`{}`).
+    for (const [pos, field] of cornerOverrides) {
+        const rendered = renderHeaderField(field);
+        // Always emit even when rendered is empty — empty content explicitly
+        // clears the preset's content for that slot.
+        lines.push(`\\fancyhead[${pos}]{${rendered ? wrapText(rendered) : ''}}`);
     }
     lines.push('\\pagestyle{fancy}');
     return lines.join('\n');

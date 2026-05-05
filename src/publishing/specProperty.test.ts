@@ -353,12 +353,6 @@ describe('generateDesignedStyleTex — property tests', () => {
     });
 
     it('regression: scene separator glyph with special chars escapes through generator', () => {
-        // scene.separatorGlyph is the most reliable user-input path through
-        // the generator — it always emits when opener=inline-separator, and
-        // its escape pass routes through escapeForLatex.
-        // (Per-corner runningHeader literals are also escape-routed, but the
-        // current generator's renderFancyhdr ignores per-corner overrides for
-        // every wizard-exposed mode — see notes in designedStyleFragments.ts.)
         const spec = baseSpec({
             scene: {
                 opener: 'inline-separator',
@@ -368,12 +362,54 @@ describe('generateDesignedStyleTex — property tests', () => {
             },
         });
         const tex = generateDesignedStyleTex(spec);
-        // Raw `&` and `%` would break compile; ~ and ^ would silently produce
-        // accented output in text mode. All four must be escape-routed.
         expect(tex).toContain('\\textasciitilde{}');
         expect(tex).toContain('\\textasciicircum{}');
         expect(tex).toContain('\\&');
         expect(tex).toContain('\\%');
+    });
+
+    it('per-corner override: literal in evenCenter overrides the centered-title preset baseline', () => {
+        // mode='centered-title' baseline puts \BookTitle in CE/CO. User
+        // overrides evenCenter with a literal — the override emits AFTER
+        // the baseline so it wins.
+        const spec = baseSpec({
+            runningHeader: {
+                mode: 'centered-title',
+                oddCenter: 'title',
+                evenCenter: { literal: 'Author & Co. 100%' },
+            },
+        });
+        const tex = generateDesignedStyleTex(spec);
+        // Baseline: \fancyhead[C]{...title...}
+        expect(tex).toMatch(/\\fancyhead\[C\]\{[^}]*BookTitle/);
+        // Override: \fancyhead[CE]{<escaped literal>}
+        expect(tex).toContain('\\fancyhead[CE]{Author \\& Co. 100\\%}');
+    });
+
+    it('per-corner override: empty value clears the preset baseline content', () => {
+        const spec = baseSpec({
+            runningHeader: {
+                mode: 'centered-title',
+                oddCenter: 'title',
+                evenCenter: 'empty',
+            },
+        });
+        const tex = generateDesignedStyleTex(spec);
+        // Override emits an empty fancyhead to wipe the preset content.
+        expect(tex).toContain('\\fancyhead[CE]{}');
+    });
+
+    it('mode=none + per-corner content emits headers (corner content honored)', () => {
+        const spec = baseSpec({
+            runningHeader: {
+                mode: 'none',
+                evenCenter: { literal: 'Just my title' },
+            },
+        });
+        const tex = generateDesignedStyleTex(spec);
+        // Should NOT bail to \pagestyle{empty} when corner content exists.
+        expect(tex).not.toMatch(/\\pagestyle\{empty\}\s*$/);
+        expect(tex).toContain('\\fancyhead[CE]{Just my title}');
     });
 
     it('regression: parts.epigraphPlacement=inline does NOT emit a second \\cleardoublepage block', () => {

@@ -71,6 +71,14 @@ describe('AI settings models table', () => {
         expect(source.includes('Best for')).toBe(false);
     });
 
+    it('keeps the model preview session certificate scoped and freshly read', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('const getInquirySessionStoreSnapshot = (): InquirySessionStore => new InquirySessionStore(plugin);')).toBe(true);
+        expect(source.includes('getLatestSessionForEngineInScope(context.provider, context.modelId, currentCorpus.scope)')).toBe(true);
+        expect(source.includes('Latest ${latestScopeLabel} Inquiry run completed at')).toBe(true);
+        expect(source.includes('Latest Inquiry run completed at')).toBe(false);
+    });
+
     it('keeps all latest-alias preview labels aligned with the selected alias until a concrete ID is resolved', () => {
         const latestAliases = BUILTIN_MODELS
             .filter(model => model.id.includes('latest') || model.alias.includes('latest'))
@@ -248,7 +256,7 @@ describe('AI settings models table', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("if (reason === 'quota_exceeded') return 'Quota exceeded';")).toBe(true);
         expect(source.includes("const quotaFailure = latestSession.result.aiReason === 'quota_exceeded';")).toBe(true);
-        expect(source.includes('Latest Inquiry run failed because API quota was exceeded.')).toBe(true);
+        expect(source.includes('Latest ${latestScopeLabel} Inquiry run failed because API quota was exceeded.')).toBe(true);
     });
 
     it('lets observed provider cache hits override static cache-off preview copy', () => {
