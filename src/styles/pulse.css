@@ -2890,6 +2890,31 @@ body > .tooltip {
    (rt-ui.css), so every modal — not just this one — gets breathing room
    between description and content. No wizard override needed. */
 
+/* Per-category Reset bar — small button anchored at the top-right of the
+   active panel. Restores only the active category's slice of the spec. */
+.ert-style-wizard__reset-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0;
+  margin-bottom: var(--ert-gap-2xs);
+}
+.ert-style-wizard__reset-btn {
+  font-size: 0.72rem;
+  padding: var(--ert-gap-3xs) var(--ert-gap-sm);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  border-radius: var(--ert-pad-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.ert-style-wizard__reset-btn:hover,
+.ert-style-wizard__reset-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--ert-accent) 65%, transparent);
+  color: var(--text-normal);
+  outline: none;
+}
+
 /* Combined mode badge — nested PRO chip + DESIGN/EDIT label in one pill.
    PRO is downsized so it reads as a "stamp" on the larger badge. The
    left padding is gap-tight (6px) so the inset PRO pill has breathing

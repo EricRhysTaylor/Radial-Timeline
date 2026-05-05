@@ -423,10 +423,17 @@ export class DesignedStyleWizardModal extends Modal {
             ? (JSON.parse(JSON.stringify(options.initialSpec)) as DesignedStyleSpec)
             : cloneArchetypeSpec('submission');
         this.spec.specVersion = DESIGNED_STYLE_SPEC_VERSION;
+        // Snapshot the spec at open time so per-category Reset buttons can
+        // restore individual slices to their template-original values without
+        // wiping the user's other in-flight changes.
+        this.originalSpec = JSON.parse(JSON.stringify(this.spec)) as DesignedStyleSpec;
         this.styleName = options.initialName ?? '';
         this.description = options.initialDescription ?? '';
         this.archetypePicked = this.isEditMode;
     }
+
+    /** Snapshot of the spec at wizard-open time, used by per-category Reset. */
+    private originalSpec: DesignedStyleSpec;
 
     onOpen(): void {
         const { contentEl, modalEl, titleEl } = this;
@@ -576,6 +583,9 @@ export class DesignedStyleWizardModal extends Modal {
             const onSelect = () => {
                 this.spec = cloneArchetypeSpec(archetype);
                 this.spec.specVersion = DESIGNED_STYLE_SPEC_VERSION;
+                // Re-snapshot the original so per-category Reset restores to
+                // this newly-chosen archetype's defaults (not the previous one).
+                this.originalSpec = JSON.parse(JSON.stringify(this.spec)) as DesignedStyleSpec;
                 if (!this.styleName) {
                     this.styleName = `${ARCHETYPE_INFO[archetype].name} Custom`;
                 }
@@ -682,6 +692,10 @@ export class DesignedStyleWizardModal extends Modal {
         const panel = this.activePanel;
         if (!panel) return;
         panel.empty();
+        // Per-category Reset affordance lives at the top-right of the panel,
+        // above the category-specific controls. Click → restore that
+        // category's slice of the spec from the open-time snapshot.
+        this.renderResetBar(panel);
         const cat = this.activeCategory;
         switch (cat) {
             case 'page':     this.renderPageSection(panel);     return;
@@ -694,6 +708,60 @@ export class DesignedStyleWizardModal extends Modal {
             case 'epigraph': this.renderEpigraphSection(panel); return;
         }
         assertNever(cat, 'renderActiveCategoryPanel');
+    }
+
+    /**
+     * Render a small "Reset to template" affordance at the top-right of the
+     * active category's panel. Restores only the active category's slice of
+     * the spec to the open-time snapshot — other categories' edits are
+     * preserved.
+     */
+    private renderResetBar(parent: HTMLElement): void {
+        const bar = parent.createDiv({ cls: 'ert-style-wizard__reset-bar' });
+        const btn = bar.createEl('button', {
+            cls: 'ert-style-wizard__reset-btn',
+            text: 'Reset to template',
+        });
+        btn.type = 'button';
+        btn.setAttribute('title', 'Restore this category to the template\'s starting values. Other categories are unchanged.');
+        btn.addEventListener('click', () => this.resetActiveCategory());
+    }
+
+    /** Restore only the active category's slice from `originalSpec`. */
+    private resetActiveCategory(): void {
+        const cat = this.activeCategory;
+        const orig = this.originalSpec;
+        this.mutateSpec((s) => {
+            switch (cat) {
+                case 'page':
+                    s.paperSize = JSON.parse(JSON.stringify(orig.paperSize));
+                    s.margins = JSON.parse(JSON.stringify(orig.margins));
+                    return;
+                case 'body':
+                    s.body = JSON.parse(JSON.stringify(orig.body));
+                    return;
+                case 'headers':
+                    s.runningHeader = JSON.parse(JSON.stringify(orig.runningHeader));
+                    return;
+                case 'folio':
+                    s.folio = JSON.parse(JSON.stringify(orig.folio));
+                    return;
+                case 'parts':
+                    s.parts = JSON.parse(JSON.stringify(orig.parts));
+                    return;
+                case 'chapters':
+                    s.chapters = JSON.parse(JSON.stringify(orig.chapters));
+                    return;
+                case 'scenes':
+                    s.scene = JSON.parse(JSON.stringify(orig.scene));
+                    return;
+                case 'epigraph':
+                    s.epigraph = JSON.parse(JSON.stringify(orig.epigraph));
+                    return;
+            }
+            assertNever(cat, 'resetActiveCategory');
+        });
+        this.refreshConfigOnly();
     }
 
     private renderPageSection(parent: HTMLElement): void {
@@ -1646,14 +1714,17 @@ export class DesignedStyleWizardModal extends Modal {
         // Slider defaults match the .tex generator's fallback (0.2 above,
         // 0.2 below). Templates can override; the slider now reads the
         // template's actual value rather than snapping to 0%.
-        const topRow = this.fieldRow(body, 'Opener top spacing');
+        // Slider defaults match the .tex generator's fallback (0.2 above,
+        // 0.2 below). Templates can override; the slider now reads the
+        // template's actual value rather than snapping to 0%.
+        const topRow = this.fieldRow(body, 'Space above opener');
         const currentOpenerTop = this.spec.scene.openerSpacing?.topFraction ?? 0.2;
         this.sliderInput(topRow, currentOpenerTop, 0, 0.5, 0.02, (n) => {
             this.mutateSpec((s) => {
                 s.scene.openerSpacing = { ...(s.scene.openerSpacing ?? {}), topFraction: n };
             });
         }, (v) => `${Math.round(v * 100)}%`);
-        const botRow = this.fieldRow(body, 'Opener bottom spacing');
+        const botRow = this.fieldRow(body, 'Space below opener');
         const currentOpenerBottom = this.spec.scene.openerSpacing?.bottomFraction ?? 0.2;
         this.sliderInput(botRow, currentOpenerBottom, 0, 0.5, 0.02, (n) => {
             this.mutateSpec((s) => {
@@ -1662,10 +1733,10 @@ export class DesignedStyleWizardModal extends Modal {
         }, (v) => `${Math.round(v * 100)}%`);
 
         this.renderPanelGlossary(body, [
-            { term: 'Opener',                definition: 'How a new scene begins on the page — either inline (a separator inside the page) or on its own dedicated page.' },
-            { term: 'Heading mode',          definition: 'What the scene heading shows: a number, a title, or both. Only applies when openers use a dedicated page.' },
-            { term: 'Opener top spacing',    definition: 'Vertical space ABOVE the scene heading on its dedicated page. Pushes the heading down from the top — and because body text follows the heading, body shifts down with it.' },
-            { term: 'Opener bottom spacing', definition: 'Vertical gap BELOW the scene heading, before the body text starts. Only the body moves down; the heading stays put.' },
+            { term: 'Opener',             definition: 'How a new scene begins on the page — either inline (a separator inside the page) or on its own dedicated page.' },
+            { term: 'Heading mode',       definition: 'What the scene heading shows: a number, a title, or both. Only applies when openers use a dedicated page.' },
+            { term: 'Space above opener', definition: 'Vertical space ABOVE the scene heading on its dedicated page. Pushes the heading down from the top — and because body text follows the heading, body shifts down with it.' },
+            { term: 'Space below opener', definition: 'Vertical gap BELOW the scene heading, before the body text starts. Only the body moves down; the heading stays put.' },
         ]);
     }
 
