@@ -82,6 +82,9 @@ describe('buildInquiryLogContent', () => {
         expect(content).toContain('- Citation support: Sources · Limited implementation');
         expect(content).toContain('- Source results: 1 item · scene=1');
         expect(content).toContain('- Cache: warm · status=hit · prefix=100% · tokens=164k · read=164k');
+        expect(content).toContain('- Actual usage cost: $');
+        expect(content.indexOf('## Cost Breakdown')).toBeGreaterThan(content.indexOf('## Run Summary'));
+        expect(content.indexOf('## Cost Breakdown')).toBeLessThan(content.indexOf('## Corpus Summary'));
         expect(content.indexOf('- Citation support: Sources · Limited implementation')).toBeGreaterThan(content.indexOf('## Run Summary'));
         expect(content.indexOf('- Source results: 1 item · scene=1')).toBeLessThan(content.indexOf('## Corpus Summary'));
         expect(content.indexOf('- Cache: warm')).toBeGreaterThan(content.indexOf('## Run Summary'));
@@ -137,6 +140,7 @@ describe('buildInquiryLogContent', () => {
         });
 
         expect(content).toContain('- Gemini cachedContent: cachedContents/abc123');
+        expect(content).toContain('- Actual usage cost: $0.147');
         expect(content).toContain('- Raw provider usage JSON: not captured; normalized token usage available');
         expect(content).not.toContain('prompt_cache_key sent');
         expect(content).not.toContain('unsupported');

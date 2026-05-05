@@ -3,7 +3,7 @@ import type { CorpusManifest, CorpusManifestEntry, InquiryRunTrace } from '../ru
 import type { InquiryResult, InquiryFinding, InquiryZone } from '../state';
 import type { SceneInclusion } from '../../types/settings';
 import type { TokenTier } from '../types';
-import { extractTokenUsage, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
+import { extractTokenUsage, formatActualUsageCost, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
 import { describeTokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import { buildManifestTocLines, formatManifestClassLabel } from '../utils/inquiryViewText';
 import { buildInquirySourcesViewModel } from '../services/inquirySources';
@@ -324,6 +324,18 @@ export function buildInquiryLogContent(args: {
         return suggestions;
     };
 
+    const costBreakdownLines = !isSimulated
+        ? formatUsageCostBreakdownLines(
+            result.aiProvider,
+            result.aiModelResolved || result.aiModelRequested,
+            usage,
+            logCostEstimateInput
+        )
+        : [];
+    const actualUsageCostLabel = isSimulated
+        ? 'not applicable'
+        : formatActualUsageCost(result.aiProvider, result.aiModelResolved || result.aiModelRequested, usage);
+
     const lines: string[] = [];
     if (isSimulated) {
         lines.push('> Simulated test run. No provider request was sent.', '');
@@ -336,6 +348,7 @@ export function buildInquiryLogContent(args: {
     lines.push(`- Overrides: ${overrideLabel}`);
     lines.push(`- Status: ${statusLabel}${statusDetail}`);
     lines.push(`- Duration: ${formatDuration(durationMs)}`);
+    lines.push(`- Actual usage cost: ${actualUsageCostLabel}`);
     if (!isSimulated && citationSupportLabel) {
         lines.push(`- Citation support: ${citationSupportLabel}`);
     }
@@ -353,6 +366,10 @@ export function buildInquiryLogContent(args: {
         lines.push(cacheSummaryParts.join(' · '));
     }
     lines.push('');
+
+    if (costBreakdownLines.length) {
+        lines.push(...costBreakdownLines);
+    }
 
     lines.push('## Corpus Summary');
     lines.push(...buildCorpusSummary());
@@ -395,18 +412,6 @@ export function buildInquiryLogContent(args: {
         lines.push(`- Multi-pass trigger: ${trace.multiPassTriggerReason}`);
     }
     lines.push('');
-
-    if (!isSimulated) {
-        const costBreakdownLines = formatUsageCostBreakdownLines(
-            result.aiProvider,
-            result.aiModelResolved || result.aiModelRequested,
-            usage,
-            logCostEstimateInput
-        );
-        if (costBreakdownLines.length) {
-            lines.push(...costBreakdownLines);
-        }
-    }
 
     if (!isSimulated) {
         // Cache diagnostics are provider-specific. Avoid implying a transport was

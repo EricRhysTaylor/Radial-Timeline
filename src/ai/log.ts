@@ -202,6 +202,18 @@ export function formatUsageCostBreakdownLines(
     return lines;
 }
 
+export function formatActualUsageCost(
+    provider: string | null | undefined,
+    modelId: string | null | undefined,
+    usage?: TokenUsage | null
+): string {
+    const breakdown = buildUsageCostBreakdown(provider, modelId, usage);
+    const cost = breakdown?.totalCostUSD;
+    return typeof cost === 'number' && Number.isFinite(cost)
+        ? formatExactUsdCost(cost)
+        : 'unavailable';
+}
+
 export function sanitizeLogPayload(value: unknown): { sanitized: unknown; hadRedactions: boolean } {
     const sanitized = redactSensitiveObject(value);
     let hadRedactions = false;
@@ -425,6 +437,7 @@ export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
     lines.push(`- Duration: ${formatDuration(envelope.durationMs)}`);
     lines.push(`- Status: ${envelope.status}`);
     lines.push(`- Token usage: ${formatUsage(envelope.tokenUsage)}`);
+    lines.push(`- Actual usage cost: ${formatActualUsageCost(envelope.provider, envelope.modelResolved ?? envelope.modelRequested, envelope.tokenUsage)}`);
     lines.push(`- Retry attempts: ${formatRetries(envelope.retryAttempts)}`);
     lines.push('');
 

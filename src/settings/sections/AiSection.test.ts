@@ -159,9 +159,13 @@ describe('AI settings models table', () => {
         expect(source.includes('* Based on published provider pricing. Actual charges may differ due to caching, credits, or account-level adjustments.')).toBe(true);
         expect(source.includes("createSpan({ text: 'See provider pricing: ' })")).toBe(true);
         expect(source.includes("appendText(' runs on your machine with no API charges.')")).toBe(true);
+        expect(source.includes("createEl('strong', { text: 'Gemini cache note: ' })")).toBe(true);
+        expect(source.includes('explicit cache may add storage fees for cached corpus tokens during the active cache window')).toBe(true);
+        expect(source.includes('Gemini cache windows default to 15m')).toBe(true);
+        expect(source.includes('cache usually only pays off when you run another question before the window expires')).toBe(true);
         expect(source.includes('https://openai.com/api/pricing/')).toBe(true);
         expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
-        expect(source.includes('https://ai.google.dev/')).toBe(true);
+        expect(source.includes('https://ai.google.dev/gemini-api/docs/pricing')).toBe(true);
         expect(source.includes('Google Gemini')).toBe(false);
         expect(source.includes("t('settings.ai.localLlm.configTitle')")).toBe(true);
         expect(source.includes("t('settings.ai.localLlm.statusTitle')")).toBe(true);
@@ -236,12 +240,19 @@ describe('AI settings models table', () => {
         expect(source.includes('refreshActiveCostComparisonRowState(options.provider, next);')).toBe(true);
     });
 
+    it('notifies open Inquiry views when a saved provider key changes', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('const stored = await setSecret(app, secretId, value);')).toBe(true);
+        expect(source.includes('plugin.getInquiryService().notifyAiSettingsChanged();')).toBe(true);
+    });
+
     it('uses configured cache-window settings for context-run labels instead of hardcoded provider defaults', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('const getProviderCacheWindowLabel = (provider: AIProviderId): string | null => {')).toBe(true);
-        expect(source.includes("if (provider === 'anthropic')")).toBe(true);
-        expect(source.includes('const configuredMinutes = aiSettings.cacheWindows?.openaiInMemoryWindowMinutes;')).toBe(true);
-        expect(source.includes('const configuredSeconds = aiSettings.cacheWindows?.googleTtlSeconds;')).toBe(true);
+        const cacheWindowSource = readFileSync(resolve(process.cwd(), 'src/ai/settings/cacheWindows.ts'), 'utf8');
+        expect(source.includes("import { formatProviderCacheWindowLabel } from '../../ai/settings/cacheWindows';")).toBe(true);
+        expect(source.includes('formatProviderCacheWindowLabel(provider, ensureCanonicalAiSettings())')).toBe(true);
+        expect(cacheWindowSource.includes('export function formatProviderCacheWindowLabel')).toBe(true);
+        expect(cacheWindowSource.includes('normalizeGeminiCacheTtlSeconds(windows.googleTtlSeconds)')).toBe(true);
         expect(source.includes("'Fresh estimate*', 'Cached estimate*'")).toBe(true);
     });
 
@@ -288,6 +299,10 @@ describe('AI settings models table', () => {
         expect(source.includes("text: 'Cache enabled'")).toBe(true);
         expect(source.includes("text: 'Provider cache enabled'")).toBe(true);
         expect(source.includes("text: 'Cache window expired'")).toBe(true);
+        expect(source.includes('const mergePreviewCachePills = (pills: PreviewPill[]): PreviewPill[] => {')).toBe(true);
+        expect(source.includes("cacheSegments.push('window expired');")).toBe(true);
+        expect(source.includes("const mergedText = [baseText, ...cacheSegments].join(' — ');")).toBe(true);
+        expect(source.includes('mergePreviewCachePills((')).toBe(true);
     });
 
     it('routes disabled provider citations through the operational resolver so Gemini cache is not locked off', () => {

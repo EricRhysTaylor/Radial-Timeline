@@ -8,7 +8,8 @@ import { AiContextModal } from '../AiContextModal';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
-import { ANTHROPIC_REQUESTED_CACHE_TTL, buildDefaultAiSettings } from '../../ai/settings/aiSettings';
+import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
+import { formatProviderCacheWindowLabel } from '../../ai/settings/cacheWindows';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
@@ -321,7 +322,7 @@ export function renderAiSection(params: {
     [
         { label: 'OpenAI', href: 'https://openai.com/api/pricing/' },
         { label: 'Anthropic', href: 'https://platform.claude.com/docs/en/about-claude/pricing' },
-        { label: 'Google', href: 'https://ai.google.dev/' }
+        { label: 'Google', href: 'https://ai.google.dev/gemini-api/docs/pricing' }
     ].forEach((link, index, list) => {
         const anchor = costEstimateFootnote.createEl('a', {
             href: link.href,
@@ -339,6 +340,11 @@ export function renderAiSection(params: {
     costEstimateFootnote.appendText('. ');
     costEstimateFootnote.createEl('strong', { text: 'Local LLM' });
     costEstimateFootnote.appendText(' runs on your machine with no API charges.');
+    costEstimateFootnote.createEl('br');
+    costEstimateFootnote.createEl('strong', { text: 'Gemini cache note: ' });
+    costEstimateFootnote.appendText(
+        'explicit cache may add storage fees for cached corpus tokens during the active cache window; Gemini cache windows default to 15m, and cache usually only pays off when you run another question before the window expires.'
+    );
     costEstimateFootnote.createEl('br');
     costEstimateFootnote.appendText(
         'Estimates assume a response size learned from your past runs (or a safe default until a few runs have completed). They get more accurate the more you use Inquiry.'
@@ -1406,6 +1412,50 @@ export function renderAiSection(params: {
         return `Observed cache hit · ${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}% reused`;
     };
 
+    const mergePreviewCachePills = (pills: PreviewPill[]): PreviewPill[] => {
+        let cacheBase: PreviewPill | null = null;
+        const cacheSegments: string[] = [];
+        let cacheTone: string | undefined;
+        const otherPills: PreviewPill[] = [];
+
+        for (const pill of pills) {
+            if (pill.text === 'Cache enabled' || pill.text === 'Provider cache enabled') {
+                cacheBase = { text: 'Cache enabled', extraCls: pill.extraCls };
+                cacheTone = pill.extraCls;
+                continue;
+            }
+            if (/^Cache off\b/i.test(pill.text)) {
+                cacheBase = pill;
+                cacheTone = pill.extraCls;
+                continue;
+            }
+            if (pill.text === 'Cache window expired') {
+                cacheSegments.push('window expired');
+                cacheTone = 'ert-ai-pill--muted';
+                continue;
+            }
+            if (/^Observed cache hit\b/i.test(pill.text)) {
+                cacheSegments.push(pill.text.replace(/^Observed cache hit\s*·\s*/i, ''));
+                if (!cacheTone) cacheTone = pill.extraCls;
+                continue;
+            }
+            otherPills.push(pill);
+        }
+
+        if (!cacheBase && cacheSegments.length <= 0) {
+            return otherPills;
+        }
+        const baseText = cacheBase?.text ?? 'Cache enabled';
+        const mergedText = [baseText, ...cacheSegments].join(' — ');
+        return [
+            ...otherPills,
+            {
+                text: mergedText,
+                extraCls: cacheTone
+            }
+        ];
+    };
+
     const getPreviewCurrentCacheReuseFingerprint = (): string | null =>
         getCurrentCorpusContext()?.cacheReuseFingerprint?.trim() || null;
 
@@ -1574,11 +1624,11 @@ export function renderAiSection(params: {
             reuseLabel: lastResolvedPreviewState.reuseLabel,
             passBehaviorLabel: lastResolvedPreviewState.passBehaviorLabel
         });
-        const previewPills = (
+        const previewPills = mergePreviewCachePills((
             typeof certificate.cacheRatio === 'number' && certificate.cacheRatio > 0
                 ? basePreviewPills.filter(pill => !/^Cache off\b/i.test(pill.text))
                 : basePreviewPills
-        ).concat(certificate.extraPills);
+        ).concat(certificate.extraPills));
         renderResolvedPreviewPills(previewPills);
 
         if (certificate.comparatorLabel) {
@@ -1709,26 +1759,8 @@ export function renderAiSection(params: {
     const getCostComparisonRowKey = (provider: AIProviderId, modelId: string): string =>
         `${provider}::${modelId}`;
 
-    const getProviderCacheWindowLabel = (provider: AIProviderId): string | null => {
-        const aiSettings = ensureCanonicalAiSettings();
-        if (provider === 'anthropic') {
-            return `${ANTHROPIC_REQUESTED_CACHE_TTL} cache window`;
-        }
-        if (provider === 'openai') {
-            if (aiSettings.cacheWindows?.openaiRetention === '24h') {
-                return '24h cache window';
-            }
-            const configuredMinutes = aiSettings.cacheWindows?.openaiInMemoryWindowMinutes;
-            const cacheMinutes = typeof configuredMinutes === 'number' ? configuredMinutes : 10;
-            return `${Math.max(5, cacheMinutes)}m cache window`;
-        }
-        if (provider === 'google') {
-            const configuredSeconds = aiSettings.cacheWindows?.googleTtlSeconds;
-            const cacheSeconds = typeof configuredSeconds === 'number' ? configuredSeconds : 900;
-            return `${Math.max(60, cacheSeconds) / 60}m cache window`;
-        }
-        return null;
-    };
+    const getProviderCacheWindowLabel = (provider: AIProviderId): string | null =>
+        formatProviderCacheWindowLabel(provider, ensureCanonicalAiSettings());
 
     const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
 
@@ -2894,6 +2926,7 @@ export function renderAiSection(params: {
                             revealSecretName = false;
                         }
                         setProviderState(validation.state);
+                        plugin.getInquiryService().notifyAiSettingsChanged();
                     })();
                 });
             });

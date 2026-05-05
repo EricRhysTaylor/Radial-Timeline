@@ -4,6 +4,7 @@ import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
 import {
     CC_BOTTOM_MARGIN,
     CC_CELL_ICON_OFFSET,
+    CC_COLUMN_GAP_EXTRA,
     CC_HEADER_ICON_GAP,
     CC_HEADER_ICON_OFFSET,
     CC_HEADER_ICON_SIZE,
@@ -549,8 +550,8 @@ export function renderInquiryCorpusStrip(args: {
     // ── Position labels ──
     refs.ccLabel.textContent = args.getScopeLabel();
     const stripCenterX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
-    const corpusTitleY = -20;
-    const scopeLabelY = 0;
+    const corpusTitleY = -24;
+    const scopeLabelY = -4;
 
     // CORPUS text: manually centered via text-anchor: start + measured width.
     // This avoids browser inconsistencies between text-anchor: middle and CSS letter-spacing.
@@ -875,12 +876,13 @@ function buildCorpusStripLayout(
 
     const pageHeight = Math.round(pageWidth * 1.45);
     const gap = pageWidth;
+    const columnGap = pageWidth + CC_COLUMN_GAP_EXTRA;
     const titleY = gap;
     const docStartY = titleY + gap;
     const rowStep = pageHeight + gap;
     const usableHeight = Math.max(0, (bottomLimit - topLimit) - docStartY);
     const rowsPerColumn = Math.max(1, Math.floor((usableHeight + gap) / rowStep));
-    const columnStep = pageWidth + gap;
+    const columnStep = pageWidth + columnGap;
     const anchorRightX = VIEWBOX_MAX - CC_RIGHT_MARGIN - pageWidth;
     const anchorLeftX = VIEWBOX_MIN + CC_RIGHT_MARGIN;
     const classGroupGap = 1; // extra spacing between class groups

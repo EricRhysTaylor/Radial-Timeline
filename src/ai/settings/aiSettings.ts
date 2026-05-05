@@ -1,11 +1,15 @@
 import type {
     AIProviderId,
-    AnthropicCacheTtl,
     AiSettingsV1,
     AIRoleTemplate,
     LocalLlmSettings,
     ModelPolicy
 } from '../types';
+import {
+    ANTHROPIC_INQUIRY_CACHE_TTL,
+    GEMINI_CACHE_TTL_DEFAULT_SECONDS,
+    OPENAI_IN_MEMORY_WINDOW_MINUTES_DEFAULT
+} from './cacheWindows';
 
 export const AI_SETTINGS_SCHEMA_VERSION = 1;
 export const DEFAULT_CANONICAL_PROVIDER: Exclude<AIProviderId, 'none'> = 'openai';
@@ -20,12 +24,12 @@ export type CredentialSecretField = keyof typeof DEFAULT_CREDENTIAL_SECRET_IDS;
 export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
-export const ANTHROPIC_REQUESTED_CACHE_TTL: AnthropicCacheTtl = '1h';
+export const ANTHROPIC_REQUESTED_CACHE_TTL = ANTHROPIC_INQUIRY_CACHE_TTL;
 export const DEFAULT_CACHE_WINDOWS = {
     anthropicTtl: ANTHROPIC_REQUESTED_CACHE_TTL,
-    googleTtlSeconds: 86_400,
+    googleTtlSeconds: GEMINI_CACHE_TTL_DEFAULT_SECONDS,
     openaiRetention: '24h',
-    openaiInMemoryWindowMinutes: 60
+    openaiInMemoryWindowMinutes: OPENAI_IN_MEMORY_WINDOW_MINUTES_DEFAULT
 } as const;
 export const DEFAULT_LOCAL_LLM_SETTINGS: LocalLlmSettings = {
     enabled: true,

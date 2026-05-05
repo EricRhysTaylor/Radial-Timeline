@@ -38,8 +38,8 @@ import {
     InquiryZone
 } from './state';
 import { replayTransientClass } from '../utils/domClassEffects';
-import { ANTHROPIC_REQUESTED_CACHE_TTL } from '../ai/settings/aiSettings';
 import { providerSupportsCitations } from '../api/providerCapabilities';
+import { formatProviderCacheTtlLabel, resolveProviderCacheWindowMs } from '../ai/settings/cacheWindows';
 import type {
     InquiryCanonicalQuestionTier,
     InquiryClassConfig,
@@ -3666,10 +3666,9 @@ export class InquiryView extends ItemView {
     }
 
     private getProviderCacheTtlLabel(provider: string): string {
-        if (provider === 'anthropic') return ANTHROPIC_REQUESTED_CACHE_TTL;
-        if (provider === 'openai') return '24h';
-        if (provider === 'google') return '24h';
-        return '';
+        if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'google') return '';
+        const aiSettings = this.getCanonicalAiSettings();
+        return formatProviderCacheTtlLabel(provider, aiSettings);
     }
 
     /**
@@ -9708,22 +9707,7 @@ export class InquiryView extends ItemView {
     }
 
     private resolveCacheWindowMs(provider: AIProviderId, aiSettings: AiSettingsV1): number | null {
-        const windows = aiSettings.cacheWindows;
-        if (!windows) return null;
-        if (provider === 'anthropic') {
-            return ANTHROPIC_REQUESTED_CACHE_TTL === '1h'
-                ? 60 * 60 * 1000
-                : 5 * 60 * 1000;
-        }
-        if (provider === 'google') {
-            return Math.max(60, windows.googleTtlSeconds) * 1000;
-        }
-        if (provider === 'openai') {
-            return windows.openaiRetention === '24h'
-                ? 24 * 60 * 60 * 1000
-                : Math.max(5, windows.openaiInMemoryWindowMinutes) * 60 * 1000;
-        }
-        return null;
+        return resolveProviderCacheWindowMs(provider, aiSettings);
     }
 
     private resolveCacheWindowExpiry(result: InquiryResult, trace?: InquiryRunTrace | null): number | null {

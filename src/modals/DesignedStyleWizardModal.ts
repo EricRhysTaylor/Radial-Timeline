@@ -711,20 +711,24 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     /**
-     * Render a small "Reset to template" affordance at the top-right of the
-     * active category's panel. Restores only the active category's slice of
-     * the spec to the open-time snapshot — other categories' edits are
-     * preserved.
+     * Render a small flat icon button at the top-right of the active
+     * category's panel. Restores only the active category's slice of the
+     * spec to the open-time snapshot — other categories' edits stay.
+     *
+     * Returns the bar element so callers can mutate it (e.g. inject a
+     * left-side title alongside the icon button — Page does this).
      */
-    private renderResetBar(parent: HTMLElement): void {
+    private renderResetBar(parent: HTMLElement): HTMLElement {
         const bar = parent.createDiv({ cls: 'ert-style-wizard__reset-bar' });
         const btn = bar.createEl('button', {
-            cls: 'ert-style-wizard__reset-btn',
-            text: 'Reset to template',
+            cls: `${ERT_CLASSES.ICON_BTN} ert-style-wizard__reset-btn`,
         });
         btn.type = 'button';
+        btn.setAttribute('aria-label', 'Reset to template');
         btn.setAttribute('title', 'Restore this category to the template\'s starting values. Other categories are unchanged.');
+        try { setIcon(btn, 'rotate-ccw'); } catch { /* test env */ }
         btn.addEventListener('click', () => this.resetActiveCategory());
+        return bar;
     }
 
     /** Restore only the active category's slice from `originalSpec`. */
@@ -765,8 +769,22 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     private renderPageSection(parent: HTMLElement): void {
+        // Inject "Paper size" title into the reset bar already rendered by
+        // renderActiveCategoryPanel — title on the left, reset icon on the
+        // right, all on one row.
+        const resetBar = parent.querySelector('.ert-style-wizard__reset-bar') as HTMLElement | null;
+        if (resetBar) {
+            const titleSpan = createSpan({
+                cls: 'ert-style-wizard__panel-title',
+                text: 'Paper size',
+            });
+            resetBar.insertBefore(titleSpan, resetBar.firstChild);
+        }
+
         const body = this.createPanelBody(parent);
-        const paperRow = this.fieldRow(body, 'Paper size');
+        // Paper-size buttons go in their own full-width row beneath the
+        // header so all four sit side-by-side on a single line.
+        const paperRow = body.createDiv({ cls: 'ert-style-wizard__paper-row' });
         const paperOptions: Array<{ value: string; label: string }> = [
             { value: 'us-trade-6x9', label: '6x9 trade' },
             { value: 'us-letter', label: 'US Letter' },

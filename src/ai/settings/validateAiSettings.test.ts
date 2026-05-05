@@ -161,4 +161,23 @@ describe('validateAiSettings', () => {
         expect(result.value.cacheWindows?.openaiRetention).toBe('24h');
         expect(result.warnings.some(warning => warning.includes('OpenAI cache retention now defaults to 24h'))).toBe(true);
     });
+
+    it('caps persisted Gemini explicit cache windows to the short session default', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'google',
+            modelPolicy: { type: 'latestStable' },
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            cacheWindows: {
+                anthropicTtl: '1h',
+                googleTtlSeconds: 86_400,
+                openaiRetention: '24h',
+                openaiInMemoryWindowMinutes: 60
+            }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.cacheWindows?.googleTtlSeconds).toBe(900);
+    });
 });

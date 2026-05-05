@@ -70,6 +70,18 @@ describe('InquiryView payload accounting', () => {
         expect(cssSource.includes('.ert-inquiry-cc-cell.is-target .ert-inquiry-cc-cell-target-letter')).toBe(true);
     });
 
+    it('keeps the corpus title block tighter and column headers more readable', () => {
+        const constantsSource = readFileSync(resolve(process.cwd(), 'src/inquiry/constants/inquiryLayout.ts'), 'utf8');
+        const corpusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/corpus/inquiryCorpusStripRenderer.ts'), 'utf8');
+        const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
+        expect(constantsSource.includes('headerIconGap: 2')).toBe(true);
+        expect(constantsSource.includes('columnGapExtra: 4')).toBe(true);
+        expect(corpusSource.includes('const corpusTitleY = -24;')).toBe(true);
+        expect(corpusSource.includes('const scopeLabelY = -4;')).toBe(true);
+        expect(corpusSource.includes('const columnStep = pageWidth + columnGap;')).toBe(true);
+        expect(cssSource.includes('.ert-inquiry-cc-class-label {\n  font-size: 12px;')).toBe(true);
+    });
+
     it('uses justify-aware line balancing for dossier body paragraphs', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const dossierSource = readFileSync(resolve(process.cwd(), 'src/inquiry/render/inquiryDossierRenderer.ts'), 'utf8');
@@ -350,6 +362,17 @@ describe('InquiryView payload accounting', () => {
         // still apply to the cached-cost label path.
         expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
         expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
+    });
+
+    it('formats Inquiry engine cache TTL labels from canonical settings instead of hard-coding Gemini to 24h', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const cacheWindowSource = readFileSync(resolve(process.cwd(), 'src/ai/settings/cacheWindows.ts'), 'utf8');
+        expect(viewSource.includes("if (provider === 'google') return '24h';")).toBe(false);
+        expect(viewSource.includes('const aiSettings = this.getCanonicalAiSettings();')).toBe(true);
+        expect(viewSource.includes('formatProviderCacheTtlLabel(provider, aiSettings)')).toBe(true);
+        expect(viewSource.includes('resolveProviderCacheWindowMs(provider, aiSettings)')).toBe(true);
+        expect(cacheWindowSource.includes('export function formatProviderCacheTtlLabel')).toBe(true);
+        expect(cacheWindowSource.includes('GEMINI_CACHE_TTL_MAX_SECONDS = 900')).toBe(true);
     });
 
     it('derives persisted cache coverage from actual usage and refreshes the HUD after estimate snapshots', () => {

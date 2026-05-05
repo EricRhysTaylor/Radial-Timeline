@@ -2866,17 +2866,15 @@ body > .tooltip {
 .ert-ui .ert-style-wizard-modal.modal {
   width: min(1050px, 96vw);
   max-width: 96vw;
-  /* Was: calc(100vh - 3xl - 3xl - xl) = 100vh − 104px.
-   * Now: calc(100vh - xs)            = 100vh − 8px → ≈ 96px taller. */
-  max-height: calc(100vh - var(--ert-pad-xs));
-  /* Anchor the modal at a fixed distance from the top so it doesn't
-     re-center as the active panel's content height changes. Without this,
-     each category dropdown change re-centers the modal vertically and the
-     entire window jumps. We override Obsidian's default
-     `top: 50%; transform: translate(-50%, -50%)` to keep the horizontal
-     centering but pin the top edge — only the bottom resizes. */
-  top: var(--ert-gap-md);
-  transform: translateX(-50%);
+  /* Pin BOTH height and max-height to the same value so the modal stays a
+     constant size regardless of which category panel is active. Obsidian
+     centers the modal via flex on the parent — fighting that with top/
+     transform overrides shifted it off-center. The right fix is to make
+     the modal a stable size; then its computed center never moves.
+     Trimmed 200px off the previous full-height value so the modal feels
+     less imposing on tall screens. */
+  height: calc(100vh - 200px - var(--ert-pad-xs));
+  max-height: calc(100vh - 200px - var(--ert-pad-xs));
 }
 
 .ert-style-wizard {
@@ -2890,29 +2888,61 @@ body > .tooltip {
    (rt-ui.css), so every modal — not just this one — gets breathing room
    between description and content. No wizard override needed. */
 
-/* Per-category Reset bar — small button anchored at the top-right of the
-   active panel. Restores only the active category's slice of the spec. */
+/* Per-category Reset bar — flex row at the top of each panel. Title (when
+   the panel injects one) hugs the left edge; small flat icon button hugs
+   the right. */
 .ert-style-wizard__reset-bar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   padding: 0;
-  margin-bottom: var(--ert-gap-2xs);
+  margin-bottom: var(--ert-gap-xs);
 }
-.ert-style-wizard__reset-btn {
-  font-size: 0.72rem;
-  padding: var(--ert-gap-3xs) var(--ert-gap-sm);
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
-  border-radius: var(--ert-pad-xs);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
-}
-.ert-style-wizard__reset-btn:hover,
-.ert-style-wizard__reset-btn:focus-visible {
-  border-color: color-mix(in srgb, var(--ert-accent) 65%, transparent);
+.ert-style-wizard__panel-title {
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--text-normal);
+}
+
+/* Mirror the canonical .ert-iconBtn styling into modal scope — same look
+   as the settings-scope iconBtn rule but reachable from the wizard. */
+.ert-ui.ert-scope--modal .ert-iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ert-iconBtn-size);
+  height: var(--ert-iconBtn-size);
+  padding: 0;
+  line-height: 0;
+  border-radius: var(--ert-iconBtn-radius);
+  border: 1px solid var(--ert-iconBtn-border);
+  background: var(--ert-iconBtn-bg);
+  color: var(--ert-iconBtn-color);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.ert-ui.ert-scope--modal .ert-iconBtn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.ert-ui.ert-scope--modal .ert-iconBtn:hover,
+.ert-ui.ert-scope--modal .ert-iconBtn:focus-visible {
+  background: var(--ert-iconBtn-hover-bg);
+  color: var(--ert-iconBtn-hover-color);
+  border-color: var(--ert-accent);
   outline: none;
+}
+
+/* Paper-size button row — all 4 buttons on a single line, no wrap. */
+.ert-style-wizard__paper-row {
+  display: flex;
+  align-items: center;
+}
+.ert-style-wizard__paper-row .ert-style-wizard__radio-group {
+  flex-wrap: nowrap;
+  width: 100%;
+  justify-content: flex-start;
 }
 
 /* Combined mode badge — nested PRO chip + DESIGN/EDIT label in one pill.

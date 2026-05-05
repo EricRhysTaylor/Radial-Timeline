@@ -1,6 +1,12 @@
 import type { AiSettingsV1, AIProviderId, LocalLlmBackendId, LocalLlmConfigurationMode, LocalLlmJsonMode } from '../types';
 import { ANTHROPIC_REQUESTED_CACHE_TTL, buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
+import {
+    GEMINI_CACHE_TTL_DEFAULT_SECONDS,
+    normalizeGeminiCacheTtlSeconds,
+    normalizeOpenAiInMemoryWindowMinutes,
+    OPENAI_IN_MEMORY_WINDOW_MINUTES_DEFAULT
+} from './cacheWindows';
 
 export interface AiSettingsValidationResult {
     value: AiSettingsV1;
@@ -56,9 +62,9 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
 
     const defaultCacheWindows = defaults.cacheWindows ?? {
         anthropicTtl: ANTHROPIC_REQUESTED_CACHE_TTL,
-        googleTtlSeconds: 86_400,
+        googleTtlSeconds: GEMINI_CACHE_TTL_DEFAULT_SECONDS,
         openaiRetention: '24h',
-        openaiInMemoryWindowMinutes: 60
+        openaiInMemoryWindowMinutes: OPENAI_IN_MEMORY_WINDOW_MINUTES_DEFAULT
     };
 
     const value: AiSettingsV1 = {
@@ -249,9 +255,9 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
             value.cacheWindows.anthropicTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
         }
         if (typeof value.cacheWindows.googleTtlSeconds !== 'number' || !Number.isFinite(value.cacheWindows.googleTtlSeconds)) {
-            value.cacheWindows.googleTtlSeconds = defaults.cacheWindows?.googleTtlSeconds ?? 900;
+            value.cacheWindows.googleTtlSeconds = defaults.cacheWindows?.googleTtlSeconds ?? GEMINI_CACHE_TTL_DEFAULT_SECONDS;
         } else {
-            value.cacheWindows.googleTtlSeconds = Math.max(60, Math.min(86_400, Math.round(value.cacheWindows.googleTtlSeconds)));
+            value.cacheWindows.googleTtlSeconds = normalizeGeminiCacheTtlSeconds(value.cacheWindows.googleTtlSeconds);
         }
         if (value.cacheWindows.openaiRetention === 'in_memory') {
             warnings.push('OpenAI cache retention now defaults to 24h; upgrading persisted in-memory retention.');
@@ -261,12 +267,9 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         }
         if (typeof value.cacheWindows.openaiInMemoryWindowMinutes !== 'number'
             || !Number.isFinite(value.cacheWindows.openaiInMemoryWindowMinutes)) {
-            value.cacheWindows.openaiInMemoryWindowMinutes = defaults.cacheWindows?.openaiInMemoryWindowMinutes ?? 10;
+            value.cacheWindows.openaiInMemoryWindowMinutes = defaults.cacheWindows?.openaiInMemoryWindowMinutes ?? OPENAI_IN_MEMORY_WINDOW_MINUTES_DEFAULT;
         } else {
-            value.cacheWindows.openaiInMemoryWindowMinutes = Math.max(
-                5,
-                Math.min(60, Math.round(value.cacheWindows.openaiInMemoryWindowMinutes))
-            );
+            value.cacheWindows.openaiInMemoryWindowMinutes = normalizeOpenAiInMemoryWindowMinutes(value.cacheWindows.openaiInMemoryWindowMinutes);
         }
     }
 

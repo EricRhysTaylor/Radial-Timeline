@@ -6,6 +6,7 @@ import { extractTokenUsage } from '../usage/providerUsage';
 import { getCredential } from '../credentials/credentials';
 import { CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
+import { normalizeGeminiCacheTtlSeconds } from '../settings/cacheWindows';
 import { validateAiSettings } from '../settings/validateAiSettings';
 import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
@@ -70,7 +71,7 @@ export class GoogleProvider implements AIProvider {
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'google');
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const ttlSeconds = aiSettings.cacheWindows?.googleTtlSeconds ?? 900;
+        const ttlSeconds = normalizeGeminiCacheTtlSeconds(aiSettings.cacheWindows?.googleTtlSeconds);
         let userPrompt = req.userPrompt;
         let cachedContentName: string | undefined;
         let cacheStatus: ProviderExecutionResult['cacheStatus'];
@@ -134,7 +135,7 @@ export class GoogleProvider implements AIProvider {
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'google');
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const ttlSeconds = aiSettings.cacheWindows?.googleTtlSeconds ?? 900;
+        const ttlSeconds = normalizeGeminiCacheTtlSeconds(aiSettings.cacheWindows?.googleTtlSeconds);
         let userPrompt = req.userPrompt;
         let cachedContentName: string | undefined;
         let cacheStatus: ProviderExecutionResult['cacheStatus'];

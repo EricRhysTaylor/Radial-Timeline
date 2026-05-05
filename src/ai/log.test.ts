@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildUsageCostBreakdown,
+    formatActualUsageCost,
+    formatSummaryLogContent,
     formatUsageCostBreakdownLines,
     resolveContentLogsRoot,
     resolveLogsRoot
@@ -127,5 +129,42 @@ describe('buildUsageCostBreakdown', () => {
         });
 
         expect(lines).toEqual([]);
+    });
+
+    it('formats actual usage cost for run summaries without estimate data', () => {
+        const cost = formatActualUsageCost('google', 'gemini-2.5-pro', {
+            inputTokens: 264_612,
+            outputTokens: 3_402,
+            totalTokens: 268_014,
+            cacheReadInputTokens: 264_584
+        });
+
+        expect(cost).toBe('$0.117');
+    });
+
+    it('includes actual usage cost in concise summary logs', () => {
+        const content = formatSummaryLogContent({
+            title: 'Inquiry Summary',
+            feature: 'Inquiry',
+            scopeTarget: 'Saga · Σ',
+            provider: 'Google',
+            modelRequested: 'gemini-2.5-pro',
+            modelResolved: 'gemini-2.5-pro',
+            submittedAt: new Date('2026-05-05T15:00:00.000Z'),
+            returnedAt: new Date('2026-05-05T15:00:38.000Z'),
+            durationMs: 38_000,
+            status: 'success',
+            tokenUsage: {
+                inputTokens: 264_612,
+                outputTokens: 3_402,
+                totalTokens: 268_014,
+                cacheReadInputTokens: 264_584
+            },
+            retryAttempts: 0,
+            resultSummary: 'Completed successfully.',
+            contentLogWritten: true
+        });
+
+        expect(content).toContain('- Actual usage cost: $0.117');
     });
 });
