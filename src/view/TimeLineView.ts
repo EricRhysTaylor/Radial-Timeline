@@ -172,7 +172,7 @@ export class RadialTimelineView extends ItemView {
     }
     
     getIcon(): string {
-        return "shell";
+        return "rt-logo";
     }
 
     private ensureBookSwitcher(): void {

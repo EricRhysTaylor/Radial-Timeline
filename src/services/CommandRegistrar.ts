@@ -61,7 +61,7 @@ export class CommandRegistrar {
     }
 
     private registerRibbon(): void {
-        this.plugin.addRibbonIcon('shell', t('commands.openTimeline'), () => {
+        this.plugin.addRibbonIcon('rt-logo', t('commands.openTimeline'), () => {
             this.plugin.getTimelineService().activateView();
         });
         this.inquiryRibbonIcon = this.plugin.addRibbonIcon('waves', t('commands.openInquiry'), () => {

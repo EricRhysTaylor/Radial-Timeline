@@ -207,7 +207,9 @@
 .radial-timeline-container .progress-ring-fill {
   fill: none;
   stroke-width: 6px;
-  stroke-linecap: butt;
+  /* Make rainbow ring thinner */
+  stroke-linecap: round;
+  /* Optional: round ends */
 }
 
 /* Estimate tick group - hover interaction */
