@@ -919,6 +919,10 @@
   text-transform: uppercase;
 }
 
+.ert-inquiry-cc-legend-row-label {
+  font-weight: 700;
+}
+
 .ert-inquiry-cc-legend-click-icon {
   color: var(--text-muted);
   fill: none;
@@ -1522,15 +1526,15 @@
   fill: color-mix(in srgb, var(--ert-inquiry-zone-color) 35%, transparent);
 }
 
-/* Stale prior run — amber ring indicating a prior session exists but corpus/context drifted.
-   Clicking will trigger a fresh run rather than rehydrating. */
+/* Stale prior run — same muted zone-color treatment as cached, with only the dash
+   marking corpus/context drift. Clicking triggers a fresh run rather than rehydrating. */
 .ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-stale .inq-zone-dot-circle {
-  stroke: color-mix(in srgb, var(--ert-inquiry-ai-warning) 55%, transparent);
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 30%, transparent);
   stroke-dasharray: 3 2;
 }
 
 .ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-stale .inq-zone-dot-text {
-  fill: color-mix(in srgb, var(--ert-inquiry-ai-warning) 55%, transparent);
+  fill: color-mix(in srgb, var(--ert-inquiry-zone-color) 35%, transparent);
 }
 
 .inq-zone-dot.is-duplicate-pulse .inq-zone-dot-circle {

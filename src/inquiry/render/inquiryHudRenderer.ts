@@ -64,7 +64,11 @@ export function renderInquiryPromptPreviewLayout(args: {
         text: string,
         maxWidth: number,
         maxLines: number,
-        lineHeight: number
+        lineHeight: number,
+        options?: {
+            preferFrontLoaded?: boolean;
+            minNonFinalFillRatio?: number;
+        }
     ) => number;
     onSvgClear: () => void;
     onSvgNodeCreate: () => void;
@@ -95,7 +99,11 @@ export function renderInquiryPromptPreviewLayout(args: {
             args.question,
             resultsWidth,
             PREVIEW_RESULTS_HERO_MAX_LINES,
-            PREVIEW_HERO_LINE_HEIGHT
+            PREVIEW_HERO_LINE_HEIGHT,
+            {
+                preferFrontLoaded: true,
+                minNonFinalFillRatio: 0.72
+            }
         );
     } else {
         const hoverHeroWidth = Math.max(heroBaseWidth, PREVIEW_RESULTS_HERO_MAX_WIDTH);

@@ -7,37 +7,268 @@ To open the Command Palette:
 Type `Radial Timeline` to filter the list.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/commands.png" alt="Radial Timeline Commands" style="max-width: 100%;" />
+  <img src="images/ui-commands.png" alt="Radial Timeline Commands" style="max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Radial Timeline Commands in the palette</div>
 </div>
 
-## Commands
+## Command Index
 
 These are the main command-palette entries, listed in the same order as the palette screenshot:
 
-1. [Open](Radial-Timeline-View)
-2. [Create note…](Create-Note)
-3. [Open inquiry](Inquiry-View)
-4. [Book Designer](Book-Designer)
-5. [Timeline order](Timeline-Order)
-6. [Timeline audit](Timeline-Audit)
-7. [Manage subplots](Manage-Subplots)
-8. [Summary refresh](Summary-Refresh)
-9. [Search timeline](Search-Timeline)
-10. [Gossamer analysis](Gossamer-Analysis)
-11. [Runtime estimator](Runtime-Estimator)
-12. [Manuscript export](Manuscript-Export)
-13. [Inquiry omnibus pass](Inquiry-Omnibus-Pass)
-14. [Gossamer score manager](Gossamer-Score-Manager)
-15. [Planetary time calculator](Planetary-Time-Calculator)
-16. [Author progress report (APR)](Author-Progress-Report)
-17. [Scene pulse analysis (subplot order)](Scene-Pulse-Analysis-Subplot-Order)
-18. [Scene pulse analysis (manuscript order)](Scene-Pulse-Analysis-Manuscript-Order)
+1. **Open** — opens the [Radial Timeline View](Radial-Timeline-View).
+2. **[Create note…](#create-note)**
+3. **Open inquiry** — opens the [Inquiry View](Inquiry).
+4. **[Book Designer](Book-Designer)** ← standalone guide
+5. **[Timeline order](#timeline-order)** *(beta)*
+6. **[Timeline audit](#timeline-audit)** *(beta)*
+7. **[Manage subplots](#manage-subplots)**
+8. **[Summary refresh](#summary-refresh)**
+9. **[Search timeline](#search-timeline)**
+10. **[Gossamer analysis](#gossamer-analysis)**
+11. **[Runtime estimator](#runtime-estimator)** *(Pro)*
+12. **[Manuscript export](Manuscript-Export)** ← standalone guide
+13. **[Inquiry omnibus pass](#inquiry-omnibus-pass)** *(beta)*
+14. **[Gossamer score manager](#gossamer-score-manager)**
+15. **[Planetary time calculator](#planetary-time-calculator)**
+16. **[Author progress report (APR)](Author-Progress-Report)** ← standalone guide
+17. **[Scene pulse analysis (subplot order)](#scene-pulse-analysis-subplot-order)**
+18. **[Scene pulse analysis (manuscript order)](#scene-pulse-analysis-manuscript-order)**
 
-## Conditional Commands
+## Conditional Visibility
 
-Some commands only appear in the Command Palette when their required feature is enabled:
+Some commands only appear in the palette when their required feature is enabled:
 
-*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis, Inquiry omnibus pass): Require **AI LLM features** to be enabled in Settings → AI.
-*   **Runtime estimator**: Requires **Pro** access. Runtime configuration lives in Settings → Core.
-*   **Planetary time calculator**: Requires **Planetary time** to be enabled in Settings → Core.
+*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis, Inquiry omnibus pass) require **AI LLM features** enabled in [Settings → AI](Settings-AI).
+*   **Runtime estimator** requires **Pro** access. Runtime configuration lives in [Settings → Core](Settings-Core#runtime-estimation).
+*   **Planetary time calculator** requires **Planetary time** enabled in [Settings → Core](Settings-Core).
+
+---
+
+<a name="create-note"></a>
+## Create note…
+
+Opens the guided RT note picker.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-create-note.png" alt="Create note command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+The picker is organized into three families:
+
+*   **Scene** — Core scene, scene with advanced properties, screenplay scene, podcast scene.
+*   **Manuscript matter** — Front matter, back matter, `BookMeta`.
+*   **Story world** — Beat and Backdrop.
+
+After you choose a subtype, the file is created in the active book folder and opened immediately. Scene creation includes built-in scaffolds: minimal properties for basic scenes, richer metadata for advanced scenes, screenplay/podcast body scaffolds plus runtime defaults for those types.
+
+Related: [Scene Properties (Core + Advanced)](YAML-Frontmatter).
+
+---
+
+<a name="timeline-order"></a>
+## Timeline order *(beta)*
+
+Opens the timeline order normalizer (Timeline Repair wizard).
+
+> [!NOTE]
+> Currently undergoing beta testing. Available only in development/testing builds for now.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-timeline-order.png" alt="Timeline order command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+The wizard helps you normalize `When` values in manuscript order, then review the proposed timeline before writing changes back to frontmatter. It supports scaffold-based chronology setup, anchor date and time selection, time-bucket adjustments (morning/afternoon/evening/night), ripple mode for cascading changes, needs-review filtering, and undo/redo before applying.
+
+This command is for repairing and normalizing chronology, not for auditing contradictions — for that, see [Timeline audit](#timeline-audit).
+
+Related: [Chronologue Mode](Chronologue-Mode).
+
+---
+
+<a name="timeline-audit"></a>
+## Timeline audit *(beta)*
+
+Opens the timeline audit panel.
+
+> [!NOTE]
+> Currently undergoing beta testing. Available only in development/testing builds for now.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-timeline-audit.png" alt="Timeline audit panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Surfaces contradictions, missing `When` values, summary/body disagreement, continuity problems, and unresolved findings. The panel shows overview stats, finding filters, and finding cards with evidence and suggested actions.
+
+The audit includes a deterministic pass and can optionally run a continuity pass. AI-enhanced findings (when available) appear in the same review surface — the command stays centered on audit and review rather than bulk rewriting. From the panel you can filter findings by issue type, inspect evidence, mark items for review, apply accepted fixes where supported, and rerun the audit after changes.
+
+Related: [Timeline order](#timeline-order), [Chronologue Mode](Chronologue-Mode).
+
+---
+
+<a name="manage-subplots"></a>
+## Manage subplots
+
+Opens the subplot manager for bulk cleanup. Use it when subplot names have drifted.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-manage-subplots.png" alt="Manage subplots panel" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Lists active subplots with scene counts and gives you bulk actions:
+
+*   **Rename** a subplot across scene files.
+*   **Remove** a subplot from the timeline.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-manage-subplots-rename.png" alt="Manage subplots — rename detail" style="width: 450px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Rename a subplot — automatically updates the frontmatter of every scene using it</div>
+</div>
+
+`Main Plot` is protected and cannot be renamed or deleted. Removing a subplot moves any scenes that only belonged to it back to `Main Plot`.
+
+Related: [Narrative Mode](Narrative-Mode), [How to](How-to#manage-subplots-in-bulk).
+
+---
+
+<a name="summary-refresh"></a>
+## Summary refresh
+
+Regenerates scene summaries with AI.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-summary-refresh.png" alt="Summary refresh command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Writes:
+
+*   **Summary** — the longer corpus-oriented summary.
+*   **Synopsis** — optional, if you enable `Also update Synopsis`.
+
+Run modes: flagged scenes, missing summaries only, missing/weak/stale, or regenerate all. You can also set target summary length, weak-summary threshold, and optional Synopsis update length.
+
+This command is separate from scene pulse analysis: **Pulse** writes short structured editorial feedback per scene; **Summary refresh** writes longer summary text for corpus-level use.
+
+Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Inquiry View](Inquiry).
+
+---
+
+<a name="search-timeline"></a>
+## Search timeline
+
+Opens the timeline search bar.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-search-timeline.png" alt="Search timeline panel" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Case-insensitive text search across multiple fields: title, synopsis, characters, subplot, location, POV, duration, date/time, AI Pulse Triplet Analysis, and planetary time (if enabled). Requires at least **3 characters**.
+
+Related: [How to → Search](How-to#search).
+
+---
+
+<a name="gossamer-analysis"></a>
+## Gossamer analysis
+
+Runs the built-in AI scoring workflow for the active Gossamer signal.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-gossamer-analysis.png" alt="Gossamer analysis command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Works against the active beat system and the active signal — Momentum, Tension, Activity, or Interiority. The AI run intentionally does **not** receive ideal-range guidance in its scoring payload, so the result is a fresh read rather than a range-constrained one.
+
+Related: [Gossamer Mode → AI Analysis](Gossamer-Mode#ai-analysis).
+
+---
+
+<a name="runtime-estimator"></a>
+## Runtime estimator *(Pro)*
+
+Opens the runtime estimation panel.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-runtime-estimator.png" alt="Runtime estimator panel" style="width: 520px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Used for novels, audiobooks, and screenplays. The panel works with runtime profiles and can estimate duration across different scopes and filters. Available only when **Pro** is active.
+
+Related: [Pro → Runtime estimation](Pro#runtime-estimation), [Chronologue Runtime sub-mode](Chronologue-Mode#runtime-sub-mode).
+
+---
+
+<a name="inquiry-omnibus-pass"></a>
+## Inquiry omnibus pass *(beta)*
+
+Runs all enabled Inquiry questions in one batch.
+
+> [!NOTE]
+> Currently undergoing beta testing. Available only in development/testing builds for now.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-inquiry-omnibus.png" alt="Inquiry omnibus command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Executes enabled questions across the Inquiry zones and returns a combined set of findings for the current corpus. Works with the active scope (Book or Saga). Depending on provider and engine path, the run may execute as a combined omnibus flow or as sequential provider calls behind the scenes.
+
+Related: [Inquiry View](Inquiry), [Running an Inquiry](Inquiry#running-an-inquiry).
+
+---
+
+<a name="gossamer-score-manager"></a>
+## Gossamer score manager
+
+Opens the manual score-entry panel for the active signal.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-gossamer-score-manager.png" alt="Gossamer score manager panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Supports manual score entry, score justifications, run history cleanup and normalization, and working with saved beat runs. If no beat notes are available for the active beat system, the command will not open and instead warns that story beats are missing.
+
+Related: [Gossamer Mode → Manual Entry](Gossamer-Mode#manual-entry).
+
+---
+
+<a name="planetary-time-calculator"></a>
+## Planetary time calculator
+
+Opens the planetary conversion panel.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-planet-calculator.png" alt="Planetary time calculator panel" style="width: 440px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Uses the active planetary profile from [Settings → Core](Settings-Core) and lets you pick a date and time, convert that Earth timestamp to local planetary time, and copy a YAML-friendly result block. If no planetary profile exists or no active profile is selected, the calculator cannot produce a result.
+
+Related: [Planetary Calendar](Chronologue-Mode#alt-sub-mode).
+
+---
+
+<a name="scene-pulse-analysis-subplot-order"></a>
+## Scene pulse analysis (subplot order)
+
+Opens the subplot pulse picker first, then runs pulse analysis for a selected subplot.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-scene-pulse-subplot.png" alt="Scene pulse analysis subplot order command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+The subplot picker shows flagged scenes, processable scenes, and total scenes. From there you can choose **Process flagged scenes**, **Process entire subplot**, or **Purge all pulse** for that subplot.
+
+Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Manage subplots](#manage-subplots).
+
+---
+
+<a name="scene-pulse-analysis-manuscript-order"></a>
+## Scene pulse analysis (manuscript order)
+
+Opens the pulse command panel for manuscript-order analysis.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-scene-pulse-manuscript.png" alt="Scene pulse analysis manuscript order command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+</div>
+
+Run modes: process open scenes, process flagged scenes, process unprocessed scenes, or reprocess all scenes.
+
+Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Summary refresh](#summary-refresh).

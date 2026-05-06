@@ -1,3 +1,8 @@
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/settings-inquiry.png" alt="Settings → Inquiry tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → Inquiry</div>
+</div>
+
 The Inquiry tab controls how Inquiry scans your vault, saves briefings, writes action notes, and manages prompts and corpus thresholds.
 
 For the operating guide to the Inquiry View itself, see [Inquiry](Inquiry).

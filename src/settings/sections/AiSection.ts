@@ -962,6 +962,8 @@ export function renderAiSection(params: {
         pill: PreviewPill;
     }
 
+    const CACHE_ARMED_PILL_TEXT = 'Cache armed — second run benefits';
+
     const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
         'citation',
         'reuse',
@@ -992,10 +994,10 @@ export function renderAiSection(params: {
         if (exclusiveWithCitations && cacheAvailable) {
             return citationsOn
                 ? { text: 'Cache off (exclusive of citations)', extraCls: 'ert-ai-pill--muted' }
-                : { text: 'Cache enabled', extraCls: 'ert-ai-pill--active' };
+                : { text: CACHE_ARMED_PILL_TEXT, extraCls: 'ert-ai-pill--active' };
         }
         return cacheAvailable
-            ? { text: 'Provider cache enabled', extraCls: 'ert-ai-pill--active' }
+            ? { text: CACHE_ARMED_PILL_TEXT, extraCls: 'ert-ai-pill--active' }
             : { text: label, extraCls: 'ert-ai-pill--muted' };
     };
 
@@ -1419,8 +1421,8 @@ export function renderAiSection(params: {
         const otherPills: PreviewPill[] = [];
 
         for (const pill of pills) {
-            if (pill.text === 'Cache enabled' || pill.text === 'Provider cache enabled') {
-                cacheBase = { text: 'Cache enabled', extraCls: pill.extraCls };
+            if (pill.text === CACHE_ARMED_PILL_TEXT || pill.text === 'Cache enabled' || pill.text === 'Provider cache enabled') {
+                cacheBase = { text: CACHE_ARMED_PILL_TEXT, extraCls: pill.extraCls };
                 cacheTone = pill.extraCls;
                 continue;
             }
@@ -1445,7 +1447,7 @@ export function renderAiSection(params: {
         if (!cacheBase && cacheSegments.length <= 0) {
             return otherPills;
         }
-        const baseText = cacheBase?.text ?? 'Cache enabled';
+        const baseText = cacheBase?.text ?? CACHE_ARMED_PILL_TEXT;
         const mergedText = [baseText, ...cacheSegments].join(' — ');
         return [
             ...otherPills,

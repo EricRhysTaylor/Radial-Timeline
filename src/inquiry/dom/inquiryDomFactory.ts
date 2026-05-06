@@ -252,7 +252,7 @@ export function createInquiryPromptPreviewPanel(args: {
     meta.setAttribute('text-anchor', 'middle');
     meta.setAttribute('dominant-baseline', 'hanging');
 
-    const rowLabels = ['', '', '', '', '', '', 'Earlier ·'];
+    const rowLabels = ['', '', '', '', '', '', 'Prior result ·'];
     const previewRowDefaultLabels = rowLabels.slice();
     const tokensRowIndex = 4;
     const historyRowIndex = 6;

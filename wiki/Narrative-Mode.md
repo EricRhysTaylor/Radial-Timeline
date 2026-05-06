@@ -3,7 +3,7 @@
 Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Core → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story).
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/narrative.jpeg" alt="Narrative Mode Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/mode-narrative.jpeg" alt="Narrative Mode Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
 </div>
 
 ## Key Features
@@ -14,7 +14,25 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 *   **Publishing markers**: Optional outer-ring placards can show chapter starts and part boundaries from your active novel PDF layout.
 *   **Story Beats**: Displays story beats (like Save the Cat) along the timeline, helping you pace your narrative structure.
 *   **Interactive Reordering**: You can drag scenes on the outer ring to reorder them. See [Reorder Scenes](How-to#reorder-scenes) for details.
+*   **Scene right-click menu**: Quickly change a scene's Status, Publish Stage, or flag it for Pulse — see below.
 *   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [Settings → Advanced → Configuration](Settings-Advanced#configuration).
+
+## Scene Right-Click Menu
+
+Right-click any scene on the timeline to open a context menu that lets you update the scene's frontmatter without opening the note. The current value in each group is marked with a checkmark.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/menu-narrative-rightclick.png" alt="Narrative scene right-click context menu" style="width: 420px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Scene right-click menu — quick Status, Publish Stage, and Pulse actions</div>
+</div>
+
+**Status** — set `Status` to **Todo**, **Working**, or **Complete**. When you mark a scene **Complete**, the `Due` date is automatically set to today, keeping the [Progress Mode](Progress-Mode) completion estimate and pace tracker accurate.
+
+**Publish Stage** — set `Publish Stage` to **Zero**, **Author**, **House**, or **Press**. Useful for moving scenes through revision tiers without leaving the timeline.
+
+**Flag Triplet Pulse** — sets `Pulse Update: Yes` on the scene so the next [Scene pulse analysis](Commands#scene-pulse-analysis-manuscript-order) run will reprocess it.
+
+The timeline refreshes immediately to reflect the change.
 
 ## Book and Saga Scope
 
@@ -26,7 +44,7 @@ The title-bar book selector controls which manuscript the timeline shows.
 *   Saga scope stays in Narrative Mode, because multi-book scene order is a narrative-structure view rather than a chronology or progress view.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/rt-saga.png" alt="Narrative Mode saga view across multiple books" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/feature-saga.png" alt="Narrative Mode saga view across multiple books" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Saga view in Narrative Mode — multiple books combined into one manuscript-order timeline</div>
 </div>
 
@@ -41,7 +59,7 @@ Narrative Mode can show publishing-aware placards on the outside of the scene ri
 These placards reflect the novel PDF layout selected in the Manuscript Export panel. For example, a layout that prints chapter openers can show **C** markers, while Modern Classic can also show **P** markers for Parts. Changing the selected export layout updates the timeline markers after the layout is saved.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/parts-chapters.png" alt="Narrative Mode chapter and part markers around the perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/feature-parts-chapters.png" alt="Narrative Mode chapter and part markers around the perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Publishing markers on the perimeter — chapter starts, part boundaries, and combined Part/Chapter breaks</div>
 </div>
 

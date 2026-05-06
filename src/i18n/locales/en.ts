@@ -885,6 +885,13 @@ export interface TranslationKeys {
             legendStatusWorking: string;
             legendStatusTodo: string;
             legendStatusOverdue: string;
+            legendQuestionTitle: string;
+            legendQuestionReady: string;
+            legendQuestionRun: string;
+            legendQuestionStale: string;
+            legendQuestionProFresh: string;
+            legendQuestionProRun: string;
+            legendQuestionError: string;
             legendTierTitle: string;
             legendTierSubstantive: string;
             legendTierMedium: string;
@@ -2255,6 +2262,13 @@ export const en: TranslationKeys = {
             legendStatusWorking: 'Working — dotted border',
             legendStatusTodo: 'Todo — dashed border',
             legendStatusOverdue: 'Overdue — red border',
+            legendQuestionTitle: 'QUESTION STATES',
+            legendQuestionReady: 'Ready — can run',
+            legendQuestionRun: 'Result exists — prior run',
+            legendQuestionStale: 'Stale — corpus changed',
+            legendQuestionProFresh: 'Pro fresh — Pro question ready',
+            legendQuestionProRun: 'Pro run — Pro result exists',
+            legendQuestionError: 'Error — failed run',
             legendTierTitle: 'TIER (fill level)',
             legendTierSubstantive: 'Substantive — full fill',
             legendTierMedium: 'Medium — partial fill',

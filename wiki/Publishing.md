@@ -1,3 +1,8 @@
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/settings-publish.png" alt="Settings → Publish tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → Publish</div>
+</div>
+
 Radial Timeline turns your scene notes into a finished manuscript using **Pandoc** and **LaTeX**. You pick a template that defines the look of the page — fonts, headers, chapter openers, part dividers — and the plugin assembles your scenes into that format and hands the result to Pandoc to produce a PDF.
 
 **Core includes Pandoc-based PDF export.** Core users can export PDFs with the bundled Core publishing layouts. **Pro** extends that system with extra bundled PDF layouts and more advanced publishing customization.
@@ -13,7 +18,7 @@ This page covers:
 - Export checks and template readiness
 - Exporting
 
-> **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [Setting Up Pandoc Export](Core-Workflows#setting-up-pandoc-export) for the one-time install.
+> **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [Setting Up Pandoc Export](Getting-Started#setting-up-pandoc-export) for the one-time install.
 
 ---
 
@@ -35,7 +40,7 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 The selected novel PDF layout also informs Narrative Mode publishing markers. Layouts that print chapters can show **C** placards on the timeline. Layouts that print Parts can show **P** placards at act boundaries.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/parts-chapters.png" alt="Chapter and part placards around the Narrative Mode perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/feature-parts-chapters.png" alt="Chapter and part placards around the Narrative Mode perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Mode perimeter markers — chapter starts, part boundaries, and combined Part/Chapter breaks</div>
 </div>
 
@@ -271,7 +276,7 @@ The export panel lets you:
 
 Files land in `Radial Timeline/Export/` unless you've set a custom export folder.
 
-For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX issues), see [Export Workflow](Core-Workflows#exporting-a-manuscript).
+For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX issues), see [Export Workflow](Getting-Started#exporting-a-manuscript).
 
 ---
 
@@ -281,7 +286,7 @@ For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX is
 
 **Parts don't appear in my Modern Classic export.** Parts only emit when scenes cross an act boundary. Check that your scenes have `Act:` values in their frontmatter and that more than one act is represented in the selection.
 
-**Chapter numbering is wrong.** The exporter numbers chapters by the order `Chapter:` values appear in the timeline. If a `Chapter:` value appears out of order, renumbering will reflect that. Check narrative order via [Timeline Modes](Timeline-Modes).
+**Chapter numbering is wrong.** The exporter numbers chapters by the order `Chapter:` values appear in the timeline. If a `Chapter:` value appears out of order, renumbering will reflect that. Check narrative order via [Timeline Modes](Radial-Timeline-View#modes-at-a-glance).
 
 **Duplicated template looks different from the original.** If you're on an older plugin build, duplicates lost their preview card due to a bug. Update to the latest build — duplicates now render with the same preview card as the original and can be edited in place.
 

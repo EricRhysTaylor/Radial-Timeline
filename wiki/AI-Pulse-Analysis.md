@@ -10,8 +10,13 @@ The Pulse Triplet Analysis is the key first line of defense in stress testing th
 **Settings**: `AI LLM for scene analysis`
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/beats.png" alt="AI Pulse Triplet Analysis" style="width: 600; max-width: 100%;" />
+  <img src="images/panel-scene-pulse.png" alt="AI Pulse Triplet Analysis" style="width: 600px; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">AI Pulse Triplet Analysis</div>
+</div>
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/feature-pulse.png" alt="Pulse triplet output in scene hover metadata" style="width: 720px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Pulse triplet output — previous, current, and next scene grades surfaced in hover</div>
 </div>
 
 ## Supported Providers
@@ -22,10 +27,10 @@ Pulse currently works best with the hosted AI providers:
 *   **OpenAI GPT**
 *   **Google Gemini**
 
-Local/OpenAI-compatible setups are documented separately in [Local LLM](Local-LLM). For Pulse itself, use the hosted providers above for now.
+Local/OpenAI-compatible setups are documented under [Settings → AI](Settings-AI#local--openai-compatible). For Pulse itself, use the hosted providers above for now.
 
 For the command-specific batch workflows, see:
 
-*   [Scene pulse analysis (manuscript order)](Scene-Pulse-Analysis-Manuscript-Order)
-*   [Scene pulse analysis (subplot order)](Scene-Pulse-Analysis-Subplot-Order)
-*   [Summary refresh](Summary-Refresh)
+*   [Scene pulse analysis (manuscript order)](Commands#scene-pulse-analysis-manuscript-order)
+*   [Scene pulse analysis (subplot order)](Commands#scene-pulse-analysis-subplot-order)
+*   [Summary refresh](Commands#summary-refresh)

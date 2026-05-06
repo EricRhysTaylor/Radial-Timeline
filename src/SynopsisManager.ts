@@ -25,6 +25,7 @@ import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils
 import { parseWhenField } from './utils/date';
 import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
 import { isAlienModeActive } from './view/interactions/ChronologueShiftController';
+import { applySearchTermHighlightsInRoot, clearSearchHighlightsInRoot } from './view/interactions/SearchInteractions';
 import { getIcon } from 'obsidian';
 import { getSynopsisHoverLineLimit } from './utils/synopsisLimits';
 
@@ -1785,6 +1786,11 @@ export default class SynopsisManager {
 
     const lineInnerRadius = this.getLineInnerRadius(svg);
     this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius, sceneId, lineInnerRadius);
+
+    if (this.plugin.searchActive && this.plugin.searchTerm) {
+      clearSearchHighlightsInRoot(synopsis);
+      applySearchTermHighlightsInRoot(synopsis, this.plugin.searchTerm);
+    }
   }
 
   /**

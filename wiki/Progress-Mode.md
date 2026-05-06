@@ -3,7 +3,7 @@
 Progress Mode isolates each subplot into its own radial pass, removing the combined outer ring. This mode focuses on **Author time** (your writing status) and **Progress stages** (revision stages), making it ideal for tracking workflow at a glance.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/subplot.jpeg" alt="Progress Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/mode-progress.png" alt="Progress Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
 </div>
 
 ## Key Features
@@ -26,6 +26,11 @@ Unlike Narrative Mode, this mode replaces subplot colors with your workflow stat
 2.  **Progress Stage Colors**:
     *   Once a scene is "Complete", it displays the color of its current stage (Zero Draft, Author's Draft, House Edit, Press Ready).
     *   These colors can be customized in [Progress stage colors](Settings-Core#progress-stage-colors).
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-zero-draft.png" alt="Zero Draft Mode panel" style="width: 480px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Zero Draft Mode — focused drafting entry point</div>
+</div>
 
 Think of this as the Progress Mode status grammar:
 

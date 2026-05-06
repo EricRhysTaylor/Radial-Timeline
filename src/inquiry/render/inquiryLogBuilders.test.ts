@@ -91,6 +91,57 @@ describe('buildInquiryLogContent', () => {
         expect(content.indexOf('- Cache: warm')).toBeLessThan(content.indexOf('## Corpus Summary'));
         expect(content.indexOf('## Corpus TOC')).toBeGreaterThan(content.indexOf('## Suggested Fixes'));
         expect(content.indexOf('## Corpus TOC')).toBeLessThan(content.indexOf('Content Log: written'));
+        expect(content).toContain('- Reference classes: none');
+        expect(content).not.toContain('- Context:');
+    });
+
+    it('separates reference-class corpus entries from saga book anchors', () => {
+        const content = buildInquiryLogContent({
+            result: {
+                scope: 'saga',
+                scopeLabel: 'Σ',
+                aiProvider: 'anthropic',
+                aiModelResolved: 'claude-sonnet-4-6',
+                aiModelRequested: 'claude-sonnet-4-6',
+                evidenceDocumentMeta: [],
+                findings: [],
+                verdict: {
+                    flow: 44,
+                    depth: 38
+                }
+            } as never,
+            trace: {
+                tokenUsageKnown: true,
+                tokenUsageScope: 'known',
+                usage: {
+                    inputTokens: 145772,
+                    outputTokens: 6529,
+                    totalTokens: 152301
+                }
+            } as never,
+            manifest: {
+                entries: [
+                    { class: 'scene', mode: 'full', path: 'Book 1/1 Scene.md' },
+                    { class: 'character', mode: 'full', path: 'Cast/Shail.md' },
+                    { class: 'theme', mode: 'full', path: 'Notes/Trauma Arc.md' },
+                    { class: 'book', mode: 'excluded', path: 'Book 1' }
+                ],
+                classCounts: {
+                    scene: 1,
+                    outline: 0,
+                    character: 1,
+                    theme: 1,
+                    book: 1
+                }
+            } as never,
+            deps,
+            contentLogWritten: true
+        });
+
+        expect(content).toContain('- Reference classes: Characters 1, Theme 1');
+        expect(content).toContain('- Saga book anchors: 1 (not sent as evidence)');
+        expect(content).not.toContain('- Other: Book 1');
+        expect(content).not.toContain('- Context:');
     });
 
     it('reports Gemini cache transport without OpenAI prompt-cache fallback claims', () => {

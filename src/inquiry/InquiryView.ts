@@ -3039,17 +3039,17 @@ export class InquiryView extends ItemView {
     }
 
     /**
-     * Computes cached (fingerprint matches current context) and stale (prior session
-     * exists but fingerprint mismatches — corpus/model/question drifted) prompt IDs.
-     * Uses the same cache-key logic as runInquiry rehydration so the visual state
-     * is an honest reflection of what will happen on click.
+     * Computes exact reusable, prior same-corpus, and stale corpus-drift prompt IDs.
+     * Model changes affect exact rehydration, but they do not make an analysis stale.
      */
     private computePromptCacheStates(): {
         cachedIds: Set<string>;
+        priorIds: Set<string>;
         staleIds: Set<string>;
         staleDiagnoses: Map<string, InquiryStaleDiagnosis>;
     } {
         const cachedIds = new Set<string>();
+        const priorIds = new Set<string>();
         const staleIds = new Set<string>();
         const staleDiagnoses = new Map<string, InquiryStaleDiagnosis>();
         const scopeKey = this.getScopeKey();
@@ -3108,9 +3108,14 @@ export class InquiryView extends ItemView {
                 const priorByBase = this.sessionStore.getLatestByBaseKey(baseKey);
                 if (priorByBase && !this.isErrorResult(priorByBase.result)) {
                     const priorCorpusOnly = priorByBase.result.corpusOnlyFingerprint;
-                    // Prior corpusOnly matches current → corpus unchanged, prior run is simply
-                    // from a different model. That's not staleness.
-                    if (priorCorpusOnly && priorCorpusOnly === this.hashString(`${INQUIRY_SCHEMA_VERSION}|${prompt.id}|${fingerprintSource}`)) {
+                    const currentCorpusOnly = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${prompt.id}|${fingerprintSource}`);
+                    if (!priorCorpusOnly) {
+                        continue;
+                    }
+                    // Prior corpusOnly matches current → corpus unchanged; the prior run is
+                    // still useful provenance, but it is not rehydratable for the selected model.
+                    if (priorCorpusOnly === currentCorpusOnly) {
+                        priorIds.add(prompt.id);
                         continue;
                     }
                     // True staleness — build diagnosis so UI can explain why.
@@ -3118,15 +3123,12 @@ export class InquiryView extends ItemView {
                     if (diagnosis) {
                         staleIds.add(prompt.id);
                         staleDiagnoses.set(prompt.id, diagnosis);
-                    } else if (!priorCorpusOnly) {
-                        // Pre-upgrade session — no corpusOnly to judge against. Fall back to old behavior.
-                        staleIds.add(prompt.id);
                     }
                 }
             }
         }
 
-        return { cachedIds, staleIds, staleDiagnoses };
+        return { cachedIds, priorIds, staleIds, staleDiagnoses };
     }
 
     private updateZonePrompts(): void {
@@ -3210,7 +3212,7 @@ export class InquiryView extends ItemView {
                 }
             }
         }
-        const { cachedIds: cachedPromptIds, staleIds: stalePromptIds } = this.computePromptCacheStates();
+        const { cachedIds: cachedPromptIds, priorIds: priorPromptIds, staleIds: stalePromptIds } = this.computePromptCacheStates();
         this.glyph.updatePromptState({
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds,
@@ -3219,6 +3221,7 @@ export class InquiryView extends ItemView {
             lockedPromptId: this.state.isRunning ? this.state.activeQuestionId : null,
             focusedFormIds,
             cachedPromptIds,
+            priorPromptIds,
             stalePromptIds,
             onPromptSelect: (zone, promptId, event) => {
                 if (this.isInquiryRunDisabled()) return;
@@ -6373,9 +6376,13 @@ export class InquiryView extends ItemView {
             }
             if (!cachedSession) {
                 const prior = this.sessionStore.getLatestByBaseKey(baseKey);
-                if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
-                    cacheStatus = 'stale';
-                    this.sessionStore.markStaleByBaseKey(baseKey);
+                if (prior) {
+                    const priorCorpusOnly = prior.result.corpusOnlyFingerprint;
+                    const corpusChanged = !!priorCorpusOnly && priorCorpusOnly !== manifest.corpusOnlyFingerprint;
+                    if (corpusChanged) {
+                        cacheStatus = 'stale';
+                        this.sessionStore.markStaleByBaseKey(baseKey);
+                    }
                 }
             }
             if (cachedSession && this.isErrorResult(cachedSession.result)) {
@@ -10641,17 +10648,17 @@ export class InquiryView extends ItemView {
         });
         if (this.previewGroup?.classList.contains('is-results')) return;
 
-        const diagnosis = this.getHoveredQuestionStaleDiagnosis();
-        if (diagnosis) {
+        const staleState = this.getHoveredQuestionStaleState();
+        if (staleState.isStale) {
             const historyRow = this.previewRows.find(row => row.group.classList.contains('is-history-slot'));
             if (historyRow && !historyRow.group.classList.contains('ert-hidden')) {
                 historyRow.group.classList.add('is-token-amber');
-                const detail = diagnosis.tooltipLines.length
-                    ? diagnosis.tooltipLines.join('\n')
+                const detail = staleState.diagnosis?.tooltipLines.length
+                    ? staleState.diagnosis.tooltipLines.join('\n')
                     : 'Corpus has changed since this run.';
                 addTooltipData(
                     historyRow.group,
-                    balanceTooltipText(`Stale — ${diagnosis.shortLabel}.\n${detail}\nClick to run fresh.`),
+                    balanceTooltipText(`Stale - corpus changed.\n${detail}\nClick to run fresh.`),
                     'top'
                 );
             }
@@ -10666,21 +10673,29 @@ export class InquiryView extends ItemView {
         if (!historyRow) return;
         const defaultLabel = this.previewRowDefaultLabels.find((_, idx) =>
             this.previewRows[idx]?.group.classList.contains('is-history-slot')
-        ) ?? 'Earlier ·';
-        const diagnosis = this.getHoveredQuestionStaleDiagnosis();
-        historyRow.label = diagnosis ? `Stale · ${diagnosis.shortLabel} ·` : defaultLabel;
+        ) ?? 'Prior result ·';
+        const staleState = this.getHoveredQuestionStaleState();
+        historyRow.label = staleState.isStale ? 'Stale - corpus changed ·' : defaultLabel;
     }
 
     private isHoveredQuestionStale(): boolean {
-        return !!this.getHoveredQuestionStaleDiagnosis();
+        return this.getHoveredQuestionStaleState().isStale;
     }
 
     private getHoveredQuestionStaleDiagnosis(): InquiryStaleDiagnosis | null {
+        return this.getHoveredQuestionStaleState().diagnosis;
+    }
+
+    private getHoveredQuestionStaleState(): { isStale: boolean; diagnosis: InquiryStaleDiagnosis | null } {
         const hoveredId = this.previewLast?.questionId;
-        if (!hoveredId) return null;
-        if (this.previewGroup?.classList.contains('is-results')) return null;
-        const { staleDiagnoses } = this.computePromptCacheStates();
-        return staleDiagnoses.get(hoveredId) ?? null;
+        if (!hoveredId) return { isStale: false, diagnosis: null };
+        if (this.previewGroup?.classList.contains('is-results')) return { isStale: false, diagnosis: null };
+        const { staleIds, staleDiagnoses } = this.computePromptCacheStates();
+        const diagnosis = staleDiagnoses.get(hoveredId);
+        return {
+            isStale: staleIds.has(hoveredId),
+            diagnosis: diagnosis || null
+        };
     }
 
     private setWrappedSvgText(
@@ -10688,9 +10703,17 @@ export class InquiryView extends ItemView {
         text: string,
         maxWidth: number,
         maxLines: number,
-        lineHeight: number
+        lineHeight: number,
+        options?: {
+            preferFrontLoaded?: boolean;
+            minNonFinalFillRatio?: number;
+        }
     ): number {
-        const cacheKey = `${text}|${maxWidth}|${maxLines}|${lineHeight}`;
+        const preferFrontLoaded = options?.preferFrontLoaded === true;
+        const minNonFinalFillRatio = typeof options?.minNonFinalFillRatio === 'number'
+            ? Math.max(0, Math.min(options.minNonFinalFillRatio, 0.95))
+            : 0;
+        const cacheKey = `${text}|${maxWidth}|${maxLines}|${lineHeight}|${preferFrontLoaded ? 1 : 0}|${minNonFinalFillRatio}`;
         if (textEl.getAttribute('data-rt-wrap-cache') === cacheKey) {
             return Number(textEl.getAttribute('data-rt-wrap-lines')) || 1;
         }
@@ -10715,7 +10738,11 @@ export class InquiryView extends ItemView {
         // before this call creates orphaned references that are never re-appended,
         // causing blank hero text on lens toggle (depth view blank bug).
         const balancedLines = maxLines > 1
-            ? this.computeBalancedSvgLines(textEl, text, maxWidth, { maxLines })
+            ? this.computeBalancedSvgLines(textEl, text, maxWidth, {
+                maxLines,
+                preferFrontLoaded,
+                minNonFinalFillRatio
+            })
             : [];
 
         const existingTspans = Array.from(textEl.childNodes).filter(n => n.nodeName === 'tspan') as SVGTSpanElement[];

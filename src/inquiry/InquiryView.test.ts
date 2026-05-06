@@ -62,6 +62,14 @@ describe('InquiryView payload accounting', () => {
         expect(dossierSource.includes('{ preferFrontLoaded: true }')).toBe(true);
     });
 
+    it('uses front-loaded balancing for result preview hero summaries', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const hudSource = readFileSync(resolve(process.cwd(), 'src/inquiry/render/inquiryHudRenderer.ts'), 'utf8');
+        expect(hudSource.includes('preferFrontLoaded: true')).toBe(true);
+        expect(hudSource.includes('minNonFinalFillRatio: 0.72')).toBe(true);
+        expect(viewSource.includes('const cacheKey = `${text}|${maxWidth}|${maxLines}|${lineHeight}|${preferFrontLoaded ? 1 : 0}|${minNonFinalFillRatio}`;')).toBe(true);
+    });
+
     it('renders the focused-scene F marker above the corpus page icon', () => {
         const corpusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/corpus/inquiryCorpusStripRenderer.ts'), 'utf8');
         const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');

@@ -297,8 +297,8 @@ describe('AI settings models table', () => {
 
     it('distinguishes static cache capability from an expired cache window in the preview card', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("text: 'Cache enabled'")).toBe(true);
-        expect(source.includes("text: 'Provider cache enabled'")).toBe(true);
+        expect(source.includes("const CACHE_ARMED_PILL_TEXT = 'Cache armed — second run benefits';")).toBe(true);
+        expect(source.includes("text: CACHE_ARMED_PILL_TEXT")).toBe(true);
         expect(source.includes("text: 'Cache window expired'")).toBe(true);
         expect(source.includes('const mergePreviewCachePills = (pills: PreviewPill[]): PreviewPill[] => {')).toBe(true);
         expect(source.includes("cacheSegments.push('window expired');")).toBe(true);

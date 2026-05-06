@@ -26,6 +26,7 @@ export interface InquiryGlyphPromptState {
     lockedPromptId?: string | null;
     focusedFormIds?: Set<string>;
     cachedPromptIds?: Set<string>;
+    priorPromptIds?: Set<string>;
     stalePromptIds?: Set<string>;
     onPromptSelect?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptContextMenu?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
@@ -535,8 +536,12 @@ export class InquiryGlyph {
                 const isProcessed = !!prompt && processedPromptId === prompt.id;
                 const isError = isProcessed && processedStatus === 'error';
                 const isLocked = !!prompt && lockedPromptId === prompt.id;
-                const isCached = !!prompt && !isProcessed && (this.promptState?.cachedPromptIds?.has(prompt.id) ?? false);
-                const isStale = !!prompt && !isProcessed && !isCached && (this.promptState?.stalePromptIds?.has(prompt.id) ?? false);
+                const cachedPromptIds = this.promptState?.cachedPromptIds;
+                const priorPromptIds = this.promptState?.priorPromptIds;
+                const stalePromptIds = this.promptState?.stalePromptIds;
+                const isCached = !!prompt && !isProcessed && !!cachedPromptIds && cachedPromptIds.has(prompt.id);
+                const isPrior = !!prompt && !isProcessed && !isCached && !!priorPromptIds && priorPromptIds.has(prompt.id);
+                const isStale = !!prompt && !isProcessed && !isCached && !isPrior && !!stalePromptIds && stalePromptIds.has(prompt.id);
                 marker.text.textContent = prompt ? (isError ? 'X' : String(idx + 1)) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-signature', prompt?.tier === 'signature');
@@ -545,9 +550,10 @@ export class InquiryGlyph {
                 marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
                 marker.group.classList.toggle('is-processed-error', isError);
                 marker.group.classList.toggle('is-locked', isLocked);
-                marker.group.classList.toggle('is-cached', isCached);
+                marker.group.classList.toggle('is-cached', isCached || isPrior);
                 marker.group.classList.toggle('is-stale', isStale);
-                const isFocusedForm = !!prompt && (this.promptState?.focusedFormIds?.has(prompt.id) ?? false);
+                const focusedFormIds = this.promptState?.focusedFormIds;
+                const isFocusedForm = !!prompt && !!focusedFormIds && focusedFormIds.has(prompt.id);
                 marker.group.classList.toggle('is-focused-form', isFocusedForm);
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');
@@ -556,6 +562,8 @@ export class InquiryGlyph {
                         marker.group.setAttribute('aria-label', 'Current result');
                     } else if (isCached) {
                         marker.group.setAttribute('aria-label', 'Open previous result');
+                    } else if (isPrior) {
+                        marker.group.setAttribute('aria-label', 'Prior result from another model; run selected model');
                     } else if (isStale) {
                         marker.group.setAttribute('aria-label', 'Prior result — corpus changed, re-run to refresh');
                     } else {

@@ -14,9 +14,9 @@ Radial Timeline™ transforms your manuscript into a live visual map where you c
 
 ### YouTube Video Suite
 
-*   **[Volume 1: Intro](Welcome)**: [Original home page intro video](https://youtu.be/7noTSFaj8Eo)
+*   **[Volume 1: Intro](Getting-Started)**: [Original home page intro video](https://youtu.be/7noTSFaj8Eo)
 *   **[Volume 2: Chronologue Mode](Chronologue-Mode)**: [Chronologue Mode Volume 2](https://youtu.be/XKWq32LB0d0?si=VF6S1OELNKIAB-h-)
-*   **[Volume 3: Release 6 Overview](Views)**: [Overview of New Features](https://youtu.be/YO6hWevwSWc?si=SilQ6xgnQYReGgd0)
+*   **[Volume 3: Release 6 Overview](Getting-Started)**: [Overview of New Features](https://youtu.be/YO6hWevwSWc?si=SilQ6xgnQYReGgd0)
 *   **[Volume 4: Inquiry View](Inquiry)**: [Inquiry View Volume 4](https://youtu.be/xfX0rP4-Hv4?si=gSTRnPwbM0wsnlEZ)
 *   **[Volume 5: Author Progress Report (APR)](Author-Progress-Report)**: [Author Progress Report (APR) Volume 5](https://youtu.be/euJ2qOUZgco?si=hjx3aegx7bka7Z61)
 *   **[Volume 6: Gossamer Mode](Gossamer-Mode)**: [Gossamer Mode Volume 6](https://youtu.be/DOUVYXFwigM?si=vBuzvxPteXVjVFmM)
@@ -51,43 +51,40 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
-    <img src="images/narrative.jpeg" alt="Narrative Mode: all scenes outer ring, subplot rings, and story beats (e.g., Save the Cat)" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-narrative.jpeg" alt="Narrative Mode: all scenes outer ring, subplot rings, and story beats (e.g., Save the Cat)" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Mode — story beats + subplot rings (dominant subplot shown via folded corners)</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/synopsis.jpeg" alt="Hover synopsis: metadata + AI pulse triplet analysis (previous/current/next)" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/ui-synopsis.jpeg" alt="Hover synopsis: metadata + AI pulse triplet analysis (previous/current/next)" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Hover synopsis — information-dense metadata + pulse triplet feedback</div>
   </div>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/subplot.jpeg" alt="Progress Mode: author status (Todo/Working/Overdue/Complete) and progress stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-progress.png" alt="Progress Mode: author status (Todo/Working/Overdue/Complete) and progress stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Progress Mode — schedule/status + progress stage view</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode — story chronology with duration arcs and overlaps plus adaptive time scale</div>
   </div>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/shift.jpeg" alt="Chronologue Shift mode: elapsed-time arc between selected scenes and infinity gap markers" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-chronologue-shift.jpeg" alt="Chronologue Shift mode: elapsed-time arc between selected scenes and infinity gap markers" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Shift — compare elapsed time between scenes and surface discontinuity gaps</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/gossamer.jpeg" alt="Gossamer Mode: beat-level scoring with multiple signals, saved runs, and momentum ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-gossamer.jpeg" alt="Gossamer Mode: beat-level scoring with multiple signals, saved runs, and momentum ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Mode — compare Momentum, Tension, Activity, and Interiority across beats</div>
   </div>
 </div>
 
 ### Getting Started
 
-*   **[Welcome](Welcome)**: Opening Radial Timeline in an empty vault greets you with a quick-start guide.
-*   **[Fresh Vault Onboarding](Fresh-Vault-Onboarding)**: Start from scratch with Book Designer and beats.
-*   **[Existing Vault Onboarding](Existing-Vault-Onboarding)**: Connect an existing manuscript to Radial Timeline.
-*   **[Migrating from Scrivener & Other Apps](Migrating-from-Other-Apps)**: How Obsidian’s markdown workflow differs from traditional writing tools.
-*   **[Book Designer](Book-Designer)**: Instantly generate a manuscript set with acts, subplots, and beats.
-*   **[Workflow Overview](Core-Workflows)**: Learn the main Radial Timeline working loop.
-*   **[Timeline Modes](Timeline-Modes)**: Compare Progress, Narrative, Chronologue, and Gossamer at a glance.
+*   **[Getting Started](Getting-Started)** — fresh vault setup, existing vault setup, migrating from Scrivener, and the core workflow.
+*   **[Book Designer](Book-Designer)** — instantly generate a manuscript set with acts, subplots, and beats.
+*   **[Radial Timeline View](Radial-Timeline-View)** — the four modes at a glance: Progress, Narrative, Chronologue, Gossamer.
+*   **[How to](How-to)** — task recipes for reordering scenes, managing subplots, search, and rotation.

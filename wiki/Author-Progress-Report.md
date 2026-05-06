@@ -1,7 +1,12 @@
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/settings-social.jpg" alt="Settings → Social tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → Social</div>
+</div>
+
 The Author Progress Report is a shareable, spoiler-safe graphic that shows your book's progress without revealing story details. Perfect for Kickstarter updates, Patreon posts, newsletters, and social media.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Author progress report.png" alt="Author Progress Report panel with preview and export options" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/panel-apr.png" alt="Author Progress Report panel with preview and export options" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Author Progress Report — configure, preview, and export your progress graphic</div>
 </div>
 
@@ -63,14 +68,28 @@ Preset schedules:
 
 You can click the middle stages in the preview (Scenes, Colors) to skip them and jump to the next stage.
 
-## Export Sizes
+## Preview Size
 
-| Size | Dimensions | Best For |
-|------|------------|----------|
-| Thumbnail | 100x100px | Tiny embeds, favicons |
-| Small | 150x150px | Social media replies, profile badges |
-| Medium | 300x300px | Posts, newsletters |
-| Large | 450x450px | Website embeds, high-res displays |
+The **Size** picker (Thumbnail, Small, Medium, Large) controls the **design intent** of the graphic — which elements are shown and how dense the layout is — not the final export resolution. The dimensions below refer to the in-modal preview only.
+
+| Size | Preview | Design Intent |
+|------|---------|---------------|
+| Thumbnail | 100×100 px | Bare progress ring; no text or labels |
+| Small | 150×150 px | Compact graphic for inline embeds |
+| Medium | 300×300 px | Default — balanced density and labels |
+| Large | 450×450 px | Full layout with all reveal elements |
+
+## Export Quality
+
+The exported file is always rendered at one of three pixel sizes, chosen via **Export quality**:
+
+| Quality | Output | File Size | Best For |
+|---------|--------|-----------|----------|
+| Standard | 1200 px | ~150 KB | Web posts, social media, newsletters |
+| Ultra | 2400 px | ~400 KB | Crisp embeds on high-DPI displays |
+| Print | 4800 px | ~1.2 MB | Print-quality graphics, large banners |
+
+The combination of **Size** (design intent) and **Export quality** (resolution) determines the final PNG: e.g., Medium + Ultra produces the medium layout rendered at 2400 px.
 
 ## Styling Options
 
@@ -80,14 +99,14 @@ You can click the middle stages in the preview (Scenes, Colors) to skip them and
 - **Book/Author Color**: Color for the perimeter text ring
 - **Branding Color**: Color for the "RT" badge
 
-## Live Embed And Refresh
+## Export And Refresh
 
-The Social tab also controls the APR live embed/export behavior:
+APR exports a static **PNG or SVG** file to the export path. Re-export it manually, or set a schedule to be reminded when it's time to refresh.
 
-*   **Update Frequency**: Manual Only, Daily, Weekly, or Monthly auto-updates.
-*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Radial Timeline View.
-*   **Embed File Path**: Location for the live embed SVG file.
-*   **Auto-update embed paths**: Updates default embed paths when size or schedule changes and the path still matches the default pattern.
+*   **Update frequency**: Manual Only, Daily, Weekly, or Monthly. Manual mode requires clicking the update button in the modal.
+*   **Refresh alert threshold**: Days before showing a refresh reminder in the Radial Timeline View.
+*   **Export path**: Location for the exported file.
+*   **Auto-update export paths**: When size or schedule changes, updates the default export path if it still matches the default pattern.
 
 ## Campaigns (Pro)
 
@@ -98,4 +117,4 @@ Create multiple APR configurations for different platforms:
 - **Newsletter**: 14-day refresh reminders
 - **Website**: 30-day refresh reminders
 
-Each campaign can have its own update frequency, refresh alert threshold, embed file path, export size, and reveal settings. Teaser Reveal can be enabled per campaign, and manual reveal options are available when Teaser Reveal is disabled.
+Each campaign can have its own update frequency, refresh alert threshold, export path, export size, and reveal settings. Teaser Reveal can be enabled per campaign, and manual reveal options are available when Teaser Reveal is disabled.

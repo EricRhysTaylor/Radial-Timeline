@@ -175,10 +175,14 @@
   --ert-pill-bg: var(--interactive-normal);
   --ert-pill-border: var(--background-modifier-border);
   --ert-pill-color: var(--text-normal);
-  --ert-pill-radius: 20px;
-  --ert-pill-pad-y: 8px;
+  /* Was 20px (pill-shape) + 8px vertical pad — visually "tall and rounded".
+     Now aligned with the canonical control sizing so pill buttons match
+     standard button + input height + corner radius across the codebase.
+     The class name stays for back-compat; only the visual shape changes. */
+  --ert-pill-radius: var(--ert-control-radius);
+  --ert-pill-pad-y: var(--ert-control-pad-y);
   --ert-pill-pad-x: 14px;
-  --ert-pill-min-height: 32px;
+  --ert-pill-min-height: var(--ert-control-height);
   --ert-pill-font-size: 13px;
   --ert-pill-font-weight: 500;
   --ert-pill-hover-bg: var(--interactive-hover);

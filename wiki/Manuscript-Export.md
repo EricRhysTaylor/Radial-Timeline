@@ -1,7 +1,7 @@
 `Manuscript export` opens the export panel for compiled manuscript and outline outputs.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/manuscript-export.png" alt="Manuscript export panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/panel-manuscript-export.png" alt="Manuscript export panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Manuscript export — filtering, ordering, range, and output controls</div>
 </div>
 
@@ -29,4 +29,4 @@ The selected novel PDF layout is remembered per book. Narrative Mode uses that s
 ## Related Docs
 
 *   [Publishing](Publishing)
-*   [Workflow Overview](Core-Workflows#exporting-a-manuscript)
+*   [Workflow Overview](Getting-Started#exporting-a-manuscript)

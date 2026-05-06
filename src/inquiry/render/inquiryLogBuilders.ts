@@ -234,9 +234,15 @@ export function buildInquiryLogContent(args: {
         summaryLines.push(`- Scenes: ${sceneCount}${sceneMode ? ` × ${sceneMode}` : ''}`);
         summaryLines.push(`- Outlines: ${outlineCount}${outlineMode ? ` × ${outlineMode}` : ''}`);
 
-        const contextParts: string[] = [];
-        const contextOrder = ['character', 'place', 'power'];
-        contextOrder.forEach(className => {
+        const referenceParts: string[] = [];
+        const priorityReferenceClasses = ['character', 'place', 'power'];
+        const referenceClasses = [
+            ...priorityReferenceClasses,
+            ...Object.keys(counts)
+                .filter(name => !['scene', 'outline', 'book', ...priorityReferenceClasses].includes(name))
+                .sort((a, b) => a.localeCompare(b))
+        ];
+        referenceClasses.forEach(className => {
             const count = counts[className] ?? 0;
             if (!count) return;
             const label = className === 'character'
@@ -246,15 +252,13 @@ export function buildInquiryLogContent(args: {
                     : className === 'power'
                         ? 'Powers'
                         : formatManifestClassLabel(className);
-            contextParts.push(`${label} ${count}`);
+            referenceParts.push(`${label} ${count}`);
         });
-        summaryLines.push(`- Context: ${contextParts.length ? contextParts.join(', ') : 'none'}`);
+        summaryLines.push(`- Reference classes: ${referenceParts.length ? referenceParts.join(', ') : 'none'}`);
 
-        const handled = new Set(['scene', 'outline', ...contextOrder]);
-        const otherClasses = Object.keys(counts).filter(name => !handled.has(name));
-        if (otherClasses.length) {
-            const otherParts = otherClasses.map(name => `${formatManifestClassLabel(name)} ${counts[name] ?? 0}`);
-            summaryLines.push(`- Other: ${otherParts.join(', ')}`);
+        const bookAnchorCount = counts.book ?? 0;
+        if (bookAnchorCount > 0) {
+            summaryLines.push(`- Saga book anchors: ${bookAnchorCount} (not sent as evidence)`);
         }
 
         return summaryLines;

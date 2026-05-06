@@ -33,12 +33,12 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 **Settings**: Duration arc cap, Discontinuity gap threshold (Chronologue section)
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
+  <img src="images/feature-discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Discontinuity infinity symbols in Chronologue mode</div>
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
+  <img src="images/feature-duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration marks in Chronologue mode (red, orange, and normal)</div>
 </div>
 
@@ -55,7 +55,7 @@ Chronologue mode includes three sub-modes, each rendering a distinct wireframe o
 - Discontinuities (infinity gaps) stay visible so you can spot missing bridges fast.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/shift.jpeg" alt="Shift sub-mode wireframe in Chronologue" style="width: 420; max-width: 100%;" />
+  <img src="images/mode-chronologue-shift.jpeg" alt="Shift sub-mode wireframe in Chronologue" style="width: 420; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Shift sub-mode — gray wireframe view</div>
 </div>
 
@@ -77,7 +77,7 @@ The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** 
 - **Podcast structure** — Plan episode segments with time awareness
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/runtime-mode.png" alt="Chronologue Runtime sub-mode with blue wireframe duration arcs" style="width: 420px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/mode-chronologue-runtime.png" alt="Chronologue Runtime sub-mode with blue wireframe duration arcs" style="width: 420px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Runtime sub-mode — blue wireframe with scene duration arcs</div>
 </div>
 
@@ -139,11 +139,11 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/planet.jpg" alt="Planetary Time overlay in Chronologue" style="width: 420; max-width: 100%;" />
+  <img src="images/mode-chronologue-planet.jpg" alt="Planetary Time overlay in Chronologue" style="width: 420; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time — red planetary overlay for the active local time profile</div>
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/planet-elapsed.png" alt="Planetary Time elapsed-time comparison in Chronologue" style="width: 420; max-width: 100%;" />
+  <img src="images/mode-chronologue-planet-elapsed.png" alt="Planetary Time elapsed-time comparison in Chronologue" style="width: 420; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time — click two scenes to compare elapsed time in local planetary time</div>
 </div>

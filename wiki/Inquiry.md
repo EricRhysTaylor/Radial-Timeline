@@ -1,7 +1,7 @@
 Inquiry is the main operating guide for the Inquiry View. While the [Radial Timeline View](Radial-Timeline-View) focuses on scene-level work, Inquiry takes a higher-altitude perspective — scanning your manuscript corpus and worldbuilding to surface structural signals, loose ends, continuity issues, and pressure gaps across a book or saga.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/inquiry-view.png" alt="The Inquiry visual interface with Flow and Depth rings" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/view-inquiry.png" alt="The Inquiry visual interface with Flow and Depth rings" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Inquiry view — visual glyph with Flow and Depth analysis rings</div>
 </div>
 
@@ -137,11 +137,11 @@ Configure per-class material modes in [Inquiry sources](Settings-Inquiry#sources
 
 The Corpus system classifies notes by word count to help you spot thin content:
 
-| Tier | Default Threshold |
+| Tier | Default Range |
 | :--- | :--- |
-| Empty | < 10 words |
-| Sketchy | ≥ 100 words |
-| Medium | ≥ 300 words |
+| Empty | ≤ 10 words |
+| Sketchy | 11–299 words |
+| Medium | 300–999 words |
 | Substantive | ≥ 1,000 words |
 
 When **Highlight completed docs with low substance** is enabled, completed notes that remain Empty or Sketchy are flagged. Adjust thresholds in [Corpus (CC)](Settings-Inquiry#corpus).

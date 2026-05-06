@@ -62,11 +62,11 @@ In recent versions of Radial Timeline:
 - Switch to **Narrative Mode**
 - Drag a **scene** or **beat note** on the **outer ring** (cursor becomes double arrow)
 
-![Drag scene start](images/drag.png)
+![Drag scene start](images/ui-drag.png)
 
 - Drop the scene into its new position on the **numbered scene square**
 
-![Drag scene destination](images/drag-arc.png)
+![Drag scene destination](images/ui-drag-arc.png)
 
 - Confirm the change when prompted
 
@@ -85,12 +85,7 @@ This method automatically updates ordering for you.
 
 ### Manage Subplots in Bulk
 
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/subplot-manager.png" alt="Subplot Manager panel with rename and delete options" style="width: 450px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Manager — rename or delete subplots across all scenes</div>
-</div>
-
-Need to rename or delete a subplot across dozens of scenes? Use the **`Manage subplots`** command (command palette → "Radial Timeline: Manage subplots"). The panel lets you:
+Need to rename or delete a subplot across dozens of scenes? Use the **[Manage subplots](Commands#manage-subplots)** command (command palette → "Radial Timeline: Manage subplots"). The panel lets you:
 
 * Rename a subplot and automatically update the frontmatter of every scene using it.
 * Delete a subplot and strip the tag from all scenes in one action.
@@ -100,7 +95,7 @@ This is especially helpful after reorganizing your B/C plots — you no longer h
 ### Search
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/search-results.png" alt="Search results with highlighted scene numbers on the timeline" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/ui-search-results.png" alt="Search results with highlighted scene numbers on the timeline" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Search — matching scenes highlighted in yellow across all subplot rings</div>
 </div>
 

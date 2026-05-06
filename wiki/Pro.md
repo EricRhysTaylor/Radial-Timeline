@@ -1,3 +1,8 @@
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/settings-pro.png" alt="Settings → PRO tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → PRO — entitlement and activation</div>
+</div>
+
 **Advanced workflows for authors who want more.**
 
 Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaign tools, and specialized visualization modes. The core writing experience remains free — Pro adds capabilities for authors ready to go further.
@@ -20,7 +25,7 @@ Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaig
 ## Runtime Estimation
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Runtime estimator.png" alt="Runtime Estimator panel with mode selection and progress" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/panel-runtime-estimator.png" alt="Runtime Estimator panel with mode selection and progress" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Runtime Estimator — select mode and scope for duration analysis</div>
 </div>
 
@@ -74,7 +79,7 @@ Core already includes Pandoc-based PDF export and the bundled Core publishing la
 Campaign Manager lets you manage multiple APR configurations for different platforms (Kickstarter, Patreon, newsletter, website) with independent schedules and export targets. Teaser Reveal adds a progressive reveal system that exposes more detail as your completion percentage rises.
 
 **Capabilities:**
-- **Multiple campaigns** - Separate refresh schedules, export sizes, and embed paths per platform
+- **Multiple campaigns** - Separate refresh schedules, export sizes, and export paths per platform
 - **Update frequency** - Manual, Daily, Weekly, or Monthly auto-updates
 - **Refresh alerts** - Custom reminder thresholds for manual campaigns
 - **Manual reveal options** - Toggle acts, subplots, status colors, and percent display when Teaser Reveal is disabled

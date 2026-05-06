@@ -1,3 +1,8 @@
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/settings-core.png" alt="Settings → Core tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → Core</div>
+</div>
+
 The Core tab is the main structural control center for Radial Timeline. It covers book profiles, progress tracking, runtime estimation, story beats, scene properties, chronology, POV, planetary time, and ring colors.
 
 ## Books
@@ -36,7 +41,7 @@ Target dates are validated to ensure proper stage ordering. Overdue dates are hi
 *   Staleness colors: fresh (`<= 7d`), warn (`8-10d`), late (`11-20d`), stalled (`>20d` or no pace/insufficient samples, red `?`).
 
 > [!NOTE]
-> Learn more in [Workflow Overview](Core-Workflows) and [Progress Mode](Progress-Mode).
+> Learn more in [Workflow Overview](Getting-Started#daily-workflow) and [Progress Mode](Progress-Mode).
 
 <a name="runtime-estimation"></a>
 ## Runtime Estimation

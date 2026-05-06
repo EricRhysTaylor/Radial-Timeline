@@ -30,19 +30,25 @@ export function setupSearchControls(view: SearchView): void {
     }
 }
 
-export function addHighlightRectangles(view: SearchView): void {
-    if (!view.plugin.searchActive) return;
+export function clearSearchHighlightsInRoot(root: ParentNode): void {
+    root.querySelectorAll('.rt-search-term').forEach(node => {
+        const parent = node.parentNode;
+        if (!parent) {
+            node.remove();
+            return;
+        }
+        const textNode = document.createTextNode(node.textContent || '');
+        parent.replaceChild(textNode, node);
+    });
+}
 
-    const searchTerm = view.plugin.searchTerm;
+export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: string): void {
+    if (!searchTerm) return;
     const escapedPattern = escapeRegExp(searchTerm);
-    const svg = view.contentEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
-    const isCurrentScenePulseElement = (element: Element): boolean => {
+    const isNonCurrentScenePulseElement = (element: Element): boolean => {
         const pulseText = element.closest('[data-pulse-section]');
-        return pulseText?.getAttribute('data-pulse-section') === 'currentSceneAnalysis';
-    };
-    const isSearchableSynopsisTextElement = (element: Element): boolean => {
-        if (element.getAttribute('data-synopsis-line') === 'true') return true;
-        return isCurrentScenePulseElement(element);
+        const section = pulseText?.getAttribute('data-pulse-section');
+        return !!section && section !== 'currentSceneAnalysis';
     };
 
     const highlightTspan = (tspan: Element, originalText: string, fillColor: string | null) => {
@@ -69,7 +75,7 @@ export function addHighlightRectangles(view: SearchView): void {
     };
 
     // Subplot tspans
-    view.contentEl.querySelectorAll('tspan[data-item-type="subplot"]').forEach((tspan) => {
+    root.querySelectorAll('tspan[data-item-type="subplot"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = tspan.getAttribute('fill');
@@ -77,7 +83,7 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Character tspans
-    view.contentEl.querySelectorAll('tspan[data-item-type="character"]').forEach((tspan) => {
+    root.querySelectorAll('tspan[data-item-type="character"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = tspan.getAttribute('fill');
@@ -85,7 +91,7 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Title tspans
-    view.contentEl.querySelectorAll('tspan[data-item-type="title"]').forEach((tspan) => {
+    root.querySelectorAll('tspan[data-item-type="title"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = (tspan as SVGTSpanElement).style.getPropertyValue('--rt-dynamic-color') || null;
@@ -93,7 +99,7 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Date tspans
-    view.contentEl.querySelectorAll('tspan[data-item-type="date"]').forEach((tspan) => {
+    root.querySelectorAll('tspan[data-item-type="date"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = tspan.getAttribute('fill');
@@ -101,7 +107,7 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Duration tspans
-    view.contentEl.querySelectorAll('tspan[data-item-type="duration"]').forEach((tspan) => {
+    root.querySelectorAll('tspan[data-item-type="duration"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = tspan.getAttribute('fill');
@@ -109,9 +115,9 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Synopsis text elements (only those without tspan children)
-    view.contentEl.querySelectorAll('svg .rt-synopsis-text text').forEach((textEl) => {
+    root.querySelectorAll('.rt-synopsis-text text').forEach((textEl) => {
         if (textEl.querySelector('tspan')) return;
-        if (!isSearchableSynopsisTextElement(textEl)) return;
+        if (isNonCurrentScenePulseElement(textEl)) return;
         const originalText = textEl.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = (textEl as SVGTextElement).getAttribute('fill');
@@ -138,13 +144,20 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Unhandled tspans under synopsis
-    view.contentEl.querySelectorAll('svg .rt-synopsis-text text tspan:not([data-item-type])').forEach((tspan) => {
-        if (!isSearchableSynopsisTextElement(tspan)) return;
+    root.querySelectorAll('.rt-synopsis-text text tspan:not([data-item-type])').forEach((tspan) => {
+        if (isNonCurrentScenePulseElement(tspan)) return;
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = (tspan as SVGTSpanElement).getAttribute('fill');
         highlightTspan(tspan, originalText, fillColor);
     });
+}
+
+export function addHighlightRectangles(view: SearchView): void {
+    if (!view.plugin.searchActive) return;
+
+    const svg = view.contentEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+    applySearchTermHighlightsInRoot(view.contentEl, view.plugin.searchTerm);
 
     // Mark search-result classes on scene groups with matched paths
     if (!svg) {

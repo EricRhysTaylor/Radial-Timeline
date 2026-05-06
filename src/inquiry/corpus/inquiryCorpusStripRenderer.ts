@@ -125,8 +125,61 @@ function buildCorpusLegendPanel(
     const xInset = Math.max(2, Math.round(noteW * 0.14));
     const yInset = Math.max(2, Math.round(noteH * 0.14));
     const padding = 14;
+    const questionR = 9;
+    const questionProR = 7;
+    const questionZone = 'var(--ert-inquiry-zone-setup)';
+    const questionZoneStroke = 'var(--ert-inquiry-zone-setup-stroke)';
+    const questionMutedStroke = `color-mix(in srgb, ${questionZone} 30%, transparent)`;
+    const questionMutedText = `color-mix(in srgb, ${questionZone} 35%, transparent)`;
 
     const clickIconSize = 22;
+    const buildQuestionDot = (
+        g: SVGGElement,
+        cx: number,
+        cy: number,
+        options: {
+            label: string;
+            stroke: string;
+            text: string;
+            dasharray?: string;
+            pro?: boolean;
+        }
+    ): void => {
+        const circle = createSvgElement('circle');
+        circle.setAttribute('cx', String(cx));
+        circle.setAttribute('cy', String(cy));
+        circle.setAttribute('r', String(questionR));
+        circle.style.fill = 'none';
+        circle.style.stroke = options.stroke;
+        circle.style.strokeWidth = '1.2';
+        if (options.dasharray) {
+            circle.style.strokeDasharray = options.dasharray;
+        }
+        g.appendChild(circle);
+
+        if (options.pro) {
+            const proRing = createSvgElement('circle');
+            proRing.setAttribute('cx', String(cx));
+            proRing.setAttribute('cy', String(cy));
+            proRing.setAttribute('r', String(questionProR));
+            proRing.style.fill = 'none';
+            proRing.style.stroke = 'var(--ert-pro-accent-color)';
+            proRing.style.strokeWidth = '1.1';
+            g.appendChild(proRing);
+        }
+
+        const text = createSvgElement('text');
+        text.setAttribute('x', String(cx));
+        text.setAttribute('y', String(cy));
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('alignment-baseline', 'central');
+        text.setAttribute('font-size', '12');
+        text.style.fill = options.text;
+        text.classList.add('ert-inquiry-cc-legend-row-label');
+        text.textContent = options.label;
+        g.appendChild(text);
+    };
 
     const sections: { title: string; rows: LegendRow[] }[] = [
         {
@@ -345,6 +398,62 @@ function buildCorpusLegendPanel(
                         l2.style.stroke = '#ff4d4f'; l2.style.strokeWidth = '2'; l2.style.strokeLinecap = 'round';
                         g.appendChild(l2);
                     }
+                }
+            ]
+        },
+        {
+            title: t('inquiry.corpus.legendQuestionTitle'),
+            rows: [
+                {
+                    label: t('inquiry.corpus.legendQuestionReady'),
+                    buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
+                        label: '1',
+                        stroke: questionZone,
+                        text: questionZone
+                    })
+                },
+                {
+                    label: t('inquiry.corpus.legendQuestionRun'),
+                    buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
+                        label: '1',
+                        stroke: questionMutedStroke,
+                        text: questionMutedText
+                    })
+                },
+                {
+                    label: t('inquiry.corpus.legendQuestionStale'),
+                    buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
+                        label: '1',
+                        stroke: questionMutedStroke,
+                        text: questionMutedText,
+                        dasharray: '3 2'
+                    })
+                },
+                {
+                    label: t('inquiry.corpus.legendQuestionProFresh'),
+                    buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
+                        label: '1',
+                        stroke: questionZone,
+                        text: questionZone,
+                        pro: true
+                    })
+                },
+                {
+                    label: t('inquiry.corpus.legendQuestionProRun'),
+                    buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
+                        label: '1',
+                        stroke: questionMutedStroke,
+                        text: questionMutedText,
+                        pro: true
+                    })
+                },
+                {
+                    label: t('inquiry.corpus.legendQuestionError'),
+                    buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
+                        label: 'X',
+                        stroke: 'var(--ert-inquiry-ai-error)',
+                        text: 'var(--ert-inquiry-ai-error)'
+                    })
                 }
             ]
         }

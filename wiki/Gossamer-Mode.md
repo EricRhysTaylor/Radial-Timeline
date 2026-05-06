@@ -13,23 +13,23 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 **Settings**: [Story beats system](Settings-Core#story-beats-system)
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400px; max-width: 100%;" />
+  <img src="images/mode-gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400px; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer — saved runs, signal switching, and beat-level scoring</div>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/gossamer-ranges.jpg" alt="Gossamer ideal ranges visualization" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/feature-gossamer-ranges.jpg" alt="Gossamer ideal ranges visualization" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Ideal ranges for story beats</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/gossamer-callouts.png" alt="Gossamer callouts with scoring details" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/feature-gossamer-callouts.png" alt="Gossamer callouts with scoring details" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Callouts showing score details</div>
   </div>
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/Gossamer score manager.png" alt="Gossamer score entry panel for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/panel-gossamer-score-manager.png" alt="Gossamer score entry panel for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual entry for the active signal</div>
 </div>
 

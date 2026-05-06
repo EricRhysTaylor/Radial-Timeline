@@ -1,3 +1,8 @@
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/settings-advanced.png" alt="Settings → Advanced tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → Advanced</div>
+</div>
+
 The Advanced tab holds lower-level system and workflow controls.
 
 ## Configuration
