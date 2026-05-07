@@ -7,9 +7,9 @@
  * Two-phase modal: configuration wizard + review/edit UI for rapid human correction.
  */
 
-import { App, Modal, ButtonComponent, Notice, setIcon, ToggleComponent } from 'obsidian';
+import { App, Modal, ButtonComponent, Notice, setIcon, setTooltip, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { TFile } from 'obsidian';
+import type { EventRef, TFile, WorkspaceLeaf } from 'obsidian';
 import type { TimelineItem } from '../types';
 import { t } from '../i18n';
 import {
@@ -72,6 +72,10 @@ export class TimelineRepairModal extends Modal {
     // Review filters
     private filterNeedsReview = false;
     private filterKeywordDerived = false;
+
+    // Open-note awareness (passive highlighting only)
+    private openNotePaths: Set<string> = new Set();
+    private workspaceEventRefs: EventRef[] = [];
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
@@ -142,6 +146,7 @@ export class TimelineRepairModal extends Modal {
 
     onClose(): void {
         this.abortController?.abort();
+        this.unregisterOpenNoteListeners();
     }
 
     private async loadSceneData(): Promise<void> {
@@ -225,7 +230,7 @@ export class TimelineRepairModal extends Modal {
 
     private buildConfigBadgeText(): string {
         const scenesWithWhen = this.scenes.filter(s => s.when instanceof Date).length;
-        return `Beta · ${t('timelineRepairModal.config.badge')}: ${this.scenes.length} scenes • ${scenesWithWhen} When dates`;
+        return `Beta · ${t('timelineRepairModal.config.badge')}: ${this.scenes.length} scenes • ${scenesWithWhen} dated`;
     }
 
     // ========================================================================
@@ -235,6 +240,8 @@ export class TimelineRepairModal extends Modal {
     private showConfigPhase(): void {
         this.phase = 'config';
         this.contentEl.empty();
+        this.unregisterOpenNoteListeners();
+        this.sceneListEl = undefined;
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -300,7 +307,7 @@ export class TimelineRepairModal extends Modal {
 
         const updateScaffoldPreview = (): void => {
             const anchorWhen = this.parseAnchorWhenFromInputs(dateInput.value, timeInput.value, defaultAnchorWhen);
-            const preview = buildScaffoldPreview(selectedPattern, anchorWhen, this.scenes.length);
+            const preview = buildScaffoldPreview(selectedPattern, anchorWhen, this.scenes.length, 4);
             previewStart.textContent = preview.startLabel;
             previewHelper.textContent = preview.helperLabel;
             previewStrip.empty();
@@ -357,12 +364,6 @@ export class TimelineRepairModal extends Modal {
         updateScaffoldPreview();
 
         const optionsSection = rightCol.createDiv({ cls: 'ert-timeline-repair-config-block' });
-        optionsSection.createDiv({ cls: 'ert-timeline-repair-block-header' })
-            .createEl('h5', { text: t('timelineRepairModal.refinements.name'), cls: 'ert-timeline-repair-block-title' });
-        optionsSection.createDiv({
-            cls: 'ert-timeline-repair-section-desc',
-            text: t('timelineRepairModal.refinements.desc')
-        });
 
         let useTextCues = true;
 
@@ -555,10 +556,7 @@ export class TimelineRepairModal extends Modal {
 
         const rippleHelp = rippleContainer.createSpan({ cls: 'ert-timeline-repair-ripple-help' });
         setIcon(rippleHelp, 'help-circle');
-        rippleHelp.setAttribute('title', t('timelineRepairModal.review.rippleModeHelp'));
-        rippleHelp.setAttribute('aria-label',
-            t('timelineRepairModal.review.rippleModeHelp').replace(/\n+/g, ' ')
-        );
+        setTooltip(rippleHelp, t('timelineRepairModal.review.rippleModeHelp'));
 
         const rippleToggle = new ToggleComponent(rippleContainer);
         rippleToggle.setValue(this.session.rippleEnabled);
@@ -571,7 +569,9 @@ export class TimelineRepairModal extends Modal {
 
         // Scene list container
         this.sceneListEl = this.contentEl.createDiv({ cls: 'ert-timeline-repair-scene-list' });
+        this.openNotePaths = this.collectOpenNotePaths();
         this.renderSceneList();
+        this.registerOpenNoteListeners();
 
         // Action buttons
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -650,6 +650,43 @@ export class TimelineRepairModal extends Modal {
         });
     }
 
+    private registerOpenNoteListeners(): void {
+        this.unregisterOpenNoteListeners();
+        const handler = () => this.refreshOpenNoteHighlights();
+        this.workspaceEventRefs.push(this.app.workspace.on('active-leaf-change', handler));
+        this.workspaceEventRefs.push(this.app.workspace.on('layout-change', handler));
+    }
+
+    private unregisterOpenNoteListeners(): void {
+        for (const ref of this.workspaceEventRefs) {
+            this.app.workspace.offref(ref);
+        }
+        this.workspaceEventRefs = [];
+    }
+
+    private collectOpenNotePaths(): Set<string> {
+        const paths = new Set<string>();
+        this.app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
+            const view = leaf.view as { file?: TFile } | undefined;
+            const file = view?.file;
+            if (file && typeof file.path === 'string') {
+                paths.add(file.path);
+            }
+        });
+        return paths;
+    }
+
+    private refreshOpenNoteHighlights(): void {
+        if (!this.sceneListEl) return;
+        this.openNotePaths = this.collectOpenNotePaths();
+        const cards = this.sceneListEl.querySelectorAll<HTMLElement>('[data-ert-path]');
+        cards.forEach(card => {
+            const path = card.getAttribute('data-ert-path');
+            const isOpen = path !== null && this.openNotePaths.has(path);
+            card.toggleClass('ert-is-open-note', isOpen);
+        });
+    }
+
     private renderSceneList(): void {
         if (!this.sceneListEl || !this.session) return;
 
@@ -688,9 +725,14 @@ export class TimelineRepairModal extends Modal {
         const currentBucket = detectTimeBucket(effectiveWhen);
 
         const card = this.sceneListEl.createDiv({ cls: 'ert-timeline-repair-scene-card' });
+        card.setAttribute('data-ert-path', entry.file.path);
         if (isSelected) card.addClass('ert-is-selected');
         if (entry.needsReview) card.addClass('ert-needs-review');
         if (entry.hasBackwardTime) card.addClass('ert-has-backward-time');
+        if (this.openNotePaths.has(entry.file.path)) {
+            card.addClass('ert-is-open-note');
+            card.setAttribute('aria-label', 'Open in workspace');
+        }
 
         // Selection checkbox
         const checkbox = card.createEl('input', { type: 'checkbox', cls: 'ert-timeline-repair-checkbox' });
@@ -824,16 +866,10 @@ export class TimelineRepairModal extends Modal {
         }
     }
 
-    /**
-     * Derive pattern compliance label for a scene entry.
-     * - "pattern": source is 'pattern' or 'original', no flags
-     * - "cue-adjusted": source is 'keyword' or 'ai'
-     * - "needs review": needsReview flag is set
-     */
     private getComplianceLabel(entry: RepairSceneEntry): string {
         if (entry.needsReview) return 'needs review';
         if (entry.source === 'keyword' || entry.source === 'ai') return 'cue-adjusted';
-        return 'pattern';
+        return 'pattern-based';
     }
 
     private handleDayShift(sceneIndex: number, days: number): void {

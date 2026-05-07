@@ -57,6 +57,14 @@ interface TimelineLegendRow {
     icon: string;
     label: string;
     detail?: string;
+    detailSegments?: TimelineLegendDetailSegment[];
+    detailIcon?: string;
+    detailIconLabel?: string;
+}
+
+interface TimelineLegendDetailSegment {
+    text: string;
+    color?: string;
 }
 
 interface TimelineLegendSection {
@@ -543,7 +551,27 @@ export class RadialTimelineView extends ItemView {
                 if (row.detail) {
                     const detailEl = document.createElement('span');
                     detailEl.className = 'ert-timeline-legend__detail';
-                    detailEl.textContent = row.detail;
+                    if (row.detailSegments) {
+                        row.detailSegments.forEach(segment => {
+                            const segmentEl = detailEl.createSpan({ text: segment.text });
+                            if (segment.color) {
+                                segmentEl.className = 'ert-timeline-legend__detail-segment';
+                                segmentEl.style.setProperty('--ert-legend-segment-color', segment.color);
+                            }
+                        });
+                    } else {
+                        detailEl.appendText(row.detail);
+                    }
+                    if (row.detailIcon) {
+                        const detailIconEl = detailEl.createSpan({
+                            cls: 'ert-timeline-legend__detail-icon',
+                            attr: {
+                                'aria-label': row.detailIconLabel || row.detailIcon,
+                                title: row.detailIconLabel || row.detailIcon,
+                            },
+                        });
+                        setIcon(detailIconEl, row.detailIcon);
+                    }
                     copyEl.appendChild(detailEl);
                 }
 
@@ -569,7 +597,7 @@ export class RadialTimelineView extends ItemView {
             {
                 title: 'Scene Actions',
                 rows: [
-                    { icon: 'square-mouse-pointer', label: 'Hover scene', detail: mode === 'chronologue' ? 'show synopsis and matching scenes' : 'show synopsis and expand title' },
+                    { icon: 'square-mouse-pointer', label: 'Hover scene', detail: mode === 'chronologue' ? 'show property fields and matching scenes' : 'show property fields and expand title *' },
                     { icon: 'mouse-pointer-click', label: 'Click scene', detail: 'open scene note' },
                     { icon: 'mouse', label: 'Right click scene', detail: 'set status, stage, or triplet pulse' },
                 ],
@@ -598,13 +626,32 @@ export class RadialTimelineView extends ItemView {
         sections.push({
             title: 'Right Click Menu',
             rows: [
-                { icon: 'circle-dot', label: 'Set Status', detail: 'Todo, Working, Complete' },
-                { icon: 'component', label: 'Change Stage', detail: 'Zero, Author, House, Press' },
+                {
+                    icon: 'circle-dot',
+                    label: 'Set Status',
+                    detail: 'Todo, Working, Complete',
+                    detailIcon: 'calendar-check',
+                    detailIconLabel: 'Complete updates Due Date to today',
+                },
+                { icon: 'component', label: 'Change Stage', detail: 'Zero, Author, House, Press', detailSegments: this.getStageLegendDetailSegments() },
                 { icon: 'flag', label: 'Misc', detail: 'Flag Triplet Pulse' },
             ],
         });
 
         return sections;
+    }
+
+    private getStageLegendDetailSegments(): TimelineLegendDetailSegment[] {
+        const colors = this.plugin.settings.publishStageColors || {};
+        return [
+            { text: 'Zero', color: colors.Zero },
+            { text: ', ' },
+            { text: 'Author', color: colors.Author },
+            { text: ', ' },
+            { text: 'House', color: colors.House },
+            { text: ', ' },
+            { text: 'Press', color: colors.Press },
+        ];
     }
 
     private updateBookSwitcherOptions(): void {

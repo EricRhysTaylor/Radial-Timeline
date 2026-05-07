@@ -1300,4 +1300,27 @@
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ert-timeline-legend__detail-icon {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.ert-timeline-legend__detail-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
+}
+
+.ert-timeline-legend__detail-segment {
+  font-weight: 750;
+  color: var(--ert-legend-segment-color);
 }
