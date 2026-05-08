@@ -185,20 +185,17 @@ export function applyHeaderPreset(spec: DesignedStyleSpec, mode: DesignedStyleSp
 export interface GenerateDesignedStyleTexOptions {
     bundledLayoutId?: string;
     /**
-     * Absolute filesystem path to the plugin's bundled-fonts directory
-     * (e.g. `/Users/foo/Vault/.obsidian/plugins/radial-timeline/assets/fonts`).
-     * When provided, the generator emits fontspec `Path=` directives pointing
-     * at the bundled `.otf` files instead of relying on system font resolution.
-     * Trailing slash is added by the consumer if needed.
+     * Absolute filesystem path to the vault's Pandoc font root
+     * (`<vault>/Radial Timeline/Pandoc/fonts`). When provided AND the
+     * resolver finds the spec's font in `<vaultFontDir>/<slug>/`, fontspec
+     * gets a `Path=` directive. Otherwise the generator emits a plain
+     * `\setmainfont{Name}` and lets XeLaTeX resolve via the system font
+     * cache.
+     *
+     * One option, two resolution paths (vault → system). No fallback chain,
+     * no per-font branches, no `\PackageError{rt-font}` blocks.
      */
-    bundledFontPath?: string;
-    /**
-     * Absolute filesystem path to the vault-local Latin Modern directory under
-     * `Radial Timeline/Pandoc/fonts/latin-modern`. The bundled installer copies
-     * these OTF files from plugin assets into the vault before writing the
-     * generated templates.
-     */
-    latinModernPath?: string;
+    vaultFontDir?: string;
 }
 
 export function generateDesignedStyleTex(
@@ -220,8 +217,7 @@ export function generateDesignedStyleTex(
     sections.push(renderGeometry(spec));
     sections.push('');
     sections.push(renderFontspec(spec, {
-        bundledFontPath: options.bundledFontPath,
-        latinModernPath: options.latinModernPath,
+        vaultFontDir: options.vaultFontDir,
     }));
     sections.push('');
     sections.push(renderFancyhdr(spec));

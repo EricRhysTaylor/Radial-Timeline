@@ -12,7 +12,7 @@ import {
     ensureBundledLayoutInstalledForExport,
     ensureBundledPandocLayoutsRegistered,
     ensureSpecDrivenBundledFictionTemplatesCurrent,
-    getBundledFontPath,
+    getVaultFontDir,
     getBundledPandocLayoutContent,
     getBundledPandocLayouts,
     installBundledPandocLayouts,
@@ -138,7 +138,7 @@ describe('bundled pandoc layout export auto-install', () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
         const canonical = getBundledPandocLayoutContent(layout.id)!;
-        const fontDir = path.join(getBundledFontPath()!, 'source-serif-4');
+        const fontDir = path.join(getVaultFontDir()!, 'source-serif-4');
 
         await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
         await (plugin.app.vault as any).create(target, canonical);
@@ -166,12 +166,18 @@ describe('bundled pandoc layout export auto-install', () => {
         // Contemporary Literary: macro-driven running headers, no literal labels.
         const standard = getBundledPandocLayoutContent('bundled-fiction-classic-manuscript')!;
         const contemporary = getBundledPandocLayoutContent('bundled-fiction-contemporary-literary')!;
-        expect(standard).toContain('\\IfFontExistsTF{Arial}');
+        // New font policy (vault → system, no IfFontExistsTF wrappers, no rt-font errors).
+        expect(standard).toContain('\\setmainfont{Arial}');
+        expect(standard).not.toContain('\\IfFontExistsTF');
+        expect(standard).not.toContain('\\PackageError{rt-font}');
         expect(standard).not.toContain('Sorts Mill Goudy');
-        expect(contemporary).toContain('\\setmainfont{Source Serif 4}[');
-        expect(contemporary).toContain('Path = ');
-        expect(contemporary).toContain('source-serif-4/');
-        expect(contemporary).not.toContain('\\IfFontExistsTF{Source Serif 4}');
+        // Contemporary: Source Serif 4 is the spec body font; the resolver
+        // emits either a Path block (vault has files) or a plain \setmainfont
+        // (system-only). Both forms are valid; we pin only that the font
+        // family name is present and there are no legacy strict-policy artifacts.
+        expect(contemporary).toContain('\\setmainfont{Source Serif 4}');
+        expect(contemporary).not.toContain('\\IfFontExistsTF');
+        expect(contemporary).not.toContain('\\PackageError{rt-font}');
         expect(contemporary).not.toContain('Charter');
         expect(contemporary).not.toContain('\\setmainfont{Arial}');
         expect(contemporary).not.toContain('Sorts Mill Goudy');
@@ -268,11 +274,18 @@ describe('bundled pandoc layout export auto-install', () => {
     it('drift-detect no-op: on-disk content already matches canonical → no rewrite, no history entry', async () => {
         const { plugin, layout } = createPluginWithBundledLayout('bundled-fiction-contemporary-literary');
         const target = normalizePath(`${plugin.settings.pandocFolder}/${layout.path}`);
-        const canonical = getBundledPandocLayoutContent(layout.id)!;
 
+        // Pre-install fonts so the canonical the resolver generates with
+        // current vault state matches what the drift-detect step will compute
+        // after `installBundledPandocFonts` runs in the same scope.
         await (plugin.app.vault as any).createFolder(plugin.settings.pandocFolder);
-        await (plugin.app.vault as any).create(target, canonical);
+        await ensureBundledLayoutInstalledForExport(plugin, layout);
 
+        const installedFile = plugin.app.vault.getAbstractFileByPath(target) as TFile;
+        const canonical = await (plugin.app.vault as any).read(installedFile);
+
+        // Now the on-disk content should be byte-stable across a second
+        // install attempt — no rewrite, no history entry.
         const result = await ensureBundledLayoutInstalledForExport(plugin, layout);
         expect(result.installed).toBe(false);
         expect(result.failed).toBe(false);

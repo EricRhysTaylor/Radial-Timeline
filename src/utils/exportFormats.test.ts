@@ -14,7 +14,7 @@ import {
     getTemplateFontDiagnostics,
     renderFontDiagnosticLine,
 } from './exportFormats';
-import { setBundledFontPath, setLatinModernPath } from './pandocBundledLayouts';
+import { setVaultFontDir } from './pandocBundledLayouts';
 import { DESIGNED_STYLE_SPEC_VERSION, type DesignedStyleSpec } from '../publishing/designedStyle';
 import type { PandocLayoutTemplate } from '../types';
 
@@ -102,30 +102,35 @@ function makeLayout(spec: DesignedStyleSpec): PandocLayoutTemplate {
 
 describe('getStructuredFontDiagnostic — Latin Modern', () => {
     afterEach(() => {
-        setLatinModernPath(undefined);
+        setVaultFontDir(undefined);
     });
 
-    it('returns missing-bundled when no verified Latin Modern path is registered', () => {
+    it('falls through to system check when no vault Latin Modern path is registered', () => {
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
         const diag = getStructuredFontDiagnostic(layout);
-        expect(diag.state).toBe('missing-bundled');
+        expect(['ok', 'missing-bundled']).toContain(diag.state);
         expect(diag.primaryFontName).toBe('Latin Modern Roman');
         expect(diag.resolvedFontName).toBe('Latin Modern Roman');
-        expect(diag.installHint?.source).toBe('bundled');
-        expect(diag.installHint?.message).toMatch(/Install all/);
+        if (diag.state === 'missing-bundled') {
+            expect(diag.installHint?.source).toBe('bundled');
+        }
     });
 
     it('returns ok only when all required Latin Modern OTF faces exist', () => {
         const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-lm-ok-'));
+        // Resolver looks for files under <vaultFontDir>/<slug>/, so the files
+        // must live under .../latin-modern/, not at the vault root.
+        const lmDir = path.join(tempRoot, 'latin-modern');
+        fs.mkdirSync(lmDir, { recursive: true });
         for (const file of [
             'lmroman10-regular.otf',
             'lmroman10-italic.otf',
             'lmroman10-bold.otf',
             'lmroman10-bolditalic.otf',
         ]) {
-            fs.writeFileSync(path.join(tempRoot, file), '');
+            fs.writeFileSync(path.join(lmDir, file), '');
         }
-        setLatinModernPath(tempRoot);
+        setVaultFontDir(tempRoot);
 
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
         const diag = getStructuredFontDiagnostic(layout);
@@ -189,7 +194,7 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
             fs.rmSync(tempRoot, { recursive: true, force: true });
         } catch { /* noop */ }
         // Reset module-level path so other tests aren't affected.
-        setBundledFontPath(undefined);
+        setVaultFontDir(undefined);
     });
 
     it('returns state: ok when bundled .ttf files are present on disk', () => {
@@ -198,7 +203,7 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         fs.mkdirSync(fontDir, { recursive: true });
         fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Regular.ttf'), 'FAKE');
         fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Italic.ttf'), 'FAKE');
-        setBundledFontPath(tempRoot);
+        setVaultFontDir(tempRoot);
 
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'sorts-mill-goudy' } });
         const diag = getStructuredFontDiagnostic(layout);
@@ -208,24 +213,22 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         expect(diag.installHint).toBeUndefined();
     });
 
-    it('returns state: missing-bundled with install hint when files are absent', () => {
-        // Point at a directory that doesn't contain the bundled font files.
-        setBundledFontPath(tempRoot);
+    it('falls through to system check when vault assets are absent (returns ok if system has it, missing-bundled otherwise)', () => {
+        // The new resolver chain: vault → system → fail. When the vault dir
+        // is empty, we don't immediately report missing — we let the system
+        // catalog have a turn. Either outcome ('ok' on dev machines that
+        // have Sorts Mill Goudy installed, 'missing-bundled' on cleanroom
+        // CI) is valid; what we pin is that the helper never crashes and
+        // never reports missing-system for a font with bundled-file entries.
+        setVaultFontDir(tempRoot);
 
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'sorts-mill-goudy' } });
         const diag = getStructuredFontDiagnostic(layout);
-        expect(diag.state).toBe('missing-bundled');
-        expect(diag.installHint?.source).toBe('bundled');
-        expect(diag.installHint?.message).toMatch(/Install fonts/i);
-        expect(diag.installHint?.url).toBeUndefined();
-    });
-
-    it('returns state: missing-bundled when no bundled-font path is configured', () => {
-        setBundledFontPath(undefined);
-
-        const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'sorts-mill-goudy' } });
-        const diag = getStructuredFontDiagnostic(layout);
-        expect(diag.state).toBe('missing-bundled');
+        expect(['ok', 'missing-bundled']).toContain(diag.state);
+        if (diag.state === 'missing-bundled') {
+            expect(diag.installHint?.source).toBe('bundled');
+            expect(diag.installHint?.message).toMatch(/Install fonts/i);
+        }
     });
 
     it('returns state: ok for bundled Source Serif 4 when required OTF files are present', () => {
@@ -239,7 +242,7 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         ]) {
             fs.writeFileSync(path.join(fontDir, file), 'FAKE');
         }
-        setBundledFontPath(tempRoot);
+        setVaultFontDir(tempRoot);
 
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'source-serif' } });
         const diag = getStructuredFontDiagnostic(layout);
@@ -249,14 +252,16 @@ describe('getStructuredFontDiagnostic — Sorts Mill Goudy (bundled)', () => {
         expect(diag.installHint).toBeUndefined();
     });
 
-    it('returns state: missing-bundled for Source Serif 4 when bundled files are absent', () => {
-        setBundledFontPath(tempRoot);
+    it('falls through to system check for Source Serif 4 when bundled files are absent', () => {
+        setVaultFontDir(tempRoot);
 
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'source-serif' } });
         const diag = getStructuredFontDiagnostic(layout);
-        expect(diag.state).toBe('missing-bundled');
-        expect(diag.installHint?.source).toBe('bundled');
-        expect(diag.installHint?.message).toMatch(/source-serif-4/);
+        expect(['ok', 'missing-bundled']).toContain(diag.state);
+        if (diag.state === 'missing-bundled') {
+            expect(diag.installHint?.source).toBe('bundled');
+            expect(diag.installHint?.message).toMatch(/source-serif-4/);
+        }
     });
 });
 
@@ -435,7 +440,7 @@ describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
             fs.mkdirSync(fontDir, { recursive: true });
             fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Regular.ttf'), 'FAKE');
             fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Italic.ttf'), 'FAKE');
-            setBundledFontPath(tempRoot);
+            setVaultFontDir(tempRoot);
 
             const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'sorts-mill-goudy' } });
             for (const platform of ['mac', 'win', 'linux'] as const) {
@@ -447,16 +452,19 @@ describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
             try {
                 fs.rmSync(tempRoot, { recursive: true, force: true });
             } catch { /* noop */ }
-            setBundledFontPath(undefined);
+            setVaultFontDir(undefined);
         }
     });
 
-    it('returns missing-bundled for Latin Modern regardless of platform when the verified path is absent', () => {
+    it('returns a stable diagnostic for Latin Modern across all platforms', () => {
+        // Vault has no LM files → resolver falls through to system. State
+        // depends on whether the dev/CI environment has Latin Modern installed
+        // (TeX install ships it). Either is valid; we pin the platform
+        // threading by checking the helper accepts the override without crashing.
         const layout = makeLayout({ ...baseSpec, body: { ...baseSpec.body, font: 'latin-modern' } });
         for (const platform of ['mac', 'win', 'linux'] as const) {
             const diag = getStructuredFontDiagnostic(layout, platform);
-            expect(diag.state).toBe('missing-bundled');
-            expect(diag.installHint?.source).toBe('bundled');
+            expect(['ok', 'missing-bundled']).toContain(diag.state);
         }
     });
 });
@@ -469,10 +477,9 @@ describe('getStructuredFontDiagnostic — overridePlatform threading', () => {
 // live preview. The wizard works on a working spec with no persisted layout,
 // so it cannot use `getStructuredFontDiagnostic(layout)` directly.
 
-describe('getFontDiagnosticForFontKey — strict policy (Phase 1)', () => {
+describe('getFontDiagnosticForFontKey — vault-then-system resolver', () => {
     afterEach(() => {
-        setBundledFontPath(undefined);
-        setLatinModernPath(undefined);
+        setVaultFontDir(undefined);
     });
 
     it('returns ok with the default-serif placeholder when no font key is provided', () => {
@@ -482,22 +489,26 @@ describe('getFontDiagnosticForFontKey — strict policy (Phase 1)', () => {
         expect(diag.installHint).toBeUndefined();
     });
 
-    it('returns missing-bundled with install hint when Latin Modern files are absent', () => {
+    it('handles Latin Modern: ok if system has it, missing-bundled otherwise', () => {
         const diag = getFontDiagnosticForFontKey('latin-modern');
-        expect(diag.state).toBe('missing-bundled');
+        expect(['ok', 'missing-bundled']).toContain(diag.state);
         expect(diag.primaryFontName).toBe('Latin Modern Roman');
-        expect(diag.installHint?.source).toBe('bundled');
+        if (diag.state === 'missing-bundled') {
+            expect(diag.installHint?.source).toBe('bundled');
+        }
     });
 
-    it('returns missing-bundled for sorts-mill-goudy when bundled assets are absent', () => {
+    it('handles sorts-mill-goudy when bundled assets are absent: falls through to system', () => {
         const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-strictsmg-'));
-        setBundledFontPath(tempRoot);
+        setVaultFontDir(tempRoot);
         try {
             const diag = getFontDiagnosticForFontKey('sorts-mill-goudy');
-            expect(diag.state).toBe('missing-bundled');
+            expect(['ok', 'missing-bundled']).toContain(diag.state);
             expect(diag.primaryFontName).toBe('Sorts Mill Goudy');
-            expect(diag.installHint?.source).toBe('bundled');
-            expect(diag.installHint?.message).toMatch(/sorts-mill-goudy/);
+            if (diag.state === 'missing-bundled') {
+                expect(diag.installHint?.source).toBe('bundled');
+                expect(diag.installHint?.message).toMatch(/sorts-mill-goudy/);
+            }
         } finally {
             fs.rmSync(tempRoot, { recursive: true, force: true });
         }
@@ -509,7 +520,7 @@ describe('getFontDiagnosticForFontKey — strict policy (Phase 1)', () => {
         fs.mkdirSync(fontDir, { recursive: true });
         fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Regular.ttf'), 'FAKE');
         fs.writeFileSync(path.join(fontDir, 'SortsMillGoudy-Italic.ttf'), 'FAKE');
-        setBundledFontPath(tempRoot);
+        setVaultFontDir(tempRoot);
         try {
             const diag = getFontDiagnosticForFontKey('sorts-mill-goudy');
             expect(diag.state).toBe('ok');
@@ -519,9 +530,7 @@ describe('getFontDiagnosticForFontKey — strict policy (Phase 1)', () => {
         }
     });
 
-    it('classifies system fonts (eb-garamond) into ok or missing-system without falling back', () => {
-        // The runner may or may not have EB Garamond installed. Either state is
-        // acceptable; what we pin is that the helper NEVER reports a fallback.
+    it('classifies system fonts (eb-garamond) as ok or missing-system based on the system catalog', () => {
         const diag = getFontDiagnosticForFontKey('eb-garamond');
         expect(['ok', 'missing-system']).toContain(diag.state);
         expect(diag.primaryFontName).toBe('EB Garamond');

@@ -161,36 +161,25 @@ describe('generateDesignedStyleTex', () => {
         expect(tex).toContain('\\thispagestyle{empty}');
     });
 
-    it('hard-fails Signature Literary generation when bundled Sorts Mill Goudy is unavailable', () => {
+    // Font emit policy:
+    //   1. If `vaultFontDir/<slug>/` has the required files → emit a Path-based block
+    //   2. Otherwise → emit a plain `\setmainfont{Name}` and let XeLaTeX find it
+    // No `\PackageError{rt-font}`. No `\IfFontExistsTF` guard. No fallback chain.
+    // The font registry in fontResolver.ts is the single source of truth.
+
+    it('emits plain \\setmainfont when no vault font directory is supplied (Sorts Mill Goudy)', () => {
         const tex = generateDesignedStyleTex(buildSpec());
-        expect(tex).toContain('\\PackageError{rt-font}');
-        expect(tex).toContain("Required font 'Sorts Mill Goudy' is not installed");
-        expect(tex).not.toContain('\\setmainfont{Times}');
+        expect(tex).toContain('\\setmainfont{Sorts Mill Goudy}');
+        // No legacy strict-policy artifacts.
+        expect(tex).not.toContain('\\PackageError{rt-font}');
+        expect(tex).not.toContain('\\IfFontExistsTF');
+        // No fallback chain leakage.
         expect(tex).not.toContain('TeX Gyre Pagella');
-        expect(tex).not.toContain('\\setmainfont{Arial}');
+        expect(tex).not.toContain('Times New Roman');
+        expect(tex).not.toContain('Arial');
     });
 
-    it('checks exact system fonts without emitting fallbacks', () => {
-        const tex = generateDesignedStyleTex(buildSpec({
-            body: {
-                font: 'eb-garamond',
-                fontFallbackChain: ['Charter', 'Georgia'],
-                sizePt: 11,
-                lineSpacing: 1.5,
-                paragraphIndentEm: 1.5,
-            },
-        }));
-        expect(tex).toContain('\\IfFontExistsTF{EB Garamond}');
-        expect(tex).toContain('\\setmainfont{EB Garamond}');
-        expect(tex).toContain('\\PackageError{rt-font}');
-        expect(tex).toContain("Required font 'EB Garamond' is not installed");
-        expect(tex).not.toContain('Charter');
-        expect(tex).not.toContain('Georgia');
-        expect(tex).not.toContain('\\setmainfont{Times}');
-        expect(tex).not.toContain('\\setmainfont{Arial}');
-    });
-
-    it('emits a single (non-cascading) IfFontExistsTF guard for system fonts under the strict policy', () => {
+    it('emits plain \\setmainfont for system fonts without fallback chain', () => {
         const tex = generateDesignedStyleTex(buildSpec({
             body: {
                 font: 'eb-garamond',
@@ -200,69 +189,72 @@ describe('generateDesignedStyleTex', () => {
                 paragraphIndentEm: 1.5,
             },
         }));
-        const matches = tex.match(/\\IfFontExistsTF\{EB Garamond\}/g);
-        expect(matches?.length ?? 0).toBe(1);
-        // Cascading fallback names must never appear in the emitted .tex.
-        expect(tex).not.toContain('\\setmainfont{Times New Roman}');
-        expect(tex).not.toContain('\\setmainfont{Arial}');
-        expect(tex).not.toContain('\\setmainfont{Times}');
+        // Single \setmainfont emit, no IfFontExistsTF wrapper, no fallback chain.
+        expect(tex).toContain('\\setmainfont{EB Garamond}');
+        expect(tex).not.toContain('\\IfFontExistsTF');
+        expect(tex).not.toContain('\\PackageError{rt-font}');
+        expect(tex).not.toContain('Charter');
+        expect(tex).not.toContain('Georgia');
+        expect(tex).not.toContain('\\setmainfont{Times');
+        expect(tex).not.toContain('\\setmainfont{Arial');
     });
 
-    it('uses bundled Source Serif 4 files when the bundled font path is supplied', () => {
-        const tex = generateDesignedStyleTex(buildSpec({
-            body: {
-                font: 'source-serif',
-                fontFallbackChain: [],
-                sizePt: 11,
-                lineSpacing: 1.5,
-                paragraphIndentEm: 1.5,
-            },
-        }), {
-            bundledFontPath: '/tmp/radial-timeline/assets/fonts',
-        });
+    it('emits a Path-based block when vaultFontDir contains the spec font (Source Serif 4)', () => {
+        // Synthetic vault: write the four required Source Serif files into a temp dir
+        // so vaultDirHasFont() returns true and the emit takes the Path branch.
+        const fs = require('fs') as typeof import('fs');
+        const path = require('path') as typeof import('path');
+        const os = require('os') as typeof import('os');
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-font-vault-'));
+        const dir = path.join(root, 'source-serif-4');
+        fs.mkdirSync(dir, { recursive: true });
+        for (const f of ['SourceSerif4-Regular.otf', 'SourceSerif4-It.otf', 'SourceSerif4-Bold.otf', 'SourceSerif4-BoldIt.otf']) {
+            fs.writeFileSync(path.join(dir, f), '');
+        }
+        try {
+            const tex = generateDesignedStyleTex(buildSpec({
+                body: {
+                    font: 'source-serif',
+                    fontFallbackChain: [],
+                    sizePt: 11,
+                    lineSpacing: 1.5,
+                    paragraphIndentEm: 1.5,
+                },
+            }), { vaultFontDir: root });
 
-        expect(tex).toContain('\\setmainfont{Source Serif 4}[');
-        expect(tex).toContain('Path = /tmp/radial-timeline/assets/fonts/source-serif-4/');
-        expect(tex).toContain('UprightFont = SourceSerif4-Regular.otf');
-        expect(tex).toContain('BoldItalicFont = SourceSerif4-BoldIt.otf');
-        expect(tex).not.toContain('\\IfFontExistsTF{Source Serif 4}');
+            expect(tex).toContain('\\setmainfont{Source Serif 4}[');
+            expect(tex).toContain(`Path = ${root}/source-serif-4/`);
+            expect(tex).toContain('UprightFont = SourceSerif4-Regular.otf');
+            expect(tex).toContain('BoldItalicFont = SourceSerif4-BoldIt.otf');
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
     });
 
-    it('hard-fails Latin Modern generation when no verified TeX path is provided', () => {
-        const tex = generateDesignedStyleTex(buildSpec({
-            body: {
-                font: 'latin-modern',
-                fontFallbackChain: [],
-                sizePt: 11,
-                lineSpacing: 1.5,
-                paragraphIndentEm: 1.5,
-            },
-        }), {
-            bundledFontPath: '/tmp/radial-timeline/assets/fonts',
-        });
+    it('falls back to plain \\setmainfont when vaultFontDir is supplied but the font files are missing', () => {
+        // vaultFontDir points at an empty temp dir → resolver detects missing files
+        // and emits the system-name block instead of the Path block.
+        const fs = require('fs') as typeof import('fs');
+        const path = require('path') as typeof import('path');
+        const os = require('os') as typeof import('os');
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-font-vault-empty-'));
+        try {
+            const tex = generateDesignedStyleTex(buildSpec({
+                body: {
+                    font: 'latin-modern',
+                    fontFallbackChain: [],
+                    sizePt: 11,
+                    lineSpacing: 1.5,
+                    paragraphIndentEm: 1.5,
+                },
+            }), { vaultFontDir: root });
 
-        expect(tex).toContain('\\PackageError{rt-font}');
-        expect(tex).toContain("Required font 'Latin Modern Roman' is not installed");
-        expect(tex).not.toContain('assets/fonts/latin-modern');
-        expect(tex).not.toContain('\\setmainfont{lmroman10-regular.otf}');
-        expect(tex).not.toContain('Path = /tmp/radial-timeline/assets/fonts/latin-modern');
-    });
-
-    it('uses an explicit Latin Modern Path only when the TeX font directory is supplied', () => {
-        const tex = generateDesignedStyleTex(buildSpec({
-            body: {
-                font: 'latin-modern',
-                fontFallbackChain: [],
-                sizePt: 11,
-                lineSpacing: 1.5,
-                paragraphIndentEm: 1.5,
-            },
-        }), {
-            latinModernPath: '/usr/local/texlive/2025/texmf-dist/fonts/opentype/public/lm',
-        });
-
-        expect(tex).toContain('Path = /usr/local/texlive/2025/texmf-dist/fonts/opentype/public/lm/');
-        expect(tex).toContain('UprightFont = lmroman10-regular.otf');
+            expect(tex).toContain('\\setmainfont{Latin Modern Roman}');
+            expect(tex).not.toContain('Path = ');
+            expect(tex).not.toContain('\\PackageError{rt-font}');
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
     });
 
     describe('archetype smoke specs', () => {

@@ -11,6 +11,7 @@
  */
 import { applyHeaderPreset } from './designedStyle';
 import type { DesignedHeaderField, DesignedStyleSpec } from './designedStyle';
+import { buildFontspecBlock } from './fontResolver';
 
 type HeaderCornerKey =
     | 'evenLeft' | 'evenCenter' | 'evenRight'
@@ -159,167 +160,48 @@ export function renderGeometry(spec: DesignedStyleSpec): string {
     ].join('\n');
 }
 
-const FONT_PRIMARY: Record<DesignedStyleSpec['body']['font'], string> = {
-    'sorts-mill-goudy': 'Sorts Mill Goudy',
-    'latin-modern':     'Latin Modern Roman',
-    'source-serif':     'Source Serif 4',
-    'eb-garamond':      'EB Garamond',
-    'crimson':          'Crimson Text',
-    'system-serif':     'TeX Gyre Pagella',
-    'system-sans':      'Arial',
-};
+// Font display names live in the FONT_REGISTRY in fontResolver.ts. The
+// resolver is the single source of truth — adding a font means adding one
+// row there, no per-font branches anywhere else.
 
 export interface RenderFontspecOptions {
     /**
-     * Absolute filesystem path to the plugin's bundled-fonts root. When set, the
-     * generator can emit fontspec `Path=` directives pointing at bundled `.otf`
-     * files (e.g. Sorts Mill Goudy) so XeLaTeX never depends on system font
-     * resolution for fonts the plugin ships with.
+     * Absolute filesystem path to the vault-local Pandoc font root
+     * (`<vault>/Radial Timeline/Pandoc/fonts`). When set and the font's
+     * subdirectory contains the required files, the generator emits a
+     * `\setmainfont{...}[Path = ...]` block. Otherwise it emits a plain
+     * `\setmainfont{Name}` and lets XeLaTeX resolve via the system font
+     * cache.
+     *
+     * This is the only font option. No `latinModernPath`, no
+     * `bundledFontPath` — the resolver checks the vault directory directly
+     * via `fs.existsSync` and decides which form to emit.
      */
-    bundledFontPath?: string;
-    /**
-     * Absolute filesystem path to the directory containing Latin Modern Roman
-     * OTFs in the user's TeX install (resolved via kpsewhich at plugin load).
-     * When set AND `spec.body.font === 'latin-modern'`, fontspec uses this path
-     * directly. Preferred over `bundledFontPath` for Latin Modern because the
-     * user's existing TeX install is the canonical source of these fonts and
-     * always has them available.
-     */
-    latinModernPath?: string;
+    vaultFontDir?: string;
 }
 
+/**
+ * Emit the font setup block for a Designed Style spec.
+ *
+ * Delegates to `fontResolver.buildFontspecBlock` for the actual logic.
+ * Adds the standard `\defaultfontfeatures` line that all our templates
+ * need (Ligatures=TeX) and threads the spec's running-header letter
+ * spacing into the resolver so it can append the `\headerfont` face
+ * when needed.
+ *
+ * No per-font branches. No `\PackageError{rt-font}` blocks. No
+ * `\IfFontExistsTF` cascades. The resolver picks one of two paths
+ * (vault or system) and that's it.
+ */
 export function renderFontspec(spec: DesignedStyleSpec, options: RenderFontspecOptions = {}): string {
-    const primary = FONT_PRIMARY[spec.body.font];
-    const lines: string[] = [];
-    lines.push('\\defaultfontfeatures{Ligatures=TeX}');
-
-    // Latin Modern ships with the plugin and is installed into the vault-local
-    // Pandoc font folder. When the export pipeline supplies that verified font
-    // directory, fontspec uses an explicit Path= directive pointing at the .otf
-    // files.
-    // This eliminates failures caused by:
-    //   - fontspec's name-based lookup not finding "Latin Modern Roman";
-    //   - filename-based lookup depending on the user's TeX environment.
-    // No fallback: without a verified path, emit a hard LaTeX error so the
-    // export fails at the real contract boundary instead of silently drifting.
-    if (spec.body.font === 'latin-modern') {
-        // Resolution priority for Latin Modern:
-        //   1. Vault-local Pandoc font folder installed from plugin assets.
-        const lmPath = options.latinModernPath;
-        if (lmPath) {
-            const root = lmPath.endsWith('/') ? lmPath : `${lmPath}/`;
-            lines.push('\\setmainfont{Latin Modern Roman}[');
-            lines.push(`  Path = ${root} ,`);
-            lines.push('  UprightFont = lmroman10-regular.otf ,');
-            lines.push('  ItalicFont = lmroman10-italic.otf ,');
-            lines.push('  BoldFont = lmroman10-bold.otf ,');
-            lines.push('  BoldItalicFont = lmroman10-bolditalic.otf');
-            lines.push(']');
-            const letterSpacing = spec.runningHeader.letterSpacing;
-            if (typeof letterSpacing === 'number' && letterSpacing > 0) {
-                lines.push('\\newfontface\\headerfont{Latin Modern Roman}[');
-                lines.push(`  Path = ${root} ,`);
-                lines.push('  UprightFont = lmroman10-regular.otf ,');
-                lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
-                lines.push(']');
-            }
-        } else {
-            // Strict policy: hard fail, no fallback. \PackageError halts XeLaTeX
-            // with both a primary message and help text.
-            lines.push('\\PackageError{rt-font}{Required font \'Latin Modern Roman\' is not installed.\\MessageBreak Install the font and re-run the export.}{%');
-            lines.push('  The Radial Timeline Modern Classic template requires Latin Modern Roman and will not fall back to a substitute.\\MessageBreak Install MacTeX/TeX Live or run Install all in Settings > Publish.%');
-            lines.push('}');
-        }
-        return lines.join('\n');
-    }
-
-    // Sorts Mill Goudy is bundled with the plugin (OFL 1.1). When the export
-    // pipeline supplies the absolute path to the bundled-fonts directory, point
-    // fontspec directly at the .otf files via Path= — no system install required,
-    // works on every machine with TeX installed regardless of whether the user
-    // has Sorts Mill Goudy in Font Book.
-    if (spec.body.font === 'sorts-mill-goudy') {
-        if (options.bundledFontPath) {
-            const root = options.bundledFontPath.endsWith('/')
-                ? options.bundledFontPath
-                : `${options.bundledFontPath}/`;
-            lines.push('\\setmainfont{Sorts Mill Goudy}[');
-            lines.push(`  Path = ${root}sorts-mill-goudy/ ,`);
-            lines.push('  UprightFont = SortsMillGoudy-Regular.ttf ,');
-            lines.push('  ItalicFont = SortsMillGoudy-Italic.ttf ,');
-            lines.push('  AutoFakeBold = 2.5 ,');
-            lines.push('  AutoFakeSlant = 0.2');
-            lines.push(']');
-            const letterSpacing = spec.runningHeader.letterSpacing;
-            if (typeof letterSpacing === 'number' && letterSpacing > 0) {
-                lines.push('\\newfontface\\headerfont{Sorts Mill Goudy}[');
-                lines.push(`  Path = ${root}sorts-mill-goudy/ ,`);
-                lines.push('  UprightFont = SortsMillGoudy-Regular.ttf ,');
-                lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
-                lines.push(']');
-            }
-        } else {
-            // Strict policy: hard fail, no fallback. \PackageError halts XeLaTeX.
-            lines.push('\\PackageError{rt-font}{Required font \'Sorts Mill Goudy\' is not installed.\\MessageBreak Install the font and re-run the export.}{%');
-            lines.push('  The Radial Timeline Signature Literary template requires bundled Sorts Mill Goudy and will not fall back to a substitute.\\MessageBreak Run Install all in Settings > Publish.%');
-            lines.push('}');
-        }
-        return lines.join('\n');
-    }
-
-    if (spec.body.font === 'source-serif') {
-        if (options.bundledFontPath) {
-            const root = options.bundledFontPath.endsWith('/')
-                ? options.bundledFontPath
-                : `${options.bundledFontPath}/`;
-            lines.push('\\setmainfont{Source Serif 4}[');
-            lines.push(`  Path = ${root}source-serif-4/ ,`);
-            lines.push('  UprightFont = SourceSerif4-Regular.otf ,');
-            lines.push('  ItalicFont = SourceSerif4-It.otf ,');
-            lines.push('  BoldFont = SourceSerif4-Bold.otf ,');
-            lines.push('  BoldItalicFont = SourceSerif4-BoldIt.otf');
-            lines.push(']');
-            const letterSpacing = spec.runningHeader.letterSpacing;
-            if (typeof letterSpacing === 'number' && letterSpacing > 0) {
-                lines.push('\\newfontface\\headerfont{Source Serif 4}[');
-                lines.push(`  Path = ${root}source-serif-4/ ,`);
-                lines.push('  UprightFont = SourceSerif4-Regular.otf ,');
-                lines.push(`  LetterSpace = ${letterSpacing.toFixed(1)}`);
-                lines.push(']');
-            }
-        } else {
-            // Strict policy: hard fail, no fallback. \PackageError halts XeLaTeX.
-            lines.push('\\PackageError{rt-font}{Required font \'Source Serif 4\' is not installed.\\MessageBreak Install the font and re-run the export.}{%');
-            lines.push('  The Radial Timeline Contemporary Literary template requires bundled Source Serif 4 and will not fall back to a substitute.\\MessageBreak Run Install all in Settings > Publish.%');
-            lines.push('}');
-        }
-        return lines.join('\n');
-    }
-
-    // Strict font policy: every font emit MUST be a single \setmainfont
-    // declaration guarded by \IfFontExistsTF. When the requested font is not
-    // installed, the LaTeX run fails with a hard \PackageError — no fallback,
-    // no substitute. The error help text directs the user to install the font.
-    // (See: docs/engineering/standards/code-doctrine.md — surfaces > silent drift.)
-    //
-    // Note on `body.fontFallbackChain`: this spec field is incompatible with
-    // the new strict policy and is intentionally ignored here. It will be
-    // removed in a future spec version (v2). Do NOT use it to emit cascading
-    // \IfFontExistsTF blocks.
-    const letterSpacing = spec.runningHeader.letterSpacing;
-    const emitHeaderFont = typeof letterSpacing === 'number' && letterSpacing > 0;
-
-    lines.push(`\\IfFontExistsTF{${primary}}{%`);
-    lines.push(`  \\setmainfont{${primary}}%`);
-    if (emitHeaderFont) {
-        lines.push(`  \\newfontface\\headerfont{${primary}}[LetterSpace=${letterSpacing.toFixed(1)}]%`);
-    }
-    lines.push('}{%');
-    lines.push(`  \\PackageError{rt-font}{Required font '${primary}' is not installed.\\MessageBreak Install the font and re-run the export.}{%`);
-    lines.push(`    The Radial Timeline template requires this font and will not fall back to a substitute.\\MessageBreak See Settings > Publish in Obsidian for install help.%`);
-    lines.push('  }%');
-    lines.push('}');
-    return lines.join('\n');
+    return [
+        '\\defaultfontfeatures{Ligatures=TeX}',
+        buildFontspecBlock({
+            fontKey: spec.body.font,
+            vaultFontDir: options.vaultFontDir,
+            letterSpacing: spec.runningHeader.letterSpacing,
+        }),
+    ].join('\n');
 }
 
 function renderHeaderField(field: DesignedHeaderField | undefined): string {

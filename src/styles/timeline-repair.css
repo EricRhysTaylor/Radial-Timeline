@@ -821,6 +821,9 @@
 }
 
 .ert-timeline-repair-bucket-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 22px;
     height: 22px;
     padding: 0;
@@ -828,8 +831,6 @@
     border-radius: var(--radius-s);
     background: var(--background-primary);
     color: var(--text-muted);
-    font-size: var(--font-ui-smaller);
-    font-weight: var(--font-semibold);
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -843,6 +844,12 @@
     border-color: var(--interactive-accent);
     background: var(--interactive-accent);
     color: var(--text-on-accent);
+}
+
+.ert-timeline-repair-bucket-pill svg {
+    width: 14px;
+    height: 14px;
+    display: block;
 }
 
 /* Button spacer */

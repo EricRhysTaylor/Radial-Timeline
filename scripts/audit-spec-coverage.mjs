@@ -162,9 +162,10 @@ const KNOWN_PREVIEW_HIDDEN = new Map([
 // GENERATOR_HIDDEN — extremely rare; a field that consciously has no LaTeX
 // output. Most fields MUST reach the generator. Empty by default.
 const KNOWN_GENERATOR_HIDDEN = new Map([
-    ['specVersion',         'Internal version tag; no LaTeX representation.'],
-    ['archetype',           'Drives variant selection, not a direct LaTeX axis.'],
-    ['scene.headingMode',   'Decided per-scene by the manuscript assembler at export time; the template just defines the macros to render whatever heading the assembler emits.'],
+    ['specVersion',           'Internal version tag; no LaTeX representation.'],
+    ['archetype',             'Drives variant selection, not a direct LaTeX axis.'],
+    ['scene.headingMode',     'Decided per-scene by the manuscript assembler at export time; the template just defines the macros to render whatever heading the assembler emits.'],
+    ['body.fontFallbackChain', 'Superseded by publishing/fontResolver: vault → system policy, with XeLaTeX emitting its own font-not-found error. No LaTeX-level fallback cascade is generated; the chain is retained in the spec for migration only.'],
 ]);
 
 function loadFiles() {

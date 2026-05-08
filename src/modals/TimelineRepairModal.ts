@@ -1093,24 +1093,31 @@ export class TimelineRepairModal extends Modal {
         buildShiftBtn('chevrons-left', 'timelineRepairModal.review.shiftDayBack', () => this.handleDayShift(idx, -1));
         buildShiftBtn('chevron-left', 'timelineRepairModal.review.shiftHourBack', () => this.handleHourShift(idx, -1));
 
-        // Time bucket pills
+        // Time bucket pills — icon-only, Lucide sunrise/sun/sunset/moon.
+        // ert-iconBtn opts out of the generic .ert-ui.ert-scope--modal button
+        // rule (min-height + horizontal padding) so the 22×22 squares hold.
         const bucketRow = controlsArea.createDiv({ cls: 'ert-timeline-repair-bucket-controls' });
 
-        const buckets: TimeBucket[] = ['morning', 'afternoon', 'evening', 'night'];
+        const buckets: { id: TimeBucket; icon: string }[] = [
+            { id: 'morning', icon: 'sunrise' },
+            { id: 'afternoon', icon: 'sun' },
+            { id: 'evening', icon: 'sunset' },
+            { id: 'night', icon: 'moon' }
+        ];
         for (const bucket of buckets) {
             const pill = bucketRow.createEl('button', {
-                cls: 'ert-timeline-repair-bucket-pill',
-                text: bucket.charAt(0).toUpperCase()
+                cls: 'ert-iconBtn ert-timeline-repair-bucket-pill'
             });
-            pill.setAttribute('aria-label', TIME_BUCKET_LABELS[bucket]);
+            setIcon(pill, bucket.icon);
+            setTooltip(pill, TIME_BUCKET_LABELS[bucket.id]);
 
-            if (bucket === currentBucket) {
+            if (bucket.id === currentBucket) {
                 pill.addClass('ert-is-active');
             }
 
             pill.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.handleTimeBucketChange(idx, TIME_BUCKET_HOURS[bucket]);
+                this.handleTimeBucketChange(idx, TIME_BUCKET_HOURS[bucket.id]);
             });
         }
 

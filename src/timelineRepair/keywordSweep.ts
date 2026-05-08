@@ -183,7 +183,10 @@ export interface KeywordSweepOptions {
 }
 
 const DEFAULT_OPTIONS: KeywordSweepOptions = {
-    excerptWindow: 2000,  // First 2000 chars usually contain temporal setup
+    // No truncation: scan the full scene body. Detection is local and
+    // deterministic, so cost is negligible even on long scenes, and missing
+    // a cue because it lives past an arbitrary cap erodes author trust.
+    excerptWindow: 0,
     includeSynopsis: true
 };
 

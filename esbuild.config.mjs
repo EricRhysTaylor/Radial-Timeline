@@ -243,6 +243,9 @@ const context = await esbuild.context({
 		'@codemirror/state',
 		'@codemirror/view',
 		...builtins,
+		// Same builtins, also imported with the node: prefix
+		// (e.g., `import fs from 'node:fs'`).
+		...builtins.map(b => `node:${b}`),
 	],
 	format: 'cjs',
 	target: 'es2018',

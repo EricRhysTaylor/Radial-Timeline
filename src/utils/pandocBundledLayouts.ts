@@ -14,22 +14,14 @@ interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
 }
 
 /**
- * Memoized generator: derives bundled fiction `.tex` content from each spec
- * exactly once per id. The cache is process-scoped so vitest, build, and
- * runtime all see the same byte-stable output.
- *
- * Spec source of truth: `src/publishing/bundledStyleSpecs.ts`.
- * Reference rollback marker: git tag `pre-spec-export-stable`.
- */
-const BUNDLED_GENERATED_CACHE = new Map<BundledFictionId, string>();
-
-/**
  * Absolute filesystem path to the vault-local Pandoc font root, e.g.
- * `/Users/foo/Vault/Radial Timeline/Pandoc/fonts`. Generated templates point
- * here so the `.tex` file and its required font files live together in the
- * user's vault.
+ * `/Users/foo/Vault/Radial Timeline/Pandoc/fonts`. The font resolver
+ * (`fontResolver.ts`) checks this directory at .tex generation time to
+ * decide whether to emit a `\setmainfont{...}[Path = ...]` block (vault
+ * has the font) or a plain `\setmainfont{Name}` block (let XeLaTeX find
+ * it via the system font cache).
  */
-let MODULE_BUNDLED_FONT_PATH: string | undefined;
+let MODULE_VAULT_FONT_DIR: string | undefined;
 
 /**
  * Absolute filesystem path to the plugin asset font source, e.g.
@@ -38,22 +30,8 @@ let MODULE_BUNDLED_FONT_PATH: string | undefined;
  */
 let MODULE_BUNDLED_FONT_SOURCE_PATH: string | undefined;
 
-/**
- * Absolute filesystem path to the vault-local Latin Modern directory under
- * `Radial Timeline/Pandoc/fonts/latin-modern`.
- */
-let MODULE_LATIN_MODERN_PATH: string | undefined;
-
-export function setBundledFontPath(path: string | undefined): void {
-    if (path === MODULE_BUNDLED_FONT_PATH) return;
-    MODULE_BUNDLED_FONT_PATH = path;
-    BUNDLED_GENERATED_CACHE.clear();
-}
-
-export function setLatinModernPath(path: string | undefined): void {
-    if (path === MODULE_LATIN_MODERN_PATH) return;
-    MODULE_LATIN_MODERN_PATH = path;
-    BUNDLED_GENERATED_CACHE.clear();
+export function setVaultFontDir(path: string | undefined): void {
+    MODULE_VAULT_FONT_DIR = path;
 }
 
 export function setBundledFontSourcePath(path: string | undefined): void {
@@ -61,28 +39,19 @@ export function setBundledFontSourcePath(path: string | undefined): void {
 }
 
 /**
- * Read-only accessor for the bundled-fonts root resolved at plugin load.
- * Consumers (font diagnostics) need this to verify that the plugin's bundled
- * `.ttf` files were actually deployed to disk.
+ * Read-only accessor for the vault font root resolved at plugin load.
+ * Consumers (font diagnostics) need this to verify that bundled font
+ * files were actually deployed to disk.
  */
-export function getBundledFontPath(): string | undefined {
-    return MODULE_BUNDLED_FONT_PATH;
+export function getVaultFontDir(): string | undefined {
+    return MODULE_VAULT_FONT_DIR;
 }
 
-export function getLatinModernPath(): string | undefined {
-    return MODULE_LATIN_MODERN_PATH;
-}
-
-function getGeneratedBundledFictionTex(id: BundledFictionId): string {
-    const cached = BUNDLED_GENERATED_CACHE.get(id);
-    if (cached !== undefined) return cached;
-    const tex = generateDesignedStyleTex(BUNDLED_FICTION_SPECS[id], {
+function generateBundledFictionTex(id: BundledFictionId): string {
+    return generateDesignedStyleTex(BUNDLED_FICTION_SPECS[id], {
         bundledLayoutId: id,
-        bundledFontPath: MODULE_BUNDLED_FONT_PATH,
-        latinModernPath: MODULE_LATIN_MODERN_PATH,
+        vaultFontDir: MODULE_VAULT_FONT_DIR,
     });
-    BUNDLED_GENERATED_CACHE.set(id, tex);
-    return tex;
 }
 
 const BUNDLED_FICTION_SIGNATURE_ID = 'bundled-fiction-signature-literary';
@@ -216,7 +185,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         templateKind: 'book',
         hasSceneOpenerHeadingOptions: true,
         description: 'Restrained and considered — the look of a small-press literary novel. Letter-spaced caps in the running head, generous scene-opener pages, and three opener heading modes to match the book’s voice. For literary fiction that wants room to breathe.',
-        get content(): string { return getGeneratedBundledFictionTex(BUNDLED_FICTION_SIGNATURE_ID); },
+        get content(): string { return generateBundledFictionTex(BUNDLED_FICTION_SIGNATURE_ID); },
         get designedSpec() { return BUNDLED_FICTION_SPECS[BUNDLED_FICTION_SIGNATURE_ID]; },
     },
     {
@@ -228,7 +197,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         tier: 'free',
         templateKind: 'book',
         description: 'Plain and to the point. The traditional submission format every editor recognizes — no ornament, no ego, just pure readability. The format that gets your manuscript read.',
-        get content(): string { return getGeneratedBundledFictionTex(BUNDLED_FICTION_CLASSIC_ID); },
+        get content(): string { return generateBundledFictionTex(BUNDLED_FICTION_CLASSIC_ID); },
         get designedSpec() { return BUNDLED_FICTION_SPECS[BUNDLED_FICTION_CLASSIC_ID]; },
     },
     {
@@ -240,7 +209,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         tier: 'free',
         templateKind: 'book',
         description: 'A polished reading draft for beta readers and proofers. Clean enough to feel like a finished book without committing to a final aesthetic. Contemporary serif body type, comfortable spacing, and clean headers that track the scene title.',
-        get content(): string { return getGeneratedBundledFictionTex(BUNDLED_FICTION_CONTEMPORARY_ID); },
+        get content(): string { return generateBundledFictionTex(BUNDLED_FICTION_CONTEMPORARY_ID); },
         get designedSpec() { return BUNDLED_FICTION_SPECS[BUNDLED_FICTION_CONTEMPORARY_ID]; },
     },
     {
@@ -254,7 +223,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         usesModernClassicStructure: true,
         hasEpigraphs: true,
         description: 'For ambitious, structural fiction. Acts open with optional epigraphs and Roman numeral PART pages; chapters carry shared titles; scene breaks are lowercase Roman numerals with a short rule. Evokes the considered architecture of mid-20th-century literary novels.',
-        get content(): string { return getGeneratedBundledFictionTex(BUNDLED_FICTION_MODERN_CLASSIC_ID); },
+        get content(): string { return generateBundledFictionTex(BUNDLED_FICTION_MODERN_CLASSIC_ID); },
         get designedSpec() { return BUNDLED_FICTION_SPECS[BUNDLED_FICTION_MODERN_CLASSIC_ID]; },
     }
 ];
@@ -418,9 +387,7 @@ const BUNDLED_PANDOC_FONT_FILES: Record<string, string[]> = {
 };
 
 export function setPandocFontPathsForVault(plugin: RadialTimelinePlugin): void {
-    const root = getPandocFontAbsoluteRoot(plugin);
-    setBundledFontPath(root);
-    setLatinModernPath(root ? path.join(root, 'latin-modern') : undefined);
+    setVaultFontDir(getPandocFontAbsoluteRoot(plugin));
 }
 
 export async function installBundledPandocFonts(
@@ -579,7 +546,7 @@ export async function ensureSpecDrivenBundledFictionTemplatesCurrent(
         const direct = normalizedPath ? vault.getAbstractFileByPath(normalizedPath) : null;
         const targetPath = resolveBundledVaultPath(plugin, bundled.path);
         const target = direct instanceof TFile ? direct : vault.getAbstractFileByPath(targetPath);
-        const canonical = getGeneratedBundledFictionTex(bundled.id as BundledFictionId);
+        const canonical = generateBundledFictionTex(bundled.id as BundledFictionId);
 
         if (target instanceof TFile) {
             try {
@@ -685,7 +652,7 @@ export async function ensureBundledLayoutInstalledForExport(
         if (bundled instanceof TFile) {
             try {
                 const onDisk = await vault.read(bundled);
-                const canonical = getGeneratedBundledFictionTex(layout.id as BundledFictionId);
+                const canonical = generateBundledFictionTex(layout.id as BundledFictionId);
                 if (onDisk !== canonical) {
                     await vault.modify(bundled, canonical);
                     const history = recordHotfixEvent(

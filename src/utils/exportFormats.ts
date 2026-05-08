@@ -13,9 +13,10 @@ import * as os from 'os'; // SAFE: Node os required for temp directory resolutio
 import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
 import { formatRuntimeValue, RuntimeSettings } from './runtimeEstimator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { getBundledFontPath, getLatinModernPath } from './pandocBundledLayouts';
+import { getVaultFontDir } from './pandocBundledLayouts';
 import type { DesignedStyleSpec } from '../publishing/designedStyle';
 import { BUNDLED_FICTION_SPECS, isBundledFictionId } from '../publishing/bundledStyleSpecs';
+import { FONT_REGISTRY, vaultDirHasFont } from '../publishing/fontResolver';
 import { assertNever } from './assertNever';
 
 export type ExportType = 'manuscript' | 'outline';
@@ -684,56 +685,17 @@ function specForLayout(layout?: PandocLayoutTemplate): DesignedStyleSpec | undef
 }
 
 /**
- * Verify that bundled font files for a font key are actually present on disk.
+ * Verify that bundled font files for a font key are actually present in the
+ * vault's `Radial Timeline/Pandoc/fonts/<slug>/` directory. Delegates to the
+ * font resolver — same source of truth used by the LaTeX emit, so the
+ * diagnostic and the actual export agree on what counts as "present".
  */
-function bundledFontFilesPresent(fontKey: DesignedStyleSpec['body']['font']): boolean {
-    const root = getBundledFontPath();
+function vaultHasFontFiles(fontKey: DesignedStyleSpec['body']['font']): boolean {
+    const root = getVaultFontDir();
     if (!root) return false;
-    const requiredByFont: Partial<Record<DesignedStyleSpec['body']['font'], string[]>> = {
-        'sorts-mill-goudy': [
-            path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Regular.ttf'),
-            path.join(root, 'sorts-mill-goudy', 'SortsMillGoudy-Italic.ttf'),
-        ],
-        'source-serif': [
-            path.join(root, 'source-serif-4', 'SourceSerif4-Regular.otf'),
-            path.join(root, 'source-serif-4', 'SourceSerif4-It.otf'),
-            path.join(root, 'source-serif-4', 'SourceSerif4-Bold.otf'),
-            path.join(root, 'source-serif-4', 'SourceSerif4-BoldIt.otf'),
-        ],
-    };
-    const required = requiredByFont[fontKey];
-    if (!required) return false;
-    try {
-        return required.every(file => fs.existsSync(file));
-    } catch {
-        return false;
-    }
-}
-
-function latinModernFontFilesPresent(): boolean {
-    const root = getLatinModernPath();
-    if (!root) return false;
-    const required = [
-        'lmroman10-regular.otf',
-        'lmroman10-italic.otf',
-        'lmroman10-bold.otf',
-        'lmroman10-bolditalic.otf',
-    ];
-    try {
-        return required.every(file => fs.existsSync(path.join(root, file)));
-    } catch {
-        return false;
-    }
-}
-
-function getBundledFontInstallMessage(fontKey: DesignedStyleSpec['body']['font']): string {
-    if (fontKey === 'source-serif') {
-        return 'Contemporary Literary requires bundled Source Serif 4 files in Radial Timeline/Pandoc/fonts/source-serif-4. Click Install fonts in Settings > Publish.';
-    }
-    if (fontKey === 'sorts-mill-goudy') {
-        return 'Signature Literary requires bundled Sorts Mill Goudy files in Radial Timeline/Pandoc/fonts/sorts-mill-goudy. Click Install fonts in Settings > Publish.';
-    }
-    return 'Required bundled font files are missing from Radial Timeline/Pandoc/fonts. Click Install fonts in Settings > Publish.';
+    const entry = FONT_REGISTRY[fontKey];
+    if (!entry || !entry.files.upright) return false;
+    return vaultDirHasFont(root, entry.files);
 }
 
 /**
@@ -766,6 +728,21 @@ export function getFontDiagnosticForFontKey(
     return resolveFontDiagnosticForKey(fontKey, overridePlatform);
 }
 
+/**
+ * Single resolution path: vault → system → missing.
+ *
+ * Mirrors the LaTeX emit logic in `fontResolver.buildFontspecBlock` so the
+ * Export Checks panel and the actual export agree on what counts as
+ * resolvable.
+ *
+ *   1. Vault: `Radial Timeline/Pandoc/fonts/<slug>/` has the required files
+ *      → 'ok' (export will use a `\setmainfont{...}[Path = ...]` block).
+ *   2. System: font is in the system catalog → 'ok' (export will use plain
+ *      `\setmainfont{Name}` and let XeLaTeX resolve via the OS).
+ *   3. Neither → 'missing-bundled' if the registry advertises bundled files
+ *      (instructive: tell the user to run Install fonts), otherwise
+ *      'missing-system' (instructive: link to Google Fonts / CTAN).
+ */
 function resolveFontDiagnosticForKey(
     fontKey: DesignedStyleSpec['body']['font'] | undefined,
     overridePlatform?: FontDiagnosticPlatform
@@ -776,49 +753,38 @@ function resolveFontDiagnosticForKey(
     }
     const primaryFontName = FONT_KEY_TO_DISPLAY[fontKey];
 
-    if (fontKey === 'latin-modern') {
-        if (latinModernFontFilesPresent()) {
-            return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
-        }
-        return {
-            state: 'missing-bundled',
-            primaryFontName,
-            resolvedFontName: primaryFontName,
-            installHint: {
-                source: 'bundled',
-                message: 'Modern Classic requires bundled Latin Modern files in Radial Timeline/Pandoc/fonts/latin-modern. Run Install all in Settings > Publish.',
-            },
-        };
+    // 1. Vault-bundled files present → ready (Path-based emit).
+    if (vaultHasFontFiles(fontKey)) {
+        return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
     }
 
-    if (fontKey === 'sorts-mill-goudy' || fontKey === 'source-serif') {
-        if (bundledFontFilesPresent(fontKey)) {
-            return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
-        }
-        return {
-            state: 'missing-bundled',
-            primaryFontName,
-            resolvedFontName: primaryFontName,
-            installHint: {
-                source: 'bundled',
-                message: getBundledFontInstallMessage(fontKey),
-            },
-        };
-    }
-
+    // 2. System install present → ready (system-name emit).
     const catalog = loadSystemFontCatalog();
     const canVerify = Array.isArray(catalog);
-    const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;
-
+    const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : false;
     if (installed) {
         return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
     }
 
+    // 3. Missing. If the registry knows about bundled files for this font,
+    //    prompt the user to install them; otherwise prompt for a system install.
+    const entry = FONT_REGISTRY[fontKey];
+    const hasBundledFiles = !!entry?.files.upright;
+    if (hasBundledFiles) {
+        return {
+            state: 'missing-bundled',
+            primaryFontName,
+            resolvedFontName: primaryFontName,
+            installHint: {
+                source: 'bundled',
+                message: `${primaryFontName} files are missing from Radial Timeline/Pandoc/fonts/${entry.files.slug}. Click Install fonts in Settings → Publish.`,
+            },
+        };
+    }
     const url = GOOGLE_FONTS_BY_KEY[fontKey];
     const installHint: FontDiagnosticInstallHint = url
         ? buildGoogleFontsHint(primaryFontName, url, platform)
         : buildCtanHint(primaryFontName);
-
     return { state: 'missing-system', primaryFontName, resolvedFontName: primaryFontName, installHint };
 }
 
@@ -827,82 +793,7 @@ export function getStructuredFontDiagnostic(
     overridePlatform?: FontDiagnosticPlatform
 ): FontDiagnostic {
     const spec = specForLayout(layout);
-    const fontKey = spec?.body.font;
-    const platform = overridePlatform ?? getCurrentPlatform();
-
-    // Layouts without a spec (custom imports) — fall back to a generic ok
-    // state so the Export Checks panel doesn't fabricate an alarm.
-    if (!fontKey) {
-        return { state: 'ok', primaryFontName: 'Default serif', resolvedFontName: 'Default serif' };
-    }
-
-    const primaryFontName = FONT_KEY_TO_DISPLAY[fontKey];
-
-    if (fontKey === 'latin-modern') {
-        if (latinModernFontFilesPresent()) {
-            return {
-                state: 'ok',
-                primaryFontName,
-                resolvedFontName: primaryFontName,
-            };
-        }
-        return {
-            state: 'missing-bundled',
-            primaryFontName,
-            resolvedFontName: primaryFontName,
-            installHint: {
-                source: 'bundled',
-                message: 'Modern Classic requires bundled Latin Modern files in Radial Timeline/Pandoc/fonts/latin-modern. Run Install all in Settings > Publish.',
-            },
-        };
-    }
-
-    // Bundled fonts: when the plugin's asset files are present, the export
-    // pipeline points fontspec at them via `Path=` — system install is not
-    // required. When absent (build artifact missing), state is 'missing-bundled'.
-    if (fontKey === 'sorts-mill-goudy' || fontKey === 'source-serif') {
-        if (bundledFontFilesPresent(fontKey)) {
-            return {
-                state: 'ok',
-                primaryFontName,
-                resolvedFontName: primaryFontName,
-            };
-        }
-        return {
-            state: 'missing-bundled',
-            primaryFontName,
-            resolvedFontName: primaryFontName,
-            installHint: {
-                source: 'bundled',
-                message: getBundledFontInstallMessage(fontKey),
-            },
-        };
-    }
-
-    // System fonts (eb-garamond, crimson, system-serif, system-sans): probe the catalog.
-    const catalog = loadSystemFontCatalog();
-    const canVerify = Array.isArray(catalog);
-    const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : true;
-
-    if (installed) {
-        return {
-            state: 'ok',
-            primaryFontName,
-            resolvedFontName: primaryFontName,
-        };
-    }
-
-    const url = GOOGLE_FONTS_BY_KEY[fontKey];
-    const installHint: FontDiagnosticInstallHint = url
-        ? buildGoogleFontsHint(primaryFontName, url, platform)
-        : buildCtanHint(primaryFontName);
-
-    return {
-        state: 'missing-system',
-        primaryFontName,
-        resolvedFontName: primaryFontName,
-        installHint,
-    };
+    return resolveFontDiagnosticForKey(spec?.body.font, overridePlatform);
 }
 
 /**
