@@ -15,7 +15,8 @@ import {
     type RepairSceneEntry,
     type TimeBucket,
     TIME_BUCKET_HOURS,
-    SCAFFOLD_PATTERNS
+    SCAFFOLD_PATTERNS,
+    formatFlashbackDelta
 } from './types';
 
 // ============================================================================
@@ -269,21 +270,25 @@ function detectFlashbacks(entries: RepairSceneEntry[]): void {
         const entry = entries[i];
         if (!entry.originalWhen) continue;
 
-        const years: number[] = [];
-        for (let j = i - 1; j >= 0 && years.length < FLASHBACK_WINDOW; j--) {
+        const timestamps: number[] = [];
+        for (let j = i - 1; j >= 0 && timestamps.length < FLASHBACK_WINDOW; j--) {
             const w = entries[j].originalWhen;
-            if (w) years.push(w.getFullYear());
+            if (w) timestamps.push(w.getTime());
         }
-        for (let j = i + 1; j < entries.length && years.length < FLASHBACK_WINDOW * 2; j++) {
+        for (let j = i + 1; j < entries.length && timestamps.length < FLASHBACK_WINDOW * 2; j++) {
             const w = entries[j].originalWhen;
-            if (w) years.push(w.getFullYear());
+            if (w) timestamps.push(w.getTime());
         }
-        if (years.length < 2) continue;
+        if (timestamps.length < 2) continue;
 
-        const sorted = [...years].sort((a, b) => a - b);
-        const median = sorted[Math.floor(sorted.length / 2)];
-        if (Math.abs(entry.originalWhen.getFullYear() - median) >= FLASHBACK_YEAR_THRESHOLD) {
+        const sorted = [...timestamps].sort((a, b) => a - b);
+        const medianTs = sorted[Math.floor(sorted.length / 2)];
+        const medianYear = new Date(medianTs).getFullYear();
+        const yearDiff = entry.originalWhen.getFullYear() - medianYear;
+
+        if (Math.abs(yearDiff) >= FLASHBACK_YEAR_THRESHOLD) {
             entry.isFlashback = true;
+            entry.flashbackLabel = formatFlashbackDelta(entry.originalWhen.getTime() - medianTs);
         }
     }
 }

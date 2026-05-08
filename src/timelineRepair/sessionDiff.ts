@@ -113,11 +113,29 @@ export function shiftSceneDays(
 ): SessionDiffModel {
     const entry = session.entries[sceneIndex];
     if (!entry) return session;
-    
+
     const currentWhen = getEffectiveWhen(entry);
     const newWhen = new Date(currentWhen);
     newWhen.setDate(newWhen.getDate() + dayDelta);
-    
+
+    return editSceneWhen(session, sceneIndex, newWhen);
+}
+
+/**
+ * Shift a scene's When by a number of hours.
+ */
+export function shiftSceneHours(
+    session: SessionDiffModel,
+    sceneIndex: number,
+    hourDelta: number
+): SessionDiffModel {
+    const entry = session.entries[sceneIndex];
+    if (!entry) return session;
+
+    const currentWhen = getEffectiveWhen(entry);
+    const newWhen = new Date(currentWhen);
+    newWhen.setHours(newWhen.getHours() + hourDelta);
+
     return editSceneWhen(session, sceneIndex, newWhen);
 }
 

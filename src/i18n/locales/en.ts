@@ -461,7 +461,7 @@ export interface TranslationKeys {
         pattern: { name: string; desc: string; };
         refinements: { name: string; desc: string; baseScaffoldTitle: string; baseScaffoldDesc: string; alwaysOn: string; textCuesTitle: string; textCuesDesc: string; };
         analyzing: { badge: string; title: string; statusApplying: string; preparing: string; abortButton: string; abortedNotice: string; phasePattern: string; phaseCues: string; phaseComplete: string; };
-        review: { badge: string; title: string; subtitle: string; filterNeedsReview: string; filterTextCues: string; rippleMode: string; rippleModeHelp: string; overwriteAuthorDates: string; overwriteAuthorDatesHelp: string; backButton: string; applyButton: string; openAuditButton: string; openAuditButtonAll: string; auditToggleOn: string; auditToggleOff: string; narrativePlacement: string; emptyFilter: string; untitled: string; warningBackwardTime: string; warningLargeGap: string; warningMissingWhen: string; openInWorkspace: string; dayMinus: string; dayPlus: string; summaryChanged: string; summaryNeedReview: string; summarySelected: string; summaryAuthored: string; };
+        review: { badge: string; title: string; subtitle: string; filterNeedsReview: string; filterTextCues: string; rippleMode: string; rippleModeHelp: string; overwriteAuthorDates: string; overwriteAuthorDatesHelp: string; backButton: string; applyButton: string; openAuditButton: string; openAuditButtonAll: string; auditToggleOn: string; auditToggleOff: string; narrativePlacement: string; chronoPosition: string; emptyFilter: string; untitled: string; warningBackwardTime: string; warningLargeGap: string; warningMissingWhen: string; warningDuplicateWhen: string; openInWorkspace: string; shiftDayBack: string; shiftDayForward: string; shiftHourBack: string; shiftHourForward: string; summaryChanged: string; summaryNeedReview: string; summarySelected: string; summaryAuthored: string; };
         apply: { noChangesNotice: string; partialNotice: string; successNotice: string; successWithSnapshotNotice: string; snapshotFailedNotice: string; };
         restore: { successNotice: string; partialNotice: string; noSnapshotNotice: string; };
         confirm: { title: string; warning: string; applyButton: string; cancelButton: string; description: string; };
@@ -927,6 +927,745 @@ export interface TranslationKeys {
             fullProSetLabel: string;
             collapse: string;
             expand: string;
+        };
+    };
+    bookDesigner: {
+        saveTemplate: {
+            badge: string;
+            title: string;
+            subtitle: string;
+            nameField: {
+                name: string;
+                desc: string;
+                placeholder: string;
+            };
+            note: string;
+            nameRequired: string;
+        };
+        deleteTemplate: {
+            title: string;
+            subtitle: string;
+        };
+        demoProject: {
+            badge: string;
+            title: string;
+            subtitle: string;
+            startDate: {
+                name: string;
+                desc: string;
+            };
+            note: string;
+            generate: string;
+            invalidDate: string;
+        };
+        modal: {
+            badge: string;
+            title: string;
+            subtitle: string;
+            wikiAriaLabel: string;
+            noBookSelected: string;
+            untitled: string;
+        };
+        meta: {
+            autoMode: string;
+            manualMode: string;
+            manualLayoutActive: string;
+            autoDistribution: string;
+            fromTemplate: string;
+        };
+        sections: {
+            locationStructure: string;
+            contentConfiguration: string;
+            sceneSetsExtras: string;
+        };
+        fields: {
+            targetBook: {
+                name: string;
+                desc: string;
+                noBooks: string;
+                addFirstNote: string;
+            };
+            timeIncrement: {
+                name: string;
+                desc: string;
+                placeholder: string;
+                invalid: string;
+            };
+            scenes: {
+                name: string;
+                desc: string;
+            };
+            targetLength: {
+                name: string;
+                desc: string;
+                detail: string;
+            };
+            acts: {
+                label: string;
+                actLabel: string;
+            };
+            subplots: {
+                name: string;
+                desc: string;
+            };
+            characters: {
+                name: string;
+                desc: string;
+            };
+            sceneSet: {
+                label: string;
+                base: string;
+                advanced: string;
+            };
+            generateBeats: {
+                withSystem: string;
+                noSystem: string;
+                tooltipNoSystem: string;
+                existsAria: string;
+                noSystemAria: string;
+                yes: string;
+                no: string;
+            };
+            sceneLayouts: {
+                name: string;
+                desc: string;
+                newOption: string;
+                emptyOption: string;
+            };
+        };
+        preview: {
+            title: string;
+            dragging: string;
+            subplotFallback: string;
+        };
+        buttons: {
+            saveSceneSet: string;
+            reset: string;
+            demoProject: string;
+            deleteLayout: string;
+            createBook: string;
+            save: string;
+            delete: string;
+            cancel: string;
+        };
+        notes: {
+            layoutTemplatesIncludes: string;
+        };
+        notices: {
+            layoutReset: string;
+            templateDeleted: string;
+            templateNotFound: string;
+            templateSaved: string;
+            templateUpdated: string;
+            templateApplied: string;
+            selectBookForDemo: string;
+            selectBookForGenerate: string;
+            folderError: string;
+            baseSetMissing: string;
+            generating: string;
+            beatsExist: string;
+            noBeatSystemActive: string;
+            beatsError: string;
+            bookCreated: string;
+            bookCreatedSkipped: string;
+            bookCreatedBeatsExist: string;
+            bookCreatedBeats: string;
+            demoReady: string;
+            demoSkipped: string;
+        };
+    };
+    gossamer: {
+        scoreModal: {
+            badgePrefix: string;
+            beatSystemTitle: string;
+            subtitle: string;
+            signalMeta: string;
+            beatsDetectedMeta: string;
+            noActiveBeatSystem: string;
+            noBeatsCustom: string;
+            noBeatsForModel: string;
+            countMismatch: string;
+            enterScoreLabel: string;
+            scorePlaceholder: string;
+            scoreCount: string;
+            groupMaintenance: string;
+            groupAi: string;
+            normalizeButton: string;
+            deleteButton: string;
+            copyButton: string;
+            pasteButton: string;
+            saveButton: string;
+            cancelButton: string;
+            aiMetaPrefix: string;
+            aiMetaVaultLink: string;
+            aiMetaSuffix: string;
+            tooltipNormalizeAvailable: string;
+            tooltipNormalizeNone: string;
+            tooltipCopy: string;
+            tooltipPaste: string;
+            tooltipSave: string;
+            tooltipCancel: string;
+            normalizeConfirmMessage: string;
+            normalizedDone: string;
+            normalizeArchive: string;
+            normalizeNothing: string;
+            normalizeNoFragments: string;
+            exportFolderMissing: string;
+            openExplorerSidebar: string;
+            explorerNoReveal: string;
+            pastePartial: string;
+            pasteSuccess: string;
+            pasteError: string;
+            noBookSystem: string;
+            noBeatsAvailable: string;
+            noScenesInBook: string;
+            manuscriptEmpty: string;
+            promptCopied: string;
+            promptCopyFailed: string;
+            clipboardReadFailed: string;
+            clipboardEmpty: string;
+            noScoresDetected: string;
+            invalidScore: string;
+            errorsList: string;
+            noChanges: string;
+            updatedCount: string;
+            saveFailed: string;
+            archivedDeletion: string;
+            noScoresToDelete: string;
+            deletedScores: string;
+            deleteFailed: string;
+            missingMetadata: string;
+            deleteConfirmBadge: string;
+            deleteConfirmTitle: string;
+            deleteConfirmSubtitle: string;
+            deleteConfirmBody: string;
+            deleteConfirmButton: string;
+            deleteConfirmCancel: string;
+            normalizeConfirmBadge: string;
+            normalizeConfirmTitle: string;
+            normalizeConfirmSubtitle: string;
+            normalizeIssuesTitle: string;
+            normalizeGapLabel: string;
+            normalizeGapsLabel: string;
+            normalizeOutOfOrder: string;
+            normalizeOrphanLabel: string;
+            normalizeOrphansLabel: string;
+            normalizeWillCompact: string;
+            normalizeMoreSuffix: string;
+            normalizeConfirmButton: string;
+            normalizeConfirmCancel: string;
+        };
+        processingModal: {
+            statusInitializing: string;
+            badge: string;
+            title: string;
+            backgroundContinues: string;
+            modelDisabled: string;
+            confirmSubtitle: string;
+            gatheringDetails: string;
+            manuscriptInfoHeading: string;
+            keyMissing: string;
+            beginButton: string;
+            cancelButton: string;
+            analyzingManuscript: string;
+            assemblingManuscript: string;
+            statusHeading: string;
+            waitingToSend: string;
+            advancedHeading: string;
+            closeButton: string;
+            waitingFirstRequest: string;
+            statScenes: string;
+            statWords: string;
+            statCorpusTokens: string;
+            statBeats: string;
+            statEvidence: string;
+            evidenceDefault: string;
+            beatSystemLine: string;
+            timerElapsed: string;
+            timerLongerThanExpected: string;
+            timerEstimate: string;
+            timerTypical: string;
+            apiFailed: string;
+            errorsHeader: string;
+            analysisComplete: string;
+            analysisFailed: string;
+            rateLimitWithRetry: string;
+            rateLimit: string;
+            rateLimited: string;
+            advRoleTemplate: string;
+            advResolvedModel: string;
+            advModelSelectionReason: string;
+            advAvailabilityVisible: string;
+            advAvailabilityNotVisible: string;
+            advAvailabilityUnknown: string;
+            advAvailability: string;
+            advAppliedCaps: string;
+            advTokenEstimate: string;
+            advTokenEstimateUnavailable: string;
+            advPackaging: string;
+            advEvidence: string;
+            advFinalPromptLabel: string;
+            advFinalPromptNone: string;
+            advPassCount: string;
+            advMultiPassTrigger: string;
+        };
+        notices: {
+            noStoryBeats: string;
+            cannotEnterMode: string;
+            systemHintWithModel: string;
+            systemHintNoModel: string;
+            modeMatchHintWithModel: string;
+            modeMatchHintNoModel: string;
+            noScoresInfo: string;
+            modeToggleSwitchMain: string;
+            modeToggleSwitchAll: string;
+            noActiveBeatSystemRun: string;
+            validating: string;
+            loadingBeats: string;
+            assemblingEvidence: string;
+            assemblingEvidenceWithMode: string;
+            noScenesInBook: string;
+            noSceneBodyContent: string;
+            buildingPrompt: string;
+            sendingToAi: string;
+            aiResponseError: string;
+            updatingBeats: string;
+            archivedSnapshot: string;
+            generatingLog: string;
+            successUpdated: string;
+            successLogWithContent: string;
+            successLogWithoutContent: string;
+            processingFailed: string;
+            aiAnalysisFailed: string;
+            prepareFailed: string;
+            retryGemini: string;
+            unmatchedBeats: string;
+        };
+        service: {
+            updatedBeatScoresPlural: string;
+            updatedBeatScoreSingular: string;
+            archivedSingleSnapshot: string;
+            noBeatsUpdated: string;
+            updatedBeatScores: string;
+            archivedWithPath: string;
+        };
+    };
+    sceneAnalysis: {
+        confirm: {
+            badge: string;
+            title: string;
+            continueButton: string;
+            cancelButton: string;
+        };
+        processingModal: {
+            titleSummaryRefresh: string;
+            titleScenePulse: string;
+            titleProcessingSubplot: string;
+            titleProcessingEntireSubplot: string;
+            badgeAiSummary: string;
+            badgeAiPulseRun: string;
+            subtitleSynopsis: string;
+            subtitleEntireSubplot: string;
+            subtitleFlaggedSubplot: string;
+            modeUnprocessed: string;
+            modeForceAll: string;
+            modeFlagged: string;
+            modeSynopsisFlagged: string;
+            modeSynopsisMissingWeak: string;
+            modeSynopsisMissing: string;
+            modeSynopsisAll: string;
+            modeOptions: {
+                synopsisFlaggedTitle: string;
+                synopsisFlaggedDesc: string;
+                synopsisMissingTitle: string;
+                synopsisMissingDesc: string;
+                synopsisMissingWeakTitle: string;
+                synopsisMissingWeakDesc: string;
+                synopsisAllTitle: string;
+                synopsisAllDesc: string;
+                openTitle: string;
+                openDesc: string;
+                flaggedTitle: string;
+                flaggedDesc: string;
+                unprocessedTitle: string;
+                unprocessedDesc: string;
+                forceAllTitle: string;
+                forceAllDesc: string;
+            };
+            controls: {
+                targetLengthLabel: string;
+                targetLengthHelp: string;
+                weakThresholdLabel: string;
+                weakThresholdHelp: string;
+                alsoUpdateSynopsis: string;
+                alsoUpdateSynopsisHelp: string;
+                synopsisLengthInvalid: string;
+                thresholdWarning: string;
+            };
+            count: {
+                calculating: string;
+                scenesToProcessLabel: string;
+                estimatedTimeLabel: string;
+                estimatedTimeValue: string;
+                largeBatchWarning: string;
+                errorCalculating: string;
+            };
+            buttons: {
+                start: string;
+                purge: string;
+                cancel: string;
+                abort: string;
+                close: string;
+                applyChanges: string;
+                discard: string;
+                resume: string;
+            };
+            confirmLargeBatch: string;
+            queue: {
+                title: string;
+                empty: string;
+                noteSynopsis: string;
+                notePulse: string;
+                previousLabel: string;
+                currentLabel: string;
+                nextLabel: string;
+                startOfBoundary: string;
+                endOfBoundary: string;
+                boundaryManuscript: string;
+                boundarySubplot: string;
+                unnumberedScene: string;
+            };
+            progress: {
+                initializing: string;
+                initializingPipeline: string;
+                sceneProgress: string;
+                processingScene: string;
+                processingSceneEstimate: string;
+                progressSummary: string;
+                progressSummarySingle: string;
+                progressSummaryPlural: string;
+                failedCount: string;
+                skippedCount: string;
+            };
+            apply: {
+                review: string;
+                messageSummary: string;
+                messageSummaryAndSynopsis: string;
+                applyingUpdates: string;
+                applyingUpdatesSynopsis: string;
+                successUpdated: string;
+                applyError: string;
+                artifactSummary: string;
+                artifactSummaryAndSynopsis: string;
+            };
+            completion: {
+                aborted: string;
+                successMessage: string;
+                stoppedDueToError: string;
+                fatalError: string;
+                processingDetailsHeading: string;
+                errorsCount: string;
+                warningsCount: string;
+                possibleFix: string;
+                logsSaved: string;
+                logsNoRequest: string;
+                issuesContinue: string;
+                issuesAfter: string;
+            };
+            abort: {
+                confirmMessage: string;
+                aborting: string;
+                stoppedDueToError: string;
+                noticeAbortedByUser: string;
+            };
+            errorHints: {
+                temperatureDefault: string;
+                modelNotFound: string;
+                ollamaNotResponding: string;
+                connectionRefused: string;
+                schemaJson: string;
+                contextTooLong: string;
+            };
+            aiAdvanced: {
+                summary: string;
+                waiting: string;
+                roleTemplate: string;
+                resolvedModel: string;
+                modelSelectionReason: string;
+                availabilityVisible: string;
+                availabilityNotVisible: string;
+                availabilityUnknown: string;
+                availabilityLabel: string;
+                appliedCaps: string;
+                estimatedInput: string;
+                packagingAuto: string;
+                finalPrompt: string;
+                none: string;
+                passCount: string;
+                multiPassTrigger: string;
+            };
+            synopsisPreview: {
+                previousLabel: string;
+                noSummary: string;
+                generating: string;
+            };
+            unknownError: string;
+            warningEncountered: string;
+            backgroundProcessing: string;
+            noScenesSelected: string;
+            errorPrefix: string;
+        };
+        runtimeModal: {
+            badgePro: string;
+            badgeAudiobook: string;
+            badgeScreenplay: string;
+            badgeRuntime: string;
+            badgeRuntimeEstimator: string;
+            title: string;
+            titleProgress: string;
+            subtitle: string;
+            sections: {
+                scope: string;
+                scopeDesc: string;
+                statusFilter: string;
+                statusFilterDesc: string;
+                override: string;
+                overrideDesc: string;
+                settings: string;
+                mode: string;
+                summary: string;
+            };
+            statusFilter: {
+                todo: string;
+                working: string;
+                complete: string;
+            };
+            scope: {
+                current: string;
+                subplot: string;
+                all: string;
+                subplotLabel: string;
+                sceneLabel: string;
+                noSceneOpen: string;
+            };
+            override: {
+                recalculate: string;
+                recalculateHint: string;
+            };
+            settings: {
+                accordionTitle: string;
+                accordionHint: string;
+                profileLabel: string;
+                dialogueRateLabel: string;
+                actionRateLabel: string;
+                narrationRateLabel: string;
+                wpmValue: string;
+                parentheticalTimingsHeader: string;
+                timingBeat: string;
+                timingPause: string;
+                timingLongPause: string;
+                timingMoment: string;
+                timingSilence: string;
+                secondsValue: string;
+                configHint: string;
+            };
+            modes: {
+                local: string;
+                ai: string;
+                localDesc: string;
+                aiDesc: string;
+            };
+            provider: {
+                aiDisabled: string;
+                providerLabel: string;
+                providerLabelLocal: string;
+            };
+            count: {
+                calculating: string;
+                scenesToProcessLabel: string;
+                hintCurrent: string;
+                hintNoStatus: string;
+                hintAlreadyRuntime: string;
+                errorPrefix: string;
+            };
+            buttons: {
+                settingsTooltip: string;
+                estimate: string;
+                cancel: string;
+                abort: string;
+                close: string;
+            };
+            progress: {
+                initializing: string;
+                initialProgress: string;
+                runningTotalLabel: string;
+                runningTotalDefault: string;
+                sceneProgress: string;
+                processingScene: string;
+                scenesProcessed: string;
+            };
+            completion: {
+                successMessage: string;
+                aborted: string;
+                errorPrefix: string;
+                aiEstimateReady: string;
+                aiErrorPrefix: string;
+                localAiCompare: string;
+            };
+            aiAdvanced: {
+                summary: string;
+                waiting: string;
+                roleTemplate: string;
+                resolvedModel: string;
+                modelSelectionReason: string;
+                availabilityVisible: string;
+                availabilityNotVisible: string;
+                availabilityUnknown: string;
+                availabilityLabel: string;
+                appliedCaps: string;
+                packagingAuto: string;
+                finalPrompt: string;
+                none: string;
+                passCount: string;
+                multiPassTrigger: string;
+            };
+            notices: {
+                background: string;
+                aborting: string;
+                aiAnalyzing: string;
+            };
+        };
+        pipeline: {
+            notices: {
+                processingSubplotInit: string;
+                analyzingSubplot: string;
+                sceneStatusSkip: string;
+                processingScene: string;
+                progressUpdate: string;
+                subplotComplete: string;
+                subplotErrorGeneric: string;
+                noSubplotScenes: string;
+                noScenesValid: string;
+                noFlaggedSubplotScenes: string;
+                noScenesForSubplot: string;
+                noScenesContentSubplot: string;
+                noRemainingResumingSubplot: string;
+                noFlaggedPulseUpdateSubplot: string;
+                abortedByUser: string;
+                abortedRateLimit: string;
+                fatalError: string;
+            };
+            errors: {
+                failedUpdate: string;
+                aiProcessingFailed: string;
+                fatalScene: string;
+                localLlmReview: string;
+            };
+        };
+        maintenance: {
+            yamlTest: {
+                starting: string;
+                errorTfile: string;
+                errorMissingFm: string;
+                errorParse: string;
+                success: string;
+                failed: string;
+                errorGeneric: string;
+            };
+            purge: {
+                badgeWarning: string;
+                title: string;
+                subtitle: string;
+                dangerHeader: string;
+                areYouSure: string;
+                buttonPurge: string;
+                buttonCancel: string;
+                noScenes: string;
+                confirmManuscript: string;
+                confirmSubplot: string;
+                detailFields: string;
+                detailPulseUpdate: string;
+                detailPulseLastUpdated: string;
+                noticeStart: string;
+                noticeStartSubplot: string;
+                resultManuscript: string;
+                resultSubplot: string;
+                archived: string;
+                errorGeneric: string;
+            };
+            saveError: string;
+        };
+        synopsis: {
+            notices: {
+                reopeningSession: string;
+                noScenesScope: string;
+                scopeMessage: string;
+                noMatchingScenes: string;
+                sceneFileNotFound: string;
+            };
+            aiErrors: {
+                aiError: string;
+                jsonParseError: string;
+                emptyResult: string;
+                synopsisFailed: string;
+                saveError: string;
+                summaryFailed: string;
+                contextTooLongWithSize: string;
+                contextTooLongNoSize: string;
+                unknownPassFailure: string;
+            };
+        };
+        service: {
+            commands: {
+                summaryRefresh: string;
+                scenePulseManuscript: string;
+                scenePulseSubplot: string;
+                runtimeEstimator: string;
+            };
+            notices: {
+                noSubplots: string;
+                aiDisabled: string;
+                localLlmDisabled: string;
+                localLlmRequiresUrl: string;
+                providerKeyMissing: string;
+            };
+            subplotPicker: {
+                title: string;
+                subtitle: string;
+                badge: string;
+                badgeWith: string;
+                flaggedScenes: string;
+                processableScenes: string;
+                totalScenes: string;
+                pickLabel: string;
+                processFlagged: string;
+                processEntire: string;
+                purgeAll: string;
+                cancel: string;
+                stats: string;
+                infoLocalLlm: string;
+                infoCloud: string;
+                infoLine: string;
+                noOptions: string;
+                unknownSelection: string;
+            };
+            errorPrefix: string;
+            aiDisabledLabel: string;
+        };
+        aiProvider: {
+            callError: string;
+            genericError: string;
+        };
+        commands: {
+            runtimeEstimator: string;
+        };
+        runtime: {
+            notices: {
+                noScenesToProcess: string;
+                aiAnalyzing: string;
+                completeWithErrors: string;
+                completeSuccess: string;
+            };
         };
     };
 }
@@ -1700,8 +2439,8 @@ export const en: TranslationKeys = {
             previewButton: 'Preview Scaffold',
             cancelButton: 'Cancel',
             restoreButton: 'Restore Last Snapshot',
-            restoreTooltip: 'Restore previous timeline state from snapshot saved {{label}}.',
-            restoreEmptyTooltip: 'No snapshot found. Snapshots are created automatically when you Apply Scaffolded Dates.',
+            restoreTooltip: 'Roll back your timeline dates to the restore point saved {{label}}. A snapshot is a restore point for date rollback — it is captured automatically each time you Apply Scaffolded Dates.',
+            restoreEmptyTooltip: 'No snapshot found yet. A snapshot is a restore point that lets you roll back your timeline dates. One is created automatically each time you Apply Scaffolded Dates.',
         },
         anchor: {
             name: 'Anchor',
@@ -1750,14 +2489,18 @@ export const en: TranslationKeys = {
             auditToggleOn: 'Marked for Timeline Audit. Click to remove.',
             auditToggleOff: 'Send this scene to Timeline Audit.',
             narrativePlacement: 'Narrative placement {{count}}',
+            chronoPosition: 'Chronological position {{count}}',
             emptyFilter: 'No scenes match the current filters.',
             untitled: 'Untitled',
             warningBackwardTime: 'Backward time',
             warningLargeGap: 'Large time gap',
             warningMissingWhen: 'No existing When date — scaffolded',
+            warningDuplicateWhen: 'Another scene shares this exact date and time',
             openInWorkspace: 'Scene is open in your workspace',
-            dayMinus: '\u22121d',
-            dayPlus: '+1d',
+            shiftDayBack: 'Shift back 1 day',
+            shiftDayForward: 'Shift forward 1 day',
+            shiftHourBack: 'Shift back 1 hour',
+            shiftHourForward: 'Shift forward 1 hour',
             summaryChanged: '{{count}} changed',
             summaryNeedReview: '{{count}} need review',
             summarySelected: '{{count}} selected',
@@ -2330,6 +3073,745 @@ export const en: TranslationKeys = {
             fullProSetLabel: 'Full Pro Set',
             collapse: 'Collapse',
             expand: 'Expand',
+        },
+    },
+    bookDesigner: {
+        saveTemplate: {
+            badge: 'SCENE SET',
+            title: 'Save scene layout',
+            subtitle: 'Name this layout so you can reuse it later.',
+            nameField: {
+                name: 'Layout name',
+                desc: 'Choose a short, unique name.',
+                placeholder: 'e.g., Thriller / 3-Act Balanced',
+            },
+            note: 'Templates capture layout, acts, subplots, characters, beats toggle, and the selected YAML type (base/advanced).',
+            nameRequired: 'Template name is required.',
+        },
+        deleteTemplate: {
+            title: 'Delete layout',
+            subtitle: 'Delete "{{name}}"? This cannot be undone.',
+        },
+        demoProject: {
+            badge: 'DEMO',
+            title: 'Generate nonlinear demo project',
+            subtitle: 'Creates a 20-scene, 5-act example to show the difference between narrative order (the order the reader encounters scenes) and chronological order (when events actually happen). The scene numbers run 1–20 in narrative order, but the dates and times jump around — open the START HERE note after generating to see how, and switch between Timeline and Chronologue views to compare.',
+            startDate: {
+                name: 'Start date',
+                desc: 'Used for the chronologue cadence. Format: YYYY-MM-DD.',
+            },
+            note: 'This will also ensure the workspace is configured for five acts so the demo renders correctly.',
+            generate: 'Generate Demo Project',
+            invalidDate: 'Use a valid start date in YYYY-MM-DD format.',
+        },
+        modal: {
+            badge: 'SETUP',
+            title: 'Book designer',
+            subtitle: 'Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.',
+            wikiAriaLabel: 'Read more in the Wiki',
+            noBookSelected: 'No book selected',
+            untitled: 'Untitled',
+        },
+        meta: {
+            autoMode: 'Auto mode',
+            manualMode: 'Manual mode',
+            manualLayoutActive: 'Manual layout active',
+            autoDistribution: 'Auto distribution',
+            fromTemplate: ' · From template',
+        },
+        sections: {
+            locationStructure: 'Location & Structure',
+            contentConfiguration: 'Content Configuration',
+            sceneSetsExtras: 'Scene Sets & Extras',
+        },
+        fields: {
+            targetBook: {
+                name: 'Target book',
+                desc: 'Choose the Book Manager project where scenes and beats will be created.',
+                noBooks: 'No books configured',
+                addFirstNote: 'Add a book in Book Manager and set its folder before generating a scaffold here.',
+            },
+            timeIncrement: {
+                name: 'Date increment per scene',
+                desc: 'Timeline increment across scenes (e.g. 1 hour, 1 day, 1 week). Set to 0 to disable increments.',
+                placeholder: '1 day',
+                invalid: 'Invalid duration: "{{raw}}". Reverting to {{current}}.',
+            },
+            scenes: {
+                name: 'Scenes to generate',
+                desc: 'Number of template scene files to create with YAML frontmatter.',
+            },
+            targetLength: {
+                name: 'Target book length',
+                desc: 'Used for numbering distribution (e.g. 10, 20, 30...)',
+                detail: 'Scenes will be numbered: {{examples}}{{suffix}} based on {{scenes}} scenes across {{max}} units.',
+            },
+            acts: {
+                label: 'Acts to distribute scenes across',
+                actLabel: 'Act {{num}}',
+            },
+            subplots: {
+                name: 'Subplots',
+                desc: 'Enter one subplot per line.',
+            },
+            characters: {
+                name: 'Characters',
+                desc: 'Enter one character per line.',
+            },
+            sceneSet: {
+                label: 'Scene set',
+                base: 'Base Scene Set',
+                advanced: 'Advanced properties',
+            },
+            generateBeats: {
+                withSystem: 'Generate {{name}} beats',
+                noSystem: 'No beat system active',
+                tooltipNoSystem: 'Select a beat system in Settings → Beats to enable beat generation.',
+                existsAria: 'Beat notes already exist in this folder',
+                noSystemAria: 'Select a beat system in Settings → Beats first',
+                yes: 'Yes',
+                no: 'No',
+            },
+            sceneLayouts: {
+                name: 'Scene layouts',
+                desc: 'Select a saved layout (acts, subplots, assignments, metadata).',
+                newOption: 'New template',
+                emptyOption: '—',
+            },
+        },
+        preview: {
+            title: 'Preview',
+            dragging: 'Dragging scene {{scene}} → Act {{act}}, {{subplot}}',
+            subplotFallback: 'Subplot {{num}}',
+        },
+        buttons: {
+            saveSceneSet: 'Save Scene Set',
+            reset: 'Reset',
+            demoProject: 'Demo Project',
+            deleteLayout: 'Delete layout',
+            createBook: 'Create Book',
+            save: 'Save',
+            delete: 'Delete',
+            cancel: 'Cancel',
+        },
+        notes: {
+            layoutTemplatesIncludes: 'Includes scenes, acts, subplots, beats, and chronologue timing.',
+        },
+        notices: {
+            layoutReset: 'Layout reset to defaults with auto distribution.',
+            templateDeleted: 'Template deleted.',
+            templateNotFound: 'Template not found.',
+            templateSaved: 'Template "{{name}}" saved.',
+            templateUpdated: 'Template "{{name}}" updated.',
+            templateApplied: 'Applied template "{{name}}".',
+            selectBookForDemo: 'Select a Book Manager book with a folder before generating a demo project.',
+            selectBookForGenerate: 'Select a Book Manager book with a folder before generating scenes.',
+            folderError: 'Error creating folder: {{error}}',
+            baseSetMissing: 'Base scene set not found in settings. Set a scene set before generating.',
+            generating: 'Generating {{count}} scenes...',
+            beatsExist: 'Beat notes already exist in this folder ({{count}} found). Use the beat manager in settings to repair or resync.',
+            noBeatSystemActive: 'No active beat system selected for this book. Choose one in Beat Manager before creating beat notes.',
+            beatsError: 'Error creating beats: {{error}}',
+            bookCreated: 'Book created! {{scenes}} scenes{{skipped}}{{beats}}.',
+            bookCreatedSkipped: ' (skipped {{count}} existing)',
+            bookCreatedBeatsExist: ' (beats already exist)',
+            bookCreatedBeats: ', {{count}} beat notes',
+            demoReady: 'Demo project ready: {{scenes}} scenes, {{notes}} notes, {{beats}} beat notes.{{skipped}}',
+            demoSkipped: ' Skipped {{scenes}} existing scenes and {{notes}} existing notes.',
+        },
+    },
+    gossamer: {
+        scoreModal: {
+            badgePrefix: 'Gossamer {{signal}}',
+            beatSystemTitle: '{{label}} beat system',
+            subtitle: 'Enter {{signal}} scores (0-100) for each beat. Previous scores will be saved as history.',
+            signalMeta: 'Signal: {{label}}',
+            beatsDetectedMeta: 'Beats detected: {{count}}',
+            noActiveBeatSystem: 'No active beat system selected for this book. Choose one in Beat Manager to score {{signal}} against a specific structure.',
+            noBeatsCustom: '⚠️ No custom story beats found. Create notes with "Class: Beat" and "Beat Model: {{label}}", or change beat system in Settings.',
+            noBeatsForModel: '⚠️ No story beats found with "Beat Model: {{label}}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.',
+            countMismatch: '⚠️ Expected {{expected}} beats for {{label}}, but found {{actual}} story beats with matching Beat Model. Check your vault.',
+            enterScoreLabel: 'Enter score',
+            scorePlaceholder: '0-100',
+            scoreCount: '({{count}} scores)',
+            groupMaintenance: 'Maintenance',
+            groupAi: 'AI workflow',
+            normalizeButton: 'Normalize history',
+            deleteButton: 'Delete {{label}} scores',
+            copyButton: 'Copy AI prompt',
+            pasteButton: 'Paste AI response',
+            saveButton: 'Save scores',
+            cancelButton: 'Cancel',
+            aiMetaPrefix: 'Prompt → clipboard · manuscript → ',
+            aiMetaVaultLink: 'vault file',
+            aiMetaSuffix: ' · {{count}} beats · {{label}}',
+            tooltipNormalizeAvailable: 'Compact numbering gaps and drop orphan justifications',
+            tooltipNormalizeNone: 'No gaps or orphan justifications detected — nothing to normalize',
+            tooltipCopy: 'Assemble prompt (role · rubric · beats · manuscript) and copy to clipboard',
+            tooltipPaste: 'Parse clipboard response and save in one step',
+            tooltipSave: 'Save manually entered scores',
+            tooltipCancel: 'Close without saving',
+            normalizeConfirmMessage: 'Will renumber and clean {{count}} beat{{plural}} with gaps or orphaned justifications. RT will archive removed Gossamer fields before cleanup.',
+            normalizedDone: 'Normalized Gossamer scores in {{count}} beat{{plural}}.',
+            normalizeArchive: 'Archived removed fields: {{path}}',
+            normalizeNothing: 'No Gossamer history to normalize.',
+            normalizeNoFragments: 'No fragmented scores detected.',
+            exportFolderMissing: 'Export folder not found yet — click "Copy AI prompt" to generate a manuscript first.',
+            openExplorerSidebar: 'Open the File Explorer sidebar to see the revealed file.',
+            explorerNoReveal: 'File explorer does not support reveal.',
+            pastePartial: '✓ Pasted {{matched}} of {{expected}} beats. Check for any misnamed rows.',
+            pasteSuccess: '✓ Pasted {{matched}} scores + justifications.',
+            pasteError: '⚠️ {{reason}} Expected: "Beat Name | 42 | justification"',
+            noBookSystem: 'No active beat system selected for this book.',
+            noBeatsAvailable: 'No beats available. Add Beat notes with the selected Beat Model first.',
+            noScenesInBook: 'No scenes found in the active book folder. Configure the book profile first.',
+            manuscriptEmpty: 'Manuscript is empty. Cannot build AI prompt.',
+            promptCopied: '✓ Prompt copied to clipboard. Manuscript saved to {{path}} ({{scenes}} scenes · {{words}} words). Paste the prompt into your LLM and upload this file as an attachment.',
+            promptCopyFailed: 'Failed to copy AI prompt to clipboard.',
+            clipboardReadFailed: 'Could not read clipboard.',
+            clipboardEmpty: 'Clipboard is empty.',
+            noScoresDetected: 'No scores detected. Expected "Beat Name | 42 | justification" per line.',
+            invalidScore: 'Invalid score for "{{title}}"',
+            errorsList: 'Errors: {{list}}',
+            noChanges: 'No changes to save.',
+            updatedCount: 'Updated {{count}} beat(s).',
+            saveFailed: 'Failed to save scores. Check console for details.',
+            archivedDeletion: 'Archived removed Gossamer fields before cleanup: {{path}}',
+            noScoresToDelete: 'No Gossamer {{signal}} scores found to delete.',
+            deletedScores: 'Deleted {{label}} scores from {{count}} Beat note(s). Other signal histories untouched.',
+            deleteFailed: 'Failed to delete all scores. Check console for details.',
+            missingMetadata: 'Missing {{field}} in Beat frontmatter for: {{preview}}{{remainder}}. Update the beat notes to customize the AI template.',
+            deleteConfirmBadge: 'Warning',
+            deleteConfirmTitle: 'Delete all {{label}} scores',
+            deleteConfirmSubtitle: 'RT will archive removed {{label}} slots to the Gossamer log before cleanup. Other signal histories are untouched.',
+            deleteConfirmBody: 'This will remove every Gossamer slot whose signal is {{label}} across ALL Beat notes in the active book, including their justifications. Slots belonging to other signals are kept.',
+            deleteConfirmButton: 'Delete {{label}} scores',
+            deleteConfirmCancel: 'Cancel',
+            normalizeConfirmBadge: 'Warning',
+            normalizeConfirmTitle: 'Normalize Gossamer history?',
+            normalizeConfirmSubtitle: 'This action cannot be undone. RT archives removed fields before cleanup.',
+            normalizeIssuesTitle: 'Beats to normalize',
+            normalizeGapLabel: 'Gap',
+            normalizeGapsLabel: 'Gaps',
+            normalizeOutOfOrder: 'Out-of-order numbering',
+            normalizeOrphanLabel: 'Orphaned justification',
+            normalizeOrphansLabel: 'Orphaned justifications',
+            normalizeWillCompact: 'Will compact numbering',
+            normalizeMoreSuffix: '+{{count}} more beat{{plural}} will be cleaned.',
+            normalizeConfirmButton: 'Normalize',
+            normalizeConfirmCancel: 'Cancel',
+        },
+        processingModal: {
+            statusInitializing: 'Initializing...',
+            badge: 'AI {{signal}} analysis',
+            title: 'Gossamer {{signal}} analysis',
+            backgroundContinues: 'Analysis continues in background.',
+            modelDisabled: 'AI disabled',
+            confirmSubtitle: 'Evaluate narrative {{signal}} at each story beat. This will pass the selected manuscript evidence to the AI for analysis. The AI does not reference previous scores or justifications, to avoid anchoring bias. The AI will return a score and justification for each beat.',
+            gatheringDetails: 'Gathering manuscript details...',
+            manuscriptInfoHeading: 'Manuscript Information',
+            keyMissing: '⚠️ {{provider}} saved key not configured. Please set your key in Settings → AI.',
+            beginButton: 'Begin Analysis',
+            cancelButton: 'Cancel',
+            analyzingManuscript: 'Analyzing manuscript...',
+            assemblingManuscript: 'Assembling manuscript...',
+            statusHeading: 'Status',
+            waitingToSend: 'Waiting to send...',
+            advancedHeading: 'AI prompt & context',
+            closeButton: 'Close',
+            waitingFirstRequest: 'Waiting for first AI request...',
+            statScenes: 'Scenes',
+            statWords: 'Words',
+            statCorpusTokens: 'Corpus Tokens',
+            statBeats: 'Story Beats',
+            statEvidence: 'Evidence',
+            evidenceDefault: 'Auto (scene bodies first)',
+            beatSystemLine: 'Beat System: {{name}}',
+            timerElapsed: 'Elapsed {{time}}',
+            timerLongerThanExpected: ' · running longer than expected (est. ~{{seconds}}s)',
+            timerEstimate: ' · est. ~{{seconds}}s',
+            timerTypical: ' · typically 30–90 seconds',
+            apiFailed: '✗ API call failed',
+            errorsHeader: 'Errors encountered:',
+            analysisComplete: 'Analysis complete',
+            analysisFailed: 'Analysis failed',
+            rateLimitWithRetry: 'Rate limit reached. Please try again in {{seconds}} seconds.',
+            rateLimit: 'Rate limit reached. Please try again later.',
+            rateLimited: '⚠️ Rate limited',
+            advRoleTemplate: 'Role template: {{value}}',
+            advResolvedModel: 'Resolved model: {{provider}} -> {{alias}} ({{label}})',
+            advModelSelectionReason: 'Model selection reason: {{value}}',
+            advAvailabilityVisible: 'Visible to your key ✅',
+            advAvailabilityNotVisible: 'Not visible ⚠️',
+            advAvailabilityUnknown: 'Unknown (snapshot unavailable)',
+            advAvailability: 'Availability: {{value}}',
+            advAppliedCaps: 'Applied caps: input={{input}}, output={{output}}',
+            advTokenEstimate: 'Token estimate: {{count}} via {{method}}',
+            advTokenEstimateUnavailable: 'Token estimate: unavailable',
+            advPackaging: 'Packaging: Automatic',
+            advEvidence: 'Evidence: {{value}}',
+            advFinalPromptLabel: 'Final composed prompt:',
+            advFinalPromptNone: '(none)',
+            advPassCount: 'Pass count: {{value}}',
+            advMultiPassTrigger: 'Multi-pass trigger: {{value}}',
+        },
+        notices: {
+            noStoryBeats: 'No story beats found. Create notes with frontmatter "Class: Beat".',
+            cannotEnterMode: 'Cannot enter Gossamer mode. {{hint}}',
+            systemHintWithModel: 'No "{{system}}" beat notes found in your vault. Create beat notes with "Class: Beat" and "Beat Model: {{system}}" in frontmatter.',
+            systemHintNoModel: 'No story beats found. Create notes with frontmatter "Class: Beat".',
+            modeMatchHintWithModel: 'No beat notes found matching "{{system}}". Check that your beat notes have "Beat Model: {{system}}" in frontmatter.',
+            modeMatchHintNoModel: 'No story beat notes could be matched. Ensure notes have "Class: Beat" in frontmatter.',
+            noScoresInfo: 'No Gossamer {{signal}} scores found. Showing ideal ranges and spokes. Add scores using the Gossamer score-entry command.',
+            modeToggleSwitchMain: 'Switch to Main Plot mode',
+            modeToggleSwitchAll: 'Switch to All Scenes mode',
+            noActiveBeatSystemRun: 'No active beat system selected for this book. Choose one in Beat Manager before running Gossamer.',
+            validating: 'Validating configuration...',
+            loadingBeats: 'Loading story beats...',
+            assemblingEvidence: 'Assembling manuscript evidence...',
+            assemblingEvidenceWithMode: 'Assembling manuscript evidence ({{mode}})...',
+            noScenesInBook: 'No scenes found in the active book folder.',
+            noSceneBodyContent: 'No scene body content available for analysis.',
+            buildingPrompt: 'Building analysis prompt...',
+            sendingToAi: 'Sending manuscript to AI for {{signal}} analysis...',
+            aiResponseError: 'Failed to get response from AI',
+            updatingBeats: 'Updating beat notes...',
+            archivedSnapshot: 'Archived replaced Gossamer history before save (1 snapshot).',
+            generatingLog: 'Generating analysis log...',
+            successUpdated: '✓ Updated {{count}} beats with {{signal}} scores',
+            successLogWithContent: '{{message}}. Log saved to {{path}} (evidence: {{mode}}).',
+            successLogWithoutContent: '{{message}}. Summary log saved to {{path}}. Content logs are disabled.',
+            processingFailed: 'Processing failed: {{error}}',
+            aiAnalysisFailed: 'Failed Gossamer AI analysis: {{error}}',
+            prepareFailed: 'Failed to prepare Gossamer analysis: {{error}}',
+            retryGemini: 'Retry or check Gemini API configuration.',
+            unmatchedBeats: 'Could not match {{count}} beat(s): {{list}}',
+        },
+        service: {
+            updatedBeatScoresPlural: 'Updated {{count}} beat scores ({{stage}} stage).',
+            updatedBeatScoreSingular: 'Updated {{count}} beat score ({{stage}} stage).',
+            archivedSingleSnapshot: 'Archived replaced Gossamer history in 1 snapshot.',
+            noBeatsUpdated: 'No beats were updated.',
+            updatedBeatScores: 'Updated {{count}} beat scores ({{stage}} stage).',
+            archivedWithPath: 'Archived replaced Gossamer history: {{path}}',
+        },
+    },
+    sceneAnalysis: {
+        confirm: {
+            badge: 'Confirm',
+            title: 'Confirm action',
+            continueButton: 'Continue',
+            cancelButton: 'Cancel',
+        },
+        processingModal: {
+            titleSummaryRefresh: 'Summary refresh',
+            titleScenePulse: 'Scene pulse analysis',
+            titleProcessingSubplot: 'Processing subplot: {{name}}',
+            titleProcessingEntireSubplot: 'Processing entire subplot: {{name}}',
+            badgeAiSummary: 'AI Summary',
+            badgeAiPulseRun: 'AI Pulse Run',
+            subtitleSynopsis: 'Generates Inquiry corpus summaries and writes each scene immediately as it completes. Existing Summary values are replaced (and Synopsis too if enabled).',
+            subtitleEntireSubplot: 'Analyzing every scene in subplot "{{name}}"',
+            subtitleFlaggedSubplot: 'Analyzing flagged scenes in subplot "{{name}}"',
+            modeUnprocessed: 'Scenes missing pulse metadata',
+            modeForceAll: 'Reprocessing every completed scene',
+            modeFlagged: 'Analyze flagged scenes in manuscript order',
+            modeSynopsisFlagged: 'Update flagged scenes',
+            modeSynopsisMissingWeak: 'Update missing, weak, or stale summaries',
+            modeSynopsisMissing: 'Update missing summaries only',
+            modeSynopsisAll: 'Regenerate ALL summaries',
+            modeOptions: {
+                synopsisFlaggedTitle: 'Selected scenes (Summary Update: yes)',
+                synopsisFlaggedDesc: 'Processes scenes with Summary Update: yes in frontmatter.',
+                synopsisMissingTitle: 'Missing only',
+                synopsisMissingDesc: 'Only processes scenes with absolutely no summary text.',
+                synopsisMissingWeakTitle: 'Missing, weak, or stale (Recommended)',
+                synopsisMissingWeakDesc: 'Processes scenes with no summary, under {{threshold}} words, or with a Due date newer than last AI update.',
+                synopsisAllTitle: 'Regenerate all (Warning)',
+                synopsisAllDesc: 'Regenerates summaries for every scene. Existing summaries will be overwritten.',
+                openTitle: 'Process open scenes',
+                openDesc: 'Processes scenes currently open in tabs (Status: Working or Complete). Use while actively editing — ignores the Pulse Update flag.',
+                flaggedTitle: 'Process flagged scenes (Recommended)',
+                flaggedDesc: "Processes scenes with Pulse Update: Yes and Status: Working or Complete. Use when you've revised scenes and want to update their pulse.",
+                unprocessedTitle: 'Process unprocessed scenes',
+                unprocessedDesc: "Processes scenes with Status: Complete or Working that don't have pulse yet. Perfect for resuming after interruptions. Ignores Pulse Update flag.",
+                forceAllTitle: 'Reprocess ALL scenes',
+                forceAllDesc: 'Reprocesses ALL scenes with Status: Complete or Working, even if they already have pulse. Use when changing AI templates or doing complete reanalysis. WARNING: May be expensive!',
+            },
+            controls: {
+                targetLengthLabel: 'Target summary length',
+                targetLengthHelp: 'Target word count for Summary refresh. Each completed scene is written immediately to frontmatter.',
+                weakThresholdLabel: 'Treat summary as weak if under',
+                weakThresholdHelp: 'Only used to decide which scenes are selected for update.',
+                alsoUpdateSynopsis: 'Also update Synopsis',
+                alsoUpdateSynopsisHelp: 'Also replace Synopsis with a concise version generated from scene content. Current stored length target is {{words}} words. Hover may use a little more when space allows.',
+                synopsisLengthInvalid: 'Synopsis length must be between 10 and 300 words.',
+                thresholdWarning: '⚠️ Target size ({{target}}) is less than weak threshold ({{threshold}}). Newly generated summaries may be immediately classified as weak.',
+            },
+            count: {
+                calculating: 'Calculating...',
+                scenesToProcessLabel: 'Scenes to process: ',
+                estimatedTimeLabel: 'Estimated time: ',
+                estimatedTimeValue: '~{{minutes}} minutes',
+                largeBatchWarning: 'Large batch processing may take significant time and API costs.',
+                errorCalculating: 'Error calculating scene count: {{error}}',
+            },
+            buttons: {
+                start: 'Start processing',
+                purge: 'Purge all pulse',
+                cancel: 'Cancel',
+                abort: 'Abort processing',
+                close: 'Close',
+                applyChanges: 'Apply {{count}} Changes',
+                discard: 'Discard',
+                resume: 'Resume ({{remaining}} remaining)',
+            },
+            confirmLargeBatch: 'You are about to process {{count}} scenes. This may take {{minutes}} minutes and incur API costs. Continue?',
+            queue: {
+                title: 'Scene queue',
+                empty: 'Queue builds once eligible scenes are found...',
+                noteSynopsis: 'Processing scenes to generate or update summaries based on scene content.',
+                notePulse: 'Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.',
+                previousLabel: 'Previous',
+                currentLabel: 'Current',
+                nextLabel: 'Next',
+                startOfBoundary: 'Start of {{boundary}}',
+                endOfBoundary: 'End of {{boundary}}',
+                boundaryManuscript: 'manuscript',
+                boundarySubplot: 'subplot',
+                unnumberedScene: 'Unnumbered scene',
+            },
+            progress: {
+                initializing: 'Initializing… preparing first scene (0%)',
+                initializingPipeline: 'Initializing pipeline...',
+                sceneProgress: '{{current}} / {{total}} scenes ({{percentage}}%)',
+                processingScene: 'Processing: {{sceneName}}',
+                processingSceneEstimate: 'Processing: {{sceneName}} (~{{seconds}}s)',
+                progressSummary: '{{success}} / {{total}} scenes updated',
+                progressSummarySingle: '{{count}} scene updated',
+                progressSummaryPlural: '{{count}} scenes updated',
+                failedCount: '{{count}} failed',
+                skippedCount: '{{count}} skipped',
+            },
+            apply: {
+                review: 'Review and apply changes',
+                messageSummary: 'Processing complete. {{count}} scenes have new summaries ready to apply, and applying will replace existing Summary values in frontmatter.',
+                messageSummaryAndSynopsis: 'Processing complete. {{count}} scenes have new summaries and synopses ready to apply, and applying will replace existing Summary and Synopsis values in frontmatter.',
+                applyingUpdates: 'Applying {{count}} summary updates...',
+                applyingUpdatesSynopsis: 'Applying {{count}} summary & synopsis updates...',
+                successUpdated: 'Successfully updated {{count}} scenes.',
+                applyError: 'Error applying changes. Check console.',
+                artifactSummary: 'summaries',
+                artifactSummaryAndSynopsis: 'summaries and synopses',
+            },
+            completion: {
+                aborted: 'Processing aborted',
+                successMessage: 'Processing completed successfully!',
+                stoppedDueToError: 'Processing stopped due to error',
+                fatalError: 'Fatal error: {{error}}',
+                processingDetailsHeading: 'Processing details',
+                errorsCount: 'Errors: {{count}}',
+                warningsCount: 'Warnings: {{count}} (skipped due to validation)',
+                possibleFix: 'Possible fix: {{hint}}',
+                logsSaved: 'Logs saved to {{path}}. Scene properties updated.',
+                logsNoRequest: 'Logging is enabled, but no AI request reached the server. Scene properties updated.',
+                issuesContinue: 'Issues encountered (processing continues):',
+                issuesAfter: 'Issues encountered:',
+            },
+            abort: {
+                confirmMessage: 'Are you sure you want to abort processing? Progress will be saved up to the current scene.',
+                aborting: 'Aborting... Please wait.',
+                stoppedDueToError: 'Processing stopped due to error',
+                noticeAbortedByUser: 'Processing aborted by user',
+            },
+            errorHints: {
+                temperatureDefault: 'This model only accepts its default temperature. Remove the custom temperature override in Settings → AI Providers.',
+                modelNotFound: 'Verify that the selected Local LLM model is available on the configured backend and update the Local LLM model ID in settings to match exactly.',
+                ollamaNotResponding: 'Launch the {{backend}} server and confirm the Local LLM base URL points to the running endpoint.',
+                connectionRefused: 'The plugin could not contact the local server. Check that it is running and that Obsidian has network permission.',
+                schemaJson: 'The response was not valid JSON. Try switching to a larger or more instruction-following model.',
+                contextTooLong: 'This pass exceeded the model budget for that request. Summary refresh sends the full scene text, and optional Synopsis adds a second full-scene pass. Processing continues; only this scene/pass failed.',
+            },
+            aiAdvanced: {
+                summary: 'AI prompt & context',
+                waiting: 'Waiting for first AI request...',
+                roleTemplate: 'Role template: {{name}}',
+                resolvedModel: 'Resolved model: {{provider}} -> {{alias}} ({{label}})',
+                modelSelectionReason: 'Model selection reason: {{reason}}',
+                availabilityVisible: 'Visible to your key ✅',
+                availabilityNotVisible: 'Not visible ⚠️',
+                availabilityUnknown: 'Unknown (snapshot unavailable)',
+                availabilityLabel: 'Availability: {{status}}',
+                appliedCaps: 'Applied caps: input={{input}}, output={{output}}',
+                estimatedInput: 'Estimated input: ~{{tokens}} tokens',
+                packagingAuto: 'Packaging: Automatic',
+                finalPrompt: 'Final composed prompt:',
+                none: '(none)',
+                passCount: 'Pass count: {{count}}',
+                multiPassTrigger: 'Multi-pass trigger: {{reason}}',
+            },
+            synopsisPreview: {
+                previousLabel: 'Previous Summary: ',
+                noSummary: '(No summary)',
+                generating: 'Generating...',
+            },
+            unknownError: 'Unknown error',
+            warningEncountered: 'Warning encountered',
+            backgroundProcessing: 'Processing continues in background. Use command palette to reopen progress window.',
+            noScenesSelected: 'No scenes to process with the selected mode.',
+            errorPrefix: 'Error: {{error}}',
+        },
+        runtimeModal: {
+            badgePro: 'PRO',
+            badgeAudiobook: 'Audiobook',
+            badgeScreenplay: 'Screenplay',
+            badgeRuntime: 'Runtime · {{mode}}',
+            badgeRuntimeEstimator: 'Runtime estimator · {{mode}}',
+            title: 'Runtime estimation',
+            titleProgress: 'Estimating Runtimes...',
+            subtitle: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.',
+            sections: {
+                scope: 'Scope',
+                scopeDesc: 'Select which scenes to process for runtime estimation.',
+                statusFilter: 'Scene Status Filter',
+                statusFilterDesc: 'Only scenes with the selected status will be processed.',
+                override: 'Override',
+                overrideDesc: 'By default, only scenes without a Runtime value are processed.',
+                settings: 'Estimation Settings',
+                mode: 'Estimation Mode',
+                summary: 'Summary',
+            },
+            statusFilter: {
+                todo: 'Todo',
+                working: 'Working',
+                complete: 'Complete',
+            },
+            scope: {
+                current: 'Current scene',
+                subplot: 'Subplot scenes',
+                all: 'All scenes',
+                subplotLabel: 'Subplot:',
+                sceneLabel: 'Scene: ',
+                noSceneOpen: 'No scene open',
+            },
+            override: {
+                recalculate: 'Recalculate all',
+                recalculateHint: 'Replaces existing Runtime values, including manual estimates you may have entered.',
+            },
+            settings: {
+                accordionTitle: 'Estimation Settings',
+                accordionHint: '({{mode}})',
+                profileLabel: 'Profile:',
+                dialogueRateLabel: 'Dialogue rate:',
+                actionRateLabel: 'Action/Description rate:',
+                narrationRateLabel: 'Narration rate:',
+                wpmValue: '{{value}} wpm',
+                parentheticalTimingsHeader: 'Parenthetical Timings',
+                timingBeat: '(beat)',
+                timingPause: '(pause)',
+                timingLongPause: '(long pause)',
+                timingMoment: '(a moment)',
+                timingSilence: '(silence)',
+                secondsValue: '{{value}}s',
+                configHint: 'Configure these values in Settings → Pro → Runtime estimation',
+            },
+            modes: {
+                local: 'Local',
+                ai: 'AI',
+                localDesc: 'No data sent externally. Runtime calculated locally using word counts, configured WPM rates, and parenthetical timing directives.',
+                aiDesc: 'Each scene sent to {{provider}} along with local stats. AI analyzes pacing and context to estimate runtime. Writes AI estimate to each scene.',
+            },
+            provider: {
+                aiDisabled: 'AI disabled',
+                providerLabel: '{{provider}} ({{model}})',
+                providerLabelLocal: '{{provider}} ({{model}} @ {{baseUrl}})',
+            },
+            count: {
+                calculating: 'Calculating...',
+                scenesToProcessLabel: 'Scenes to process: ',
+                hintCurrent: 'Open a scene file to estimate its runtime.',
+                hintNoStatus: 'Select at least one status filter.',
+                hintAlreadyRuntime: 'All matching scenes already have Runtime values. Enable "Override existing" to recalculate.',
+                errorPrefix: 'Error: {{error}}',
+            },
+            buttons: {
+                settingsTooltip: 'Open runtime settings',
+                estimate: 'Estimate Runtimes',
+                cancel: 'Cancel',
+                abort: 'Abort',
+                close: 'Close',
+            },
+            progress: {
+                initializing: 'Initializing...',
+                initialProgress: '0 / {{total}} scenes (0%)',
+                runningTotalLabel: 'Running total: ',
+                runningTotalDefault: '0:00',
+                sceneProgress: '{{current}} / {{total}} scenes ({{percentage}}%)',
+                processingScene: 'Processing: {{sceneName}}',
+                scenesProcessed: '{{count}} scenes processed',
+            },
+            completion: {
+                successMessage: 'Estimation completed successfully!',
+                aborted: 'Estimation aborted',
+                errorPrefix: 'Error: {{error}}',
+                aiEstimateReady: 'AI estimate ready.',
+                aiErrorPrefix: 'AI error: {{error}}',
+                localAiCompare: 'Local: {{local}} · {{aiLabel}}: {{aiRuntime}}{{deltaText}}',
+            },
+            aiAdvanced: {
+                summary: 'AI prompt & context',
+                waiting: 'Waiting for first AI request...',
+                roleTemplate: 'Role template: {{name}}',
+                resolvedModel: 'Resolved model: {{provider}} -> {{alias}} ({{label}})',
+                modelSelectionReason: 'Model selection reason: {{reason}}',
+                availabilityVisible: 'Visible to your key ✅',
+                availabilityNotVisible: 'Not visible ⚠️',
+                availabilityUnknown: 'Unknown (snapshot unavailable)',
+                availabilityLabel: 'Availability: {{status}}',
+                appliedCaps: 'Applied caps: input={{input}}, output={{output}}',
+                packagingAuto: 'Packaging: Automatic',
+                finalPrompt: 'Final composed prompt:',
+                none: '(none)',
+                passCount: 'Pass count: {{count}}',
+                multiPassTrigger: 'Multi-pass trigger: {{reason}}',
+            },
+            notices: {
+                background: 'Processing continues in background.',
+                aborting: 'Aborting...',
+                aiAnalyzing: 'AI analyzing: {{title}}',
+            },
+        },
+        pipeline: {
+            notices: {
+                processingSubplotInit: 'Processing Subplot: Getting scene data...',
+                analyzingSubplot: 'Analyzing {{count}} scenes for subplot order...',
+                sceneStatusSkip: 'Scene {{sceneRef}} (subplot {{subplot}}) has Pulse Update set but Status is not working/complete. Skipping.',
+                processingScene: "Processing scene {{num}} ({{current}}/{{total}}) - Subplot: '{{name}}'...",
+                progressUpdate: 'Progress: {{current}}/{{total}} scenes processed...',
+                subplotComplete: 'Subplot order processing complete: {{processed}}/{{total}} triplets processed.',
+                subplotErrorGeneric: 'Error processing subplots. Check console for details.',
+                noSubplotScenes: 'No scenes with subplots found.',
+                noScenesValid: 'No valid scenes found in the active book folder.',
+                noFlaggedSubplotScenes: 'No flagged scenes (Pulse Update: Yes/True/1) with content found for "{{name}}".',
+                noScenesForSubplot: 'No scenes found for subplot "{{name}}".',
+                noScenesContentSubplot: 'No scenes with content found for subplot "{{name}}".',
+                noRemainingResumingSubplot: 'No remaining scenes to process for subplot "{{name}}" (all may have been processed today).',
+                noFlaggedPulseUpdateSubplot: 'No flagged scenes (Pulse Update: Yes) with content found for subplot "{{name}}".',
+                abortedByUser: 'Processing aborted by user',
+                abortedRateLimit: 'Processing aborted by user or rate limit',
+                fatalError: 'Fatal error: {{error}}',
+            },
+            errors: {
+                failedUpdate: 'Failed to update file for scene {{num}}: {{path}}',
+                aiProcessingFailed: 'AI processing failed for scene {{num}}: {{path}}',
+                fatalScene: 'Fatal error while processing scene {{num}}: {{path}}\n{{detail}}',
+                localLlmReview: 'Local LLM result needs review for scene {{num}}: {{path}}. See logs.',
+            },
+        },
+        maintenance: {
+            yamlTest: {
+                starting: 'Starting YAML update test on {{file}}...',
+                errorTfile: 'Error: Could not get TFile for {{file}}',
+                errorMissingFm: 'Error: Dummy file {{file}} is missing frontmatter.',
+                errorParse: 'Error: Failed to parse dummy API response data.',
+                success: 'Successfully updated YAML in {{file}}. Please check the file formatting.',
+                failed: 'Failed to update YAML in {{file}}. Check console for errors.',
+                errorGeneric: 'Error during YAML update test. Check console.',
+            },
+            purge: {
+                badgeWarning: 'Warning',
+                title: 'Confirm purge beats',
+                subtitle: 'RT will archive removed scene-analysis fields before cleanup.',
+                dangerHeader: 'This will remove these fields and archive them to a log snapshot first:',
+                areYouSure: 'Are you sure you want to proceed?',
+                buttonPurge: 'Purge beats',
+                buttonCancel: 'Cancel',
+                noScenes: 'No scenes found in manuscript.',
+                confirmManuscript: 'Purge ALL beats from {{count}} scene{{plural}} in your manuscript?',
+                confirmSubplot: 'Purge beats from {{count}} scene{{plural}} in subplot "{{name}}"?',
+                detailFields: '`previousSceneAnalysis`, `currentSceneAnalysis`, `nextSceneAnalysis` fields',
+                detailPulseUpdate: '`Pulse Update` timestamp',
+                detailPulseLastUpdated: '`Pulse Last Updated` timestamps',
+                noticeStart: 'Purging beats from all scenes...',
+                noticeStartSubplot: 'Purging beats from "{{name}}"...',
+                resultManuscript: 'Purged beats from {{purged}} of {{total}} scene{{plural}}.',
+                resultSubplot: 'Purged beats from {{purged}} of {{total}} scene{{plural}} in subplot "{{name}}".',
+                archived: 'Archived removed fields: {{path}}',
+                errorGeneric: 'Error purging beats. Check console for details.',
+            },
+            saveError: 'Error saving updates to {{file}}',
+        },
+        synopsis: {
+            notices: {
+                reopeningSession: 'Reopening active processing session...',
+                noScenesScope: 'No scene notes found in the active book scope.',
+                scopeMessage: 'Summary refresh scope: {{scope}}',
+                noMatchingScenes: 'No scenes found matching the selected criteria.',
+                sceneFileNotFound: 'Scene file not found: {{path}}',
+            },
+            aiErrors: {
+                aiError: 'AI Error: {{name}}',
+                jsonParseError: 'JSON Parse Error: {{name}}',
+                emptyResult: 'Empty result: {{name}}',
+                synopsisFailed: 'Synopsis generation failed for {{name}}. Summary was saved and processing continued. {{reason}}',
+                saveError: 'Save error for {{name}}: {{message}}',
+                summaryFailed: 'Summary generation failed for {{name}}. Processing continued with remaining scenes. {{reason}}',
+                contextTooLongWithSize: 'The {{pass}} request exceeded the model budget for this pass. Scene text was about {{words}} words. Summary refresh sends the full scene text, and optional Synopsis sends another full-scene request.',
+                contextTooLongNoSize: 'The {{pass}} request exceeded the model budget for this pass. Summary refresh sends the full scene text, and optional Synopsis sends another full-scene request.',
+                unknownPassFailure: 'Unknown {{pass}} failure.',
+            },
+        },
+        service: {
+            commands: {
+                summaryRefresh: 'Summary refresh',
+                scenePulseManuscript: 'Scene pulse analysis (manuscript order)',
+                scenePulseSubplot: 'Scene pulse analysis (subplot order)',
+                runtimeEstimator: 'Runtime estimator',
+            },
+            notices: {
+                noSubplots: 'No subplots found.',
+                aiDisabled: 'AI Strategy is disabled. Choose an AI provider in Settings → AI.',
+                localLlmDisabled: 'Local LLM is disabled. Enable it in Settings → AI.',
+                localLlmRequiresUrl: 'Local LLM requires a base URL and model selection.',
+                providerKeyMissing: '{{provider}} saved key is not set in settings.',
+            },
+            subplotPicker: {
+                title: 'Process subplot scenes',
+                subtitle: 'Choose a subplot and run pulse updates just for that arc.',
+                badge: 'AI pulse run',
+                badgeWith: 'AI pulse run · {{model}}',
+                flaggedScenes: 'Flagged scenes',
+                processableScenes: 'Processable scenes',
+                totalScenes: 'Total scenes',
+                pickLabel: 'Pick a subplot to process',
+                processFlagged: 'Process flagged scenes',
+                processEntire: 'Process entire subplot',
+                purgeAll: 'Purge all pulse',
+                cancel: 'Cancel',
+                stats: '{{flagged}} flagged • {{processable}} processable • {{total}} total',
+                infoLocalLlm: 'Local LLM mode: Valid results update scene hover fields automatically. Invalid results are logged and marked for review.',
+                infoCloud: 'Your manuscript will be sent to the AI for pulse analysis of the selected scenes.',
+                infoLine: 'Process pulse using {{model}} for the subplot "{{name}}".',
+                noOptions: 'No subplot options available.',
+                unknownSelection: 'Unknown subplot selection: {{name}}',
+            },
+            errorPrefix: 'Error: {{error}}',
+            aiDisabledLabel: 'AI disabled',
+        },
+        aiProvider: {
+            callError: 'Error calling {{provider}} API:\n{{detail}}',
+            genericError: 'Error calling {{provider}} AI provider.',
+        },
+        commands: {
+            runtimeEstimator: 'Runtime estimator',
+        },
+        runtime: {
+            notices: {
+                noScenesToProcess: 'No scenes to process.',
+                aiAnalyzing: 'AI analyzing: {{title}}',
+                completeWithErrors: '{{mode}} estimation complete. {{processed}} scenes updated, {{errors}} errors.',
+                completeSuccess: '{{mode}} estimation complete! {{processed}} scenes updated. Total: {{total}}',
+            },
         },
     },
 };

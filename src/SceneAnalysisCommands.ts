@@ -28,6 +28,7 @@ import {
     processEntireSubplotWithModalInternal,
     getActiveContextPrompt
 } from './sceneAnalysis/Processor';
+import { t } from './i18n';
 
 export { calculateSceneCount, calculateFlaggedCount, getDistinctSubplotNames } from './sceneAnalysis/data';
 export { processBySubplotOrder } from './sceneAnalysis/Processor';
@@ -116,7 +117,7 @@ async function updateSceneFile(
         return true;
     } catch (error) {
         console.error(`[updateSceneFile] Error updating file:`, error);
-        new Notice(`Error saving updates to ${scene.file.basename}`);
+        new Notice(t('sceneAnalysis.maintenance.saveError', { file: scene.file.basename }));
         return false;
     }
 }
@@ -149,7 +150,7 @@ export async function processEntireSubplotWithModal(
     // If there's already an active processing modal, just reopen it
     if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
         plugin.activeBeatsModal.open();
-        new Notice('Reopening active processing session...');
+        new Notice(t('sceneAnalysis.synopsis.notices.reopeningSession'));
         return;
     }
 
@@ -179,9 +180,9 @@ export async function processEntireSubplotWithModal(
     // Pre-check: verify there are scenes to process BEFORE opening modal
     const sceneCount = await getSceneCount();
     if (sceneCount === 0) {
-        const reason = isResuming 
-            ? `No remaining scenes to process for subplot "${subplotName}" (all may have been processed today).`
-            : `No scenes with content found for subplot "${subplotName}".`;
+        const reason = isResuming
+            ? t('sceneAnalysis.pipeline.notices.noRemainingResumingSubplot', { name: subplotName })
+            : t('sceneAnalysis.pipeline.notices.noScenesContentSubplot', { name: subplotName });
         new Notice(reason);
         return;
     }
@@ -233,16 +234,16 @@ export async function processEntireSubplotWithModal(
                 
                 // Show appropriate summary
                 if (this.abortController && this.abortController.signal.aborted) {
-                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                    this.showCompletionSummary(t('sceneAnalysis.pipeline.notices.abortedRateLimit'));
                 } else {
-                    this.showCompletionSummary('Processing completed successfully!');
+                    this.showCompletionSummary(t('sceneAnalysis.processingModal.completion.successMessage'));
                 }
             } catch (error) {
                 if (!this.abortController.signal.aborted) {
-                    this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-                    this.showCompletionSummary('Processing stopped due to error');
+                    this.addError(t('sceneAnalysis.pipeline.notices.fatalError', { error: error instanceof Error ? error.message : String(error) }));
+                    this.showCompletionSummary(t('sceneAnalysis.processingModal.completion.stoppedDueToError'));
                 } else {
-                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                    this.showCompletionSummary(t('sceneAnalysis.pipeline.notices.abortedRateLimit'));
                 }
             } finally {
                 this.isProcessing = false;
@@ -265,7 +266,7 @@ export async function processBySubplotNameWithModal(
     // If there's already an active processing modal, just reopen it
     if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
         plugin.activeBeatsModal.open();
-        new Notice('Reopening active processing session...');
+        new Notice(t('sceneAnalysis.synopsis.notices.reopeningSession'));
         return;
     }
 
@@ -287,7 +288,7 @@ export async function processBySubplotNameWithModal(
     // Pre-check: verify there are scenes to process BEFORE opening modal
     const sceneCount = await getSceneCount();
     if (sceneCount === 0) {
-        new Notice(`No flagged scenes (Pulse Update: Yes) with content found for subplot "${subplotName}".`);
+        new Notice(t('sceneAnalysis.pipeline.notices.noFlaggedPulseUpdateSubplot', { name: subplotName }));
         return;
     }
 
@@ -338,16 +339,16 @@ export async function processBySubplotNameWithModal(
                 
                 // Show appropriate summary
                 if (this.abortController && this.abortController.signal.aborted) {
-                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                    this.showCompletionSummary(t('sceneAnalysis.pipeline.notices.abortedRateLimit'));
                 } else {
-                    this.showCompletionSummary('Processing completed successfully!');
+                    this.showCompletionSummary(t('sceneAnalysis.processingModal.completion.successMessage'));
                 }
             } catch (error) {
                 if (!this.abortController.signal.aborted) {
-                    this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-                    this.showCompletionSummary('Processing stopped due to error');
+                    this.addError(t('sceneAnalysis.pipeline.notices.fatalError', { error: error instanceof Error ? error.message : String(error) }));
+                    this.showCompletionSummary(t('sceneAnalysis.processingModal.completion.stoppedDueToError'));
                 } else {
-                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                    this.showCompletionSummary(t('sceneAnalysis.pipeline.notices.abortedRateLimit'));
                 }
             } finally {
                 this.isProcessing = false;

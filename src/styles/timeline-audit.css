@@ -455,8 +455,19 @@
 }
 
 .ert-timeline-audit-row-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
     color: var(--text-muted);
     flex: 0 0 auto;
+}
+
+.ert-timeline-audit-row-chevron svg {
+    width: 16px;
+    height: 16px;
+    display: block;
 }
 
 .ert-timeline-audit-detail-wrap {

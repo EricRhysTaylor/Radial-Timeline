@@ -22,6 +22,7 @@ import { getSynopsisGenerationWordLimit, truncateToWordLimit } from '../utils/sy
 import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
 import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import { snapshotFrontmatterFields } from '../utils/logVaultOps';
+import { t } from '../i18n';
 
 /**
  * Check freshness: is the scene's Due/Completed date newer than the last AI update timestamp?
@@ -91,7 +92,7 @@ async function persistSummaryForScene(
 ): Promise<{ summary: string; synopsis?: string }> {
     const file = plugin.app.vault.getAbstractFileByPath(scenePath);
     if (!(file instanceof TFile)) {
-        throw new Error(`Scene file not found: ${scenePath}`);
+        throw new Error(t('sceneAnalysis.synopsis.notices.sceneFileNotFound', { path: scenePath }));
     }
 
     const summary = String(summaryText ?? '').trim();
@@ -235,11 +236,12 @@ function explainSummaryRefreshFailure(
         || normalized.includes('context window')
         || normalized.includes('too many tokens')
     ) {
-        const sceneSize = sceneWords > 0 ? ` Scene text was about ${sceneWords.toLocaleString()} words.` : '';
-        return `The ${passLabel} request exceeded the model budget for this pass.${sceneSize} Summary refresh sends the full scene text, and optional Synopsis sends another full-scene request.`;
+        return sceneWords > 0
+            ? t('sceneAnalysis.synopsis.aiErrors.contextTooLongWithSize', { pass: passLabel, words: sceneWords.toLocaleString() })
+            : t('sceneAnalysis.synopsis.aiErrors.contextTooLongNoSize', { pass: passLabel });
     }
 
-    return raw || `Unknown ${passLabel} failure.`;
+    return raw || t('sceneAnalysis.synopsis.aiErrors.unknownPassFailure', { pass: passLabel });
 }
 
 export async function calculateSynopsisSceneCount(
@@ -288,7 +290,7 @@ export async function processSynopsisByManuscriptOrder(
     // Reopen active modal state instead of creating a second run context.
     if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
         plugin.activeBeatsModal.open();
-        new Notice('Reopening active processing session...');
+        new Notice(t('sceneAnalysis.synopsis.notices.reopeningSession'));
         return;
     }
 
@@ -298,7 +300,7 @@ export async function processSynopsisByManuscriptOrder(
         return;
     }
     if (scope.files.length === 0) {
-        new Notice('No scene notes found in the active book scope.');
+        new Notice(t('sceneAnalysis.synopsis.notices.noScenesScope'));
         return;
     }
 
@@ -331,13 +333,13 @@ export async function runSynopsisBatch(
         return;
     }
     if (scope.files.length === 0) {
-        new Notice('No scene notes found in the active book scope.');
+        new Notice(t('sceneAnalysis.synopsis.notices.noScenesScope'));
         return;
     }
 
     const allScenes = await getAllSceneData(plugin, vault, { files: scope.files });
     allScenes.sort(compareScenesByOrder);
-    new Notice(`Summary refresh scope: ${scope.scopeSummary}`);
+    new Notice(t('sceneAnalysis.synopsis.notices.scopeMessage', { scope: scope.scopeSummary }));
     console.info(`[SummaryRefresh] Scope: ${scope.scopeSummary}`);
 
     // Get settings with fallbacks
@@ -373,7 +375,7 @@ export async function runSynopsisBatch(
     });
 
     if (scenesToProcess.length === 0) {
-        new Notice('No scenes found matching the selected criteria.');
+        new Notice(t('sceneAnalysis.synopsis.notices.noMatchingScenes'));
         return;
     }
 
@@ -403,7 +405,7 @@ export async function runSynopsisBatch(
 
         // Show current item info (including old summary for preview)
         if (modal.setSynopsisPreview) {
-            modal.setSynopsisPreview(currentSummary, 'Generating...');
+            modal.setSynopsisPreview(currentSummary, t('sceneAnalysis.processingModal.synopsisPreview.generating'));
         }
 
         // --- Step 1: Generate Summary (primary artifact) ---
@@ -426,7 +428,7 @@ export async function runSynopsisBatch(
                 modal.setAiAdvancedContext(result.advancedContext ?? null);
 
                 if (!result.result) {
-                    modal.addError(`AI Error: ${sceneName}`);
+                    modal.addError(t('sceneAnalysis.synopsis.aiErrors.aiError', { name: sceneName }));
                     if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
                     continue;
                 }
@@ -438,13 +440,13 @@ export async function runSynopsisBatch(
                     newSummary = parsed.summary || parsed.synopsis || '';
                 } catch (e) {
                     console.error('Failed to parse summary JSON', e);
-                    modal.addError(`JSON Parse Error: ${sceneName}`);
+                    modal.addError(t('sceneAnalysis.synopsis.aiErrors.jsonParseError', { name: sceneName }));
                     if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
                     continue;
                 }
 
                 if (!newSummary) {
-                    modal.addError(`Empty result: ${sceneName}`);
+                    modal.addError(t('sceneAnalysis.synopsis.aiErrors.emptyResult', { name: sceneName }));
                     if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
                     continue;
                 }
@@ -480,7 +482,7 @@ export async function runSynopsisBatch(
                         sceneName,
                         passLabel: 'synopsis'
                     });
-                    modal.addWarning(`Synopsis generation failed for ${sceneName}. Summary was saved and processing continued. ${reason}`);
+                    modal.addWarning(t('sceneAnalysis.synopsis.aiErrors.synopsisFailed', { name: sceneName, reason }));
                 }
             }
 
@@ -499,7 +501,7 @@ export async function runSynopsisBatch(
                 }
             } catch (saveError) {
                 const message = saveError instanceof Error ? saveError.message : String(saveError);
-                modal.addError(`Save error for ${sceneName}: ${message}`);
+                modal.addError(t('sceneAnalysis.synopsis.aiErrors.saveError', { name: sceneName, message }));
                 if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
             }
         } catch (err) {
@@ -508,7 +510,7 @@ export async function runSynopsisBatch(
                 sceneName,
                 passLabel: 'summary'
             });
-            modal.addError(`Summary generation failed for ${sceneName}. Processing continued with remaining scenes. ${reason}`);
+            modal.addError(t('sceneAnalysis.synopsis.aiErrors.summaryFailed', { name: sceneName, reason }));
             if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
         }
 

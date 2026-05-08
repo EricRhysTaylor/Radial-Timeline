@@ -1,4 +1,5 @@
 import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent, setIcon } from 'obsidian';
+import { t } from '../i18n';
 import type RadialTimelinePlugin from '../main';
 import { createBeatNotesFromSet } from '../utils/beatsTemplates';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
@@ -56,18 +57,18 @@ class SaveTemplateModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Save scene layout' });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('bookDesigner.saveTemplate.badge') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('bookDesigner.saveTemplate.title') });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: t('bookDesigner.saveTemplate.subtitle') });
 
         const form = contentEl.createDiv({ cls: 'ert-template-dialog-panel' });
         const nameSetting = new Setting(form)
-            .setName('Layout name')
-            .setDesc('Choose a short, unique name.')
+            .setName(t('bookDesigner.saveTemplate.nameField.name'))
+            .setDesc(t('bookDesigner.saveTemplate.nameField.desc'))
             .addText(text => {
                 this.nameInput = text;
                 text.inputEl.addClass('ert-input--lg');
-                text.setPlaceholder('e.g., Thriller / 3-Act Balanced');
+                text.setPlaceholder(t('bookDesigner.saveTemplate.nameField.placeholder'));
                 text.setValue(this.defaultName);
                 text.inputEl.addEventListener('keydown', (evt) => {
                     if (evt.key === 'Enter') {
@@ -78,16 +79,16 @@ class SaveTemplateModal extends Modal {
             });
         nameSetting.settingEl.addClass('ert-template-dialog-setting');
 
-        this.descriptionEl = form.createDiv({ cls: 'ert-template-dialog-note', text: 'Templates capture layout, acts, subplots, characters, beats toggle, and the selected YAML type (base/advanced).' });
+        this.descriptionEl = form.createDiv({ cls: 'ert-template-dialog-note', text: t('bookDesigner.saveTemplate.note') });
 
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
-            .setButtonText('Save')
+            .setButtonText(t('bookDesigner.buttons.save'))
             .setCta()
             .onClick(() => this.handleSave());
 
         new ButtonComponent(footer)
-            .setButtonText('Cancel')
+            .setButtonText(t('bookDesigner.buttons.cancel'))
             .onClick(() => this.close());
 
         footer.querySelectorAll('button').forEach(btn => {
@@ -98,7 +99,7 @@ class SaveTemplateModal extends Modal {
     private handleSave(): void {
         const name = this.nameInput.getValue().trim();
         if (!name) {
-            new Notice('Template name is required.');
+            new Notice(t('bookDesigner.saveTemplate.nameRequired'));
             return;
         }
         this.onSave(name);
@@ -128,13 +129,13 @@ class DeleteTemplateModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Delete layout' });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${this.templateName}"? This cannot be undone.` });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('bookDesigner.saveTemplate.badge') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('bookDesigner.deleteTemplate.title') });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: t('bookDesigner.deleteTemplate.subtitle', { name: this.templateName }) });
 
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
-            .setButtonText('Delete')
+            .setButtonText(t('bookDesigner.buttons.delete'))
             .setCta()
             .onClick(() => {
                 this.onConfirm();
@@ -142,7 +143,7 @@ class DeleteTemplateModal extends Modal {
             });
 
         new ButtonComponent(footer)
-            .setButtonText('Cancel')
+            .setButtonText(t('bookDesigner.buttons.cancel'))
             .onClick(() => this.close());
 
         footer.querySelectorAll('button').forEach(btn => {
@@ -172,17 +173,17 @@ class GenerateDemoProjectModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'DEMO' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Generate nonlinear demo project' });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('bookDesigner.demoProject.badge') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('bookDesigner.demoProject.title') });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Creates a 20-scene, 5-act example to show the difference between narrative order (the order the reader encounters scenes) and chronological order (when events actually happen). The scene numbers run 1–20 in narrative order, but the dates and times jump around — open the START HERE note after generating to see how, and switch between Timeline and Chronologue views to compare.'
+            text: t('bookDesigner.demoProject.subtitle')
         });
 
         const form = contentEl.createDiv({ cls: 'ert-template-dialog-panel' });
         const dateSetting = new Setting(form)
-            .setName('Start date')
-            .setDesc('Used for the chronologue cadence. Format: YYYY-MM-DD.')
+            .setName(t('bookDesigner.demoProject.startDate.name'))
+            .setDesc(t('bookDesigner.demoProject.startDate.desc'))
             .addText(text => {
                 this.startDateInput = text;
                 text.setPlaceholder(NONLINEAR_DEMO_DEFAULT_START_DATE);
@@ -198,17 +199,17 @@ class GenerateDemoProjectModal extends Modal {
 
         form.createDiv({
             cls: 'ert-template-dialog-note',
-            text: 'This will also ensure the workspace is configured for five acts so the demo renders correctly.'
+            text: t('bookDesigner.demoProject.note')
         });
 
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
-            .setButtonText('Generate Demo Project')
+            .setButtonText(t('bookDesigner.demoProject.generate'))
             .setCta()
             .onClick(() => this.handleGenerate());
 
         new ButtonComponent(footer)
-            .setButtonText('Cancel')
+            .setButtonText(t('bookDesigner.buttons.cancel'))
             .onClick(() => this.close());
 
         footer.querySelectorAll('button').forEach(btn => {
@@ -219,7 +220,7 @@ class GenerateDemoProjectModal extends Modal {
     private handleGenerate(): void {
         const raw = this.startDateInput.getValue().trim() || NONLINEAR_DEMO_DEFAULT_START_DATE;
         if (!isValidIsoDateOnly(raw)) {
-            new Notice('Use a valid start date in YYYY-MM-DD format.');
+            new Notice(t('bookDesigner.demoProject.invalidDate'));
             return;
         }
         this.onGenerate(raw);
@@ -301,7 +302,7 @@ export class BookDesignerModal extends Modal {
 
     private getSelectedBookTitle(): string {
         const book = this.getSelectedBook();
-        return book?.title?.trim() || 'No book selected';
+        return book?.title?.trim() || t('bookDesigner.modal.noBookSelected');
     }
 
     private getSelectedBookFolder(): string {
@@ -352,9 +353,9 @@ export class BookDesignerModal extends Modal {
         yesPill.toggleClass('is-warn', exists);
         (yesPill as HTMLButtonElement).disabled = exists || noBeatSystem;
         if (exists) {
-            yesPill.setAttribute('aria-label', 'Beat notes already exist in this folder');
+            yesPill.setAttribute('aria-label', t('bookDesigner.fields.generateBeats.existsAria'));
         } else if (noBeatSystem) {
-            yesPill.setAttribute('aria-label', 'Select a beat system in Settings → Beats first');
+            yesPill.setAttribute('aria-label', t('bookDesigner.fields.generateBeats.noSystemAria'));
         } else {
             yesPill.removeAttribute('aria-label');
         }
@@ -537,7 +538,7 @@ export class BookDesignerModal extends Modal {
         }
 
         if (this.heroModeMeta) {
-            const modeLabel = this.distributionMode === 'manual' ? 'Manual mode' : 'Auto mode';
+            const modeLabel = this.distributionMode === 'manual' ? t('bookDesigner.meta.manualMode') : t('bookDesigner.meta.autoMode');
             this.heroModeMeta.setText(modeLabel);
             this.heroModeMeta.toggleClass('ert-meta-auto', this.distributionMode !== 'manual');
             this.heroModeMeta.toggleClass('ert-meta-manual', this.distributionMode === 'manual');
@@ -545,8 +546,8 @@ export class BookDesignerModal extends Modal {
     }
 
     private updateDistributionStatus(): void {
-        const mode = this.distributionMode === 'manual' ? 'Manual layout active' : 'Auto distribution';
-        const templatePart = this.activeTemplateId ? ' · From template' : '';
+        const mode = this.distributionMode === 'manual' ? t('bookDesigner.meta.manualLayoutActive') : t('bookDesigner.meta.autoDistribution');
+        const templatePart = this.activeTemplateId ? t('bookDesigner.meta.fromTemplate') : '';
         if (this.previewStatusEl) {
             this.previewStatusEl.setText(`— ${mode}${templatePart}`);
         }
@@ -562,7 +563,7 @@ export class BookDesignerModal extends Modal {
 
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.text = hasTemplates ? 'New template' : '—';
+        placeholder.text = hasTemplates ? t('bookDesigner.fields.sceneLayouts.newOption') : t('bookDesigner.fields.sceneLayouts.emptyOption');
         placeholder.disabled = false;
         placeholder.selected = !this.activeTemplateId;
         selectEl.appendChild(placeholder);
@@ -599,7 +600,7 @@ export class BookDesignerModal extends Modal {
         this.resetManualLayout();
         this.refreshTemplateDropdown();
         this.schedulePreviewUpdate();
-        new Notice('Template deleted.');
+        new Notice(t('bookDesigner.notices.templateDeleted'));
     }
 
     private async saveOrUpdateTemplate(): Promise<void> {
@@ -645,13 +646,13 @@ export class BookDesignerModal extends Modal {
         this.activeTemplateId = template.id;
         this.refreshTemplateDropdown();
         this.updateDistributionStatus();
-        new Notice(`Template "${name}" ${existingId ? 'updated' : 'saved'}.`);
+        new Notice(t(existingId ? 'bookDesigner.notices.templateUpdated' : 'bookDesigner.notices.templateSaved', { name }));
     }
 
     private applyTemplateById(templateId: string): void {
         const tpl = this.getTemplateList().find(t => t.id === templateId);
         if (!tpl) {
-            new Notice('Template not found.');
+            new Notice(t('bookDesigner.notices.templateNotFound'));
             return;
         }
         this.applyTemplate(tpl);
@@ -682,7 +683,7 @@ export class BookDesignerModal extends Modal {
         this.syncUiFromState();
         this.updateDistributionStatus();
         this.schedulePreviewUpdate();
-        new Notice(`Applied template "${template.name}".`);
+        new Notice(t('bookDesigner.notices.templateApplied', { name: template.name }));
     }
 
     private syncUiFromState(): void {
@@ -768,47 +769,47 @@ export class BookDesignerModal extends Modal {
         // Hero Header using generic modal system
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         const heroBadge = hero.createSpan({ cls: 'ert-modal-badge ert-book-designer-badge' });
-        heroBadge.createSpan({ cls: 'ert-book-designer-badge-label', text: 'SETUP' });
+        heroBadge.createSpan({ cls: 'ert-book-designer-badge-label', text: t('bookDesigner.modal.badge') });
         heroBadge.createSpan({ cls: 'ert-book-designer-badge-sep', text: '•' });
         this.heroLocationMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail', text: this.getSelectedBookTitle() });
         heroBadge.createSpan({ cls: 'ert-book-designer-badge-sep', text: '•' });
-        this.heroModeMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail ert-book-designer-badge-mode ert-meta-auto', text: 'Auto mode' });
+        this.heroModeMeta = heroBadge.createSpan({ cls: 'ert-book-designer-badge-detail ert-book-designer-badge-mode ert-meta-auto', text: t('bookDesigner.meta.autoMode') });
         const wikiLink = heroBadge.createEl('a', {
             href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Book-Designer',
             cls: 'ert-modal-badge__wikiLink',
             attr: {
-                'aria-label': 'Read more in the Wiki',
+                'aria-label': t('bookDesigner.modal.wikiAriaLabel'),
                 'target': '_blank',
                 'rel': 'noopener'
             }
         });
         setIcon(wikiLink, 'external-link');
-        hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
-        hero.createDiv({ cls: 'ert-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
+        hero.createDiv({ cls: 'ert-modal-title', text: t('bookDesigner.modal.title') });
+        hero.createDiv({ cls: 'ert-modal-subtitle', text: t('bookDesigner.modal.subtitle') });
         this.updateHeroMeta();
 
         const scrollContainer = contentEl.createDiv({ cls: 'ert-card-stack' });
 
         // SECTION 1: LOCATION & STRUCTURE
         const structCard = scrollContainer.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        structCard.createDiv({ cls: 'ert-sub-card-head', text: 'Location & Structure' });
+        structCard.createDiv({ cls: 'ert-sub-card-head', text: t('bookDesigner.sections.locationStructure') });
 
         // Target book
         new Setting(structCard)
-            .setName('Target book')
-            .setDesc('Choose the Book Manager project where scenes and beats will be created.')
+            .setName(t('bookDesigner.fields.targetBook.name'))
+            .setDesc(t('bookDesigner.fields.targetBook.desc'))
             .addDropdown(drop => {
                 this.targetBookDropdown = drop;
                 drop.selectEl.addClass('ert-input', 'ert-input--lg');
                 const books = this.getBookProfiles();
                 if (!books.length) {
-                    drop.addOption('', 'No books configured');
+                    drop.addOption('', t('bookDesigner.fields.targetBook.noBooks'));
                     drop.setValue('');
                     drop.setDisabled(true);
                     return;
                 }
                 for (const book of books) {
-                    drop.addOption(book.id, book.title?.trim() || 'Untitled');
+                    drop.addOption(book.id, book.title?.trim() || t('bookDesigner.modal.untitled'));
                 }
                 this.syncTargetBookSelection();
                 drop.onChange(value => {
@@ -820,18 +821,18 @@ export class BookDesignerModal extends Modal {
         if (this.getBookProfiles().length === 0) {
             structCard.createDiv({
                 cls: 'ert-sub-card-note',
-                text: 'Add a book in Book Manager and set its folder before generating a scaffold here.'
+                text: t('bookDesigner.fields.targetBook.addFirstNote')
             });
         }
 
         // Time Increment Setting
         new Setting(structCard)
-            .setName('Date increment per scene')
-            .setDesc('Timeline increment across scenes (e.g. 1 hour, 1 day, 1 week). Set to 0 to disable increments.')
+            .setName(t('bookDesigner.fields.timeIncrement.name'))
+            .setDesc(t('bookDesigner.fields.timeIncrement.desc'))
             .addText(text => {
                 this.timeIncrementInput = text;
                 text.setValue(this.timeIncrement)
-                    .setPlaceholder('1 day');
+                    .setPlaceholder(t('bookDesigner.fields.timeIncrement.placeholder'));
                 text.inputEl.addClass('ert-input--sm');
 
                 // Use blur to validate
@@ -857,7 +858,7 @@ export class BookDesignerModal extends Modal {
                             durationMs: 1700
                         });
                     } else {
-                        new Notice(`Invalid duration: "${raw}". Reverting to ${this.timeIncrement}.`);
+                        new Notice(t('bookDesigner.fields.timeIncrement.invalid', { raw, current: this.timeIncrement }));
                         text.setValue(this.timeIncrement);
                         replayTransientClass(text.inputEl, 'ert-input-flash-error', {
                             removeClasses: ['ert-input-flash-success'],
@@ -885,8 +886,8 @@ export class BookDesignerModal extends Modal {
         let lengthSettingRef: Setting;
 
         const scenesSetting = new Setting(countsGrid)
-            .setName('Scenes to generate')
-            .setDesc('Number of template scene files to create with YAML frontmatter.')
+            .setName(t('bookDesigner.fields.scenes.name'))
+            .setDesc(t('bookDesigner.fields.scenes.desc'))
             .addText(text => {
                 this.scenesInput = text;
                 text
@@ -931,8 +932,8 @@ export class BookDesignerModal extends Modal {
         scenesSetting.settingEl.addClass('ert-manuscript-group-setting');
 
         const lengthSetting = new Setting(countsGrid)
-            .setName('Target book length')
-            .setDesc('Used for numbering distribution (e.g. 10, 20, 30...)')
+            .setName(t('bookDesigner.fields.targetLength.name'))
+            .setDesc(t('bookDesigner.fields.targetLength.desc'))
             .addText(text => {
                 this.targetRangeInput = text;
                 text
@@ -977,7 +978,7 @@ export class BookDesignerModal extends Modal {
 
         // Acts Selection (Checkboxes)
         const actSetting = structCard.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block ert-manuscript-acts-row' });
-        actSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: 'Acts to distribute scenes across' });
+        actSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: t('bookDesigner.fields.acts.label') });
         const actChecks = actSetting.createDiv({ cls: 'ert-manuscript-checkbox-row' });
         actChecks.style.flexWrap = 'wrap';
         const actCountForUi = this.getMaxActs();
@@ -1002,7 +1003,7 @@ export class BookDesignerModal extends Modal {
                 this.schedulePreviewUpdate();
             };
             const label = item.createEl('label');
-            label.setText(`Act ${num}`);
+            label.setText(t('bookDesigner.fields.acts.actLabel', { num }));
             label.onclick = () => {
                 input.click();
             };
@@ -1010,7 +1011,7 @@ export class BookDesignerModal extends Modal {
 
         // SECTION 2: CONTENT CONFIGURATION
         const contentCard = scrollContainer.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        contentCard.createDiv({ cls: 'ert-sub-card-head', text: 'Content Configuration' });
+        contentCard.createDiv({ cls: 'ert-sub-card-head', text: t('bookDesigner.sections.contentConfiguration') });
 
         // Subplots + characters + preview (single border spanning all columns)
         const contentGroup = contentCard.createDiv({ cls: 'ert-manuscript-card-block ert-manuscript-group-block ert-manuscript-content-grid' });
@@ -1019,8 +1020,8 @@ export class BookDesignerModal extends Modal {
         const leftCol = contentGroup.createDiv({ cls: 'ert-manuscript-content-left' });
 
         const subplotsSetting = new Setting(leftCol)
-            .setName('Subplots')
-            .setDesc('Enter one subplot per line.')
+            .setName(t('bookDesigner.fields.subplots.name'))
+            .setDesc(t('bookDesigner.fields.subplots.desc'))
             .setClass('ert-setting-stacked')
             .addTextArea(text => {
                 this.subplotsInput = text;
@@ -1045,8 +1046,8 @@ export class BookDesignerModal extends Modal {
         subplotsSetting.settingEl.addClass('ert-manuscript-group-setting');
 
         const characterSetting = new Setting(leftCol)
-            .setName('Characters')
-            .setDesc('Enter one character per line.')
+            .setName(t('bookDesigner.fields.characters.name'))
+            .setDesc(t('bookDesigner.fields.characters.desc'))
             .setClass('ert-setting-stacked')
             .addTextArea(text => {
                 this.characterInput = text;
@@ -1069,8 +1070,8 @@ export class BookDesignerModal extends Modal {
         // Right column: Preview (larger)
         const previewCol = contentGroup.createDiv({ cls: 'ert-manuscript-preview-col ert-manuscript-preview-col-wide' });
         const previewHeader = previewCol.createDiv({ cls: 'ert-manuscript-preview-head' });
-        previewHeader.createDiv({ cls: 'ert-manuscript-preview-title', text: 'Preview' });
-        this.previewStatusEl = previewHeader.createDiv({ cls: 'ert-manuscript-preview-status', text: 'Auto distribution' });
+        previewHeader.createDiv({ cls: 'ert-manuscript-preview-title', text: t('bookDesigner.preview.title') });
+        this.previewStatusEl = previewHeader.createDiv({ cls: 'ert-manuscript-preview-status', text: t('bookDesigner.meta.autoDistribution') });
         this.previewHostEl = previewCol.createDiv({ cls: 'ert-manuscript-preview-host' });
         this.subplotLegendEl = previewCol.createDiv({ cls: 'ert-subplot-color-legend ert-subplot-color-legend--preview' });
         this.updateDistributionStatus();
@@ -1079,18 +1080,18 @@ export class BookDesignerModal extends Modal {
 
         // SECTION 3: TEMPLATES & EXTRAS
         const extraCard = scrollContainer.createDiv({ cls: 'ert-glass-card ert-sub-card' });
-        extraCard.createDiv({ cls: 'ert-sub-card-head', text: 'Scene Sets & Extras' });
+        extraCard.createDiv({ cls: 'ert-sub-card-head', text: t('bookDesigner.sections.sceneSetsExtras') });
 
         const extraRow = extraCard.createDiv({ cls: 'ert-manuscript-duo-row' });
 
         // Template Selection (Pills)
         const templSetting = extraRow.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block' });
-        templSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: 'Scene set' });
+        templSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: t('bookDesigner.fields.sceneSet.label') });
         const templPills = templSetting.createDiv({ cls: 'ert-manuscript-pill-row' });
 
         const options: { id: 'base' | 'advanced', label: string }[] = [
-            { id: 'base', label: 'Base Scene Set' },
-            { id: 'advanced', label: 'Advanced properties' }
+            { id: 'base', label: t('bookDesigner.fields.sceneSet.base') },
+            { id: 'advanced', label: t('bookDesigner.fields.sceneSet.advanced') }
         ];
 
         options.forEach(opt => {
@@ -1109,11 +1110,11 @@ export class BookDesignerModal extends Modal {
         const beatSetting = extraRow.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block' });
         const activeBeatSetTitle = this.getActiveBeatSetTitle();
         const beatLabelText = activeBeatSetTitle
-            ? `Generate ${this.truncateLabel(activeBeatSetTitle)} beats`
-            : 'No beat system active';
+            ? t('bookDesigner.fields.generateBeats.withSystem', { name: this.truncateLabel(activeBeatSetTitle) })
+            : t('bookDesigner.fields.generateBeats.noSystem');
         const beatLabelTooltip = activeBeatSetTitle
-            ? `Generate ${activeBeatSetTitle} beats`
-            : 'Select a beat system in Settings → Beats to enable beat generation.';
+            ? t('bookDesigner.fields.generateBeats.withSystem', { name: activeBeatSetTitle })
+            : t('bookDesigner.fields.generateBeats.tooltipNoSystem');
         const beatLabelEl = beatSetting.createDiv({
             cls: 'ert-manuscript-setting-label',
             text: beatLabelText
@@ -1126,7 +1127,7 @@ export class BookDesignerModal extends Modal {
             this.generateBeats = false;
         }
 
-        const beatOptions = [{ val: false, label: 'No' }, { val: true, label: 'Yes' }];
+        const beatOptions = [{ val: false, label: t('bookDesigner.fields.generateBeats.no') }, { val: true, label: t('bookDesigner.fields.generateBeats.yes') }];
         beatOptions.forEach(opt => {
             const pill = beatPills.createEl('button', { attr: { 'data-ert-toggle': '', 'data-generate-beats': String(opt.val) } });
             pill.setText(opt.label);
@@ -1145,8 +1146,8 @@ export class BookDesignerModal extends Modal {
         // Template load/save
         const templateCard = extraCard.createDiv({ cls: 'ert-manuscript-card-block ert-manuscript-group-block ert-layout-templates-card' });
         const templateSetting = new Setting(templateCard)
-            .setName('Scene layouts')
-            .setDesc('Select a saved layout (acts, subplots, assignments, metadata).')
+            .setName(t('bookDesigner.fields.sceneLayouts.name'))
+            .setDesc(t('bookDesigner.fields.sceneLayouts.desc'))
             .addDropdown(drop => {
                 this.templateDropdown = drop.selectEl;
                 this.refreshTemplateDropdown();
@@ -1165,20 +1166,20 @@ export class BookDesignerModal extends Modal {
         const templateActions = templateCard.createDiv({ cls: 'ert-template-actions' });
 
         new ButtonComponent(templateActions)
-            .setButtonText('Save Scene Set')
+            .setButtonText(t('bookDesigner.buttons.saveSceneSet'))
             .onClick(() => {
                 void this.saveOrUpdateTemplate();
             });
 
         new ButtonComponent(templateActions)
-            .setButtonText('Reset')
+            .setButtonText(t('bookDesigner.buttons.reset'))
             .onClick(() => {
                 this.resetAllDefaults();
-                new Notice('Layout reset to defaults with auto distribution.');
+                new Notice(t('bookDesigner.notices.layoutReset'));
             });
 
         const demoProjectButton = new ButtonComponent(templateActions)
-            .setButtonText('Demo Project')
+            .setButtonText(t('bookDesigner.buttons.demoProject'))
             .onClick(() => {
                 new GenerateDemoProjectModal(this.app, (startDate) => {
                     this.close();
@@ -1189,11 +1190,11 @@ export class BookDesignerModal extends Modal {
 
         templateCard.createDiv({
             cls: 'ert-sub-card-note',
-            text: 'Includes scenes, acts, subplots, beats, and chronologue timing.'
+            text: t('bookDesigner.notes.layoutTemplatesIncludes')
         });
 
         this.deleteTemplateBtn = new ButtonComponent(templateActions)
-            .setButtonText('Delete layout')
+            .setButtonText(t('bookDesigner.buttons.deleteLayout'))
             .setDisabled(true)
             .setWarning()
             .onClick(() => {
@@ -1211,7 +1212,7 @@ export class BookDesignerModal extends Modal {
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(footer)
-            .setButtonText('Create Book')
+            .setButtonText(t('bookDesigner.buttons.createBook'))
             .setCta()
             .onClick(() => {
                 this.close();
@@ -1219,7 +1220,7 @@ export class BookDesignerModal extends Modal {
             });
 
         new ButtonComponent(footer)
-            .setButtonText('Cancel')
+            .setButtonText(t('bookDesigner.buttons.cancel'))
             .onClick(() => this.close());
 
         // Add cursor pointer to footer buttons
@@ -1251,7 +1252,12 @@ export class BookDesignerModal extends Modal {
         }
 
         const suffix = scenes > 3 ? '...' : '';
-        setting.setDesc(`Scenes will be numbered: ${examples.join(', ')}${suffix} based on ${scenes} scenes across ${max} units.`);
+        setting.setDesc(t('bookDesigner.fields.targetLength.detail', {
+            examples: examples.join(', '),
+            suffix,
+            scenes,
+            max,
+        }));
     }
 
     onClose(): void {
@@ -1487,8 +1493,12 @@ export class BookDesignerModal extends Modal {
         this.dragState.targetSubplot = target.subplotIndex;
         if (this.previewStatusEl) {
             const subplotList = this.parseSubplots();
-            const subplotLabel = subplotList[target.subplotIndex] || `Subplot ${target.subplotIndex + 1}`;
-            this.previewStatusEl.setText(`Dragging scene ${this.dragState.sceneNumber} → Act ${target.act}, ${subplotLabel}`);
+            const subplotLabel = subplotList[target.subplotIndex] || t('bookDesigner.preview.subplotFallback', { num: target.subplotIndex + 1 });
+            this.previewStatusEl.setText(t('bookDesigner.preview.dragging', {
+                scene: this.dragState.sceneNumber,
+                act: target.act,
+                subplot: subplotLabel,
+            }));
         }
     }
 
@@ -1653,7 +1663,7 @@ export class BookDesignerModal extends Modal {
         const targetFolder = this.getSelectedBookFolder();
 
         if (!targetFolder) {
-            new Notice('Select a Book Manager book with a folder before generating a demo project.');
+            new Notice(t('bookDesigner.notices.selectBookForDemo'));
             return;
         }
 
@@ -1661,7 +1671,7 @@ export class BookDesignerModal extends Modal {
             try {
                 await vault.createFolder(targetFolder);
             } catch (error) {
-                new Notice(`Error creating folder: ${error}`);
+                new Notice(t('bookDesigner.notices.folderError', { error: String(error) }));
                 return;
             }
         }
@@ -1712,9 +1722,14 @@ export class BookDesignerModal extends Modal {
         );
 
         const skippedSummary = skippedScenes > 0 || skippedNotes > 0
-            ? ` Skipped ${skippedScenes} existing scenes and ${skippedNotes} existing notes.`
+            ? t('bookDesigner.notices.demoSkipped', { scenes: skippedScenes, notes: skippedNotes })
             : '';
-        new Notice(`Demo project ready: ${createdScenes} scenes, ${createdNotes} notes, ${builtinBeatResult.created} beat notes.${skippedSummary}`);
+        new Notice(t('bookDesigner.notices.demoReady', {
+            scenes: createdScenes,
+            notes: createdNotes,
+            beats: builtinBeatResult.created,
+            skipped: skippedSummary,
+        }));
     }
 
     async generateBook(): Promise<void> {
@@ -1723,7 +1738,7 @@ export class BookDesignerModal extends Modal {
         const targetFolder = targetPath ? normalizePath(targetPath.trim()) : '';
 
         if (!targetFolder) {
-            new Notice('Select a Book Manager book with a folder before generating scenes.');
+            new Notice(t('bookDesigner.notices.selectBookForGenerate'));
             return;
         }
 
@@ -1732,7 +1747,7 @@ export class BookDesignerModal extends Modal {
             try {
                 await vault.createFolder(targetFolder);
             } catch (e) {
-                new Notice(`Error creating folder: ${e}`);
+                new Notice(t('bookDesigner.notices.folderError', { error: String(e) }));
                 return;
             }
         }
@@ -1744,7 +1759,7 @@ export class BookDesignerModal extends Modal {
         // Get template string from single source of truth
         const sceneParts = getTemplateParts('Scene', this.plugin.settings);
         if (!sceneParts.base) {
-            new Notice('Base scene set not found in settings. Set a scene set before generating.');
+            new Notice(t('bookDesigner.notices.baseSetMissing'));
             return;
         }
         const templateString = this.templateType === 'advanced'
@@ -1758,7 +1773,7 @@ export class BookDesignerModal extends Modal {
         let createdScenes = 0;
         let skippedScenes = 0;
 
-        new Notice(`Generating ${this.scenesToGenerate} scenes...`);
+        new Notice(t('bookDesigner.notices.generating', { count: this.scenesToGenerate }));
 
         // Ensure we don't divide by zero if user sets range < count
         const rangeMax = Math.max(this.targetRangeMax, this.scenesToGenerate);
@@ -1905,13 +1920,13 @@ export class BookDesignerModal extends Modal {
             });
 
             if (existingBeatFiles.length > 0) {
-                new Notice(`Beat notes already exist in this folder (${existingBeatFiles.length} found). Use the beat manager in settings to repair or resync.`);
+                new Notice(t('bookDesigner.notices.beatsExist', { count: existingBeatFiles.length }));
                 beatsSkippedDuplicate = true;
             } else {
                 const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
                 const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || '').trim();
                 if (!beatSystem) {
-                    new Notice('No active beat system selected for this book. Choose one in Beat Manager before creating beat notes.');
+                    new Notice(t('bookDesigner.notices.noBeatSystemActive'));
                     beatsSkippedDuplicate = true;
                 } else {
                     const beatTemplate = getTemplateParts('Beat', this.plugin.settings).merged;
@@ -1922,22 +1937,28 @@ export class BookDesignerModal extends Modal {
                             const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, activeWorkspaceSystem, { beatTemplate, actSceneNumbers });
                             beatsCreated = result.created;
                         } catch (e) {
-                            new Notice(`Error creating beats: ${e}`);
+                            new Notice(t('bookDesigner.notices.beatsError', { error: String(e) }));
                         }
                     } else {
                         try {
                             const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, undefined, { beatTemplate, actSceneNumbers });
                             beatsCreated = result.created;
                         } catch (e) {
-                            new Notice(`Error creating beats: ${e}`);
+                            new Notice(t('bookDesigner.notices.beatsError', { error: String(e) }));
                         }
                     }
                 }
             }
         }
 
-        const skippedInfo = skippedScenes > 0 ? ` (skipped ${skippedScenes} existing)` : '';
-        const beatInfo = beatsSkippedDuplicate ? ' (beats already exist)' : `, ${beatsCreated} beat notes`;
-        new Notice(`Book created! ${createdScenes} scenes${skippedInfo}${beatInfo}.`);
+        const skippedInfo = skippedScenes > 0 ? t('bookDesigner.notices.bookCreatedSkipped', { count: skippedScenes }) : '';
+        const beatInfo = beatsSkippedDuplicate
+            ? t('bookDesigner.notices.bookCreatedBeatsExist')
+            : t('bookDesigner.notices.bookCreatedBeats', { count: beatsCreated });
+        new Notice(t('bookDesigner.notices.bookCreated', {
+            scenes: createdScenes,
+            skipped: skippedInfo,
+            beats: beatInfo,
+        }));
     }
 }

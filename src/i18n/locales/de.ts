@@ -1,0 +1,492 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
+
+/**
+ * German translations (Deutsch)
+ *
+ * Missing keys automatically fall back to English.
+ *
+ * To add or refine translations:
+ * 1. Copy the key structure from en.ts
+ * 2. Replace the English string with the German translation
+ * 3. Run `node scripts/check-translations.mjs` to see coverage
+ */
+
+import type { TranslationKeys } from './en';
+
+// Helper type for deep partial (allows partial translations at any nesting level)
+type DeepPartial<T> = {
+    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+export const de: DeepPartial<TranslationKeys> = {
+    settings: {
+        general: {
+            sourcePath: {
+                name: 'Quellpfad',
+                desc: 'Geben Sie den Stammordner an, der Ihre Manuskript-Szenendateien enthält.',
+                placeholder: 'z. B. Manuskript/Szenen',
+            },
+            /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
+            showTitle: {
+                name: 'Legacy: Quellpfad als Titel anzeigen (veraltet)',
+                desc: 'Diese Einstellung wird nicht mehr verwendet. Buchtitel werden jetzt über die Buchprofile in den allgemeinen Einstellungen verwaltet.',
+            },
+        },
+        pov: {
+            heading: 'Perspektive',
+            global: {
+                name: 'Globale Perspektive',
+                desc: 'Optional. Wählen Sie einen Standardmodus aus. Die Perspektive auf Szenenebene überschreibt diese globale Einstellung.',
+            },
+            yamlOverrides: {
+                name: 'YAML-Überschreibungen auf Szenenebene',
+                desc: 'In der Szenen-Frontmatter kann `POV:` als first, second, third, omni, objective oder als Zahl wie two, four, count oder all angegeben werden. Zahlenwerte markieren die ersten N Einträge in `Character:` und verwenden den Marker der globalen Perspektive.',
+            },
+            modes: {
+                off: 'Legacy (erste gelistete Figur, "pov" hochgestellt)',
+                first: 'Erste Person (Figur mit ¹-Marker)',
+                second: 'Zweite Person (You²-Label)',
+                third: 'Dritte Person, eingeschränkt (Figur mit ³-Marker)',
+                omni: 'Allwissender Erzähler (Omni³-Label)',
+                objective: 'Objektive Perspektive — Kameraerzähler (Narrator°-Label)',
+            },
+            preview: {
+                heading: 'Perspektive-Beispiele',
+                examples: {
+                    sceneFirst: 'Szenen-YAML: POV: first | Character: [Alice]',
+                    sceneThird: 'Szenen-YAML: POV: third | Character: [Bob]',
+                    sceneSecond: 'Szenen-YAML: POV: second | Character: [Alice, Bob]',
+                    sceneOmni: 'Szenen-YAML: POV: omni | Character: [Alice, Bob]',
+                    sceneObjective: 'Szenen-YAML: POV: objective | Character: [Alice, Bob]',
+                    countTwoThird: 'Globale Einstellung: POV = third | Szenen-YAML: POV: two | Character: [Alice, Bob]',
+                    countThreeThird: 'Globale Einstellung: POV = third | Szenen-YAML: POV: three | Character: [Alice, Bob, Charlie]',
+                    countFourThird: 'Globale Einstellung: POV = third | Szenen-YAML: POV: four | Character: [Alice, Bob, Charlie, Diana]',
+                    countTwoFirstNumeric: 'Globale Einstellung: POV = first | Szenen-YAML: POV: 2 | Character: [Alice, Bob]',
+                    countAllFirst: 'Globale Einstellung: POV = first | Szenen-YAML: POV: all | Character: [Alice, Bob, Charlie]',
+                },
+            },
+        },
+        configuration: {
+            heading: 'Erweiterte Einstellungen',
+            aiOutputFolder: {
+                name: 'Logs',
+                desc: 'Ausführungslogs, Archive, Snapshots und Move History werden in Radial Timeline/Logs gespeichert.',
+                placeholder: 'Radial Timeline/Logs',
+            },
+            manuscriptOutputFolder: {
+                name: 'Export-Ordner',
+                desc: 'Manuskript-, Outline- und Indexkarten-Exporte (Markdown, PDF, Beat Sheets, Indexkarten) werden in Radial Timeline/Export gespeichert.',
+                placeholder: 'Radial Timeline/Export',
+            },
+            outlineOutputFolder: {
+                name: 'Outline-Export-Ordner (Legacy)',
+                desc: 'Legacy-Einstellung. Outline-Exporte verwenden den gemeinsamen Export-Ordner. Standard: Radial Timeline/Export.',
+                placeholder: 'Radial Timeline/Export',
+            },
+            autoExpand: {
+                name: 'Abgeschnittene Szenentitel automatisch ausklappen',
+                desc: 'Beim Hover über eine Szene den Titeltext automatisch ausklappen, wenn er abgeschnitten ist.',
+            },
+            readability: {
+                name: 'Lesbarkeitsgröße',
+                desc: 'Wählen Sie ein Schriftgrößenprofil für Timeline-Text.',
+                normal: 'Normal',
+                large: 'Groß',
+            },
+        },
+        ai: {
+            heading: 'KI-LLM für Szenenanalyse',
+            enable: {
+                name: 'KI-LLM-Funktionen aktivieren',
+                desc: 'Befehlspaletten-Optionen sowie Farben und Hover-Synopsen für die UI-Szenenanalyse anzeigen.',
+            },
+        },
+    },
+    timeline: {
+        acts: {
+            act1: 'AKT I',
+            act2: 'AKT II',
+            act3: 'AKT III',
+            actFallback: 'Akt {{number}}',
+        },
+        /** @deprecated No longer used — book title comes from Book Profiles. */
+        workInProgress: 'Unbenanntes Manuskript',
+        defaultBookTitle: 'Unbenanntes Manuskript',
+        loading: 'Timeline wird geladen...',
+        loadingData: 'Timeline-Daten werden geladen...',
+        renderError: 'Fehler beim Rendern der Timeline. Details siehe Konsole.',
+        overdue: 'Überfällig: {{date}}',
+        modes: {
+            narrative: { name: 'Erzählung', acronym: 'ERZ' },
+            progress: { name: 'Fortschritt', acronym: 'FORT' },
+            chronologue: { name: 'Chronologie', acronym: 'CHRO' },
+            gossamer: { name: 'Gossamer', acronym: 'GOSS' },
+        },
+        subplotRing: {
+            allScenes: 'ALLE SZENEN',
+            mainPlot: 'HAUPTHANDLUNG',
+            chronologue: 'CHRONOLOGIE',
+        },
+        grid: {
+            statusHeader: {
+                todo: 'Off',
+                working: 'Lfd',
+                completed: 'Erl',
+                due: 'Fäl',
+            },
+            stageHeader: {
+                zero: 'N',
+                author: 'A',
+                house: 'V',
+                press: 'D',
+            },
+        },
+    },
+    common: {
+        yes: 'Ja',
+        no: 'Nein',
+        cancel: 'Abbrechen',
+        save: 'Speichern',
+        reset: 'Zurücksetzen',
+        enable: 'Aktivieren',
+        disable: 'Deaktivieren',
+        loading: 'Wird geladen...',
+        error: 'Fehler',
+        success: 'Erfolg',
+    },
+    inquiry: {
+        help: {
+            tooltip: 'So funktioniert Inquiry',
+            configTooltip: 'Inquiry ist noch nicht konfiguriert.\nBitte konfigurieren Sie die Inquiry-Verzeichnisse mit Ihren Szenen, Büchern und Outlines (Einstellungen -> Inquiry).\nWählen Sie anschließend explizit aus, welche Klassen für den ausgewählten Bereich einbezogen werden sollen.',
+            noScenesTooltip: 'Keine Szenen für den aktuellen Bereich gefunden.\nBitte konfigurieren Sie die Inquiry-Verzeichnisse mit Ihren Szenen, Büchern und Outlines (Einstellungen -> Inquiry).\nWählen Sie anschließend explizit aus, welche Klassen für den ausgewählten Bereich einbezogen werden sollen.',
+            corpusTooltip: 'Korpus deaktiviert.\nAktivieren Sie Korpus-Bereiche im Korpus-Streifen, um Inquiry auszuführen.',
+            resultsTooltip: 'Material-Zitate in der Minimap durchsehen für detailliertes Feedback.\nVollständige Details siehe Brief.',
+            runningTooltip: 'Inquiry verarbeitet eine API-Ausführung.\nSie können zu einer anderen Notiz wechseln und weiterarbeiten, lassen Sie diesen Inquiry-Tab jedoch geöffnet.',
+            runningSingleTooltip: 'Inquiry verarbeitet diese Frage gerade.\nSie können zu einer anderen Notiz wechseln und weiterarbeiten, lassen Sie diesen Inquiry-Tab jedoch geöffnet.\nWenn Sie diese Ausführung abbrechen, müssen Sie von vorn beginnen. Es gibt kein Resume.',
+            onboardingTooltip: 'Nummerntasten zeigen Frage und Payload an. Klicken, um eine Frage mit KI zu verarbeiten. Flow- und Depth-Ringe passen die Linse der Antwort an. Die Minimap zeigt kontextuelle Zitate.',
+        },
+        mobile: {
+            title: 'Desktop erforderlich',
+            subtitle: 'Inquiry ist nur am Desktop verfügbar. Briefs sind weiterhin mobil lesbar.',
+            openBriefs: 'Briefs-Ordner öffnen',
+            viewLatest: 'Neuesten Brief anzeigen',
+        },
+        nav: {
+            bookUnresolved: 'Buchbereich nicht aufgelöst. Inquiry-Quellen prüfen.',
+            waitingForProvider: 'Warte auf Antwort des Providers.',
+            welcome: 'Willkommen bei Inquiry. {{weekday}}, {{month}} {{day}}{{ordinal}}.',
+            previousBook: 'Vorheriges Buch.',
+            nextBook: 'Nächstes Buch.',
+            noPreviousBook: 'Kein vorheriges Buch.',
+            noNextBook: 'Kein nächstes Buch.',
+        },
+        navTooltip: {
+            scopeToggle: 'Zwischen Book- und Saga-Bereich wechseln.',
+            flowLens: 'Zur Flow-Linse wechseln.',
+            depthLens: 'Zur Depth-Linse wechseln.',
+            modeIconToggle: 'Zwischen Flow- und Depth-Linse wechseln.',
+            focusRingToggle: 'Erweiterung des Fokus-Rings umschalten.',
+            previousBook: 'Vorheriges Buch.',
+            nextBook: 'Nächstes Buch.',
+        },
+        runner: {
+            contactingProvider: 'Inquiry: Verbindung zum KI-Provider wird hergestellt.',
+            running: 'Aktuell laufend ({{evidenceMode}}). Geschätzte ETA {{estimateLabel}}.',
+            cancelRequested: 'Abbruch von Inquiry angefordert. Stoppt nach Rückkehr des aktuellen Durchlaufs; aktive Provider-Anfragen können noch abgeschlossen werden.',
+            finalizing: 'Provider-Antwort empfangen. Ergebnisse werden finalisiert.',
+            waiting: 'Warte auf Antwort des Providers.',
+            runAborted: 'Inquiry-Ausführung abgebrochen.',
+            inquiryAlreadyRunning: 'Inquiry läuft bereits.',
+            inquiryNotConfigured: 'Inquiry ist noch nicht konfiguriert.',
+            noScenesAvailable: 'Keine Szenen für Inquiry verfügbar.',
+            noEnabledQuestions: 'Keine aktivierten Inquiry-Fragen gefunden.',
+        },
+        notice: {
+            aiDisabledInSettings: 'Inquiry erfordert aktivierte KI-Funktionen. Schalten Sie "KI-LLM-Funktionen aktivieren" in den Einstellungen ein.',
+            omnibusViewFailed: 'Inquiry-Ansicht für Omnibus-Pass kann nicht geöffnet werden.',
+            omnibusMobileOnly: 'Inquiry Omnibus-Pass ist nur am Desktop verfügbar.',
+            omnibusResumeNothing: 'Alle Fragen sind bereits abgeschlossen. Nichts zum Fortsetzen.',
+            running: 'Inquiry läuft. Bitte warten.',
+            noEnabledQuestions: 'Keine aktivierten Inquiry-Fragen gefunden.',
+            logNotFound: 'Kein Inquiry-Log für diese Ausführung gefunden.',
+            briefNotFound: 'Brief nicht gefunden. Möglicherweise verschoben oder gelöscht.',
+            briefSaved: 'Inquiry-Brief gespeichert.',
+            briefNotSaved: 'Aktive Inquiry hat keinen gespeicherten Brief.',
+            noBriefActive: 'Kein aktiver Inquiry-Brief.',
+            sceneNotFound: 'Szenendatei nicht gefunden.',
+            noRunForPreview: 'Bitte führen Sie Inquiry aus, bevor Sie den Bericht ansehen.',
+            noRunForSave: 'Bitte führen Sie Inquiry aus, bevor Sie den Brief speichern.',
+            noBriefs: 'Keine Briefs gefunden.',
+            fileExplorerUnavailable: 'Datei-Explorer nicht verfügbar.',
+        },
+        interaction: {
+            running: 'Inquiry läuft. Bitte warten.',
+            noQuestionsForZone: 'Für diese Zone sind keine Fragen konfiguriert.',
+            noQuestionForSlot: 'Für diesen Slot ist keine Frage konfiguriert.',
+            targetScenesBookOnly: 'Zielszenen sind nur im Book-Bereich verfügbar.',
+            targetSceneAdded: 'Zu Zielszenen hinzugefügt.',
+            targetSceneRemoved: 'Aus Zielszenen entfernt.',
+            clearedAllTargetScenes: 'Alle Zielszenen gelöscht.',
+            corpusDisabled: 'Korpus deaktiviert. Aktivieren Sie den Korpus, um Inquiry auszuführen.',
+            inquiryAlreadyRun: 'Inquiry wurde bereits ausgeführt. Öffnen Sie eine kürzliche Inquiry-Sitzung, um sie erneut anzusehen.',
+        },
+        menu: {
+            forceRerun: 'Erneut ausführen erzwingen',
+            openCitationBriefing: 'Zitat im Briefing-Artikel öffnen',
+            openCitationMarkdown: 'Zitat im Markdown-Brief öffnen',
+            openScene: 'Szene öffnen',
+            openNote: 'Notiz öffnen',
+            cancelTargeting: 'Gesamtes Targeting abbrechen',
+        },
+        findings: {
+            findings: 'Befunde',
+            noInquiryRun: 'Noch keine Inquiry-Ausführung.',
+            runToSeeVerdicts: 'Inquiry ausführen, um Bewertungen zu sehen.',
+            selectionDiscover: 'Auswahlmodus · Discover',
+            targetSection: 'Ziel-Befunde',
+            contextSection: 'Kontext-Befunde',
+            empty: 'Keine.',
+        },
+        preview: {
+            footerOpenLog: 'Inquiry-Log für detaillierten Fehlerbericht öffnen.',
+            hoverPreview: 'Über Frage hovern, um Payload anzuzeigen.',
+            noScenesHero: 'Keine Szenen für Inquiry verfügbar.',
+        },
+        details: {
+            toggle: 'Details umschalten',
+        },
+        corpus: {
+            disabled: 'Korpus deaktiviert. Aktivieren Sie den Korpus, um Inquiry auszuführen.',
+            legendClickKeysTitle: 'Klick-Tasten',
+            legendModeTitle: 'Modus (Symbol + Farbe)',
+            legendStatusTitle: 'Status (Rahmen)',
+            legendTierTitle: 'Stufe (Füllstand)',
+            statusOverdueLabel: 'Überfällig',
+            statusTodoLabel: 'Offen',
+            statusWorkingLabel: 'Laufend',
+            statusCompleteLabel: 'Erledigt',
+        },
+        settingsExtra: {
+            autopopulateName: 'Pending Edits automatisch ausfüllen',
+            autopopulateDesc: 'Schreibt nach jeder Inquiry-Ausführung Aktionsnotizen automatisch in das Pending Edits YAML-Feld. Wenn deaktiviert, manuell über Recent Inquiry Sessions schreiben.',
+            replaceQuestionsTitle: 'Aktuelle Fragen ersetzen?',
+            replaceCustomizedQuestionsTitle: 'Angepasste Fragen ersetzen?',
+            replaceQuestionsConfirm: 'Fragen ersetzen',
+            replaceCustomTitle: 'Benutzerdefinierte Fragen ersetzen?',
+            replaceCustomConfirm: 'Fragen ersetzen',
+            replaceCanonicalTitle: 'Kanonische Fragen ersetzen?',
+            collapse: 'Einklappen',
+            expand: 'Ausklappen',
+        },
+    },
+    bookDesigner: {
+        saveTemplate: {
+            badge: 'SZENEN-SET',
+            title: 'Szenenlayout speichern',
+            subtitle: 'Benennen Sie dieses Layout, damit Sie es später wiederverwenden können.',
+            nameField: {
+                name: 'Layout-Name',
+                desc: 'Wählen Sie einen kurzen, eindeutigen Namen.',
+                placeholder: 'z. B. Thriller / 3-Akt-Balance',
+            },
+            note: 'Vorlagen erfassen Layout, Akte, Nebenhandlungen, Charaktere, Beats-Schalter und den ausgewählten YAML-Typ (Basis/Erweitert).',
+            nameRequired: 'Vorlagenname ist erforderlich.',
+        },
+        deleteTemplate: {
+            title: 'Layout löschen',
+            subtitle: '"{{name}}" löschen? Dies kann nicht rückgängig gemacht werden.',
+        },
+        demoProject: {
+            badge: 'DEMO',
+            title: 'Nichtlineares Demo-Projekt erzeugen',
+            subtitle: 'Erstellt ein Beispiel mit 20 Szenen und 5 Akten, um den Unterschied zwischen erzählerischer Reihenfolge (in der die Leser Szenen erleben) und chronologischer Reihenfolge (wann Ereignisse tatsächlich stattfinden) zu zeigen. Die Szenennummern laufen in erzählerischer Reihenfolge von 1–20, aber Datum und Uhrzeit springen — öffnen Sie nach dem Erzeugen die START-HERE-Notiz und wechseln Sie zwischen Timeline- und Chronologue-Ansicht zum Vergleich.',
+            startDate: {
+                name: 'Startdatum',
+                desc: 'Wird für den Chronologue-Takt verwendet. Format: YYYY-MM-DD.',
+            },
+            note: 'Stellt außerdem sicher, dass der Arbeitsbereich für fünf Akte konfiguriert ist, damit die Demo korrekt angezeigt wird.',
+            generate: 'Demo-Projekt erzeugen',
+            invalidDate: 'Verwenden Sie ein gültiges Startdatum im Format YYYY-MM-DD.',
+        },
+        modal: {
+            badge: 'EINRICHTEN',
+            title: 'Buch-Designer',
+            subtitle: 'Konfigurieren und erzeugen Sie das Gerüst für Ihren neuen Roman. Ziehen Sie Szenen in der Vorschau in andere Akte und Nebenhandlungen, um den manuellen Modus zu aktivieren. Speichern Sie die Vorlage zur Wiederverwendung.',
+            wikiAriaLabel: 'Mehr im Wiki lesen',
+            noBookSelected: 'Kein Buch ausgewählt',
+            untitled: 'Ohne Titel',
+        },
+        meta: {
+            autoMode: 'Auto-Modus',
+            manualMode: 'Manueller Modus',
+            manualLayoutActive: 'Manuelles Layout aktiv',
+            autoDistribution: 'Automatische Verteilung',
+            fromTemplate: ' · Aus Vorlage',
+        },
+        sections: {
+            locationStructure: 'Ort & Struktur',
+            contentConfiguration: 'Inhaltskonfiguration',
+            sceneSetsExtras: 'Szenen-Sets & Extras',
+        },
+        fields: {
+            targetBook: {
+                name: 'Zielbuch',
+                desc: 'Wählen Sie das Book-Manager-Projekt, in dem Szenen und Beats erstellt werden.',
+                noBooks: 'Keine Bücher konfiguriert',
+                addFirstNote: 'Fügen Sie ein Buch im Book Manager hinzu und legen Sie dessen Ordner fest, bevor Sie hier ein Gerüst erzeugen.',
+            },
+            timeIncrement: {
+                name: 'Datums-Inkrement pro Szene',
+                desc: 'Zeitliches Inkrement zwischen Szenen (z. B. 1 Stunde, 1 Tag, 1 Woche). Auf 0 setzen, um Inkremente zu deaktivieren.',
+                placeholder: '1 day',
+                invalid: 'Ungültige Dauer: "{{raw}}". Wird auf {{current}} zurückgesetzt.',
+            },
+            scenes: {
+                name: 'Zu erzeugende Szenen',
+                desc: 'Anzahl der Vorlagen-Szenendateien mit YAML-Frontmatter, die erstellt werden sollen.',
+            },
+            targetLength: {
+                name: 'Ziel-Buchlänge',
+                desc: 'Wird zur Nummerierungsverteilung verwendet (z. B. 10, 20, 30...)',
+                detail: 'Szenen werden nummeriert: {{examples}}{{suffix}} basierend auf {{scenes}} Szenen über {{max}} Einheiten.',
+            },
+            acts: {
+                label: 'Akte, auf die Szenen verteilt werden',
+                actLabel: 'Akt {{num}}',
+            },
+            subplots: {
+                name: 'Nebenhandlungen',
+                desc: 'Eine Nebenhandlung pro Zeile eingeben.',
+            },
+            characters: {
+                name: 'Charaktere',
+                desc: 'Einen Charakter pro Zeile eingeben.',
+            },
+            sceneSet: {
+                label: 'Szenen-Set',
+                base: 'Basis-Szenen-Set',
+                advanced: 'Erweiterte Eigenschaften',
+            },
+            generateBeats: {
+                withSystem: '{{name}}-Beats erzeugen',
+                noSystem: 'Kein aktives Beat-System',
+                tooltipNoSystem: 'Wählen Sie unter Einstellungen → Beats ein Beat-System, um die Beat-Erzeugung zu aktivieren.',
+                existsAria: 'In diesem Ordner sind bereits Beat-Notizen vorhanden',
+                noSystemAria: 'Wählen Sie zuerst unter Einstellungen → Beats ein Beat-System',
+                yes: 'Ja',
+                no: 'Nein',
+            },
+            sceneLayouts: {
+                name: 'Szenen-Layouts',
+                desc: 'Wählen Sie ein gespeichertes Layout (Akte, Nebenhandlungen, Zuweisungen, Metadaten).',
+                newOption: 'Neue Vorlage',
+                emptyOption: '—',
+            },
+        },
+        preview: {
+            title: 'Vorschau',
+            dragging: 'Ziehe Szene {{scene}} → Akt {{act}}, {{subplot}}',
+            subplotFallback: 'Nebenhandlung {{num}}',
+        },
+        buttons: {
+            saveSceneSet: 'Szenen-Set speichern',
+            reset: 'Zurücksetzen',
+            demoProject: 'Demo-Projekt',
+            deleteLayout: 'Layout löschen',
+            createBook: 'Buch erstellen',
+            save: 'Speichern',
+            delete: 'Löschen',
+            cancel: 'Abbrechen',
+        },
+        notes: {
+            layoutTemplatesIncludes: 'Enthält Szenen, Akte, Nebenhandlungen, Beats und Chronologue-Timing.',
+        },
+        notices: {
+            layoutReset: 'Layout auf Standardwerte mit automatischer Verteilung zurückgesetzt.',
+            templateDeleted: 'Vorlage gelöscht.',
+            templateNotFound: 'Vorlage nicht gefunden.',
+            templateSaved: 'Vorlage "{{name}}" gespeichert.',
+            templateUpdated: 'Vorlage "{{name}}" aktualisiert.',
+            templateApplied: 'Vorlage "{{name}}" angewendet.',
+            selectBookForDemo: 'Wählen Sie ein Book-Manager-Buch mit Ordner aus, bevor Sie ein Demo-Projekt erzeugen.',
+            selectBookForGenerate: 'Wählen Sie ein Book-Manager-Buch mit Ordner aus, bevor Sie Szenen erzeugen.',
+            folderError: 'Fehler beim Erstellen des Ordners: {{error}}',
+            baseSetMissing: 'Basis-Szenen-Set in den Einstellungen nicht gefunden. Legen Sie ein Szenen-Set fest, bevor Sie erzeugen.',
+            generating: 'Erzeuge {{count}} Szenen...',
+            beatsExist: 'In diesem Ordner sind bereits Beat-Notizen vorhanden ({{count}} gefunden). Verwenden Sie den Beat-Manager in den Einstellungen zum Reparieren oder erneuten Synchronisieren.',
+            noBeatSystemActive: 'Für dieses Buch ist kein aktives Beat-System ausgewählt. Wählen Sie eines im Beat-Manager, bevor Sie Beat-Notizen erstellen.',
+            beatsError: 'Fehler beim Erstellen von Beats: {{error}}',
+            bookCreated: 'Buch erstellt! {{scenes}} Szenen{{skipped}}{{beats}}.',
+            bookCreatedSkipped: ' ({{count}} vorhandene übersprungen)',
+            bookCreatedBeatsExist: ' (Beats bereits vorhanden)',
+            bookCreatedBeats: ', {{count}} Beat-Notizen',
+            demoReady: 'Demo-Projekt bereit: {{scenes}} Szenen, {{notes}} Notizen, {{beats}} Beat-Notizen.{{skipped}}',
+            demoSkipped: ' {{scenes}} vorhandene Szenen und {{notes}} vorhandene Notizen übersprungen.',
+        },
+    },
+    gossamer: {
+        scoreModal: {
+            beatSystemTitle: '{{label}} Beat-System',
+            subtitle: 'Geben Sie {{signal}}-Werte (0-100) für jeden Beat ein. Vorherige Werte werden als Verlauf gespeichert.',
+            signalMeta: 'Signal: {{label}}',
+            beatsDetectedMeta: 'Erkannte Beats: {{count}}',
+            enterScoreLabel: 'Wert eingeben',
+            scorePlaceholder: '0-100',
+            groupMaintenance: 'Wartung',
+            groupAi: 'KI-Workflow',
+            normalizeButton: 'Verlauf normalisieren',
+            deleteButton: '{{label}}-Werte löschen',
+            copyButton: 'KI-Prompt kopieren',
+            pasteButton: 'KI-Antwort einfügen',
+            saveButton: 'Werte speichern',
+            cancelButton: 'Abbrechen',
+            aiMetaVaultLink: 'Vault-Datei',
+            normalizeNothing: 'Kein Gossamer-Verlauf zum Normalisieren.',
+            clipboardEmpty: 'Zwischenablage ist leer.',
+            clipboardReadFailed: 'Zwischenablage konnte nicht gelesen werden.',
+            noChanges: 'Keine Änderungen zum Speichern.',
+            saveFailed: 'Werte konnten nicht gespeichert werden. Details siehe Konsole.',
+            deleteConfirmBadge: 'Warnung',
+            deleteConfirmCancel: 'Abbrechen',
+            normalizeConfirmBadge: 'Warnung',
+            normalizeConfirmTitle: 'Gossamer-Verlauf normalisieren?',
+            normalizeConfirmButton: 'Normalisieren',
+            normalizeConfirmCancel: 'Abbrechen',
+        },
+        processingModal: {
+            statusInitializing: 'Wird initialisiert...',
+            backgroundContinues: 'Analyse läuft im Hintergrund weiter.',
+            modelDisabled: 'KI deaktiviert',
+            beginButton: 'Analyse starten',
+            cancelButton: 'Abbrechen',
+            analyzingManuscript: 'Manuskript wird analysiert...',
+            assemblingManuscript: 'Manuskript wird zusammengestellt...',
+            statusHeading: 'Status',
+            waitingToSend: 'Warte auf Senden...',
+            closeButton: 'Schließen',
+            statScenes: 'Szenen',
+            statWords: 'Wörter',
+            statBeats: 'Story-Beats',
+            statEvidence: 'Belege',
+            analysisComplete: 'Analyse abgeschlossen',
+            analysisFailed: 'Analyse fehlgeschlagen',
+            apiFailed: '✗ API-Aufruf fehlgeschlagen',
+        },
+        notices: {
+            noStoryBeats: 'Keine Story-Beats gefunden. Erstellen Sie Notizen mit Frontmatter "Class: Beat".',
+            cannotEnterMode: 'Gossamer-Modus kann nicht aktiviert werden. {{hint}}',
+            validating: 'Konfiguration wird validiert...',
+            loadingBeats: 'Story-Beats werden geladen...',
+            updatingBeats: 'Beat-Notizen werden aktualisiert...',
+            generatingLog: 'Analyseprotokoll wird erstellt...',
+            processingFailed: 'Verarbeitung fehlgeschlagen: {{error}}',
+        },
+        service: {
+            noBeatsUpdated: 'Keine Beats wurden aktualisiert.',
+        },
+    },
+};

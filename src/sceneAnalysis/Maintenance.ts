@@ -13,6 +13,7 @@ import { parsePulseAnalysisResponse } from './responseParsing';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { snapshotFrontmatterFields } from '../utils/logVaultOps';
+import { t } from '../i18n';
 
 type FMInfo = {
     exists: boolean;
@@ -110,7 +111,7 @@ async function updateSceneFile(
         return true;
     } catch (error) {
         console.error(`[updateSceneFile] Error updating file:`, error);
-        new Notice(`Error saving updates to ${scene.file.basename}`);
+        new Notice(t('sceneAnalysis.maintenance.saveError', { file: scene.file.basename }));
         return false;
     }
 }
@@ -149,7 +150,7 @@ export async function testYamlUpdateFormatting(
         'Pulse Update': 'Yes'
     };
 
-    new Notice(`Starting YAML update test on ${dummyFilePath}...`);
+    new Notice(t('sceneAnalysis.maintenance.yamlTest.starting', { file: dummyFilePath }));
     try {
         let file = vault.getAbstractFileByPath(dummyFilePath);
         if (!(file instanceof TFile)) {
@@ -159,14 +160,14 @@ export async function testYamlUpdateFormatting(
         }
 
         if (!(file instanceof TFile)) {
-            new Notice(`Error: Could not get TFile for ${dummyFilePath}`);
+            new Notice(t('sceneAnalysis.maintenance.yamlTest.errorTfile', { file: dummyFilePath }));
             return;
         }
 
         const currentContent = await vault.read(file);
         const fmInfo = getFrontMatterInfo(currentContent) as unknown as FMInfo;
         if (!fmInfo || !fmInfo.exists) {
-            new Notice(`Error: Dummy file ${dummyFilePath} is missing frontmatter.`);
+            new Notice(t('sceneAnalysis.maintenance.yamlTest.errorMissingFm', { file: dummyFilePath }));
             return;
         }
 
@@ -189,19 +190,19 @@ export async function testYamlUpdateFormatting(
 
         const parsedAnalysis = parsePulseAnalysisResponse(DUMMY_API_RESPONSE, plugin);
         if (!parsedAnalysis) {
-            new Notice('Error: Failed to parse dummy API response data.');
+            new Notice(t('sceneAnalysis.maintenance.yamlTest.errorParse'));
             return;
         }
 
         const success = await updateSceneFile(vault, dummySceneData, parsedAnalysis, plugin, null);
         if (success) {
-            new Notice(`Successfully updated YAML in ${dummyFilePath}. Please check the file formatting.`);
+            new Notice(t('sceneAnalysis.maintenance.yamlTest.success', { file: dummyFilePath }));
         } else {
-            new Notice(`Failed to update YAML in ${dummyFilePath}. Check console for errors.`);
+            new Notice(t('sceneAnalysis.maintenance.yamlTest.failed', { file: dummyFilePath }));
         }
     } catch (error) {
         console.error('Error during YAML update test:', error);
-        new Notice('Error during YAML update test. Check console.');
+        new Notice(t('sceneAnalysis.maintenance.yamlTest.errorGeneric'));
     }
 }
 
@@ -230,9 +231,9 @@ class PurgeConfirmationModal extends Modal {
         contentEl.addClass('ert-purge-confirm-modal');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-        hero.createDiv({ text: 'Confirm purge beats', cls: 'ert-modal-title' });
-        hero.createDiv({ text: 'RT will archive removed scene-analysis fields before cleanup.', cls: 'ert-modal-subtitle' });
+        hero.createSpan({ text: t('sceneAnalysis.maintenance.purge.badgeWarning'), cls: 'ert-modal-badge' });
+        hero.createDiv({ text: t('sceneAnalysis.maintenance.purge.title'), cls: 'ert-modal-title' });
+        hero.createDiv({ text: t('sceneAnalysis.maintenance.purge.subtitle'), cls: 'ert-modal-subtitle' });
 
         const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
 
@@ -240,7 +241,7 @@ class PurgeConfirmationModal extends Modal {
         messageEl.setText(this.message);
 
         const detailsEl = card.createDiv({ cls: 'ert-purge-details' });
-        detailsEl.createEl('div', { text: 'This will remove these fields and archive them to a log snapshot first:', cls: 'ert-purge-danger' });
+        detailsEl.createEl('div', { text: t('sceneAnalysis.maintenance.purge.dangerHeader'), cls: 'ert-purge-danger' });
         const listEl = detailsEl.createEl('ul', { cls: 'ert-purge-list' });
         this.details.forEach(detail => {
             const li = listEl.createEl('li');
@@ -258,11 +259,11 @@ class PurgeConfirmationModal extends Modal {
         });
 
         const warningEl = card.createDiv({ cls: 'ert-purge-warning' });
-        warningEl.setText('Are you sure you want to proceed?');
+        warningEl.setText(t('sceneAnalysis.maintenance.purge.areYouSure'));
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
-            .setButtonText('Purge beats')
+            .setButtonText(t('sceneAnalysis.maintenance.purge.buttonPurge'))
             .setWarning()
             .onClick(() => {
                 this.close();
@@ -270,7 +271,7 @@ class PurgeConfirmationModal extends Modal {
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
+            .setButtonText(t('sceneAnalysis.maintenance.purge.buttonCancel'))
             .onClick(() => this.close());
     }
 }
@@ -323,27 +324,27 @@ export async function purgeBeatsByManuscriptOrder(
     try {
         const allScenes = await getAllSceneData(plugin, vault);
         if (allScenes.length === 0) {
-            new Notice('No scenes found in manuscript.');
+            new Notice(t('sceneAnalysis.maintenance.purge.noScenes'));
             return;
         }
 
         const modal = new PurgeConfirmationModal(
             plugin.app,
-            `Purge ALL beats from ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''} in your manuscript?`,
+            t('sceneAnalysis.maintenance.purge.confirmManuscript', { count: allScenes.length, plural: allScenes.length !== 1 ? 's' : '' }),
             [
-                '`previousSceneAnalysis`, `currentSceneAnalysis`, `nextSceneAnalysis` fields',
-                '`Pulse Update` timestamp'
+                t('sceneAnalysis.maintenance.purge.detailFields'),
+                t('sceneAnalysis.maintenance.purge.detailPulseUpdate')
             ],
             async () => {
-                const notice = new Notice('Purging beats from all scenes...', 0);
+                const notice = new Notice(t('sceneAnalysis.maintenance.purge.noticeStart'), 0);
                 const result = await purgeScenesBeats(plugin, vault, allScenes);
 
                 notice.hide();
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
-                const parts = [`Purged beats from ${result.purgedCount} of ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''}.`];
+                const parts = [t('sceneAnalysis.maintenance.purge.resultManuscript', { purged: result.purgedCount, total: allScenes.length, plural: allScenes.length !== 1 ? 's' : '' })];
                 if (result.snapshotPath) {
-                    parts.push(`Archived removed fields: ${result.snapshotPath}`);
+                    parts.push(t('sceneAnalysis.maintenance.purge.archived', { path: result.snapshotPath }));
                 }
                 new Notice(parts.join(' '));
             }
@@ -352,7 +353,7 @@ export async function purgeBeatsByManuscriptOrder(
         modal.open();
     } catch (error) {
         console.error('[purgeBeatsByManuscriptOrder] Error:', error);
-        new Notice('Error purging beats. Check console for details.');
+        new Notice(t('sceneAnalysis.maintenance.purge.errorGeneric'));
     }
 }
 
@@ -366,27 +367,27 @@ export async function purgeBeatsBySubplotName(
         const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
 
         if (filtered.length === 0) {
-            new Notice(`No scenes found for subplot "${subplotName}".`);
+            new Notice(t('sceneAnalysis.pipeline.notices.noScenesForSubplot', { name: subplotName }));
             return;
         }
 
         const modal = new PurgeConfirmationModal(
             plugin.app,
-            `Purge beats from ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}"?`,
+            t('sceneAnalysis.maintenance.purge.confirmSubplot', { count: filtered.length, plural: filtered.length !== 1 ? 's' : '', name: subplotName }),
             [
-                '`previousSceneAnalysis`, `currentSceneAnalysis`, `nextSceneAnalysis` fields',
-                '`Pulse Last Updated` timestamps'
+                t('sceneAnalysis.maintenance.purge.detailFields'),
+                t('sceneAnalysis.maintenance.purge.detailPulseLastUpdated')
             ],
             async () => {
-                const notice = new Notice(`Purging beats from "${subplotName}"...`, 0);
+                const notice = new Notice(t('sceneAnalysis.maintenance.purge.noticeStartSubplot', { name: subplotName }), 0);
                 const result = await purgeScenesBeats(plugin, vault, filtered);
 
                 notice.hide();
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
-                const parts = [`Purged beats from ${result.purgedCount} of ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}".`];
+                const parts = [t('sceneAnalysis.maintenance.purge.resultSubplot', { purged: result.purgedCount, total: filtered.length, plural: filtered.length !== 1 ? 's' : '', name: subplotName })];
                 if (result.snapshotPath) {
-                    parts.push(`Archived removed fields: ${result.snapshotPath}`);
+                    parts.push(t('sceneAnalysis.maintenance.purge.archived', { path: result.snapshotPath }));
                 }
                 new Notice(parts.join(' '));
             }
@@ -395,6 +396,6 @@ export async function purgeBeatsBySubplotName(
         modal.open();
     } catch (error) {
         console.error(`[purgeBeatsBySubplotName] Error purging subplot "${subplotName}":`, error);
-        new Notice('Error purging beats. Check console for details.');
+        new Notice(t('sceneAnalysis.maintenance.purge.errorGeneric'));
     }
 }

@@ -16,6 +16,7 @@ import type { TimelineItem } from './types';
 import { getAIClient } from './ai/runtime/aiClient';
 import { hasProFeatureAccess } from './settings/featureGate';
 import type { AIRunAdvancedContext } from './ai/types';
+import { t } from './i18n';
 
 interface SceneToProcess {
     file: TFile;
@@ -172,8 +173,8 @@ async function processScenes(
     const scenes = await getScenesForScope(plugin, scope, subplotFilter, overrideExisting, statusFilters);
     
     if (scenes.length === 0) {
-        new Notice('No scenes to process.');
-        return { message: 'No scenes to process.' };
+        new Notice(t('sceneAnalysis.runtime.notices.noScenesToProcess'));
+        return { message: t('sceneAnalysis.runtime.notices.noScenesToProcess') };
     }
 
     modal.setTotalCount(scenes.length);
@@ -196,7 +197,7 @@ async function processScenes(
             
             if (mode === 'ai') {
                 // AI mode: send scene to AI for estimation
-                modal.setStatusMessage(`AI analyzing: ${scene.title}`);
+                modal.setStatusMessage(t('sceneAnalysis.runtime.notices.aiAnalyzing', { title: scene.title }));
                 const aiResult = await estimateSceneWithAi(plugin, scene, localResult, runtimeSettings);
                 if (typeof modal.setAiAdvancedContext === 'function') {
                     modal.setAiAdvancedContext(aiResult.advancedContext ?? null);
@@ -230,10 +231,12 @@ async function processScenes(
         }
     }
 
-    const modeLabel = mode === 'ai' ? 'AI' : 'Local';
+    const modeLabel = mode === 'ai'
+        ? t('sceneAnalysis.runtimeModal.modes.ai')
+        : t('sceneAnalysis.runtimeModal.modes.local');
     const message = errors > 0
-        ? `${modeLabel} estimation complete. ${processed} scenes updated, ${errors} errors.`
-        : `${modeLabel} estimation complete! ${processed} scenes updated. Total: ${formatRuntimeValue(totalRuntime)}`;
+        ? t('sceneAnalysis.runtime.notices.completeWithErrors', { mode: modeLabel, processed, errors })
+        : t('sceneAnalysis.runtime.notices.completeSuccess', { mode: modeLabel, processed, total: formatRuntimeValue(totalRuntime) });
 
     new Notice(message);
 
@@ -449,7 +452,7 @@ export function openRuntimeEstimator(plugin: RadialTimelinePlugin): void {
 export function registerRuntimeCommands(plugin: RadialTimelinePlugin): void {
     plugin.addCommand({
         id: 'runtime-estimator',
-        name: 'Runtime estimator',
+        name: t('sceneAnalysis.commands.runtimeEstimator'),
         checkCallback: (checking: boolean) => {
             // Only show command when Pro is active
             const hasPro = hasProFeatureAccess(plugin);

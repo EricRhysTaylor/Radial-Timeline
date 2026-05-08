@@ -236,6 +236,23 @@ describe('timeline repair normalizer', () => {
         expect(shifted.entries[2].editedWhen?.getTime()).toBe(before[2] + 3 * 86400_000); // shifted
     });
 
+    it('flashback rows carry a human-readable elapsed-time label', () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md', { when: new Date(2085, 3, 1, 8, 0, 0, 0) }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md', { when: new Date(2085, 3, 2, 8, 0, 0, 0) }), file: makeFile('Book/02.md'), manuscriptIndex: 1 },
+            { scene: makeScene('Book/03.md', { when: new Date(1933, 9, 4, 12, 0, 0, 0) }), file: makeFile('Book/03.md'), manuscriptIndex: 2 },
+            { scene: makeScene('Book/04.md', { when: new Date(2085, 3, 3, 8, 0, 0, 0) }), file: makeFile('Book/04.md'), manuscriptIndex: 3 },
+            { scene: makeScene('Book/05.md', { when: new Date(2085, 3, 4, 8, 0, 0, 0) }), file: makeFile('Book/05.md'), manuscriptIndex: 4 }
+        ], {
+            anchorWhen: new Date(2085, 3, 1, 8, 0, 0, 0),
+            patternPreset: 'daily',
+            preserveAuthoredDates: true
+        });
+
+        expect(entries[2].isFlashback).toBe(true);
+        expect(entries[2].flashbackLabel).toMatch(/^\d+ years? earlier$/);
+    });
+
     it('detects flashback scenes by year-distance from neighbors and suppresses backward-time alerts', () => {
         const entries = runPatternSync([
             { scene: makeScene('Book/01.md', { when: new Date(2085, 3, 1, 8, 0, 0, 0) }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },

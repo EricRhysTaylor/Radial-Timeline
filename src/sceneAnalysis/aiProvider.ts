@@ -24,6 +24,7 @@ import {
 } from '../ai/log';
 import { ensurePulseContentLogFolder, resolvePulseContentLogFolder } from '../inquiry/utils/logs';
 import { normalizePath, TFolder } from 'obsidian';
+import { t } from '../i18n';
 
 type PulseLogPayload = {
     provider: Exclude<AIProviderId, 'none'>;
@@ -288,7 +289,7 @@ export async function callAiProvider(
                     normalizationWarnings: runResult.error ? [runResult.error] : undefined
                 });
             }
-            throw new Error(runResult.error || `Error calling ${resolvedProvider} AI provider.`);
+            throw new Error(runResult.error || t('sceneAnalysis.aiProvider.genericError', { provider: resolvedProvider }));
         }
 
         const parsedForLog = commandContext !== 'synopsis'
@@ -337,7 +338,7 @@ export async function callAiProvider(
             `[API][BeatsCommands][callAiProvider] Error during ${provider} API call:`,
             sanitizeLogPayload(error).sanitized
         );
-        new Notice(`Error calling ${provider} API:\n${detailedMessage}`, 8000);
+        new Notice(t('sceneAnalysis.aiProvider.callError', { provider, detail: detailedMessage }), 8000);
 
         if (!submittedAt) submittedAt = new Date();
         if (!returnedAt) returnedAt = new Date();

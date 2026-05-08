@@ -216,40 +216,39 @@ export async function runKeywordSweep(
         const entry = entries[i];
         const previousEntry = i > 0 ? entries[i - 1] : null;
 
-        // Authored anchors are never rewritten by cues.
-        if (entry.source === 'authored') continue;
-
         // Get text to scan
         let text = await getSceneText(entry);
-        
+
         // Add synopsis if available and enabled
         if (opts.includeSynopsis && entry.scene.synopsis) {
             text = entry.scene.synopsis + '\n' + text;
         }
-        
+
         // Apply excerpt window
         if (opts.excerptWindow && opts.excerptWindow > 0 && text.length > opts.excerptWindow) {
             text = text.substring(0, opts.excerptWindow);
         }
-        
+
         // Find temporal cues
         const cues = extractTemporalCues(text);
-        
-        if (cues.length === 0) {
-            // No cues found, keep the pattern result
-            continue;
-        }
-        
-        // Store cues for display
+        if (cues.length === 0) continue;
+
+        // Always surface cues as editorial evidence, even on authored anchors.
+        // The chips show the manuscript phrase; they are not a claim that the
+        // cue drove the date.
         entry.cues = cues;
-        
+
+        // Authored anchors are never rewritten by cues — only their evidence
+        // is surfaced. Skip the apply step.
+        if (entry.source === 'authored') continue;
+
         // Apply cues to refine the When date
         const refinedWhen = applyCues(
             entry.proposedWhen,
             previousEntry?.proposedWhen ?? null,
             cues
         );
-        
+
         if (refinedWhen) {
             entry.proposedWhen = refinedWhen.date;
             entry.source = 'keyword';

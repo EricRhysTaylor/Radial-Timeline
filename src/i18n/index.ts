@@ -21,8 +21,10 @@
 import { moment } from 'obsidian';
 import { en, type TranslationKeys } from './locales/en';
 import { ja } from './locales/ja';
+import { zh } from './locales/zh';
+import { ko } from './locales/ko';
+import { de } from './locales/de';
 // Future: import { ar } from './locales/ar';
-// Future: import { de } from './locales/de';
 
 // Helper type for deep partial (allows partial translations at any nesting level)
 type DeepPartial<T> = {
@@ -33,8 +35,10 @@ type DeepPartial<T> = {
 const locales: Record<string, DeepPartial<TranslationKeys>> = {
     en,
     ja,
+    zh,
+    ko,
+    de,
     // ar,
-    // de,
 };
 
 // Cache the current locale to avoid repeated lookups

@@ -92,18 +92,56 @@ export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
     night: 'Night'
 };
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+
 /**
- * Pretty label for a date — overrides the bucket label when the time hits
- * exactly noon (12:00) or midnight (00:00). Otherwise returns the bucket label.
+ * Human-readable elapsed time for a flashback / flash-forward row, expressed
+ * relative to the surrounding "current" timeline. Negative deltaMs is a jump
+ * backward in time ("earlier"); positive is forward ("later").
+ *
+ * Picks the largest unit that gives a meaningful integer:
+ *   ≥ 1 year   → "N years earlier/later"
+ *   ≥ 1 month  → "N months earlier/later"
+ *   otherwise  → "N days earlier/later"
+ */
+export function formatFlashbackDelta(deltaMs: number): string {
+    const direction = deltaMs < 0 ? 'earlier' : 'later';
+    const absDays = Math.abs(deltaMs) / (1000 * 60 * 60 * 24);
+    const years = absDays / 365.25;
+    if (years >= 1) {
+        const n = Math.round(years);
+        return `${n} year${n === 1 ? '' : 's'} ${direction}`;
+    }
+    const months = absDays / 30.44;
+    if (months >= 1) {
+        const n = Math.round(months);
+        return `${n} month${n === 1 ? '' : 's'} ${direction}`;
+    }
+    const n = Math.max(1, Math.round(absDays));
+    return `${n} day${n === 1 ? '' : 's'} ${direction}`;
+}
+
+/**
+ * Pretty label for a date — combines the weekday name with the time-of-day
+ * bucket so rows read naturally ("Saturday Evening", "Sunday Morning").
+ * Overrides the bucket label when the time hits exactly noon (12:00) or
+ * midnight (00:00).
  */
 export function describeWhenLabel(date: Date, bucket: TimeBucket): string {
     const h = date.getHours();
     const m = date.getMinutes();
-    if (m === 0) {
-        if (h === 12) return 'Noon';
-        if (h === 0) return 'Midnight';
+    const weekday = WEEKDAY_NAMES[date.getDay()];
+
+    let timeOfDay: string;
+    if (m === 0 && h === 12) {
+        timeOfDay = 'Noon';
+    } else if (m === 0 && h === 0) {
+        timeOfDay = 'Midnight';
+    } else {
+        timeOfDay = TIME_BUCKET_LABELS[bucket];
     }
-    return TIME_BUCKET_LABELS[bucket];
+
+    return `${weekday} ${timeOfDay}`;
 }
 
 // ============================================================================
@@ -179,6 +217,8 @@ export interface RepairSceneEntry {
     hasBackwardTime: boolean;    // When < previous scene's When
     hasLargeGap: boolean;        // Unusually large time gap from previous
     isFlashback: boolean;        // originalWhen is far from surrounding authored dates
+    /** Human-readable delta for a flashback row, e.g. "5 years earlier". */
+    flashbackLabel?: string;
     isChanged: boolean;          // proposedWhen differs from originalWhen
     
     // Duration (optional)

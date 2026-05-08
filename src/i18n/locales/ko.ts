@@ -1,0 +1,492 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
+
+/**
+ * Korean translations (한국어)
+ *
+ * Missing keys automatically fall back to English.
+ *
+ * To add or refine translations:
+ * 1. Copy the key structure from en.ts
+ * 2. Replace the English string with the Korean translation
+ * 3. Run `node scripts/check-translations.mjs` to see coverage
+ */
+
+import type { TranslationKeys } from './en';
+
+// Helper type for deep partial (allows partial translations at any nesting level)
+type DeepPartial<T> = {
+    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+export const ko: DeepPartial<TranslationKeys> = {
+    settings: {
+        general: {
+            sourcePath: {
+                name: '원본 경로',
+                desc: '원고 장면 파일이 있는 루트 폴더를 지정하세요.',
+                placeholder: '예: 원고/장면',
+            },
+            /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
+            showTitle: {
+                name: '레거시: 원본 경로를 제목으로 표시 (사용 중단됨)',
+                desc: '이 설정은 더 이상 사용되지 않습니다. 책 제목은 일반 설정의 책 프로필에서 관리됩니다.',
+            },
+        },
+        pov: {
+            heading: '시점',
+            global: {
+                name: '전역 시점',
+                desc: '선택 사항. 적용할 기본 모드를 선택하세요. 장면 수준의 시점이 이 전역 설정을 재정의합니다.',
+            },
+            yamlOverrides: {
+                name: '장면 수준 YAML 재정의',
+                desc: '장면 프론트매터에서 `POV:` 값으로 first, second, third, omni, objective 또는 two, four, count, all 같은 숫자를 지정할 수 있습니다. 숫자 계열은 `Character:` 목록의 첫 N명에 표시를 적용하고 전역 시점의 마커를 사용합니다.',
+            },
+            modes: {
+                off: '레거시 (첫 번째로 나열된 캐릭터, "pov" 위첨자)',
+                first: '1인칭 (캐릭터에 ¹ 마커)',
+                second: '2인칭 (You² 라벨)',
+                third: '3인칭 한정 (캐릭터에 ³ 마커)',
+                omni: '전지적 화자 (Omni³ 라벨)',
+                objective: '객관 시점 — 카메라 시점 화자 (Narrator° 라벨)',
+            },
+            preview: {
+                heading: '시점 예시',
+                examples: {
+                    sceneFirst: '장면 YAML: POV: first | Character: [Alice]',
+                    sceneThird: '장면 YAML: POV: third | Character: [Bob]',
+                    sceneSecond: '장면 YAML: POV: second | Character: [Alice, Bob]',
+                    sceneOmni: '장면 YAML: POV: omni | Character: [Alice, Bob]',
+                    sceneObjective: '장면 YAML: POV: objective | Character: [Alice, Bob]',
+                    countTwoThird: '전역 설정: POV = third | 장면 YAML: POV: two | Character: [Alice, Bob]',
+                    countThreeThird: '전역 설정: POV = third | 장면 YAML: POV: three | Character: [Alice, Bob, Charlie]',
+                    countFourThird: '전역 설정: POV = third | 장면 YAML: POV: four | Character: [Alice, Bob, Charlie, Diana]',
+                    countTwoFirstNumeric: '전역 설정: POV = first | 장면 YAML: POV: 2 | Character: [Alice, Bob]',
+                    countAllFirst: '전역 설정: POV = first | 장면 YAML: POV: all | Character: [Alice, Bob, Charlie]',
+                },
+            },
+        },
+        configuration: {
+            heading: '고급 설정',
+            aiOutputFolder: {
+                name: '로그',
+                desc: '실행 로그, 아카이브, 스냅샷, 이동 이력은 Radial Timeline/Logs에 저장됩니다.',
+                placeholder: 'Radial Timeline/Logs',
+            },
+            manuscriptOutputFolder: {
+                name: '내보내기 폴더',
+                desc: '원고, 아웃라인, 인덱스 카드 내보내기 (Markdown, PDF, 비트 시트, 인덱스 카드)는 Radial Timeline/Export에 저장됩니다.',
+                placeholder: 'Radial Timeline/Export',
+            },
+            outlineOutputFolder: {
+                name: '아웃라인 내보내기 폴더 (레거시)',
+                desc: '레거시 설정. 아웃라인 내보내기는 공유 내보내기 폴더를 사용합니다. 기본값: Radial Timeline/Export.',
+                placeholder: 'Radial Timeline/Export',
+            },
+            autoExpand: {
+                name: '잘린 장면 제목 자동 확장',
+                desc: '장면 위에 마우스를 올렸을 때 제목 텍스트가 잘려 있으면 자동으로 확장합니다.',
+            },
+            readability: {
+                name: '가독성 크기',
+                desc: '타임라인 텍스트의 글꼴 크기 프로필을 선택하세요.',
+                normal: '표준',
+                large: '큼',
+            },
+        },
+        ai: {
+            heading: '장면 분석을 위한 AI LLM',
+            enable: {
+                name: 'AI LLM 기능 활성화',
+                desc: '명령 팔레트 옵션과 UI 장면 분석 색상 및 호버 시놉시스를 표시합니다.',
+            },
+        },
+    },
+    timeline: {
+        acts: {
+            act1: '제1막',
+            act2: '제2막',
+            act3: '제3막',
+            actFallback: '제{{number}}막',
+        },
+        /** @deprecated No longer used — book title comes from Book Profiles. */
+        workInProgress: '제목 없는 원고',
+        defaultBookTitle: '제목 없는 원고',
+        loading: '타임라인 로딩 중...',
+        loadingData: '타임라인 데이터 로딩 중...',
+        renderError: '타임라인 렌더링 오류. 자세한 내용은 콘솔을 확인하세요.',
+        overdue: '기한 초과: {{date}}',
+        modes: {
+            narrative: { name: '서사', acronym: '서사' },
+            progress: { name: '진행', acronym: '진행' },
+            chronologue: { name: '연대기', acronym: '연대' },
+            gossamer: { name: 'Gossamer', acronym: '가스' },
+        },
+        subplotRing: {
+            allScenes: '모든 장면',
+            mainPlot: '메인 플롯',
+            chronologue: '연대기',
+        },
+        grid: {
+            statusHeader: {
+                todo: '예정',
+                working: '진행',
+                completed: '완료',
+                due: '기한',
+            },
+            stageHeader: {
+                zero: '영',
+                author: '저',
+                house: '사',
+                press: '간',
+            },
+        },
+    },
+    common: {
+        yes: '예',
+        no: '아니요',
+        cancel: '취소',
+        save: '저장',
+        reset: '초기화',
+        enable: '활성화',
+        disable: '비활성화',
+        loading: '로딩 중...',
+        error: '오류',
+        success: '성공',
+    },
+    inquiry: {
+        help: {
+            tooltip: 'Inquiry 사용 방법',
+            configTooltip: 'Inquiry가 아직 구성되지 않았습니다.\n장면, 책, 아웃라인이 저장된 Inquiry 디렉토리를 설정 -> Inquiry에서 구성하세요.\n그런 다음 선택한 범위에 포함할 클래스를 명시적으로 확인하세요.',
+            noScenesTooltip: '현재 범위에 대한 장면을 찾을 수 없습니다.\n장면, 책, 아웃라인이 저장된 Inquiry 디렉토리를 설정 -> Inquiry에서 구성하세요.\n그런 다음 선택한 범위에 포함할 클래스를 명시적으로 확인하세요.',
+            corpusTooltip: '코퍼스가 비활성화되었습니다.\nInquiry를 실행하려면 코퍼스 스트립에서 코퍼스 범위를 활성화하세요.',
+            resultsTooltip: '미니맵에서 자료 인용을 검토하여 세부 피드백을 받으세요.\n전체 세부 정보는 Brief를 보세요.',
+            runningTooltip: 'Inquiry가 API 실행을 처리하는 중입니다.\n다른 노트로 전환하여 작업을 계속할 수 있지만, 이 Inquiry 탭은 열어두세요.',
+            runningSingleTooltip: 'Inquiry가 지금 이 질문을 처리 중입니다.\n다른 노트로 전환하여 작업을 계속할 수 있지만, 이 Inquiry 탭은 열어두세요.\n이 실행을 취소하면 처음부터 다시 시작해야 합니다. 재개할 수 없습니다.',
+            onboardingTooltip: '번호 버튼을 누르면 질문과 페이로드가 표시됩니다. 클릭하면 AI로 질문을 처리합니다. Flow와 Depth 링은 응답의 렌즈를 조정합니다. 미니맵은 컨텍스트 인용을 표시합니다.',
+        },
+        mobile: {
+            title: '데스크톱 필요',
+            subtitle: 'Inquiry는 데스크톱에서만 사용할 수 있습니다. Brief는 모바일에서도 읽을 수 있습니다.',
+            openBriefs: 'Briefs 폴더 열기',
+            viewLatest: '최신 Brief 보기',
+        },
+        nav: {
+            bookUnresolved: '책 범위가 해결되지 않았습니다. Inquiry 소스를 확인하세요.',
+            waitingForProvider: '제공자 응답 대기 중.',
+            welcome: 'Inquiry에 오신 것을 환영합니다. {{weekday}} {{month}} {{day}}{{ordinal}}.',
+            previousBook: '이전 책.',
+            nextBook: '다음 책.',
+            noPreviousBook: '이전 책이 없습니다.',
+            noNextBook: '다음 책이 없습니다.',
+        },
+        navTooltip: {
+            scopeToggle: 'Book과 Saga 범위 사이를 전환합니다.',
+            flowLens: 'Flow 렌즈로 전환합니다.',
+            depthLens: 'Depth 렌즈로 전환합니다.',
+            modeIconToggle: 'Flow와 Depth 렌즈 사이를 전환합니다.',
+            focusRingToggle: '포커스 링 확장을 전환합니다.',
+            previousBook: '이전 책.',
+            nextBook: '다음 책.',
+        },
+        runner: {
+            contactingProvider: 'Inquiry: AI 제공자에 연결 중.',
+            running: '현재 실행 중 ({{evidenceMode}}). 예상 ETA {{estimateLabel}}.',
+            cancelRequested: 'Inquiry 취소가 요청되었습니다. 현재 패스가 반환된 후 중지됩니다. 진행 중인 제공자 요청은 완료될 수 있습니다.',
+            finalizing: '제공자 응답을 받았습니다. 결과 마무리 중.',
+            waiting: '제공자 응답 대기 중.',
+            runAborted: 'Inquiry 실행이 중단되었습니다.',
+            inquiryAlreadyRunning: 'Inquiry가 이미 실행 중입니다.',
+            inquiryNotConfigured: 'Inquiry가 아직 구성되지 않았습니다.',
+            noScenesAvailable: 'Inquiry에 사용할 수 있는 장면이 없습니다.',
+            noEnabledQuestions: '활성화된 Inquiry 질문이 없습니다.',
+        },
+        notice: {
+            aiDisabledInSettings: 'Inquiry는 AI 기능이 활성화되어야 합니다. 설정에서 "AI LLM 기능 활성화"를 켜세요.',
+            omnibusViewFailed: 'Omnibus pass용 Inquiry 보기를 열 수 없습니다.',
+            omnibusMobileOnly: 'Inquiry omnibus pass는 데스크톱에서만 사용할 수 있습니다.',
+            omnibusResumeNothing: '모든 질문이 이미 완료되었습니다. 재개할 항목이 없습니다.',
+            running: 'Inquiry 실행 중. 잠시 기다려 주세요.',
+            noEnabledQuestions: '활성화된 Inquiry 질문이 없습니다.',
+            logNotFound: '이 실행에 대한 Inquiry 로그를 찾을 수 없습니다.',
+            briefNotFound: 'Brief를 찾을 수 없습니다. 이동되거나 삭제되었을 수 있습니다.',
+            briefSaved: 'Inquiry brief가 저장되었습니다.',
+            briefNotSaved: '활성 inquiry에 저장된 brief가 없습니다.',
+            noBriefActive: '활성 inquiry brief가 없습니다.',
+            sceneNotFound: '장면 파일을 찾을 수 없습니다.',
+            noRunForPreview: '보고서를 미리 보기 전에 inquiry를 실행하세요.',
+            noRunForSave: 'brief를 저장하기 전에 inquiry를 실행하세요.',
+            noBriefs: 'Brief를 찾을 수 없습니다.',
+            fileExplorerUnavailable: '파일 탐색기를 사용할 수 없습니다.',
+        },
+        interaction: {
+            running: 'Inquiry 실행 중. 잠시 기다려 주세요.',
+            noQuestionsForZone: '이 영역에 구성된 질문이 없습니다.',
+            noQuestionForSlot: '이 슬롯에 구성된 질문이 없습니다.',
+            targetScenesBookOnly: '대상 장면은 Book 범위에서만 사용할 수 있습니다.',
+            targetSceneAdded: '대상 장면에 추가했습니다.',
+            targetSceneRemoved: '대상 장면에서 제거했습니다.',
+            clearedAllTargetScenes: '모든 대상 장면을 지웠습니다.',
+            corpusDisabled: '코퍼스가 비활성화되었습니다. Inquiry를 실행하려면 코퍼스를 활성화하세요.',
+            inquiryAlreadyRun: 'Inquiry가 이미 실행되었습니다. 최근 Inquiry 세션을 열어 다시 보세요.',
+        },
+        menu: {
+            forceRerun: '강제 재실행',
+            openCitationBriefing: 'Briefing 글에서 인용 열기',
+            openCitationMarkdown: 'Markdown Brief에서 인용 열기',
+            openScene: '장면 열기',
+            openNote: '노트 열기',
+            cancelTargeting: '모든 타겟팅 취소',
+        },
+        findings: {
+            findings: '발견',
+            noInquiryRun: '아직 inquiry가 실행되지 않았습니다.',
+            runToSeeVerdicts: '판정을 보려면 inquiry를 실행하세요.',
+            selectionDiscover: '선택 모드 · 발견',
+            targetSection: '대상 발견',
+            contextSection: '컨텍스트 발견',
+            empty: '없음.',
+        },
+        preview: {
+            footerOpenLog: '자세한 오류 보고서를 보려면 Inquiry 로그를 여세요.',
+            hoverPreview: '질문 위에 호버하여 페이로드를 미리 봅니다.',
+            noScenesHero: 'Inquiry에 사용할 수 있는 장면이 없습니다.',
+        },
+        details: {
+            toggle: '세부 정보 전환',
+        },
+        corpus: {
+            disabled: '코퍼스가 비활성화되었습니다. Inquiry를 실행하려면 코퍼스를 활성화하세요.',
+            legendClickKeysTitle: '클릭 키',
+            legendModeTitle: '모드 (아이콘 + 색상)',
+            legendStatusTitle: '상태 (테두리)',
+            legendTierTitle: '티어 (채우기 수준)',
+            statusOverdueLabel: '기한 초과',
+            statusTodoLabel: '예정',
+            statusWorkingLabel: '진행 중',
+            statusCompleteLabel: '완료',
+        },
+        settingsExtra: {
+            autopopulateName: '대기 중인 편집 자동 채우기',
+            autopopulateDesc: '각 Inquiry 실행 후 작업 노트를 Pending Edits YAML 필드에 자동으로 작성합니다. 끄면 최근 Inquiry 세션을 사용하여 수동으로 작성합니다.',
+            replaceQuestionsTitle: '현재 질문을 교체하시겠습니까?',
+            replaceCustomizedQuestionsTitle: '맞춤 설정된 질문을 교체하시겠습니까?',
+            replaceQuestionsConfirm: '질문 교체',
+            replaceCustomTitle: '사용자 지정 질문을 교체하시겠습니까?',
+            replaceCustomConfirm: '질문 교체',
+            replaceCanonicalTitle: '표준 질문을 교체하시겠습니까?',
+            collapse: '접기',
+            expand: '펼치기',
+        },
+    },
+    bookDesigner: {
+        saveTemplate: {
+            badge: '장면 세트',
+            title: '장면 레이아웃 저장',
+            subtitle: '나중에 재사용할 수 있도록 이 레이아웃에 이름을 지정하세요.',
+            nameField: {
+                name: '레이아웃 이름',
+                desc: '짧고 고유한 이름을 선택하세요.',
+                placeholder: '예: 스릴러 / 3막 균형',
+            },
+            note: '템플릿에는 레이아웃, 막, 서브플롯, 캐릭터, 비트 토글, 선택한 YAML 유형(기본/고급)이 포함됩니다.',
+            nameRequired: '템플릿 이름은 필수입니다.',
+        },
+        deleteTemplate: {
+            title: '레이아웃 삭제',
+            subtitle: '"{{name}}"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+        },
+        demoProject: {
+            badge: '데모',
+            title: '비선형 데모 프로젝트 생성',
+            subtitle: '20개 장면, 5막 예제를 생성하여 서술 순서(독자가 장면을 만나는 순서)와 시간 순서(사건이 실제로 일어나는 순서)의 차이를 보여줍니다. 장면 번호는 서술 순서대로 1–20이지만 날짜와 시간은 앞뒤로 이동합니다 — 생성 후 START HERE 노트를 열어 확인하고 Timeline과 Chronologue 보기를 전환하여 비교하세요.',
+            startDate: {
+                name: '시작 날짜',
+                desc: '시간 흐름 리듬에 사용됩니다. 형식: YYYY-MM-DD.',
+            },
+            note: '데모가 올바르게 표시되도록 작업공간이 5막으로 구성됩니다.',
+            generate: '데모 프로젝트 생성',
+            invalidDate: 'YYYY-MM-DD 형식의 유효한 시작 날짜를 사용하세요.',
+        },
+        modal: {
+            badge: '설정',
+            title: '북 디자이너',
+            subtitle: '새 소설의 골격을 구성하고 생성합니다. 미리보기에서 장면을 다른 막과 서브플롯으로 드래그하면 수동 모드가 활성화됩니다. 나중에 재사용할 수 있도록 템플릿을 저장하세요.',
+            wikiAriaLabel: '위키에서 자세히 읽기',
+            noBookSelected: '책이 선택되지 않음',
+            untitled: '제목 없음',
+        },
+        meta: {
+            autoMode: '자동 모드',
+            manualMode: '수동 모드',
+            manualLayoutActive: '수동 레이아웃 활성',
+            autoDistribution: '자동 분배',
+            fromTemplate: ' · 템플릿에서',
+        },
+        sections: {
+            locationStructure: '위치 및 구조',
+            contentConfiguration: '콘텐츠 구성',
+            sceneSetsExtras: '장면 세트 및 추가 항목',
+        },
+        fields: {
+            targetBook: {
+                name: '대상 책',
+                desc: '장면과 비트를 생성할 Book Manager 프로젝트를 선택하세요.',
+                noBooks: '구성된 책 없음',
+                addFirstNote: '여기서 골격을 생성하기 전에 Book Manager에 책을 추가하고 폴더를 설정하세요.',
+            },
+            timeIncrement: {
+                name: '장면당 날짜 증가',
+                desc: '장면 간 타임라인 증가(예: 1시간, 1일, 1주). 0으로 설정하면 증가가 비활성화됩니다.',
+                placeholder: '1 day',
+                invalid: '유효하지 않은 기간: "{{raw}}". {{current}}(으)로 되돌립니다.',
+            },
+            scenes: {
+                name: '생성할 장면 수',
+                desc: 'YAML frontmatter가 포함된 템플릿 장면 파일의 수.',
+            },
+            targetLength: {
+                name: '목표 책 길이',
+                desc: '번호 분배에 사용됩니다(예: 10, 20, 30...)',
+                detail: '장면 번호 매김: {{examples}}{{suffix}} ({{scenes}}개 장면, {{max}} 단위 기준).',
+            },
+            acts: {
+                label: '장면을 분배할 막',
+                actLabel: '{{num}}막',
+            },
+            subplots: {
+                name: '서브플롯',
+                desc: '한 줄에 하나의 서브플롯을 입력하세요.',
+            },
+            characters: {
+                name: '캐릭터',
+                desc: '한 줄에 하나의 캐릭터를 입력하세요.',
+            },
+            sceneSet: {
+                label: '장면 세트',
+                base: '기본 장면 세트',
+                advanced: '고급 속성',
+            },
+            generateBeats: {
+                withSystem: '{{name}} 비트 생성',
+                noSystem: '활성 비트 시스템 없음',
+                tooltipNoSystem: '비트 생성을 활성화하려면 설정 → 비트에서 비트 시스템을 선택하세요.',
+                existsAria: '이 폴더에 이미 비트 노트가 존재합니다',
+                noSystemAria: '먼저 설정 → 비트에서 비트 시스템을 선택하세요',
+                yes: '예',
+                no: '아니요',
+            },
+            sceneLayouts: {
+                name: '장면 레이아웃',
+                desc: '저장된 레이아웃(막, 서브플롯, 할당, 메타데이터)을 선택하세요.',
+                newOption: '새 템플릿',
+                emptyOption: '—',
+            },
+        },
+        preview: {
+            title: '미리보기',
+            dragging: '장면 {{scene}} 드래그 중 → {{act}}막, {{subplot}}',
+            subplotFallback: '서브플롯 {{num}}',
+        },
+        buttons: {
+            saveSceneSet: '장면 세트 저장',
+            reset: '재설정',
+            demoProject: '데모 프로젝트',
+            deleteLayout: '레이아웃 삭제',
+            createBook: '책 생성',
+            save: '저장',
+            delete: '삭제',
+            cancel: '취소',
+        },
+        notes: {
+            layoutTemplatesIncludes: '장면, 막, 서브플롯, 비트, 시간 흐름 타이밍이 포함됩니다.',
+        },
+        notices: {
+            layoutReset: '레이아웃이 자동 분배 기본값으로 재설정되었습니다.',
+            templateDeleted: '템플릿이 삭제되었습니다.',
+            templateNotFound: '템플릿을 찾을 수 없습니다.',
+            templateSaved: '템플릿 "{{name}}"이(가) 저장되었습니다.',
+            templateUpdated: '템플릿 "{{name}}"이(가) 업데이트되었습니다.',
+            templateApplied: '템플릿 "{{name}}"이(가) 적용되었습니다.',
+            selectBookForDemo: '데모 프로젝트를 생성하기 전에 폴더가 있는 Book Manager 책을 선택하세요.',
+            selectBookForGenerate: '장면을 생성하기 전에 폴더가 있는 Book Manager 책을 선택하세요.',
+            folderError: '폴더 생성 오류: {{error}}',
+            baseSetMissing: '설정에서 기본 장면 세트를 찾을 수 없습니다. 생성하기 전에 장면 세트를 설정하세요.',
+            generating: '{{count}}개의 장면 생성 중...',
+            beatsExist: '이 폴더에 이미 비트 노트가 존재합니다({{count}}개 발견). 설정의 비트 관리자를 사용하여 복구 또는 재동기화하세요.',
+            noBeatSystemActive: '이 책에 활성 비트 시스템이 선택되지 않았습니다. 비트 노트를 생성하기 전에 비트 관리자에서 선택하세요.',
+            beatsError: '비트 생성 오류: {{error}}',
+            bookCreated: '책이 생성되었습니다! {{scenes}}개 장면{{skipped}}{{beats}}.',
+            bookCreatedSkipped: ' (기존 {{count}}개 건너뜀)',
+            bookCreatedBeatsExist: ' (비트가 이미 존재함)',
+            bookCreatedBeats: ', {{count}}개 비트 노트',
+            demoReady: '데모 프로젝트 준비 완료: {{scenes}}개 장면, {{notes}}개 노트, {{beats}}개 비트 노트.{{skipped}}',
+            demoSkipped: ' 기존 {{scenes}}개 장면과 {{notes}}개 노트를 건너뛰었습니다.',
+        },
+    },
+    gossamer: {
+        scoreModal: {
+            beatSystemTitle: '{{label}} 비트 시스템',
+            subtitle: '각 비트의 {{signal}} 점수(0-100)를 입력하세요. 이전 점수는 기록으로 저장됩니다.',
+            signalMeta: '신호: {{label}}',
+            beatsDetectedMeta: '감지된 비트: {{count}}',
+            enterScoreLabel: '점수 입력',
+            scorePlaceholder: '0-100',
+            groupMaintenance: '유지 관리',
+            groupAi: 'AI 워크플로',
+            normalizeButton: '기록 정규화',
+            deleteButton: '{{label}} 점수 삭제',
+            copyButton: 'AI 프롬프트 복사',
+            pasteButton: 'AI 응답 붙여넣기',
+            saveButton: '점수 저장',
+            cancelButton: '취소',
+            aiMetaVaultLink: 'vault 파일',
+            normalizeNothing: '정규화할 Gossamer 기록이 없습니다.',
+            clipboardEmpty: '클립보드가 비어 있습니다.',
+            clipboardReadFailed: '클립보드를 읽을 수 없습니다.',
+            noChanges: '저장할 변경사항이 없습니다.',
+            saveFailed: '점수 저장에 실패했습니다. 콘솔에서 자세한 내용을 확인하세요.',
+            deleteConfirmBadge: '경고',
+            deleteConfirmCancel: '취소',
+            normalizeConfirmBadge: '경고',
+            normalizeConfirmTitle: 'Gossamer 기록을 정규화할까요?',
+            normalizeConfirmButton: '정규화',
+            normalizeConfirmCancel: '취소',
+        },
+        processingModal: {
+            statusInitializing: '초기화 중...',
+            backgroundContinues: '분석이 백그라운드에서 계속됩니다.',
+            modelDisabled: 'AI 비활성화',
+            beginButton: '분석 시작',
+            cancelButton: '취소',
+            analyzingManuscript: '원고 분석 중...',
+            assemblingManuscript: '원고 조립 중...',
+            statusHeading: '상태',
+            waitingToSend: '전송 대기 중...',
+            closeButton: '닫기',
+            statScenes: '장면',
+            statWords: '단어',
+            statBeats: '스토리 비트',
+            statEvidence: '증거',
+            analysisComplete: '분석 완료',
+            analysisFailed: '분석 실패',
+            apiFailed: '✗ API 호출 실패',
+        },
+        notices: {
+            noStoryBeats: '스토리 비트를 찾을 수 없습니다. 프론트매터에 "Class: Beat"를 포함한 노트를 만드세요.',
+            cannotEnterMode: 'Gossamer 모드에 진입할 수 없습니다. {{hint}}',
+            validating: '구성 검증 중...',
+            loadingBeats: '스토리 비트 로드 중...',
+            updatingBeats: '비트 노트 업데이트 중...',
+            generatingLog: '분석 로그 생성 중...',
+            processingFailed: '처리 실패: {{error}}',
+        },
+        service: {
+            noBeatsUpdated: '업데이트된 비트가 없습니다.',
+        },
+    },
+};

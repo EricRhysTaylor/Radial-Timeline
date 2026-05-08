@@ -30,6 +30,7 @@ import { parseRuntimeField } from '../utils/runtimeEstimator';
 import { buildPulseTriplet } from '../ai/evidence/pulseTriplet';
 import { readSceneId, resolveSceneReferenceId } from '../utils/sceneIds';
 import { applySceneAnalysisSafeWrite, LOCAL_LLM_REVIEW_WARNING } from './safeWritePolicy';
+import { t } from '../i18n';
 
 function isLocalLlmPulseProvider(plugin: RadialTimelinePlugin): boolean {
     const aiSettings = getCanonicalAiSettings(plugin);
@@ -161,7 +162,7 @@ async function applyTripletAnalysisResult(input: {
 }
 
 function getLocalReviewErrorMessage(scene: SceneData): string {
-    return `Local LLM result needs review for scene ${scene.sceneNumber}: ${scene.file.path}. See logs.`;
+    return t('sceneAnalysis.pipeline.errors.localLlmReview', { num: scene.sceneNumber ?? 'N/A', path: scene.file.path });
 }
 
 export async function processWithModal(
@@ -179,7 +180,7 @@ export async function processWithModal(
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
     if (allScenes.length < 1) {
-        throw new Error('No valid scenes found in the active book folder.');
+        throw new Error(t('sceneAnalysis.pipeline.notices.noScenesValid'));
     }
 
     const processableScenes = allScenes.filter(scene => {
@@ -232,7 +233,7 @@ export async function processWithModal(
     for (const { triplet, shouldProcess } of tasks) {
         if (modal.isAborted()) {
             await plugin.saveSettings();
-            throw new Error('Processing aborted by user');
+            throw new Error(t('sceneAnalysis.pipeline.notices.abortedByUser'));
         }
 
         if (!shouldProcess) continue;
@@ -316,18 +317,18 @@ export async function processWithModal(
                     if (safeWrite.route === 'warning') {
                         modal.addError(getLocalReviewErrorMessage(triplet.current));
                     } else {
-                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
                     }
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
             }
         } catch (sceneError) {
             await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-            modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
+            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }));
         } finally {
             modal.noteLogAttempt();
         }
@@ -341,12 +342,12 @@ export async function processBySubplotOrder(
     plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
-    const notice = new Notice('Processing Subplot: Getting scene data...', 0);
+    const notice = new Notice(t('sceneAnalysis.pipeline.notices.processingSubplotInit'), 0);
 
     try {
         const allScenes = await getAllSceneData(plugin, vault);
         if (allScenes.length < 1) {
-            new Notice('No valid scenes found in the active book folder.');
+            new Notice(t('sceneAnalysis.pipeline.notices.noScenesValid'));
             notice.hide();
             return;
         }
@@ -365,7 +366,7 @@ export async function processBySubplotOrder(
 
         const subplotNames = Object.keys(scenesBySubplot);
         if (subplotNames.length === 0) {
-            new Notice('No scenes with subplots found.');
+            new Notice(t('sceneAnalysis.pipeline.notices.noSubplotScenes'));
             notice.hide();
             return;
         }
@@ -378,7 +379,7 @@ export async function processBySubplotOrder(
             const validScenes = scenes.filter(scene => {
                 const pulseUpdate = getPulseUpdateFlag(scene.frontmatter);
                 if (normalizeBooleanValue(pulseUpdate) && !hasProcessableContent(scene.frontmatter)) {
-                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Pulse Update set but Status is not working/complete. Skipping.`;
+                    const msg = t('sceneAnalysis.pipeline.notices.sceneStatusSkip', { sceneRef: scene.sceneNumber ?? scene.file.basename, subplot: subplotName });
                     new Notice(msg, 6000);
                 }
                 return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(pulseUpdate);
@@ -386,7 +387,7 @@ export async function processBySubplotOrder(
             totalTripletsAcrossSubplots += validScenes.length;
         });
 
-        notice.setMessage(`Analyzing ${totalTripletsAcrossSubplots} scenes for subplot order...`);
+        notice.setMessage(t('sceneAnalysis.pipeline.notices.analyzingSubplot', { count: totalTripletsAcrossSubplots }));
 
         for (const subplotName of subplotNames) {
             const scenes = scenesBySubplot[subplotName];
@@ -406,7 +407,7 @@ export async function processBySubplotOrder(
                     continue;
                 }
 
-                notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${totalProcessedCount + 1}/${totalTripletsAcrossSubplots}) - Subplot: '${subplotName}'...`);
+                notice.setMessage(t('sceneAnalysis.pipeline.notices.processingScene', { num: triplet.current.sceneNumber ?? 'N/A', current: totalProcessedCount + 1, total: totalTripletsAcrossSubplots, name: subplotName }));
 
                 const prevBody = triplet.prev ? triplet.prev.body : null;
                 const currentBody = triplet.current.body;
@@ -453,31 +454,31 @@ export async function processBySubplotOrder(
                         } else if (safeWrite.route !== 'skip') {
                             new Notice(getLocalReviewErrorMessage(triplet.current), 6000);
                         } else {
-                            new Notice(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`, 6000);
+                            new Notice(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }), 6000);
                         }
                     } else {
-                        new Notice(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`, 6000);
+                        new Notice(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }), 6000);
                     }
                 } catch (sceneError) {
                     await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
                     const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-                    new Notice(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${detail}`, 8000);
+                    new Notice(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }), 8000);
                 }
 
                 totalProcessedCount++;
-                notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes processed...`);
+                notice.setMessage(t('sceneAnalysis.pipeline.notices.progressUpdate', { current: totalProcessedCount, total: totalTripletsAcrossSubplots }));
                 await new Promise(resolve => window.setTimeout(resolve, 200));
             }
         }
 
         await plugin.saveSettings();
         notice.hide();
-        new Notice(`Subplot order processing complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} triplets processed.`);
+        new Notice(t('sceneAnalysis.pipeline.notices.subplotComplete', { processed: totalProcessedCount, total: totalTripletsAcrossSubplots }));
         plugin.refreshTimelineIfNeeded(null);
     } catch (error) {
         console.error('[API Beats][processBySubplotOrder] Error during processing:', error);
         notice.hide();
-        new Notice('Error processing subplots. Check console for details.');
+        new Notice(t('sceneAnalysis.pipeline.notices.subplotErrorGeneric'));
     }
 }
 
@@ -489,12 +490,12 @@ export async function processSubplotWithModal(
 ): Promise<void> {
     const allScenes = await getAllSceneData(plugin, vault);
     if (allScenes.length < 1) {
-        throw new Error('No valid scenes found in the active book folder.');
+        throw new Error(t('sceneAnalysis.pipeline.notices.noScenesValid'));
     }
 
     const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
     if (filtered.length === 0) {
-        throw new Error(`No scenes found for subplot "${subplotName}".`);
+        throw new Error(t('sceneAnalysis.pipeline.notices.noScenesForSubplot', { name: subplotName }));
     }
 
     filtered.sort(compareScenesByOrder);
@@ -505,7 +506,7 @@ export async function processSubplotWithModal(
     });
 
     if (validScenes.length === 0) {
-        throw new Error(`No flagged scenes (Pulse Update: Yes/True/1) with content found for "${subplotName}".`);
+        throw new Error(t('sceneAnalysis.pipeline.notices.noFlaggedSubplotScenes', { name: subplotName }));
     }
 
     const contextScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
@@ -533,7 +534,7 @@ export async function processSubplotWithModal(
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
             await plugin.saveSettings();
-            throw new Error('Processing aborted by user');
+            throw new Error(t('sceneAnalysis.pipeline.notices.abortedByUser'));
         }
 
         if (!shouldProcess) continue;
@@ -617,18 +618,18 @@ export async function processSubplotWithModal(
                     if (safeWrite.route === 'warning') {
                         modal.addError(getLocalReviewErrorMessage(triplet.current));
                     } else {
-                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
                     }
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
             }
         } catch (sceneError) {
             await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-            modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
+            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }));
         } finally {
             modal.noteLogAttempt();
         }
@@ -646,12 +647,12 @@ export async function processEntireSubplotWithModalInternal(
 ): Promise<void> {
     const allScenes = await getAllSceneData(plugin, vault);
     if (allScenes.length < 1) {
-        throw new Error('No valid scenes found in the active book folder.');
+        throw new Error(t('sceneAnalysis.pipeline.notices.noScenesValid'));
     }
 
     const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
     if (filtered.length === 0) {
-        throw new Error(`No scenes found for subplot "${subplotName}".`);
+        throw new Error(t('sceneAnalysis.pipeline.notices.noScenesForSubplot', { name: subplotName }));
     }
 
     filtered.sort(compareScenesByOrder);
@@ -686,7 +687,7 @@ export async function processEntireSubplotWithModalInternal(
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
             await plugin.saveSettings();
-            throw new Error('Processing aborted by user');
+            throw new Error(t('sceneAnalysis.pipeline.notices.abortedByUser'));
         }
 
         if (!shouldProcess) continue;
@@ -770,18 +771,18 @@ export async function processEntireSubplotWithModalInternal(
                     if (safeWrite.route === 'warning') {
                         modal.addError(getLocalReviewErrorMessage(triplet.current));
                     } else {
-                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
                     }
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
             }
         } catch (sceneError) {
             await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-            modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
+            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }));
         } finally {
             modal.noteLogAttempt();
         }

@@ -9,6 +9,7 @@ import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { getCredential } from '../ai/credentials/credentials';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import { getLocalLlmSettings } from '../ai/localLlm/settings';
+import { t } from '../i18n';
 
 export class SceneAnalysisService {
     constructor(private plugin: RadialTimelinePlugin) { }
@@ -22,7 +23,7 @@ export class SceneAnalysisService {
     private registerSynopsisCommand(): void {
         this.plugin.addCommand({
             id: 'refresh-scene-synopses-ai',
-            name: 'Summary refresh',
+            name: t('sceneAnalysis.service.commands.summaryRefresh'),
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
@@ -38,7 +39,7 @@ export class SceneAnalysisService {
     private registerManuscriptCommand(): void {
         this.plugin.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Scene pulse analysis (manuscript order)',
+            name: t('sceneAnalysis.service.commands.scenePulseManuscript'),
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
@@ -54,7 +55,7 @@ export class SceneAnalysisService {
     private registerSubplotCommand(): void {
         this.plugin.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Scene pulse analysis (subplot order)',
+            name: t('sceneAnalysis.service.commands.scenePulseSubplot'),
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
@@ -72,7 +73,7 @@ export class SceneAnalysisService {
         const { getDistinctSubplotNames } = await import('../SceneAnalysisCommands');
         const names = await getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
         if (!Array.isArray(names) || names.length === 0) {
-            throw new Error('No subplots found.');
+            throw new Error(t('sceneAnalysis.service.notices.noSubplots'));
         }
         const stats = await Promise.all(names.map(name => this.countProcessableScenes(name)));
         return names.map((name, index) => ({ name, stats: stats[index] }));
@@ -83,7 +84,7 @@ export class SceneAnalysisService {
         const selection = resolveConfiguredSelection(aiSettings);
         const provider = selection?.provider ?? aiSettings.provider;
         if (provider === 'none') {
-            new Notice('AI Strategy is disabled. Choose an AI provider in Settings → AI.');
+            new Notice(t('sceneAnalysis.service.notices.aiDisabled'));
             return false;
         }
         if (provider === 'ollama') {
@@ -91,11 +92,11 @@ export class SceneAnalysisService {
             const hasUrl = !!localLlm.baseUrl?.trim();
             const hasModel = !!localLlm.defaultModelId?.trim();
             if (!localLlm.enabled) {
-                new Notice('Local LLM is disabled. Enable it in Settings → AI.');
+                new Notice(t('sceneAnalysis.service.notices.localLlmDisabled'));
                 return false;
             }
             if (!hasUrl || !hasModel) {
-                new Notice('Local LLM requires a base URL and model selection.');
+                new Notice(t('sceneAnalysis.service.notices.localLlmRequiresUrl'));
                 return false;
             }
             return true;
@@ -103,7 +104,7 @@ export class SceneAnalysisService {
         const key = await getCredential(this.plugin, provider);
         if (!key) {
             const name = CANONICAL_PROVIDER_LABELS[provider];
-            new Notice(`${name} saved key is not set in settings.`);
+            new Notice(t('sceneAnalysis.service.notices.providerKeyMissing', { provider: name }));
             return false;
         }
         return true;
@@ -151,7 +152,7 @@ export class SceneAnalysisService {
 
     getActiveModelName(): string {
         const aiSettings = getCanonicalAiSettings(this.plugin);
-        return resolveConfiguredSelection(aiSettings)?.model.id || 'AI disabled';
+        return resolveConfiguredSelection(aiSettings)?.model.id || t('sceneAnalysis.service.aiDisabledLabel');
     }
 
     isLocalLlmMode(): boolean {
@@ -204,7 +205,7 @@ class SubplotPickerModal extends Modal {
     ) {
         super(app);
         if (!options.length) {
-            throw new Error('No subplot options available.');
+            throw new Error(t('sceneAnalysis.service.subplotPicker.noOptions'));
         }
         this.selectedSubplot = options[0].name;
         this.statsBySubplot = new Map(options.map(opt => [opt.name, opt.stats]));
@@ -226,21 +227,23 @@ class SubplotPickerModal extends Modal {
 
         const modelName = this.service.getActiveModelName();
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        const badgeText = modelName ? `AI pulse run · ${modelName}` : 'AI pulse run';
+        const badgeText = modelName
+            ? t('sceneAnalysis.service.subplotPicker.badgeWith', { model: modelName })
+            : t('sceneAnalysis.service.subplotPicker.badge');
         hero.createSpan({ text: badgeText, cls: 'ert-subplot-picker-badge' });
-        hero.createDiv({ text: 'Process subplot scenes', cls: 'ert-modal-title' });
-        hero.createDiv({ cls: 'ert-modal-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
+        hero.createDiv({ text: t('sceneAnalysis.service.subplotPicker.title'), cls: 'ert-modal-title' });
+        hero.createDiv({ cls: 'ert-modal-subtitle', text: t('sceneAnalysis.service.subplotPicker.subtitle') });
 
         const heroStats = hero.createDiv({ cls: 'ert-subplot-picker-hero-stats' });
         this.heroStats = {
-            flagged: this.createHeroStat(heroStats, 'Flagged scenes'),
-            processable: this.createHeroStat(heroStats, 'Processable scenes'),
-            total: this.createHeroStat(heroStats, 'Total scenes')
+            flagged: this.createHeroStat(heroStats, t('sceneAnalysis.service.subplotPicker.flaggedScenes')),
+            processable: this.createHeroStat(heroStats, t('sceneAnalysis.service.subplotPicker.processableScenes')),
+            total: this.createHeroStat(heroStats, t('sceneAnalysis.service.subplotPicker.totalScenes'))
         };
 
         const formCard = contentEl.createDiv({ cls: 'ert-subplot-picker-card' });
         const selectContainer = formCard.createDiv({ cls: 'ert-subplot-picker-select' });
-        selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'ert-subplot-picker-label' });
+        selectContainer.createEl('label', { text: t('sceneAnalysis.service.subplotPicker.pickLabel'), cls: 'ert-subplot-picker-label' });
         this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'ert-subplot-picker-dropdown' }));
         this.options.forEach((option, index) => {
             // Show flagged count in parentheses if any scenes are flagged
@@ -258,7 +261,7 @@ class SubplotPickerModal extends Modal {
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
-            .setButtonText('Process flagged scenes')
+            .setButtonText(t('sceneAnalysis.service.subplotPicker.processFlagged'))
             .setCta()
             .onClick(async () => {
                 this.close();
@@ -266,7 +269,7 @@ class SubplotPickerModal extends Modal {
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Process entire subplot')
+            .setButtonText(t('sceneAnalysis.service.subplotPicker.processEntire'))
             .setCta()
             .onClick(async () => {
                 this.close();
@@ -274,19 +277,19 @@ class SubplotPickerModal extends Modal {
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Purge all pulse')
+            .setButtonText(t('sceneAnalysis.service.subplotPicker.purgeAll'))
             .setWarning()
             .onClick(async () => {
                 try {
                     this.close();
                     await this.service.purgeBeatsForSubplot(this.selectedSubplot);
                 } catch (error) {
-                    new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
+                    new Notice(t('sceneAnalysis.service.errorPrefix', { error: error instanceof Error ? error.message : String(error) }));
                 }
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
+            .setButtonText(t('sceneAnalysis.service.subplotPicker.cancel'))
             .onClick(() => this.close());
     }
 
@@ -300,16 +303,16 @@ class SubplotPickerModal extends Modal {
         if (!this.statsEl) return;
         const stats = this.statsBySubplot.get(subplotName);
         if (!stats) {
-            throw new Error(`Unknown subplot selection: ${subplotName}`);
+            throw new Error(t('sceneAnalysis.service.subplotPicker.unknownSelection', { name: subplotName }));
         }
         this.statsEl.empty();
-        const summaryLine = `${stats.flagged} flagged • ${stats.processable} processable • ${stats.total} total`;
+        const summaryLine = t('sceneAnalysis.service.subplotPicker.stats', { flagged: stats.flagged, processable: stats.processable, total: stats.total });
         this.statsEl.createDiv({ cls: 'ert-subplot-picker-stats-line', text: summaryLine });
 
         const isLocalLlm = this.service.isLocalLlmMode();
         const infoText = isLocalLlm
-            ? 'Local LLM mode: Valid results update scene hover fields automatically. Invalid results are logged and marked for review.'
-            : 'Your manuscript will be sent to the AI for pulse analysis of the selected scenes.';
+            ? t('sceneAnalysis.service.subplotPicker.infoLocalLlm')
+            : t('sceneAnalysis.service.subplotPicker.infoCloud');
         this.statsEl.createDiv({
             cls: 'ert-subplot-picker-summary',
             text: infoText
@@ -324,6 +327,6 @@ class SubplotPickerModal extends Modal {
 
     private updateInfoText(modelName: string): void {
         if (!this.infoTextEl) return;
-        this.infoTextEl.setText(`Process pulse using ${modelName} for the subplot "${this.selectedSubplot}".`);
+        this.infoTextEl.setText(t('sceneAnalysis.service.subplotPicker.infoLine', { model: modelName, name: this.selectedSubplot }));
     }
 }

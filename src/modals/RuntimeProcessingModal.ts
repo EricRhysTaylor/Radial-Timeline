@@ -16,6 +16,7 @@ import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import { getLocalLlmSettings } from '../ai/localLlm/settings';
+import { t } from '../i18n';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -132,7 +133,7 @@ export class RuntimeProcessingModal extends Modal {
 
     close(): void {
         if (this.isProcessing) {
-            new Notice('Processing continues in background.');
+            new Notice(t('sceneAnalysis.runtimeModal.notices.background'));
         }
         super.close();
     }
@@ -145,7 +146,9 @@ export class RuntimeProcessingModal extends Modal {
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
 
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
-        const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
+        const modeLabel = contentType === 'screenplay'
+            ? t('sceneAnalysis.runtimeModal.badgeScreenplay')
+            : t('sceneAnalysis.runtimeModal.badgeAudiobook');
         const modeIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
         const badgeRow = header.createDiv({ cls: 'ert-modal-badge-row' });
 
@@ -156,7 +159,7 @@ export class RuntimeProcessingModal extends Modal {
         setIcon(pillIcon, 'signature');
         pill.createSpan({
             cls: ERT_CLASSES.BADGE_PILL_TEXT,
-            text: 'PRO',
+            text: t('sceneAnalysis.runtimeModal.badgePro'),
         });
 
         const badge = badgeRow.createSpan({ cls: 'ert-modal-badge' });
@@ -172,22 +175,22 @@ export class RuntimeProcessingModal extends Modal {
                 fill: none;
             `;
         }
-        badge.appendText(`Runtime · ${modeLabel}`);
-        header.createDiv({ cls: 'ert-modal-title', text: 'Runtime estimation' });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
+        badge.appendText(t('sceneAnalysis.runtimeModal.badgeRuntime', { mode: modeLabel }));
+        header.createDiv({ cls: 'ert-modal-title', text: t('sceneAnalysis.runtimeModal.title') });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: t('sceneAnalysis.runtimeModal.subtitle') });
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         const scopeLayout = scopeCard.createDiv({ cls: 'ert-runtime-section-top' });
         const scopeInfo = scopeLayout.createDiv({ cls: 'ert-stack ert-stack-tight' });
-        scopeInfo.createEl('h4', { text: 'Scope', cls: 'ert-section-title' });
-        scopeInfo.createDiv({ cls: 'ert-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
+        scopeInfo.createEl('h4', { text: t('sceneAnalysis.runtimeModal.sections.scope'), cls: 'ert-section-title' });
+        scopeInfo.createDiv({ cls: 'ert-runtime-section-desc', text: t('sceneAnalysis.runtimeModal.sections.scopeDesc') });
 
         const scopeControls = scopeLayout.createDiv({ cls: 'ert-runtime-scope-controls' });
-        
+
         // Subplot label row (shown only when subplot scope is selected)
         this.subplotLabelContainer = scopeControls.createDiv({ cls: 'ert-hidden' });
-        this.subplotLabelContainer.createEl('label', { text: 'Subplot:', cls: 'ert-runtime-label' });
+        this.subplotLabelContainer.createEl('label', { text: t('sceneAnalysis.runtimeModal.scope.subplotLabel'), cls: 'ert-runtime-label' });
         
         // Dropdowns row - both dropdowns aligned horizontally
         const scopeRow = scopeControls.createDiv({ cls: 'ert-runtime-scope-row' });
@@ -197,9 +200,9 @@ export class RuntimeProcessingModal extends Modal {
         this.scopeDropdown = new DropdownComponent(scopeDropdownContainer);
         this.scopeDropdown.selectEl.addClass('ert-input', 'ert-input--md');
         this.scopeDropdown
-            .addOption('current', 'Current scene')
-            .addOption('subplot', 'Subplot scenes')
-            .addOption('all', 'All scenes')
+            .addOption('current', t('sceneAnalysis.runtimeModal.scope.current'))
+            .addOption('subplot', t('sceneAnalysis.runtimeModal.scope.subplot'))
+            .addOption('all', t('sceneAnalysis.runtimeModal.scope.all'))
             .setValue(this.selectedScope)
             .onChange((value) => {
                 this.selectedScope = value as RuntimeScope;
@@ -230,46 +233,46 @@ export class RuntimeProcessingModal extends Modal {
 
         // Current scene display (always visible, muted when not in current scope)
         this.currentSceneContainer = scopeCard.createDiv({ cls: 'ert-runtime-current-scene' });
-        this.currentSceneContainer.createSpan({ text: 'Scene: ', cls: 'ert-runtime-label' });
+        this.currentSceneContainer.createSpan({ text: t('sceneAnalysis.runtimeModal.scope.sceneLabel'), cls: 'ert-runtime-label' });
         this.currentSceneNameEl = this.currentSceneContainer.createSpan({ cls: 'ert-runtime-current-scene-name' });
 
         // ===== STATUS FILTERS SECTION =====
         const statusCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'ert-section-title' });
-        statusCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'Only scenes with the selected status will be processed.' });
+        statusCard.createEl('h4', { text: t('sceneAnalysis.runtimeModal.sections.statusFilter'), cls: 'ert-section-title' });
+        statusCard.createDiv({ cls: 'ert-runtime-section-desc', text: t('sceneAnalysis.runtimeModal.sections.statusFilterDesc') });
 
         const statusRow = statusCard.createDiv({ cls: 'ert-runtime-status-row' });
 
-        this.createStatusCheckbox(statusRow, 'Todo', 'includeTodo', this.statusFilters.includeTodo);
-        this.createStatusCheckbox(statusRow, 'Working', 'includeWorking', this.statusFilters.includeWorking);
-        this.createStatusCheckbox(statusRow, 'Complete', 'includeComplete', this.statusFilters.includeComplete);
+        this.createStatusCheckbox(statusRow, t('sceneAnalysis.runtimeModal.statusFilter.todo'), 'includeTodo', this.statusFilters.includeTodo);
+        this.createStatusCheckbox(statusRow, t('sceneAnalysis.runtimeModal.statusFilter.working'), 'includeWorking', this.statusFilters.includeWorking);
+        this.createStatusCheckbox(statusRow, t('sceneAnalysis.runtimeModal.statusFilter.complete'), 'includeComplete', this.statusFilters.includeComplete);
 
         // ===== OVERRIDE SECTION =====
         const overrideCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        overrideCard.createEl('h4', { text: 'Override', cls: 'ert-section-title' });
-        overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'By default, only scenes without a Runtime value are processed.' });
+        overrideCard.createEl('h4', { text: t('sceneAnalysis.runtimeModal.sections.override'), cls: 'ert-section-title' });
+        overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: t('sceneAnalysis.runtimeModal.sections.overrideDesc') });
 
         const overrideRow = overrideCard.createDiv({ cls: 'ert-runtime-override-row' });
-        
+
         const checkbox = overrideRow.createEl('input', { type: 'checkbox' });
         checkbox.checked = this.overrideExisting;
         checkbox.addEventListener('change', () => {
             this.overrideExisting = checkbox.checked;
             this.updateCount();
         });
-        
+
         const labelContainer = overrideRow.createDiv({ cls: 'ert-runtime-override-label' });
-        labelContainer.createEl('span', { text: 'Recalculate all' });
-        labelContainer.createDiv({ cls: 'ert-runtime-field-hint', text: 'Replaces existing Runtime values, including manual estimates you may have entered.' });
+        labelContainer.createEl('span', { text: t('sceneAnalysis.runtimeModal.override.recalculate') });
+        labelContainer.createDiv({ cls: 'ert-runtime-field-hint', text: t('sceneAnalysis.runtimeModal.override.recalculateHint') });
 
         // ===== SETTINGS ACCORDION =====
         const settingsCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        
+
         this.settingsAccordion = settingsCard.createDiv({ cls: 'ert-runtime-accordion-header' });
         const accordionIcon = this.settingsAccordion.createSpan({ cls: 'ert-runtime-accordion-icon' });
         setIcon(accordionIcon, 'chevron-right');
-        this.settingsAccordion.createSpan({ text: 'Estimation Settings', cls: 'ert-runtime-accordion-title' });
-        this.settingsAccordion.createSpan({ cls: 'ert-runtime-accordion-hint', text: `(${modeLabel})` });
+        this.settingsAccordion.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.accordionTitle'), cls: 'ert-runtime-accordion-title' });
+        this.settingsAccordion.createSpan({ cls: 'ert-runtime-accordion-hint', text: t('sceneAnalysis.runtimeModal.settings.accordionHint', { mode: modeLabel }) });
         
         this.settingsContent = settingsCard.createDiv({ cls: 'ert-runtime-accordion-content ert-hidden' });
         this.renderSettingsContent();
@@ -287,7 +290,7 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== MODE SELECTION =====
         const modeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'ert-section-title' });
+        modeCard.createEl('h4', { text: t('sceneAnalysis.runtimeModal.sections.mode'), cls: 'ert-section-title' });
         this.modeDescEl = modeCard.createDiv({ cls: 'ert-runtime-section-desc' });
 
         const modeRow = modeCard.createDiv({ cls: 'ert-runtime-mode-row' });
@@ -295,8 +298,8 @@ export class RuntimeProcessingModal extends Modal {
         const modeDropdown = new DropdownComponent(modeDropdownContainer);
         modeDropdown.selectEl.addClass('ert-input', 'ert-input--md');
         modeDropdown
-            .addOption('local', 'Local')
-            .addOption('ai', 'AI')
+            .addOption('local', t('sceneAnalysis.runtimeModal.modes.local'))
+            .addOption('ai', t('sceneAnalysis.runtimeModal.modes.ai'))
             .setValue(this.selectedMode)
             .onChange((value) => {
                 this.selectedMode = value as RuntimeMode;
@@ -307,16 +310,16 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCENE COUNT SECTION =====
         const countCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
-        countCard.createEl('h4', { text: 'Summary', cls: 'ert-section-title' });
+        countCard.createEl('h4', { text: t('sceneAnalysis.runtimeModal.sections.summary'), cls: 'ert-section-title' });
         this.countEl = countCard.createDiv({ cls: 'ert-runtime-count' });
-        this.countEl.setText('Calculating...');
+        this.countEl.setText(t('sceneAnalysis.runtimeModal.count.calculating'));
 
         // Action buttons
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         const settingsBtn = new ButtonComponent(buttonRow)
             .setIcon('settings')
-            .setTooltip('Open runtime settings')
+            .setTooltip(t('sceneAnalysis.runtimeModal.buttons.settingsTooltip'))
             .onClick(() => {
                 this.close();
                 // Set active tab before display() so core tab renders
@@ -331,14 +334,14 @@ export class RuntimeProcessingModal extends Modal {
         settingsBtn.buttonEl.addClass('ert-modal-settings-btn');
 
         this.actionButton = new ButtonComponent(buttonRow)
-            .setButtonText('Estimate Runtimes')
+            .setButtonText(t('sceneAnalysis.runtimeModal.buttons.estimate'))
             .setCta()
             .onClick(async () => {
                 await this.startProcessing();
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
+            .setButtonText(t('sceneAnalysis.runtimeModal.buttons.cancel'))
             .onClick(() => this.close());
 
         // Initial visibility and count
@@ -367,45 +370,45 @@ export class RuntimeProcessingModal extends Modal {
         const contentType = runtimeSettings.contentType || 'novel';
 
         const profileRow = this.settingsContent.createDiv({ cls: 'ert-runtime-setting-row' });
-        profileRow.createSpan({ text: 'Profile:', cls: 'ert-runtime-setting-label' });
+        profileRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.profileLabel'), cls: 'ert-runtime-setting-label' });
         profileRow.createSpan({ text: profileLabel, cls: 'ert-runtime-setting-value' });
 
         if (contentType === 'screenplay') {
             // Screenplay settings
             const dialogueRow = this.settingsContent.createDiv({ cls: 'ert-runtime-setting-row' });
-            dialogueRow.createSpan({ text: 'Dialogue rate:', cls: 'ert-runtime-setting-label' });
-            dialogueRow.createSpan({ text: `${runtimeSettings.dialogueWpm || 160} wpm`, cls: 'ert-runtime-setting-value' });
+            dialogueRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.dialogueRateLabel'), cls: 'ert-runtime-setting-label' });
+            dialogueRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.wpmValue', { value: runtimeSettings.dialogueWpm || 160 }), cls: 'ert-runtime-setting-value' });
 
             const actionRow = this.settingsContent.createDiv({ cls: 'ert-runtime-setting-row' });
-            actionRow.createSpan({ text: 'Action/Description rate:', cls: 'ert-runtime-setting-label' });
-            actionRow.createSpan({ text: `${runtimeSettings.actionWpm || 100} wpm`, cls: 'ert-runtime-setting-value' });
+            actionRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.actionRateLabel'), cls: 'ert-runtime-setting-label' });
+            actionRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.wpmValue', { value: runtimeSettings.actionWpm || 100 }), cls: 'ert-runtime-setting-value' });
         } else {
             // Novel settings
             const narrationRow = this.settingsContent.createDiv({ cls: 'ert-runtime-setting-row' });
-            narrationRow.createSpan({ text: 'Narration rate:', cls: 'ert-runtime-setting-label' });
-            narrationRow.createSpan({ text: `${runtimeSettings.narrationWpm || 150} wpm`, cls: 'ert-runtime-setting-value' });
+            narrationRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.narrationRateLabel'), cls: 'ert-runtime-setting-label' });
+            narrationRow.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.wpmValue', { value: runtimeSettings.narrationWpm || 150 }), cls: 'ert-runtime-setting-value' });
         }
 
         // Parenthetical timings (shown for both modes)
         const parentheticalHeader = this.settingsContent.createDiv({ cls: 'ert-runtime-setting-subheader' });
-        parentheticalHeader.setText('Parenthetical Timings');
+        parentheticalHeader.setText(t('sceneAnalysis.runtimeModal.settings.parentheticalTimingsHeader'));
 
         const timings = [
-            { label: '(beat)', value: runtimeSettings.beatSeconds || 2 },
-            { label: '(pause)', value: runtimeSettings.pauseSeconds || 3 },
-            { label: '(long pause)', value: runtimeSettings.longPauseSeconds || 5 },
-            { label: '(a moment)', value: runtimeSettings.momentSeconds || 4 },
-            { label: '(silence)', value: runtimeSettings.silenceSeconds || 5 },
+            { label: t('sceneAnalysis.runtimeModal.settings.timingBeat'), value: runtimeSettings.beatSeconds || 2 },
+            { label: t('sceneAnalysis.runtimeModal.settings.timingPause'), value: runtimeSettings.pauseSeconds || 3 },
+            { label: t('sceneAnalysis.runtimeModal.settings.timingLongPause'), value: runtimeSettings.longPauseSeconds || 5 },
+            { label: t('sceneAnalysis.runtimeModal.settings.timingMoment'), value: runtimeSettings.momentSeconds || 4 },
+            { label: t('sceneAnalysis.runtimeModal.settings.timingSilence'), value: runtimeSettings.silenceSeconds || 5 },
         ];
 
-        timings.forEach(t => {
+        timings.forEach(timing => {
             const row = this.settingsContent!.createDiv({ cls: 'ert-runtime-setting-row' });
-            row.createSpan({ text: t.label, cls: 'ert-runtime-setting-label' });
-            row.createSpan({ text: `${t.value}s`, cls: 'ert-runtime-setting-value' });
+            row.createSpan({ text: timing.label, cls: 'ert-runtime-setting-label' });
+            row.createSpan({ text: t('sceneAnalysis.runtimeModal.settings.secondsValue', { value: timing.value }), cls: 'ert-runtime-setting-value' });
         });
 
         const hint = this.settingsContent.createDiv({ cls: 'ert-runtime-settings-hint' });
-        hint.setText('Configure these values in Settings → Pro → Runtime estimation');
+        hint.setText(t('sceneAnalysis.runtimeModal.settings.configHint'));
     }
 
     private updateScopeVisibility(): void {
@@ -451,7 +454,7 @@ export class RuntimeProcessingModal extends Modal {
             this.currentSceneNameEl.setText(activeFile.basename);
             this.currentSceneNameEl.removeClass('ert-runtime-no-scene');
         } else {
-            this.currentSceneNameEl.setText('No scene open');
+            this.currentSceneNameEl.setText(t('sceneAnalysis.runtimeModal.scope.noSceneOpen'));
             this.currentSceneNameEl.addClass('ert-runtime-no-scene');
         }
     }
@@ -465,10 +468,10 @@ export class RuntimeProcessingModal extends Modal {
         
         switch (this.selectedMode) {
             case 'local':
-                description = 'No data sent externally. Runtime calculated locally using word counts, configured WPM rates, and parenthetical timing directives.';
+                description = t('sceneAnalysis.runtimeModal.modes.localDesc');
                 break;
             case 'ai':
-                description = `Each scene sent to ${providerLabel} along with local stats. AI analyzes pacing and context to estimate runtime. Writes AI estimate to each scene.`;
+                description = t('sceneAnalysis.runtimeModal.modes.aiDesc', { provider: providerLabel });
                 break;
             default:
                 description = '';
@@ -480,12 +483,12 @@ export class RuntimeProcessingModal extends Modal {
     private getProviderLabel(): string {
         const aiSettings = getCanonicalAiSettings(this.plugin);
         const selection = resolveConfiguredSelection(aiSettings, { feature: 'RuntimeEstimate' });
-        if (!selection) return 'AI disabled';
+        if (!selection) return t('sceneAnalysis.runtimeModal.provider.aiDisabled');
         if (selection.provider === 'ollama') {
             const baseUrl = getLocalLlmSettings(aiSettings).baseUrl || 'localhost';
-            return `${CANONICAL_PROVIDER_LABELS.ollama} (${selection.model.id} @ ${baseUrl})`;
+            return t('sceneAnalysis.runtimeModal.provider.providerLabelLocal', { provider: CANONICAL_PROVIDER_LABELS.ollama, model: selection.model.id, baseUrl });
         }
-        return `${CANONICAL_PROVIDER_LABELS[selection.provider]} (${selection.model.id})`;
+        return t('sceneAnalysis.runtimeModal.provider.providerLabel', { provider: CANONICAL_PROVIDER_LABELS[selection.provider], model: selection.model.id });
     }
 
     private async loadSubplots(): Promise<void> {
@@ -521,7 +524,7 @@ export class RuntimeProcessingModal extends Modal {
         if (!this.countEl) return;
 
         this.countEl.empty();
-        this.countEl.setText('Calculating...');
+        this.countEl.setText(t('sceneAnalysis.runtimeModal.count.calculating'));
 
         try {
             const subplotFilter = this.selectedScope === 'subplot' ? this.selectedSubplot : undefined;
@@ -529,21 +532,21 @@ export class RuntimeProcessingModal extends Modal {
 
             this.countEl.empty();
             const countText = this.countEl.createDiv({ cls: 'ert-runtime-count-text' });
-            countText.createSpan({ text: 'Scenes to process: ', cls: 'ert-runtime-label' });
+            countText.createSpan({ text: t('sceneAnalysis.runtimeModal.count.scenesToProcessLabel'), cls: 'ert-runtime-label' });
             countText.createSpan({ text: String(count), cls: 'ert-runtime-number' });
 
             if (count === 0) {
                 const hint = this.countEl.createDiv({ cls: 'ert-runtime-hint' });
                 if (this.selectedScope === 'current') {
-                    hint.setText('Open a scene file to estimate its runtime.');
+                    hint.setText(t('sceneAnalysis.runtimeModal.count.hintCurrent'));
                 } else if (!this.statusFilters.includeTodo && !this.statusFilters.includeWorking && !this.statusFilters.includeComplete) {
-                    hint.setText('Select at least one status filter.');
+                    hint.setText(t('sceneAnalysis.runtimeModal.count.hintNoStatus'));
                 } else if (!this.overrideExisting) {
-                    hint.setText('All matching scenes already have Runtime values. Enable "Override existing" to recalculate.');
+                    hint.setText(t('sceneAnalysis.runtimeModal.count.hintAlreadyRuntime'));
                 }
             }
         } catch (error) {
-            this.countEl.setText(`Error: ${error instanceof Error ? error.message : String(error)}`);
+            this.countEl.setText(t('sceneAnalysis.runtimeModal.count.errorPrefix', { error: error instanceof Error ? error.message : String(error) }));
         }
     }
 
@@ -560,15 +563,15 @@ export class RuntimeProcessingModal extends Modal {
             const subplotFilter = this.selectedScope === 'subplot' ? this.selectedSubplot : undefined;
             const result = await this.onProcess(this.selectedScope, subplotFilter, this.overrideExisting, this.statusFilters, this.selectedMode);
             if (result && typeof result === 'object') {
-                this.showCompletionSummary(result.message ?? 'Estimation completed successfully!', result.aiResult);
+                this.showCompletionSummary(result.message ?? t('sceneAnalysis.runtimeModal.completion.successMessage'), result.aiResult);
             } else {
-                this.showCompletionSummary('Estimation completed successfully!');
+                this.showCompletionSummary(t('sceneAnalysis.runtimeModal.completion.successMessage'));
             }
         } catch (error) {
             if (this.abortController?.signal.aborted) {
-                this.showCompletionSummary('Estimation aborted');
+                this.showCompletionSummary(t('sceneAnalysis.runtimeModal.completion.aborted'));
             } else {
-                this.showCompletionSummary(`Error: ${error instanceof Error ? error.message : String(error)}`);
+                this.showCompletionSummary(t('sceneAnalysis.runtimeModal.completion.errorPrefix', { error: error instanceof Error ? error.message : String(error) }));
             }
         } finally {
             this.isProcessing = false;
@@ -585,12 +588,14 @@ export class RuntimeProcessingModal extends Modal {
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
-        const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
-        
-        header.createSpan({ cls: 'ert-modal-badge', text: `Runtime estimator · ${modeLabel}` });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Estimating Runtimes...' });
+        const modeLabel = contentType === 'screenplay'
+            ? t('sceneAnalysis.runtimeModal.badgeScreenplay')
+            : t('sceneAnalysis.runtimeModal.badgeAudiobook');
+
+        header.createSpan({ cls: 'ert-modal-badge', text: t('sceneAnalysis.runtimeModal.badgeRuntimeEstimator', { mode: modeLabel }) });
+        header.createDiv({ cls: 'ert-modal-title', text: t('sceneAnalysis.runtimeModal.titleProgress') });
         this.statusTextEl = header.createDiv({ cls: 'ert-modal-subtitle' });
-        this.statusTextEl.setText('Initializing...');
+        this.statusTextEl.setText(t('sceneAnalysis.runtimeModal.progress.initializing'));
 
         // Progress card
         const progressCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
@@ -602,20 +607,20 @@ export class RuntimeProcessingModal extends Modal {
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         this.progressTextEl = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
-        this.progressTextEl.setText('0 / 0 scenes (0%)');
+        this.progressTextEl.setText(t('sceneAnalysis.runtimeModal.progress.sceneProgress', { current: 0, total: 0, percentage: 0 }));
 
         // Running total
         const totalSection = progressCard.createDiv({ cls: 'ert-runtime-running-total' });
-        totalSection.createSpan({ text: 'Running total: ', cls: 'ert-runtime-label' });
+        totalSection.createSpan({ text: t('sceneAnalysis.runtimeModal.progress.runningTotalLabel'), cls: 'ert-runtime-label' });
         this.runningTotalEl = totalSection.createSpan({ cls: 'ert-runtime-number' });
-        this.runningTotalEl.setText('0:00');
+        this.runningTotalEl.setText(t('sceneAnalysis.runtimeModal.progress.runningTotalDefault'));
 
         // Queue container
         this.queueContainer = progressCard.createDiv({ cls: 'ert-runtime-queue' });
 
         if (this.selectedMode === 'ai') {
             const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
-            advancedDetails.createEl('summary', { text: 'AI prompt & context' });
+            advancedDetails.createEl('summary', { text: t('sceneAnalysis.runtimeModal.aiAdvanced.summary') });
             this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
             this.renderAiAdvancedContext();
         }
@@ -624,15 +629,15 @@ export class RuntimeProcessingModal extends Modal {
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Abort')
+            .setButtonText(t('sceneAnalysis.runtimeModal.buttons.abort'))
             .setWarning()
             .onClick(() => {
                 this.abortController?.abort();
-                new Notice('Aborting...');
+                new Notice(t('sceneAnalysis.runtimeModal.notices.aborting'));
             });
 
         this.closeButton = new ButtonComponent(buttonRow)
-            .setButtonText('Close')
+            .setButtonText(t('sceneAnalysis.runtimeModal.buttons.close'))
             .setDisabled(true)
             .onClick(() => this.close());
     }
@@ -649,11 +654,11 @@ export class RuntimeProcessingModal extends Modal {
         }
 
         if (this.progressTextEl) {
-            this.progressTextEl.setText(`${current} / ${total} scenes (${percentage}%)`);
+            this.progressTextEl.setText(t('sceneAnalysis.runtimeModal.progress.sceneProgress', { current, total, percentage }));
         }
 
         if (this.statusTextEl) {
-            this.statusTextEl.setText(`Processing: ${sceneName}`);
+            this.statusTextEl.setText(t('sceneAnalysis.runtimeModal.progress.processingScene', { sceneName }));
         }
 
         if (this.runningTotalEl) {
@@ -664,7 +669,7 @@ export class RuntimeProcessingModal extends Modal {
     public setTotalCount(total: number): void {
         this.totalCount = total;
         if (this.progressTextEl) {
-            this.progressTextEl.setText(`0 / ${total} scenes (0%)`);
+            this.progressTextEl.setText(t('sceneAnalysis.runtimeModal.progress.initialProgress', { total }));
         }
     }
 
@@ -682,26 +687,31 @@ export class RuntimeProcessingModal extends Modal {
     private renderAiAdvancedContext(): void {
         if (!this.aiAdvancedPreEl) return;
         if (!this.aiAdvancedContext) {
-            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
+            this.aiAdvancedPreEl.setText(t('sceneAnalysis.runtimeModal.aiAdvanced.waiting'));
             return;
         }
         const ctx = this.aiAdvancedContext;
+        const availabilityStatus = ctx.availabilityStatus === 'visible'
+            ? t('sceneAnalysis.runtimeModal.aiAdvanced.availabilityVisible')
+            : ctx.availabilityStatus === 'not_visible'
+                ? t('sceneAnalysis.runtimeModal.aiAdvanced.availabilityNotVisible')
+                : t('sceneAnalysis.runtimeModal.aiAdvanced.availabilityUnknown');
         const lines = [
-            `Role template: ${ctx.roleTemplateName}`,
-            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
-            `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
-            `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
-            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
-            `Packaging: Automatic`,
+            t('sceneAnalysis.runtimeModal.aiAdvanced.roleTemplate', { name: ctx.roleTemplateName }),
+            t('sceneAnalysis.runtimeModal.aiAdvanced.resolvedModel', { provider: ctx.provider, alias: ctx.modelAlias, label: ctx.modelLabel }),
+            t('sceneAnalysis.runtimeModal.aiAdvanced.modelSelectionReason', { reason: redactSensitiveValue(ctx.modelSelectionReason) }),
+            t('sceneAnalysis.runtimeModal.aiAdvanced.availabilityLabel', { status: availabilityStatus }),
+            t('sceneAnalysis.runtimeModal.aiAdvanced.appliedCaps', { input: ctx.maxInputTokens, output: ctx.maxOutputTokens }),
+            t('sceneAnalysis.runtimeModal.aiAdvanced.packagingAuto'),
             '',
-            'Final composed prompt:',
-            redactSensitiveValue(ctx.finalPrompt || '(none)')
+            t('sceneAnalysis.runtimeModal.aiAdvanced.finalPrompt'),
+            redactSensitiveValue(ctx.finalPrompt || t('sceneAnalysis.runtimeModal.aiAdvanced.none'))
         ];
         if (typeof ctx.executionPassCount === 'number' && ctx.executionPassCount > 1) {
-            lines.splice(6, 0, `Pass count: ${ctx.executionPassCount}`);
+            lines.splice(6, 0, t('sceneAnalysis.runtimeModal.aiAdvanced.passCount', { count: ctx.executionPassCount }));
         }
         if (ctx.multiPassTriggerReason) {
-            lines.splice(7, 0, `Multi-pass trigger: ${redactSensitiveValue(ctx.multiPassTriggerReason)}`);
+            lines.splice(7, 0, t('sceneAnalysis.runtimeModal.aiAdvanced.multiPassTrigger', { reason: redactSensitiveValue(ctx.multiPassTriggerReason) }));
         }
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
@@ -721,7 +731,7 @@ export class RuntimeProcessingModal extends Modal {
         }
 
         if (this.progressTextEl) {
-            this.progressTextEl.setText(`${this.processedCount} scenes processed`);
+            this.progressTextEl.setText(t('sceneAnalysis.runtimeModal.progress.scenesProcessed', { count: this.processedCount }));
         }
 
         if (this.runningTotalEl) {
@@ -736,15 +746,15 @@ export class RuntimeProcessingModal extends Modal {
 
             if (this.progressTextEl) {
                 const aiRuntime = typeof aiSeconds === 'number' ? formatRuntimeValue(aiSeconds) : '—';
-                this.progressTextEl.setText(`Local: ${formatRuntimeValue(this.runningTotalSeconds)} · ${aiLabel}: ${aiRuntime}${deltaText}`);
+                this.progressTextEl.setText(t('sceneAnalysis.runtimeModal.completion.localAiCompare', { local: formatRuntimeValue(this.runningTotalSeconds), aiLabel, aiRuntime, deltaText }));
             }
 
             if (this.statusTextEl) {
                 if (aiResult.success) {
-                    const rationale = aiResult.rationale ? aiResult.rationale.slice(0, 280) : 'AI estimate ready.';
+                    const rationale = aiResult.rationale ? aiResult.rationale.slice(0, 280) : t('sceneAnalysis.runtimeModal.completion.aiEstimateReady');
                     this.statusTextEl.setText(rationale);
                 } else {
-                    this.statusTextEl.setText(`AI error: ${aiResult.error ?? 'Unknown error'}`);
+                    this.statusTextEl.setText(t('sceneAnalysis.runtimeModal.completion.aiErrorPrefix', { error: aiResult.error ?? t('sceneAnalysis.processingModal.unknownError') }));
                 }
             }
         }

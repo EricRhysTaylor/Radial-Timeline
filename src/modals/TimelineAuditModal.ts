@@ -6,7 +6,7 @@
  * Timeline Auditor Modal
  */
 
-import { App, ButtonComponent, Modal, Notice, ToggleComponent } from 'obsidian';
+import { App, ButtonComponent, Modal, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { t } from '../i18n';
 import { renderWithYamlTokens } from '../utils/yamlTokenRender';
@@ -316,28 +316,6 @@ export class TimelineAuditModal extends Modal {
 
         const cards = actionsSection.createDiv({ cls: 'ert-timeline-audit-actions-grid' });
 
-        const instantCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-action-card' });
-        instantCard.createDiv({ cls: 'ert-timeline-audit-action-card-title', text: t('timelineAuditModal.instantCard.title') });
-        instantCard.createDiv({
-            cls: 'ert-timeline-audit-action-card-copy',
-            text: t('timelineAuditModal.instantCard.description')
-        });
-        instantCard.createDiv({
-            cls: 'ert-timeline-audit-action-card-status',
-            text: t('timelineAuditModal.instantCard.status')
-        });
-
-        const controlsRow = instantCard.createDiv({ cls: 'ert-timeline-audit-toggle-row' });
-        this.createToggle(controlsRow, t('timelineAuditModal.instantCard.continuityPassToggle'), this.runContinuityPass, (value) => {
-            this.runContinuityPass = value;
-            this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
-            this.render();
-        });
-        instantCard.createDiv({
-            cls: 'ert-timeline-audit-actions-copy',
-            text: t('timelineAuditModal.instantCard.continuityPassDesc')
-        });
-
         const aiCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass ert-timeline-audit-action-card' });
         const aiHeader = aiCard.createDiv({ cls: 'ert-timeline-audit-ai-card-header' });
         aiHeader.createDiv({ cls: 'ert-timeline-audit-action-card-title', text: t('timelineAuditModal.aiCard.title') });
@@ -451,19 +429,6 @@ export class TimelineAuditModal extends Modal {
         item.createDiv({ cls: 'ert-timeline-audit-stat-label', text: label });
     }
 
-    private createToggle(
-        container: HTMLElement,
-        label: string,
-        value: boolean,
-        onChange: (value: boolean) => void
-    ): void {
-        const row = container.createDiv({ cls: 'ert-timeline-audit-toggle' });
-        row.createSpan({ cls: 'ert-timeline-audit-toggle-label', text: label });
-        const toggle = new ToggleComponent(row);
-        toggle.setValue(value);
-        toggle.onChange(onChange);
-    }
-
     private createFilterPill(container: HTMLElement, label: string, value: FindingFilter): void {
         const pill = container.createDiv({ cls: 'ert-timeline-audit-filter-pill' });
         if (this.filter === value) {
@@ -547,14 +512,23 @@ export class TimelineAuditModal extends Modal {
         shell.tabIndex = -1;
         this.findingCardEls.set(finding.path, shell);
 
-        const row = shell.createEl('button', {
+        // Use a <div role="button"> instead of <button> so the row escapes the
+        // generic .ert-ui.ert-scope--modal button rule (which sets min-height
+        // and zero vertical padding, clipping two-line titles).
+        const row = shell.createDiv({
             cls: `ert-timeline-audit-row ert-timeline-audit-row--${finding.status}`,
-            attr: { type: 'button' }
+            attr: { role: 'button', tabindex: '0' }
         });
         if (finding.path === this.expandedFindingPath) {
             row.addClass('ert-is-expanded');
         }
         row.addEventListener('click', () => this.toggleFindingExpansion(finding.path));
+        row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.toggleFindingExpansion(finding.path);
+            }
+        });
 
         const left = row.createDiv({ cls: 'ert-timeline-audit-row-left' });
         const titleRow = left.createDiv({ cls: 'ert-timeline-audit-row-title-row' });
@@ -588,10 +562,8 @@ export class TimelineAuditModal extends Modal {
             cls: `ert-timeline-audit-row-status ert-timeline-audit-row-status--${finding.status}`,
             text: formatAuditStatusLabel(finding.status)
         });
-        right.createSpan({
-            cls: 'ert-timeline-audit-row-chevron',
-            text: finding.path === this.expandedFindingPath ? '▾' : '▸'
-        });
+        const chevron = right.createSpan({ cls: 'ert-timeline-audit-row-chevron' });
+        setIcon(chevron, finding.path === this.expandedFindingPath ? 'chevron-down' : 'chevron-right');
 
         if (finding.path === this.expandedFindingPath) {
             const detailWrap = shell.createDiv({ cls: 'ert-timeline-audit-detail-wrap' });

@@ -8,6 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { t } from '../i18n';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA } from '../types/gossamerSignals';
 import { getCredential } from '../ai/credentials/credentials';
 import { getModelDisplayName } from '../utils/modelResolver';
@@ -59,7 +60,7 @@ export class GossamerProcessingModal extends Modal {
 
     // Processing state
     private manuscriptInfo?: ManuscriptInfo;
-    private currentStatus: string = 'Initializing...';
+    private currentStatus: string = t('gossamer.processingModal.statusInitializing');
     private apiCallStartTime?: number;
     private lastElapsedSeconds?: string;
     private timerInterval?: number;
@@ -101,11 +102,11 @@ export class GossamerProcessingModal extends Modal {
         const signalMeta = GOSSAMER_SIGNAL_METADATA[signal];
         const signalLabelLower = signalMeta.label.toLowerCase();
         const bookTitle = getActiveBookTitle(this.plugin.settings);
-        const parts = [`AI ${signalLabelLower} analysis`, bookTitle, modelName].filter(Boolean);
+        const parts = [t('gossamer.processingModal.badge', { signal: signalLabelLower }), bookTitle, modelName].filter(Boolean);
         const badgeText = parts.join(' · ');
 
         hero.createSpan({ text: badgeText, cls: 'ert-modal-badge' });
-        hero.createDiv({ text: `Gossamer ${signalLabelLower} analysis`, cls: 'ert-modal-title' });
+        hero.createDiv({ text: t('gossamer.processingModal.title', { signal: signalLabelLower }), cls: 'ert-modal-title' });
         this.subtitleEl = hero.createDiv({ text: subtitle, cls: 'ert-modal-subtitle' });
     }
 
@@ -126,7 +127,7 @@ export class GossamerProcessingModal extends Modal {
      */
     close(): void {
         if (this.isProcessing) {
-            new Notice('Analysis continues in background.');
+            new Notice(t('gossamer.processingModal.backgroundContinues'));
         }
         super.close();
     }
@@ -134,7 +135,7 @@ export class GossamerProcessingModal extends Modal {
     private getActiveModelDisplayName(): string {
         const aiSettings = getCanonicalAiSettings(this.plugin);
         const selection = resolveConfiguredSelection(aiSettings, { feature: 'Gossamer' });
-        return selection ? getModelDisplayName(selection.model.id) : 'AI disabled';
+        return selection ? getModelDisplayName(selection.model.id) : t('gossamer.processingModal.modelDisabled');
     }
 
     private showConfirmationView(): void {
@@ -144,7 +145,7 @@ export class GossamerProcessingModal extends Modal {
         const modelName = this.getActiveModelDisplayName();
         const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
         const signalLabelLower = GOSSAMER_SIGNAL_METADATA[signal].label.toLowerCase();
-        this.renderProcessingHero(contentEl, `Evaluate narrative ${signalLabelLower} at each story beat. This will pass the selected manuscript evidence to the AI for analysis. The AI does not reference previous scores or justifications, to avoid anchoring bias. The AI will return a score and justification for each beat.`, modelName);
+        this.renderProcessingHero(contentEl, t('gossamer.processingModal.confirmSubtitle', { signal: signalLabelLower }), modelName);
 
         this.confirmationView = contentEl;
 
@@ -155,13 +156,13 @@ export class GossamerProcessingModal extends Modal {
 
         // Beat system info (will be updated when manuscript info is set)
         const beatSystemEl = infoEl.createDiv({ cls: 'ert-gossamer-proc-beat-system-info' });
-        beatSystemEl.setText('Gathering manuscript details...');
+        beatSystemEl.setText(t('gossamer.processingModal.gatheringDetails'));
 
         // Manuscript info section (will be populated by caller)
         const infoSection = card.createDiv({ cls: 'ert-gossamer-proc-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'ert-section-title' });
+        infoSection.createEl('h3', { text: t('gossamer.processingModal.manuscriptInfoHeading'), cls: 'ert-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
-        this.manuscriptInfoEl.setText('Gathering manuscript details...');
+        this.manuscriptInfoEl.setText(t('gossamer.processingModal.gatheringDetails'));
 
         // Check if API key is configured for the active provider
         const aiSettings = getCanonicalAiSettings(this.plugin);
@@ -172,7 +173,7 @@ export class GossamerProcessingModal extends Modal {
                 if (!key) {
                     const name = CANONICAL_PROVIDER_LABELS[activeProvider];
                     const warningEl = card.createDiv({ cls: 'ert-pulse-warning' });
-                    warningEl.setText(`⚠️ ${name} saved key not configured. Please set your key in Settings → AI.`);
+                    warningEl.setText(t('gossamer.processingModal.keyMissing', { provider: name }));
                 }
             });
         }
@@ -181,14 +182,14 @@ export class GossamerProcessingModal extends Modal {
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Begin Analysis')
+            .setButtonText(t('gossamer.processingModal.beginButton'))
             .setCta()
             .onClick(async () => {
                 await this.startProcessing();
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
+            .setButtonText(t('gossamer.processingModal.cancelButton'))
             .onClick(() => this.close());
     }
 
@@ -208,16 +209,16 @@ export class GossamerProcessingModal extends Modal {
         contentEl.empty();
 
         const modelName = this.getActiveModelDisplayName();
-        this.renderProcessingHero(contentEl, 'Analyzing manuscript...', modelName);
+        this.renderProcessingHero(contentEl, t('gossamer.processingModal.analyzingManuscript'), modelName);
 
         const bodyEl = contentEl.createDiv({ cls: 'ert-pulse-progress-body' });
         const progressCard = bodyEl.createDiv({ cls: 'ert-pulse-progress-card ert-glass-card' });
 
         // Manuscript info section (reusing existing styles but inside the card)
         const infoSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'ert-section-title' });
+        infoSection.createEl('h3', { text: t('gossamer.processingModal.manuscriptInfoHeading'), cls: 'ert-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
-        this.manuscriptInfoEl.setText('Assembling manuscript...');
+        this.manuscriptInfoEl.setText(t('gossamer.processingModal.assemblingManuscript'));
 
         // Progress bar container
         const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
@@ -227,15 +228,15 @@ export class GossamerProcessingModal extends Modal {
 
         // Status section
         const statusSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-status-section' });
-        statusSection.createEl('h3', { text: 'Status', cls: 'ert-section-title' });
+        statusSection.createEl('h3', { text: t('gossamer.processingModal.statusHeading'), cls: 'ert-section-title' });
         this.statusTextEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 
         this.apiStatusEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-api-status' });
-        this.apiStatusEl.setText('Waiting to send...');
+        this.apiStatusEl.setText(t('gossamer.processingModal.waitingToSend'));
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
-        advancedDetails.createEl('summary', { text: 'AI prompt & context' });
+        advancedDetails.createEl('summary', { text: t('gossamer.processingModal.advancedHeading') });
         this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
         this.renderAiAdvancedContext();
 
@@ -245,7 +246,7 @@ export class GossamerProcessingModal extends Modal {
         // Close button (disabled while processing)
         const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.closeButtonEl = new ButtonComponent(buttonContainer)
-            .setButtonText('Close')
+            .setButtonText(t('gossamer.processingModal.closeButton'))
             .setDisabled(true)
             .onClick(() => this.close());
     }
@@ -258,28 +259,39 @@ export class GossamerProcessingModal extends Modal {
     private renderAiAdvancedContext(): void {
         if (!this.aiAdvancedPreEl) return;
         if (!this.aiAdvancedContext) {
-            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
+            this.aiAdvancedPreEl.setText(t('gossamer.processingModal.waitingFirstRequest'));
             return;
         }
         const ctx = this.aiAdvancedContext;
+        const availabilityValue = ctx.availabilityStatus === 'visible'
+            ? t('gossamer.processingModal.advAvailabilityVisible')
+            : ctx.availabilityStatus === 'not_visible'
+                ? t('gossamer.processingModal.advAvailabilityNotVisible')
+                : t('gossamer.processingModal.advAvailabilityUnknown');
+        const tokenLine = typeof ctx.totalInputTokens === 'number' && Number.isFinite(ctx.totalInputTokens)
+            ? t('gossamer.processingModal.advTokenEstimate', {
+                count: Math.max(0, Math.floor(ctx.totalInputTokens)).toLocaleString(),
+                method: describeTokenEstimateMethod(ctx.tokenEstimateMethod ?? 'heuristic_chars')
+            })
+            : t('gossamer.processingModal.advTokenEstimateUnavailable');
         const lines = [
-            `Role template: ${ctx.roleTemplateName}`,
-            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
-            `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
-            `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
-            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
-            `Token estimate: ${typeof ctx.totalInputTokens === 'number' && Number.isFinite(ctx.totalInputTokens) ? `${Math.max(0, Math.floor(ctx.totalInputTokens)).toLocaleString()} via ${describeTokenEstimateMethod(ctx.tokenEstimateMethod ?? 'heuristic_chars')}` : 'unavailable'}`,
-            `Packaging: Automatic`,
-            `Evidence: ${this.manuscriptInfo?.evidenceMode || 'Auto (scene bodies first)'}`,
+            t('gossamer.processingModal.advRoleTemplate', { value: ctx.roleTemplateName }),
+            t('gossamer.processingModal.advResolvedModel', { provider: ctx.provider, alias: ctx.modelAlias, label: ctx.modelLabel }),
+            t('gossamer.processingModal.advModelSelectionReason', { value: redactSensitiveValue(ctx.modelSelectionReason) }),
+            t('gossamer.processingModal.advAvailability', { value: availabilityValue }),
+            t('gossamer.processingModal.advAppliedCaps', { input: ctx.maxInputTokens, output: ctx.maxOutputTokens }),
+            tokenLine,
+            t('gossamer.processingModal.advPackaging'),
+            t('gossamer.processingModal.advEvidence', { value: this.manuscriptInfo?.evidenceMode || t('gossamer.processingModal.evidenceDefault') }),
             '',
-            'Final composed prompt:',
-            redactSensitiveValue(ctx.finalPrompt || '(none)')
+            t('gossamer.processingModal.advFinalPromptLabel'),
+            redactSensitiveValue(ctx.finalPrompt || t('gossamer.processingModal.advFinalPromptNone'))
         ];
         if (typeof ctx.executionPassCount === 'number' && ctx.executionPassCount > 1) {
-            lines.splice(6, 0, `Pass count: ${ctx.executionPassCount}`);
+            lines.splice(6, 0, t('gossamer.processingModal.advPassCount', { value: ctx.executionPassCount }));
         }
         if (ctx.multiPassTriggerReason) {
-            lines.splice(7, 0, `Multi-pass trigger: ${redactSensitiveValue(ctx.multiPassTriggerReason)}`);
+            lines.splice(7, 0, t('gossamer.processingModal.advMultiPassTrigger', { value: redactSensitiveValue(ctx.multiPassTriggerReason) }));
         }
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
@@ -302,11 +314,11 @@ export class GossamerProcessingModal extends Modal {
                 item.createDiv({ cls: 'ert-gossamer-proc-stat-value', text: value });
             };
 
-            createStat('Scenes', info.totalScenes.toLocaleString());
-            createStat('Words', info.totalWords.toLocaleString());
-            createStat('Corpus Tokens', `~${info.estimatedTokens.toLocaleString()}`);
-            createStat('Story Beats', info.beatCount.toString());
-            createStat('Evidence', info.evidenceMode || 'Auto (scene bodies first)');
+            createStat(t('gossamer.processingModal.statScenes'), info.totalScenes.toLocaleString());
+            createStat(t('gossamer.processingModal.statWords'), info.totalWords.toLocaleString());
+            createStat(t('gossamer.processingModal.statCorpusTokens'), `~${info.estimatedTokens.toLocaleString()}`);
+            createStat(t('gossamer.processingModal.statBeats'), info.beatCount.toString());
+            createStat(t('gossamer.processingModal.statEvidence'), info.evidenceMode || t('gossamer.processingModal.evidenceDefault'));
 
             // Note: Previous scores are not sent to AI to avoid anchoring bias.
             // Each analysis is fresh based on manuscript content only.
@@ -318,7 +330,7 @@ export class GossamerProcessingModal extends Modal {
         // Update the beat system info in confirmation view if it exists
         const beatSystemInfoEl = this.confirmationView?.querySelector('.ert-gossamer-proc-beat-system-info');
         if (beatSystemInfoEl) {
-            beatSystemInfoEl.setText(`Beat System: ${info.beatSystem}`);
+            beatSystemInfoEl.setText(t('gossamer.processingModal.beatSystemLine', { name: info.beatSystem }));
         }
         this.renderAiAdvancedContext();
     }
@@ -372,13 +384,13 @@ export class GossamerProcessingModal extends Modal {
             : `${seconds}s`;
 
         const estimateSeconds = Math.round(this.estimatedProcessingMs / 1000);
-        let message = `Elapsed ${timeStr}`;
+        let message = t('gossamer.processingModal.timerElapsed', { time: timeStr });
         if (Number.isFinite(estimateSeconds)) {
             message += elapsed > estimateSeconds
-                ? ` · running longer than expected (est. ~${estimateSeconds}s)`
-                : ` · est. ~${estimateSeconds}s`;
+                ? t('gossamer.processingModal.timerLongerThanExpected', { seconds: estimateSeconds })
+                : t('gossamer.processingModal.timerEstimate', { seconds: estimateSeconds });
         } else {
-            message += ' · typically 30–90 seconds';
+            message += t('gossamer.processingModal.timerTypical');
         }
 
         this.apiStatusEl.setText(message);
@@ -441,7 +453,7 @@ export class GossamerProcessingModal extends Modal {
 
         if (this.apiStatusEl) {
             this.apiStatusEl.empty();
-            this.apiStatusEl.setText(`✗ API call failed`);
+            this.apiStatusEl.setText(t('gossamer.processingModal.apiFailed'));
         }
 
         // Reset progress bar
@@ -468,7 +480,7 @@ export class GossamerProcessingModal extends Modal {
         if (this.errorListEl.hasClass('ert-hidden')) {
             this.errorListEl.removeClass('ert-hidden');
             const header = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-header' });
-            header.setText('Errors encountered:');
+            header.setText(t('gossamer.processingModal.errorsHeader'));
         }
 
         const errorItem = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-item' });
@@ -487,7 +499,7 @@ export class GossamerProcessingModal extends Modal {
         }
 
         if (this.subtitleEl) {
-            this.subtitleEl.setText(success ? 'Analysis complete' : 'Analysis failed');
+            this.subtitleEl.setText(success ? t('gossamer.processingModal.analysisComplete') : t('gossamer.processingModal.analysisFailed'));
         }
 
         // Complete the progress bar and pause animation
@@ -520,13 +532,13 @@ export class GossamerProcessingModal extends Modal {
      */
     public showRateLimitWarning(retryAfter?: number): void {
         const message = retryAfter
-            ? `Rate limit reached. Please try again in ${retryAfter} seconds.`
-            : 'Rate limit reached. Please try again later.';
+            ? t('gossamer.processingModal.rateLimitWithRetry', { seconds: retryAfter })
+            : t('gossamer.processingModal.rateLimit');
 
         this.addError(message);
 
         if (this.apiStatusEl) {
-            this.apiStatusEl.setText('⚠️ Rate limited');
+            this.apiStatusEl.setText(t('gossamer.processingModal.rateLimited'));
         }
     }
 

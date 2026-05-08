@@ -443,7 +443,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--ert-gap-xs);
-    max-height: 360px;
+    max-height: 460px;
     overflow-y: auto;
     padding: var(--ert-gap-xs) var(--ert-gap-cozy) var(--ert-gap-xs) 0;
 }
@@ -498,11 +498,6 @@
     outline-offset: 2px;
 }
 
-.ert-timeline-repair-scene-card.ert-is-selected {
-    border-color: var(--interactive-accent);
-    background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary));
-}
-
 .ert-timeline-repair-scene-card.ert-needs-review {
     border-left: 3px solid var(--text-warning);
 }
@@ -511,15 +506,44 @@
     border-left: 3px solid var(--text-error);
 }
 
+.ert-timeline-repair-scene-card.ert-has-duplicate-when {
+    border-left: 3px solid var(--text-warning);
+}
+
 .ert-timeline-repair-scene-card.ert-is-open-note {
     box-shadow:
         inset 2px 0 0 color-mix(in srgb, var(--text-accent) 55%, transparent),
         inset -2px 0 0 color-mix(in srgb, var(--text-accent) 55%, transparent);
 }
 
-.ert-timeline-repair-checkbox {
-    flex-shrink: 0;
-    margin-top: 3px;
+@keyframes ert-just-edited-pulse {
+    0% {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+        background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary));
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+        background: var(--background-secondary);
+    }
+}
+
+.ert-timeline-repair-scene-card.ert-is-just-edited {
+    animation: ert-just-edited-pulse 1.4s ease-out;
+}
+
+@keyframes ert-rippled-pulse {
+    0% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent) 60%, transparent);
+        background: color-mix(in srgb, var(--text-accent) 8%, var(--background-secondary));
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+        background: var(--background-secondary);
+    }
+}
+
+.ert-timeline-repair-scene-card.ert-is-rippled {
+    animation: ert-rippled-pulse 0.9s ease-out;
 }
 
 /* Two-line card content */
@@ -600,6 +624,16 @@
     width: 18px;
     height: 18px;
     color: var(--text-faint);
+    cursor: help;
+}
+
+.ert-timeline-repair-duplicate-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text-warning);
     cursor: help;
 }
 
@@ -704,9 +738,31 @@
     flex-shrink: 0;
 }
 
-.ert-timeline-repair-day-controls {
-    display: flex;
-    gap: var(--ert-gap-xs);
+.ert-timeline-repair-shift-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-muted);
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ert-timeline-repair-shift-btn:hover {
+    color: var(--text-normal);
+    border-color: var(--interactive-accent);
+}
+
+.ert-timeline-repair-shift-btn svg {
+    width: 14px;
+    height: 14px;
+    display: block;
 }
 
 .ert-timeline-repair-narrative-pill {
@@ -728,20 +784,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     margin-left: var(--ert-gap-xs);
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-s);
     background: var(--background-primary);
-    color: var(--text-faint);
+    color: var(--text-muted);
+    line-height: 1;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .ert-timeline-repair-audit-toggle:hover {
-    color: var(--text-muted);
+    color: var(--text-normal);
     border-color: var(--interactive-accent);
 }
 
@@ -752,26 +809,11 @@
 }
 
 .ert-timeline-repair-audit-toggle svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
+    display: block;
 }
 
-
-.ert-timeline-repair-nudge-btn {
-    padding: calc(var(--ert-gap-2xs) + var(--ert-gap-3xs)) var(--ert-pad-xs);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    background: var(--background-primary);
-    color: var(--text-normal);
-    font-size: var(--font-ui-smaller);
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.ert-timeline-repair-nudge-btn:hover {
-    border-color: var(--interactive-accent);
-    background: var(--background-secondary);
-}
 
 .ert-timeline-repair-bucket-controls {
     display: flex;
@@ -807,6 +849,14 @@
 .ert-timeline-repair-button-spacer {
     flex: 1;
 }
+
+/* Buttons pinned to the far left of the modal actions row. Same pattern as
+ * .ert-modal-settings-btn (modal.css). */
+.ert-ui.ert-scope--modal .ert-modal-actions .ert-timeline-repair-restore-btn,
+.ert-ui.ert-scope--modal .ert-modal-actions .ert-timeline-repair-audit-open-btn {
+    margin-right: auto;
+}
+
 
 /* Confirm dialog */
 .ert-timeline-repair-confirm-warning {

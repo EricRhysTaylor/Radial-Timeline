@@ -6,6 +6,7 @@
 
 import { Notice } from 'obsidian';
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
+import { t } from '../../i18n';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 
 /**
@@ -62,9 +63,9 @@ export const GOSSAMER_MODE: ModeDefinition = {
         if (beatNotes.length === 0) {
             const selectedSystem = resolveSelectedBeatModelFromSettings(plugin.settings) ?? '';
             const systemHint = selectedSystem
-                ? `No "${selectedSystem}" beat notes found in your vault. Create beat notes with "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
-                : 'No story beats found. Create notes with frontmatter "Class: Beat".';
-            new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
+                ? t('gossamer.notices.systemHintWithModel', { system: selectedSystem })
+                : t('gossamer.notices.systemHintNoModel');
+            new Notice(t('gossamer.notices.cannotEnterMode', { hint: systemHint }), 8000);
             throw new Error('Cannot enter Gossamer mode: No story beats found');
         }
         
@@ -76,17 +77,17 @@ export const GOSSAMER_MODE: ModeDefinition = {
         
         if (allRuns.current.beats.length === 0) {
             const systemHint = selectedBeatModel
-                ? `No beat notes found matching "${selectedBeatModel}". Check that your beat notes have "Beat Model: ${selectedBeatModel}" in frontmatter.`
-                : 'No story beat notes could be matched. Ensure notes have "Class: Beat" in frontmatter.';
-            new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
+                ? t('gossamer.notices.modeMatchHintWithModel', { system: selectedBeatModel })
+                : t('gossamer.notices.modeMatchHintNoModel');
+            new Notice(t('gossamer.notices.cannotEnterMode', { hint: systemHint }), 8000);
             throw new Error(`Cannot enter Gossamer mode: No beats found for system: ${selectedBeatModel}`);
         }
-        
+
         // Show info message if no scores exist (graceful, not a warning)
         if (!allRuns.hasAnyScores) {
             const { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA } = await import('../../types/gossamerSignals');
             const activeSignalLabel = GOSSAMER_SIGNAL_METADATA[plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL].label.toLowerCase();
-            new Notice(`No Gossamer ${activeSignalLabel} scores found. Showing ideal ranges and spokes. Add scores using the Gossamer score-entry command.`);
+            new Notice(t('gossamer.notices.noScoresInfo', { signal: activeSignalLabel }));
         }
         
         // Setup mode

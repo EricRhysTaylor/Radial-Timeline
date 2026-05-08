@@ -16,6 +16,7 @@ import {
   willAppendGossamerPrune
 } from './utils/gossamer';
 import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
+import { t } from './i18n';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
@@ -208,7 +209,7 @@ async function writeGossamerLog(
       tokenUsage,
       resultSummary,
       errorReason: isError ? (payload.assistantContent || 'Unknown error.') : null,
-      suggestedFixes: isError ? ['Retry or check Gemini API configuration.'] : undefined,
+      suggestedFixes: isError ? [t('gossamer.notices.retryGemini')] : undefined,
       contentLogWritten,
       retryAttempts: 0
     });
@@ -339,8 +340,8 @@ async function saveGossamerScores(
   }
   
   if (updateCount > 0) {
-    const parts = [`Updated ${updateCount} beat scores (${stage} stage).`];
-    if (snapshotPath) parts.push(`Archived replaced Gossamer history: ${snapshotPath}`);
+    const parts = [t('gossamer.service.updatedBeatScores', { count: updateCount, stage })];
+    if (snapshotPath) parts.push(t('gossamer.service.archivedWithPath', { path: snapshotPath }));
     new Notice(parts.join(' '));
   }
 }
@@ -544,10 +545,10 @@ export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Prom
   const plotBeats = scenes.filter(s => s.itemType === 'Beat');
   
   if (plotBeats.length === 0) {
-    new Notice('No story beats found. Create notes with frontmatter "Class: Beat".');
+    new Notice(t('gossamer.notices.noStoryBeats'));
     return;
   }
-  
+
   // Open score entry modal
   const modal = new GossamerScoreModal(plugin.app, plugin, plotBeats);
   modal.open();
@@ -603,9 +604,9 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     if (beatNotes.length === 0) {
       const selectedSystem = resolveSelectedBeatModelFromSettings(plugin.settings) ?? '';
       const systemHint = selectedSystem
-        ? `No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
-        : 'No story beats found. Create notes with frontmatter "Class: Beat".';
-      new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
+        ? t('gossamer.notices.systemHintWithModel', { system: selectedSystem })
+        : t('gossamer.notices.systemHintNoModel');
+      new Notice(t('gossamer.notices.cannotEnterMode', { hint: systemHint }), 8000);
       return;
     }
     
@@ -624,16 +625,16 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     
     if (allRuns.current.beats.length === 0) {
       const systemHint = selectedBeatModel
-        ? `No beat notes found matching "${selectedBeatModel}". Check that your beat notes have "Beat Model: ${selectedBeatModel}" in frontmatter.`
-        : 'No story beat notes could be matched.';
-      new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
+        ? t('gossamer.notices.modeMatchHintWithModel', { system: selectedBeatModel })
+        : t('gossamer.notices.modeMatchHintNoModel');
+      new Notice(t('gossamer.notices.cannotEnterMode', { hint: systemHint }), 8000);
       return;
     }
-    
+
     // Show info message if no scores exist (graceful, not a warning)
     if (!allRuns.hasAnyScores) {
       const activeSignalLabel = GOSSAMER_SIGNAL_METADATA[plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL].label.toLowerCase();
-      new Notice(`No Gossamer ${activeSignalLabel} scores found. Showing ideal ranges and spokes. Add scores using the Gossamer score-entry command.`);
+      new Notice(t('gossamer.notices.noScoresInfo', { signal: activeSignalLabel }));
     }
     
     setBaseModeAllScenes(plugin);
@@ -709,7 +710,9 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
           modeToggle.setAttribute('data-current-mode', originalMode);
           const title = modeToggle.querySelector('title');
           if (title) {
-            title.textContent = originalMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
+            title.textContent = originalMode === 'allscenes'
+              ? t('gossamer.notices.modeToggleSwitchMain')
+              : t('gossamer.notices.modeToggleSwitchAll');
           }
         }
         
@@ -878,7 +881,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
   // Get beat system from settings (used by both pre-check and processing)
   const settingsBeatSystem = resolveSelectedBeatModelFromSettings(plugin.settings);
   if (!settingsBeatSystem) {
-    new Notice('No active beat system selected for this book. Choose one in Beat Manager before running Gossamer.');
+    new Notice(t('gossamer.notices.noActiveBeatSystemRun'));
     return;
   }
   const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Classic Dramatic Structure'];
@@ -909,9 +912,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
   // Define the actual processing function
   const processAnalysis = async (options: AnalysisOptions, modal: GossamerProcessingModal) => {
     try {
-      modal.setStatus('Validating configuration...');
-      
-      modal.setStatus('Loading story beats...');
+      modal.setStatus(t('gossamer.notices.validating'));
+
+      modal.setStatus(t('gossamer.notices.loadingBeats'));
       
       // Get all beat notes
       const scenes = await plugin.getSceneData();
@@ -924,9 +927,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       }
       
       if (plotBeats.length === 0) {
-        modal.addError('No story beats found. Create notes with frontmatter "Class: Beat".');
+        modal.addError(t('gossamer.notices.noStoryBeats'));
         modal.completeProcessing(false, 'No beats found');
-        new Notice('No story beats found. Create notes with frontmatter "Class: Beat".');
+        new Notice(t('gossamer.notices.noStoryBeats'));
         return;
       }
 
@@ -964,15 +967,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         };
       });
 
-    modal.setStatus('Assembling manuscript evidence...');
+    modal.setStatus(t('gossamer.notices.assemblingEvidence'));
 
     // Get sorted scene files (single source of truth)
     const { files: sceneFiles } = await getSortedSceneFiles(plugin);
 
     if (sceneFiles.length === 0) {
-      modal.addError('No scenes found in the active book folder.');
+      modal.addError(t('gossamer.notices.noScenesInBook'));
       modal.completeProcessing(false, 'No scenes found');
-      new Notice('No scenes found in the active book folder.');
+      new Notice(t('gossamer.notices.noScenesInBook'));
       return;
     }
 
@@ -981,13 +984,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       sceneFiles
     });
     const evidenceModeLabel = resolvedEvidence.label;
-    modal.setStatus(`Assembling manuscript evidence (${evidenceModeLabel})...`);
+    modal.setStatus(t('gossamer.notices.assemblingEvidenceWithMode', { mode: evidenceModeLabel }));
     const evidenceDocument = resolvedEvidence.document;
 
     if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0 || evidenceDocument.includedScenes === 0) {
-      modal.addError('No scene body content available for analysis.');
+      modal.addError(t('gossamer.notices.noSceneBodyContent'));
       modal.completeProcessing(false, 'Empty manuscript');
-      new Notice('No scene body content available for analysis.');
+      new Notice(t('gossamer.notices.noSceneBodyContent'));
       return;
     }
 
@@ -1006,7 +1009,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.setManuscriptInfo(manuscriptInfo);
 
     // Build prompt
-    modal.setStatus('Building analysis prompt...');
+    modal.setStatus(t('gossamer.notices.buildingPrompt'));
     const selectedSignal: GossamerSignalType = plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
     const signalMeta = GOSSAMER_SIGNAL_METADATA[selectedSignal];
     const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem, selectedSignal);
@@ -1065,7 +1068,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     });
 
     // Call unified AI client
-    modal.setStatus(`Sending manuscript to AI for ${signalMeta.label.toLowerCase()} analysis...`);
+    modal.setStatus(t('gossamer.notices.sendingToAi', { signal: signalMeta.label.toLowerCase() }));
     modal.apiCallStarted();
 
     const submittedAt = new Date();
@@ -1077,7 +1080,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.setAiAdvancedContext(result.advancedContext ?? null);
 
     if (result.aiStatus !== 'success' || !result.content) {
-      modal.apiCallError(result.error || 'Failed to get response from AI');
+      modal.apiCallError(result.error || t('gossamer.notices.aiResponseError'));
       modal.completeProcessing(false, 'API call failed');
       
       // Check for rate limit
@@ -1104,7 +1107,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         schemaWarnings: result.error ? [`Error: ${result.error}`] : undefined
       });
       
-      throw new Error(result.error || 'Failed to get response from AI');
+      throw new Error(result.error || t('gossamer.notices.aiResponseError'));
     }
 
     modal.apiCallSuccess();
@@ -1191,7 +1194,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     };
 
     // Save results to beat notes
-    modal.setStatus('Updating beat notes...');
+    modal.setStatus(t('gossamer.notices.updatingBeats'));
     
     // Detect dominant stage for this run
     let dominantStage = 'Zero';
@@ -1289,14 +1292,14 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     
     // Log unmatched beats
     if (unmatchedBeats.length > 0) {
-      modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
+      modal.addError(t('gossamer.notices.unmatchedBeats', { count: unmatchedBeats.length, list: unmatchedBeats.join(', ') }));
     }
     if (snapshotPath) {
-      new Notice('Archived replaced Gossamer history before save (1 snapshot).');
+      new Notice(t('gossamer.notices.archivedSnapshot'));
     }
 
     // Create analysis log (unified AI log envelope)
-    modal.setStatus('Generating analysis log...');
+    modal.setStatus(t('gossamer.notices.generatingLog'));
 
     const derivedLines: string[] = [];
     derivedLines.push(`Beats updated: ${updateCount}`);
@@ -1341,12 +1344,12 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       derivedSummary: derivedLines.join('\n')
     });
 
-    const successMessage = `✓ Updated ${updateCount} beats with ${signalMeta.label.toLowerCase()} scores`;
-    
+    const successMessage = t('gossamer.notices.successUpdated', { count: updateCount, signal: signalMeta.label.toLowerCase() });
+
     const aiFolderPath = resolveGossamerLogFolder();
     const logMessage = plugin.settings.logApiInteractions
-      ? `${successMessage}. Log saved to ${aiFolderPath} (evidence: ${evidenceModeLabel.toLowerCase()}).`
-      : `${successMessage}. Summary log saved to ${aiFolderPath}. Content logs are disabled.`;
+      ? t('gossamer.notices.successLogWithContent', { message: successMessage, path: aiFolderPath, mode: evidenceModeLabel.toLowerCase() })
+      : t('gossamer.notices.successLogWithoutContent', { message: successMessage, path: aiFolderPath });
 
     modal.completeProcessing(true, successMessage);
     new Notice(logMessage);
@@ -1366,9 +1369,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     } catch (e) {
       const errorMsg = (e as Error)?.message || 'Unknown error';
-      modal.addError(`Processing failed: ${errorMsg}`);
+      modal.addError(t('gossamer.notices.processingFailed', { error: errorMsg }));
       modal.completeProcessing(false, 'Processing failed');
-      new Notice(`Failed Gossamer AI analysis: ${errorMsg}`);
+      new Notice(t('gossamer.notices.aiAnalysisFailed', { error: errorMsg }));
       console.error('[Gossamer AI]', sanitizeLogPayload(e).sanitized);
     }
   };
@@ -1443,7 +1446,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     
   } catch (e) {
     const errorMsg = (e as Error)?.message || 'Unknown error';
-    new Notice(`Failed to prepare Gossamer analysis: ${errorMsg}`);
+    new Notice(t('gossamer.notices.prepareFailed', { error: errorMsg }));
     console.error('[Gossamer AI Pre-check]', sanitizeLogPayload(e).sanitized);
   }
 }

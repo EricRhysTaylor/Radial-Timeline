@@ -31,9 +31,8 @@ import { buildSharedSceneNoteFileMap, loadScopedSceneNotes, mapSharedSceneNotesT
 import {
     createSession,
     shiftSceneDays,
+    shiftSceneHours,
     setSceneTimeBucket,
-    shiftMultipleDays,
-    setMultipleTimeBucket,
     toggleRippleMode,
     getChangedCount,
     getNeedsReviewCount
@@ -73,7 +72,33 @@ export class TimelineRepairModal extends Modal {
     private sceneListEl?: HTMLElement;
     private summaryBarEl?: HTMLElement;
     private needsReviewPillEl?: HTMLElement;
-    private selectedIndices: Set<number> = new Set();
+    /**
+     * Manuscript index of the scene the user just edited, if any. Reset after
+     * the next render. The matching row gets a one-shot pulse animation and is
+     * scrolled into view so the author doesn't lose track of it after edits.
+     */
+    private lastEditedSceneIndex?: number;
+    /**
+     * Manuscript indices of scenes that were shifted by Ripple cascade in the
+     * most recent edit (excludes the directly-edited row). These get a quieter
+     * pulse so the author can see the cascade in action. Reset after render.
+     */
+    private lastRippledIndices?: Set<number>;
+    /**
+     * Manuscript indices of scenes whose effective When matches another
+     * scene's effective When. Computed at render time from the current
+     * session, so edit-induced duplicates are caught live.
+     */
+    private duplicateWhenIndices: Set<number> = new Set();
+    /**
+     * Frozen chronological order (scene paths) used to render the list. Edits
+     * keep this snapshot stable so rows don't jump mid-click. The snapshot is
+     * cleared on filter/mode changes and on a debounced timer after the last
+     * edit, at which point the next render re-sorts to the new chronology.
+     */
+    private chronoOrderSnapshot?: string[];
+    private resortTimer?: number;
+    private pendingResortEditIndex?: number;
 
     // Review filters
     private filterNeedsReview = false;
@@ -155,6 +180,10 @@ export class TimelineRepairModal extends Modal {
     onClose(): void {
         this.abortController?.abort();
         this.unregisterOpenNoteListeners();
+        if (this.resortTimer !== undefined) {
+            window.clearTimeout(this.resortTimer);
+            this.resortTimer = undefined;
+        }
     }
 
     private async loadSceneData(): Promise<void> {
@@ -253,6 +282,12 @@ export class TimelineRepairModal extends Modal {
         this.needsReviewPillEl = undefined;
         this.auditFooterEl = undefined;
         this.auditIncluded.clear();
+        this.chronoOrderSnapshot = undefined;
+        if (this.resortTimer !== undefined) {
+            window.clearTimeout(this.resortTimer);
+            this.resortTimer = undefined;
+        }
+        this.pendingResortEditIndex = undefined;
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -391,20 +426,12 @@ export class TimelineRepairModal extends Modal {
 
         const optionsSection = rightCol.createDiv({ cls: 'ert-timeline-repair-config-block' });
 
-        let useTextCues = true;
-
         const baseRow = optionsSection.createDiv({ cls: 'ert-timeline-repair-option-row ert-is-static' });
         const baseText = baseRow.createDiv({ cls: 'ert-timeline-repair-level-text' });
         baseText.createDiv({ cls: 'ert-timeline-repair-level-title', text: t('timelineRepairModal.refinements.baseScaffoldTitle') });
-        baseText.createDiv({ cls: 'ert-timeline-repair-level-desc', text: t('timelineRepairModal.refinements.baseScaffoldDesc') });
-
-        this.createLevelToggle(
-            optionsSection,
-            t('timelineRepairModal.refinements.textCuesTitle'),
-            t('timelineRepairModal.refinements.textCuesDesc'),
-            useTextCues,
-            false,
-            (val) => { useTextCues = val; }
+        renderWithYamlTokens(
+            baseText.createDiv({ cls: 'ert-timeline-repair-level-desc' }),
+            t('timelineRepairModal.refinements.baseScaffoldDesc')
         );
 
         // Action buttons
@@ -415,6 +442,7 @@ export class TimelineRepairModal extends Modal {
             .setDisabled(true)
             .onClick(() => { void this.handleRestoreLatestSnapshot(); });
         restoreBtn.buttonEl.addClass('ert-timeline-repair-restore-btn');
+
         void getLatestTimelineSnapshot(this.app).then(meta => {
             if (meta) {
                 restoreBtn.setDisabled(false);
@@ -436,7 +464,7 @@ export class TimelineRepairModal extends Modal {
                     anchorWhen,
                     anchorSceneIndex: 0,
                     patternPreset: selectedPattern,
-                    useTextCues,
+                    useTextCues: true,
                     preserveAuthoredDates: true
                 };
 
@@ -514,8 +542,8 @@ export class TimelineRepairModal extends Modal {
                     this.session.hasUnsavedChanges = this.session.entries.some(e => e.isChanged);
                 }
             }
-            this.selectedIndices.clear();
             this.seedAuditIncluded();
+            this.chronoOrderSnapshot = undefined; // fresh chrono after rebuild
             this.renderSceneList();
             this.updateSummaryBar();
             this.updateAuditFooter();
@@ -631,12 +659,14 @@ export class TimelineRepairModal extends Modal {
 
         this.needsReviewPillEl = this.createFilterPill(filterRow, t('timelineRepairModal.review.filterNeedsReview'), this.filterNeedsReview, (val) => {
             this.filterNeedsReview = val;
+            this.chronoOrderSnapshot = undefined; // recompute chrono with the filtered set
             this.renderSceneList();
         });
 
         if (this.result.cueRefined > 0) {
             this.createFilterPill(filterRow, t('timelineRepairModal.review.filterTextCues'), this.filterKeywordDerived, (val) => {
                 this.filterKeywordDerived = val;
+                this.chronoOrderSnapshot = undefined;
                 this.renderSceneList();
             });
         }
@@ -678,13 +708,10 @@ export class TimelineRepairModal extends Modal {
         this.renderSceneList();
         this.registerOpenNoteListeners();
 
-        // Action buttons
+        // Action buttons. DOM order: audit-open first (pinned left via CSS),
+        // then Back / Apply pinned right.
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.auditFooterEl = buttonRow;
-
-        new ButtonComponent(buttonRow)
-            .setButtonText(t('timelineRepairModal.review.backButton'))
-            .onClick(() => this.showConfigPhase());
 
         const auditOpenBtn = new ButtonComponent(buttonRow)
             .setButtonText(this.auditIncluded.size === 0
@@ -692,6 +719,10 @@ export class TimelineRepairModal extends Modal {
                 : t('timelineRepairModal.review.openAuditButton', { count: this.auditIncluded.size }))
             .onClick(() => this.openFocusedAudit());
         auditOpenBtn.buttonEl.addClass('ert-timeline-repair-audit-open-btn');
+
+        new ButtonComponent(buttonRow)
+            .setButtonText(t('timelineRepairModal.review.backButton'))
+            .onClick(() => this.showConfigPhase());
 
         new ButtonComponent(buttonRow)
             .setButtonText(t('timelineRepairModal.review.applyButton'))
@@ -830,6 +861,39 @@ export class TimelineRepairModal extends Modal {
 
         this.sceneListEl.empty();
 
+        // Detect scenes whose effective When timestamp collides with another
+        // scene. Computed live (not stored on entries) so any edit-induced
+        // duplicate flags up immediately on the next render.
+        this.duplicateWhenIndices = new Set();
+        const tsMap = new Map<number, number[]>();
+        for (const e of this.session.entries) {
+            const t = getEffectiveWhen(e).getTime();
+            const list = tsMap.get(t);
+            if (list) list.push(e.manuscriptIndex);
+            else tsMap.set(t, [e.manuscriptIndex]);
+        }
+        for (const indices of tsMap.values()) {
+            if (indices.length > 1) {
+                for (const i of indices) this.duplicateWhenIndices.add(i);
+            }
+        }
+
+        // Compute or reuse chronological order. We freeze the order across
+        // edit re-renders so individual rows don't jump while the author is
+        // clicking. The snapshot clears on filter/mode change or after a
+        // debounced timer (see scheduleResort).
+        if (!this.chronoOrderSnapshot) {
+            const sorted = this.session.entries.slice().sort((a, b) => {
+                const dt = getEffectiveWhen(a).getTime() - getEffectiveWhen(b).getTime();
+                return dt !== 0 ? dt : a.manuscriptIndex - b.manuscriptIndex;
+            });
+            this.chronoOrderSnapshot = sorted.map(e => e.file.path);
+        }
+        const orderIndex = new Map<string, number>();
+        for (let i = 0; i < this.chronoOrderSnapshot.length; i++) {
+            orderIndex.set(this.chronoOrderSnapshot[i], i);
+        }
+
         // Filter entries
         let entries = this.session.entries;
 
@@ -848,42 +912,66 @@ export class TimelineRepairModal extends Modal {
             return;
         }
 
-        // Render scene cards
-        for (const entry of entries) {
-            this.renderSceneCard(entry);
+        // Apply the frozen chronological order.
+        entries = entries.slice().sort((a, b) =>
+            (orderIndex.get(a.file.path) ?? Number.MAX_SAFE_INTEGER) -
+            (orderIndex.get(b.file.path) ?? Number.MAX_SAFE_INTEGER)
+        );
+
+        // Render scene cards. chronoPosition is the row's 1-based position in
+        // the displayed chronological order — distinct from manuscriptIndex
+        // (story order) which drives the N pill.
+        for (let i = 0; i < entries.length; i++) {
+            this.renderSceneCard(entries[i], i + 1);
         }
+
+        // Clear the just-edited and rippled markers so they only fire once
+        // per edit. The CSS animation runs on freshly-mounted cards; clearing
+        // here ensures unrelated re-renders (filter toggles, snapshots)
+        // don't re-flash a stale edit.
+        this.lastEditedSceneIndex = undefined;
+        this.lastRippledIndices = undefined;
     }
 
-    private renderSceneCard(entry: RepairSceneEntry): void {
+    private renderSceneCard(entry: RepairSceneEntry, chronoPosition: number): void {
         if (!this.sceneListEl || !this.session) return;
 
         const idx = entry.manuscriptIndex;
         const effectiveWhen = getEffectiveWhen(entry);
-        const isSelected = this.selectedIndices.has(idx);
         const currentBucket = detectTimeBucket(effectiveWhen);
 
         const card = this.sceneListEl.createDiv({ cls: 'ert-timeline-repair-scene-card' });
         card.setAttribute('data-ert-path', entry.file.path);
-        if (isSelected) card.addClass('ert-is-selected');
         if (entry.needsReview) card.addClass('ert-needs-review');
         if (entry.hasBackwardTime) card.addClass('ert-has-backward-time');
+        if (this.duplicateWhenIndices.has(idx)) card.addClass('ert-has-duplicate-when');
         if (entry.source === 'authored') card.addClass('ert-is-authored');
         if (this.openNotePaths.has(entry.file.path)) {
             card.addClass('ert-is-open-note');
         }
+        if (this.lastRippledIndices?.has(idx)) {
+            card.addClass('ert-is-rippled');
+        }
 
-        // Selection checkbox
-        const checkbox = card.createEl('input', { type: 'checkbox', cls: 'ert-timeline-repair-checkbox' });
-        checkbox.checked = isSelected;
-        checkbox.addEventListener('change', () => {
-            if (checkbox.checked) {
-                this.selectedIndices.add(idx);
-            } else {
-                this.selectedIndices.delete(idx);
+        if (this.lastEditedSceneIndex === idx) {
+            card.addClass('ert-is-just-edited');
+            // Only scroll if the card is fully OFF-screen. `block: 'nearest'`
+            // alone scrolls partially-visible rows to the bottom, which feels
+            // like a snap. Author can always rely on the pulse to find the row
+            // when it IS visible.
+            const list = this.sceneListEl;
+            if (list) {
+                window.requestAnimationFrame(() => {
+                    const cardRect = card.getBoundingClientRect();
+                    const listRect = list.getBoundingClientRect();
+                    const isPartiallyVisible =
+                        cardRect.bottom > listRect.top && cardRect.top < listRect.bottom;
+                    if (!isPartiallyVisible) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
             }
-            card.toggleClass('ert-is-selected', checkbox.checked);
-            this.updateSummaryBar();
-        });
+        }
 
         // Two-line content area
         const contentArea = card.createDiv({ cls: 'ert-timeline-repair-card-content' });
@@ -891,10 +979,11 @@ export class TimelineRepairModal extends Modal {
         // LINE 1: identity + signal
         const line1 = contentArea.createDiv({ cls: 'ert-timeline-repair-line1' });
 
-        line1.createSpan({
-            text: `#${idx + 1}`,
+        const chronoNumber = line1.createSpan({
+            text: `#${chronoPosition}`,
             cls: 'ert-timeline-repair-scene-number'
         });
+        setTooltip(chronoNumber, t('timelineRepairModal.review.chronoPosition', { count: chronoPosition }));
         line1.createSpan({
             text: entry.scene.title || t('timelineRepairModal.review.untitled'),
             cls: 'ert-timeline-repair-scene-title'
@@ -912,8 +1001,9 @@ export class TimelineRepairModal extends Modal {
             setTooltip(openBadge, t('timelineRepairModal.review.openInWorkspace'));
         }
 
-        // Cue chips (blue keyword badges, linked to note origin)
-        if (entry.source === 'keyword' && entry.cues?.length) {
+        // Cue chips: editorial evidence, always shown if cues were detected,
+        // even on authored anchors where the cue did not drive the date.
+        if (entry.cues?.length) {
             for (const cue of entry.cues) {
                 const cueChip = line1.createEl('a', { cls: 'ert-timeline-repair-cue-chip' });
                 cueChip.setText(`"${cue.match}"`);
@@ -943,14 +1033,19 @@ export class TimelineRepairModal extends Modal {
             setIcon(gapBadge, 'clock');
             gapBadge.setAttribute('aria-label', t('timelineRepairModal.review.warningLargeGap'));
         }
+        if (this.duplicateWhenIndices.has(idx)) {
+            const dupBadge = line1.createSpan({ cls: 'ert-timeline-repair-duplicate-badge' });
+            setIcon(dupBadge, 'copy');
+            setTooltip(dupBadge, t('timelineRepairModal.review.warningDuplicateWhen'));
+        }
 
         // Pattern compliance chip
-        const complianceLabel = this.getComplianceLabel(entry);
+        const compliance = this.getComplianceState(entry);
         const complianceChip = line1.createSpan({
             cls: 'ert-timeline-repair-compliance-chip'
         });
-        complianceChip.addClass(`ert-compliance-${complianceLabel.replace(/\s+/g, '-')}`);
-        complianceChip.setText(complianceLabel);
+        complianceChip.addClass(`ert-compliance-${compliance.className}`);
+        complianceChip.setText(compliance.label);
 
         // LINE 2: timeline + actions
         const line2 = contentArea.createDiv({ cls: 'ert-timeline-repair-line2' });
@@ -984,20 +1079,19 @@ export class TimelineRepairModal extends Modal {
         // Right: controls
         const controlsArea = line2.createDiv({ cls: 'ert-timeline-repair-controls' });
 
-        // Day controls
-        const dayRow = controlsArea.createDiv({ cls: 'ert-timeline-repair-day-controls' });
+        const buildShiftBtn = (icon: string, tooltipKey: string, onClick: () => void): HTMLElement => {
+            const btn = controlsArea.createEl('button', { cls: 'ert-iconBtn ert-timeline-repair-shift-btn' });
+            setIcon(btn, icon);
+            setTooltip(btn, t(tooltipKey));
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                onClick();
+            });
+            return btn;
+        };
 
-        const dayMinusBtn = dayRow.createEl('button', { cls: 'ert-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayMinus') });
-        dayMinusBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleDayShift(idx, -1);
-        });
-
-        const dayPlusBtn = dayRow.createEl('button', { cls: 'ert-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayPlus') });
-        dayPlusBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleDayShift(idx, 1);
-        });
+        buildShiftBtn('chevrons-left', 'timelineRepairModal.review.shiftDayBack', () => this.handleDayShift(idx, -1));
+        buildShiftBtn('chevron-left', 'timelineRepairModal.review.shiftHourBack', () => this.handleHourShift(idx, -1));
 
         // Time bucket pills
         const bucketRow = controlsArea.createDiv({ cls: 'ert-timeline-repair-bucket-controls' });
@@ -1020,8 +1114,14 @@ export class TimelineRepairModal extends Modal {
             });
         }
 
-        // Audit handoff toggle (subtle, single icon)
-        const auditBtn = controlsArea.createEl('button', { cls: 'ert-timeline-repair-audit-toggle' });
+        buildShiftBtn('chevron-right', 'timelineRepairModal.review.shiftHourForward', () => this.handleHourShift(idx, 1));
+        buildShiftBtn('chevrons-right', 'timelineRepairModal.review.shiftDayForward', () => this.handleDayShift(idx, 1));
+
+        // Audit handoff toggle (subtle, single icon).
+        // ert-iconBtn opts out of the generic .ert-ui.ert-scope--modal button
+        // rule which would otherwise apply min-height + horizontal padding
+        // and crush the icon out of view.
+        const auditBtn = controlsArea.createEl('button', { cls: 'ert-iconBtn ert-timeline-repair-audit-toggle' });
         setIcon(auditBtn, 'search');
         const isIncluded = this.auditIncluded.has(entry.file.path);
         if (isIncluded) auditBtn.addClass('ert-is-active');
@@ -1044,40 +1144,77 @@ export class TimelineRepairModal extends Modal {
         });
     }
 
-    private getComplianceLabel(entry: RepairSceneEntry): string {
-        if (entry.isFlashback) return 'flashback';
-        if (entry.needsReview) return 'needs review';
-        if (entry.source === 'authored') return 'authored';
-        if (entry.source === 'keyword' || entry.source === 'ai') return 'cue-adjusted';
-        return 'pattern-based';
+    private getComplianceState(entry: RepairSceneEntry): { label: string; className: string } {
+        if (entry.isFlashback) {
+            return { label: entry.flashbackLabel ?? 'flashback', className: 'flashback' };
+        }
+        if (entry.needsReview) return { label: 'needs review', className: 'needs-review' };
+        if (entry.source === 'authored') return { label: 'authored', className: 'authored' };
+        if (entry.source === 'keyword' || entry.source === 'ai') return { label: 'cue-adjusted', className: 'cue-adjusted' };
+        return { label: 'pattern-based', className: 'pattern-based' };
+    }
+
+    private captureRippledIndices(sceneIndex: number): void {
+        if (!this.session) return;
+        const lastOp = this.session.undoStack[this.session.undoStack.length - 1];
+        if (lastOp?.type === 'ripple' && lastOp.changes?.length) {
+            this.lastRippledIndices = new Set(
+                lastOp.changes
+                    .map(c => c.sceneIndex)
+                    .filter(i => i !== sceneIndex)
+            );
+        } else {
+            this.lastRippledIndices = undefined;
+        }
+    }
+
+    /**
+     * Schedule a re-sort of the chronological order ~500ms after the last
+     * edit. While the timer is pending, edits keep the row stable in its
+     * current visual position (the chronoOrderSnapshot is preserved). When
+     * the timer fires, the snapshot clears and the next render re-sorts; the
+     * pending edit index is restored so the row pulses at its NEW position.
+     */
+    private scheduleResort(sceneIndex: number): void {
+        this.pendingResortEditIndex = sceneIndex;
+        if (this.resortTimer !== undefined) {
+            window.clearTimeout(this.resortTimer);
+        }
+        this.resortTimer = window.setTimeout(() => {
+            this.resortTimer = undefined;
+            this.chronoOrderSnapshot = undefined;
+            this.lastEditedSceneIndex = this.pendingResortEditIndex;
+            this.pendingResortEditIndex = undefined;
+            this.renderSceneList();
+        }, 500);
     }
 
     private handleDayShift(sceneIndex: number, days: number): void {
         if (!this.session) return;
+        this.session = shiftSceneDays(this.session, sceneIndex, days);
+        this.lastEditedSceneIndex = sceneIndex;
+        this.captureRippledIndices(sceneIndex);
+        this.scheduleResort(sceneIndex);
+        this.renderSceneList();
+        this.updateSummaryBar();
+    }
 
-        if (this.selectedIndices.size > 1 && this.selectedIndices.has(sceneIndex)) {
-            // Batch shift
-            this.session = shiftMultipleDays(this.session, Array.from(this.selectedIndices), days);
-        } else {
-            // Single shift
-            this.session = shiftSceneDays(this.session, sceneIndex, days);
-        }
-
+    private handleHourShift(sceneIndex: number, hours: number): void {
+        if (!this.session) return;
+        this.session = shiftSceneHours(this.session, sceneIndex, hours);
+        this.lastEditedSceneIndex = sceneIndex;
+        this.captureRippledIndices(sceneIndex);
+        this.scheduleResort(sceneIndex);
         this.renderSceneList();
         this.updateSummaryBar();
     }
 
     private handleTimeBucketChange(sceneIndex: number, hour: number): void {
         if (!this.session) return;
-
-        if (this.selectedIndices.size > 1 && this.selectedIndices.has(sceneIndex)) {
-            // Batch change
-            this.session = setMultipleTimeBucket(this.session, Array.from(this.selectedIndices), hour);
-        } else {
-            // Single change
-            this.session = setSceneTimeBucket(this.session, sceneIndex, hour);
-        }
-
+        this.session = setSceneTimeBucket(this.session, sceneIndex, hour);
+        this.lastEditedSceneIndex = sceneIndex;
+        this.captureRippledIndices(sceneIndex);
+        this.scheduleResort(sceneIndex);
         this.renderSceneList();
         this.updateSummaryBar();
     }

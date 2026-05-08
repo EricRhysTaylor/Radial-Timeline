@@ -4,6 +4,7 @@
 import { Modal, App, ButtonComponent, Notice, TextComponent, TFile, TAbstractFile } from 'obsidian';
 import { tooltip, tooltipForComponent } from '../utils/tooltip';
 import type RadialTimelinePlugin from '../main';
+import { t } from '../i18n';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
@@ -157,17 +158,17 @@ export class GossamerScoreModal extends Modal {
       target = this.plugin.app.vault.getAbstractFileByPath(folderPath);
     }
     if (!target) {
-      new Notice('Export folder not found yet — click "Copy AI prompt" to generate a manuscript first.');
+      new Notice(t('gossamer.scoreModal.exportFolderMissing'));
       return;
     }
     const explorerLeaf = this.plugin.app.workspace.getLeavesOfType('file-explorer')[0];
     if (!explorerLeaf) {
-      new Notice('Open the File Explorer sidebar to see the revealed file.');
+      new Notice(t('gossamer.scoreModal.openExplorerSidebar'));
       return;
     }
     const explorerView = explorerLeaf.view as unknown as { revealInFolder?: (node: TAbstractFile) => void };
     if (!explorerView.revealInFolder) {
-      new Notice('File explorer does not support reveal.');
+      new Notice(t('gossamer.scoreModal.explorerNoReveal'));
       return;
     }
     explorerView.revealInFolder(target);
@@ -219,11 +220,14 @@ export class GossamerScoreModal extends Modal {
     const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
     const normalizationIssues = this.collectNormalizationIssues();
     if (normalizationIssues.length === 0) {
-      new Notice('No Gossamer history to normalize.');
+      new Notice(t('gossamer.scoreModal.normalizeNothing'));
       return;
     }
 
-    const confirmMessage = `Will renumber and clean ${normalizationIssues.length} beat${normalizationIssues.length === 1 ? '' : 's'} with gaps or orphaned justifications. RT will archive removed Gossamer fields before cleanup.`;
+    const confirmMessage = t('gossamer.scoreModal.normalizeConfirmMessage', {
+      count: normalizationIssues.length,
+      plural: normalizationIssues.length === 1 ? '' : 's'
+    });
 
     new NormalizeConfirmationModal(
       this.app,
@@ -257,14 +261,14 @@ export class GossamerScoreModal extends Modal {
         }
 
         if (changedCount > 0) {
-          const parts = [`Normalized Gossamer scores in ${changedCount} beat${changedCount === 1 ? '' : 's'}.`];
-          if (snapshotPath) parts.push(`Archived removed fields: ${snapshotPath}`);
+          const parts = [t('gossamer.scoreModal.normalizedDone', { count: changedCount, plural: changedCount === 1 ? '' : 's' })];
+          if (snapshotPath) parts.push(t('gossamer.scoreModal.normalizeArchive', { path: snapshotPath }));
           new Notice(parts.join(' '));
           this.close();
           const refreshed = new GossamerScoreModal(this.app, this.plugin, this.plotBeats);
           refreshed.open();
         } else {
-          new Notice('No fragmented scores detected.');
+          new Notice(t('gossamer.scoreModal.normalizeNoFragments'));
         }
       }
     ).open();
@@ -378,28 +382,28 @@ export class GossamerScoreModal extends Modal {
     const signalMeta = GOSSAMER_SIGNAL_METADATA[activeSignal];
     const headerEl = contentEl.createDiv({ cls: 'ert-modal-header' });
     const bookTitle = getActiveBookTitle(this.plugin.settings);
-    const badgeParts = [`Gossamer ${signalMeta.label.toLowerCase()}`, bookTitle].filter(Boolean);
+    const badgeParts = [t('gossamer.scoreModal.badgePrefix', { signal: signalMeta.label.toLowerCase() }), bookTitle].filter(Boolean);
     headerEl.createSpan({ text: badgeParts.join(' · '), cls: 'ert-modal-badge' });
-    headerEl.createDiv({ text: `${beatModelLabel} beat system`, cls: 'ert-modal-title' });
+    headerEl.createDiv({ text: t('gossamer.scoreModal.beatSystemTitle', { label: beatModelLabel }), cls: 'ert-modal-title' });
     const heroSubtitle = headerEl.createDiv({ cls: 'ert-modal-subtitle' });
-    heroSubtitle.setText(`Enter ${signalMeta.label.toLowerCase()} scores (0-100) for each beat. Previous scores will be saved as history.`);
+    heroSubtitle.setText(t('gossamer.scoreModal.subtitle', { signal: signalMeta.label.toLowerCase() }));
     const heroMeta = headerEl.createDiv({ cls: 'ert-modal-meta' });
-    heroMeta.createSpan({ text: `Signal: ${signalMeta.label}`, cls: 'ert-modal-meta-item' });
-    heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'ert-modal-meta-item' });
+    heroMeta.createSpan({ text: t('gossamer.scoreModal.signalMeta', { label: signalMeta.label }), cls: 'ert-modal-meta-item' });
+    heroMeta.createSpan({ text: t('gossamer.scoreModal.beatsDetectedMeta', { count: actualCount }), cls: 'ert-modal-meta-item' });
 
     // Show warning if no beats match
     if (actualCount === 0) {
       const noBeatsWarning = contentEl.createEl('div', {
         text: !selectedBeatModel
-          ? `No active beat system selected for this book. Choose one in Beat Manager to score ${signalMeta.label.toLowerCase()} against a specific structure.`
+          ? t('gossamer.scoreModal.noActiveBeatSystem', { signal: signalMeta.label.toLowerCase() })
           : settingsSystem === 'Custom'
-          ? `⚠️ No custom story beats found. Create notes with "Class: Beat" and "Beat Model: ${beatModelLabel}", or change beat system in Settings.`
-          : `⚠️ No story beats found with "Beat Model: ${beatModelLabel}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
+          ? t('gossamer.scoreModal.noBeatsCustom', { label: beatModelLabel })
+          : t('gossamer.scoreModal.noBeatsForModel', { label: beatModelLabel })
       });
       noBeatsWarning.addClass('ert-gossamer-warning');
     } else if (countMismatch && plotSystemTemplate) {
       const warningEl = contentEl.createEl('div', {
-        text: `⚠️ Expected ${plotSystemTemplate.beatCount} beats for ${beatModelLabel}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
+        text: t('gossamer.scoreModal.countMismatch', { expected: plotSystemTemplate.beatCount, label: beatModelLabel, actual: actualCount })
       });
       warningEl.addClass('ert-gossamer-warning');
     }
@@ -455,12 +459,12 @@ export class GossamerScoreModal extends Modal {
 
       // 3. Right side: New score input
       const inputContainer = firstRow.createDiv('ert-gossamer-input-container');
-      const inputLabel = inputContainer.createSpan({ text: 'Enter score' });
+      const inputLabel = inputContainer.createSpan({ text: t('gossamer.scoreModal.enterScoreLabel') });
       inputLabel.addClass('ert-gossamer-input-label');
 
       entry.inputEl = new TextComponent(inputContainer);
       entry.inputEl.inputEl.addClass('ert-gossamer-score-input');
-      entry.inputEl.setPlaceholder('0-100');
+      entry.inputEl.setPlaceholder(t('gossamer.scoreModal.scorePlaceholder'));
 
       // Validate on input
       entry.inputEl.onChange((value) => {
@@ -546,7 +550,7 @@ export class GossamerScoreModal extends Modal {
         // Add count indicator if there are many scores
         if (totalScores > 10) {
           const countSpan = existingScoresEl.createSpan({
-            text: `(${totalScores} scores)`,
+            text: t('gossamer.scoreModal.scoreCount', { count: totalScores }),
             cls: 'ert-gossamer-score-count'
           });
         }
@@ -562,11 +566,11 @@ export class GossamerScoreModal extends Modal {
 
     // Group 1: Maintenance (bordered container — demoted, rarely used)
     const maintenanceGroup = footer.createDiv({ cls: 'ert-gossamer-footer__group ert-gossamer-footer__group--maintenance' });
-    maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'ert-gossamer-footer__group-label' });
+    maintenanceGroup.createEl('span', { text: t('gossamer.scoreModal.groupMaintenance'), cls: 'ert-gossamer-footer__group-label' });
     const maintenanceRow = maintenanceGroup.createDiv({ cls: 'ert-row' });
     const hasNormalizationWork = this.collectNormalizationIssues().length > 0;
     const normalizeBtn = new ButtonComponent(maintenanceRow)
-      .setButtonText('Normalize history')
+      .setButtonText(t('gossamer.scoreModal.normalizeButton'))
       .setDisabled(!hasNormalizationWork)
       .onClick(async () => {
         await this.normalizeAllScores();
@@ -574,7 +578,7 @@ export class GossamerScoreModal extends Modal {
 
     const hasDeletableScores = this.hasSignalScores(activeSignal);
     const deleteBtn = new ButtonComponent(maintenanceRow)
-      .setButtonText(`Delete ${activeSignalLabel} scores`)
+      .setButtonText(t('gossamer.scoreModal.deleteButton', { label: activeSignalLabel }))
       .setDisabled(!hasDeletableScores)
       .onClick(async () => {
         await this.deleteAllScores();
@@ -586,20 +590,20 @@ export class GossamerScoreModal extends Modal {
     // Group 2: AI workflow (bordered container — primary path; both workflow
     // actions live here so Copy → Paste reads as one continuous workflow.)
     const aiGroup = footer.createDiv({ cls: 'ert-gossamer-footer__group ert-gossamer-footer__group--ai' });
-    aiGroup.createEl('span', { text: 'AI workflow', cls: 'ert-gossamer-footer__group-label' });
+    aiGroup.createEl('span', { text: t('gossamer.scoreModal.groupAi'), cls: 'ert-gossamer-footer__group-label' });
     const aiRow = aiGroup.createDiv({ cls: 'ert-row' });
     // Neither Copy nor Paste use setCta(): the CTA class forces taller padding
     // than regular footer buttons, visually "distorting" them relative to Save
     // scores / Cancel. The bordered AI workflow container already signals that
     // these are the primary workflow actions.
     const copyBtn = new ButtonComponent(aiRow)
-      .setButtonText('Copy AI prompt')
+      .setButtonText(t('gossamer.scoreModal.copyButton'))
       .onClick(async () => {
         const ok = await this.copyFullAIPrompt(null);
         if (ok) copyBtn.buttonEl.classList.add('ert-gossamer-copy-success');
       });
     const pasteBtn = new ButtonComponent(aiRow)
-      .setButtonText('Paste AI response')
+      .setButtonText(t('gossamer.scoreModal.pasteButton'))
       .onClick(async () => {
         const result = await this.pasteFromClipboard();
         this.flashPasteResult(pasteBtn.buttonEl, result);
@@ -610,9 +614,9 @@ export class GossamerScoreModal extends Modal {
         }
       });
     const aiMeta = aiGroup.createDiv({ cls: 'ert-gossamer-footer__meta' });
-    aiMeta.createSpan({ text: 'Prompt → clipboard · manuscript → ' });
+    aiMeta.createSpan({ text: t('gossamer.scoreModal.aiMetaPrefix') });
     const vaultLink = aiMeta.createEl('a', {
-      text: 'vault file',
+      text: t('gossamer.scoreModal.aiMetaVaultLink'),
       cls: 'ert-gossamer-footer__vault-link',
       attr: { href: '#', role: 'button', tabindex: '0' }
     });
@@ -620,33 +624,33 @@ export class GossamerScoreModal extends Modal {
       event.preventDefault();
       void this.revealManuscriptInVault();
     });
-    aiMeta.createSpan({ text: ` · ${this.entries.length} beats · ${activeSignalLabel}` });
+    aiMeta.createSpan({ text: t('gossamer.scoreModal.aiMetaSuffix', { count: this.entries.length, label: activeSignalLabel }) });
 
     // Group 3: Commit cluster (standard dialog actions) — Save (primary) then Cancel.
     const commitGroup = footer.createDiv({ cls: 'ert-gossamer-footer__commit' });
     const saveBtn = new ButtonComponent(commitGroup)
-      .setButtonText('Save scores')
+      .setButtonText(t('gossamer.scoreModal.saveButton'))
       .setDisabled(true)
       .onClick(async () => {
         await this.saveScores();
       });
     this.saveBtn = saveBtn;
     const cancelBtn = new ButtonComponent(commitGroup)
-      .setButtonText('Cancel')
+      .setButtonText(t('gossamer.scoreModal.cancelButton'))
       .onClick(() => this.close());
 
     // Tooltips (Delete button omitted — its label already says what it does).
     tooltipForComponent(
       normalizeBtn,
       hasNormalizationWork
-        ? 'Compact numbering gaps and drop orphan justifications'
-        : 'No gaps or orphan justifications detected — nothing to normalize',
+        ? t('gossamer.scoreModal.tooltipNormalizeAvailable')
+        : t('gossamer.scoreModal.tooltipNormalizeNone'),
       'top'
     );
-    tooltipForComponent(copyBtn, 'Assemble prompt (role · rubric · beats · manuscript) and copy to clipboard', 'top');
-    tooltipForComponent(pasteBtn, 'Parse clipboard response and save in one step', 'top');
-    tooltipForComponent(saveBtn, 'Save manually entered scores', 'top');
-    tooltipForComponent(cancelBtn, 'Close without saving', 'top');
+    tooltipForComponent(copyBtn, t('gossamer.scoreModal.tooltipCopy'), 'top');
+    tooltipForComponent(pasteBtn, t('gossamer.scoreModal.tooltipPaste'), 'top');
+    tooltipForComponent(saveBtn, t('gossamer.scoreModal.tooltipSave'), 'top');
+    tooltipForComponent(cancelBtn, t('gossamer.scoreModal.tooltipCancel'), 'top');
   }
 
   /** Flash the paste button green on valid response, red on invalid. */
@@ -656,13 +660,13 @@ export class GossamerScoreModal extends Modal {
     if (result.ok) {
       btnEl.classList.add('ert-gossamer-paste-success');
       if (result.matchCount < result.expected) {
-        new Notice(`✓ Pasted ${result.matchCount} of ${result.expected} beats. Check for any misnamed rows.`);
+        new Notice(t('gossamer.scoreModal.pastePartial', { matched: result.matchCount, expected: result.expected }));
       } else {
-        new Notice(`✓ Pasted ${result.matchCount} scores + justifications.`);
+        new Notice(t('gossamer.scoreModal.pasteSuccess', { matched: result.matchCount }));
       }
     } else {
       btnEl.classList.add('ert-gossamer-paste-error');
-      new Notice(`⚠️ ${result.reason ?? 'Clipboard format not recognized.'} Expected: "Beat Name | 42 | justification"`);
+      new Notice(t('gossamer.scoreModal.pasteError', { reason: result.reason ?? 'Clipboard format not recognized.' }));
     }
     window.setTimeout(() => {
       btnEl.classList.remove('ert-gossamer-paste-success', 'ert-gossamer-paste-error');
@@ -772,11 +776,11 @@ export class GossamerScoreModal extends Modal {
     try {
       const settingsSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings);
       if (!settingsSystem) {
-        new Notice('No active beat system selected for this book.');
+        new Notice(t('gossamer.scoreModal.noBookSystem'));
         return false;
       }
       if (this.entries.length === 0) {
-        new Notice('No beats available. Add Beat notes with the selected Beat Model first.');
+        new Notice(t('gossamer.scoreModal.noBeatsAvailable'));
         return false;
       }
 
@@ -787,7 +791,7 @@ export class GossamerScoreModal extends Modal {
       // Gather manuscript evidence (same as automated flow)
       const { files: sceneFiles } = await getSortedSceneFiles(this.plugin);
       if (sceneFiles.length === 0) {
-        new Notice('No scenes found in the active book folder. Configure the book profile first.');
+        new Notice(t('gossamer.scoreModal.noScenesInBook'));
         return false;
       }
       const evidenceDocument = await buildGossamerEvidenceDocument({
@@ -797,7 +801,7 @@ export class GossamerScoreModal extends Modal {
         frontmatterMappings: getActiveFrontmatterMappings(this.plugin.settings)
       });
       if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0) {
-        new Notice('Manuscript is empty. Cannot build AI prompt.');
+        new Notice(t('gossamer.scoreModal.manuscriptEmpty'));
         return false;
       }
 
@@ -886,7 +890,7 @@ export class GossamerScoreModal extends Modal {
       const sceneLabel = meta?.sceneCount ?? evidenceDocument.totalScenes;
       const wordLabel = (meta?.wordCount ?? evidenceDocument.totalWords).toLocaleString();
       new Notice(
-        `✓ Prompt copied to clipboard. Manuscript saved to ${manuscriptPath} (${sceneLabel} scenes · ${wordLabel} words). Paste the prompt into your LLM and upload this file as an attachment.`,
+        t('gossamer.scoreModal.promptCopied', { path: manuscriptPath, scenes: sceneLabel, words: wordLabel }),
         10000
       );
 
@@ -896,7 +900,7 @@ export class GossamerScoreModal extends Modal {
       return true;
     } catch (error) {
       console.error('[Gossamer] Failed to copy AI prompt:', error);
-      new Notice('Failed to copy AI prompt to clipboard.');
+      new Notice(t('gossamer.scoreModal.promptCopyFailed'));
       return false;
     }
   }
@@ -911,10 +915,10 @@ export class GossamerScoreModal extends Modal {
     try {
       clipboard = await navigator.clipboard.readText();
     } catch {
-      return { ok: false, matchCount: 0, expected: this.entries.length, reason: 'Could not read clipboard.' };
+      return { ok: false, matchCount: 0, expected: this.entries.length, reason: t('gossamer.scoreModal.clipboardReadFailed') };
     }
     if (!clipboard || clipboard.trim().length === 0) {
-      return { ok: false, matchCount: 0, expected: this.entries.length, reason: 'Clipboard is empty.' };
+      return { ok: false, matchCount: 0, expected: this.entries.length, reason: t('gossamer.scoreModal.clipboardEmpty') };
     }
 
     const parsed = parseScoresAndJustifications(clipboard);
@@ -923,7 +927,7 @@ export class GossamerScoreModal extends Modal {
         ok: false,
         matchCount: 0,
         expected: this.entries.length,
-        reason: 'No scores detected. Expected "Beat Name | 42 | justification" per line.'
+        reason: t('gossamer.scoreModal.noScoresDetected')
       };
     }
 
@@ -998,7 +1002,7 @@ export class GossamerScoreModal extends Modal {
           justifications.set(entry.beatTitle, entry.newJustification.trim());
         }
       } else if (entry.inputEl && entry.inputEl.getValue().trim().length > 0) {
-        errors.push(`Invalid score for "${entry.beatTitle}"`);
+        errors.push(t('gossamer.scoreModal.invalidScore', { title: entry.beatTitle }));
       }
 
       if (entry.scoresToDelete.size > 0) {
@@ -1007,12 +1011,12 @@ export class GossamerScoreModal extends Modal {
     }
 
     if (errors.length > 0) {
-      new Notice(`Errors: ${errors.join(', ')}`);
+      new Notice(t('gossamer.scoreModal.errorsList', { list: errors.join(', ') }));
       return;
     }
 
     if (scores.size === 0 && deletions.size === 0) {
-      new Notice('No changes to save.');
+      new Notice(t('gossamer.scoreModal.noChanges'));
       return;
     }
 
@@ -1028,11 +1032,11 @@ export class GossamerScoreModal extends Modal {
       }
 
       const changeCount = scores.size + deletions.size;
-      new Notice(`Updated ${changeCount} beat(s).`);
+      new Notice(t('gossamer.scoreModal.updatedCount', { count: changeCount }));
       this.close();
     } catch (error) {
       console.error('[Gossamer] Failed to save scores:', error);
-      new Notice('Failed to save scores. Check console for details.');
+      new Notice(t('gossamer.scoreModal.saveFailed'));
     }
   }
 
@@ -1103,7 +1107,7 @@ export class GossamerScoreModal extends Modal {
     }
 
     if (snapshotPath) {
-      new Notice(`Archived removed Gossamer fields before cleanup: ${snapshotPath}`);
+      new Notice(t('gossamer.scoreModal.archivedDeletion', { path: snapshotPath }));
     }
   }
 
@@ -1148,7 +1152,7 @@ export class GossamerScoreModal extends Modal {
     }
 
     if (!hasAnyScores) {
-      new Notice(`No Gossamer ${activeSignalLabel.toLowerCase()} scores found to delete.`);
+      new Notice(t('gossamer.scoreModal.noScoresToDelete', { signal: activeSignalLabel.toLowerCase() }));
       return;
     }
 
@@ -1165,20 +1169,20 @@ export class GossamerScoreModal extends Modal {
       contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
 
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-      hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-      hero.createDiv({ text: `Delete all ${activeSignalLabel} scores`, cls: 'ert-modal-title' });
-      hero.createDiv({ cls: 'ert-modal-subtitle', text: `RT will archive removed ${activeSignalLabel} slots to the Gossamer log before cleanup. Other signal histories are untouched.` });
+      hero.createSpan({ text: t('gossamer.scoreModal.deleteConfirmBadge'), cls: 'ert-modal-badge' });
+      hero.createDiv({ text: t('gossamer.scoreModal.deleteConfirmTitle', { label: activeSignalLabel }), cls: 'ert-modal-title' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: t('gossamer.scoreModal.deleteConfirmSubtitle', { label: activeSignalLabel }) });
 
       const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
       card.createDiv({
-        text: `This will remove every Gossamer slot whose signal is ${activeSignalLabel} across ALL Beat notes in the active book, including their justifications. Slots belonging to other signals are kept.`,
+        text: t('gossamer.scoreModal.deleteConfirmBody', { label: activeSignalLabel }),
         cls: 'ert-purge-message'
       });
 
       const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
 
       new ButtonComponent(buttonContainer)
-        .setButtonText(`Delete ${activeSignalLabel} scores`)
+        .setButtonText(t('gossamer.scoreModal.deleteConfirmButton', { label: activeSignalLabel }))
         .setWarning()
         .onClick(async () => {
           modal.close();
@@ -1186,7 +1190,7 @@ export class GossamerScoreModal extends Modal {
         });
 
       new ButtonComponent(buttonContainer)
-        .setButtonText('Cancel')
+        .setButtonText(t('gossamer.scoreModal.deleteConfirmCancel'))
         .onClick(() => {
           modal.close();
           resolve(false);
@@ -1234,21 +1238,21 @@ export class GossamerScoreModal extends Modal {
         deletedCount++;
       }
 
-      const parts = [`Deleted ${activeSignalLabel} scores from ${deletedCount} Beat note(s). Other signal histories untouched.`];
-      if (snapshotPath) parts.push(`Archived removed fields: ${snapshotPath}`);
+      const parts = [t('gossamer.scoreModal.deletedScores', { label: activeSignalLabel, count: deletedCount })];
+      if (snapshotPath) parts.push(t('gossamer.scoreModal.normalizeArchive', { path: snapshotPath }));
       new Notice(parts.join(' '));
       this.close(); // Close the modal since all scores are cleared
 
     } catch (error) {
       console.error('[Gossamer] Failed to delete all scores:', error);
-      new Notice('Failed to delete all scores. Check console for details.');
+      new Notice(t('gossamer.scoreModal.deleteFailed'));
     }
   }
 
   private showMetadataWarning(field: string, beats: string[]): void {
     const preview = beats.slice(0, 3).join(', ');
     const remainder = beats.length > 3 ? `, +${beats.length - 3} more` : '';
-    new Notice(`Missing ${field} in Beat frontmatter for: ${preview}${remainder}. Update the beat notes to customize the AI template.`);
+    new Notice(t('gossamer.scoreModal.missingMetadata', { field, preview, remainder }));
   }
 
   private getActiveAiContextInfo(): { name: string; prompt: string } {
@@ -1300,9 +1304,9 @@ class NormalizeConfirmationModal extends Modal {
       contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
 
     const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-    hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-    hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'ert-modal-title' });
-    hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone. RT archives removed fields before cleanup.' });
+    hero.createSpan({ text: t('gossamer.scoreModal.normalizeConfirmBadge'), cls: 'ert-modal-badge' });
+    hero.createDiv({ text: t('gossamer.scoreModal.normalizeConfirmTitle'), cls: 'ert-modal-title' });
+    hero.createDiv({ cls: 'ert-modal-subtitle', text: t('gossamer.scoreModal.normalizeConfirmSubtitle') });
 
     const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
 
@@ -1311,7 +1315,7 @@ class NormalizeConfirmationModal extends Modal {
 
     if (this.issues.length > 0) {
       const issuesEl = card.createDiv({ cls: 'ert-purge-issues' });
-      issuesEl.createEl('h3', { text: 'Beats to normalize', cls: 'ert-purge-issues-title' });
+      issuesEl.createEl('h3', { text: t('gossamer.scoreModal.normalizeIssuesTitle'), cls: 'ert-purge-issues-title' });
 
       const listEl = issuesEl.createEl('ul', { cls: 'ert-purge-issues-list' });
       const preview = this.issues.slice(0, 6);
@@ -1323,32 +1327,40 @@ class NormalizeConfirmationModal extends Modal {
         const details: string[] = [];
 
         if (issue.missingSlots.length > 0) {
-          const gapLabel = issue.missingSlots.length === 1 ? 'Gap' : 'Gaps';
+          const gapLabel = issue.missingSlots.length === 1
+            ? t('gossamer.scoreModal.normalizeGapLabel')
+            : t('gossamer.scoreModal.normalizeGapsLabel');
           const gapList = issue.missingSlots.map(slot => `G${slot}`).join(', ');
           details.push(`${gapLabel}: ${gapList}`);
         } else if (issue.hasRenumbering) {
-          details.push('Out-of-order numbering');
+          details.push(t('gossamer.scoreModal.normalizeOutOfOrder'));
         }
 
         if (issue.orphanJustifications.length > 0) {
+          const orphanLabel = issue.orphanJustifications.length === 1
+            ? t('gossamer.scoreModal.normalizeOrphanLabel')
+            : t('gossamer.scoreModal.normalizeOrphansLabel');
           const orphanList = issue.orphanJustifications.map(slot => `G${slot}`).join(', ');
-          details.push(`Orphaned justification${issue.orphanJustifications.length === 1 ? '' : 's'}: ${orphanList}`);
+          details.push(`${orphanLabel}: ${orphanList}`);
         }
 
-        item.createSpan({ text: details.join(' • ') || 'Will compact numbering' });
+        item.createSpan({ text: details.join(' • ') || t('gossamer.scoreModal.normalizeWillCompact') });
       });
 
       if (this.issues.length > preview.length) {
         issuesEl.createDiv({
           cls: 'ert-purge-issues-footnote',
-          text: `+${this.issues.length - preview.length} more beat${this.issues.length - preview.length === 1 ? '' : 's'} will be cleaned.`
+          text: t('gossamer.scoreModal.normalizeMoreSuffix', {
+            count: this.issues.length - preview.length,
+            plural: this.issues.length - preview.length === 1 ? '' : 's'
+          })
         });
       }
     }
 
     const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
     new ButtonComponent(buttonRow)
-      .setButtonText('Normalize')
+      .setButtonText(t('gossamer.scoreModal.normalizeConfirmButton'))
       .setWarning()
       .onClick(() => {
         this.close();
@@ -1356,7 +1368,7 @@ class NormalizeConfirmationModal extends Modal {
       });
 
     new ButtonComponent(buttonRow)
-      .setButtonText('Cancel')
+      .setButtonText(t('gossamer.scoreModal.normalizeConfirmCancel'))
       .onClick(() => this.close());
   }
 }

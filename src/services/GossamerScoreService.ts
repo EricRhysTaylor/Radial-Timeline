@@ -1,5 +1,6 @@
 import { Notice, TFile, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { t } from '../i18n';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 import { appendGossamerScore, applyGossamerRunMetadata, collectGossamerManagedSnapshot, createGossamerRunId, detectDominantStage, willAppendGossamerPrune } from '../utils/gossamer';
@@ -108,11 +109,15 @@ export class GossamerScoreService {
         }
 
         if (updateCount > 0) {
-            const parts = [`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''} (${dominantStage} stage).`];
-            if (snapshotPath) parts.push('Archived replaced Gossamer history in 1 snapshot.');
+            const parts = [
+                updateCount > 1
+                    ? t('gossamer.service.updatedBeatScoresPlural', { count: updateCount, stage: dominantStage })
+                    : t('gossamer.service.updatedBeatScoreSingular', { count: updateCount, stage: dominantStage })
+            ];
+            if (snapshotPath) parts.push(t('gossamer.service.archivedSingleSnapshot'));
             new Notice(parts.join(' '));
         } else {
-            new Notice('No beats were updated.');
+            new Notice(t('gossamer.service.noBeatsUpdated'));
         }
     }
 }
