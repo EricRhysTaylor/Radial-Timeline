@@ -92,6 +92,20 @@ export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
     night: 'Night'
 };
 
+/**
+ * Pretty label for a date — overrides the bucket label when the time hits
+ * exactly noon (12:00) or midnight (00:00). Otherwise returns the bucket label.
+ */
+export function describeWhenLabel(date: Date, bucket: TimeBucket): string {
+    const h = date.getHours();
+    const m = date.getMinutes();
+    if (m === 0) {
+        if (h === 12) return 'Noon';
+        if (h === 0) return 'Midnight';
+    }
+    return TIME_BUCKET_LABELS[bucket];
+}
+
 // ============================================================================
 // Provenance Metadata
 // ============================================================================
@@ -99,7 +113,7 @@ export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
 /**
  * Source of the When value - tracks how it was derived.
  */
-export type WhenSource = 'pattern' | 'keyword' | 'ai' | 'manual' | 'original';
+export type WhenSource = 'pattern' | 'keyword' | 'ai' | 'manual' | 'original' | 'authored';
 
 /**
  * Confidence level in the inferred When value.
@@ -164,6 +178,7 @@ export interface RepairSceneEntry {
     needsReview: boolean;
     hasBackwardTime: boolean;    // When < previous scene's When
     hasLargeGap: boolean;        // Unusually large time gap from previous
+    isFlashback: boolean;        // originalWhen is far from surrounding authored dates
     isChanged: boolean;          // proposedWhen differs from originalWhen
     
     // Duration (optional)
@@ -228,9 +243,15 @@ export interface SessionDiffModel {
  * Configuration for the repair analysis pipeline.
  */
 export interface RepairPipelineConfig {
-    // Anchor point
+    // Anchor point — used as fallback when no authored dates exist,
+    // and as the starting point when preserveAuthoredDates is false.
     anchorWhen: Date;
     anchorSceneIndex: number;  // Usually 0 (first scene)
+
+    // When true, scenes with parsable existing When dates are preserved as
+    // anchors and the scaffold fills only the gaps around them. When false,
+    // every scene is rewritten from the configured anchor (legacy behavior).
+    preserveAuthoredDates: boolean;
     
     // Pattern configuration
     patternPreset: PatternPresetId;
@@ -245,7 +266,8 @@ export interface RepairPipelineConfig {
 export const DEFAULT_PIPELINE_CONFIG: Omit<RepairPipelineConfig, 'anchorWhen'> = {
     anchorSceneIndex: 0,
     patternPreset: 'beats2',
-    useTextCues: true
+    useTextCues: true,
+    preserveAuthoredDates: true
 };
 
 // ============================================================================
@@ -257,14 +279,15 @@ export const DEFAULT_PIPELINE_CONFIG: Omit<RepairPipelineConfig, 'anchorWhen'> =
  */
 export interface RepairPipelineResult {
     entries: RepairSceneEntry[];
-    
+
     // Statistics
     totalScenes: number;
     scenesChanged: number;
     scenesNeedingReview: number;
     scenesWithBackwardTime: number;
     scenesWithLargeGaps: number;
-    
+    scenesAuthored: number;
+
     // Pass-specific stats
     patternApplied: number;
     cueRefined: number;

@@ -82,7 +82,8 @@ export async function runRepairPipeline(
     let entries = runPatternSync(inputs, {
         anchorWhen: config.anchorWhen,
         anchorSceneIndex: config.anchorSceneIndex,
-        patternPreset: config.patternPreset
+        patternPreset: config.patternPreset,
+        preserveAuthoredDates: config.preserveAuthoredDates
     });
     
     const patternCount = entries.length;
@@ -151,6 +152,7 @@ function buildResult(
         scenesNeedingReview: entries.filter(e => e.needsReview).length,
         scenesWithBackwardTime: entries.filter(e => e.hasBackwardTime).length,
         scenesWithLargeGaps: entries.filter(e => e.hasLargeGap).length,
+        scenesAuthored: entries.filter(e => e.source === 'authored').length,
         patternApplied,
         cueRefined
     };
@@ -167,6 +169,7 @@ function createEmptyResult(): RepairPipelineResult {
         scenesNeedingReview: 0,
         scenesWithBackwardTime: 0,
         scenesWithLargeGaps: 0,
+        scenesAuthored: 0,
         patternApplied: 0,
         cueRefined: 0
     };

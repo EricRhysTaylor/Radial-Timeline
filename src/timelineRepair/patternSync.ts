@@ -82,14 +82,20 @@ export function getInitialBeatIndex(anchorDate: Date, presetId: PatternPresetId)
 // ============================================================================
 
 export interface PatternSyncOptions {
-    /** The anchor date to start the pattern from */
+    /** The anchor date to start the pattern from (fallback when no authored dates) */
     anchorWhen: Date;
-    
+
     /** Which scene index to anchor (usually 0) */
     anchorSceneIndex?: number;
-    
+
     /** The pattern preset to use */
     patternPreset: PatternPresetId;
+
+    /**
+     * When true, scenes with a parsable existing When are preserved as anchors;
+     * the pattern walk fills only the gaps between them.
+     */
+    preserveAuthoredDates?: boolean;
 }
 
 export interface PatternSyncInput {
@@ -119,86 +125,167 @@ export function runPatternSync(
     scenes: PatternSyncInput[],
     options: PatternSyncOptions
 ): RepairSceneEntry[] {
-    const { anchorWhen, patternPreset, anchorSceneIndex = 0 } = options;
-    
+    const { anchorWhen, patternPreset, anchorSceneIndex = 0, preserveAuthoredDates = false } = options;
+
     if (scenes.length === 0) {
         return [];
     }
-    
-    const entries: RepairSceneEntry[] = [];
-    
-    // Initialize beat index based on anchor time
-    let beatIndex = getInitialBeatIndex(anchorWhen, patternPreset);
-    let currentDate = new Date(anchorWhen);
-    
-    // Process scenes in manuscript order
-    for (let i = 0; i < scenes.length; i++) {
-        const { scene, file, manuscriptIndex } = scenes[i];
-        
-        // Parse original When if it exists
-        let originalWhen: Date | null = null;
-        let originalWhenRaw: string | undefined;
-        
-        if (scene.when instanceof Date && !isNaN(scene.when.getTime())) {
-            originalWhen = scene.when;
-        } else if (typeof scene.when === 'string') {
-            originalWhenRaw = scene.when;
-            const parsed = parseWhenField(scene.when);
-            if (parsed) {
-                originalWhen = parsed;
+
+    // Pass 1: parse original When for every scene so we can identify anchors.
+    type ParsedScene = PatternSyncInput & {
+        originalWhen: Date | null;
+        originalWhenRaw?: string;
+    };
+    const parsed: ParsedScene[] = scenes.map(s => {
+        const result: ParsedScene = { ...s, originalWhen: null };
+        const when = s.scene.when;
+        if (when instanceof Date && !isNaN(when.getTime())) {
+            result.originalWhen = when;
+        } else if (typeof when === 'string') {
+            result.originalWhenRaw = when;
+            const p = parseWhenField(when);
+            if (p) result.originalWhen = p;
+        }
+        return result;
+    });
+
+    // Authored anchor indices, in manuscript order (only when preserve mode is on
+    // and the date actually parsed).
+    const authoredIndices = preserveAuthoredDates
+        ? parsed.flatMap((p, i) => (p.originalWhen ? [i] : []))
+        : [];
+
+    // Build proposedWhen + source for every scene.
+    const proposed: Array<{ when: Date; source: 'pattern' | 'authored' }> = new Array(scenes.length);
+
+    if (authoredIndices.length === 0) {
+        // No authored anchors (or preserve mode off) — legacy walk from configured anchor.
+        let beatIndex = getInitialBeatIndex(anchorWhen, patternPreset);
+        let currentDate = new Date(anchorWhen);
+        for (let i = 0; i < scenes.length; i++) {
+            if (i === anchorSceneIndex) {
+                proposed[i] = { when: new Date(anchorWhen), source: 'pattern' };
+                currentDate = new Date(anchorWhen);
+                beatIndex = getInitialBeatIndex(anchorWhen, patternPreset);
+            } else if (i < anchorSceneIndex) {
+                const offset = anchorSceneIndex - i;
+                const d = new Date(anchorWhen);
+                d.setDate(d.getDate() - offset);
+                proposed[i] = { when: d, source: 'pattern' };
+            } else {
+                const next = getNextPatternDate(currentDate, beatIndex, patternPreset);
+                proposed[i] = { when: next.date, source: 'pattern' };
+                beatIndex = next.beatIndex;
+                currentDate = next.date;
             }
         }
-        
-        // For the anchor scene, use the anchor date
-        // For scenes before anchor, work backwards (rare case)
-        // For scenes after anchor, work forwards with pattern
-        let proposedWhen: Date;
-        
-        if (i === anchorSceneIndex) {
-            proposedWhen = new Date(anchorWhen);
-        } else if (i < anchorSceneIndex) {
-            // Work backwards from anchor (subtract days)
-            const offset = anchorSceneIndex - i;
-            proposedWhen = new Date(anchorWhen);
-            proposedWhen.setDate(proposedWhen.getDate() - offset);
-        } else {
-            // Normal forward progression
-            const next = getNextPatternDate(currentDate, beatIndex, patternPreset);
-            proposedWhen = next.date;
-            beatIndex = next.beatIndex;
-            currentDate = proposedWhen;
+    } else {
+        // Anchored gap-fill: every authored scene keeps its date; the walker
+        // restarts at each anchor and fills forward to the next anchor (or end).
+        for (const idx of authoredIndices) {
+            proposed[idx] = { when: new Date(parsed[idx].originalWhen as Date), source: 'authored' };
         }
-        
-        // Check if this changes the original
-        const isChanged = originalWhen === null || 
-            proposedWhen.getTime() !== originalWhen.getTime();
-        
-        const entry: RepairSceneEntry = {
-            scene,
-            file,
-            manuscriptIndex,
-            
-            originalWhen,
-            originalWhenRaw,
+
+        // Scenes before the first anchor: walk backward from it.
+        const firstAnchor = authoredIndices[0];
+        const firstAnchorDate = parsed[firstAnchor].originalWhen as Date;
+        for (let i = firstAnchor - 1; i >= 0; i--) {
+            const offset = firstAnchor - i;
+            const d = new Date(firstAnchorDate);
+            d.setDate(d.getDate() - offset);
+            proposed[i] = { when: d, source: 'pattern' };
+        }
+
+        // Walk forward between consecutive anchors and after the last anchor.
+        for (let a = 0; a < authoredIndices.length; a++) {
+            const startIdx = authoredIndices[a];
+            const endIdx = a + 1 < authoredIndices.length ? authoredIndices[a + 1] : scenes.length;
+            if (endIdx <= startIdx + 1) continue;
+
+            const startDate = parsed[startIdx].originalWhen as Date;
+            let beatIndex = getInitialBeatIndex(startDate, patternPreset);
+            let currentDate = new Date(startDate);
+            for (let i = startIdx + 1; i < endIdx; i++) {
+                const next = getNextPatternDate(currentDate, beatIndex, patternPreset);
+                proposed[i] = { when: next.date, source: 'pattern' };
+                beatIndex = next.beatIndex;
+                currentDate = next.date;
+            }
+        }
+    }
+
+    // Pass 2: build entries.
+    const entries: RepairSceneEntry[] = parsed.map((p, i) => {
+        const slot = proposed[i];
+        const proposedWhen = slot.when;
+        const isChanged = slot.source === 'authored'
+            ? false
+            : (p.originalWhen === null || proposedWhen.getTime() !== p.originalWhen.getTime());
+
+        return {
+            scene: p.scene,
+            file: p.file,
+            manuscriptIndex: p.manuscriptIndex,
+
+            originalWhen: p.originalWhen,
+            originalWhenRaw: p.originalWhenRaw,
             proposedWhen,
             editedWhen: null,
-            
-            source: 'pattern',
-            confidence: 'high',  // Pattern is deterministic, so high confidence
-            
+
+            source: slot.source,
+            confidence: 'high',
+
             needsReview: false,
             hasBackwardTime: false,
             hasLargeGap: false,
+            isFlashback: false,
             isChanged
         };
-        
-        entries.push(entry);
-    }
-    
-    // Second pass: detect backward time and large gaps
+    });
+
+    detectFlashbacks(entries);
     detectTemporalIssues(entries);
-    
+
     return entries;
+}
+
+/**
+ * Mark scenes whose original (authored) When is far away in time from the
+ * authored dates around them in manuscript order. These are typically narrative
+ * flashbacks (or flash-forwards) where the time jump is intentional and should
+ * not be flagged as a backward-time error.
+ *
+ * Heuristic: window-based median. For each entry with a parsable originalWhen,
+ * collect the years of up to 5 authored neighbors on each side; if this entry's
+ * year differs from the median by FLASHBACK_YEAR_THRESHOLD or more, it's a
+ * flashback. Driven by originalWhen so it works regardless of preserve/replace
+ * mode.
+ */
+const FLASHBACK_YEAR_THRESHOLD = 3;
+const FLASHBACK_WINDOW = 5;
+
+function detectFlashbacks(entries: RepairSceneEntry[]): void {
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        if (!entry.originalWhen) continue;
+
+        const years: number[] = [];
+        for (let j = i - 1; j >= 0 && years.length < FLASHBACK_WINDOW; j--) {
+            const w = entries[j].originalWhen;
+            if (w) years.push(w.getFullYear());
+        }
+        for (let j = i + 1; j < entries.length && years.length < FLASHBACK_WINDOW * 2; j++) {
+            const w = entries[j].originalWhen;
+            if (w) years.push(w.getFullYear());
+        }
+        if (years.length < 2) continue;
+
+        const sorted = [...years].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        if (Math.abs(entry.originalWhen.getFullYear() - median) >= FLASHBACK_YEAR_THRESHOLD) {
+            entry.isFlashback = true;
+        }
+    }
 }
 
 /**
@@ -223,16 +310,19 @@ function detectTemporalIssues(entries: RepairSceneEntry[]): void {
     
     // Detect issues
     for (let i = 1; i < entries.length; i++) {
+        // Flashback rows expect time jumps; suppress conflicting alerts.
+        if (entries[i].isFlashback || entries[i - 1].isFlashback) continue;
+
         const prevWhen = entries[i - 1].proposedWhen;
         const currWhen = entries[i].proposedWhen;
         const gap = currWhen.getTime() - prevWhen.getTime();
-        
+
         // Backward time
         if (gap < 0) {
             entries[i].hasBackwardTime = true;
             entries[i].needsReview = true;
         }
-        
+
         // Large gap
         if (gap > largeGapThreshold && largeGapThreshold > 0) {
             entries[i].hasLargeGap = true;

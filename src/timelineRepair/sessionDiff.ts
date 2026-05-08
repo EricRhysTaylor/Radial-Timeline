@@ -276,18 +276,24 @@ function applyRipple(
     const rippleChanges: EditOperation['changes'] = [];
     const newEntries = [...session.entries];
     
-    // Apply delta to all following scenes
+    // Apply delta to all following scenes, but never to authored anchors.
+    // In Preserve mode, authored anchors AND flashbacks both carry
+    // source === 'authored' (flashbacks are by definition authored), so this
+    // single rule protects both. In Overwrite mode the pipeline marks every
+    // row source === 'pattern', so nothing is skipped — Ripple shifts all.
     for (let i = fromIndex + 1; i < newEntries.length; i++) {
         const entry = newEntries[i];
+        if (entry.source === 'authored') continue;
+
         const currentWhen = getEffectiveWhen(entry);
         const shiftedWhen = new Date(currentWhen.getTime() + deltaMs);
-        
+
         rippleChanges.push({
             sceneIndex: i,
             previousWhen: currentWhen,
             newWhen: shiftedWhen
         });
-        
+
         newEntries[i] = {
             ...entry,
             editedWhen: shiftedWhen,

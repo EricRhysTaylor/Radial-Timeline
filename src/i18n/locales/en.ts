@@ -455,18 +455,19 @@ export interface TranslationKeys {
         };
     };
     timelineRepairModal: {
-        config: { badge: string; title: string; subtitle: string; statTotalScenes: string; statWithWhen: string; statMissingWhen: string; previewButton: string; cancelButton: string; };
-        anchor: { name: string; desc: string; dateLabel: string; timeLabel: string; };
+        config: { badge: string; title: string; subtitle: string; statTotalScenes: string; statWithWhen: string; statMissingWhen: string; previewButton: string; cancelButton: string; restoreButton: string; restoreTooltip: string; restoreEmptyTooltip: string; };
+        anchor: { name: string; desc: string; dateLabel: string; timeLabel: string; pillAuthored: string; pillFallback: string; };
         preview: { name: string; };
         pattern: { name: string; desc: string; };
         refinements: { name: string; desc: string; baseScaffoldTitle: string; baseScaffoldDesc: string; alwaysOn: string; textCuesTitle: string; textCuesDesc: string; };
         analyzing: { badge: string; title: string; statusApplying: string; preparing: string; abortButton: string; abortedNotice: string; phasePattern: string; phaseCues: string; phaseComplete: string; };
-        review: { badge: string; title: string; subtitle: string; filterNeedsReview: string; filterTextCues: string; rippleMode: string; rippleModeHelp: string; undoButton: string; redoButton: string; backButton: string; applyButton: string; emptyFilter: string; untitled: string; warningBackwardTime: string; warningLargeGap: string; dayMinus: string; dayPlus: string; summaryChanged: string; summaryNeedReview: string; summarySelected: string; };
-        apply: { noChangesNotice: string; partialNotice: string; successNotice: string; };
+        review: { badge: string; title: string; subtitle: string; filterNeedsReview: string; filterTextCues: string; rippleMode: string; rippleModeHelp: string; overwriteAuthorDates: string; overwriteAuthorDatesHelp: string; backButton: string; applyButton: string; openAuditButton: string; openAuditButtonAll: string; auditToggleOn: string; auditToggleOff: string; narrativePlacement: string; emptyFilter: string; untitled: string; warningBackwardTime: string; warningLargeGap: string; warningMissingWhen: string; openInWorkspace: string; dayMinus: string; dayPlus: string; summaryChanged: string; summaryNeedReview: string; summarySelected: string; summaryAuthored: string; };
+        apply: { noChangesNotice: string; partialNotice: string; successNotice: string; successWithSnapshotNotice: string; snapshotFailedNotice: string; };
+        restore: { successNotice: string; partialNotice: string; noSnapshotNotice: string; };
         confirm: { title: string; warning: string; applyButton: string; cancelButton: string; description: string; };
     };
     timelineAuditModal: {
-        header: { badge: string; title: string; subtitle: string; aiEnhancedBadge: string; };
+        header: { badge: string; title: string; subtitle: string; aiEnhancedBadge: string; focusedScope: string; focusedClear: string; };
         loading: { title: string; description: string; };
         actions: { abort: string; reRunAudit: string; applyAccepted: string; close: string; };
         empty: { noResults: string; noFindings: string; };
@@ -1692,18 +1693,23 @@ export const en: TranslationKeys = {
         config: {
             badge: 'Quick Scaffold',
             title: 'Timeline order normalizer',
-            subtitle: 'Use this when your scenes are written in story order but your timeline is incomplete or inconsistent. Quick Scaffold assigns starting timeline dates across the active book using simple spacing patterns and text cues so Chronologue can build a usable timeline. For deeper timeline analysis of existing dates, use Timeline Audit.',
+            subtitle: 'Use this when your scenes are written in story order but your timeline is incomplete. Quick Scaffold fills missing dates around the ones you have already authored, using simple spacing patterns and text cues so Chronologue can build a usable timeline. Existing `When` dates are preserved by default. For deeper analysis of existing dates, use Timeline Audit.',
             statTotalScenes: 'Total Scenes',
             statWithWhen: 'With Date',
             statMissingWhen: 'Missing Date',
             previewButton: 'Preview Scaffold',
             cancelButton: 'Cancel',
+            restoreButton: 'Restore Last Snapshot',
+            restoreTooltip: 'Restore previous timeline state from snapshot saved {{label}}.',
+            restoreEmptyTooltip: 'No snapshot found. Snapshots are created automatically when you Apply Scaffolded Dates.',
         },
         anchor: {
             name: 'Anchor',
             desc: 'Set the starting date for scene 1.',
             dateLabel: 'Date',
             timeLabel: 'Time',
+            pillAuthored: 'authored',
+            pillFallback: 'today',
         },
         preview: { name: 'Scaffold preview' },
         pattern: { name: 'Pattern', desc: 'Choose how scenes should be spaced across time.' },
@@ -1711,10 +1717,10 @@ export const en: TranslationKeys = {
             name: 'Refinements',
             desc: 'Quick Scaffold always applies the selected pattern first. Text cues can gently adjust scenes when the manuscript clearly implies a different time.',
             baseScaffoldTitle: 'Base scaffold',
-            baseScaffoldDesc: 'Spaces scenes across the active book using the selected pattern.',
+            baseScaffoldDesc: 'Fills missing scene dates using the selected pattern. Existing `When` dates are preserved as anchors.',
             alwaysOn: 'Always on',
             textCuesTitle: 'Text cues',
-            textCuesDesc: 'Looks for clear phrases like "next morning" or "three days later" to refine scaffolded dates.',
+            textCuesDesc: 'Looks for clear phrases like "next morning" or "three days later" to refine scaffolded `When` dates. Existing dates are not affected.',
         },
         analyzing: {
             badge: 'Beta · Quick Scaffold',
@@ -1735,21 +1741,40 @@ export const en: TranslationKeys = {
             filterTextCues: 'Cue-adjusted',
             rippleMode: 'Ripple Mode',
             rippleModeHelp: 'Adjusting a scene also shifts later scenes to preserve timeline spacing.\nTurn this off to edit scenes independently.',
-            undoButton: 'Undo',
-            redoButton: 'Redo',
+            overwriteAuthorDates: 'Overwrite author dates',
+            overwriteAuthorDatesHelp: 'OFF preserves existing scene dates and scaffolds around them. ON allows the scaffold to replace existing dates.',
             backButton: 'Back',
             applyButton: 'Apply Scaffolded Dates',
+            openAuditButton: 'Open Timeline Audit ({{count}})',
+            openAuditButtonAll: 'Open Timeline Audit',
+            auditToggleOn: 'Marked for Timeline Audit. Click to remove.',
+            auditToggleOff: 'Send this scene to Timeline Audit.',
+            narrativePlacement: 'Narrative placement {{count}}',
             emptyFilter: 'No scenes match the current filters.',
             untitled: 'Untitled',
             warningBackwardTime: 'Backward time',
             warningLargeGap: 'Large time gap',
+            warningMissingWhen: 'No existing When date — scaffolded',
+            openInWorkspace: 'Scene is open in your workspace',
             dayMinus: '\u22121d',
             dayPlus: '+1d',
             summaryChanged: '{{count}} changed',
             summaryNeedReview: '{{count}} need review',
             summarySelected: '{{count}} selected',
+            summaryAuthored: '{{count}} authored',
         },
-        apply: { noChangesNotice: 'No changes to apply', partialNotice: 'Applied {{success}} changes. {{failed}} failed.', successNotice: 'Successfully applied {{count}} timeline changes' },
+        apply: {
+            noChangesNotice: 'No changes to apply',
+            partialNotice: 'Applied {{success}} changes. {{failed}} failed.',
+            successNotice: 'Successfully applied {{count}} timeline changes',
+            successWithSnapshotNotice: 'Applied {{count}} timeline dates. Snapshot saved.',
+            snapshotFailedNotice: 'Snapshot could not be saved — Apply aborted to protect your data. ({{message}})'
+        },
+        restore: {
+            successNotice: 'Restored {{restored}} scenes from snapshot ({{label}}).',
+            partialNotice: 'Restored {{restored}} scenes from snapshot ({{label}}). {{failed}} failed.',
+            noSnapshotNotice: 'No timeline snapshot found.'
+        },
         confirm: {
             title: 'Confirm Changes',
             warning: 'This action cannot be undone automatically. Make sure you have a backup if needed.',
@@ -1764,6 +1789,8 @@ export const en: TranslationKeys = {
             title: 'Evidence-based timeline diagnosis',
             subtitle: 'Use this when you already have `When` dates and want to find problems or inconsistencies. Timeline Audit checks each scene’s `When` value, summary, synopsis, and body text, then compares scenes in chronological order to flag missing or invalid `When` values, time-of-day mismatches, suspicious jumps, and places where the written sequence disagrees with chronology. Direct text evidence counts more than inference, and AI remains optional.',
             aiEnhancedBadge: 'AI-enhanced',
+            focusedScope: 'Focused: {{count}} scenes from Normalizer',
+            focusedClear: 'Clear focus',
         },
         loading: {
             title: 'Running instant audit\u2026',

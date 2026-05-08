@@ -11,6 +11,7 @@ export interface InMemoryApp {
     };
     vault: {
         getMarkdownFiles: () => TFile[];
+        getFiles: () => TFile[];
         getAbstractFileByPath: (path: string) => TFile | TFolder | null;
         read: (file: TFile) => Promise<string>;
         modify: (file: TFile, content: string) => Promise<void>;
@@ -118,6 +119,11 @@ export function createInMemoryApp(initialFiles: Record<string, string>): InMemor
         },
         vault: {
             getMarkdownFiles(): TFile[] {
+                return Array.from(records.values())
+                    .map(entry => entry.file)
+                    .filter(file => file.extension === 'md');
+            },
+            getFiles(): TFile[] {
                 return Array.from(records.values()).map(entry => entry.file);
             },
             getAbstractFileByPath(path: string): TFile | TFolder | null {

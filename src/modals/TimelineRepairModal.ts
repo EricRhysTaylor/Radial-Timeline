@@ -23,6 +23,7 @@ import {
     SCAFFOLD_PATTERNS,
     TIME_BUCKET_HOURS,
     TIME_BUCKET_LABELS,
+    describeWhenLabel,
     getEffectiveWhen
 } from '../timelineRepair/types';
 import { runRepairPipeline } from '../timelineRepair/RepairPipeline';
@@ -34,17 +35,21 @@ import {
     shiftMultipleDays,
     setMultipleTimeBucket,
     toggleRippleMode,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
     getChangedCount,
     getNeedsReviewCount
 } from '../timelineRepair/sessionDiff';
 import { formatWhenForDisplay, detectTimeBucket } from '../timelineRepair/patternSync';
 import { writeSessionChanges, getChangeSummary } from '../timelineRepair/frontmatterWriter';
+import {
+    buildTimelineSnapshot,
+    saveTimelineSnapshot,
+    getLatestTimelineSnapshot,
+    restoreTimelineSnapshot
+} from '../timelineRepair/timelineSnapshot';
 import { buildScaffoldPreview } from '../timelineRepair/scaffoldPreview';
 import { parseWhenField } from '../utils/date';
+import { renderWithYamlTokens } from '../utils/yamlTokenRender';
+import { TimelineAuditModal } from './TimelineAuditModal';
 
 // ============================================================================
 // Modal Class
@@ -67,6 +72,7 @@ export class TimelineRepairModal extends Modal {
     // UI references
     private sceneListEl?: HTMLElement;
     private summaryBarEl?: HTMLElement;
+    private needsReviewPillEl?: HTMLElement;
     private selectedIndices: Set<number> = new Set();
 
     // Review filters
@@ -77,32 +83,34 @@ export class TimelineRepairModal extends Modal {
     private openNotePaths: Set<string> = new Set();
     private workspaceEventRefs: EventRef[] = [];
 
+    // Audit handoff: paths the author has marked for "send to Audit".
+    // Auto-included on session build (Needs Review or Cue-adjusted), then
+    // user-toggleable per row. Lives in the Normalizer modal only — never
+    // written to YAML, never persisted between sessions.
+    private auditIncluded: Set<string> = new Set();
+    private auditFooterEl?: HTMLElement;
+
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
         this.plugin = plugin;
     }
 
-    private getDefaultAnchorWhen(): Date {
+    private getDefaultAnchorWhen(): { date: Date; source: 'authored' | 'fallback' } {
         const firstScene = this.scenes[0];
-        if (!firstScene) {
-            const fallback = new Date();
-            fallback.setHours(8, 0, 0, 0);
-            return fallback;
-        }
-
-        if (firstScene.when instanceof Date && !isNaN(firstScene.when.getTime())) {
-            return new Date(firstScene.when);
-        }
-
-        const rawWhen = firstScene.rawFrontmatter?.When;
-        if (typeof rawWhen === 'string') {
-            const parsed = parseWhenField(rawWhen);
-            if (parsed) return parsed;
+        if (firstScene) {
+            if (firstScene.when instanceof Date && !isNaN(firstScene.when.getTime())) {
+                return { date: new Date(firstScene.when), source: 'authored' };
+            }
+            const rawWhen = firstScene.rawFrontmatter?.When;
+            if (typeof rawWhen === 'string') {
+                const parsed = parseWhenField(rawWhen);
+                if (parsed) return { date: parsed, source: 'authored' };
+            }
         }
 
         const fallback = new Date();
         fallback.setHours(8, 0, 0, 0);
-        return fallback;
+        return { date: fallback, source: 'fallback' };
     }
 
     private parseAnchorWhenFromInputs(dateValue: string, timeValue: string, fallback: Date): Date {
@@ -242,22 +250,16 @@ export class TimelineRepairModal extends Modal {
         this.contentEl.empty();
         this.unregisterOpenNoteListeners();
         this.sceneListEl = undefined;
+        this.needsReviewPillEl = undefined;
+        this.auditFooterEl = undefined;
+        this.auditIncluded.clear();
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: this.buildConfigBadgeText() });
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.config.title') });
         const subtitleEl = header.createDiv({ cls: 'ert-modal-subtitle' });
-        t('timelineRepairModal.config.subtitle')
-            .split(/(`[^`]+`)/g)
-            .filter(Boolean)
-            .forEach(part => {
-                if (part.startsWith('`') && part.endsWith('`')) {
-                    subtitleEl.createEl('code', { text: part.slice(1, -1) });
-                } else {
-                    subtitleEl.appendText(part);
-                }
-            });
+        renderWithYamlTokens(subtitleEl, t('timelineRepairModal.config.subtitle'));
 
         // Setup configuration
         const setupCard = this.contentEl.createDiv({ cls: 'ert-glass-card ert-timeline-repair-setup-card' });
@@ -265,9 +267,23 @@ export class TimelineRepairModal extends Modal {
         const leftCol = setupGrid.createDiv({ cls: 'ert-timeline-repair-config-column' });
         const rightCol = setupGrid.createDiv({ cls: 'ert-timeline-repair-config-column' });
 
+        const defaultAnchor = this.getDefaultAnchorWhen();
+        const defaultAnchorWhen = defaultAnchor.date;
+
         const anchorSection = leftCol.createDiv({ cls: 'ert-timeline-repair-config-block' });
-        anchorSection.createDiv({ cls: 'ert-timeline-repair-block-header' })
-            .createEl('h5', { text: t('timelineRepairModal.anchor.name'), cls: 'ert-timeline-repair-block-title' });
+        const anchorHeader = anchorSection.createDiv({ cls: 'ert-timeline-repair-block-header' });
+        anchorHeader.createEl('h5', { text: t('timelineRepairModal.anchor.name'), cls: 'ert-timeline-repair-block-title' });
+
+        const anchorPill = anchorHeader.createSpan({
+            cls: 'ert-timeline-repair-compliance-chip ert-timeline-repair-anchor-pill'
+        });
+        anchorPill.addClass(`ert-compliance-${defaultAnchor.source === 'authored' ? 'authored' : 'pattern-based'}`);
+        anchorPill.setText(
+            defaultAnchor.source === 'authored'
+                ? t('timelineRepairModal.anchor.pillAuthored')
+                : t('timelineRepairModal.anchor.pillFallback')
+        );
+
         anchorSection.createDiv({
             cls: 'ert-timeline-repair-section-desc',
             text: t('timelineRepairModal.anchor.desc')
@@ -282,8 +298,6 @@ export class TimelineRepairModal extends Modal {
             type: 'date',
             cls: 'ert-timeline-repair-date-input ert-input ert-input--full'
         });
-
-        const defaultAnchorWhen = this.getDefaultAnchorWhen();
         dateInput.value = `${defaultAnchorWhen.getFullYear()}-${String(defaultAnchorWhen.getMonth() + 1).padStart(2, '0')}-${String(defaultAnchorWhen.getDate()).padStart(2, '0')}`;
 
         // Time input
@@ -338,26 +352,38 @@ export class TimelineRepairModal extends Modal {
         const patternRow = patternSection.createDiv({ cls: 'ert-timeline-repair-pattern-grid' });
 
         for (const preset of Object.values(SCAFFOLD_PATTERNS)) {
-            const option = patternRow.createEl('label', { cls: 'ert-timeline-repair-pattern-option' });
-            const radio = option.createEl('input', {
-                type: 'radio',
-                cls: 'ert-timeline-repair-pattern-radio',
-                attr: { name: 'ert-timeline-repair-pattern' }
+            const isActive = preset.id === selectedPattern;
+            const option = patternRow.createDiv({
+                cls: 'ert-timeline-repair-pattern-option',
+                attr: {
+                    role: 'radio',
+                    tabindex: '0',
+                    'aria-checked': isActive ? 'true' : 'false'
+                }
             });
-            radio.checked = preset.id === selectedPattern;
-            option.toggleClass('ert-is-active', radio.checked);
+            option.createSpan({ cls: 'ert-timeline-repair-pattern-radio' });
+            option.toggleClass('ert-is-active', isActive);
 
             const optionText = option.createDiv({ cls: 'ert-timeline-repair-pattern-text' });
             optionText.createDiv({ text: preset.label, cls: 'ert-timeline-repair-pattern-label' });
             optionText.createDiv({ text: preset.description, cls: 'ert-timeline-repair-pattern-desc' });
 
-            radio.addEventListener('change', () => {
-                if (!radio.checked) return;
+            const select = () => {
                 patternRow.querySelectorAll('.ert-timeline-repair-pattern-option').forEach(p => {
-                    p.toggleClass('ert-is-active', p === option);
+                    const isThis = p === option;
+                    p.toggleClass('ert-is-active', isThis);
+                    p.setAttribute('aria-checked', isThis ? 'true' : 'false');
                 });
                 selectedPattern = preset.id;
                 updateScaffoldPreview();
+            };
+
+            option.addEventListener('click', select);
+            option.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    select();
+                }
             });
         }
 
@@ -371,7 +397,6 @@ export class TimelineRepairModal extends Modal {
         const baseText = baseRow.createDiv({ cls: 'ert-timeline-repair-level-text' });
         baseText.createDiv({ cls: 'ert-timeline-repair-level-title', text: t('timelineRepairModal.refinements.baseScaffoldTitle') });
         baseText.createDiv({ cls: 'ert-timeline-repair-level-desc', text: t('timelineRepairModal.refinements.baseScaffoldDesc') });
-        baseRow.createSpan({ cls: 'ert-timeline-repair-status-pill', text: t('timelineRepairModal.refinements.alwaysOn') });
 
         this.createLevelToggle(
             optionsSection,
@@ -385,6 +410,22 @@ export class TimelineRepairModal extends Modal {
         // Action buttons
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
 
+        const restoreBtn = new ButtonComponent(buttonRow)
+            .setButtonText(t('timelineRepairModal.config.restoreButton'))
+            .setDisabled(true)
+            .onClick(() => { void this.handleRestoreLatestSnapshot(); });
+        restoreBtn.buttonEl.addClass('ert-timeline-repair-restore-btn');
+        void getLatestTimelineSnapshot(this.app).then(meta => {
+            if (meta) {
+                restoreBtn.setDisabled(false);
+                setTooltip(restoreBtn.buttonEl, t('timelineRepairModal.config.restoreTooltip', {
+                    label: meta.snapshot.displayLabel
+                }));
+            } else {
+                setTooltip(restoreBtn.buttonEl, t('timelineRepairModal.config.restoreEmptyTooltip'));
+            }
+        });
+
         new ButtonComponent(buttonRow)
             .setButtonText(t('timelineRepairModal.config.previewButton'))
             .setCta()
@@ -395,7 +436,8 @@ export class TimelineRepairModal extends Modal {
                     anchorWhen,
                     anchorSceneIndex: 0,
                     patternPreset: selectedPattern,
-                    useTextCues
+                    useTextCues,
+                    preserveAuthoredDates: true
                 };
 
                 await this.runAnalysis();
@@ -418,7 +460,8 @@ export class TimelineRepairModal extends Modal {
 
         const textContainer = row.createDiv({ cls: 'ert-timeline-repair-level-text' });
         textContainer.createDiv({ cls: 'ert-timeline-repair-level-title', text: title });
-        textContainer.createDiv({ cls: 'ert-timeline-repair-level-desc', text: description });
+        const descEl = textContainer.createDiv({ cls: 'ert-timeline-repair-level-desc' });
+        renderWithYamlTokens(descEl, description);
 
         const toggle = new ToggleComponent(row);
         toggle.setValue(initialValue);
@@ -433,6 +476,53 @@ export class TimelineRepairModal extends Modal {
     // ========================================================================
     // Analysis Phase
     // ========================================================================
+
+    private async handleOverwriteToggle(replaceExisting: boolean): Promise<void> {
+        if (!this.config) return;
+        this.config = { ...this.config, preserveAuthoredDates: !replaceExisting };
+
+        // Snapshot in-session manual edits so the toggle does not discard them.
+        const manualEdits = new Map<number, Date>();
+        const previousRipple = this.session?.rippleEnabled ?? false;
+        if (this.session) {
+            for (const entry of this.session.entries) {
+                if (entry.source === 'manual' && entry.editedWhen) {
+                    manualEdits.set(entry.manuscriptIndex, new Date(entry.editedWhen));
+                }
+            }
+        }
+
+        try {
+            this.result = await runRepairPipeline(
+                this.scenes,
+                this.files,
+                this.plugin,
+                this.config
+            );
+            this.session = createSession(this.result);
+            if (this.session) {
+                this.session.rippleEnabled = previousRipple;
+                if (manualEdits.size > 0) {
+                    for (const entry of this.session.entries) {
+                        const edit = manualEdits.get(entry.manuscriptIndex);
+                        if (!edit) continue;
+                        entry.editedWhen = edit;
+                        entry.source = 'manual';
+                        entry.isChanged = entry.originalWhen === null ||
+                            edit.getTime() !== entry.originalWhen.getTime();
+                    }
+                    this.session.hasUnsavedChanges = this.session.entries.some(e => e.isChanged);
+                }
+            }
+            this.selectedIndices.clear();
+            this.seedAuditIncluded();
+            this.renderSceneList();
+            this.updateSummaryBar();
+            this.updateAuditFooter();
+        } catch (error) {
+            new Notice(`Rescaffold failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
 
     private async runAnalysis(): Promise<void> {
         this.phase = 'analyzing';
@@ -496,6 +586,7 @@ export class TimelineRepairModal extends Modal {
 
             // Create session from results
             this.session = createSession(this.result);
+            this.seedAuditIncluded();
 
             // Show review phase
             this.showReviewPhase();
@@ -538,7 +629,7 @@ export class TimelineRepairModal extends Modal {
         // Filter toggles
         const filterRow = this.contentEl.createDiv({ cls: 'ert-timeline-repair-filter-row' });
 
-        this.createFilterPill(filterRow, t('timelineRepairModal.review.filterNeedsReview'), this.filterNeedsReview, (val) => {
+        this.needsReviewPillEl = this.createFilterPill(filterRow, t('timelineRepairModal.review.filterNeedsReview'), this.filterNeedsReview, (val) => {
             this.filterNeedsReview = val;
             this.renderSceneList();
         });
@@ -549,6 +640,20 @@ export class TimelineRepairModal extends Modal {
                 this.renderSceneList();
             });
         }
+
+        // Overwrite author dates toggle (re-runs analysis)
+        const overwriteContainer = filterRow.createDiv({ cls: 'ert-timeline-repair-overwrite-toggle' });
+        overwriteContainer.createSpan({ text: t('timelineRepairModal.review.overwriteAuthorDates') });
+
+        const overwriteHelp = overwriteContainer.createSpan({ cls: 'ert-timeline-repair-overwrite-help' });
+        setIcon(overwriteHelp, 'help-circle');
+        setTooltip(overwriteHelp, t('timelineRepairModal.review.overwriteAuthorDatesHelp'));
+
+        const overwriteToggle = new ToggleComponent(overwriteContainer);
+        overwriteToggle.setValue(this.config ? !this.config.preserveAuthoredDates : false);
+        overwriteToggle.onChange((val) => {
+            void this.handleOverwriteToggle(val);
+        });
 
         // Ripple mode toggle
         const rippleContainer = filterRow.createDiv({ cls: 'ert-timeline-repair-ripple-toggle' });
@@ -575,46 +680,26 @@ export class TimelineRepairModal extends Modal {
 
         // Action buttons
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
-
-        // Undo/Redo buttons
-        const undoBtn = new ButtonComponent(buttonRow)
-            .setButtonText(t('timelineRepairModal.review.undoButton'))
-            .setDisabled(!canUndo(this.session))
-            .onClick(() => {
-                if (this.session && canUndo(this.session)) {
-                    this.session = undo(this.session);
-                    this.renderSceneList();
-                    this.updateSummaryBar();
-                    undoBtn.setDisabled(!canUndo(this.session));
-                    redoBtn.setDisabled(!canRedo(this.session));
-                }
-            });
-
-        const redoBtn = new ButtonComponent(buttonRow)
-            .setButtonText(t('timelineRepairModal.review.redoButton'))
-            .setDisabled(!canRedo(this.session))
-            .onClick(() => {
-                if (this.session && canRedo(this.session)) {
-                    this.session = redo(this.session);
-                    this.renderSceneList();
-                    this.updateSummaryBar();
-                    undoBtn.setDisabled(!canUndo(this.session));
-                    redoBtn.setDisabled(!canRedo(this.session));
-                }
-            });
-
-        // Spacer
-        buttonRow.createDiv({ cls: 'ert-timeline-repair-button-spacer' });
+        this.auditFooterEl = buttonRow;
 
         new ButtonComponent(buttonRow)
             .setButtonText(t('timelineRepairModal.review.backButton'))
             .onClick(() => this.showConfigPhase());
+
+        const auditOpenBtn = new ButtonComponent(buttonRow)
+            .setButtonText(this.auditIncluded.size === 0
+                ? t('timelineRepairModal.review.openAuditButtonAll')
+                : t('timelineRepairModal.review.openAuditButton', { count: this.auditIncluded.size }))
+            .onClick(() => this.openFocusedAudit());
+        auditOpenBtn.buttonEl.addClass('ert-timeline-repair-audit-open-btn');
 
         new ButtonComponent(buttonRow)
             .setButtonText(t('timelineRepairModal.review.applyButton'))
             .setCta()
             .setDisabled(!this.session.hasUnsavedChanges)
             .onClick(() => this.applyChanges());
+
+        this.updateAuditFooter();
     }
 
     private updateSummaryBar(): void {
@@ -622,15 +707,19 @@ export class TimelineRepairModal extends Modal {
 
         const changedCount = getChangedCount(this.session);
         const reviewCount = getNeedsReviewCount(this.session);
+        const authoredCount = this.session.entries.filter(e => e.source === 'authored').length;
         const parts: string[] = [
             t('timelineRepairModal.review.badge').toUpperCase(),
             t('timelineRepairModal.review.summaryChanged', { count: changedCount }).toUpperCase()
         ];
+        if (authoredCount > 0) {
+            parts.push(t('timelineRepairModal.review.summaryAuthored', { count: authoredCount }).toUpperCase());
+        }
         if (reviewCount > 0) {
             parts.push(t('timelineRepairModal.review.summaryNeedReview', { count: reviewCount }).toUpperCase());
         }
         this.summaryBarEl.setText(parts.join(' • '));
-        this.summaryBarEl.toggleClass('ert-has-warnings', reviewCount > 0);
+        this.needsReviewPillEl?.toggleClass('ert-has-warnings', reviewCount > 0);
     }
 
     private createFilterPill(
@@ -638,7 +727,7 @@ export class TimelineRepairModal extends Modal {
         label: string,
         active: boolean,
         onChange: (value: boolean) => void
-    ): void {
+    ): HTMLElement {
         const pill = container.createDiv({ cls: 'ert-timeline-repair-filter-pill' });
         if (active) pill.addClass('ert-is-active');
         pill.setText(label);
@@ -648,6 +737,7 @@ export class TimelineRepairModal extends Modal {
             pill.toggleClass('ert-is-active', newActive);
             onChange(newActive);
         });
+        return pill;
     }
 
     private registerOpenNoteListeners(): void {
@@ -662,6 +752,41 @@ export class TimelineRepairModal extends Modal {
             this.app.workspace.offref(ref);
         }
         this.workspaceEventRefs = [];
+    }
+
+    private seedAuditIncluded(): void {
+        this.auditIncluded.clear();
+        if (!this.session) return;
+        for (const entry of this.session.entries) {
+            if (this.shouldAutoIncludeForAudit(entry)) {
+                this.auditIncluded.add(entry.file.path);
+            }
+        }
+    }
+
+    private shouldAutoIncludeForAudit(entry: RepairSceneEntry): boolean {
+        if (entry.needsReview) return true;
+        if (entry.source === 'keyword' || entry.source === 'ai') return true;
+        return false;
+    }
+
+    private updateAuditFooter(): void {
+        if (!this.auditFooterEl) return;
+        const count = this.auditIncluded.size;
+        this.auditFooterEl.toggleClass('ert-is-empty', count === 0);
+        const btn = this.auditFooterEl.querySelector<HTMLButtonElement>('.ert-timeline-repair-audit-open-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.setText(count === 0
+                ? t('timelineRepairModal.review.openAuditButtonAll')
+                : t('timelineRepairModal.review.openAuditButton', { count }));
+        }
+    }
+
+    private openFocusedAudit(): void {
+        const focused = this.auditIncluded.size > 0 ? new Set(this.auditIncluded) : undefined;
+        this.close();
+        new TimelineAuditModal(this.app, this.plugin, focused ? { focusedPaths: focused } : {}).open();
     }
 
     private collectOpenNotePaths(): Set<string> {
@@ -684,6 +809,19 @@ export class TimelineRepairModal extends Modal {
             const path = card.getAttribute('data-ert-path');
             const isOpen = path !== null && this.openNotePaths.has(path);
             card.toggleClass('ert-is-open-note', isOpen);
+
+            const existingBadge = card.querySelector<HTMLElement>('.ert-timeline-repair-open-badge');
+            if (isOpen && !existingBadge) {
+                const titleEl = card.querySelector<HTMLElement>('.ert-timeline-repair-scene-title');
+                if (titleEl?.parentElement) {
+                    const badge = titleEl.parentElement.createSpan({ cls: 'ert-timeline-repair-open-badge' });
+                    titleEl.parentElement.insertBefore(badge, titleEl.nextSibling);
+                    setIcon(badge, 'file-text');
+                    setTooltip(badge, t('timelineRepairModal.review.openInWorkspace'));
+                }
+            } else if (!isOpen && existingBadge) {
+                existingBadge.remove();
+            }
         });
     }
 
@@ -729,9 +867,9 @@ export class TimelineRepairModal extends Modal {
         if (isSelected) card.addClass('ert-is-selected');
         if (entry.needsReview) card.addClass('ert-needs-review');
         if (entry.hasBackwardTime) card.addClass('ert-has-backward-time');
+        if (entry.source === 'authored') card.addClass('ert-is-authored');
         if (this.openNotePaths.has(entry.file.path)) {
             card.addClass('ert-is-open-note');
-            card.setAttribute('aria-label', 'Open in workspace');
         }
 
         // Selection checkbox
@@ -762,6 +900,18 @@ export class TimelineRepairModal extends Modal {
             cls: 'ert-timeline-repair-scene-title'
         });
 
+        const narrativePill = line1.createSpan({
+            cls: 'ert-timeline-repair-narrative-pill',
+            text: `N${idx + 1}`
+        });
+        setTooltip(narrativePill, t('timelineRepairModal.review.narrativePlacement', { count: idx + 1 }));
+
+        if (this.openNotePaths.has(entry.file.path)) {
+            const openBadge = line1.createSpan({ cls: 'ert-timeline-repair-open-badge' });
+            setIcon(openBadge, 'file-text');
+            setTooltip(openBadge, t('timelineRepairModal.review.openInWorkspace'));
+        }
+
         // Cue chips (blue keyword badges, linked to note origin)
         if (entry.source === 'keyword' && entry.cues?.length) {
             for (const cue of entry.cues) {
@@ -778,6 +928,11 @@ export class TimelineRepairModal extends Modal {
         }
 
         // Warning badges
+        if (entry.originalWhen === null && entry.source !== 'authored') {
+            const missingBadge = line1.createSpan({ cls: 'ert-timeline-repair-missing-badge' });
+            setIcon(missingBadge, 'calendar-off');
+            setTooltip(missingBadge, t('timelineRepairModal.review.warningMissingWhen'));
+        }
         if (entry.hasBackwardTime) {
             const warningBadge = line1.createSpan({ cls: 'ert-timeline-repair-warning-badge' });
             setIcon(warningBadge, 'alert-triangle');
@@ -810,19 +965,19 @@ export class TimelineRepairModal extends Modal {
             cls: 'ert-timeline-repair-proposed-date'
         });
         proposedLine.createSpan({
-            text: ` · ${TIME_BUCKET_LABELS[currentBucket]}`,
+            text: ` · ${describeWhenLabel(effectiveWhen, currentBucket)}`,
             cls: 'ert-timeline-repair-proposed-bucket'
         });
 
         // Current When comparison (secondary, smaller) — only if different
-        if (entry.originalWhen) {
+        if (entry.originalWhen && entry.source !== 'authored') {
             const originalDisplay = formatWhenForDisplay(entry.originalWhen);
             const proposedDisplay = formatWhenForDisplay(effectiveWhen);
             const originalBucket = detectTimeBucket(entry.originalWhen);
 
             if (originalDisplay !== proposedDisplay || originalBucket !== currentBucket) {
                 const comparisonLine = whenArea.createDiv({ cls: 'ert-timeline-repair-original-when' });
-                comparisonLine.setText(`was ${originalDisplay} · ${TIME_BUCKET_LABELS[originalBucket]}`);
+                comparisonLine.setText(`was ${originalDisplay} · ${describeWhenLabel(entry.originalWhen, originalBucket)}`);
             }
         }
 
@@ -864,10 +1019,35 @@ export class TimelineRepairModal extends Modal {
                 this.handleTimeBucketChange(idx, TIME_BUCKET_HOURS[bucket]);
             });
         }
+
+        // Audit handoff toggle (subtle, single icon)
+        const auditBtn = controlsArea.createEl('button', { cls: 'ert-timeline-repair-audit-toggle' });
+        setIcon(auditBtn, 'search');
+        const isIncluded = this.auditIncluded.has(entry.file.path);
+        if (isIncluded) auditBtn.addClass('ert-is-active');
+        setTooltip(auditBtn, isIncluded
+            ? t('timelineRepairModal.review.auditToggleOn')
+            : t('timelineRepairModal.review.auditToggleOff'));
+        auditBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const path = entry.file.path;
+            if (this.auditIncluded.has(path)) {
+                this.auditIncluded.delete(path);
+                auditBtn.removeClass('ert-is-active');
+                setTooltip(auditBtn, t('timelineRepairModal.review.auditToggleOff'));
+            } else {
+                this.auditIncluded.add(path);
+                auditBtn.addClass('ert-is-active');
+                setTooltip(auditBtn, t('timelineRepairModal.review.auditToggleOn'));
+            }
+            this.updateAuditFooter();
+        });
     }
 
     private getComplianceLabel(entry: RepairSceneEntry): string {
+        if (entry.isFlashback) return 'flashback';
         if (entry.needsReview) return 'needs review';
+        if (entry.source === 'authored') return 'authored';
         if (entry.source === 'keyword' || entry.source === 'ai') return 'cue-adjusted';
         return 'pattern-based';
     }
@@ -967,7 +1147,7 @@ export class TimelineRepairModal extends Modal {
     // ========================================================================
 
     private async applyChanges(): Promise<void> {
-        if (!this.session) return;
+        if (!this.session || !this.config) return;
 
         const summary = getChangeSummary(this.session);
 
@@ -980,6 +1160,25 @@ export class TimelineRepairModal extends Modal {
         const confirmed = await this.showConfirmDialog(summary.totalChanges);
         if (!confirmed) return;
 
+        // Capture restore-point BEFORE writing. If snapshot fails, abort —
+        // the author is about to do a mass overwrite and the restore point
+        // is the cheap insurance that makes that decision safe.
+        let snapshotSaved = false;
+        try {
+            const snapshot = buildTimelineSnapshot(this.session, {
+                patternPreset: this.config.patternPreset,
+                preserveAuthoredDates: this.config.preserveAuthoredDates,
+                useTextCues: this.config.useTextCues
+            });
+            await saveTimelineSnapshot(this.app, snapshot);
+            snapshotSaved = true;
+        } catch (error) {
+            new Notice(t('timelineRepairModal.apply.snapshotFailedNotice', {
+                message: error instanceof Error ? error.message : String(error)
+            }));
+            return;
+        }
+
         // Write changes
         try {
             const result = await writeSessionChanges(this.app, this.session, {
@@ -990,6 +1189,8 @@ export class TimelineRepairModal extends Modal {
 
             if (result.failed > 0) {
                 new Notice(t('timelineRepairModal.apply.partialNotice', { success: result.success, failed: result.failed }));
+            } else if (snapshotSaved) {
+                new Notice(t('timelineRepairModal.apply.successWithSnapshotNotice', { count: result.success }));
             } else {
                 new Notice(t('timelineRepairModal.apply.successNotice', { count: result.success }));
             }
@@ -998,6 +1199,32 @@ export class TimelineRepairModal extends Modal {
 
         } catch (error) {
             new Notice(`Failed to apply changes: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    private async handleRestoreLatestSnapshot(): Promise<void> {
+        try {
+            const meta = await getLatestTimelineSnapshot(this.app);
+            if (!meta) {
+                new Notice(t('timelineRepairModal.restore.noSnapshotNotice'));
+                return;
+            }
+            const result = await restoreTimelineSnapshot(this.app, meta);
+            if (result.failed > 0) {
+                new Notice(t('timelineRepairModal.restore.partialNotice', {
+                    restored: result.restored,
+                    failed: result.failed,
+                    label: result.snapshotLabel
+                }));
+            } else {
+                new Notice(t('timelineRepairModal.restore.successNotice', {
+                    restored: result.restored,
+                    label: result.snapshotLabel
+                }));
+            }
+            this.close();
+        } catch (error) {
+            new Notice(`Restore failed: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 

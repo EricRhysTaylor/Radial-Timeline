@@ -9,6 +9,7 @@
 import { App, ButtonComponent, Modal, Notice, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { t } from '../i18n';
+import { renderWithYamlTokens } from '../utils/yamlTokenRender';
 import { applyAuditFindings } from '../timelineAudit/apply';
 import { runAuditPipeline } from '../timelineAudit/AuditPipeline';
 import { buildTimelineOverviewEntries, scrollFindingCardIntoView } from '../timelineAudit/TimelineOverviewStrip';
@@ -52,10 +53,14 @@ export class TimelineAuditModal extends Modal {
     private expandedFindingPath: string | null = null;
     private hasAutoExpandedCurrentResult = false;
     private readonly findingCardEls = new Map<string, HTMLElement>();
+    private focusedPaths: Set<string> | null = null;
 
-    constructor(app: App, plugin: RadialTimelinePlugin) {
+    constructor(app: App, plugin: RadialTimelinePlugin, options: { focusedPaths?: Set<string> } = {}) {
         super(app);
         this.plugin = plugin;
+        if (options.focusedPaths && options.focusedPaths.size > 0) {
+            this.focusedPaths = new Set(options.focusedPaths);
+        }
     }
 
     async onOpen(): Promise<void> {
@@ -191,21 +196,25 @@ export class TimelineAuditModal extends Modal {
         header.createSpan({ cls: 'ert-modal-badge', text: t('timelineAuditModal.header.badge') });
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineAuditModal.header.title') });
         const subtitleEl = header.createDiv({ cls: 'ert-modal-subtitle' });
-        t('timelineAuditModal.header.subtitle')
-            .split(/(`[^`]+`)/g)
-            .filter(Boolean)
-            .forEach(part => {
-                if (part.startsWith('`') && part.endsWith('`')) {
-                    subtitleEl.createEl('code', { text: part.slice(1, -1) });
-                } else {
-                    subtitleEl.appendText(part);
-                }
-            });
+        renderWithYamlTokens(subtitleEl, t('timelineAuditModal.header.subtitle'));
 
         if (this.aiState.status === 'completed') {
             header.createDiv({
                 cls: 'ert-timeline-audit-ai-header-badge',
                 text: t('timelineAuditModal.header.aiEnhancedBadge')
+            });
+        }
+
+        if (this.focusedPaths) {
+            const focusBadge = header.createDiv({ cls: 'ert-timeline-audit-focus-badge' });
+            focusBadge.setText(t('timelineAuditModal.header.focusedScope', { count: this.focusedPaths.size }));
+            const clearBtn = focusBadge.createEl('button', {
+                cls: 'ert-timeline-audit-focus-clear',
+                text: t('timelineAuditModal.header.focusedClear')
+            });
+            clearBtn.addEventListener('click', () => {
+                this.focusedPaths = null;
+                this.render();
             });
         }
 
@@ -502,7 +511,9 @@ export class TimelineAuditModal extends Modal {
         const result = this.getDisplayedResult();
         if (!result) return [];
 
+        const focused = this.focusedPaths;
         return result.findings.filter((finding) => {
+            if (focused && !focused.has(finding.path)) return false;
             switch (this.filter) {
                 case 'contradictions':
                     return finding.status === 'contradiction';

@@ -1070,10 +1070,11 @@ export class CommandRegistrar {
             const sceneParts = getTemplateParts('Scene', this.plugin.settings);
             const template = type === 'advanced' ? sceneParts.merged : sceneParts.base;
 
-            const today = new Date().toISOString().split('T')[0];
+            // When is intentionally left blank — the author sets the scene's
+            // chronology via Timeline Order Normalizer or by editing the YAML.
             const content = generateSceneContent(template, {
                 act: 1,
-                when: today,
+                when: '',
                 sceneNumber: 1,
                 subplots: ['Main Plot'],
                 character: type === 'podcast' ? 'HOST' : 'Hero',
@@ -1254,11 +1255,10 @@ export class CommandRegistrar {
             // Build backdrop template from single source of truth
             const template = getTemplateParts('Backdrop', this.plugin.settings).merged;
 
-            // Replace placeholders for backdrop
-            const today = new Date().toISOString().split('T')[0];
+            // When/End are left blank — the author sets backdrop dates explicitly.
             const content = template
-                .replace(/{{When}}/g, today)
-                .replace(/{{End}}/g, today);
+                .replace(/{{When}}/g, '')
+                .replace(/{{End}}/g, '');
             const withReferenceId = ensureReferenceIdTemplateFrontmatter(content, 'Backdrop');
 
             const fileContent = `---\n${withReferenceId.frontmatter}\n---\n\n`;

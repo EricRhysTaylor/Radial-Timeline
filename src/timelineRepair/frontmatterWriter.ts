@@ -264,7 +264,8 @@ export function getChangeSummary(session: SessionDiffModel): {
         keyword: 0,
         ai: 0,
         manual: 0,
-        original: 0
+        original: 0,
+        authored: 0
     };
     
     const byConfidence: Record<WhenConfidence, number> = {

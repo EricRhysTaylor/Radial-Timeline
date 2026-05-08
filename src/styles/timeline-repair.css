@@ -84,6 +84,11 @@
     letter-spacing: 0;
 }
 
+.ert-timeline-repair-anchor-pill {
+    margin-left: 0;
+    align-self: center;
+}
+
 /* Anchor row */
 .ert-timeline-repair-anchor-row {
     display: flex;
@@ -227,17 +232,22 @@
 }
 
 .ert-timeline-repair-pattern-radio {
-    appearance: auto;
-    -webkit-appearance: radio;
-    margin: var(--ert-gap-3xs) 0 0;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    margin-top: var(--ert-gap-3xs);
+    border: 2px solid var(--interactive-accent);
+    border-radius: 50%;
+    background-color: transparent;
+    background-image: none;
+    background-repeat: no-repeat;
+    background-position: center center;
     flex-shrink: 0;
-    accent-color: var(--interactive-accent);
+    transition: background-image 0.15s ease;
 }
 
-.ert-timeline-repair-pattern-radio::before,
-.ert-timeline-repair-pattern-radio::after {
-    content: none;
-    display: none;
+.ert-timeline-repair-pattern-option.ert-is-active .ert-timeline-repair-pattern-radio {
+    background-image: radial-gradient(circle at center, var(--interactive-accent) 0 4px, transparent 4.5px);
 }
 
 .ert-timeline-repair-pattern-text {
@@ -278,6 +288,7 @@
 .ert-timeline-repair-option-row.ert-is-static {
     align-items: flex-start;
 }
+
 
 .ert-timeline-repair-status-pill {
     display: inline-flex;
@@ -366,13 +377,42 @@
     color: var(--text-on-accent);
 }
 
-.ert-timeline-repair-ripple-toggle {
+.ert-timeline-repair-ripple-toggle,
+.ert-timeline-repair-overwrite-toggle {
     display: flex;
     align-items: center;
     gap: var(--ert-gap-tight);
     margin-left: auto;
     font-size: var(--font-ui-smaller);
     color: var(--text-muted);
+}
+
+.ert-timeline-repair-ripple-toggle + .ert-timeline-repair-overwrite-toggle,
+.ert-timeline-repair-overwrite-toggle + .ert-timeline-repair-ripple-toggle {
+    margin-left: 0;
+}
+
+.ert-timeline-repair-overwrite-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    overflow: hidden;
+    line-height: 1;
+    color: var(--text-faint);
+    cursor: help;
+}
+
+.ert-timeline-repair-overwrite-help svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.ert-timeline-repair-overwrite-help:hover {
+    color: var(--text-warning);
 }
 
 .ert-timeline-repair-ripple-help {
@@ -405,7 +445,7 @@
     gap: var(--ert-gap-xs);
     max-height: 360px;
     overflow-y: auto;
-    padding: var(--ert-gap-xs) 0;
+    padding: var(--ert-gap-xs) var(--ert-gap-cozy) var(--ert-gap-xs) 0;
 }
 
 .ert-timeline-repair-empty {
@@ -425,10 +465,16 @@
     margin-bottom: 0;
 }
 
-.ert-ui.ert-scope--modal .ert-timeline-repair-review-badge.ert-has-warnings {
+.ert-timeline-repair-filter-pill.ert-has-warnings {
     color: var(--text-warning);
-    border-color: color-mix(in srgb, var(--text-warning) 30%, rgba(255, 255, 255, 0.15));
-    background: color-mix(in srgb, var(--text-warning) 10%, rgba(255, 255, 255, 0.08));
+    border-color: color-mix(in srgb, var(--text-warning) 35%, var(--background-modifier-border));
+    background: color-mix(in srgb, var(--text-warning) 10%, transparent);
+}
+
+.ert-timeline-repair-filter-pill.ert-has-warnings.ert-is-active {
+    color: var(--text-on-accent);
+    border-color: var(--text-warning);
+    background: var(--text-warning);
 }
 
 /* Scene card */
@@ -466,7 +512,9 @@
 }
 
 .ert-timeline-repair-scene-card.ert-is-open-note {
-    box-shadow: inset -2px 0 0 color-mix(in srgb, var(--text-accent) 55%, transparent);
+    box-shadow:
+        inset 2px 0 0 color-mix(in srgb, var(--text-accent) 55%, transparent),
+        inset -2px 0 0 color-mix(in srgb, var(--text-accent) 55%, transparent);
 }
 
 .ert-timeline-repair-checkbox {
@@ -545,6 +593,26 @@
     color: var(--text-warning);
 }
 
+.ert-timeline-repair-missing-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text-faint);
+    cursor: help;
+}
+
+.ert-timeline-repair-open-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: color-mix(in srgb, var(--text-accent) 70%, transparent);
+    cursor: help;
+}
+
 /* Compliance chip */
 .ert-timeline-repair-compliance-chip {
     display: inline-flex;
@@ -563,6 +631,16 @@
 .ert-timeline-repair-compliance-chip.ert-compliance-pattern-based {
     background: var(--background-modifier-border);
     color: var(--text-faint);
+}
+
+.ert-timeline-repair-compliance-chip.ert-compliance-authored {
+    background: color-mix(in srgb, var(--text-success) 18%, transparent);
+    color: var(--text-success);
+}
+
+.ert-timeline-repair-compliance-chip.ert-compliance-flashback {
+    background: color-mix(in srgb, var(--color-purple) 22%, transparent);
+    color: var(--color-purple);
 }
 
 .ert-timeline-repair-compliance-chip.ert-compliance-cue-adjusted {
@@ -630,6 +708,54 @@
     display: flex;
     gap: var(--ert-gap-xs);
 }
+
+.ert-timeline-repair-narrative-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--ert-pad-tight);
+    border-radius: var(--radius-s);
+    background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+    color: var(--text-faint);
+    font-family: var(--font-monospace);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+    cursor: help;
+}
+
+.ert-timeline-repair-audit-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin-left: var(--ert-gap-xs);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ert-timeline-repair-audit-toggle:hover {
+    color: var(--text-muted);
+    border-color: var(--interactive-accent);
+}
+
+.ert-timeline-repair-audit-toggle.ert-is-active {
+    background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
+}
+
+.ert-timeline-repair-audit-toggle svg {
+    width: 14px;
+    height: 14px;
+}
+
 
 .ert-timeline-repair-nudge-btn {
     padding: calc(var(--ert-gap-2xs) + var(--ert-gap-3xs)) var(--ert-pad-xs);

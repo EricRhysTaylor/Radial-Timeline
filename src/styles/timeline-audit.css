@@ -108,6 +108,30 @@
     font-weight: var(--font-medium);
 }
 
+.ert-timeline-audit-focus-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ert-gap-xs);
+    width: fit-content;
+    padding: calc(var(--ert-gap-2xs) + var(--ert-gap-3xs)) var(--ert-pad-xs);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-accent) 12%, var(--background-secondary));
+    border: 1px solid color-mix(in srgb, var(--text-accent) 35%, var(--background-modifier-border));
+    color: var(--text-accent);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-medium);
+}
+
+.ert-timeline-audit-focus-clear {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: inherit;
+    padding: 0;
+}
+
 .ert-timeline-audit-overview-strip {
     display: flex;
     align-items: center;

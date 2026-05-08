@@ -92,8 +92,14 @@ const TIME_PATTERNS: Array<{
     // Night indicators
     { pattern: /\b(?:that|this|the|late)\s+night\b/i, bucket: 'night', confidence: 'high' },
     { pattern: /\bat\s+midnight\b/i, bucket: 'night', confidence: 'high' },
-    { pattern: /\bafter\s+dark\b/i, bucket: 'night', confidence: 'med' }
+    { pattern: /\bafter\s+dark\b/i, bucket: 'night', confidence: 'med' },
     // Removed weak: "in the dark" — too ambiguous, not reliably temporal
+
+    // Scene-header style bare labels: "Morning.", "Afternoon.", standalone or after a continuation marker
+    { pattern: /(?:^|[.\n])\s*Morning\b\.?(?=\s|$)/m, bucket: 'morning', confidence: 'high' },
+    { pattern: /(?:^|[.\n])\s*Afternoon\b\.?(?=\s|$)/m, bucket: 'afternoon', confidence: 'high' },
+    { pattern: /(?:^|[.\n])\s*Evening\b\.?(?=\s|$)/m, bucket: 'evening', confidence: 'high' },
+    { pattern: /(?:^|[.\n])\s*Night\b\.?(?=\s|$)/m, bucket: 'night', confidence: 'high' }
 ];
 
 /**
@@ -154,8 +160,14 @@ const CONTINUITY_PATTERNS: Array<{
     { pattern: /\bhalf\s+an?\s+hour\s+later\b/i, minuteOffset: 30, confidence: 'high' },
     { pattern: /\ban?\s+hour\s+later\b/i, minuteOffset: 60, confidence: 'high' },
     { pattern: /\b(\d+)\s+hours?\s+later\b/i, minuteOffset: 60, confidence: 'high' },
-    { pattern: /\bat\s+the\s+same\s+time\b/i, minuteOffset: 0, confidence: 'med' }
+    { pattern: /\bat\s+the\s+same\s+time\b/i, minuteOffset: 0, confidence: 'med' },
     // Removed weak/ambiguous: "still", "meanwhile" — too vague, no temporal direction
+
+    // Day continuation markers — "Continued" indicates same day as previous scene
+    { pattern: /\bday\s+\d+\s+continued\b/i, minuteOffset: 0, confidence: 'high' },
+    { pattern: /\bthe\s+\d+(?:st|nd|rd|th)\s+day\s+continued\b/i, minuteOffset: 0, confidence: 'high' },
+    { pattern: /\bthe\s+(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\s+day\s+continued\b/i, minuteOffset: 0, confidence: 'high' },
+    { pattern: /(?:^|[.\n])\s*continued\b\.?(?=\s|$)/im, minuteOffset: 0, confidence: 'med' }
 ];
 
 // ============================================================================
@@ -203,7 +215,10 @@ export async function runKeywordSweep(
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
         const previousEntry = i > 0 ? entries[i - 1] : null;
-        
+
+        // Authored anchors are never rewritten by cues.
+        if (entry.source === 'authored') continue;
+
         // Get text to scan
         let text = await getSceneText(entry);
         
@@ -384,10 +399,15 @@ function applyCues(
         }
         
         case 'continuity': {
-            // Small offset from previous scene
             const baseDate = previousWhen ?? currentWhen;
             result = new Date(baseDate);
             result.setMinutes(result.getMinutes() + (primaryCue.value as number));
+
+            const timeCue = sortedCues.find(c => c.category === 'sameDayTime');
+            if (timeCue) {
+                const bucket = timeCue.value as TimeBucket;
+                result.setHours(TIME_BUCKET_HOURS[bucket], 0, 0, 0);
+            }
             break;
         }
     }
@@ -417,21 +437,24 @@ function detectTemporalIssuesAfterSweep(entries: RepairSceneEntry[]): void {
     
     // Detect issues
     for (let i = 1; i < entries.length; i++) {
-        const prevWhen = entries[i - 1].proposedWhen;
-        const currWhen = entries[i].proposedWhen;
-        const gap = currWhen.getTime() - prevWhen.getTime();
-        
         // Reset flags first
         entries[i].hasBackwardTime = false;
         entries[i].hasLargeGap = false;
         entries[i].needsReview = entries[i].needsReview || false;
-        
+
+        // Flashback rows expect time jumps; suppress conflicting alerts.
+        if (entries[i].isFlashback || entries[i - 1].isFlashback) continue;
+
+        const prevWhen = entries[i - 1].proposedWhen;
+        const currWhen = entries[i].proposedWhen;
+        const gap = currWhen.getTime() - prevWhen.getTime();
+
         // Backward time
         if (gap < 0) {
             entries[i].hasBackwardTime = true;
             entries[i].needsReview = true;
         }
-        
+
         // Large gap (only flag if threshold is meaningful)
         if (largeGapThreshold > 0 && gap > largeGapThreshold) {
             entries[i].hasLargeGap = true;

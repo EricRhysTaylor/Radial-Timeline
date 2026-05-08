@@ -7698,6 +7698,24 @@
   line-height: 1.4;
 }
 
+/* YAML field reference inline chip — used for tokens like `When`, `Status`,
+ * `Class`. Visually distinct from prose without competing with action chips. */
+.ert-yaml-token {
+  display: inline-block;
+  padding: 0 var(--ert-pad-tight);
+  margin: 0 var(--ert-gap-3xs);
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  color: var(--interactive-accent);
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
 .ert-ui .ert-modal-meta {
   display: flex;
   flex-wrap: wrap;

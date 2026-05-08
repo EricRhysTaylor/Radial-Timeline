@@ -7,8 +7,15 @@ import { createInMemoryApp, type InMemoryApp } from '../../tests/helpers/inMemor
 import { runPatternSync } from './patternSync';
 import { runKeywordSweep } from './keywordSweep';
 import { runRepairPipeline } from './RepairPipeline';
-import { createSession } from './sessionDiff';
+import { createSession, shiftSceneDays } from './sessionDiff';
 import { writeSessionChanges } from './frontmatterWriter';
+import {
+    buildTimelineSnapshot,
+    saveTimelineSnapshot,
+    getLatestTimelineSnapshot,
+    restoreTimelineSnapshot,
+    TIMELINE_SNAPSHOT_FOLDER
+} from './timelineSnapshot';
 import { buildScaffoldPreview } from './scaffoldPreview';
 
 function makeFile(path: string): TFile {
@@ -135,6 +142,163 @@ describe('timeline repair normalizer', () => {
         expect(entries[2].isChanged).toBe(true);
     });
 
+    it('Ripple in Preserve mode shifts only scaffolded rows; authored anchors and flashbacks stay put', () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md', { when: new Date(2085, 3, 1, 8, 0, 0, 0) }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md'), file: makeFile('Book/02.md'), manuscriptIndex: 1 },
+            { scene: makeScene('Book/03.md'), file: makeFile('Book/03.md'), manuscriptIndex: 2 },
+            { scene: makeScene('Book/04.md', { when: new Date(2085, 3, 10, 8, 0, 0, 0) }), file: makeFile('Book/04.md'), manuscriptIndex: 3 },
+            { scene: makeScene('Book/05.md', { when: new Date(1933, 9, 4, 12, 0, 0, 0) }), file: makeFile('Book/05.md'), manuscriptIndex: 4 },
+            { scene: makeScene('Book/06.md'), file: makeFile('Book/06.md'), manuscriptIndex: 5 }
+        ], {
+            anchorWhen: new Date(2085, 3, 1, 8, 0, 0, 0),
+            patternPreset: 'daily',
+            preserveAuthoredDates: true
+        });
+
+        // Sanity check the scaffold:
+        expect(entries[0].source).toBe('authored');
+        expect(entries[1].source).toBe('pattern');
+        expect(entries[2].source).toBe('pattern');
+        expect(entries[3].source).toBe('authored');
+        expect(entries[4].source).toBe('authored');
+        expect(entries[4].isFlashback).toBe(true);
+        expect(entries[5].source).toBe('pattern');
+
+        const session = createSession({
+            entries,
+            totalScenes: entries.length,
+            scenesChanged: 0,
+            scenesNeedingReview: 0,
+            scenesWithBackwardTime: 0,
+            scenesWithLargeGaps: 0,
+            scenesAuthored: 3,
+            patternApplied: entries.length,
+            cueRefined: 0
+        });
+        session.rippleEnabled = true;
+
+        const before = entries.map(e => e.proposedWhen.getTime());
+        const shifted = shiftSceneDays(session, 1, 5); // shift scene 02 forward 5 days
+
+        // Scene 1 (the edit target) shifted +5d.
+        expect(shifted.entries[1].editedWhen?.getTime()).toBe(before[1] + 5 * 86400_000);
+
+        // Scene 2 (pattern, after edit) shifted +5d via ripple.
+        expect(shifted.entries[2].editedWhen?.getTime()).toBe(before[2] + 5 * 86400_000);
+
+        // Scene 3 (AUTHORED anchor) is NOT shifted.
+        expect(shifted.entries[3].editedWhen).toBeNull();
+        expect(shifted.entries[3].proposedWhen.getTime()).toBe(before[3]);
+        expect(shifted.entries[3].source).toBe('authored');
+
+        // Scene 4 (FLASHBACK / authored) is NOT shifted.
+        expect(shifted.entries[4].editedWhen).toBeNull();
+        expect(shifted.entries[4].proposedWhen.getTime()).toBe(before[4]);
+        expect(shifted.entries[4].source).toBe('authored');
+
+        // Scene 5 (pattern) IS shifted — ripple continues past anchors.
+        expect(shifted.entries[5].editedWhen?.getTime()).toBe(before[5] + 5 * 86400_000);
+    });
+
+    it('Ripple in Overwrite mode shifts every row including originally-authored ones', () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md'), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md', { when: new Date(2085, 3, 5, 8, 0, 0, 0) }), file: makeFile('Book/02.md'), manuscriptIndex: 1 },
+            { scene: makeScene('Book/03.md'), file: makeFile('Book/03.md'), manuscriptIndex: 2 }
+        ], {
+            anchorWhen: new Date(2085, 3, 1, 8, 0, 0, 0),
+            patternPreset: 'daily',
+            preserveAuthoredDates: false // OVERWRITE
+        });
+
+        // In Overwrite mode the pipeline never marks anything as authored.
+        expect(entries.every(e => e.source === 'pattern')).toBe(true);
+
+        const session = createSession({
+            entries,
+            totalScenes: entries.length,
+            scenesChanged: 0,
+            scenesNeedingReview: 0,
+            scenesWithBackwardTime: 0,
+            scenesWithLargeGaps: 0,
+            scenesAuthored: 0,
+            patternApplied: entries.length,
+            cueRefined: 0
+        });
+        session.rippleEnabled = true;
+
+        const before = entries.map(e => e.proposedWhen.getTime());
+        const shifted = shiftSceneDays(session, 0, 3);
+
+        expect(shifted.entries[0].editedWhen?.getTime()).toBe(before[0] + 3 * 86400_000);
+        expect(shifted.entries[1].editedWhen?.getTime()).toBe(before[1] + 3 * 86400_000); // shifted
+        expect(shifted.entries[2].editedWhen?.getTime()).toBe(before[2] + 3 * 86400_000); // shifted
+    });
+
+    it('detects flashback scenes by year-distance from neighbors and suppresses backward-time alerts', () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md', { when: new Date(2085, 3, 1, 8, 0, 0, 0) }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md', { when: new Date(2085, 3, 2, 8, 0, 0, 0) }), file: makeFile('Book/02.md'), manuscriptIndex: 1 },
+            { scene: makeScene('Book/03.md', { when: new Date(1933, 9, 4, 12, 0, 0, 0) }), file: makeFile('Book/03.md'), manuscriptIndex: 2 },
+            { scene: makeScene('Book/04.md', { when: new Date(2085, 3, 3, 8, 0, 0, 0) }), file: makeFile('Book/04.md'), manuscriptIndex: 3 },
+            { scene: makeScene('Book/05.md', { when: new Date(2085, 3, 4, 8, 0, 0, 0) }), file: makeFile('Book/05.md'), manuscriptIndex: 4 }
+        ], {
+            anchorWhen: new Date(2085, 3, 1, 8, 0, 0, 0),
+            patternPreset: 'daily',
+            preserveAuthoredDates: true
+        });
+
+        expect(entries[2].isFlashback).toBe(true);
+        expect(entries[0].isFlashback).toBe(false);
+        expect(entries[1].isFlashback).toBe(false);
+        expect(entries[3].isFlashback).toBe(false);
+        expect(entries[4].isFlashback).toBe(false);
+
+        // Flashback row must NOT carry a backward-time alert (the time jump is intentional).
+        expect(entries[2].hasBackwardTime).toBe(false);
+        expect(entries[3].hasBackwardTime).toBe(false); // neighbor of flashback also suppressed
+    });
+
+    it('preserves authored When dates as anchors and only fills the gaps around them', async () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md'), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md', { when: new Date(2026, 0, 12, 8, 0, 0, 0) }), file: makeFile('Book/02.md'), manuscriptIndex: 1 },
+            { scene: makeScene('Book/03.md'), file: makeFile('Book/03.md'), manuscriptIndex: 2 },
+            { scene: makeScene('Book/04.md'), file: makeFile('Book/04.md'), manuscriptIndex: 3 },
+            { scene: makeScene('Book/05.md', { when: new Date(2026, 0, 20, 8, 0, 0, 0) }), file: makeFile('Book/05.md'), manuscriptIndex: 4 }
+        ], {
+            anchorWhen: new Date(2099, 0, 1, 8, 0, 0, 0), // deliberately far away — should be ignored
+            patternPreset: 'daily',
+            preserveAuthoredDates: true
+        });
+
+        expect(entries.map(e => e.source)).toEqual(['pattern', 'authored', 'pattern', 'pattern', 'authored']);
+        expect(toIsoLocal(entries[0].proposedWhen)).toBe('2026-01-11 08:00'); // 1 day before anchor 02
+        expect(toIsoLocal(entries[1].proposedWhen)).toBe('2026-01-12 08:00'); // authored
+        expect(toIsoLocal(entries[2].proposedWhen)).toBe('2026-01-13 08:00'); // pattern from 02
+        expect(toIsoLocal(entries[3].proposedWhen)).toBe('2026-01-14 08:00'); // pattern from 02
+        expect(toIsoLocal(entries[4].proposedWhen)).toBe('2026-01-20 08:00'); // authored
+        expect(entries[1].isChanged).toBe(false);
+        expect(entries[4].isChanged).toBe(false);
+    });
+
+    it('text cues do not rewrite authored anchors', async () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md', { when: new Date(2026, 0, 1, 8, 0, 0, 0), synopsis: 'They regroup the next morning.' }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md', { synopsis: 'Three days later, they return.' }), file: makeFile('Book/02.md'), manuscriptIndex: 1 }
+        ], {
+            anchorWhen: new Date(2026, 0, 1, 8, 0, 0, 0),
+            patternPreset: 'daily',
+            preserveAuthoredDates: true
+        });
+
+        const refined = await runKeywordSweep(entries, async () => '', { includeSynopsis: true });
+        expect(refined[0].source).toBe('authored');
+        expect(toIsoLocal(refined[0].proposedWhen)).toBe('2026-01-01 08:00');
+        expect(refined[1].source).toBe('keyword');
+    });
+
     it('refines the scaffold from explicit text cues like "next morning" and "three days later"', async () => {
         const entries = runPatternSync([
             { scene: makeScene('Book/01.md', { synopsis: 'Arrival.' }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
@@ -169,7 +333,8 @@ describe('timeline repair normalizer', () => {
             anchorWhen: new Date(2026, 0, 10, 8, 0, 0, 0),
             anchorSceneIndex: 0,
             patternPreset: 'daily' as const,
-            useTextCues: false
+            useTextCues: false,
+            preserveAuthoredDates: false
         };
 
         const withoutCues = await runRepairPipeline(scenes, files, plugin, configBase);
@@ -297,6 +462,7 @@ describe('timeline repair normalizer', () => {
             scenesNeedingReview: 0,
             scenesWithBackwardTime: 0,
             scenesWithLargeGaps: 0,
+            scenesAuthored: 0,
             patternApplied: entries.length,
             cueRefined: 0
         });
@@ -331,5 +497,81 @@ describe('timeline repair normalizer', () => {
             new Date(2026, 0, 2, 8, 0, 0, 0).getTime(),
             new Date(2026, 0, 3, 8, 0, 0, 0).getTime()
         ]);
+    });
+
+    it('Snapshot saves changed scenes only and restores their previous When', async () => {
+        const app = createInMemoryApp({
+            'Book/01 Scene.md': '---\nClass: Scene\nWhen: 2085-04-01 08:00\n---\nScene one',
+            'Book/02 Scene.md': '---\nClass: Scene\n---\nScene two (no When)'
+        });
+
+        const file1 = app.vault.getAbstractFileByPath('Book/01 Scene.md');
+        const file2 = app.vault.getAbstractFileByPath('Book/02 Scene.md');
+        if (!(file1 instanceof TFile) || !(file2 instanceof TFile)) throw new Error('Expected TFiles');
+
+        const scenes = [
+            makeScene('Book/01 Scene.md', { when: new Date(2085, 3, 1, 8, 0, 0, 0) }),
+            makeScene('Book/02 Scene.md')
+        ];
+
+        const entries = runPatternSync([
+            { scene: scenes[0], file: file1, manuscriptIndex: 0 },
+            { scene: scenes[1], file: file2, manuscriptIndex: 1 }
+        ], {
+            // Different anchor than scene 1's authored date, so scene 1 changes too.
+            anchorWhen: new Date(2026, 0, 1, 8, 0, 0, 0),
+            patternPreset: 'daily',
+            preserveAuthoredDates: false
+        });
+
+        // Capture original raw value for snapshot (would normally come from YAML parser).
+        entries[0].originalWhenRaw = '2085-04-01 08:00';
+        // Both entries should be changed (proposed vs original differ).
+        expect(entries[0].isChanged).toBe(true);
+        expect(entries[1].isChanged).toBe(true);
+
+        const session = createSession({
+            entries,
+            totalScenes: entries.length,
+            scenesChanged: entries.filter(e => e.isChanged).length,
+            scenesNeedingReview: 0,
+            scenesWithBackwardTime: 0,
+            scenesWithLargeGaps: 0,
+            scenesAuthored: 0,
+            patternApplied: entries.length,
+            cueRefined: 0
+        });
+
+        // Build + save snapshot BEFORE write.
+        const snapshot = buildTimelineSnapshot(session, {
+            patternPreset: 'daily',
+            preserveAuthoredDates: false,
+            useTextCues: true
+        });
+        expect(snapshot.entries.length).toBeGreaterThan(0);
+        expect(snapshot.entries[0].path).toBe('Book/01 Scene.md');
+        expect(snapshot.entries[0].previousWhenRaw).toBe('2085-04-01 08:00');
+
+        const snapshotFile = await saveTimelineSnapshot(app as never, snapshot);
+        expect(snapshotFile.path.startsWith(`${TIMELINE_SNAPSHOT_FOLDER}/`)).toBe(true);
+
+        // Now write the changes (mass overwrite).
+        const writeResult = await writeSessionChanges(app as never, session);
+        expect(writeResult.success).toBeGreaterThan(0);
+
+        const afterApply = await readFile(app, 'Book/01 Scene.md');
+        // Apply rewrote the When to the new (anchor) date.
+        expect(afterApply).toContain('When: 2026-01-01 08:00');
+        expect(afterApply).not.toContain('When: 2085-04-01 08:00');
+
+        // Restore the snapshot.
+        const meta = await getLatestTimelineSnapshot(app as never);
+        expect(meta).not.toBeNull();
+        const result = await restoreTimelineSnapshot(app as never, meta!);
+        expect(result.failed).toBe(0);
+        expect(result.restored).toBeGreaterThan(0);
+
+        const afterRestore = await readFile(app, 'Book/01 Scene.md');
+        expect(afterRestore).toContain('When: 2085-04-01 08:00');
     });
 });
