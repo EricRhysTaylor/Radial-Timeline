@@ -13,7 +13,7 @@ This page covers:
 - Book Details, Book Pages, and inline LaTeX matter examples
 - The `Chapter:` field — how you mark chapter breaks
 - Parts — how they're generated from Acts
-- Setting up **Modern Classic** (advanced book-style structure)
+- Setting up **Signature** (advanced book-style structure)
 - Act epigraphs, scene opener headings
 - Export checks and template readiness
 - Exporting
@@ -32,10 +32,10 @@ Core includes the standard publishing layouts needed for Pandoc PDF export. Pro 
 
 | Template | Structure | Best for |
 |---|---|---|
-| **Standard Manuscript** | Standard double-spaced submission format | Sending to agents / editors |
-| **Contemporary Literary** | Book-style with contemporary serif body, running headers, chapter openers | A finished book look with simple chapters |
-| **Signature Literary** | Literary book style with refined typography | Polished prose fiction |
-| **Modern Classic** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
+| **Basic** | Standard double-spaced submission format | Sending to agents / editors |
+| **Standard** | Book-style with contemporary serif body, running headers, chapter openers | A finished book look with simple chapters |
+| **Professional** | Literary book style with refined typography | Polished prose fiction |
+| **Signature** | Full book structure — **Parts**, Chapters, act epigraphs, ornament scene breaks | Novels with act structure and multiple chapters per act |
 
 The selected novel PDF layout also informs Narrative Mode publishing markers. Layouts that print chapters can show **C** placards on the timeline. Layouts that print Parts can show **P** placards at act boundaries.
 
@@ -48,10 +48,10 @@ PDF layouts require their intended fonts rather than substituting fallbacks. Bun
 
 | Template | Font |
 |---|---|
-| **Standard Manuscript** | Arial |
-| **Contemporary Literary** | Source Serif 4 |
-| **Signature Literary** | Sorts Mill Goudy |
-| **Modern Classic** | Latin Modern Roman |
+| **Basic** | Arial |
+| **Standard** | Source Serif 4 |
+| **Professional** | Sorts Mill Goudy |
+| **Signature** | Latin Modern Roman |
 
 ### Other formats
 
@@ -116,7 +116,7 @@ Auto configure publishing refreshes exact retired starter examples while preserv
 
 ## Duplicating a Template
 
-Every bundled template has a **Duplicate** button next to Install. Duplicating copies the `.tex` into your vault under a new name (e.g., `rt_modern_classic-copy.tex`), gives it a new display name ("Modern Classic Copy"), and leaves the original untouched.
+Every bundled template has a **Duplicate** button next to Install. Duplicating copies the `.tex` into your vault under a new name (e.g., `rt_modern_classic-copy.tex`), gives it a new display name ("Signature Copy"), and leaves the original untouched.
 
 Use Duplicate when you want to tweak a bundled template — change margins, swap a font, add a custom title page — without losing the original. The copy shows the same preview card as the bundled template and accepts edits to its `.tex` file directly in your vault.
 
@@ -158,7 +158,7 @@ You don't type "Part I" anywhere. Parts are generated automatically from your **
 - Part II contains all scenes whose `Act: 2`
 - Part III contains all scenes whose `Act: 3`
 
-Not every template uses Parts. Only templates with `usesModernClassicStructure` (currently **Modern Classic**) print Part divider pages. Simpler templates ignore act boundaries and flow straight through.
+Not every template uses Parts. Only templates with `usesModernClassicStructure` (currently **Signature**) print Part divider pages. Simpler templates ignore act boundaries and flow straight through.
 
 > Beats are not used to determine acts for export. The export reads each scene's own `Act:` field directly, the same way the timeline ring does, so Parts in the PDF always match the act partitioning you see in Narrative mode.
 
@@ -166,9 +166,9 @@ Narrative Mode can show these same publishing structures as outer-ring placards.
 
 ---
 
-## Setting Up Modern Classic
+## Setting Up Signature
 
-Modern Classic is the most structured bundled template. It produces a book-style manuscript with:
+Signature is the most structured bundled template. It produces a book-style manuscript with:
 
 - **Part openers** on their own page (with Roman numerals: I, II, III)
 - **Optional act epigraphs** — a quote + attribution printed after each Part page
@@ -178,9 +178,9 @@ Modern Classic is the most structured bundled template. It produces a book-style
 
 Here's the full setup, step by step.
 
-### Step 1 — Install Modern Classic
+### Step 1 — Install Signature
 
-**Settings → Publish → PDF Styles → Modern Classic → Install**
+**Settings → Publish → PDF Styles → Signature → Install**
 
 The template file writes to `Radial Timeline/Pandoc/rt_modern_classic.tex` in your vault.
 
@@ -192,7 +192,7 @@ This is a global plugin setting (not a per-template one). Most novels use 3 acts
 
 ### Step 3 — Make sure your scenes carry an `Act:` value
 
-Modern Classic generates Part breaks at every act-boundary transition in narrative order. It reads each scene's own `Act:` field directly (the same field the timeline ring uses to place the scene), so what you see partitioned in Narrative mode is exactly what gets printed as Parts.
+Signature generates Part breaks at every act-boundary transition in narrative order. It reads each scene's own `Act:` field directly (the same field the timeline ring uses to place the scene), so what you see partitioned in Narrative mode is exactly what gets printed as Parts.
 
 If you used **Book Designer** to scaffold your manuscript, this is already set. Otherwise, check that every scene has a numeric `Act:` field (`1`, `2`, `3`, …) in its frontmatter.
 
@@ -210,7 +210,7 @@ You can have many chapters per act. There's no upper limit and no naming require
 
 ### Step 5 — (Optional) Add act epigraphs
 
-**Settings → Publish → PDF Styles → Modern Classic** → click the **+** button at the end of the row to expand special options → **Act epigraphs**.
+**Settings → Publish → PDF Styles → Signature** → click the **+** button at the end of the row to expand special options → **Act epigraphs**.
 
 For each act, fill in:
 - **Quote** — the epigraph text
@@ -218,9 +218,9 @@ For each act, fill in:
 
 Epigraphs are **per-book** (stored against your active book profile), so different books can have different epigraphs using the same template. Leave them blank and the Part pages print without any quote.
 
-### Step 6 — Assign Modern Classic to the Novel format
+### Step 6 — Assign Signature to the Novel format
 
-Open the export panel (Command Palette → **Manuscript export**). In the template dropdown for Novel, choose **Modern Classic**. The plugin remembers your last selection for next time.
+Open the export panel (Command Palette → **Manuscript export**). In the template dropdown for Novel, choose **Signature**. The plugin remembers your last selection for next time.
 
 ### Step 7 — Export
 
@@ -235,11 +235,11 @@ The exporter:
 
 Output goes to `Radial Timeline/Export/` by default. The export destination is shown in **Settings → Advanced → Configuration**.
 
-### Minimum viable Modern Classic manuscript
+### Minimum viable Signature manuscript
 
-The smallest setup that produces a valid Modern Classic PDF:
+The smallest setup that produces a valid Signature PDF:
 
-- Modern Classic **Installed**
+- Signature **Installed**
 - **Act count** set (default 3 is fine)
 - At least one scene with an `Act:` field (`1`, `2`, …) — and one transition to a higher Act if you want a Part II
 - At least one scene (anywhere) with a `Chapter:` value
@@ -258,7 +258,7 @@ Templates that have the **Scene opener heading options** capability let you choo
 
 Find this in **Settings → Publish → PDF Styles → [template] → +** (expand) → **Scene openers**.
 
-**Modern Classic ignores this setting** because it doesn't print scene headings — scenes are separated by ornaments and carry no label. If you want labeled scene openers, use Standard Manuscript, Contemporary Literary, or Signature Literary.
+**Signature ignores this setting** because it doesn't print scene headings — scenes are separated by ornaments and carry no label. If you want labeled scene openers, use Basic, Standard, or Professional.
 
 ---
 
@@ -284,7 +284,7 @@ For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX is
 
 **Template shows "Not installed" after I clicked Install.** The `.tex` file couldn't be written — check that `Radial Timeline/Pandoc/` exists and is writable.
 
-**Parts don't appear in my Modern Classic export.** Parts only emit when scenes cross an act boundary. Check that your scenes have `Act:` values in their frontmatter and that more than one act is represented in the selection.
+**Parts don't appear in my Signature export.** Parts only emit when scenes cross an act boundary. Check that your scenes have `Act:` values in their frontmatter and that more than one act is represented in the selection.
 
 **Chapter numbering is wrong.** The exporter numbers chapters by the order `Chapter:` values appear in the timeline. If a `Chapter:` value appears out of order, renumbering will reflect that. Check narrative order via [Timeline Modes](Radial-Timeline-View#modes-at-a-glance).
 

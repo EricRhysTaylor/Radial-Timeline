@@ -177,7 +177,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: BUNDLED_FICTION_SIGNATURE_ID,
-        name: 'Signature Literary',
+        name: 'Professional',
         preset: 'novel',
         path: 'rt_signature_literary.tex',
         bundled: true,
@@ -190,7 +190,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: BUNDLED_FICTION_CLASSIC_ID,
-        name: 'Standard Manuscript',
+        name: 'Basic',
         preset: 'novel',
         path: 'rt_classic_manuscript.tex',
         bundled: true,
@@ -202,7 +202,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: BUNDLED_FICTION_CONTEMPORARY_ID,
-        name: 'Contemporary Literary',
+        name: 'Standard',
         preset: 'novel',
         path: 'rt_contemporary_literary.tex',
         bundled: true,
@@ -214,7 +214,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: BUNDLED_FICTION_MODERN_CLASSIC_ID,
-        name: 'Modern Classic',
+        name: 'Signature',
         preset: 'novel',
         path: 'rt_modern_classic.tex',
         bundled: true,

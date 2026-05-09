@@ -3,7 +3,7 @@ import type { PandocLayoutTemplate, TemplateKind, TemplateTier, ValidationIssue 
 export const BASIC_MANUSCRIPT_LAYOUT_ID = 'bundled-fiction-classic-manuscript';
 export const CONTEMPORARY_LITERARY_LAYOUT_ID = 'bundled-fiction-contemporary-literary';
 
-export const TEMPLATE_ACCESS_FALLBACK_MESSAGE = 'The saved PDF style is a Pro style. This export will use Standard Manuscript instead.';
+export const TEMPLATE_ACCESS_FALLBACK_MESSAGE = 'The saved PDF style is a Pro style. This export will use Basic instead.';
 export const TEMPLATE_ACCESS_LOCKED_MESSAGE = 'Selected PDF style requires Pro and no Core fallback is available.';
 
 export interface TemplateAccessResolution {
@@ -45,10 +45,10 @@ export function getPandocLayoutRecommendedUse(layout: Pick<PandocLayoutTemplate,
  * template that produced a given file is visible at a glance.
  *
  * Mapping:
- *   - Standard Manuscript      → "SM"
- *   - Contemporary Literary    → "CL"
- *   - Signature Literary       → "SL"
- *   - Modern Classic           → "MC"
+ *   - Basic         → "BA"
+ *   - Standard      → "ST"
+ *   - Professional  → "PR"
+ *   - Signature     → "SG"
  *   - Designed (origin: 'designed') → "DS"
  *   - Anything else (imported / custom / unknown) → "CT"
  */
@@ -57,10 +57,10 @@ export function getLayoutAbbreviation(
 ): string {
     if (!layout) return 'CT';
     switch (layout.id) {
-        case BASIC_MANUSCRIPT_LAYOUT_ID: return 'SM';
-        case CONTEMPORARY_LITERARY_LAYOUT_ID: return 'CL';
-        case 'bundled-fiction-signature-literary': return 'SL';
-        case 'bundled-fiction-modern-classic': return 'MC';
+        case BASIC_MANUSCRIPT_LAYOUT_ID: return 'BA';
+        case CONTEMPORARY_LITERARY_LAYOUT_ID: return 'ST';
+        case 'bundled-fiction-signature-literary': return 'PR';
+        case 'bundled-fiction-modern-classic': return 'SG';
     }
     if (layout.origin === 'designed') return 'DS';
     return 'CT';

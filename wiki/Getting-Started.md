@@ -39,7 +39,7 @@ The four modes in the Radial Timeline View — switch with `1`/`2`/`3`/`4` or th
 
 **Day to day:** write scenes, keep `Synopsis` current, update `Status` from Todo → Working → Complete. Use **Search timeline** to find scenes across metadata. See [How to](How-to) for task recipes (reordering, subplots, rotation, search).
 
-**When you're ready to share:** run **Radial Timeline: Manuscript export** to compile to Markdown, outline, or PDF. PDF requires [Pandoc](https://pandoc.org/installing.html) and a LaTeX distribution; configure under **Settings → Publish**. See [Publishing](Publishing) for templates and Modern Classic setup.
+**When you're ready to share:** run **Radial Timeline: Manuscript export** to compile to Markdown, outline, or PDF. PDF requires [Pandoc](https://pandoc.org/installing.html) and a LaTeX distribution; configure under **Settings → Publish**. See [Publishing](Publishing) for templates and Signature setup.
 
 **Optional next steps:** [AI Pulse Triplet Analysis](AI-Pulse-Analysis) for scene-level editorial feedback, [Inquiry](Inquiry) for corpus-level analysis, [Author Progress Report](Author-Progress-Report) for shareable spoiler-safe progress graphics.
 

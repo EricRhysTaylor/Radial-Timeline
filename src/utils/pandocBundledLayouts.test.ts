@@ -101,10 +101,10 @@ describe('bundled pandoc layout export auto-install', () => {
         const fictionLayouts = getBundledPandocLayouts().filter(layout => layout.preset === 'novel');
         expect(fictionLayouts).toHaveLength(4);
         expect(fictionLayouts.map(layout => layout.name)).toEqual([
-            'Standard Manuscript',
-            'Contemporary Literary',
-            'Signature Literary',
-            'Modern Classic'
+            'Basic',
+            'Standard',
+            'Professional',
+            'Signature'
         ]);
         expect(fictionLayouts.map(layout => layout.path)).toEqual([
             'rt_classic_manuscript.tex',
@@ -372,7 +372,7 @@ describe('bundled pandoc layout export auto-install', () => {
         ]);
 
         const signature = bundledFiction.find(layout => layout.id === 'bundled-fiction-signature-literary');
-        expect(signature?.name).toBe('Signature Literary');
+        expect(signature?.name).toBe('Professional');
         expect(signature?.path).toBe('rt_signature_literary.tex');
     });
 

@@ -2888,15 +2888,28 @@ body > .tooltip {
    (rt-ui.css), so every modal — not just this one — gets breathing room
    between description and content. No wizard override needed. */
 
-/* Per-category Reset bar — flex row at the top of each panel. Title (when
-   the panel injects one) hugs the left edge; small flat icon button hugs
-   the right. */
+/* Per-category Reset bar — flex row at the top of each panel. Reset hugs
+   the left edge; the prev/next chevron cluster hugs the right. A panel-
+   injected title (Page does this) sits between them. */
 .ert-style-wizard__reset-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0;
   margin-bottom: var(--ert-gap-xs);
+}
+
+/* Right-side category navigation: previous + next chevrons. Pinned to the
+   right of the reset bar, opposite the reset button. */
+.ert-style-wizard__category-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  margin-left: auto;
+}
+.ert-style-wizard__category-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .ert-style-wizard__panel-title {
   font-size: 0.95rem;

@@ -67,7 +67,7 @@ Core already includes Pandoc-based PDF export and the bundled Core publishing la
 - Duplicated bundled LaTeX layout files per format
 - Output to your export folder alongside analysis files
 
-> **Full guide**: [Publishing](Publishing) — template catalog, Modern Classic setup, Chapters, Parts, act epigraphs.
+> **Full guide**: [Publishing](Publishing) — template catalog, Signature setup, Chapters, Parts, act epigraphs.
 > **Settings**: [Publish](Publishing)
 
 ---

@@ -1841,10 +1841,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'novel' && layout.bundled) {
             const variant = getFictionVariantForLayout(layout);
-            if (variant === 'classic') return 'Standard Manuscript';
-            if (variant === 'modernClassic') return 'Modern Classic';
-            if (variant === 'signature') return 'Signature Literary';
-            if (variant === 'contemporary') return 'Contemporary Literary';
+            if (variant === 'classic') return 'Basic';
+            if (variant === 'contemporary') return 'Standard';
+            if (variant === 'signature') return 'Professional';
+            if (variant === 'modernClassic') return 'Signature';
         }
         if (layout.preset === 'screenplay' && layout.bundled) return 'Screenplay';
         return normalizeVersionLabels(layout.name || 'Custom Layout');

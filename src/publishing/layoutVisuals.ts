@@ -287,7 +287,7 @@ export function getLayoutFeaturesFromSpec(spec: DesignedStyleSpec): LayoutFeatur
     rows.push({ label: 'Headers',      value: describeHeaders(spec) });
     rows.push({ label: 'Folios',       value: describeFolios(spec) });
     rows.push({ label: 'Font',         value: describeFont(spec) });
-    rows.push({ label: 'Line spacing', value: describeSpacing(spec) });
+    rows.push({ label: 'Line space', value: describeSpacing(spec) });
 
     const partsRow = describeParts(spec);
     if (partsRow) rows.push({ label: 'Parts', value: partsRow });

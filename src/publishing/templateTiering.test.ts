@@ -23,25 +23,26 @@ function layout(overrides: Partial<PandocLayoutTemplate>): PandocLayoutTemplate 
 }
 
 describe('template tiering', () => {
-    it('marks Standard Manuscript and Contemporary Literary as Core templates', () => {
+    it('marks Basic and Standard as Core templates', () => {
         const bundled = getBundledPandocLayouts();
         const basic = bundled.find(item => item.id === BASIC_MANUSCRIPT_LAYOUT_ID);
-        const contemporary = bundled.find(item => item.id === CONTEMPORARY_LITERARY_LAYOUT_ID);
+        const standard = bundled.find(item => item.id === CONTEMPORARY_LITERARY_LAYOUT_ID);
 
         expect(basic).toMatchObject({
-            name: 'Standard Manuscript',
+            name: 'Basic',
             tier: 'free',
             templateKind: 'book',
         });
-        expect(contemporary).toMatchObject({
+        expect(standard).toMatchObject({
+            name: 'Standard',
             tier: 'free',
             templateKind: 'book',
         });
         expect(getPandocLayoutTier(basic!)).toBe('free');
-        expect(getPandocLayoutTier(contemporary!)).toBe('free');
+        expect(getPandocLayoutTier(standard!)).toBe('free');
     });
 
-    it('marks Signature Literary and Modern Classic as Pro templates', () => {
+    it('marks Professional and Signature as Pro templates', () => {
         const bundled = getBundledPandocLayouts();
 
         expect(getPandocLayoutTier(bundled.find(item => item.id === 'bundled-fiction-signature-literary')!)).toBe('pro');
@@ -71,23 +72,23 @@ describe('template tiering', () => {
         expect(getPandocLayoutKind(layout({ bundled: false }))).toBe('custom');
     });
 
-    it('falls a non-Pro novel Pro template back to Standard Manuscript', () => {
+    it('falls a non-Pro novel Pro template back to Basic', () => {
         const basic = layout({
             id: BASIC_MANUSCRIPT_LAYOUT_ID,
-            name: 'Standard Manuscript',
+            name: 'Basic',
             bundled: true,
             tier: 'free',
         });
-        const signature = layout({
+        const professional = layout({
             id: 'bundled-fiction-signature-literary',
-            name: 'Signature Literary',
+            name: 'Professional',
             bundled: true,
             tier: 'pro',
         });
 
         const access = resolveTemplateAccess({
-            layouts: [signature, basic],
-            selectedLayoutId: signature.id,
+            layouts: [professional, basic],
+            selectedLayoutId: professional.id,
             manuscriptPreset: 'novel',
             hasProAccess: false,
         });
@@ -116,10 +117,10 @@ describe('template tiering', () => {
         it('returns the correct two-letter code for each bundled fiction layout', () => {
             const bundled = getBundledPandocLayouts();
             const byId = (id: string) => bundled.find(item => item.id === id)!;
-            expect(getLayoutAbbreviation(byId(BASIC_MANUSCRIPT_LAYOUT_ID))).toBe('SM');
-            expect(getLayoutAbbreviation(byId(CONTEMPORARY_LITERARY_LAYOUT_ID))).toBe('CL');
-            expect(getLayoutAbbreviation(byId('bundled-fiction-signature-literary'))).toBe('SL');
-            expect(getLayoutAbbreviation(byId('bundled-fiction-modern-classic'))).toBe('MC');
+            expect(getLayoutAbbreviation(byId(BASIC_MANUSCRIPT_LAYOUT_ID))).toBe('BA');
+            expect(getLayoutAbbreviation(byId(CONTEMPORARY_LITERARY_LAYOUT_ID))).toBe('ST');
+            expect(getLayoutAbbreviation(byId('bundled-fiction-signature-literary'))).toBe('PR');
+            expect(getLayoutAbbreviation(byId('bundled-fiction-modern-classic'))).toBe('SG');
         });
 
         it('returns "DS" for designed-origin layouts', () => {
@@ -146,22 +147,22 @@ describe('template tiering', () => {
     });
 
     it('keeps the selected Pro template for Pro users', () => {
-        const modernClassic = layout({
+        const signatureLayout = layout({
             id: 'bundled-fiction-modern-classic',
-            name: 'Modern Classic',
+            name: 'Signature',
             bundled: true,
             tier: 'pro',
         });
 
         const access = resolveTemplateAccess({
-            layouts: [modernClassic],
-            selectedLayoutId: modernClassic.id,
+            layouts: [signatureLayout],
+            selectedLayoutId: signatureLayout.id,
             manuscriptPreset: 'novel',
             hasProAccess: true,
         });
 
         expect(access.usedFallback).toBe(false);
-        expect(access.effectiveLayout?.id).toBe(modernClassic.id);
+        expect(access.effectiveLayout?.id).toBe(signatureLayout.id);
         expect(access.issues).toEqual(expect.arrayContaining([
             expect.objectContaining({
                 level: 'info',

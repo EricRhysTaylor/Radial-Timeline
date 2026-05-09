@@ -56,7 +56,7 @@ Narrative Mode can show publishing-aware placards on the outside of the scene ri
 *   **P** — the selected PDF layout prints a Part opener at that act boundary.
 *   **P/C** — a Part and Chapter begin at the same boundary.
 
-These placards reflect the novel PDF layout selected in the Manuscript Export panel. For example, a layout that prints chapter openers can show **C** markers, while Modern Classic can also show **P** markers for Parts. Changing the selected export layout updates the timeline markers after the layout is saved.
+These placards reflect the novel PDF layout selected in the Manuscript Export panel. For example, a layout that prints chapter openers can show **C** markers, while Signature can also show **P** markers for Parts. Changing the selected export layout updates the timeline markers after the layout is saved.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/feature-parts-chapters.png" alt="Narrative Mode chapter and part markers around the perimeter" style="width: 560px; max-width: 100%; border-radius: 8px;" />

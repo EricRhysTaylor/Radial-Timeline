@@ -205,10 +205,10 @@ const ARCHETYPE_TO_BUNDLED: Record<DesignArchetype, BundledFictionId> = {
 };
 
 const ARCHETYPE_INFO: Record<DesignArchetype, { name: string; tagline: string }> = {
-    'submission':    { name: 'Standard Submission', tagline: 'Industry-standard double-spaced manuscript for agents.' },
-    'reading-draft': { name: 'Contemporary Literary', tagline: 'Clean, modern reading draft with chapter breaks.' },
-    'literary':      { name: 'Signature Literary',   tagline: 'Refined typesetting with letter-spaced running heads.' },
-    'structured':    { name: 'Modern Classic',       tagline: 'Roman parts, numbered chapters, section breaks.' },
+    'submission':    { name: 'Basic',        tagline: 'Industry-standard double-spaced manuscript for agents.' },
+    'reading-draft': { name: 'Standard',     tagline: 'Clean, modern reading draft with chapter breaks.' },
+    'literary':      { name: 'Professional', tagline: 'Refined typesetting with letter-spaced running heads.' },
+    'structured':    { name: 'Signature',    tagline: 'Roman parts, numbered chapters, section breaks.' },
 };
 
 const FONT_OPTIONS: Array<{ value: DesignedStyleSpec['body']['font']; label: string; familyHint: string }> = [
@@ -711,24 +711,81 @@ export class DesignedStyleWizardModal extends Modal {
     }
 
     /**
-     * Render a small flat icon button at the top-right of the active
-     * category's panel. Restores only the active category's slice of the
-     * spec to the open-time snapshot — other categories' edits stay.
+     * Render the per-category control bar at the top of the active panel.
+     *
+     * Layout (flex space-between):
+     *   left  → reset button (restores this category from the open-time snapshot)
+     *   right → prev / next chevrons (walk through WIZARD_CATEGORIES sequentially,
+     *           disabled at the first/last entry)
+     *
+     * The chevrons mirror the dropdown's selection — clicking them invokes
+     * the same `activateCategory` path the dropdown uses, so the dropdown,
+     * icon, and panel all stay in sync.
      *
      * Returns the bar element so callers can mutate it (e.g. inject a
-     * left-side title alongside the icon button — Page does this).
+     * left-side title alongside the reset button — Page does this).
      */
     private renderResetBar(parent: HTMLElement): HTMLElement {
         const bar = parent.createDiv({ cls: 'ert-style-wizard__reset-bar' });
-        const btn = bar.createEl('button', {
+
+        const resetBtn = bar.createEl('button', {
             cls: `${ERT_CLASSES.ICON_BTN} ert-style-wizard__reset-btn`,
         });
-        btn.type = 'button';
-        btn.setAttribute('aria-label', 'Reset to template');
-        btn.setAttribute('title', 'Restore this category to the template\'s starting values. Other categories are unchanged.');
-        try { setIcon(btn, 'rotate-ccw'); } catch { /* test env */ }
-        btn.addEventListener('click', () => this.resetActiveCategory());
+        resetBtn.type = 'button';
+        resetBtn.setAttribute('aria-label', 'Reset to template');
+        resetBtn.setAttribute('title', 'Restore this category to the template\'s starting values. Other categories are unchanged.');
+        try { setIcon(resetBtn, 'rotate-ccw'); } catch { /* test env */ }
+        resetBtn.addEventListener('click', () => this.resetActiveCategory());
+
+        // Right-side cluster: prev/next chevrons. Wrapped in a flex group so
+        // any future panel-injected title still sits between reset and nav
+        // (space-between won't divide three children evenly).
+        const nav = bar.createDiv({ cls: 'ert-style-wizard__category-nav' });
+        const activeIndex = WIZARD_CATEGORIES.findIndex(c => c.value === this.activeCategory);
+        const prevCategory = activeIndex > 0 ? WIZARD_CATEGORIES[activeIndex - 1] : null;
+        const nextCategory = activeIndex >= 0 && activeIndex < WIZARD_CATEGORIES.length - 1
+            ? WIZARD_CATEGORIES[activeIndex + 1]
+            : null;
+
+        const prevBtn = nav.createEl('button', {
+            cls: `${ERT_CLASSES.ICON_BTN} ert-style-wizard__category-nav-btn`,
+        });
+        prevBtn.type = 'button';
+        prevBtn.setAttribute('aria-label', 'Previous category');
+        prevBtn.setAttribute('title', prevCategory ? `Previous category — ${prevCategory.label}` : 'Already at the first category');
+        try { setIcon(prevBtn, 'chevron-left'); } catch { /* test env */ }
+        if (!prevCategory) {
+            prevBtn.disabled = true;
+        } else {
+            prevBtn.addEventListener('click', () => this.navigateToCategory(prevCategory.value));
+        }
+
+        const nextBtn = nav.createEl('button', {
+            cls: `${ERT_CLASSES.ICON_BTN} ert-style-wizard__category-nav-btn`,
+        });
+        nextBtn.type = 'button';
+        nextBtn.setAttribute('aria-label', 'Next category');
+        nextBtn.setAttribute('title', nextCategory ? `Next category — ${nextCategory.label}` : 'Already at the last category');
+        try { setIcon(nextBtn, 'chevron-right'); } catch { /* test env */ }
+        if (!nextCategory) {
+            nextBtn.disabled = true;
+        } else {
+            nextBtn.addEventListener('click', () => this.navigateToCategory(nextCategory.value));
+        }
+
         return bar;
+    }
+
+    /**
+     * Sync the dropdown to the new value, then activate the category. The
+     * dropdown's own `change` listener is bypassed (we set `.value` rather
+     * than dispatching an event), so we call `activateCategory` directly.
+     */
+    private navigateToCategory(category: WizardCategory): void {
+        if (this.categorySelect) {
+            this.categorySelect.value = category;
+        }
+        this.activateCategory(category);
     }
 
     /** Restore only the active category's slice from `originalSpec`. */
@@ -1241,7 +1298,7 @@ export class DesignedStyleWizardModal extends Modal {
 
         this.renderPanelGlossary(body, [
             { term: 'Body font',          definition: 'The typeface used for paragraph text. Each option is a real font you must have installed; the wizard reports missing fonts in red.' },
-            { term: 'Line spacing',       definition: 'Vertical space between baselines. Tight (1.0) is single-spaced; Standard (1.5) reads cleanly in print; Airy (2.0) is the editor-friendly double-space; Custom lets you dial in any value 0.8–3.' },
+            { term: 'Line space',         definition: 'Vertical space between baselines. Tight (1.0) is single-spaced; Standard (1.5) reads cleanly in print; Airy (2.0) is the editor-friendly double-space; Custom lets you dial in any value 0.8–3.' },
             { term: 'Paragraph indent',   definition: 'First-line indent on every paragraph, measured in `em` (the width of a capital M). Typical book setting: 1.0–1.5 em; 0 disables indent.' },
             { term: 'Suppress indent after break', definition: 'When on, the very first paragraph after a scene break or chapter heading does NOT get an indent — a print convention.' },
         ]);
@@ -1378,8 +1435,8 @@ export class DesignedStyleWizardModal extends Modal {
             { term: 'Running header',     definition: 'The repeating text at the top of every interior page (book title, author, scene context, page number, etc.). Even and odd pages can carry different content on facing-page books.' },
             { term: 'Even vs Odd page',   definition: 'Print convention: EVEN page numbers (2, 4, 6 …) sit on the LEFT (verso) side of an open spread; ODD numbers (1, 3, 5 …) sit on the RIGHT (recto). Page 1 is always recto. Hover any corner card for its specific page side.' },
             { term: 'Preset',             definition: 'Common header layouts wired up in one click. Use Customize per corner below to override individual slots — overrides layer on top of the preset.' },
-            { term: 'Header font',        definition: '"Inherit body" reuses the body typeface. "Sans" switches headers to a sans-serif (a Contemporary Literary convention).' },
-            { term: 'Letter spacing',     definition: 'Extra tracking between letters in running heads, in fontspec units (e.g. 15.0 produces the wide-set caps in Signature Literary). 0 means default tracking.' },
+            { term: 'Header font',        definition: '"Inherit body" reuses the body typeface. "Sans" switches headers to a sans-serif (a Standard layout convention).' },
+            { term: 'Letter spacing',     definition: 'Extra tracking between letters in running heads, in fontspec units (e.g. 15.0 produces the wide-set caps in the Professional layout). 0 means default tracking.' },
         ]);
     }
 
