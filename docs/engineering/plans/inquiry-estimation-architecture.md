@@ -1,5 +1,9 @@
 # Inquiry Estimation Architecture Audit
 
+## Status: Active reference
+
+Point-in-time audit of all estimation/context paths through Inquiry as of March 2026. The map's structure is still useful for debugging discrepancies between settings forecast and view preview; specific function names may have drifted. Re-verify before acting.
+
 ## Part 1 — Map of All Current Estimate / Context Computation Paths
 
 ### 1.1 Token Estimation

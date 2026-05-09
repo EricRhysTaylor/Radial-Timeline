@@ -32,14 +32,17 @@ Location: `docs/engineering/standards/`
 - **[refactor-playbook.md](standards/refactor-playbook.md)**
   Step-by-step rules for performing structural refactors safely.
 
+- **[fallback-policy.md](standards/fallback-policy.md)**
+  Authoritative no-fallback policy. Hard-fail at boundaries, surface real errors, never silently substitute. Enforced by `scripts/fallback-gate.mjs` and wired into `npm run gates`.
+
 - **[code-standards.md](standards/code-standards.md)**
   Supporting coding standards. Use after `ui-architecture.md` for UI/settings/modal work.
 
 - **[css-guidelines.md](standards/css-guidelines.md)**
   Supporting CSS guidance and enforcement notes. Use after `ui-architecture.md`.
 
-- **[modal-styling.md](standards/modal-styling.md)**
-  Legacy/deprecated modal guidance. Consult only for migration context after `ui-architecture.md`.
+- **[css-namespace-policy.md](standards/css-namespace-policy.md)**
+  ERT vs `rt-*` namespace boundaries, allowlisted legacy islands, and the supporting allowlist file at `scripts/css-namespace-allowlist.json`.
 
 - **[frontend-design.md](standards/frontend-design.md)**
   Frontend design aesthetics, UI/UX direction, and visual quality guide.

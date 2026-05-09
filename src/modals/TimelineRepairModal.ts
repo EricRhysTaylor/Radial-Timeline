@@ -949,6 +949,9 @@ export class TimelineRepairModal extends Modal {
         if (this.openNotePaths.has(entry.file.path)) {
             card.addClass('ert-is-open-note');
         }
+        if (this.auditIncluded.has(entry.file.path)) {
+            card.addClass('ert-is-audit-selected');
+        }
         if (this.lastRippledIndices?.has(idx)) {
             card.addClass('ert-is-rippled');
         }
@@ -995,29 +998,15 @@ export class TimelineRepairModal extends Modal {
         });
         setTooltip(narrativePill, t('timelineRepairModal.review.narrativePlacement', { count: idx + 1 }));
 
+        // Status / warning icons — clustered together after the title pills
+        // so the row reads: identity → state icons → evidence (cue chips).
+        // The open-note marker is a state, not a warning, but it groups with
+        // the others as part of the icon cluster.
         if (this.openNotePaths.has(entry.file.path)) {
             const openBadge = line1.createSpan({ cls: 'ert-timeline-repair-open-badge' });
             setIcon(openBadge, 'file-text');
             setTooltip(openBadge, t('timelineRepairModal.review.openInWorkspace'));
         }
-
-        // Cue chips: editorial evidence, always shown if cues were detected,
-        // even on authored anchors where the cue did not drive the date.
-        if (entry.cues?.length) {
-            for (const cue of entry.cues) {
-                const cueChip = line1.createEl('a', { cls: 'ert-timeline-repair-cue-chip' });
-                cueChip.setText(`"${cue.match}"`);
-                cueChip.setAttribute('aria-label', `Open note and search for "${cue.match}"`);
-                cueChip.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    void this.openCueInFreshTab(entry.file, cue.match);
-                    this.close();
-                });
-            }
-        }
-
-        // Warning badges
         if (entry.originalWhen === null && entry.source !== 'authored') {
             const missingBadge = line1.createSpan({ cls: 'ert-timeline-repair-missing-badge' });
             setIcon(missingBadge, 'calendar-off');
@@ -1039,13 +1028,29 @@ export class TimelineRepairModal extends Modal {
             setTooltip(dupBadge, t('timelineRepairModal.review.warningDuplicateWhen'));
         }
 
-        // Pattern compliance chip
+        // Pattern compliance chip — sits at the right edge of line 1.
         const compliance = this.getComplianceState(entry);
         const complianceChip = line1.createSpan({
             cls: 'ert-timeline-repair-compliance-chip'
         });
         complianceChip.addClass(`ert-compliance-${compliance.className}`);
         complianceChip.setText(compliance.label);
+
+        // Cue chips: editorial evidence, last in the row so the icon cluster
+        // and compliance chip stay visually adjacent regardless of cue count.
+        if (entry.cues?.length) {
+            for (const cue of entry.cues) {
+                const cueChip = line1.createEl('a', { cls: 'ert-timeline-repair-cue-chip' });
+                cueChip.setText(`"${cue.match}"`);
+                cueChip.setAttribute('aria-label', `Open note and search for "${cue.match}"`);
+                cueChip.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    void this.openCueInFreshTab(entry.file, cue.match);
+                    this.close();
+                });
+            }
+        }
 
         // LINE 2: timeline + actions
         const line2 = contentArea.createDiv({ cls: 'ert-timeline-repair-line2' });
@@ -1141,10 +1146,12 @@ export class TimelineRepairModal extends Modal {
             if (this.auditIncluded.has(path)) {
                 this.auditIncluded.delete(path);
                 auditBtn.removeClass('ert-is-active');
+                card.removeClass('ert-is-audit-selected');
                 setTooltip(auditBtn, t('timelineRepairModal.review.auditToggleOff'));
             } else {
                 this.auditIncluded.add(path);
                 auditBtn.addClass('ert-is-active');
+                card.addClass('ert-is-audit-selected');
                 setTooltip(auditBtn, t('timelineRepairModal.review.auditToggleOn'));
             }
             this.updateAuditFooter();

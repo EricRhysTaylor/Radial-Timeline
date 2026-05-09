@@ -1,5 +1,9 @@
 # Manuscript Export Modal Improvements
 
+## Status: Shipped — Archived
+
+The improvements described here have shipped (icons, previews, template guidance). The current Manuscript Export Modal lives in `src/modals/ManuscriptOptionsModal.ts`. This document is preserved for design rationale only.
+
 ## Overview
 The Manuscript Export Modal needs better context, icons, previews, and template guidance to help authors understand their options.
 

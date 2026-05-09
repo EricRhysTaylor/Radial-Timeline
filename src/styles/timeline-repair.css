@@ -510,6 +510,14 @@
     border-left: 3px solid var(--text-warning);
 }
 
+/* Audit-selected: subtle accent fill across the row plus a right-edge stripe
+ * so it reads as "queued for Audit" without competing with the left-edge
+ * warning stripes (needs-review, backward-time, duplicate-when). */
+.ert-timeline-repair-scene-card.ert-is-audit-selected {
+    background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-secondary));
+    box-shadow: inset -3px 0 0 var(--interactive-accent);
+}
+
 .ert-timeline-repair-scene-card.ert-is-open-note {
     box-shadow:
         inset 2px 0 0 color-mix(in srgb, var(--text-accent) 55%, transparent),
@@ -803,9 +811,9 @@
 }
 
 .ert-timeline-repair-audit-toggle.ert-is-active {
-    background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+    background: var(--interactive-accent);
     border-color: var(--interactive-accent);
-    color: var(--interactive-accent);
+    color: var(--text-on-accent);
 }
 
 .ert-timeline-repair-audit-toggle svg {

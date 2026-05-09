@@ -1,5 +1,9 @@
 # AI Strategy Adapter Roadmap (March 2026)
 
+## Status: Snapshot (Mar 2026) — Historical reference
+
+Point-in-time map of provider adapter capabilities as of March 2026. Not the current state of the codebase. Use as historical reference; verify current adapter behavior in `src/api/` and `src/ai/runtime/` before acting on anything described here.
+
 ## Purpose
 Concrete status map for RT provider adapters and an execution roadmap to align capability claims with real runtime behavior.
 

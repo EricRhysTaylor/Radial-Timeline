@@ -1,5 +1,9 @@
 # Inquiry Primary View Planning Document (Planning Stage)
 
+## Status: Shipped — Archived
+
+Inquiry view shipped. Live in `src/inquiry/InquiryView.ts`. This document is preserved for the design rationale and the spec-derived non-negotiables; the executed UI may differ in detail. Do not treat as current spec.
+
 ## Overview
 This document defines the planning-stage blueprint for the Inquiry Primary View in Radial Timeline. It translates the v1 Inquiry spec into UI structure, data flow, and implementation steps without changing any story files. Inquiry ships as a new view type, desktop-only for v1, and remains code-isolated from core timeline logic. Inquiry uses only book and saga scopes; scenes are focus targets within book scope, not a standalone scope.
 

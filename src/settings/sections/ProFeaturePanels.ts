@@ -2905,6 +2905,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         button.setButtonText('Design your own…');
         button.setTooltip('Design a new PDF style from scratch.');
         button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
+        if (__RT_RELEASE__) {
+            button.setDisabled(true);
+            button.setTooltip('BETA release pending—Design a new PDF style from scratch.');
+            button.onClick(() => { /* no-op: BETA release pending */ });
+            return;
+        }
         if (!isActive) {
             button.buttonEl.addClass('ert-pro-locked');
             button.setTooltip('Designing custom styles requires Pro.');

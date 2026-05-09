@@ -41,11 +41,15 @@ If the system cannot produce a correct result:
 
 Do not silently fall back to heuristics or alternate code paths.
 
+**Hard fail is preferred to silent recovery.** A loud failure surfaces real bugs and architectural flaws while they're still cheap to fix. A silent fallback masks them, accumulates them, and ships them to authors as inexplicable wrong answers months later.
+
 Fallback logic introduces:
 
-- incorrect results
-- hidden bugs
-- testing complexity
+- incorrect results that look correct
+- hidden bugs that survive the next refactor
+- testing complexity (you have to test the fallback path AND the unreachable error path)
+- false confidence in code that hasn't been exercised
+- a permanent excuse not to fix the underlying problem
 
 Bad:
 
@@ -61,6 +65,10 @@ Correct:
 try providerEstimate
 if fail -> surface error
 ```
+
+**The discipline:** when a function looks like it might need a fallback, ask why the upstream contract is unreliable. Fix the contract. A codebase whose callers trust their inputs is dramatically simpler than one whose every function defends against its callers.
+
+This rule is enforced at boundaries by `scripts/fallback-gate.mjs` and is one of the four explicit author-trust principles (see `fallback-policy.md`).
 
 ---
 
