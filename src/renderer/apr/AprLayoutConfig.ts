@@ -10,7 +10,6 @@ export { APR_COLORS, APR_TEXT_COLORS } from './AprConstants';
 export type { AprSize, AprLayoutSpec };
 
 export const APR_LAYOUT: Record<AprSize, AprLayoutSpec> = {
-    thumb: computeAprLayout(getAprPreset('thumb'), { percent: 0 }),
     small: computeAprLayout(getAprPreset('small'), { percent: 0 }),
     medium: computeAprLayout(getAprPreset('medium'), { percent: 0 }),
     large: computeAprLayout(getAprPreset('large'), { percent: 0 }),

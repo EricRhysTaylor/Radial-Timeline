@@ -1,5 +1,7 @@
-export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
+export type AprSize = 'small' | 'medium' | 'large';
 export type AprFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
+/** Legacy v1 path tokens kept here ONLY for matching pre-v6 export filenames. Not a valid AprSize. */
+type LegacyAprSizeToken = 'thumb' | 'small' | 'medium' | 'large';
 export type AprExportFormat = 'png' | 'svg';
 export type AprExportQuality = 'standard' | 'ultra' | 'print';
 
@@ -56,8 +58,8 @@ export function normalizeAprExportFormat(value: unknown): AprExportFormat {
     return EXPORT_FORMATS.includes(normalized as AprExportFormat) ? normalized as AprExportFormat : 'png';
 }
 
-/** Legacy size tokens used in v1 paths */
-const LEGACY_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
+/** Legacy size tokens used in v1 paths (kept for backward-compat path matching only). */
+const LEGACY_SIZES: LegacyAprSizeToken[] = ['thumb', 'small', 'medium', 'large'];
 const QUALITY_TOKENS: AprExportQuality[] = ['standard', 'ultra', 'print'];
 
 /**

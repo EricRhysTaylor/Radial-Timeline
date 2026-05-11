@@ -121,14 +121,12 @@ export class AuthorProgressRenderService {
 
         const designSize = settings.aprSize || 'medium';
         const exportQuality: AprExportQuality = settings.aprExportQuality || 'standard';
-        const isThumb = designSize === 'thumb';
         const bookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
 
         // Honor the persisted view mode from social settings (teaser preview dropdown).
         // 'auto' / undefined → full reveal. 'ring'/'scenes'/'colors'/'full' → apply that level.
         const baseReveal = this.resolveBaseRevealOptions(settings.aprDefaultViewMode, settings);
-        const isRing = settings.aprDefaultViewMode === 'ring';
-        const ringOnly = isThumb || isRing;
+        const ringOnly = settings.aprDefaultViewMode === 'ring';
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,
@@ -235,7 +233,7 @@ export class AuthorProgressRenderService {
 
         const designSize = campaign.aprSize || settings.aprSize || 'medium';
         const exportQuality: AprExportQuality = campaign.aprExportQuality || settings.aprExportQuality || 'standard';
-        const ringOnly = designSize === 'thumb' || isRingLevel;
+        const ringOnly = isRingLevel;
         const bookTitle = resolveBookTitle(campaign, books, this.plugin.getActiveBookTitle());
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {

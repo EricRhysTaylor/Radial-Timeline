@@ -23,7 +23,7 @@ export class AuthorProgressModal extends Modal {
     private service: AuthorProgressService;
 
     // Reveal options (derived from settings)
-    private aprSize: 'thumb' | 'small' | 'medium' | 'large';
+    private aprSize: 'small' | 'medium' | 'large';
     private lastFullSize: 'small' | 'medium' | 'large' = 'medium';
     private exportQuality: AprExportQuality = 'standard';
     private selectedTargetId: 'default' | string = 'default';
@@ -47,9 +47,7 @@ export class AuthorProgressModal extends Modal {
         // Initialize reveal options from settings
         // Initialize size from settings
         this.aprSize = settings.aprSize ?? 'medium';
-        if (this.aprSize !== 'thumb') {
-            this.lastFullSize = this.aprSize;
-        }
+        this.lastFullSize = this.aprSize;
         this.exportQuality = settings.aprExportQuality ?? 'standard';
     }
 
@@ -62,15 +60,15 @@ export class AuthorProgressModal extends Modal {
         return this.selectedTargetId !== 'default';
     }
 
-    private getGlobalAprSize(): 'thumb' | 'small' | 'medium' | 'large' {
+    private getGlobalAprSize(): 'small' | 'medium' | 'large' {
         return this.plugin.settings.authorProgress?.defaults.aprSize ?? this.aprSize ?? 'medium';
     }
 
-    private getEffectiveAprSize(campaign?: AuthorProgressCampaign): 'thumb' | 'small' | 'medium' | 'large' {
+    private getEffectiveAprSize(campaign?: AuthorProgressCampaign): 'small' | 'medium' | 'large' {
         return campaign?.aprSize ?? this.getGlobalAprSize();
     }
 
-    private getActiveAprSize(): 'thumb' | 'small' | 'medium' | 'large' {
+    private getActiveAprSize(): 'small' | 'medium' | 'large' {
         return this.getEffectiveAprSize(this.getSelectedCampaign());
     }
 
@@ -304,7 +302,7 @@ export class AuthorProgressModal extends Modal {
         bookTitle: string;
         projectPath: string;
         path: string;
-        size: 'thumb' | 'small' | 'medium' | 'large';
+        size: 'small' | 'medium' | 'large';
         exportQuality: AprExportQuality;
         campaign?: AuthorProgressCampaign;
     }>, includeFormatColumn = false): void {
@@ -708,7 +706,7 @@ export class AuthorProgressModal extends Modal {
         bookTitle: string;
         projectPath: string;
         path: string;
-        size: 'thumb' | 'small' | 'medium' | 'large';
+        size: 'small' | 'medium' | 'large';
         exportQuality: AprExportQuality;
         campaign?: AuthorProgressCampaign;
     }> {
@@ -720,7 +718,7 @@ export class AuthorProgressModal extends Modal {
             bookTitle: string;
             projectPath: string;
             path: string;
-            size: 'thumb' | 'small' | 'medium' | 'large';
+            size: 'small' | 'medium' | 'large';
             exportQuality: AprExportQuality;
             campaign?: AuthorProgressCampaign;
         }> = [];
@@ -879,12 +877,7 @@ export class AuthorProgressModal extends Modal {
         return { label: this.formatDays(remaining) };
     }
 
-    private getDefaultReportStageDisplay(size: 'thumb' | 'small' | 'medium' | 'large'): { label: string; icon: string; tooltip?: string } {
-        // Thumb size always renders ring/bar.
-        if (size === 'thumb') {
-            const info = TEASER_LEVEL_INFO.ring;
-            return { label: info.label.toUpperCase(), icon: info.icon };
-        }
+    private getDefaultReportStageDisplay(_size: 'small' | 'medium' | 'large'): { label: string; icon: string; tooltip?: string } {
         // Honor the persisted view mode (set via the social settings teaser preview dropdown).
         const defaultViewMode = this.plugin.settings.authorProgress?.defaults.aprDefaultViewMode;
         const level = (defaultViewMode && defaultViewMode !== 'auto') ? defaultViewMode : 'full';

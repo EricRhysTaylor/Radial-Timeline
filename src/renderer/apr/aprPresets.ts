@@ -1,16 +1,19 @@
 /**
  * APR presets - minimal definitions for derived layout.
  *
- * Preview sizes (thumb/small/medium/large) control the settings preview.
- * Export quality (standard/ultra) controls the actual published output.
+ * Preview sizes (small/medium/large) control the settings preview.
+ * Export quality (standard/ultra/print) controls the actual published output.
  * All exports render at high resolution regardless of preview size.
+ *
+ * Note: The legacy 'thumb' (100px) preview size was removed in v6.x. Ring-only rendering
+ * is now controlled by `aprDefaultViewMode === 'ring'`, independent of size.
  */
 
-export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
+export type AprSize = 'small' | 'medium' | 'large';
 
 export type AprExportQuality = 'standard' | 'ultra' | 'print';
 
-export type AprPresetKey = 'xs100' | 'sm150' | 'md300' | 'lg450';
+export type AprPresetKey = 'sm150' | 'md300' | 'lg450';
 
 export type AprPreset = {
     key: AprPresetKey;
@@ -22,14 +25,6 @@ export type AprPreset = {
 };
 
 export const APR_PRESETS: Record<AprPresetKey, AprPreset> = {
-    xs100: {
-        key: 'xs100',
-        outerPx: 100,
-        innerRadiusPx: 14,
-        enableText: false,
-        enableCenterLabel: false,
-        density: 0.07,
-    },
     sm150: {
         key: 'sm150',
         outerPx: 150,
@@ -54,7 +49,6 @@ export const APR_PRESETS: Record<AprPresetKey, AprPreset> = {
 } as const;
 
 export const APR_SIZE_TO_PRESET: Record<AprSize, AprPresetKey> = {
-    thumb: 'xs100',
     small: 'sm150',
     medium: 'md300',
     large: 'lg450',
@@ -75,19 +69,17 @@ export function getAprPreset(sizeOrKey: AprSize | AprPresetKey): AprPreset {
 }
 
 /**
- * Build an export preset from a design intent (thumb vs full) and export quality.
+ * Build an export preset from a design intent and export quality.
  * Preview sizes control the design features (text, labels, density).
  * Export quality controls the output resolution.
  */
-export function getExportPreset(designSize: AprSize, quality: AprExportQuality): AprPreset {
+export function getExportPreset(_designSize: AprSize, quality: AprExportQuality): AprPreset {
     const exportPx = APR_EXPORT_PX[quality];
-    const isThumb = designSize === 'thumb';
-
     return {
-        key: (isThumb ? 'xs100' : 'lg450') as AprPresetKey,
+        key: 'lg450' as AprPresetKey,
         outerPx: exportPx,
-        enableText: !isThumb,
-        enableCenterLabel: !isThumb,
+        enableText: true,
+        enableCenterLabel: true,
         density: 0.55,
     };
 }

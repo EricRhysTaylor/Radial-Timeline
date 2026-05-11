@@ -182,7 +182,6 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // Downstream code can trust stageColorMap.Press et al. without further checks.
     const stageColorMap = resolveStageColors(stageColors);
     const stageColorLookup = stageColorMap as Record<string, string>;
-    const isThumb = size === 'thumb';
     const showScenesFinal = showScenes;
     const showProgressPercentFinal = layout.centerLabel.enabled && showProgressPercent;
     const showBrandingFinal = layout.preset.enableText && showBranding;
@@ -192,9 +191,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const stageBadgeColor = normalizeOptionalColor(stageColorLookup[stageInfo.key])
         ?? stageColorMap.Press;
     const revealCountdownDays = resolveRevealCountdownDays(teaserRevealEnabled);
-    const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
-    const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
-    const structuralBorderOpacity = isThumb ? 1 : undefined;
+    const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText;
+    const structuralBorderColor = structural.border;
     const centerStrokeW = layout.strokes.centerRing;
 
     // Filter scenes (exclude beat notes always)
@@ -280,17 +278,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const rtAttributionColorResolved = stageBadgeColorResolved;
     const percentNumberColorResolved = percentNumberColorResolvedInput ?? bookTitleColorResolved;
     const percentSymbolColorResolved = percentSymbolColorResolvedInput ?? bookTitleColorResolved;
-    const ringOptions = !showScenesFinal && isThumb
-        ? {
-            ghostColor: stageColorMap.Press,
-            ghostOpacity: 0.1,
-            ghostWidth: (outerRadius - innerRadius) * 0.78,
-            showBorders: false
-        }
-        : {};
     const progressColor = stageColorMap.Press;
-    const progressGhostColor = ringOptions?.ghostColor ?? structural.border;
-    const progressGhostOpacity = ringOptions?.ghostOpacity ?? 0.25;
+    const progressGhostColor = structural.border;
+    const progressGhostOpacity = 0.25;
     const svgStyle = [
         `--apr-bg: ${bgFill}`,
         `--apr-center-fill: ${holeFill}`,
@@ -311,9 +301,6 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         `--apr-progress-ghost-opacity: ${progressGhostOpacity}`,
         `--apr-center-mark-color: ${progressColor}`
     ];
-    if (structuralBorderOpacity !== undefined) {
-        svgStyle.push(`--apr-struct-border-opacity: ${structuralBorderOpacity}`);
-    }
 
     const svgStyleString = svgStyle.join('; ');
     const svgStyleAttr = portableSvg ? '' : ` style="${svgStyleString}"`; // SAFE: inline style used for CSS variable surface in SVG (omitted in portable mode)
@@ -340,9 +327,11 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // RING-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
     if (!showScenesFinal) {
+        // Ring mode: double the outer/inner border stroke for visible weight at small preview sizes.
+        // Rounded to integer pixels for crisp rendering (avoids sub-pixel antialiasing).
+        const ringBorderWidth = Math.max(2, Math.round(borderWidth * 2));
         svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, color, opacity, {
-            ...ringOptions,
-            borderWidth: borderWidth
+            borderWidth: ringBorderWidth
         });
     } else {
         const ringFilter = grayscaleScenes ? ' filter="url(#aprGrayscale)"' : '';
@@ -396,26 +385,24 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     }
 
-    if (!isThumb) {
-        svg += renderAprBadges({
-            size,
-            layout,
-            stageLabel: stageInfo.label,
-            showStageBadge: true,
-            showRtAttribution: showRtAttributionFinal,
-            revealCountdownDays,
-            rtBadgeFontFamily,
-            rtBadgeFontWeight,
-            rtBadgeFontItalic,
-            rtBadgeFontSize,
-            badgeColor: stageBadgeColorResolved,
-            countdownColor: stageBadgeColorResolved,
-            rtAttributionColor: rtAttributionColorResolved,
-            portableSvg
-        });
-    }
+    svg += renderAprBadges({
+        size,
+        layout,
+        stageLabel: stageInfo.label,
+        showStageBadge: true,
+        showRtAttribution: showRtAttributionFinal,
+        revealCountdownDays,
+        rtBadgeFontFamily,
+        rtBadgeFontWeight,
+        rtBadgeFontItalic,
+        rtBadgeFontSize,
+        badgeColor: stageBadgeColorResolved,
+        countdownColor: stageBadgeColorResolved,
+        rtAttributionColor: rtAttributionColorResolved,
+        portableSvg
+    });
 
-    if (debugLabel && !isThumb) {
+    if (debugLabel) {
         svg += `<text x="${half - 10}" y="${half - 10}" text-anchor="end" font-family="sans-serif" font-size="10" fill="#ef4444" font-weight="bold">${escapeXmlText(debugLabel)}</text>`;
     }
 

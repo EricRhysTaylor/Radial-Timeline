@@ -54,7 +54,17 @@ function normalizePublishTarget(value: unknown, fallback: AuthorProgressPublishT
 }
 
 function normalizeAprSize(value: unknown, fallback: AuthorProgressDefaults['aprSize']): AuthorProgressDefaults['aprSize'] {
-    return value === 'thumb' || value === 'small' || value === 'medium' || value === 'large' ? value : fallback;
+    // TODO(v7): Remove the 'thumb' → 'small' migration. See docs/engineering/plans/v7-removals.md.
+    // Pre-v6 'thumb' (100px) is gone; map to 'small' (150px). Ring-only behavior is
+    // preserved by also forcing aprDefaultViewMode='ring' in migrateDefaults below.
+    if (value === 'thumb') return 'small';
+    if (value === 'small' || value === 'medium' || value === 'large') return value;
+    return fallback;
+}
+
+/** True when the saved aprSize was the legacy 'thumb' value (pre-v6). */
+function isLegacyThumbSize(value: unknown): boolean {
+    return value === 'thumb';
 }
 
 function normalizeAprDefaultViewMode(
@@ -275,6 +285,12 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
     const noteBehavior = raw.noteBehavior === 'custom' || raw.defaultNoteBehavior === 'custom' ? 'custom' : 'preset';
     const updateFrequency = normalizeFrequency(raw.updateFrequency, defaults.updateFrequency);
     const aprSize = normalizeAprSize(raw.aprSize, defaults.aprSize);
+    // If migrating from legacy thumb size, force the view mode to 'ring' to preserve the
+    // visual outcome (thumb used to imply ring-only rendering).
+    // TODO(v7): Remove this thumb-aware fallback. See docs/engineering/plans/v7-removals.md.
+    const aprDefaultViewMode = isLegacyThumbSize(raw.aprSize)
+        ? 'ring' as const
+        : normalizeAprDefaultViewMode(raw.aprDefaultViewMode, defaults.aprDefaultViewMode);
     const exportFormat = normalizeAprExportFormat(raw.exportFormat);
 
     const rawProgressMode = raw.aprProgressMode;
@@ -304,7 +320,7 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
             ? Math.floor(raw.aprTargetSceneCount)
             : undefined,
         aprSize,
-        aprDefaultViewMode: normalizeAprDefaultViewMode(raw.aprDefaultViewMode, defaults.aprDefaultViewMode),
+        aprDefaultViewMode,
         exportFormat,
         aprBackgroundColor: asString(raw.aprBackgroundColor) ?? defaults.aprBackgroundColor,
         aprCenterTransparent: asBoolean(raw.aprCenterTransparent, defaults.aprCenterTransparent ?? true),

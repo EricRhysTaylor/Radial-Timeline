@@ -153,12 +153,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     let refreshPreview = () => {};
     let refreshCampaignStyleState: (() => void) | null = null;
     let teaserSelectWrap: HTMLDivElement | null = null;
-    const updateTeaserPreviewVisibility = (_size: 'thumb' | 'small' | 'medium' | 'large') => {
+    const updateTeaserPreviewVisibility = (_size: 'small' | 'medium' | 'large') => {
         // Dropdown always visible — Ring mode is valid at all sizes including thumb
     };
 
     const sizeButtons = [
-        { size: 'thumb', dimension: '100' },
         { size: 'small', dimension: '150' },
         { size: 'medium', dimension: '300' },
         { size: 'large', dimension: '450' },
@@ -1938,7 +1937,7 @@ async function renderHeroPreview(
     app: App,
     plugin: RadialTimelinePlugin,
     container: HTMLElement,
-    size: 'thumb' | 'small' | 'medium' | 'large' = 'medium',
+    size: 'small' | 'medium' | 'large' = 'medium',
     teaserPreviewMode: TeaserPreviewMode = 'auto'
 ): Promise<void> {
     try {
@@ -1967,23 +1966,22 @@ async function renderHeroPreview(
             ? resolvedStyle.aprShowRtAttribution !== false
             : true;
 
-        const isThumb = size === 'thumb';
         const baseShowSubplots = aprSettings?.showSubplots ?? true;
         const baseShowActs = aprSettings?.showActs ?? true;
         const baseShowStatusColors = aprSettings?.showStatus ?? true;
         const baseShowProgressPercent = aprSettings?.showProgressPercent ?? true;
 
-        let showScenes = !isThumb;
+        let showScenes = true;
         let showSubplots = baseShowSubplots;
         let showActs = baseShowActs;
         let showStatusColors = baseShowStatusColors;
         let showStageColors = true;
         let grayCompletedScenes = false;
         let grayscaleScenes = false;
-        let showProgressPercent = isThumb ? false : baseShowProgressPercent;
-        let showBranding = !isThumb;
+        let showProgressPercent = baseShowProgressPercent;
+        let showBranding = true;
 
-        if (isProActive && !isThumb) {
+        if (isProActive) {
             let previewLevel: TeaserRevealLevel | null = null;
             if (teaserPreviewMode !== 'auto') {
                 previewLevel = teaserPreviewMode;

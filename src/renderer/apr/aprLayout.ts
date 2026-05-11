@@ -3,7 +3,7 @@
  */
 
 import type { AprPreset } from './aprPresets';
-import { APR_BASE_RADII, APR_THUMB_RADII, APR_BRANDING_TUNING } from './AprConstants';
+import { APR_BASE_RADII, APR_BRANDING_TUNING } from './AprConstants';
 
 export type AprData = {
     percent?: number;
@@ -86,17 +86,11 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const textBand = preset.enableText ? px(outerPx, kTextBand) : 0;
 
     // Derive scale from outerPx — no lookup table needed
-    const isThumbDesign = !preset.enableText;
-    const radii = isThumbDesign
-        ? {
-            inner: APR_THUMB_RADII.inner * (outerPx / 100),
-            outer: APR_THUMB_RADII.outer * (outerPx / 100),
-        }
-        : {
-            inner: APR_BASE_RADII.inner * (outerPx / 300),
-            outer: APR_BASE_RADII.outer * (outerPx / 300),
-            text: APR_BASE_RADII.text * (outerPx / 300),
-        };
+    const radii = {
+        inner: APR_BASE_RADII.inner * (outerPx / 300),
+        outer: APR_BASE_RADII.outer * (outerPx / 300),
+        text: APR_BASE_RADII.text * (outerPx / 300),
+    };
     const ringOuterR = radii.outer;
     const ringInnerR = radii.inner;
     const ringThickness = ringOuterR - ringInnerR;

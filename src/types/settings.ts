@@ -374,7 +374,7 @@ export interface AuthorProgressDefaults {
     aprProgressDateStart?: string;
     aprProgressDateTarget?: string;
     aprTargetSceneCount?: number; // Author-estimated total scenes — APR denominator when current scene count is smaller
-    aprSize?: 'thumb' | 'small' | 'medium' | 'large';
+    aprSize?: 'small' | 'medium' | 'large';
     aprExportQuality?: AprExportQuality; // Standard (1200px) or Ultra (2400px)
     // Persisted view mode for the Default Report and any campaign with teaser OFF.
     // Mirrors the teaser preview dropdown in social settings. 'auto' = use progress %.
@@ -546,7 +546,7 @@ export interface AuthorProgressCampaign {
     // Book targeting (Pro: select a specific book; default: follows active book)
     targetBookId?: string;            // Book Manager book ID — undefined = current active book
 
-    aprSize?: 'thumb' | 'small' | 'medium' | 'large';
+    aprSize?: 'small' | 'medium' | 'large';
     aprExportQuality?: AprExportQuality;
 
     // Explicit style resolution

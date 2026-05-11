@@ -19,7 +19,26 @@ Migration shims and deprecated fallbacks kept for users upgrading from v6.x. Whe
 
 **Why it's safe at v7:** Anyone running v7 will have loaded their settings under v6.x at least once, which silently rewrites `'bar'` → `'ring'` and persists. By the time v7 ships, no live settings file should still contain `'bar'`. Users who skip v6.x entirely (jumping from v5 or earlier directly to v7) wouldn't have `aprDefaultViewMode` at all — it's a v6-era field.
 
-## 2. All v5 → v6 migration shims
+## 2. Legacy `'thumb'` (100²) APR preview size
+
+**Context:** During v6.0.x, the `'thumb'` value was removed from `AprSize` because it conflated "small preview" with "ring-only rendering." Ring-only is now controlled by `aprDefaultViewMode === 'ring'`, independent of size. A one-way migration on settings load converts:
+
+- `aprSize: 'thumb'` → `aprSize: 'small'`
+- If the defaults' `aprSize` was `'thumb'`, also force `aprDefaultViewMode: 'ring'` (preserves the previous visual outcome).
+
+**At v7, remove:**
+
+- `normalizeAprSize()` in [src/authorProgress/authorProgressConfig.ts](../../../src/authorProgress/authorProgressConfig.ts) — drop the `if (value === 'thumb') return 'small';` branch. The function itself can stay.
+- `isLegacyThumbSize()` helper in the same file — delete the function entirely.
+- In `migrateDefaults()`, the `isLegacyThumbSize(raw.aprSize) ? 'ring' : ...` branch — collapse to a simple call.
+- `LegacyAprSizeToken` type and `LEGACY_SIZES` array's `'thumb'` entry in [src/utils/aprPaths.ts](../../../src/utils/aprPaths.ts) — but only if pre-v6 path matching is no longer needed (users with v5-era export paths would lose path inference).
+- Any `TODO(v7)` comments referencing the thumb migration.
+
+**Why it's safe at v7:** Anyone on v7 will have loaded their settings under v6.x at least once, which silently rewrites `aprSize: 'thumb'` → `'small'` and persists. The `aprSize` field is required-typed in v6, so persisted data on a v6.x load is guaranteed to be one of `'small' | 'medium' | 'large'`.
+
+**Known migration limitation (already accepted):** Campaigns with `aprSize: 'thumb'` migrate to `'small'`, but we do not also force the campaign-level view mode to ring (campaigns don't have their own `aprDefaultViewMode` — they inherit from defaults when teaser is off). So a user with default `aprDefaultViewMode='auto'` and a thumb campaign loses the ring-only render. They can fix it by setting defaults to `ring`, or by enabling teaser on the campaign and using the bar/ring stage.
+
+## 3. All v5 → v6 migration shims
 
 **Context:** v6 introduced a large data-model shift (BookProfile, new AI settings shape, secret-storage credentials, beat-system per-book, publishing model, internalized export folders, deprecated synopsis line limits, etc.). For the v5→v6 cycle, every load runs migration functions and tolerates legacy field shapes. By the time v7 ships, no live settings file should still be on a pre-v6 shape — anyone who has opened the plugin once on v6 has had their data rewritten and persisted in the new format.
 
