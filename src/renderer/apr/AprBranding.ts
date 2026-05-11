@@ -135,7 +135,9 @@ export interface AprBrandingOptions {
     authorName?: string;
     size: AprSize;
     layout?: AprLayoutSpec;
-    bookAuthorColor?: string;
+    // Caller is responsible for resolving these (typically to a publish-stage color);
+    // no fallback inside this renderer.
+    bookAuthorColor: string;
     authorColor?: string;
     // Book Title font settings
     bookTitleFontFamily?: string;
@@ -177,8 +179,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const authorNameSize = authorNameFontSize ?? brandingFontSize;
     const resolvedBookTitleFontFamily = resolveAprFontFamily(bookTitleFontFamily);
     const resolvedAuthorNameFontFamily = resolveAprFontFamily(authorNameFontFamily);
-    // Fallback to Press stage green if no color provided (matches RT default)
-    const bookColor = bookAuthorColor || '#6FB971';
+    const bookColor = bookAuthorColor;
     const authColor = authorColor || bookColor; // Default to book color if not specified
 
     // Build the repeating title segment
@@ -496,19 +497,14 @@ export interface AprCenterPercentOptions {
 export function renderAprCenterPercent(
     percent: number,
     layout: AprLayoutSpec,
-    numberColor?: string,
-    symbolColor?: string,
+    numberColor: string,
+    symbolColor: string,
     options?: Partial<AprCenterPercentOptions>
 ): string {
     if (!layout.centerLabel.enabled) return '';
 
     const portableSvg = options?.portableSvg ?? false;
     const color = resolveColor(portableSvg);
-
-    // Fallback to Press stage green if colors not provided
-    const defaultColor = '#6FB971';
-    const numColor = numberColor || defaultColor;
-    const symColor = symbolColor || defaultColor;
 
     const valueText = String(Math.round(percent));
     const digitMatches = valueText.match(/\d/g);
@@ -557,7 +553,7 @@ export function renderAprCenterPercent(
                 font-family="${fontFamilyEscaped}"
                 font-weight="${APR_CENTER_METRIC.percentWeight}"
                 font-size="${percentPx}"
-                fill="${color('--apr-percent-symbol-color', symColor)}"
+                fill="${color('--apr-percent-symbol-color', symbolColor)}"
                 fill-opacity="0.3">
                 %
             </text>
@@ -569,7 +565,7 @@ export function renderAprCenterPercent(
                 font-weight="${APR_CENTER_METRIC.numberWeight}"
                 font-size="${numberPx}"
                 letter-spacing="${layout.centerLabel.letterSpacing}"
-                fill="${color('--apr-percent-number-color', numColor)}">
+                fill="${color('--apr-percent-number-color', numberColor)}">
                 ${valueText}
             </text>
         </g>

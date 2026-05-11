@@ -757,6 +757,12 @@ export interface RadialTimelineSettings {
         Press?: string;   // Target date for Press stage completion
     };
     showCompletionEstimate?: boolean;
+    timelapseYearSimulation?: {
+        enabled?: boolean;
+        startDate?: string;
+        finishDate?: string;
+        totalScenes?: number;
+    };
     completionEstimateWindowDays?: number;
     coreCompletionPreviewExpanded?: boolean;
     povPreviewExpanded?: boolean;

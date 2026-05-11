@@ -5,6 +5,7 @@ function makeSnapshot(overrides: Partial<TimelineSnapshot> = {}): TimelineSnapsh
   return {
     sceneCount: 1,
     sceneHash: 'scene-hash',
+    sceneVisualHash: 'scene-visual-hash',
     openFilePaths: new Set(),
     searchActive: false,
     searchResults: new Set(),
@@ -77,6 +78,20 @@ describe('detectChanges', () => {
     const result = detectChanges(prev, current);
 
     expect(result.changeTypes.has(ChangeType.TARGET_DATES)).toBe(true);
+    expect(result.canUseSelectiveUpdate).toBe(true);
+    expect(result.updateStrategy).toBe('selective');
+  });
+
+  it('uses a selective update when only scene visual data changes', () => {
+    const prev = makeSnapshot();
+    const current = makeSnapshot({
+      sceneVisualHash: 'scene-visual-hash:working',
+      timestamp: 2
+    });
+
+    const result = detectChanges(prev, current);
+
+    expect(result.changeTypes.has(ChangeType.SCENE_VISUAL)).toBe(true);
     expect(result.canUseSelectiveUpdate).toBe(true);
     expect(result.updateStrategy).toBe('selective');
   });

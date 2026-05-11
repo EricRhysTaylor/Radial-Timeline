@@ -63,8 +63,8 @@ function buildEnhancedTooltip(
  * Renders all stage target date ticks on the timeline.
  * Each stage gets its own tick with the stage color, or red if overdue.
  * 
- * Auto Mode: When all target dates are blank, shows a single tick for the 
- * estimated completion stage at the estimated completion date.
+ * Blank target dates render no manual stage target tick. The estimated
+ * completion tick is rendered separately by Progress.ts.
  */
 export function renderTargetDateTick(params: { 
     plugin: PluginRendererFacade; 
@@ -83,63 +83,6 @@ export function renderTargetDateTick(params: {
     let svg = '';
     
     const stageTargetDates = plugin.settings.stageTargetDates;
-    
-    // Check if ALL target date fields are blank (enables auto mode)
-    const hasAnyTargetDate = stageTargetDates && STAGE_ORDER.some(s => stageTargetDates[s]);
-    const isAutoMode = !hasAnyTargetDate && enhancedData?.estimatedStage && enhancedData?.estimatedDate;
-    
-    if (isAutoMode && enhancedData) {
-        // AUTO MODE: Show single tick for estimated completion stage at estimated date
-        const stage = enhancedData.estimatedStage!;
-        const estimatedDate = enhancedData.estimatedDate!;
-        const targetDateAngle = dateToAngle(estimatedDate);
-        
-        // Build tooltip for auto mode
-        const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
-        const remaining = enhancedData.stageRemaining[stage] ?? 0;
-        const lines: string[] = [
-            `${stage} est. completion: ${dateFormatter.format(estimatedDate)}`,
-        ];
-        if (remaining > 0 && enhancedData.currentPace > 0) {
-            lines.push(`${remaining} remaining at ${enhancedData.currentPace.toFixed(1)}/week`);
-        }
-        const escapedTooltip = escapeXml(lines.join('\n'));
-        
-        const stageClass = ` target-stage-${stage.toLowerCase()}`;
-        const lineX1 = formatNumber(targetTickOuterRadius * Math.cos(targetDateAngle));
-        const lineY1 = formatNumber(targetTickOuterRadius * Math.sin(targetDateAngle));
-        const lineX2 = formatNumber((targetTickInnerRadius + 3) * Math.cos(targetDateAngle));
-        const lineY2 = formatNumber((targetTickInnerRadius + 3) * Math.sin(targetDateAngle));
-        const markerX = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle) - targetMarkerSize / 2);
-        const markerY = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle) - targetMarkerSize / 2);
-        // Hotspot center (at the marker position)
-        const hotspotCx = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle));
-        const hotspotCy = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle));
-        
-        svg += `
-            <g class="rt-target-tick-group${stageClass} rt-target-auto-mode" data-stage="${stage}">
-                <line
-                    x1="${lineX1}" y1="${lineY1}"
-                    x2="${lineX2}" y2="${lineY2}"
-                    class="target-date-tick${stageClass}"
-                />
-                <rect 
-                    x="${markerX}" y="${markerY}" 
-                    width="${targetMarkerSize}" height="${targetMarkerSize}" 
-                    class="target-date-marker${stageClass}"
-                />
-                <circle 
-                    cx="${hotspotCx}" cy="${hotspotCy}" 
-                    r="${TARGET_HOTSPOT_RADIUS}" 
-                    class="rt-target-hotspot rt-tooltip-target"
-                    data-tooltip="${escapedTooltip}"
-                    data-tooltip-placement="top"
-                    fill="transparent"
-                />
-            </g>`;
-        
-        return svg;
-    }
     
     // MANUAL MODE: Render stage-specific target ticks (only show ticks with dates set)
     if (stageTargetDates) {
@@ -252,5 +195,4 @@ export function renderTargetDateTick(params: {
     
     return svg;
 }
-
 

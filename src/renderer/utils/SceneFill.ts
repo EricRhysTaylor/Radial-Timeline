@@ -2,16 +2,11 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote } from '../../utils/sceneHelpers';
 import { normalizeStatus } from '../../utils/text';
 import { isOverdueDateString } from '../../utils/date';
-import { STATUS_COLORS } from '../../utils/constants';
+import { STATUS_COLORS, STATUS_HEX } from '../../utils/constants';
 
-// Portable fallback colors (hex values from CSS variable fallbacks)
-const PORTABLE_STATUS_COLORS = {
-    Working: '#FF69B4',
-    Todo: '#cccccc',
-    Empty: '#ffffff',
-    Due: '#d05e5e',
-    Complete: '#22c55e', // Default green for complete
-} as const;
+// Portable status colors are the raw hex source-of-truth (STATUS_HEX). The CSS-var form
+// (STATUS_COLORS) shares the same hex as its fallback, so timeline + APR stay locked together.
+const PORTABLE_STATUS_COLORS = STATUS_HEX;
 
 export function getFillForScene(
     scene: TimelineItem,
@@ -50,11 +45,8 @@ export function getFillForScene(
         if (isOuterAllScenes && subplotColorResolver) {
             return subplotColorResolver(subplotName);
         }
-        const stageColor = publishStageColors[publishStage as keyof typeof publishStageColors]
-            || publishStageColors[fallbackStage as keyof typeof publishStageColors]
-            || publishStageColors.Zero
-            || '#888888';
-        return stageColor;
+        return publishStageColors[publishStage as keyof typeof publishStageColors]
+            || publishStageColors[fallbackStage as keyof typeof publishStageColors];
     }
     if (scene.due && isOverdueDateString(scene.due)) return statusColors.Due;
     if (norm === 'Working') return `url(#plaidWorking${publishStage})`;

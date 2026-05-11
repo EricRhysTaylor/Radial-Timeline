@@ -91,19 +91,6 @@ export const APR_FIXED_STROKES = {
 } as const;
 
 // =============================================================================
-// MOMENTUM BAR CONSTANTS (for "Momentum Only" mode)
-// =============================================================================
-
-export const APR_MOMENTUM_BAR = {
-    width: 0.7,           // 70% of SVG width
-    height: 24,           // Bar height in px
-    borderRadius: 12,     // Rounded ends
-    yOffset: 60,          // Distance below center
-    trackColor: 'rgba(255, 255, 255, 0.1)',
-    fillColor: '#22c55e', // Green progress
-} as const;
-
-// =============================================================================
 // CENTER METRIC TYPOGRAPHY (fixed, non-configurable)
 // =============================================================================
 
@@ -130,32 +117,6 @@ export const APR_CENTER_METRIC = {
         2: 0,
         3: 0
     } as Record<1 | 2 | 3, number>,
-} as const;
-
-// =============================================================================
-// HEADLESS PATTERN TUNING (portable SVG — Figma / Illustrator safe)
-// =============================================================================
-// Figma does not support patternTransform, so the real plaid patterns from
-// Defs.ts (which use rotate(45) / rotate(-20)) render empty. These headless
-// patterns draw the same crosshatch and wavy geometry directly in the tile
-// without any transform attribute. All values in px.
-
-export const APR_HEADLESS_PATTERNS = {
-    /** Todo: gray base + 45° crosshatch diagonals in stage color */
-    todo: {
-        tileSize: 8,              // Tile side (px) — smaller = denser hatching
-        strokeWidth: 0.8,         // Diagonal line weight
-        strokeOpacity: 0.6,       // Diagonal opacity against gray fill
-        fill: '#cccccc',          // Gray base fill
-    },
-    /** Working: pink base + horizontal sine wave in stage color */
-    working: {
-        tileW: 12,                // Tile width (px)
-        tileH: 8,                 // Tile height (px)
-        strokeWidth: 0.8,         // Wave stroke weight
-        strokeOpacity: 0.45,      // Wave opacity against pink fill
-        fill: '#FF69B4',          // Pink base fill
-    },
 } as const;
 
 // =============================================================================

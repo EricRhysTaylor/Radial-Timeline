@@ -211,6 +211,37 @@ const ARCHETYPE_INFO: Record<DesignArchetype, { name: string; tagline: string }>
     'structured':    { name: 'Signature',    tagline: 'Roman parts, numbered chapters, section breaks.' },
 };
 
+/**
+ * Per-template "what this style is for" copy. Shown in the wizard subtitle
+ * once an archetype has been selected (or when forking from a bundled
+ * template). Keyed by archetype because that's the spec field that's stable
+ * across both the from-scratch flow (user picks an archetype) and the
+ * bundled-fork flow (the bundled spec carries the archetype).
+ */
+const TEMPLATE_BLURB_BY_ARCHETYPE: Record<DesignArchetype, string> = {
+    'submission':    'Plain and to the point — the traditional submission format every editor recognizes. No ornament, no ego, just pure readability. Built for drafting, workshops, early readers, and getting the manuscript itself evaluated without distraction.',
+    'reading-draft': 'A polished reading draft for beta readers and proofers. Clean enough to feel like a finished book without committing to a final aesthetic. Contemporary serif body type, comfortable spacing, and restrained structure that stays familiar to modern commercial fiction.',
+    'literary':      'Refined and publication-minded — the feel of a professionally typeset trade novel. Running heads, structured chapter presentation, and stronger visual rhythm create a more immersive reading experience while remaining restrained and highly readable.',
+    'structured':    'Architectural and literary. Built for ambitious fiction that benefits from deliberate pacing, structural breathing room, act openers, epigraphs, and distinctive scene presentation. Evokes the considered craftsmanship of boutique literary editions and mid-century print design traditions.',
+};
+
+/**
+ * Per-category "Publishing note" — short editorial framing shown at the top
+ * of each category panel. Explains the typographic intent of the controls
+ * below so authors understand the publishing trade-offs they're tuning, not
+ * just the mechanics.
+ */
+const CATEGORY_PUBLISHING_NOTES: Record<WizardCategory, string> = {
+    'page':     'Page dimensions and margins shape the reading experience more than most authors realize. Tighter layouts increase density and pace, while wider margins create visual breathing room and a more literary feel. Most trade fiction balances readability with efficient page count.',
+    'body':     'Body typography determines long-form reading comfort. Serif fonts remain dominant in printed fiction because they guide the eye naturally across dense pages of text. Line spacing subtly affects pacing: tighter layouts feel faster and more urgent, while open spacing slows the reader and creates reflection.',
+    'headers':  'Running headers help readers maintain orientation in longer works and are common in finished print editions. Draft manuscripts often omit them entirely, while polished trade and literary layouts frequently use restrained headers to reinforce structure without distracting from the prose.',
+    'folio':    'Page numbers quietly anchor the reader inside the manuscript. Traditional drafts often place folios at the bottom center, while published fiction commonly integrates them into the running header system for a more refined presentation.',
+    'parts':    'Part pages divide major narrative movements and create structural breathing room between acts or phases of the story. Literary and large-scale commercial fiction often use dedicated Part openers, Roman numerals, or epigraphs to reinforce thematic transitions and long-form momentum.',
+    'chapters': 'Chapter presentation shapes narrative rhythm. Minimal chapter pages keep pacing invisible and fast, while larger openers create pause, emphasis, and anticipation. Shared chapter titles and opener spacing can subtly reinforce tone and genre expectations.',
+    'scenes':   'Scene breaks control momentum at the micro level. Invisible transitions create speed and continuity, while dedicated scene openers give emotional or structural weight to each sequence. Numbering, titles, and ornamental rules help readers orient themselves inside complex narratives.',
+    'epigraph': 'Epigraphs frame the emotional or thematic lens of a section before the prose begins. Some novels use them sparingly for emphasis, while literary and structural fiction may use recurring epigraphs to create resonance across acts, chapters, or character arcs.',
+};
+
 const FONT_OPTIONS: Array<{ value: DesignedStyleSpec['body']['font']; label: string; familyHint: string }> = [
     { value: 'sorts-mill-goudy', label: 'Sorts Mill Goudy', familyHint: 'Sorts Mill Goudy' },
     { value: 'latin-modern',     label: 'Latin Modern',     familyHint: 'Latin Modern Roman' },
@@ -410,6 +441,15 @@ export class DesignedStyleWizardModal extends Modal {
     private categoryIconEl: HTMLElement | null = null;
     private saveButton: ButtonComponent | null = null;
     private validationBannerEl: HTMLElement | null = null;
+    /**
+     * Refs to the modal title + subtitle in the header. Updated in
+     * `refreshFromArchetype` so the displayed copy follows the user's
+     * archetype selection (and the bundled-template fork case has its name
+     * pinned in the title from the start).
+     */
+    private wizardTitleEl: HTMLElement | null = null;
+    private wizardSubtitleEl: HTMLElement | null = null;
+    private wizardModeBadgeLabelEl: HTMLElement | null = null;
     private activeCategory: WizardCategory = 'page';
     private activeCornerKey: 'evenLeft' | 'evenCenter' | 'evenRight' | 'oddLeft' | 'oddCenter' | 'oddRight' = 'evenLeft';
 
@@ -462,15 +502,16 @@ export class DesignedStyleWizardModal extends Modal {
         const proPillIcon = proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(proPillIcon, 'signature');
         proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-        modeBadge.createSpan({ cls: 'ert-modal-badge__label', text: this.isEditMode ? 'EDIT' : 'DESIGN' });
-        header.createDiv({
-            cls: 'ert-modal-title',
-            text: this.isEditMode ? 'Edit designed style' : 'Design your own style',
-        });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: 'Configure page, body, headers, folio, parts, chapters, scenes, and epigraph. The preview updates live.',
-        });
+        // Two modes:
+        //   • Updating an existing designed-origin layout (layoutId set) → EDIT
+        //   • Forking from a bundled spec OR designing from an archetype → DESIGN
+        // The wizard's persistLayout already routes correctly via the same
+        // (isEditMode && layoutId) check below; the UI strings just need to
+        // mirror that distinction.
+        this.wizardModeBadgeLabelEl = modeBadge.createSpan({ cls: 'ert-modal-badge__label' });
+        this.wizardTitleEl = header.createDiv({ cls: 'ert-modal-title' });
+        this.wizardSubtitleEl = header.createDiv({ cls: 'ert-modal-subtitle' });
+        this.refreshHeaderCopy();
 
         // Two-column main grid.
         const main = contentEl.createDiv({ cls: 'ert-style-wizard__main' });
@@ -497,8 +538,12 @@ export class DesignedStyleWizardModal extends Modal {
             .setButtonText('View LaTeX')
             .onClick(() => { this.openLatexPreview(); });
 
+        // "Update" only when we're modifying an existing designed-origin
+        // layout in place. Bundled-fork mode (initialSpec without layoutId)
+        // creates a new designed layout, so it reads "Save" like archetype mode.
+        const isUpdatingExistingForFooter = this.isEditMode && !!this.layoutId;
         this.saveButton = new ButtonComponent(footerRight)
-            .setButtonText(this.isEditMode ? 'Update style' : 'Save style')
+            .setButtonText(isUpdatingExistingForFooter ? 'Update style' : 'Save style')
             .setCta()
             .onClick(() => { void this.handleSave(); });
         new ButtonComponent(footerRight)
@@ -605,10 +650,61 @@ export class DesignedStyleWizardModal extends Modal {
     private refreshFromArchetype(): void {
         // Re-render: meta block (name field reflects new default), right
         // column (now shows category dropdown + active panel), and preview.
+        // Also refresh the header copy — title and subtitle pivot from
+        // generic ("Design your own style") to template-specific
+        // ("Customize Standard" + the per-template blurb) once we have an
+        // archetype to anchor on.
         const meta = this.contentEl.querySelector('.ert-style-wizard__meta') as HTMLElement | null;
         if (meta) this.renderMetaBlock(meta);
         this.renderRightColumn();
         this.renderPreview();
+        this.refreshHeaderCopy();
+    }
+
+    /**
+     * Resolve the modal title, subtitle, and mode-badge label from the
+     * current state. Three regimes:
+     *
+     *   1. Updating an existing designed-origin layout (layoutId set):
+     *        badge: EDIT
+     *        title: "Edit designed style"
+     *        subtitle: per-archetype publishing blurb
+     *
+     *   2. Forking from a bundled spec OR designing from a picked archetype
+     *      (archetypePicked, no layoutId):
+     *        badge: DESIGN
+     *        title: "Customize {Display Name}" (e.g. "Customize Standard")
+     *        subtitle: per-archetype publishing blurb
+     *
+     *   3. Pre-archetype-pick (from-scratch flow, overlay still showing):
+     *        badge: DESIGN
+     *        title: "Design your own style"
+     *        subtitle: generic walkthrough copy
+     */
+    private refreshHeaderCopy(): void {
+        if (!this.wizardModeBadgeLabelEl || !this.wizardTitleEl || !this.wizardSubtitleEl) return;
+        const isUpdatingExisting = this.isEditMode && !!this.layoutId;
+        const archetype = this.spec.archetype;
+        const archetypeInfo = ARCHETYPE_INFO[archetype];
+        const blurb = TEMPLATE_BLURB_BY_ARCHETYPE[archetype];
+
+        const badge = isUpdatingExisting ? 'EDIT' : 'DESIGN';
+        let title: string;
+        let subtitle: string;
+        if (isUpdatingExisting) {
+            title = 'Edit designed style';
+            subtitle = blurb;
+        } else if (this.archetypePicked) {
+            title = `Customize ${archetypeInfo?.name ?? 'style'}`;
+            subtitle = blurb;
+        } else {
+            title = 'Design your own style';
+            subtitle = 'Configure page, body, headers, folio, parts, chapters, scenes, and epigraph. The preview updates live.';
+        }
+
+        this.wizardModeBadgeLabelEl.setText(badge);
+        this.wizardTitleEl.setText(title);
+        this.wizardSubtitleEl.setText(subtitle);
     }
 
     private mutateSpec(mutator: (spec: DesignedStyleSpec) => void): void {
@@ -692,10 +788,14 @@ export class DesignedStyleWizardModal extends Modal {
         const panel = this.activePanel;
         if (!panel) return;
         panel.empty();
-        // Per-category Reset affordance lives at the top-right of the panel,
-        // above the category-specific controls. Click → restore that
+        // Per-category Reset affordance lives at the top-left of the panel,
+        // with prev/next chevrons on the right. Click reset → restore that
         // category's slice of the spec from the open-time snapshot.
         this.renderResetBar(panel);
+        // Editorial framing for the controls below — explains the
+        // typographic intent so authors understand the publishing trade-offs
+        // they're tuning, not just the mechanics.
+        this.renderPublishingNote(panel, this.activeCategory);
         const cat = this.activeCategory;
         switch (cat) {
             case 'page':     this.renderPageSection(panel);     return;
@@ -708,6 +808,26 @@ export class DesignedStyleWizardModal extends Modal {
             case 'epigraph': this.renderEpigraphSection(panel); return;
         }
         assertNever(cat, 'renderActiveCategoryPanel');
+    }
+
+    /**
+     * Render the per-category "Publishing note" callout at the top of the
+     * active panel. Short editorial framing for the controls below — what
+     * the typographic choice does to the reader experience, not what the
+     * spec field controls mechanically.
+     */
+    private renderPublishingNote(parent: HTMLElement, category: WizardCategory): void {
+        const note = CATEGORY_PUBLISHING_NOTES[category];
+        if (!note) return;
+        const wrap = parent.createDiv({ cls: 'ert-style-wizard__publishing-note' });
+        wrap.createDiv({
+            cls: 'ert-style-wizard__publishing-note-label',
+            text: 'Publishing note',
+        });
+        wrap.createDiv({
+            cls: 'ert-style-wizard__publishing-note-body',
+            text: note,
+        });
     }
 
     /**
@@ -2176,7 +2296,7 @@ export class DesignedStyleWizardModal extends Modal {
         try {
             const result = await this.persistLayout();
             await this.options.onSave(result);
-            new Notice(this.isEditMode ? 'Style updated.' : 'Style saved.');
+            new Notice(this.isEditMode && this.layoutId ? 'Style updated.' : 'Style saved.');
             this.close();
         } catch (err) {
             const msg = (err as Error)?.message ?? String(err);

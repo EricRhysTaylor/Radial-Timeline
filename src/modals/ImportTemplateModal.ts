@@ -126,7 +126,7 @@ export class ImportTemplateModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Import template' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Choose a .tex file and bring it into Publishing in four quick steps.',
+            text: 'Bring an existing LaTeX template (.tex) into Publishing as a static custom layout. Use this when you have hand-tuned LaTeX or a third-party template the wizard\'s spec can\'t express. For visual, wizard-editable styles, close this and use "Design your own…" instead.',
         });
         const meta = header.createDiv({ cls: 'ert-modal-meta' });
         this.stepMetaEl = meta.createSpan({ cls: 'ert-modal-meta-item' });

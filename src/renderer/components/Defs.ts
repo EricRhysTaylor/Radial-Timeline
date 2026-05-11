@@ -1,47 +1,45 @@
+import { STATUS_HEX } from '../../utils/constants';
+
 /**
  * Render SVG defs (patterns, icons, filters)
  * @param PUBLISH_STAGE_COLORS - Color map for publish stages
  * @param patternScale - Optional scale for patterns (1.0 = default, smaller = denser). Used by APR.
- * @param portableSvg - When true, output standalone SVG without CSS vars (Figma/Illustrator safe)
- * @param statusColors - Resolved status colors for portable mode
+ * @param portableSvg - When true, output standalone SVG with hex-baked colors (no CSS vars).
+ *                     Needed for canvas rasterization (no DOM CSS context) and standalone embed
+ *                     (e.g., author's website where RT's CSS vars aren't defined).
  */
 export function renderDefs(
   PUBLISH_STAGE_COLORS: Record<string, string>,
   patternScale = 1.0,
-  portableSvg = false,
-  statusColors?: { working: string; todo: string }
+  portableSvg = false
 ): string {
   // Pattern dimensions - scale for APR density control
-  const workingW = 80 * patternScale;
-  const workingH = 20 * patternScale;
+  const workingW = 52 * patternScale;
+  const workingH = 26 * patternScale;
   const todoSize = 10 * patternScale;
-  const strokeWidth = Math.max(0.5, 1.5 * patternScale);
-  
-  // Portable mode: use direct colors; CSS mode: use CSS variables
-  const workingFill = portableSvg ? (statusColors?.working ?? '#FF69B4') : 'var(--rt-color-working, #FF69B4)';
-  const todoFill = portableSvg ? (statusColors?.todo ?? '#cccccc') : 'var(--rt-color-todo, #cccccc)';
-  const plaidOpacity = portableSvg ? '1' : 'var(--rt-color-plaid-opacity, 1)';
-  const plaidStrokeOpacity = portableSvg ? '1' : 'var(--rt-color-plaid-stroke-opacity, 1)';
+
+  // Portable mode bakes hex (canvas / standalone embed has no CSS var context); CSS mode uses vars
+  // with the same hex as fallback — STATUS_HEX is the single source of truth.
+  const workingFill = portableSvg ? STATUS_HEX.Working : `var(--rt-color-working, ${STATUS_HEX.Working})`;
+  const todoFill = portableSvg ? STATUS_HEX.Todo : `var(--rt-color-todo, ${STATUS_HEX.Todo})`;
+  const plaidOpacity = portableSvg ? '0.82' : 'var(--rt-color-plaid-opacity, 0.82)';
   
   const plaid = Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => {
-    // Working pattern: wavy chevrons (scale the path via transform)
+    // Working pattern: Hero Patterns "Wiggle" motif over a stronger pink field.
     const workingPath = `
-      <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="${workingW}" height="${workingH}" patternTransform="rotate(-20)">
+      <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="${workingW}" height="${workingH}">
         <rect width="${workingW}" height="${workingH}" fill="${workingFill}" opacity="${plaidOpacity}"/>
         <g transform="scale(${patternScale})">
-          <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" 
-            stroke="${color}" stroke-opacity="${plaidStrokeOpacity}" stroke-width="${strokeWidth / patternScale}" fill="none" />
+          <g fill="${color}" fill-opacity="0.4">
+            <path d="M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z" />
+          </g>
         </g>
       </pattern>`;
     
-    // Todo pattern: crosshatch grid — the original plaid for the radial timeline
-    // Stable for months. APR headless patterns (AprRenderer portable mode) are separate.
-    const todoStrokeOpacity = portableSvg ? '0.7' : '0.5';
+    // Todo is intentionally quiet; Working carries the visual activity.
     const todoPath = `
-      <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}" patternTransform="rotate(45)">
+      <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}">
         <rect width="${todoSize}" height="${todoSize}" fill="${todoFill}" opacity="${plaidOpacity}"/>
-        <line x1="0" y1="0" x2="0" y2="${todoSize}" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="${todoStrokeOpacity}"/>
-        <line x1="0" y1="0" x2="${todoSize}" y2="0" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="${todoStrokeOpacity}"/>
       </pattern>`;
     
     return workingPath + todoPath;
@@ -95,8 +93,7 @@ export function renderDefs(
     </symbol>
   `;
 
-  // Skip filters in portable mode for Figma/Illustrator compatibility
-  const filters = portableSvg ? '' : `
+  const filters = `
     <filter id="beatTextBg" x="-25%" y="-25%" width="150%" height="150%">
       <feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="DILATE"/>
       <feFlood flood-color="#000000" result="BLACK"/>

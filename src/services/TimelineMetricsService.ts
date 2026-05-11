@@ -1,6 +1,6 @@
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
-import { isBeatNote } from '../utils/sceneHelpers';
+import { isSceneItem } from '../utils/sceneHelpers';
 import { STAGE_ORDER } from '../utils/constants';
 import { parseSceneTitle } from '../utils/text';
 import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
@@ -50,7 +50,7 @@ export class TimelineMetricsService {
     constructor(private plugin: RadialTimelinePlugin) {}
 
     calculateCompletionEstimate(scenes: TimelineItem[]): CompletionEstimate | null {
-        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
+        const sceneNotesOnly = scenes.filter(isSceneItem);
         if (sceneNotesOnly.length === 0) return null;
 
         const today = new Date();

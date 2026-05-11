@@ -8,7 +8,7 @@ import { renderProgressRing } from './components/ProgressRing';
 import { renderTargetDateTick, type TargetTickEnhancedData } from './components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from './components/Progress';
 import { dateToAngle } from '../utils/date';
-import { isBeatNote, type PluginRendererFacade } from '../utils/sceneHelpers';
+import { isSceneItem, type PluginRendererFacade } from '../utils/sceneHelpers';
 import { STAGE_ORDER } from '../utils/constants';
 import type { TimelineItem } from '../types';
 
@@ -67,7 +67,7 @@ function calculateTargetTickEnhancedData(
     scenes: TimelineItem[],
     plugin: PluginRendererFacade
 ): TargetTickEnhancedData | undefined {
-    const realScenes = scenes.filter(scene => !isBeatNote(scene));
+    const realScenes = scenes.filter(isSceneItem);
     if (realScenes.length === 0) return undefined;
     
     const estimate = plugin.calculateCompletionEstimate(scenes);
@@ -212,4 +212,3 @@ export function updateAllTimeBasedElements(
     
     return success;
 }
-

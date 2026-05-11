@@ -6,7 +6,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES, APR_HEADLESS_PATTERNS } from './AprConstants';
+import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES } from './AprConstants';
 import { computeAprLayout } from './aprLayout';
 import { getAprPreset, type AprSize, type AprPreset } from './aprPresets';
 import { renderDefs } from '../components/Defs';
@@ -95,68 +95,29 @@ const normalizeOptionalColor = (value?: string): string | undefined => {
     return trimmed ? trimmed : undefined;
 };
 
+/**
+ * Normalize a stage color map so every key (Zero/Author/House/Press) is a non-empty string.
+ * Any missing or whitespace-only value is replaced by the corresponding DEFAULT_SETTINGS entry.
+ * Once normalized, downstream code can trust every stageColorMap[Stage] without further fallbacks.
+ */
+const resolveStageColors = (
+    stageColors: Record<string, string> | undefined
+): typeof DEFAULT_SETTINGS.publishStageColors => {
+    const defaults = DEFAULT_SETTINGS.publishStageColors;
+    if (!stageColors) return defaults;
+    return {
+        Zero: normalizeOptionalColor(stageColors.Zero) ?? defaults.Zero,
+        Author: normalizeOptionalColor(stageColors.Author) ?? defaults.Author,
+        House: normalizeOptionalColor(stageColors.House) ?? defaults.House,
+        Press: normalizeOptionalColor(stageColors.Press) ?? defaults.Press
+    };
+};
+
 const escapeXmlText = (value: string): string =>
     value
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-
-/**
- * Resolve a scene's publish-stage key to a known stage in stageColors.
- * Falls back to 'Zero' (or first key) when the value is missing or unknown.
- */
-function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string>): string {
-    const stageKeys = Object.keys(stageColors);
-    const fallback = stageKeys.includes('Zero') ? 'Zero' : (stageKeys[0] || 'Zero');
-    const candidate = Array.isArray(raw) ? raw[0] : raw;
-    const value = (candidate ?? '').toString().trim();
-    if (!value) return fallback;
-    return stageKeys.find(s => s.toLowerCase() === value.toLowerCase()) ?? fallback;
-}
-
-/**
- * Generate Figma-safe SVG <pattern> defs for portable mode.
- *
- * Figma does not support patternTransform, so the real plaid patterns from
- * Defs.ts (rotate(45) crosshatch, rotate(-20) wavy) render as empty fills.
- * These patterns draw equivalent geometry directly in the tile:
- *   Todo    — gray base + 45° crosshatch diagonals (\ and /)
- *   Working — pink base + horizontal sine wave
- *
- * No patternTransform. No <text>. No CSS vars. Pure geometry.
- * Tunable via APR_HEADLESS_PATTERNS in AprConstants.ts.
- */
-function renderHeadlessPatternDefs(stageColors: Record<string, string>, outerPx: number): string {
-    const todo = APR_HEADLESS_PATTERNS.todo;
-    const working = APR_HEADLESS_PATTERNS.working;
-    // Scale pattern tiles proportionally so visual density stays constant across resolutions.
-    // Base constants were tuned at ~300px; at 4800px, sizeScale = 16 → tiles/strokes 16× larger.
-    const sizeScale = Math.max(1, outerPx / 300);
-    let defs = '';
-    for (const [stage, stageColor] of Object.entries(stageColors)) {
-        // ── Todo: gray base + 45° crosshatch (diagonal lines, no patternTransform) ──
-        const ts = todo.tileSize * sizeScale;
-        const tsSw = todo.strokeWidth * sizeScale;
-        defs += `<pattern id="aprHeadlessTodo${stage}" patternUnits="userSpaceOnUse" width="${ts}" height="${ts}">` +
-            `<rect width="${ts}" height="${ts}" fill="${todo.fill}"/>` +
-            `<path d="M0,0 l${ts},${ts} M0,${ts} l${ts},-${ts}" ` +
-                `stroke="${stageColor}" stroke-width="${tsSw}" stroke-opacity="${todo.strokeOpacity}" fill="none"/>` +
-            `</pattern>`;
-
-        // ── Working: pink base + horizontal sine wave (no patternTransform) ──
-        const ww = working.tileW * sizeScale;
-        const wh = working.tileH * sizeScale;
-        const wSw = working.strokeWidth * sizeScale;
-        const mid = wh / 2;
-        // Quadratic bezier wave: one full period per tile width, seamless horizontal tiling
-        defs += `<pattern id="aprHeadlessWorking${stage}" patternUnits="userSpaceOnUse" width="${ww}" height="${wh}">` +
-            `<rect width="${ww}" height="${wh}" fill="${working.fill}"/>` +
-            `<path d="M0,${mid} Q${ww / 4},0 ${ww / 2},${mid} Q${ww * 3 / 4},${wh} ${ww},${mid}" ` +
-                `stroke="${stageColor}" stroke-width="${wSw}" stroke-opacity="${working.strokeOpacity}" fill="none"/>` +
-            `</pattern>`;
-    }
-    return defs;
-}
 
 export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): AprRenderResult {
     const {
@@ -215,8 +176,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // Structural palette based on theme (with optional custom spokes color)
     const structural = resolveStructuralColors(theme, spokeColor);
 
-    // Normalize stage colors to match Progress mode (settings or defaults)
-    const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
+    // Normalize stage colors so each key is guaranteed non-empty (blanks fall through to DEFAULT_SETTINGS).
+    // Downstream code can trust stageColorMap.Press et al. without further checks.
+    const stageColorMap = resolveStageColors(stageColors);
     const stageColorLookup = stageColorMap as Record<string, string>;
     const isThumb = size === 'thumb';
     const showScenesFinal = showScenes;
@@ -226,8 +188,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     const stageInfo = resolveStageLabel(publishStageLabel);
     const stageBadgeColor = normalizeOptionalColor(stageColorLookup[stageInfo.key])
-        ?? normalizeOptionalColor(stageColorMap.Press)
-        ?? '#6FB971';
+        ?? stageColorMap.Press;
     const revealCountdownDays = resolveRevealCountdownDays(teaserRevealEnabled);
     const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
@@ -303,7 +264,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const engineColorResolvedInput = normalizeOptionalColor(engineColor);
     const percentNumberColorResolvedInput = normalizeOptionalColor(percentNumberColor);
     const percentSymbolColorResolvedInput = normalizeOptionalColor(percentSymbolColor);
-    const pressStageColor = normalizeOptionalColor(stageColorMap.Press) ?? '#6FB971';
+    const pressStageColor = stageColorMap.Press;
     const bgFill = (transparentCenter || backgroundColorResolved === 'transparent') ? 'none' : (backgroundColorResolved ?? structural.background);
     const holeFill = transparentCenter ? 'none' : (backgroundColorResolved ?? structural.centerHole);
     const bookTitleColorResolved = bookAuthorColorResolved ?? pressStageColor;
@@ -315,13 +276,13 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const percentSymbolColorResolved = percentSymbolColorResolvedInput ?? bookTitleColorResolved;
     const ringOptions = !showScenesFinal && isThumb
         ? {
-            ghostColor: stageColorMap.Press || '#22c55e',
+            ghostColor: stageColorMap.Press,
             ghostOpacity: 0.1,
             ghostWidth: (outerRadius - innerRadius) * 0.78,
             showBorders: false
         }
         : {};
-    const progressColor = stageColorMap.Press || '#22c55e';
+    const progressColor = stageColorMap.Press;
     const progressGhostColor = ringOptions?.ghostColor ?? structural.border;
     const progressGhostOpacity = ringOptions?.ghostOpacity ?? 0.25;
     const svgStyle = [
@@ -355,29 +316,19 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}${portableClass}"${svgStyleAttr}>`;
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${color('--apr-bg', bgFill)}" />`;
 
-    // Progress-mode defs (plaid patterns etc.) + optional filters
-    // Use patternScale from preset for denser patterns at smaller sizes
-    // Note: Filters are skipped in portable mode for Figma/Illustrator compatibility
-    const percentShadow = portableSvg ? '' : `
+    // Progress-mode defs (plaid patterns) + filters. patternScale densifies plaid at small sizes.
+    // Chromium renders filters and patternTransform fine in both canvas rasterization and direct SVG embed.
+    const percentShadow = `
         <filter id="aprPercentShadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#000" flood-opacity="0.45"/>
         </filter>
     `;
-    const grayscaleFilter = (grayscaleScenes && !portableSvg) ? `
+    const grayscaleFilter = grayscaleScenes ? `
         <filter id="aprGrayscale" color-interpolation-filters="sRGB">
             <feColorMatrix type="saturate" values="0" />
         </filter>
     ` : '';
-    // Pass portable mode and resolved status colors to defs
-    const statusColorsResolved = portableSvg ? {
-        working: '#FF69B4',  // STATUS_COLORS.Working fallback
-        todo: '#cccccc'      // STATUS_COLORS.Todo fallback
-    } : undefined;
-    // renderDefs() provides the standard plaid patterns (CSS-mode or portable hex colors).
-    // In portable mode we also emit Figma-safe headless patterns that use direct geometry
-    // (no patternTransform) so Todo crosshatch and Working waves render in Figma/Illustrator.
-    const headlessPatterns = portableSvg ? renderHeadlessPatternDefs(stageColorMap, svgSize) : '';
-    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, statusColorsResolved)}${headlessPatterns}${percentShadow}${grayscaleFilter}</defs>`;
+    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg)}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
@@ -388,9 +339,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             borderWidth: borderWidth
         });
     } else {
-        // Normal mode: Draw rings with scene cells
-        // Note: Grayscale filter skipped in portable mode for Figma compatibility
-        const ringFilter = (grayscaleScenes && !portableSvg) ? ' filter="url(#aprGrayscale)"' : '';
+        const ringFilter = grayscaleScenes ? ' filter="url(#aprGrayscale)"' : '';
         svg += `<g class="apr-rings"${ringFilter}>`;
         ringsToRender.forEach(ring => {
             svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural, color, opacity, portableSvg);
@@ -528,16 +477,7 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
-            const patternMatch = portableSvg ? sceneColor.match(/^url\(#plaid(Working|Todo)/) : null;
-            if (patternMatch) {
-                const stageKey = resolvePublishStageKey(scene['Publish Stage'], stageColors);
-                const headlessFill = patternMatch[1] === 'Todo'
-                    ? `url(#aprHeadlessTodo${stageKey})`
-                    : `url(#aprHeadlessWorking${stageKey})`;
-                svg += `<path d="${path}" fill="${headlessFill}" stroke="none" />`;
-            } else {
-                svg += `<path d="${path}" fill="${sceneColor}" stroke="none" />`;
-            }
+            svg += `<path d="${path}" fill="${sceneColor}" stroke="none" />`;
             borderPaths.push(path);
         });
 
@@ -723,7 +663,7 @@ function renderProgressRing(
     const midR = (innerR + outerR) / 2;
     const ringWidth = outerR - innerR;
     const progressWidth = ringWidth * 0.78;
-    const progressColor = stageColors.Press || '#22c55e';
+    const progressColor = stageColors.Press;
     const ghostColor = options?.ghostColor ?? structural.border;
     const ghostOpacity = options?.ghostOpacity ?? 0.25;
     const ghostWidth = options?.ghostWidth ?? ringWidth;

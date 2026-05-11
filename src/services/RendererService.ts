@@ -9,22 +9,45 @@ import type RadialTimelinePlugin from '../main';
 import { addHighlightRectangles as addHighlightRectanglesExt } from '../view/interactions';
 import { renderGossamerLayer } from '../renderer/gossamerLayer';
 import { renderGossamerMonthSpokes } from '../renderer/components/MonthSpokes';
-import { renderProgressRing } from '../renderer/components/ProgressRing';
+import { renderProgressRing, resolveProgressEstimate, resolveProgressRingDate } from '../renderer/components/ProgressRing';
 import { renderTargetDateTick, type TargetTickEnhancedData } from '../renderer/components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from '../renderer/components/Progress';
+import { renderCenterGrid } from '../renderer/components/Grid';
+import { computeGridData } from '../renderer/utils/GridData';
 import { ELAPSED_ARC_RADIUS } from '../renderer/layout/LayoutConstants';
+import {
+    GRID_CELL_BASE,
+    GRID_CELL_WIDTH_EXTRA,
+    GRID_CELL_GAP_X,
+    GRID_CELL_GAP_Y,
+    GRID_HEADER_OFFSET_Y,
+} from '../renderer/layout/LayoutConstants';
 import { dateToAngle } from '../utils/date';
 // Import new DOM updaters
-import { updateSceneColors, updateSceneOpenClasses, updateSceneSearchHighlights } from '../renderer/dom/SceneDOMUpdater';
+import { updateSceneColors, updateSceneFills, updateSceneOpenClasses, updateSceneSearchHighlights } from '../renderer/dom/SceneDOMUpdater';
 import { updateNumberSquareStates, updateNumberSquareGrades } from '../renderer/dom/NumberSquareDOMUpdater';
 import { updateSynopsisText, updateSynopsisVisibility } from '../renderer/dom/SynopsisDOMUpdater';
 import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/dom/SubplotLabelDOMUpdater';
 import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
 import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
-import { PluginRendererFacade, isBeatNote } from '../utils/sceneHelpers';
-import { STAGE_ORDER } from '../utils/constants';
+import { PluginRendererFacade, isBeatNote, isSceneItem } from '../utils/sceneHelpers';
+import { STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../utils/constants';
 import { AuthorProgressService } from './AuthorProgressService';
 import type { MilestoneInfo } from '../renderer/components/MilestoneIndicator';
+
+const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
+    Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no revisions yet.',
+    Author: 'Author stage — The author revises and refines the draft after letting it rest.',
+    House: 'House stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
+    Press: 'Press stage — Final version is ready for release.'
+};
+
+const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
+    Todo: 'Scenes waiting to be written or revised.',
+    Working: 'Scenes currently in progress.',
+    Due: 'Scenes whose due date has passed and are not complete.',
+    Completed: 'Scenes complete for their current publish stage.'
+};
 
 export interface RenderResult {
     svgString: string;
@@ -80,6 +103,78 @@ export class RendererService {
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
         return updateSceneColors(svg, plugin as any, changedScenes); // SAFE: any type used for plugin interface compatibility
+    }
+
+    /**
+     * Update scene fills for visual-only YAML changes (DOM update)
+     */
+    updateSceneFillsDOM(container: HTMLElement, plugin: RadialTimelinePlugin, changedScenes: TimelineItem[]): boolean {
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (!svg) return false;
+        return updateSceneFills(svg, plugin as any, changedScenes); // SAFE: any type used for plugin interface compatibility
+    }
+
+    /**
+     * Update center stage/status matrix for visual YAML changes.
+     */
+    updateCenterGridDOM(container: HTMLElement, scenes: TimelineItem[]): boolean {
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (!svg) return false;
+
+        const existingGrid = svg.querySelector('.rt-center-stage-grid');
+        if (!existingGrid?.parentNode) return false;
+
+        const {
+            gridCounts,
+            gridSceneNames,
+            gridStageStates,
+            isBookComplete,
+            estimatedTotalScenes,
+            totalRuntimeSeconds,
+        } = computeGridData(scenes);
+
+        const stagesForGrid = [...STAGES_FOR_GRID];
+        const statusesForGrid = [...STATUSES_FOR_GRID];
+        const cellWidth = Math.round(GRID_CELL_BASE * 1.5) + GRID_CELL_WIDTH_EXTRA;
+        const cellHeight = GRID_CELL_BASE;
+        const cellGapX = GRID_CELL_GAP_X;
+        const cellGapY = GRID_CELL_GAP_Y;
+        const gridWidth = statusesForGrid.length * cellWidth + (statusesForGrid.length - 1) * cellGapX;
+        const gridHeight = stagesForGrid.length * cellHeight + (stagesForGrid.length - 1) * cellGapY;
+        const startXGrid = -gridWidth / 2;
+        const startYGrid = -gridHeight / 2;
+        const headerY = startYGrid - (cellGapY + GRID_HEADER_OFFSET_Y);
+
+        const gridHtml = renderCenterGrid({
+            statusesForGrid,
+            stagesForGrid,
+            gridCounts,
+            gridSceneNames,
+            gridStageStates,
+            isBookComplete,
+            PUBLISH_STAGE_COLORS: this.plugin.settings.publishStageColors,
+            currentYearLabel: String(new Date().getFullYear()),
+            estimatedTotalScenes,
+            totalRuntimeSeconds,
+            startXGrid,
+            startYGrid,
+            cellWidth,
+            cellHeight,
+            cellGapX,
+            cellGapY,
+            headerY,
+            stageTooltips: STAGE_HEADER_TOOLTIPS,
+            statusTooltips: STATUS_HEADER_TOOLTIPS,
+            runtimeContentType: this.plugin.settings.runtimeContentType === 'screenplay' ? 'screenplay' : 'novel',
+        });
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${gridHtml}</svg>`, 'image/svg+xml');
+        const newGrid = doc.documentElement.querySelector('.rt-center-stage-grid');
+        if (!newGrid) return false;
+
+        existingGrid.parentNode.replaceChild(svg.ownerDocument.importNode(newGrid, true), existingGrid);
+        return true;
     }
 
     /**
@@ -371,7 +466,9 @@ export class RendererService {
         svg.querySelectorAll('.rt-estimate-tick-group, line.estimated-date-tick, circle.estimated-date-dot, .rt-estimate-hotspot').forEach(n => n.parentNode?.removeChild(n));
         svg.querySelectorAll('path.progress-ring-base').forEach(n => n.parentNode?.removeChild(n));
 
-        const now = new Date();
+        const pluginAny = this.plugin as any; // SAFE: any type used for dynamic method access
+        const scenes: TimelineItem[] = pluginAny.lastSceneData || [];
+        const now = resolveProgressRingDate(this.plugin as any, scenes);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const yearProgress = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 365);
         const currentYearStartAngle = -Math.PI / 2;
@@ -379,14 +476,12 @@ export class RendererService {
         const segmentsHtml = renderProgressRing({ progressRadius, yearProgress, currentYearStartAngle, segmentCount: 6 });
         
         // Get scenes and estimate for enhanced tick tooltips
-        const pluginAny = this.plugin as any; // SAFE: any type used for dynamic method access
-        const scenes: TimelineItem[] = pluginAny.lastSceneData || [];
         let enhancedData: TargetTickEnhancedData | undefined;
         let estimateResult: ReturnType<typeof pluginAny.calculateCompletionEstimate> = null;
         
         try {
             if (typeof pluginAny.calculateCompletionEstimate === 'function' && scenes.length > 0) {
-                estimateResult = pluginAny.calculateCompletionEstimate(scenes);
+                estimateResult = resolveProgressEstimate(this.plugin as any, scenes, pluginAny.calculateCompletionEstimate(scenes));
                 enhancedData = this.calculateTargetTickEnhancedData(scenes, estimateResult);
             }
         } catch {}
@@ -427,7 +522,7 @@ export class RendererService {
         scenes: TimelineItem[],
         estimate: { date: Date | null; rate: number; stage: string } | null
     ): TargetTickEnhancedData | undefined {
-        const realScenes = scenes.filter(scene => !isBeatNote(scene));
+        const realScenes = scenes.filter(isSceneItem);
         if (realScenes.length === 0) return undefined;
         
         const stageRemaining: Record<typeof STAGE_ORDER[number], number> = {

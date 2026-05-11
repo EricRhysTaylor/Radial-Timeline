@@ -25,6 +25,7 @@ export enum ChangeType {
     TIME = 'time',                    // Time-based (year progress, month)
     GOSSAMER = 'gossamer',            // Gossamer data updated
     DOMINANT_SUBPLOT = 'dominant_subplot',  // Dominant subplot changed (scene colors only)
+    SCENE_VISUAL = 'scene_visual',    // Scene fill/status/due/stage changed without layout changes
     SYNOPSIS = 'synopsis',            // Synopsis text changed
     UPDATE_STATUS = 'update_status',  // Plugin update available
     RECENT_MOVES = 'recent_moves',    // Recent structural moves list updated
@@ -37,6 +38,7 @@ export interface TimelineSnapshot {
     // Scene data
     sceneCount: number;
     sceneHash: string;
+    sceneVisualHash: string;
     
     // UI state
     openFilePaths: Set<string>;
@@ -106,14 +108,13 @@ export function createSnapshot(
     settings: RadialTimelineSettings,
     gossamerRun: GossamerRun | null | undefined
 ): TimelineSnapshot {
-    // Create comprehensive hash of scene data that includes all rendering-relevant fields
+    // Create a structural hash for fields that affect scene presence, ordering, geometry, labels, or layout.
     const sceneHash = scenes
         .map(s => {
             const parts = [
                 s.path || s.title || '',
                 s.bookId || '',
                 typeof s.bookIndex === 'number' ? String(s.bookIndex) : '',
-                s.status || '',
                 s.actNumber || '',
                 s.subplot || '',
                 s.number || '',
@@ -121,8 +122,6 @@ export function createSnapshot(
                 s.Duration || '',
                 // Runtime affects Chronologue duration arcs when in runtime mode
                 s.Runtime || '',
-                s.due || '',
-                s['Publish Stage'] || '',
                 s.synopsis || '',
                 // Pending Edits affects number square color (gray)
                 s.pendingEdits || '',
@@ -150,6 +149,16 @@ export function createSnapshot(
             
             return parts.join(':');
         })
+        .join('|');
+
+    // Visual-only fields can be updated in-place when geometry and labels are stable.
+    const sceneVisualHash = scenes
+        .map(s => [
+            s.path || s.title || '',
+            Array.isArray(s.status) ? s.status.join(',') : (s.status || ''),
+            s.due || '',
+            Array.isArray(s['Publish Stage']) ? s['Publish Stage'].join(',') : (s['Publish Stage'] || '')
+        ].join(':'))
         .join('|');
     
     // Hash color settings to detect changes
@@ -208,6 +217,7 @@ export function createSnapshot(
     return {
         sceneCount: scenes.length,
         sceneHash,
+        sceneVisualHash,
         openFilePaths: new Set(openFilePaths),
         searchActive,
         searchResults: new Set(searchResults),
@@ -263,6 +273,10 @@ export function detectChanges(
     // Detect scene data changes
     if (prev.sceneHash !== current.sceneHash || prev.sceneCount !== current.sceneCount) {
         changeTypes.add(ChangeType.SCENE_DATA);
+    }
+
+    if (!changeTypes.has(ChangeType.SCENE_DATA) && prev.sceneVisualHash !== current.sceneVisualHash) {
+        changeTypes.add(ChangeType.SCENE_VISUAL);
     }
     
     // Detect open file changes
@@ -345,6 +359,7 @@ export function detectChanges(
         ChangeType.SEARCH, 
         ChangeType.TIME,
         ChangeType.TARGET_DATES,
+        ChangeType.SCENE_VISUAL,
         ChangeType.SYNOPSIS,          // DOM update for synopsis text
         ChangeType.GOSSAMER
     ];
@@ -408,6 +423,7 @@ export function describeChanges(result: ChangeDetectionResult): string {
             case ChangeType.TIME: return 'time';
             case ChangeType.GOSSAMER: return 'gossamer';
             case ChangeType.DOMINANT_SUBPLOT: return 'dominant subplot';
+            case ChangeType.SCENE_VISUAL: return 'scene visual';
             case ChangeType.UPDATE_STATUS: return 'plugin update';
             case ChangeType.RECENT_MOVES: return 'recent moves';
             default: return type;

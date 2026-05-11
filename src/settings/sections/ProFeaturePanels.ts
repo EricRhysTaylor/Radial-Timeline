@@ -2211,73 +2211,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const layoutRowsContainer = layoutPanel.createDiv({ cls: 'ert-layout-rows' });
     let expandedSpecialLayoutId: string | null = null;
 
-    const duplicateBundledLayout = async (layout: PandocLayoutTemplate): Promise<void> => {
-        const installResult = await installBundledPandocLayouts(plugin, [layout.id]);
-        await ensureBundledLayoutInstalledForExport(plugin, layout);
-        if (installResult.installed.length > 0) {
-            new Notice(`Installed bundled layout '${layout.name}' to Pandoc folder.`);
-        }
-
-        const pandocFolder = getConfiguredPandocFolder(plugin);
-        const sourceRelativePath = normalizePath(layout.path.replace(/^\/+/, ''));
-        const sourceVaultPath = normalizePath(`${pandocFolder}/${sourceRelativePath}`);
-        const sourceFile = plugin.app.vault.getAbstractFileByPath(sourceVaultPath);
-        if (!(sourceFile instanceof TFile)) {
-            new Notice(`Could not duplicate '${layout.name}' because template file is missing.`);
-            return;
-        }
-
-        const sourceContent = await plugin.app.vault.read(sourceFile);
-        const sourceFilename = path.basename(layout.path || 'layout.tex');
-        const sourceExt = path.extname(sourceFilename) || '.tex';
-        const sourceStem = sourceFilename.slice(0, -sourceExt.length) || 'layout';
-        let copyIndex = 1;
-        let copyFilename = `${sourceStem}-copy${sourceExt}`;
-        let copyVaultPath = normalizePath(`${pandocFolder}/${copyFilename}`);
-        while (plugin.app.vault.getAbstractFileByPath(copyVaultPath)) {
-            copyFilename = `${sourceStem}-copy-${copyIndex}${sourceExt}`;
-            copyVaultPath = normalizePath(`${pandocFolder}/${copyFilename}`);
-            copyIndex += 1;
-        }
-
-        await plugin.app.vault.create(copyVaultPath, sourceContent);
-
-        const existing = plugin.settings.pandocLayouts || [];
-        let copyName = `${layout.name} Copy`;
-        let copyNameIndex = 2;
-        while (existing.some(item => item.name === copyName && item.preset === layout.preset)) {
-            copyName = `${layout.name} Copy ${copyNameIndex}`;
-            copyNameIndex += 1;
-        }
-
-        const idBase = `${slugifyToFileStem(copyName).toLowerCase()}-${layout.preset}`;
-        let nextId = idBase;
-        let idSuffix = 2;
-        while (existing.some(item => item.id === nextId)) {
-            nextId = `${idBase}-${idSuffix}`;
-            idSuffix += 1;
-        }
-
-        existing.push({
-            id: nextId,
-            name: copyName,
-            preset: layout.preset,
-            path: compactTemplatePathForStorage(plugin, copyFilename),
-            tier: 'pro',
-            templateKind: 'custom',
-            // Seed the copy with the parent's visible description so bundled and duplicate
-            // render the same text. Bundled resolves via profile.summary; the copy has no
-            // profile match, so we capture the resolved text into layout.description.
-            description: buildLayoutDescription(layout),
-            bundled: false,
-            ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
-            ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
-            ...(layout.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
-        });
-        plugin.settings.pandocLayouts = existing;
-        await plugin.saveSettings();
-        new Notice(`Created editable copy '${copyName}'.`);
-    };
+    // (Removed `duplicateBundledLayout`: bundled templates now expose a
+    // Customize pencil that opens the Designed Style wizard pre-filled with
+    // the bundled spec, producing a wizard-editable designed layout instead of
+    // a hand-rolled .tex copy that no UI could later edit. Power users who
+    // want raw LaTeX can copy the .tex via Files or use Import Template.)
 
     const getVisibleLayouts = (): PandocLayoutTemplate[] => {
         const all = plugin.settings.pandocLayouts || [];
@@ -2638,39 +2576,49 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 });
             }
 
-            if (isBundled) {
+            // Pencil button:
+            //   • Bundled layouts (with a designedSpec — all four bundled
+            //     fiction templates carry one) → "Customize" — opens the
+            //     wizard pre-filled with the bundled spec; saving creates a
+            //     NEW designed-origin layout (the bundled stays untouched).
+            //   • Designed-origin layouts → "Edit" — opens the wizard
+            //     pre-filled with the saved spec; saving updates in place.
+            //
+            // The wizard distinguishes the two by `initialLayoutId` —
+            // omitting it routes through createNewLayout (fork mode).
+            if (layout.designedSpec) {
+                const isCustomizingBundled = isBundled;
                 s.addExtraButton(btn => {
-                    btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-duplicate');
-                    btn.setIcon('copy-plus');
-                    btn.setTooltip('Duplicate');
-                    btn.onClick(async () => {
-                        await duplicateBundledLayout(layout);
-                        renderLayoutRows();
-                        refreshPublishingStatusCard();
-                    });
-                });
-            }
-
-            // Edit pencil for designed-origin layouts: opens the wizard
-            // pre-filled with the saved spec so the user can iterate.
-            if (layout.origin === 'designed' && layout.designedSpec) {
-                s.addExtraButton(btn => {
-                    btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-designed-edit');
+                    btn.extraSettingsEl.addClass(
+                        'ert-iconBtn',
+                        isCustomizingBundled ? 'ert-layout-bundled-customize' : 'ert-layout-designed-edit',
+                    );
                     btn.setIcon('pencil');
-                    btn.setTooltip('Edit designed style');
+                    btn.setTooltip(isCustomizingBundled
+                        ? `Customize ${layout.name} — opens the wizard pre-filled with this template's settings; saving creates a new editable copy.`
+                        : 'Edit designed style');
                     if (!isActive) {
                         btn.extraSettingsEl.addClass('ert-pro-locked');
                     }
                     btn.onClick(() => {
                         if (!isActive) {
-                            new Notice('Editing designed styles requires Pro.');
+                            new Notice(isCustomizingBundled
+                                ? 'Customizing PDF styles requires Pro.'
+                                : 'Editing designed styles requires Pro.');
                             return;
                         }
                         new DesignedStyleWizardModal(app, plugin, {
                             initialSpec: layout.designedSpec!,
-                            initialName: layout.name,
+                            // Bundled fork: seed the name with "<Bundled> Copy"
+                            // so the user gets a clear default they can rename.
+                            initialName: isCustomizingBundled
+                                ? `${layout.name} Copy`
+                                : layout.name,
                             initialDescription: layout.description ?? '',
-                            initialLayoutId: layout.id,
+                            // Critical: omit layoutId for bundled fork so
+                            // persistLayout takes the createNewLayout path
+                            // and leaves the canonical bundled spec alone.
+                            ...(isCustomizingBundled ? {} : { initialLayoutId: layout.id }),
                             onSave: async () => {
                                 renderLayoutRows();
                                 refreshPublishingStatusCard();
@@ -2876,26 +2824,17 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             );
         }
     };
-    // Import Template entry point hidden until the Designed Style wizard ships.
-    // The ImportTemplateModal + templateImport pipeline remain in place so we
-    // can re-expose them later (or as a power-user escape hatch) without a
-    // rebuild. To re-enable, restore this block.
+    // Two complementary entry points sit on the same row, opposite the
+    // Install all button:
     //
-    // layoutHeading.addButton(button => {
-    //     button.setButtonText('Import Template');
-    //     button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
-    //     if (!isActive) {
-    //         button.buttonEl.addClass('ert-pro-locked');
-    //         button.setTooltip('Importing custom templates requires Pro.');
-    //     }
-    //     button.onClick(() => {
-    //         if (!isActive) {
-    //             new Notice('Importing custom templates requires Pro.');
-    //             return;
-    //         }
-    //         new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
-    //     });
-    // });
+    //   1. Design your own…  — opens the Designed Style wizard. Spec-driven,
+    //      live preview, edits flow through the wizard forever after.
+    //   2. Import template…  — power-user escape hatch for hand-rolled .tex
+    //      files. Brings an existing LaTeX template into Publishing as a
+    //      static custom layout (no spec, not wizard-editable). Use when the
+    //      wizard's spec axes can't model the look you need.
+    //
+    // The wizard is the default path; Import is the long tail.
 
     // Designed Style Wizard entry point — opens a two-column modal that lets
     // a Pro user author a DesignedStyleSpec from scratch (or starting from one
@@ -2903,11 +2842,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     // spec on save.
     layoutHeading.addButton(button => {
         button.setButtonText('Design your own…');
-        button.setTooltip('Design a new PDF style from scratch.');
+        button.setTooltip('Design a new PDF style from scratch with a live preview.');
         button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
         if (__RT_RELEASE__) {
             button.setDisabled(true);
-            button.setTooltip('BETA release pending—Design a new PDF style from scratch.');
+            button.setTooltip('BETA release pending—Design a new PDF style from scratch with a live preview.');
             button.onClick(() => { /* no-op: BETA release pending */ });
             return;
         }
@@ -2926,6 +2865,34 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     refreshPublishingStatusCard();
                 },
             }).open();
+        });
+    });
+
+    // Import Template entry point — sits next to "Design your own…" so both
+    // "create a custom style" paths are visible in the same place. Import is
+    // the escape hatch for users who already have a .tex file (hand-tuned
+    // LaTeX, third-party template, custom packages the spec can't express).
+    // Imported layouts are static — they don't open in the wizard.
+    layoutHeading.addButton(button => {
+        button.setButtonText('Import template…');
+        button.setTooltip('Bring an existing .tex template into Publishing. For from-scratch design with a live preview, use "Design your own…" instead.');
+        button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
+        if (__RT_RELEASE__) {
+            button.setDisabled(true);
+            button.setTooltip('BETA release pending—Bring an existing .tex template into Publishing.');
+            button.onClick(() => { /* no-op: BETA release pending */ });
+            return;
+        }
+        if (!isActive) {
+            button.buttonEl.addClass('ert-pro-locked');
+            button.setTooltip('Importing custom templates requires Pro.');
+        }
+        button.onClick(() => {
+            if (!isActive) {
+                new Notice('Importing custom templates requires Pro.');
+                return;
+            }
+            new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
         });
     });
     layoutHeading.addButton(button => {

@@ -6,6 +6,8 @@
 
 import type { TimelineItem } from '../../types';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { getMostAdvancedStageColor } from '../../utils/colour';
+import { getFillForScene } from '../utils/SceneFill';
 
 /**
  * Updates scene colors in the DOM without regenerating SVG
@@ -45,10 +47,74 @@ export function updateSceneColors(
                 }
             });
         });
-        
+
         return updated;
     } catch (error) {
         console.error('[SceneDOMUpdater] Failed to update scene colors:', error);
+        return false;
+    }
+}
+
+/**
+ * Updates scene fills in the DOM without regenerating SVG.
+ * Used for visual-only YAML changes such as Status, Due, and Publish Stage.
+ */
+export function updateSceneFills(
+    svg: SVGSVGElement,
+    plugin: PluginRendererFacade,
+    changedScenes: TimelineItem[]
+): boolean {
+    try {
+        const publishStageColors = plugin.settings.publishStageColors || {};
+        const currentMode = (plugin.settings as any).currentMode || 'narrative';
+        const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
+        
+        let updated = false;
+        
+        changedScenes.forEach(scene => {
+            if (!scene.path) return;
+            
+            const encodedPath = encodeURIComponent(scene.path);
+            const sceneGroups = svg.querySelectorAll(`.rt-scene-group[data-path="${encodedPath}"]`);
+            
+            sceneGroups.forEach(group => {
+                const arc = group.querySelector('.rt-scene-arc') as SVGPathElement | null;
+                if (!arc) return;
+                const subplotColorIndex = Number(group.getAttribute('data-subplot-color-index') ?? 0);
+                const subplotColorResolver = () => resolveSubplotColorByIndex(subplotColorIndex);
+                
+                const fill = getFillForScene(
+                    scene,
+                    publishStageColors,
+                    subplotColorResolver,
+                    false,
+                    forceSubplotFillColors
+                );
+                
+                if (arc.getAttribute('fill') !== fill) {
+                    arc.setAttribute('fill', fill);
+                    updated = true;
+                }
+            });
+        });
+
+        const dominantStageColor = getMostAdvancedStageColor(changedScenes, publishStageColors);
+        const root = svg.ownerDocument?.documentElement;
+        if (root) {
+            root.style.setProperty('--rt-max-publish-stage-color', dominantStageColor);
+            root.style.setProperty('--ert-max-publish-stage-color', dominantStageColor);
+        }
+
+        svg.querySelectorAll<SVGTextElement>('.rt-act-label').forEach(label => {
+            if (label.getAttribute('fill') !== dominantStageColor) {
+                label.setAttribute('fill', dominantStageColor);
+                updated = true;
+            }
+        });
+        
+        return updated;
+    } catch (error) {
+        console.error('[SceneDOMUpdater] Failed to update scene fills:', error);
         return false;
     }
 }
@@ -135,4 +201,16 @@ function getMasterSubplotOrder(svg: SVGSVGElement): string[] {
     return Array.from(labels)
         .map(label => label.getAttribute('data-subplot-name'))
         .filter((name): name is string => name !== null);
+}
+
+function resolveSubplotColorByIndex(subplotColorIndex: number): string {
+    const normalized = Number.isFinite(subplotColorIndex) ? Math.max(0, subplotColorIndex) % 16 : 0;
+    try {
+        const computed = getComputedStyle(document.documentElement)
+            .getPropertyValue(`--rt-subplot-colors-${normalized}`)
+            .trim();
+        return computed || '#EFBDEB';
+    } catch {
+        return '#EFBDEB';
+    }
 }

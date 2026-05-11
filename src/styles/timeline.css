@@ -165,10 +165,8 @@
 }
 
 .rt-subplot-ring-label-text {
-  fill: var(--rt-max-publish-stage-color);
-  /* Use max stage color */
-  opacity: .3;
-  /* Corrected opacity back to 30% */
+  fill: color-mix(in srgb, var(--rt-max-publish-stage-color) 72%, #ffffff);
+  opacity: .42;
   font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
   font-weight: 400;
   /* Regular weight */

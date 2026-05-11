@@ -4,7 +4,7 @@ import { RadialTimelineView } from '../view/TimeLineView';
 import { ChangeType } from '../renderer/ChangeDetection';
 import type RadialTimelinePlugin from '../main';
 
-const TIMELINE_REFRESH_DELAY_MS = 10000;
+const TIMELINE_REFRESH_DELAY_MS = 1000;
 
 /**
  * Render request with priority and change type tracking
@@ -162,4 +162,3 @@ export class TimelineService {
         this.app.workspace.revealLeaf(leaf);
     }
 }
-

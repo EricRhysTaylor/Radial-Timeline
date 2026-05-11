@@ -41,7 +41,7 @@ import { tooltip as applyTooltip } from '../utils/tooltip';
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
-const TIMELINE_REFRESH_DELAY_MS = 5000;
+const TIMELINE_REFRESH_DELAY_MS = 1000;
 const SAGA_SCOPE_OPTION = '__rt_saga__';
 
 // Namespace rule for Timeline view work:
@@ -930,6 +930,14 @@ export class RadialTimelineView extends ItemView {
                         updated = this.rendererService.updateSceneColorsDOM(container, this.plugin, scenes) || updated;
                     }
 
+                    // Handle visual-only scene YAML changes (status, due, publish stage)
+                    if (changeResult.changeTypes.has(ChangeType.SCENE_VISUAL)) {
+                        const scenes = this.sceneData || [];
+                        updated = this.rendererService.updateSceneFillsDOM(container, this.plugin, scenes) || updated;
+                        updated = this.rendererService.updateCenterGridDOM(container, scenes) || updated;
+                        updated = this.rendererService.updateProgressAndTicks(container) || updated;
+                    }
+
                     // Handle gossamer changes
                     if (changeResult.changeTypes.has(ChangeType.GOSSAMER)) {
                         updated = this.rendererService.updateGossamerLayer(this as any) || updated;
@@ -1011,7 +1019,7 @@ export class RadialTimelineView extends ItemView {
             this.scheduleBeatLabelAdjustment(50);
         }));
 
-        // Frontmatter values to track changes only to YAML frontmatter with debounce every 5 seconds.
+        // Frontmatter values to track changes only to YAML frontmatter with debounce every 1 second.
         this.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
                 // Skip if not a markdown file

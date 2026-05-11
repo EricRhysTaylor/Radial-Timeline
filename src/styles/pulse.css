@@ -2911,6 +2911,36 @@ body > .tooltip {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Per-category "Publishing note" callout — short editorial framing shown
+   between the reset bar and the category-specific controls. Intentionally
+   muted: it's context, not chrome that competes with the form below.
+
+   Visual treatment: subtle accent rule on the left (var(--interactive-accent))
+   to mark it as informational, slightly muted body text, small uppercase
+   label header. Matches the rhythm of other in-modal callouts elsewhere in
+   the wizard without inventing a new alert flavor. */
+.ert-style-wizard__publishing-note {
+  border-left: 2px solid var(--interactive-accent);
+  padding: var(--ert-gap-tight) var(--ert-pad-cozy);
+  margin-bottom: var(--ert-gap-sm);
+  background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
+  border-radius: 0 var(--ert-iconBtn-radius) var(--ert-iconBtn-radius) 0;
+}
+.ert-style-wizard__publishing-note-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--ert-gap-2xs);
+}
+.ert-style-wizard__publishing-note-body {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-normal);
+  text-wrap: pretty;
+}
 .ert-style-wizard__panel-title {
   font-size: 0.95rem;
   font-weight: 600;

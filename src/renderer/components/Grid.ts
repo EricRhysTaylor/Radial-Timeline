@@ -88,7 +88,7 @@ export function renderCenterGrid(params: {
   };
 
   const header = `
-    <g class="color-key-center">
+    <g class="color-key-center rt-center-stage-grid">
       ${statusesForGrid.map((status, c) => {
         const label = status === 'Todo' ? t('timeline.grid.statusHeader.todo')
           : status === 'Working' ? t('timeline.grid.statusHeader.working')

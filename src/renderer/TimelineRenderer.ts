@@ -27,6 +27,7 @@ import {
     buildTextClasses,
     extractPosition,
     isBeatNote,
+    isSceneItem,
     type PluginRendererFacade
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
@@ -80,7 +81,7 @@ import { renderBeatSlice } from './components/BeatSlices';
 import { renderActBorders } from './components/Acts';
 import { renderActLabels } from './components/ActLabels';
 import { renderTargetDateTick, type TargetTickEnhancedData } from './components/ProgressTicks';
-import { renderProgressRing } from './components/ProgressRing';
+import { renderProgressRing, resolveProgressEstimate, resolveProgressRingDate } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
 import { renderBeatGroup } from './components/Beats';
@@ -253,8 +254,8 @@ function calculateTargetTickEnhancedData(
 ): TargetTickEnhancedData | undefined {
     if (scenes.length === 0) return undefined;
     
-    // Filter to real scenes only (not beats)
-    const realScenes = scenes.filter(scene => !isBeatNote(scene));
+    // Filter to real scenes only; beats, backdrops, and matter notes do not count for progress.
+    const realScenes = scenes.filter(isSceneItem);
     if (realScenes.length === 0) return undefined;
     
     // Calculate remaining scenes per stage
@@ -451,8 +452,10 @@ export function createTimelineSVG(
 
 
 
+    const progressDate = resolveProgressRingDate(plugin, scenes);
+
     // Get current month index (0-11)
-    const currentMonthIndex = new Date().getMonth();
+    const currentMonthIndex = progressDate.getMonth();
 
     // Store boundary labels (first/last) to render on top later in chronologue mode
     let boundaryLabelsHtml = '';
@@ -468,7 +471,7 @@ export function createTimelineSVG(
 
     // First add the progress ring (RAINBOW YEAR PROGRESS)
     // Calculate year progress
-    const now = new Date();
+    const now = progressDate;
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     const yearProgress = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 365);
@@ -497,7 +500,11 @@ export function createTimelineSVG(
             }
         }
     }
-    const estimateResult: CompletionEstimate | null = plugin.calculateCompletionEstimate(scenes);
+    const estimateResult: CompletionEstimate | null = resolveProgressEstimate(
+        plugin,
+        scenes,
+        plugin.calculateCompletionEstimate(scenes)
+    );
     const circumference = 2 * Math.PI * progressRadius;
     // const progressLength = circumference * yearProgress; // No longer needed for arc calc
     const currentYearStartAngle = -Math.PI / 2; // Start at 12 o'clock
