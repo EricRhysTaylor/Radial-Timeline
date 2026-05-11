@@ -149,7 +149,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const sizeSelectorRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
     sizeSelectorRow.createSpan({ text: t('settings.authorProgress.preview.sizeLabel'), cls: ERT_CLASSES.LABEL });
     const sizeSelectorControls = sizeSelectorRow.createDiv({ cls: ERT_CLASSES.INLINE });
-    let teaserPreviewMode: TeaserPreviewMode = 'auto';
+    let teaserPreviewMode: TeaserPreviewMode = plugin.settings.authorProgress?.defaults.aprDefaultViewMode ?? 'auto';
     let refreshPreview = () => {};
     let refreshCampaignStyleState: (() => void) | null = null;
     let teaserSelectWrap: HTMLDivElement | null = null;
@@ -238,6 +238,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         teaserSelect.onchange = () => {
             teaserPreviewMode = teaserSelect.value as TeaserPreviewMode;
             fitSelectToSelectedLabel(teaserSelect, { extraPx: 16, minPx: 72 });
+            // Persist so the Default Report and any campaign with teaser OFF render in this mode.
+            const defaults = plugin.settings.authorProgress?.defaults;
+            if (defaults) {
+                defaults.aprDefaultViewMode = teaserPreviewMode;
+                void plugin.saveSettings();
+            }
             refreshPreview?.();
         };
         fitSelectToSelectedLabel(teaserSelect, { extraPx: 16, minPx: 72 });

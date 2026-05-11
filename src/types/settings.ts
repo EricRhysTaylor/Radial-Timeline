@@ -376,6 +376,9 @@ export interface AuthorProgressDefaults {
     aprTargetSceneCount?: number; // Author-estimated total scenes — APR denominator when current scene count is smaller
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
     aprExportQuality?: AprExportQuality; // Standard (1200px) or Ultra (2400px)
+    // Persisted view mode for the Default Report and any campaign with teaser OFF.
+    // Mirrors the teaser preview dropdown in social settings. 'auto' = use progress %.
+    aprDefaultViewMode?: 'auto' | 'bar' | 'scenes' | 'colors' | 'full';
     exportFormat?: AprExportFormat; // Core/default report export format
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;

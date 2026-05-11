@@ -367,9 +367,7 @@ export class AuthorProgressModal extends Modal {
             const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
             const stageMeta = target.campaign
                 ? this.getCampaignStageDisplay(target.campaign)
-                : target.size === 'thumb'
-                    ? { label: TEASER_LEVEL_INFO.bar.label.toUpperCase(), icon: TEASER_LEVEL_INFO.bar.icon }
-                    : { label: TEASER_LEVEL_INFO.full.label.toUpperCase(), icon: TEASER_LEVEL_INFO.full.icon };
+                : this.getDefaultReportStageDisplay(target.size);
             setIcon(stageIcon, stageMeta.icon);
             stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageMeta.label });
             if (stageMeta.tooltip) {
@@ -876,10 +874,31 @@ export class AuthorProgressModal extends Modal {
         return { label: this.formatDays(remaining) };
     }
 
+    private getDefaultReportStageDisplay(size: 'thumb' | 'small' | 'medium' | 'large'): { label: string; icon: string; tooltip?: string } {
+        // Thumb size always renders ring/bar.
+        if (size === 'thumb') {
+            const info = TEASER_LEVEL_INFO.bar;
+            return { label: info.label.toUpperCase(), icon: info.icon };
+        }
+        // Honor the persisted view mode (set via the social settings teaser preview dropdown).
+        const defaultViewMode = this.plugin.settings.authorProgress?.defaults.aprDefaultViewMode;
+        const level = (defaultViewMode && defaultViewMode !== 'auto') ? defaultViewMode : 'full';
+        const info = TEASER_LEVEL_INFO[level];
+        return { label: info.label.toUpperCase(), icon: info.icon };
+    }
+
     private getCampaignStageDisplay(campaign: AuthorProgressCampaign): { label: string; icon: string; tooltip?: string } {
         const teaserSettings = campaign.teaserReveal ?? { enabled: true, preset: 'standard' as const };
         if (!teaserSettings.enabled) {
-            return { label: TEASER_LEVEL_INFO.full.label.toUpperCase(), icon: TEASER_LEVEL_INFO.full.icon };
+            // Mirror the Default Report's current view mode (set via social settings preview).
+            const defaultViewMode = this.plugin.settings.authorProgress?.defaults.aprDefaultViewMode;
+            const inheritedLevel = (defaultViewMode && defaultViewMode !== 'auto') ? defaultViewMode : 'full';
+            const info = TEASER_LEVEL_INFO[inheritedLevel];
+            return {
+                label: `DEFAULT · ${info.label.toUpperCase()}`,
+                icon: info.icon,
+                tooltip: 'Teaser off — this campaign publishes the current Default Report view (set in social settings preview).'
+            };
         }
 
         const thresholds = getTeaserThresholds(teaserSettings.preset ?? 'standard', teaserSettings.customThresholds);

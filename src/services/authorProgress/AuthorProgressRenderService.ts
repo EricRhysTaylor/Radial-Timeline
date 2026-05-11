@@ -124,18 +124,27 @@ export class AuthorProgressRenderService {
         const isThumb = designSize === 'thumb';
         const bookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
 
+        // Honor the persisted view mode from social settings (teaser preview dropdown).
+        // 'auto' / undefined → full reveal. 'bar'/'scenes'/'colors'/'full' → apply that level.
+        const baseReveal = this.resolveBaseRevealOptions(settings.aprDefaultViewMode, settings);
+        const isBar = settings.aprDefaultViewMode === 'bar';
+        const ringOnly = isThumb || isBar;
+
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,
             exportPreset: getExportPreset(designSize, exportQuality),
             progressPercent: progressState.percent,
             bookTitle,
             authorName: settings.authorName || '',
-            showScenes: !isThumb,
-            showSubplots: settings.showSubplots ?? true,
-            showActs: settings.showActs ?? true,
-            showStatusColors: settings.showStatus ?? true,
-            showProgressPercent: isThumb ? false : (settings.showProgressPercent ?? true),
-            showBranding: !isThumb,
+            showScenes: ringOnly ? false : baseReveal.showScenes,
+            showSubplots: baseReveal.showSubplots,
+            showActs: baseReveal.showActs,
+            showStatusColors: baseReveal.showStatusColors,
+            showStageColors: baseReveal.showStageColors,
+            grayCompletedScenes: baseReveal.grayCompletedScenes,
+            grayscaleScenes: baseReveal.grayscaleScenes,
+            showProgressPercent: ringOnly ? false : baseReveal.showProgressPercent,
+            showBranding: !ringOnly,
             centerMark: 'none',
             stageColors: (this.plugin.settings as any).publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
@@ -175,23 +184,19 @@ export class AuthorProgressRenderService {
             ? renderStyle.showRtAttribution !== false
             : true;
 
-        const baseShowSubplots = settings.showSubplots ?? true;
-        const baseShowActs = settings.showActs ?? true;
-        const baseShowStatusColors = settings.showStatus ?? true;
-        const baseShowProgressPercent = settings.showProgressPercent ?? true;
-
-        let showScenes = true;
-        let showSubplots = baseShowSubplots;
-        let showActs = baseShowActs;
-        let showStatusColors = baseShowStatusColors;
-        let showStageColors = true;
-        let grayCompletedScenes = false;
-        let grayscaleScenes = false;
-        let showProgressPercent = baseShowProgressPercent;
-        let isTeaserBar = false;
+        let showScenes: boolean;
+        let showSubplots: boolean;
+        let showActs: boolean;
+        let showStatusColors: boolean;
+        let showStageColors: boolean;
+        let grayCompletedScenes: boolean;
+        let grayscaleScenes: boolean;
+        let showProgressPercent: boolean;
+        let isBarLevel = false;
         let debugStage = 'Standard';
 
         if (campaign.teaserReveal?.enabled) {
+            // Teaser ON → progressive reveal based on current progress percent.
             const preset = campaign.teaserReveal.preset ?? 'standard';
             const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
             const revealLevel = getTeaserRevealLevel(
@@ -201,7 +206,7 @@ export class AuthorProgressRenderService {
             );
             debugStage = revealLevel;
             const revealOptions = teaserLevelToRevealOptions(revealLevel);
-            isTeaserBar = revealLevel === 'bar';
+            isBarLevel = revealLevel === 'bar';
 
             showScenes = revealOptions.showScenes;
             showSubplots = revealOptions.showSubplots;
@@ -210,11 +215,25 @@ export class AuthorProgressRenderService {
             showStageColors = revealOptions.showStageColors;
             grayCompletedScenes = revealOptions.grayCompletedScenes;
             grayscaleScenes = revealOptions.grayscaleScenes;
+            showProgressPercent = settings.showProgressPercent ?? true;
+        } else {
+            // Teaser OFF → inherit Default Report's view mode (mirrors social preview).
+            const base = this.resolveBaseRevealOptions(settings.aprDefaultViewMode, settings);
+            isBarLevel = settings.aprDefaultViewMode === 'bar';
+            showScenes = base.showScenes;
+            showSubplots = base.showSubplots;
+            showActs = base.showActs;
+            showStatusColors = base.showStatusColors;
+            showStageColors = base.showStageColors;
+            grayCompletedScenes = base.grayCompletedScenes;
+            grayscaleScenes = base.grayscaleScenes;
+            showProgressPercent = base.showProgressPercent;
+            debugStage = settings.aprDefaultViewMode ?? 'default';
         }
 
         const designSize = campaign.aprSize || settings.aprSize || 'medium';
         const exportQuality: AprExportQuality = campaign.aprExportQuality || settings.aprExportQuality || 'standard';
-        const ringOnly = designSize === 'thumb' || isTeaserBar;
+        const ringOnly = designSize === 'thumb' || isBarLevel;
         const bookTitle = resolveBookTitle(campaign, books, this.plugin.getActiveBookTitle());
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
@@ -254,6 +273,50 @@ export class AuthorProgressRenderService {
                 stage: debugStage,
                 percent: progressState.percent
             }
+        };
+    }
+
+    /**
+     * Resolve the visual flags for a non-teaser render (Default Report, or campaign with teaser OFF).
+     * Returns the reveal options for the explicit view mode, or 'full' equivalents when 'auto'/undefined.
+     */
+    private resolveBaseRevealOptions(
+        mode: AuthorProgressDefaults['aprDefaultViewMode'],
+        settings: AuthorProgressDefaults
+    ): {
+        showScenes: boolean;
+        showSubplots: boolean;
+        showActs: boolean;
+        showStatusColors: boolean;
+        showStageColors: boolean;
+        grayCompletedScenes: boolean;
+        grayscaleScenes: boolean;
+        showProgressPercent: boolean;
+    } {
+        const showProgressPercent = settings.showProgressPercent ?? true;
+        if (mode && mode !== 'auto') {
+            const opts = teaserLevelToRevealOptions(mode);
+            return {
+                showScenes: opts.showScenes,
+                showSubplots: opts.showSubplots && (settings.showSubplots ?? true),
+                showActs: opts.showActs && (settings.showActs ?? true),
+                showStatusColors: opts.showStatusColors && (settings.showStatus ?? true),
+                showStageColors: opts.showStageColors,
+                grayCompletedScenes: opts.grayCompletedScenes,
+                grayscaleScenes: opts.grayscaleScenes,
+                showProgressPercent
+            };
+        }
+        // 'auto' / undefined → full reveal, gated by user's show* toggles
+        return {
+            showScenes: true,
+            showSubplots: settings.showSubplots ?? true,
+            showActs: settings.showActs ?? true,
+            showStatusColors: settings.showStatus ?? true,
+            showStageColors: true,
+            grayCompletedScenes: false,
+            grayscaleScenes: false,
+            showProgressPercent
         };
     }
 
