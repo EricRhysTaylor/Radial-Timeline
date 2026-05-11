@@ -138,7 +138,7 @@ import type { TeaserThresholds, TeaserPreset, TeaserRevealLevel } from '../../ty
 /**
  * Preset thresholds for Teaser Reveal (4 stages)
  * Each number is the % at which that level unlocks
- * Order: bar (0%) → scenes → colors → full
+ * Order: ring (0%) → scenes → colors → full
  */
 export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThresholds> = {
     slow: {
@@ -160,7 +160,7 @@ export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThres
 
 /**
  * Reveal level labels with icons (4 stages)
- * Order: bar → scenes → colors → full
+ * Order: ring → scenes → colors → full
  * 
  * STANDARDIZED LABELS (used everywhere in APR UI):
  * - Ring: Progress ring only
@@ -169,7 +169,7 @@ export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThres
  * - Complete: All subplot rings visible
  */
 export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon: string; description: string }> = {
-    bar: {
+    ring: {
         label: 'Ring',
         icon: 'circle',        // Minimal: just a ring
         description: 'Progress ring only — maximum mystery',
@@ -206,7 +206,7 @@ import type { TeaserDisabledStages } from '../../types/settings';
 /**
  * Calculate which reveal level is active based on current progress
  * Respects disabled stages - skips them in the progression
- * Order: bar → scenes → colors → full
+ * Order: ring → scenes → colors → full
  */
 export function getTeaserRevealLevel(
     progress: number,
@@ -223,17 +223,17 @@ export function getTeaserRevealLevel(
 
     // Scenes stage (if not disabled)
     if (progress >= thresholds.scenes) {
-        return disabledStages?.scenes ? 'bar' : 'scenes';
+        return disabledStages?.scenes ? 'ring' : 'scenes';
     }
 
-    return 'bar';
+    return 'ring';
 }
 
 /**
  * Convert reveal level to reveal options for APR renderer
  * 
  * 4-stage progression:
- * - bar:    Progress ring only, no scenes
+ * - ring:   Progress ring only, no scenes
  * - scenes: Scene cells + acts, grayscale patterns, completed = gray
  * - colors: Full publish stage colors for all scenes
  * - full:   All subplot rings visible
@@ -248,7 +248,7 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
     grayscaleScenes: boolean;        // Force grayscale rendering for scene colors
 } {
     switch (level) {
-        case 'bar':
+        case 'ring':
             // Just progress ring, no details
             return {
                 showScenes: false,

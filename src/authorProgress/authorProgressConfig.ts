@@ -57,6 +57,16 @@ function normalizeAprSize(value: unknown, fallback: AuthorProgressDefaults['aprS
     return value === 'thumb' || value === 'small' || value === 'medium' || value === 'large' ? value : fallback;
 }
 
+function normalizeAprDefaultViewMode(
+    value: unknown,
+    fallback: AuthorProgressDefaults['aprDefaultViewMode']
+): AuthorProgressDefaults['aprDefaultViewMode'] {
+    // TODO(v7): Remove the 'bar' → 'ring' migration. See docs/engineering/plans/v7-removals.md.
+    if (value === 'bar') return 'ring';
+    if (value === 'auto' || value === 'ring' || value === 'scenes' || value === 'colors' || value === 'full') return value;
+    return fallback;
+}
+
 function normalizeTrackedStage(value: unknown, fallback: AprTrackedStage = 'Zero'): AprTrackedStage {
     return value === 'Zero' || value === 'Author' || value === 'House' || value === 'Press'
         ? value
@@ -97,6 +107,7 @@ export function buildDefaultAuthorProgressDefaults(): AuthorProgressDefaults {
         aprProgressDateTarget: undefined,
         aprTargetSceneCount: undefined,
         aprSize: 'medium',
+        aprDefaultViewMode: 'auto',
         exportFormat: 'png',
         aprBackgroundColor: '#0d0d0f',
         aprCenterTransparent: true,
@@ -293,6 +304,7 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
             ? Math.floor(raw.aprTargetSceneCount)
             : undefined,
         aprSize,
+        aprDefaultViewMode: normalizeAprDefaultViewMode(raw.aprDefaultViewMode, defaults.aprDefaultViewMode),
         exportFormat,
         aprBackgroundColor: asString(raw.aprBackgroundColor) ?? defaults.aprBackgroundColor,
         aprCenterTransparent: asBoolean(raw.aprCenterTransparent, defaults.aprCenterTransparent ?? true),

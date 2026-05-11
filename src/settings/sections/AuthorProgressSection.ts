@@ -226,7 +226,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--fit-selected' });
         const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
             { value: 'auto', label: t('settings.authorProgress.preview.teaserAuto') },
-            { value: 'bar', label: t('settings.authorProgress.preview.teaserRing') },
+            { value: 'ring', label: t('settings.authorProgress.preview.teaserRing') },
             { value: 'scenes', label: t('settings.authorProgress.preview.teaserScenes') },
             { value: 'colors', label: t('settings.authorProgress.preview.teaserColor') },
             { value: 'full', label: t('settings.authorProgress.preview.teaserComplete') },
@@ -2008,7 +2008,7 @@ async function renderHeroPreview(
                 grayCompletedScenes = revealOptions.grayCompletedScenes;
                 grayscaleScenes = revealOptions.grayscaleScenes;
 
-                if (previewLevel === 'bar') {
+                if (previewLevel === 'ring') {
                     showProgressPercent = false;
                     showBranding = false;
                 }

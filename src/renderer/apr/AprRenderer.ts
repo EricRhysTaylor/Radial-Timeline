@@ -133,7 +133,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         bookTitle,
         authorName,
         progressPercent,
-        showScenes = true,      // New: when false, shows bar-only mode
+        showScenes = true,      // New: when false, shows ring-only mode
         showSubplots = true,
         showActs = true,
         showStatusColors = true,
@@ -265,8 +265,12 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const percentNumberColorResolvedInput = normalizeOptionalColor(percentNumberColor);
     const percentSymbolColorResolvedInput = normalizeOptionalColor(percentSymbolColor);
     const pressStageColor = stageColorMap.Press;
-    const bgFill = (transparentCenter || backgroundColorResolved === 'transparent') ? 'none' : (backgroundColorResolved ?? structural.background);
-    const holeFill = transparentCenter ? 'none' : (backgroundColorResolved ?? structural.centerHole);
+    const wantsTransparent = transparentCenter || backgroundColorResolved === 'transparent';
+    const bgFill = wantsTransparent ? 'none' : (backgroundColorResolved ?? structural.background);
+    // Center hole must use the same transparency check as the outer rect. Otherwise, in ring/bar mode
+    // (where the center hole is the dominant visible area), the dark structural.centerHole bleeds
+    // through and the export reads as "black background" even with bg set to transparent.
+    const holeFill = wantsTransparent ? 'none' : (backgroundColorResolved ?? structural.centerHole);
     const bookTitleColorResolved = bookAuthorColorResolved ?? pressStageColor;
     const authorColorResolved = authorColorResolvedInput ?? bookTitleColorResolved;
     const engineColorResolved = engineColorResolvedInput ?? APR_TEXT_COLORS.primary;
@@ -331,7 +335,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg)}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
+    // RING-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
     if (!showScenesFinal) {
         svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, color, opacity, {
@@ -641,7 +645,7 @@ function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeCo
 }
 
 /**
- * Render a solid progress ring (bar-only mode / teaser mode)
+ * Render a solid progress ring (ring-only mode / teaser mode)
  * Shows a single ring with progress filled as an arc
  */
 function renderProgressRing(

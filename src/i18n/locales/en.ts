@@ -2362,7 +2362,7 @@ export const en: TranslationKeys = {
                 stageBadge: { label: 'Stage / RT', desc: 'Stage badge typography. The RT logo follows the Publish stage color.' },
                 transparentMode: {
                     name: 'Transparent mode',
-                    desc: 'No background fill \u2014 adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.',
+                    desc: 'No background fill \u2014 adapts to any page or app. Works for PNG and SVG exports on platforms that preserve transparency.',
                 },
                 backgroundColor: {
                     name: 'Background color',

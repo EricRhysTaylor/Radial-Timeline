@@ -1303,7 +1303,7 @@ async function renderTeaserStagesPreviews(
         isDisabled: boolean;
         disableKey?: 'scenes' | 'colors';
     }[] = [
-            { level: 'bar', label: TEASER_LEVEL_INFO.bar.label, progress: 5, icon: TEASER_LEVEL_INFO.bar.icon, canDisable: false, isDisabled: false },
+            { level: 'ring', label: TEASER_LEVEL_INFO.ring.label, progress: 5, icon: TEASER_LEVEL_INFO.ring.icon, canDisable: false, isDisabled: false },
             { level: 'scenes', label: TEASER_LEVEL_INFO.scenes.label, progress: thresholds.scenes, icon: TEASER_LEVEL_INFO.scenes.icon, canDisable: true, isDisabled: !!disabledStages.scenes, disableKey: 'scenes' },
             { level: 'colors', label: TEASER_LEVEL_INFO.colors.label, progress: thresholds.colors, icon: TEASER_LEVEL_INFO.colors.icon, canDisable: true, isDisabled: !!disabledStages.colors, disableKey: 'colors' },
             { level: 'full', label: TEASER_LEVEL_INFO.full.label, progress: thresholds.full, icon: TEASER_LEVEL_INFO.full.icon, canDisable: false, isDisabled: false },
@@ -1350,7 +1350,7 @@ async function renderTeaserStagesPreviews(
                 plugin.settings.books,
                 plugin.getActiveBookTitle()
             ) ?? 'Book';
-            const isRingOnly = stage.level === 'bar';
+            const isRingOnly = stage.level === 'ring';
             const previewStageLabel = progressService.getDisplayStageForPercent(stage.progress);
             const { svgString } = createAprSVG(scenes, {
                 size: 'small',

@@ -339,11 +339,23 @@
 
 .ert-ui :is(input, select).ert-input {
   height: var(--ert-control-height);
-  padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
+  /* No vertical padding — line-height does the centering. This mirrors the timeline
+     title-bar search input + book-switcher select recipe, which is perfectly aligned.
+     Mixing height + padding-y causes inputs and selects to render text at slightly
+     different baselines. */
+  padding: 0 var(--ert-control-pad-x);
+  line-height: calc(var(--ert-control-height) - 2px);
   border-radius: var(--ert-control-radius);
   border: 1px solid var(--ert-control-border);
   background-color: var(--ert-control-bg);
   color: var(--ert-control-color);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+/* Selects need extra right padding to clear the dropdown arrow. */
+.ert-ui select.ert-input {
+  padding-right: var(--ert-select-pad-end);
 }
 
 .ert-ui :is(input, select).ert-input[readonly],

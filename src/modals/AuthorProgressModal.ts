@@ -584,7 +584,9 @@ export class AuthorProgressModal extends Modal {
         const format = this.getCampaignExportFormat(campaign);
         const campaignQuality = campaign.aprExportQuality ?? this.plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
         const scheduleLabel = this.getTeaserScheduleLabel(campaign);
-        const stageInfo = this.resolveTeaserStatus(campaign).info ?? TEASER_LEVEL_INFO.full;
+        // Reuse the same logic as the upper Campaign Status row so the pill matches
+        // (shows DEFAULT · RING / DEFAULT · SCENES etc. when teaser is OFF, or the teaser stage when ON).
+        const stageInfo = this.getCampaignStageDisplay(campaign);
 
         const statusRow = container.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data ert-apr-actions-status' });
 
@@ -622,6 +624,9 @@ export class AuthorProgressModal extends Modal {
         const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(stageIcon, stageInfo.icon);
         stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageInfo.label });
+        if (stageInfo.tooltip) {
+            setTooltip(stagePill, stageInfo.tooltip);
+        }
 
         // === OUTPUT FILE ===
         const pathRow = container.createDiv({
@@ -877,7 +882,7 @@ export class AuthorProgressModal extends Modal {
     private getDefaultReportStageDisplay(size: 'thumb' | 'small' | 'medium' | 'large'): { label: string; icon: string; tooltip?: string } {
         // Thumb size always renders ring/bar.
         if (size === 'thumb') {
-            const info = TEASER_LEVEL_INFO.bar;
+            const info = TEASER_LEVEL_INFO.ring;
             return { label: info.label.toUpperCase(), icon: info.icon };
         }
         // Honor the persisted view mode (set via the social settings teaser preview dropdown).
@@ -914,7 +919,7 @@ export class AuthorProgressModal extends Modal {
         const disabled = teaserSettings.disabledStages ?? {};
         const filtered = steps.filter(step => !(step.level === 'scenes' && disabled.scenes) && !(step.level === 'colors' && disabled.colors));
         const currentIndex = filtered.findIndex(step => step.level === level);
-        const nextThreshold = level === 'bar'
+        const nextThreshold = level === 'ring'
             ? filtered[0]?.threshold
             : (currentIndex >= 0 && currentIndex < filtered.length - 1
                 ? filtered[currentIndex + 1].threshold

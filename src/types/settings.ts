@@ -378,7 +378,7 @@ export interface AuthorProgressDefaults {
     aprExportQuality?: AprExportQuality; // Standard (1200px) or Ultra (2400px)
     // Persisted view mode for the Default Report and any campaign with teaser OFF.
     // Mirrors the teaser preview dropdown in social settings. 'auto' = use progress %.
-    aprDefaultViewMode?: 'auto' | 'bar' | 'scenes' | 'colors' | 'full';
+    aprDefaultViewMode?: 'auto' | 'ring' | 'scenes' | 'colors' | 'full';
     exportFormat?: AprExportFormat; // Core/default report export format
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;
@@ -482,13 +482,13 @@ export interface AprStyleProfile {
 /**
  * Teaser Reveal stages for progressive reveal (4 stages)
  * Each level unlocks more visual detail as progress increases
- * 
- * bar     = Progress ring only, no scenes
+ *
+ * ring    = Progress ring only, no scenes (formerly called 'bar' internally)
  * scenes  = Scene cells + acts rendered in grayscale with patterns, completed = gray
  * colors  = Full publish stage colors revealed (status + stage)
  * full    = All subplot rings visible
  */
-export type TeaserRevealLevel = 'bar' | 'scenes' | 'colors' | 'full';
+export type TeaserRevealLevel = 'ring' | 'scenes' | 'colors' | 'full';
 
 /**
  * Teaser Reveal preset configurations
@@ -497,7 +497,7 @@ export type TeaserPreset = 'slow' | 'standard' | 'fast' | 'custom';
 
 /**
  * Teaser Reveal thresholds - percentage at which each level unlocks
- * Order: bar (0%) → scenes → colors → full
+ * Order: ring (0%) → scenes → colors → full
  */
 export interface TeaserThresholds {
     scenes: number;    // When to show scene cells + acts (e.g., 10%)

@@ -125,10 +125,10 @@ export class AuthorProgressRenderService {
         const bookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
 
         // Honor the persisted view mode from social settings (teaser preview dropdown).
-        // 'auto' / undefined → full reveal. 'bar'/'scenes'/'colors'/'full' → apply that level.
+        // 'auto' / undefined → full reveal. 'ring'/'scenes'/'colors'/'full' → apply that level.
         const baseReveal = this.resolveBaseRevealOptions(settings.aprDefaultViewMode, settings);
-        const isBar = settings.aprDefaultViewMode === 'bar';
-        const ringOnly = isThumb || isBar;
+        const isRing = settings.aprDefaultViewMode === 'ring';
+        const ringOnly = isThumb || isRing;
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,
@@ -192,7 +192,7 @@ export class AuthorProgressRenderService {
         let grayCompletedScenes: boolean;
         let grayscaleScenes: boolean;
         let showProgressPercent: boolean;
-        let isBarLevel = false;
+        let isRingLevel = false;
         let debugStage = 'Standard';
 
         if (campaign.teaserReveal?.enabled) {
@@ -206,7 +206,7 @@ export class AuthorProgressRenderService {
             );
             debugStage = revealLevel;
             const revealOptions = teaserLevelToRevealOptions(revealLevel);
-            isBarLevel = revealLevel === 'bar';
+            isRingLevel = revealLevel === 'ring';
 
             showScenes = revealOptions.showScenes;
             showSubplots = revealOptions.showSubplots;
@@ -219,7 +219,7 @@ export class AuthorProgressRenderService {
         } else {
             // Teaser OFF → inherit Default Report's view mode (mirrors social preview).
             const base = this.resolveBaseRevealOptions(settings.aprDefaultViewMode, settings);
-            isBarLevel = settings.aprDefaultViewMode === 'bar';
+            isRingLevel = settings.aprDefaultViewMode === 'ring';
             showScenes = base.showScenes;
             showSubplots = base.showSubplots;
             showActs = base.showActs;
@@ -233,7 +233,7 @@ export class AuthorProgressRenderService {
 
         const designSize = campaign.aprSize || settings.aprSize || 'medium';
         const exportQuality: AprExportQuality = campaign.aprExportQuality || settings.aprExportQuality || 'standard';
-        const ringOnly = designSize === 'thumb' || isBarLevel;
+        const ringOnly = designSize === 'thumb' || isRingLevel;
         const bookTitle = resolveBookTitle(campaign, books, this.plugin.getActiveBookTitle());
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {

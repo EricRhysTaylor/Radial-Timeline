@@ -56,6 +56,8 @@ Location: `docs/engineering/plans/`
 Contains architecture proposals and historical planning documents.
 These describe design direction but are not always authoritative rules.
 
+- **[v7-removals.md](plans/v7-removals.md)** — Migration shims and deprecated fallbacks to delete when cutting v7. Grep `TODO(v7)` for in-code touch points.
+
 ---
 
 ## Engineering Audits
