@@ -1406,6 +1406,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     let bgColorPicker: ColorSwatchHandle | null = null;
     let bgTextInput: TextComponent | null = null;
+    // Assigned by the Borders setting (declared below). When background changes and the
+    // border mode is 'sync', the border swatch needs to follow.
+    let refreshBorderSwatchFromBg: (() => void) | null = null;
 
     const updateEmphasis = (isTransparent: boolean) => {
         if (isTransparent) {
@@ -1487,6 +1490,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await setAprSetting('aprBackgroundColor', next as AuthorProgressDefaults['aprBackgroundColor']);
             bgTextInput?.setValue(next);
             updateSourceLabel(next);
+            refreshBorderSwatchFromBg?.();
         }
     });
     bgColorPicker = bgSwatch;
@@ -1500,6 +1504,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await setAprSetting('aprBackgroundColor', val as AuthorProgressDefaults['aprBackgroundColor']);
             bgColorPicker?.setValue(val);
             updateSourceLabel(val);
+            refreshBorderSwatchFromBg?.();
         });
     });
 
@@ -1518,6 +1523,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         bgColorPicker?.setValue(color);
         bgTextInput?.setValue(color);
         updateSourceLabel(color);
+        refreshBorderSwatchFromBg?.();
     };
 
     for (const preset of platformPresets) {
@@ -1611,11 +1617,26 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     let spokeColorPickerRef: ColorSwatchHandle | undefined;
     let spokeColorInputRef: TextComponent | undefined;
 
+    // The effective rendered border color depends on the spoke mode. Mirror resolveStructuralColors()
+    // in AprRenderer.ts so the swatch + hex input always show what the renderer will actually draw.
+    const effectiveBorderColor = (
+        mode: 'dark' | 'light' | 'none' | 'sync' | 'custom',
+        customColor: string,
+        bgColor: string
+    ): string => {
+        if (mode === 'custom') return customColor;
+        if (mode === 'sync') return bgColor;
+        if (mode === 'light') return '#000000'; // "Dark Borders"
+        if (mode === 'none') return 'transparent';
+        return '#ffffff'; // 'dark' → "Light Borders"
+    };
+
     const isCustomMode = currentSpokeMode === 'custom';
     const fallbackColor = '#ffffff';
+    const initialEffective = effectiveBorderColor(currentSpokeMode, currentSpokeColor, currentBg);
     const spokeControlRow = spokeColorSetting.controlEl;
     const spokeColorPicker = colorSwatch(spokeControlRow, {
-        value: isCustomMode ? currentSpokeColor : fallbackColor,
+        value: initialEffective,
         ariaLabel: 'Spoke color',
         plugin,
         onChange: async (val) => {
@@ -1631,7 +1652,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const spokeColorInput = new TextComponent(spokeControlRow);
     spokeColorInputRef = spokeColorInput;
     spokeColorInput.inputEl.classList.add('ert-input--hex');
-    spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+    spokeColorInput.setPlaceholder(fallbackColor).setValue(initialEffective);
     spokeColorInput.setDisabled(!isCustomMode);
     spokeColorInput.onChange(async (val) => {
         if (!val) return;
@@ -1640,6 +1661,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             spokeColorPickerRef?.setValue(val);
         }
     });
+
+    // Exposed so the background-color controls can keep the border swatch in sync when mode is 'sync'.
+    refreshBorderSwatchFromBg = () => {
+        const style = getActiveStyleSettings();
+        const mode = (style.aprSpokeColorMode ?? 'dark') as 'dark' | 'light' | 'none' | 'sync' | 'custom';
+        if (mode !== 'sync') return;
+        const eff = effectiveBorderColor(mode, style.aprSpokeColor ?? fallbackColor, style.aprBackgroundColor ?? currentBg);
+        spokeColorPickerRef?.setValue(eff);
+        spokeColorInputRef?.setValue(eff);
+    };
 
     const spokeModeDropdown = new DropdownComponent(spokeControlRow);
     spokeModeDropdown.addOption('dark', t('settings.authorProgress.styling.strokeLightStrokes'));
@@ -1659,14 +1690,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const isCustom = mode === 'custom';
         spokeColorPickerRef?.setDisabled(!isCustom);
         spokeColorInputRef?.setDisabled(!isCustom);
-        if (isCustom && spokeColorInputRef) {
-            const current = getActiveStyleSettings().aprSpokeColor || fallbackColor;
-            spokeColorInputRef.setValue(current);
-            spokeColorPickerRef?.setValue(current);
-        } else if (spokeColorInputRef) {
-            spokeColorInputRef.setValue(fallbackColor);
-            spokeColorPickerRef?.setValue(fallbackColor);
-        }
+
+        const style = getActiveStyleSettings();
+        const eff = effectiveBorderColor(mode, style.aprSpokeColor ?? fallbackColor, style.aprBackgroundColor ?? currentBg);
+        spokeColorInputRef?.setValue(eff);
+        spokeColorPickerRef?.setValue(eff);
     });
 
     // ─────────────────────────────────────────────────────────────────────────
