@@ -1975,6 +1975,11 @@
   gap: var(--ert-gap-md);
 }
 
+/* Right-justify the Full Manuscript / Stage Tracking dropdown row inside its grid cell. */
+.ert-ui .ert-apr-modeCell .ert-typography-controls {
+  justify-content: flex-end;
+}
+
 .ert-ui .ert-apr-flow__track {
   position: relative;
   display: flex;
@@ -2471,6 +2476,22 @@
 .ert-ui.ert-scope--settings .ert-elementBlock.setting-item {
   padding: var(--ert-row-pad, var(--ert-pad-md));
   border-radius: 8px;
+}
+
+/* Scoped to typography-style rows (those tagged with ert-settingRow). Excludes containers
+   like .ert-campaign-frequency-setting which need their own grid layout. */
+.ert-ui.ert-scope--settings .ert-elementBlock.ert-settingRow.setting-item {
+  display: flex;
+  align-items: center; /* keep label/desc and controls vertically centered against each other */
+  gap: var(--ert-gap-lg);
+}
+
+.ert-ui.ert-scope--settings .ert-elementBlock.ert-settingRow.setting-item > .setting-item-control {
+  align-self: center;
+}
+
+.ert-ui.ert-scope--settings .ert-elementBlock.ert-settingRow.setting-item > .setting-item-control > .ert-controlGroup {
+  align-content: center;
 }
 
 .ert-ui.ert-scope--settings.ert-skin--social .ert-elementBlock.setting-item,
@@ -9611,6 +9632,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(200px, 220px);
   align-items: center;
   column-gap: var(--ert-gap-md);
+  margin: 0; /* override inherited right margin from Obsidian setting-item children */
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row--subordinate {

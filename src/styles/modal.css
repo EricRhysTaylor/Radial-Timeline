@@ -1692,6 +1692,17 @@
   gap: var(--ert-gap-xs);
 }
 
+.ert-ui.ert-scope--modal .ert-apr-output-link {
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed var(--text-faint);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-output-link:hover {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+}
+
 .ert-ui.ert-scope--modal .ert-apr-status-cell--header {
   font-size: 0.7rem;
   font-weight: 600;

@@ -1,4 +1,5 @@
-import { App, Modal, ButtonComponent, Notice, setIcon, setTooltip, normalizePath } from 'obsidian';
+import { App, Modal, ButtonComponent, FileSystemAdapter, Notice, setIcon, setTooltip, normalizePath } from 'obsidian';
+import * as path from 'path'; // SAFE: Node path needed to build absolute paths for native Finder reveal
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
@@ -505,9 +506,19 @@ export class AuthorProgressModal extends Modal {
             settings.exportPath = defaultPath;
             void this.plugin.saveSettings();
         }
-        const pathDisplay = pathRow.createSpan({ cls: ERT_CLASSES.FIELD_NOTE });
+        const pathDisplay = pathRow.createEl('a', {
+            cls: `${ERT_CLASSES.FIELD_NOTE} ert-apr-output-link`,
+            attr: {
+                href: '#',
+                role: 'button',
+                title: `${defaultPath} — click to reveal in system file manager`
+            }
+        });
         pathDisplay.setText(this.summarizePath(defaultPath));
-        pathDisplay.setAttr('title', defaultPath);
+        pathDisplay.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            void this.revealOutputFileInOS(defaultPath);
+        });
 
     }
 
@@ -620,11 +631,19 @@ export class AuthorProgressModal extends Modal {
         });
         pathRow.createSpan({ text: 'Output file', cls: ERT_CLASSES.LABEL });
         const pathValue = pathRow.createDiv({ cls: ERT_CLASSES.INLINE });
-        const pathText = pathValue.createSpan({
-            cls: `${ERT_CLASSES.FIELD_NOTE} ert-mono ert-truncate`,
-            text: this.summarizePath(campaign.exportPath)
+        const pathText = pathValue.createEl('a', {
+            cls: `${ERT_CLASSES.FIELD_NOTE} ert-mono ert-truncate ert-apr-output-link`,
+            text: this.summarizePath(campaign.exportPath),
+            attr: {
+                href: '#',
+                role: 'button',
+                title: `${campaign.exportPath} — click to reveal in system file manager`
+            }
         });
-        pathText.setAttr('title', campaign.exportPath);
+        pathText.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            void this.revealOutputFileInOS(campaign.exportPath);
+        });
 
     }
 
@@ -764,12 +783,57 @@ export class AuthorProgressModal extends Modal {
         return quality === 'ultra' ? '2400px Ult' : '1200px Std';
     }
 
-    private summarizePath(path: string, maxLength = 42): string {
-        if (!path) return '—';
-        if (path.length <= maxLength) return path;
-        const parts = path.split('/');
-        if (parts.length <= 2) return `…${path.slice(-maxLength + 1)}`;
+    private summarizePath(filePath: string, maxLength = 42): string {
+        if (!filePath) return '—';
+        if (filePath.length <= maxLength) return filePath;
+        const parts = filePath.split('/');
+        if (parts.length <= 2) return `…${filePath.slice(-maxLength + 1)}`;
         return `…/${parts.slice(-2).join('/')}`;
+    }
+
+    /**
+     * Resolve a vault-relative path to an absolute filesystem path. Returns null
+     * on platforms without filesystem access (mobile).
+     */
+    private resolveAbsolutePath(vaultPath: string): string | null {
+        const adapter = this.app.vault.adapter; // SAFE: adapter required to compute absolute path for native Finder reveal
+        if (adapter instanceof FileSystemAdapter) {
+            return path.join(adapter.getBasePath(), normalizePath(vaultPath));
+        }
+        return null;
+    }
+
+    /**
+     * Reveal the output file in the OS file manager (Finder on macOS, Explorer on Windows,
+     * default file manager on Linux). Shows a Notice if the file isn't generated yet or the
+     * platform doesn't support native reveal (mobile).
+     */
+    private revealOutputFileInOS(vaultPath: string): void {
+        if (!vaultPath) {
+            new Notice('No output file to reveal yet.');
+            return;
+        }
+        const absolute = this.resolveAbsolutePath(vaultPath);
+        if (!absolute) {
+            new Notice('Revealing files is not supported on this platform.');
+            return;
+        }
+        const existing = this.app.vault.getAbstractFileByPath(normalizePath(vaultPath));
+        if (!existing) {
+            new Notice('Output file not generated yet. Click Publish to create it.');
+            return;
+        }
+        try {
+            const electron = (window as unknown as { require?: (name: string) => { shell?: { showItemInFolder: (p: string) => void } } }).require?.('electron');
+            const shell = electron?.shell;
+            if (!shell) {
+                new Notice('Cannot reveal file: system shell unavailable.');
+                return;
+            }
+            shell.showItemInFolder(absolute);
+        } catch {
+            new Notice('Could not reveal file in system file manager.');
+        }
     }
 
     private formatFrequencyLabel(frequency?: 'manual' | 'daily' | 'weekly' | 'monthly'): string {

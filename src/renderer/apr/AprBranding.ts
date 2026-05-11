@@ -339,9 +339,11 @@ function renderRtLogoMark(
     badgeSize: number
 ): string {
     const aspectRatio = 42.5 / 25;
-    const height = Math.min(25, Math.max(7, badgeSize * 1.03));
+    // Height scales with badgeSize (same metric the AUTHOR text uses), so the logo and label
+    // stay visually paired across all export resolutions including campaign-size PNGs.
+    const height = badgeSize * 1.03;
     const width = height * aspectRatio;
-    const inset = Math.min(4, Math.max(1.5, height * 0.16));
+    const inset = height * 0.16;
     const leftInset = inset;
     const bottomInset = inset;
     const translateX = x + leftInset;
