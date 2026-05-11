@@ -61,6 +61,8 @@ export interface TimelineSnapshot {
     microBackdropHash: string;
     publishStageColorsHash: string;
     subplotColorsHash: string;
+    workingPatternId: string;
+    customWorkingPatternsHash: string;
     dominantSubplotsHash: string;
     povMode: string;
     activeBookId: string;
@@ -165,8 +167,11 @@ export function createSnapshot(
     const publishStageColorsHash = settings.publishStageColors 
         ? JSON.stringify(settings.publishStageColors)
         : '';
-    const subplotColorsHash = settings.subplotColors 
+    const subplotColorsHash = settings.subplotColors
         ? JSON.stringify(settings.subplotColors)
+        : '';
+    const customWorkingPatternsHash = settings.customWorkingPatterns
+        ? JSON.stringify(settings.customWorkingPatterns)
         : '';
     const dominantSubplotsHash = settings.dominantSubplots
         ? JSON.stringify(settings.dominantSubplots)
@@ -234,6 +239,8 @@ export function createSnapshot(
         microBackdropHash,
         publishStageColorsHash,
         subplotColorsHash,
+        workingPatternId: settings.workingPatternId ?? '',
+        customWorkingPatternsHash,
         dominantSubplotsHash,
         povMode: settings.globalPovMode ?? 'off',
         activeBookId: settings.activeBookId ?? '',
@@ -309,6 +316,8 @@ export function detectChanges(
         prev.microBackdropHash !== current.microBackdropHash ||
         prev.publishStageColorsHash !== current.publishStageColorsHash ||
         prev.subplotColorsHash !== current.subplotColorsHash ||
+        prev.workingPatternId !== current.workingPatternId ||
+        prev.customWorkingPatternsHash !== current.customWorkingPatternsHash ||
         prev.povMode !== current.povMode ||
         prev.activeBookId !== current.activeBookId ||
         prev.activeBookTitle !== current.activeBookTitle ||

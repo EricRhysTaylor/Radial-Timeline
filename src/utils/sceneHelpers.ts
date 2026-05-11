@@ -111,6 +111,15 @@ export interface PluginRendererFacade {
         publishStageColors: Record<string, string>;
         subplotColors: string[];
         workingPatternId?: string;
+        customWorkingPatterns?: Array<{
+            id: string;
+            name: string;
+            tileW: number;
+            tileH: number;
+            fillOpacity: number;
+            fillRule?: 'evenodd' | 'nonzero';
+            shapes: Array<{ tag: 'path' | 'circle'; attrs: Record<string, string> }>;
+        }>;
         targetCompletionDate?: string;
         stageTargetDates?: {
             Zero?: string;

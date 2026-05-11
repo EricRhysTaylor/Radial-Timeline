@@ -2036,6 +2036,7 @@ async function renderHeroPreview(
             centerMark: 'none',
             stageColors: (plugin.settings as any).publishStageColors,
             workingPatternId: plugin.settings.workingPatternId,
+            customWorkingPatterns: plugin.settings.customWorkingPatterns,
             actCount: plugin.settings.actCount || undefined,
             backgroundColor: resolvedStyle.aprBackgroundColor,
             transparentCenter: resolvedStyle.aprCenterTransparent,

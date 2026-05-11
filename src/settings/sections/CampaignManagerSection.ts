@@ -1369,6 +1369,7 @@ async function renderTeaserStagesPreviews(
                 centerMark: 'none',
                 stageColors: plugin.settings.publishStageColors,
                 workingPatternId: plugin.settings.workingPatternId,
+                customWorkingPatterns: plugin.settings.customWorkingPatterns,
                 actCount: plugin.settings.actCount,
                 ...styleService.buildRenderStyle(resolvedStyle),
                 publishStageLabel: previewStageLabel,

@@ -1,5 +1,5 @@
 import { STATUS_HEX } from '../../utils/constants';
-import { getHeroPattern, heroPatternShapesToSvgString } from './HeroPatterns';
+import { getHeroPattern, heroPatternShapesToSvgString, type HeroPattern } from './HeroPatterns';
 
 /**
  * Render SVG defs (patterns, icons, filters)
@@ -9,14 +9,16 @@ import { getHeroPattern, heroPatternShapesToSvgString } from './HeroPatterns';
  *                     Needed for canvas rasterization (no DOM CSS context) and standalone embed
  *                     (e.g., author's website where RT's CSS vars aren't defined).
  * @param workingPatternId - Hero Patterns motif id for the Working-status fill (user-selectable).
+ * @param customPatterns - Optional user-defined patterns to consider alongside built-ins.
  */
 export function renderDefs(
   PUBLISH_STAGE_COLORS: Record<string, string>,
   patternScale = 1.0,
   portableSvg = false,
-  workingPatternId?: string
+  workingPatternId?: string,
+  customPatterns?: readonly HeroPattern[]
 ): string {
-  const workingPattern = getHeroPattern(workingPatternId);
+  const workingPattern = getHeroPattern(workingPatternId, customPatterns);
   // Pattern dimensions - scale for APR density control
   const workingW = workingPattern.tileW * patternScale;
   const workingH = workingPattern.tileH * patternScale;

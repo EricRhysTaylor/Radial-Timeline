@@ -752,6 +752,20 @@ export interface RadialTimelineSettings {
     subplotColors: string[];
     /** Hero Patterns motif id used for Working-status scene fills. */
     workingPatternId?: string;
+    /**
+     * User-defined custom working patterns (Pro feature). Each entry is the
+     * result of running pasted SVG markup through {@link validateSvgPattern}
+     * and is stored as structured shape data — never as raw markup.
+     */
+    customWorkingPatterns?: Array<{
+        id: string;
+        name: string;
+        tileW: number;
+        tileH: number;
+        fillOpacity: number;
+        fillRule?: 'evenodd' | 'nonzero';
+        shapes: Array<{ tag: 'path' | 'circle'; attrs: Record<string, string> }>;
+    }>;
     currentMode?: string;
     logApiInteractions: boolean;
     targetCompletionDate?: string;  // Legacy - kept for backwards compatibility

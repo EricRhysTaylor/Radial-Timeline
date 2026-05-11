@@ -19,7 +19,10 @@ export interface HeroPattern {
     name: string;
     tileW: number;
     tileH: number;
-    shapes: readonly HeroPatternShape[];
+    // Not readonly — user-defined customs are stored in mutable settings JSON
+    // and read back as plain arrays. Built-in entries are still effectively
+    // immutable because the registry array itself is `readonly`.
+    shapes: HeroPatternShape[];
     fillOpacity: number;
     fillRule?: 'evenodd' | 'nonzero';
 }
@@ -68,12 +71,20 @@ export const HERO_PATTERNS: readonly HeroPattern[] = [
             { tag: 'path', attrs: { d: 'M0 0h12v6H0V0zm28 8h12v6H28V8zm14-8h12v6H42V0zm14 0h12v6H56V0zm0 8h12v6H56V8zM42 8h12v6H42V8zm0 16h12v6H42v-6zm14-8h12v6H56v-6zm14 0h12v6H70v-6zm0-16h12v6H70V0zM28 32h12v6H28v-6zM14 16h12v6H14v-6zM0 24h12v6H0v-6zm0 8h12v6H0v-6zm14 0h12v6H14v-6zm14 8h12v6H28v-6zm-14 0h12v6H14v-6zm28 0h12v6H42v-6zm14-8h12v6H56v-6zm0-8h12v6H56v-6zm14 8h12v6H70v-6zm0 8h12v6H70v-6zM14 24h12v6H14v-6zm14-8h12v6H28v-6zM14 8h12v6H14V8zM0 8h12v6H0V8z' } },
         ],
     },
-] as const;
+];
 
 export const DEFAULT_WORKING_PATTERN_ID = 'wiggle';
+export const CUSTOM_PATTERN_ID_PREFIX = 'custom-';
 
-export function getHeroPattern(id: string | undefined): HeroPattern {
+export function getHeroPattern(
+    id: string | undefined,
+    customs?: readonly HeroPattern[]
+): HeroPattern {
     if (id) {
+        if (customs && customs.length > 0) {
+            const ext = customs.find(p => p.id === id);
+            if (ext) return ext;
+        }
         const found = HERO_PATTERNS.find(p => p.id === id);
         if (found) return found;
     }
