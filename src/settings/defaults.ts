@@ -83,6 +83,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#004777', // 14
         '#8B4513'  // 15 - Brown for Ring 16
     ],
+    workingPatternId: 'wiggle',
     currentMode: 'narrative', // Default to Narrative mode
     logApiInteractions: true, // Default for new setting
     targetCompletionDate: undefined, // Legacy - kept for backwards compatibility

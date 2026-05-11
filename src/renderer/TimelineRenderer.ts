@@ -434,7 +434,7 @@ export function createTimelineSVG(
     svg += `<defs>`;
 
     // Define patterns for Working and Todo states with Progress Stage colors
-    svg += renderDefs(PUBLISH_STAGE_COLORS);
+    svg += renderDefs(PUBLISH_STAGE_COLORS, 1.0, false, plugin.settings.workingPatternId);
 
 
     // Define outer arc paths for months (use outerLabels which may be chronological ticks)

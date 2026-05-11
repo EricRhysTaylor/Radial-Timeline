@@ -64,6 +64,7 @@ export interface AprRenderOptions {
     teaserRevealEnabled?: boolean;
     debugLabel?: string;
     portableSvg?: boolean;  // When true, output standalone SVG without CSS vars (Figma/Illustrator safe)
+    workingPatternId?: string; // Hero Patterns motif id for Working-status fills
 }
 
 export interface AprRenderResult {
@@ -332,7 +333,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             <feColorMatrix type="saturate" values="0" />
         </filter>
     ` : '';
-    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg)}${percentShadow}${grayscaleFilter}</defs>`;
+    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, opts.workingPatternId)}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // RING-ONLY MODE (Teaser): Solid progress ring, no scene details

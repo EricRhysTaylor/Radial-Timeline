@@ -1,4 +1,5 @@
 import { STATUS_HEX } from '../../utils/constants';
+import { getHeroPattern, heroPatternShapesToSvgString } from './HeroPatterns';
 
 /**
  * Render SVG defs (patterns, icons, filters)
@@ -7,15 +8,18 @@ import { STATUS_HEX } from '../../utils/constants';
  * @param portableSvg - When true, output standalone SVG with hex-baked colors (no CSS vars).
  *                     Needed for canvas rasterization (no DOM CSS context) and standalone embed
  *                     (e.g., author's website where RT's CSS vars aren't defined).
+ * @param workingPatternId - Hero Patterns motif id for the Working-status fill (user-selectable).
  */
 export function renderDefs(
   PUBLISH_STAGE_COLORS: Record<string, string>,
   patternScale = 1.0,
-  portableSvg = false
+  portableSvg = false,
+  workingPatternId?: string
 ): string {
+  const workingPattern = getHeroPattern(workingPatternId);
   // Pattern dimensions - scale for APR density control
-  const workingW = 52 * patternScale;
-  const workingH = 26 * patternScale;
+  const workingW = workingPattern.tileW * patternScale;
+  const workingH = workingPattern.tileH * patternScale;
   const todoSize = 10 * patternScale;
 
   // Portable mode bakes hex (canvas / standalone embed has no CSS var context); CSS mode uses vars
@@ -23,15 +27,17 @@ export function renderDefs(
   const workingFill = portableSvg ? STATUS_HEX.Working : `var(--rt-color-working, ${STATUS_HEX.Working})`;
   const todoFill = portableSvg ? STATUS_HEX.Todo : `var(--rt-color-todo, ${STATUS_HEX.Todo})`;
   const plaidOpacity = portableSvg ? '0.82' : 'var(--rt-color-plaid-opacity, 0.82)';
-  
+
+  const fillRuleAttr = workingPattern.fillRule ? ` fill-rule="${workingPattern.fillRule}"` : '';
   const plaid = Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => {
-    // Working pattern: Hero Patterns "Wiggle" motif over a stronger pink field.
+    // Working pattern: Hero Patterns motif (https://heropatterns.com, CC BY 4.0)
+    // by Steve Schoger. Motif chosen via `settings.workingPatternId`.
     const workingPath = `
       <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="${workingW}" height="${workingH}">
         <rect width="${workingW}" height="${workingH}" fill="${workingFill}" opacity="${plaidOpacity}"/>
         <g transform="scale(${patternScale})">
-          <g fill="${color}" fill-opacity="0.4">
-            <path d="M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z" />
+          <g fill="${color}" fill-opacity="${workingPattern.fillOpacity}"${fillRuleAttr}>
+            ${heroPatternShapesToSvgString(workingPattern)}
           </g>
         </g>
       </pattern>`;

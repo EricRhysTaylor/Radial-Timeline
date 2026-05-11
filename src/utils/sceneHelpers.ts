@@ -110,6 +110,7 @@ export interface PluginRendererFacade {
     settings: {
         publishStageColors: Record<string, string>;
         subplotColors: string[];
+        workingPatternId?: string;
         targetCompletionDate?: string;
         stageTargetDates?: {
             Zero?: string;

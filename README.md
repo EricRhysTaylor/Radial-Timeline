@@ -128,6 +128,7 @@ If you're experiencing visual quality issues on Windows, please check your displ
 ## Acknowledgments
 
 *   [d3.js](https://d3js.org) — powerful data-driven, SVG-based visualization patterns that present complex statistical data in a visually appealing and approachable format.
+*   [Hero Patterns](https://heropatterns.com) — the "Wiggle" SVG motif used in the Working-status scene fill (and the curated set being evaluated for Todo/Working customization) comes from Hero Patterns, created and maintained by **Steve Schoger**, a UI designer and illustrator from Kitchener, Ontario. Patterns are used under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
 *   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
 *   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
 *   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.

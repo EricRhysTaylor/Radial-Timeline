@@ -750,6 +750,8 @@ export interface RadialTimelineSettings {
         Press: string;
     };
     subplotColors: string[];
+    /** Hero Patterns motif id used for Working-status scene fills. */
+    workingPatternId?: string;
     currentMode?: string;
     logApiInteractions: boolean;
     targetCompletionDate?: string;  // Legacy - kept for backwards compatibility
