@@ -111,14 +111,11 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     // at every size. Doubled for small, tripled for medium+ (matches the RT logo + AUTHOR label weight).
     const centerRingStroke = outerPx <= 150 ? fixedStroke * 2 : fixedStroke * 3;
 
-    // Pattern tile size. Preview sizes (≤450, i.e. settings hero + campaign stage cards)
-    // are locked to a single small absolute tile so density is consistent regardless of which
-    // preview size the user picks — and matches the campaign stage cards which always render
-    // at outerPx=150. The preview tile is 50% smaller than the export tile per visual area
-    // because preview SVGs are ~1/3 the size of full timeline renders.
-    // Exports (≥1200) keep a moderate outerPx-relative divisor.
-    // A preset's `density` override is still honored for special cases.
-    const patternScale = preset.density ?? (outerPx <= 450 ? 0.0125 : outerPx / 3600);
+    // Pattern tile size tracks the rendered output size so preview and export
+    // density stay visually consistent. At the 450px Social preview this yields
+    // a readable 39px Wiggle tile, close to the main timeline's visible scene
+    // texture, instead of sub-pixel tiles that collapse into a flat fill.
+    const patternScale = preset.density ?? (outerPx / 600);
 
     // Scale clamp bounds proportionally (baseline 300px)
     const scaledClamp = (value: number, minAt300: number, maxAt300: number) =>
