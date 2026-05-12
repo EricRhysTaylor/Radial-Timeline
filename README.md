@@ -127,21 +127,22 @@ If you're experiencing visual quality issues on Windows, please check your displ
 
 ## Acknowledgments
 
-*   [d3.js](https://d3js.org) — powerful data-driven, SVG-based visualization patterns that present complex statistical data in a visually appealing and approachable format.
-*   [Hero Patterns](https://heropatterns.com) — the "Wiggle" SVG motif used in the Working-status scene fill (and the curated set being evaluated for Todo/Working customization) comes from Hero Patterns, created and maintained by **Steve Schoger**, a UI designer and illustrator from Kitchener, Ontario. Patterns are used under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+*   **04 Font** by Yuji Oshimoto — Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/)
+*   [d3.js](https://d3js.org) — data-driven SVG visualizations.
+*   [Hero Patterns](https://heropatterns.com) by Steve Schoger — SVG motifs used in the Working-status scene fill, under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+*   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.
 *   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
 *   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
-*   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.
 *   [W3C SVG specification](https://www.w3.org/Graphics/SVG/) — for making vector graphics on the web dependable.
-*   **04 Font** by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/) このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
 
 ### Bundled fonts (PDF export)
 
-The plugin ships a small set of fonts so PDF export "just works" without manual font installation. Each font travels with its original license file in `assets/fonts/<font-name>/`.
+*   **Latin Modern Roman** — used for the Signature template.
+*   **Sorts Mill Goudy** by Barry Schwartz — used for the Professional template.
+*   **Source Serif 4** by Frank Grießhammer — used for the Standard template.
+*   **Arial** — used for the Basic template.
 
-*   **Sorts Mill Goudy** by Barry Schwartz — used by the Standard Manuscript, Contemporary Literary, and Signature Literary PDF templates. Licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). Source: [Google Fonts](https://fonts.google.com/specimen/Sorts+Mill+Goudy).
-
-The Modern Classic template uses **Latin Modern Roman**, which ships with every TeX distribution (MacTeX/TeXLive) and is loaded via the `lmodern` package — no install required.
+All bundled fonts ship with their original license files in `assets/fonts/`.
 
 ---
 
@@ -162,10 +163,11 @@ Reviewed and approved for the Obsidian Community Plugins directory. Developed wi
 ## License & Intellectual Property
 
 Radial Timeline™ © 2025 Eric Rhys Taylor  
-Released under a **Source-Available, Non-Commercial License**.  
+Released under the **Radial Timeline Source-Available Non-Commercial License**.  
 
-- You may view, install, and use this plugin for personal or educational purposes.
-- Commercial use, redistribution, or creation of derivative works using this source code is prohibited without written permission.
+- You may install and use the software for personal, educational, or professional creative work.
+- You may use the software to create commercial creative works such as books, scripts, outlines, and related authored content.
+- Redistribution, public forks, hosted versions, and commercial exploitation of the software itself are prohibited without written permission.
 - The "Radial Timeline" name is a trademark of Eric Rhys Taylor.  
 
 See the [License](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/License) and [Notice](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Notice) pages for full details.

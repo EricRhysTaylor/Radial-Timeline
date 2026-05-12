@@ -3,7 +3,7 @@
 
 Radial Timeline™ © 2025 Eric Rhys Taylor
 
-This project is released under a **Source-Available, Non-Commercial License**.
+This project is released under the **Radial Timeline Source-Available Non-Commercial License**.
 
 For the canonical license text, see: [`LICENSE`](https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE)
 
@@ -21,13 +21,19 @@ For the canonical notice text, see: [`NOTICE`](https://github.com/EricRhysTaylor
 
 This project stands on the shoulders of many generous teachers, tools, and storytellers:
 
-*   [d3.js](https://d3js.org) — powerful data-driven, SVG-based visualization patterns that present complex statistical data in a visually appealing and approachable format.
-*   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
+*   **04 Font** by Yuji Oshimoto — Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/)
+*   [d3.js](https://d3js.org) — data-driven SVG visualizations.
+*   [Hero Patterns](https://heropatterns.com) by Steve Schoger — SVG motifs used in the Working-status scene fill, under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
 *   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.
+*   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
+*   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
 *   [W3C SVG specification](https://www.w3.org/Graphics/SVG/) — for making vector graphics on the web dependable.
 
-### Font Credit
+### Bundled fonts (PDF export)
 
-**04 Font** by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/)
+*   **Latin Modern Roman** — used for the Signature template.
+*   **Sorts Mill Goudy** by Barry Schwartz — used for the Professional template.
+*   **Source Serif 4** by Frank Grießhammer — used for the Standard template.
+*   **Arial** — used for the Basic template.
 
-このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
+All bundled fonts ship with their original license files in `assets/fonts/`.

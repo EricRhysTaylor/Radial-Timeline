@@ -98,8 +98,10 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const sizeScale = outerPx / 300;
     const textR = preset.enableText ? APR_BASE_RADII.text * sizeScale : null;
 
-    // Strokes scale proportionally with size (~20% thinner than legacy 1:150 ratio)
-    const fixedStroke = outerPx <= 150 ? 1 : Math.max(2, Math.round(outerPx / 188));
+    // Strokes scale proportionally with size — kept thin (and always integer-px for crisp edges)
+    // so the scene-background pattern reads through. Preview sizes use 1px borders; high-DPI
+    // exports use proportionally larger but still integer strokes.
+    const fixedStroke = outerPx <= 450 ? 1 : Math.max(2, Math.round(outerPx / 300));
 
     const ringStroke = fixedStroke;
     const dividerStroke = fixedStroke;
@@ -109,7 +111,11 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     // at every size. Doubled for small, tripled for medium+ (matches the RT logo + AUTHOR label weight).
     const centerRingStroke = outerPx <= 150 ? fixedStroke * 2 : fixedStroke * 3;
 
-    const patternScale = preset.density ?? (outerPx / 300) * 0.4;
+    // Pattern tile scales with outerPx. Preview sizes (≤450) get an extra-dense tile so the
+    // small scene cells still show many wiggle rows — visually matching timeline density.
+    // Exports (≥1200) keep a moderate divisor that the user has signed off on as "looks great."
+    // A preset's `density` override is still honored for special cases.
+    const patternScale = preset.density ?? (outerPx <= 450 ? outerPx / 6000 : outerPx / 3600);
 
     // Scale clamp bounds proportionally (baseline 300px)
     const scaledClamp = (value: number, minAt300: number, maxAt300: number) =>

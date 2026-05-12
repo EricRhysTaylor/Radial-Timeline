@@ -194,13 +194,13 @@
   --ert-pill-icon-hover-color: var(--ert-pill-icon-color);
   --ert-pill-icon-active-color: var(--ert-pill-icon-color);
   --ert-pill-disabled-opacity: 0.4;
-  --ert-pill-shadow: var(--shadow-s);
-  --ert-pill-hover-ring: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 30%, transparent);
-  --ert-pill-active-ring: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 40%, transparent);
-  --ert-iconBtn-shadow: var(--shadow-s);
-  --ert-iconBtn-hover-ring: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 30%, transparent);
-  --ert-swatch-shadow: var(--shadow-s);
-  --ert-swatch-hover-ring: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 30%, transparent);
+  --ert-pill-shadow: none;
+  --ert-pill-hover-ring: none;
+  --ert-pill-active-ring: none;
+  --ert-iconBtn-shadow: none;
+  --ert-iconBtn-hover-ring: none;
+  --ert-swatch-shadow: none;
+  --ert-swatch-hover-ring: none;
   --ert-control-height: var(--input-height, 32px);
   --ert-control-pad-x: 10px;
   --ert-control-pad-y: 6px;
@@ -347,6 +347,7 @@
   color: var(--ert-control-color);
   box-sizing: border-box;
   vertical-align: middle;
+  box-shadow: none;
 }
 
 .ert-ui select.ert-input {
@@ -361,6 +362,25 @@
 .ert-ui :is(input, select).ert-input:focus {
   outline: calc(var(--ert-gap-xs) / 4) solid var(--ert-accent);
   outline-offset: 0;
+}
+
+.ert-ui.ert-scope--settings :is(input, select, button, .dropdown).ert-input,
+.ert-ui.ert-scope--settings :is(input, select, button, .dropdown).ert-input:hover,
+.ert-ui.ert-scope--settings :is(input, select, button, .dropdown).ert-input:focus,
+.ert-ui.ert-scope--settings :is(input, select, button, .dropdown).ert-input:focus-visible,
+.ert-ui.ert-scope--settings :is(select, .dropdown),
+.ert-ui.ert-scope--settings :is(select, .dropdown):hover,
+.ert-ui.ert-scope--settings :is(select, .dropdown):focus,
+.ert-ui.ert-scope--settings :is(select, .dropdown):focus-visible,
+.ert-ui.ert-scope--settings :is(.ert-pillBtn, .ert-iconBtn, .ert-swatch),
+.ert-ui.ert-scope--settings :is(.ert-pillBtn, .ert-iconBtn, .ert-swatch):hover,
+.ert-ui.ert-scope--settings :is(.ert-pillBtn, .ert-iconBtn, .ert-swatch):focus,
+.ert-ui.ert-scope--settings :is(.ert-pillBtn, .ert-iconBtn, .ert-swatch):focus-visible,
+.ert-ui.ert-scope--settings button:not(.clickable-icon),
+.ert-ui.ert-scope--settings button:not(.clickable-icon):hover,
+.ert-ui.ert-scope--settings button:not(.clickable-icon):focus,
+.ert-ui.ert-scope--settings button:not(.clickable-icon):focus-visible {
+  box-shadow: none;
 }
 
 .ert-ui textarea.ert-textarea {
@@ -1577,9 +1597,9 @@
   color: var(--text-normal);
 }
 
-.ert-ui.ert-skin--pro .ert-badgePill--pro,
-.ert-ui .ert-skin--pro .ert-badgePill--pro,
-.ert-ui.ert-scope--modal .ert-badgePill--pro {
+/* Pro pill always renders with the canonical Pro gradient — it advertises Pro features
+   wherever it appears (settings headings, modals, action buttons). Never bland. */
+.ert-ui .ert-badgePill--pro {
   background: var(--ert-pro-gradient-primary);
   border: none;
   color: var(--ert-color-white);

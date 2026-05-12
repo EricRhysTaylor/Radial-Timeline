@@ -24,27 +24,27 @@ export type AprPreset = {
     density?: number;
 };
 
+// Note: `density` is intentionally omitted on standard presets. The aprLayout formula
+// (patternScale = outerPx / 600) derives a consistent per-cell pattern density across
+// previews and exports. Override `density` only for one-off custom presets.
 export const APR_PRESETS: Record<AprPresetKey, AprPreset> = {
     sm150: {
         key: 'sm150',
         outerPx: 150,
         enableText: true,
         enableCenterLabel: true,
-        density: 0.1,
     },
     md300: {
         key: 'md300',
         outerPx: 300,
         enableText: true,
         enableCenterLabel: true,
-        density: 0.4,
     },
     lg450: {
         key: 'lg450',
         outerPx: 450,
         enableText: true,
         enableCenterLabel: true,
-        density: 0.55,
     },
 } as const;
 
@@ -80,6 +80,6 @@ export function getExportPreset(_designSize: AprSize, quality: AprExportQuality)
         outerPx: exportPx,
         enableText: true,
         enableCenterLabel: true,
-        density: 0.55,
+        // Pattern density derived from outerPx in aprLayout — no override needed.
     };
 }

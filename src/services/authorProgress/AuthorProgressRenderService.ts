@@ -113,7 +113,9 @@ export class AuthorProgressRenderService {
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
         const scenesFiltered = scenes.filter(isSceneItem);
         const progressState = this.aprProgressService.resolveProgress(scenesFiltered, settings);
-        const style = this.aprStyleService.resolveStyle();
+        // Use the designer style (same source the settings preview reads from) so the published
+        // Default Report visually matches what the user sees in the social settings preview.
+        const style = this.aprStyleService.resolveDesignerStyle();
         const renderStyle = this.aprStyleService.buildRenderStyle(style);
         const showRtAttribution = hasProFeatureAccess(this.plugin)
             ? renderStyle.showRtAttribution !== false

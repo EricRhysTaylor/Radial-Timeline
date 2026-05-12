@@ -1060,7 +1060,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         sizeInputs: TextComponent[];
     } => {
         const fontDrop = new DropdownComponent(rowEl);
-        fontDrop.selectEl.addClass('ert-typography-select');
+        fontDrop.selectEl.addClass('ert-input', 'ert-typography-select');
         const currentStyle = getActiveStyleSettings() as Record<string, unknown>;
         const currentFont = (currentStyle[opts.familyKey] as string | undefined) ?? opts.fontDefault ?? 'Inter';
         const { setValue: setFontValue } = applyFontDropdown(fontDrop, currentFont, async (val) => {
@@ -1070,7 +1070,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         const styleDrop = new DropdownComponent(rowEl);
-        styleDrop.selectEl.addClass('ert-typography-select');
+        styleDrop.selectEl.addClass('ert-input', 'ert-typography-select');
         WEIGHT_OPTIONS.forEach(opt => styleDrop.addOption(opt.value, opt.label));
         const currentWeight = (currentStyle[opts.weightKey] as number | undefined) ?? opts.weightDefault;
         const currentItalic = (currentStyle[opts.italicKey] as boolean | undefined) ?? opts.italicDefault ?? false;
@@ -1100,6 +1100,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 input.setPlaceholder(opts.sizePlaceholders?.[index] ?? t('settings.authorProgress.styling.autoButton'));
                 const currentValue = currentStyle[key] as number | undefined;
                 input.setValue(currentValue !== undefined ? String(currentValue) : '');
+                input.inputEl.addClass('ert-input');
                 input.onChange(async (val) => {
                     if (isSyncing()) return;
                     const next = val.trim() ? numberFromText(val) : undefined;
@@ -1171,7 +1172,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             textInput.setPlaceholder(textConfig.placeholder);
             textInput.setValue(textConfig.value);
             textInput.inputEl.addClass('ert-typography-text-input');
-            textInput.inputEl.addClass('ert-input--lg');
+            textInput.inputEl.addClass('ert-input', 'ert-input--lg');
             textInput.onChange(async (val) => {
                 if (isSyncing) return;
                 await textConfig.onChange(val);
@@ -1199,7 +1200,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             colorText = new TextComponent(rowSecondary);
             colorConfig.setTextRef?.(colorText);
-            colorText.inputEl.classList.add('ert-input--hex');
+            colorText.inputEl.classList.add('ert-input', 'ert-input--hex');
             colorText.setPlaceholder(colorConfig.fallback).setValue(colorConfig.value);
             colorText.onChange(async (val) => {
                 if (isSyncing) return;
@@ -1503,7 +1504,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     bgSetting.addText(text => {
         bgTextInput = text;
         text.setPlaceholder('#0d0d0f').setValue(currentBg);
-        text.inputEl.classList.add('ert-input--hex');
+        text.inputEl.classList.add('ert-input', 'ert-input--hex');
         text.onChange(async (val) => {
             if (!val) return;
             await setAprSetting('aprBackgroundColor', val as AuthorProgressDefaults['aprBackgroundColor']);
@@ -1656,7 +1657,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const spokeColorInput = new TextComponent(spokeControlRow);
     spokeColorInputRef = spokeColorInput;
-    spokeColorInput.inputEl.classList.add('ert-input--hex');
+    spokeColorInput.inputEl.classList.add('ert-input', 'ert-input--hex');
     spokeColorInput.setPlaceholder(fallbackColor).setValue(initialEffective);
     spokeColorInput.setDisabled(!isCustomMode);
     spokeColorInput.onChange(async (val) => {
@@ -1683,8 +1684,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeModeDropdown.addOption('none', t('settings.authorProgress.styling.strokeNoStrokes'));
     spokeModeDropdown.addOption('sync', t('settings.authorProgress.styling.strokeSyncBackground'));
     spokeModeDropdown.addOption('custom', t('settings.authorProgress.styling.strokeCustomColor'));
+    spokeModeDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected');
     const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
     spokeModeDropdown.setValue(currentValue);
+    fitSelectToSelectedLabel(spokeModeDropdown.selectEl, { minPx: 132, maxPx: 260, extraPx: 16 });
     spokeModeDropdown.onChange(async (val) => {
         const mode = (val as 'dark' | 'light' | 'none' | 'custom' | 'sync') || 'dark';
         await setAprSettings({
@@ -1700,6 +1703,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const eff = effectiveBorderColor(mode, style.aprSpokeColor ?? fallbackColor, style.aprBackgroundColor ?? currentBg);
         spokeColorInputRef?.setValue(eff);
         spokeColorPickerRef?.setValue(eff);
+        fitSelectToSelectedLabel(spokeModeDropdown.selectEl, { minPx: 132, maxPx: 260, extraPx: 16 });
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1726,13 +1730,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const frequencySetting = new Setting(automationCard)
             .setName(t('settings.authorProgress.publishing.updateFrequency.name'))
             .setDesc(t('settings.authorProgress.publishing.updateFrequency.desc'))
-            .addDropdown(dropdown => dropdown
-                .addOption('manual', t('settings.authorProgress.publishing.frequencyManual'))
-                .addOption('daily', t('settings.authorProgress.publishing.frequencyDaily'))
-                .addOption('weekly', t('settings.authorProgress.publishing.frequencyWeekly'))
-                .addOption('monthly', t('settings.authorProgress.publishing.frequencyMonthly'))
-                .setValue(settings?.updateFrequency || 'manual')
-                .onChange(async (val) => {
+            .addDropdown(dropdown => {
+                dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected');
+                dropdown
+                    .addOption('manual', t('settings.authorProgress.publishing.frequencyManual'))
+                    .addOption('daily', t('settings.authorProgress.publishing.frequencyDaily'))
+                    .addOption('weekly', t('settings.authorProgress.publishing.frequencyWeekly'))
+                    .addOption('monthly', t('settings.authorProgress.publishing.frequencyMonthly'))
+                    .setValue(settings?.updateFrequency || 'manual')
+                    .onChange(async (val) => {
                     if (plugin.settings.authorProgress) {
                         const current = plugin.settings.authorProgress.defaults;
                         const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
@@ -1753,8 +1759,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         }
                         await plugin.saveSettings();
                     }
-                })
-            );
+                });
+                fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 92, maxPx: 180, extraPx: 16 });
+            });
 
         // Add red alert border when refresh is needed
         if (needsRefresh) {
@@ -1837,7 +1844,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             };
             text.setPlaceholder(defaultPath)
                 .setValue(settings?.exportPath || defaultPath);
-            text.inputEl.addClass('ert-input--full');
+            text.inputEl.addClass('ert-input', 'ert-input--full');
 
             // Validate on blur
             const handleBlur = async () => {
@@ -2153,7 +2160,7 @@ class CustomBgPresetModal extends Modal {
         colorRow.addText(text => {
             hexInput = text;
             text.setPlaceholder('#000000').setValue(initialColor);
-            text.inputEl.classList.add('ert-input--hex');
+            text.inputEl.classList.add('ert-input', 'ert-input--hex');
             text.onChange((val) => {
                 if (/^#[0-9a-f]{6}$/i.test(val)) {
                     pickedColor = val;

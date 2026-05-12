@@ -1,15 +1,20 @@
 {
-  "checkedAt": "2026-05-11T23:15:19.600Z",
+  "checkedAt": "2026-05-12T01:31:34.751Z",
   "mode": "report",
   "snapshotBefore": {
     "generatedAt": "2026-05-11T00:41:39.268Z"
   },
   "snapshotAfter": {
-    "generatedAt": "2026-05-11T00:41:39.268Z"
+    "generatedAt": "2026-05-12T01:31:34.744Z"
   },
   "changes": {
     "openai": {
-      "added": [],
+      "added": [
+        "chat-latest",
+        "gpt-realtime-2",
+        "gpt-realtime-translate",
+        "gpt-realtime-whisper"
+      ],
       "removed": []
     },
     "anthropic": {
@@ -17,8 +22,17 @@
       "removed": []
     },
     "google": {
-      "added": [],
-      "removed": []
+      "added": [
+        "gemini-3.1-flash-lite"
+      ],
+      "removed": [
+        "gemma-3-12b-it",
+        "gemma-3-1b-it",
+        "gemma-3-27b-it",
+        "gemma-3-4b-it",
+        "gemma-3n-e2b-it",
+        "gemma-3n-e4b-it"
+      ]
     }
   },
   "aliasChanges": [],
@@ -47,5 +61,9 @@
     }
   ],
   "hasActionableChanges": true,
-  "recommendedFollowUps": []
+  "recommendedFollowUps": [
+    "Review scripts/models/latest-models.json and scripts/models/model-drift-report.json for provider catalog drift.",
+    "If a new provider model should ship in RT, update scripts/models/registry.json and src/ai/registry/builtinModels.ts.",
+    "If RT surfaces cost or positioning for the model, update src/ai/cost/providerPricing.ts and src/data/aiModels.ts."
+  ]
 }

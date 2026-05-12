@@ -122,11 +122,11 @@ function renderCustomPatternsCard(
     titleWrap.createSpan({ text: 'Custom patterns', cls: 'ert-custom-patterns-title-text' });
 
     const desc = card.createEl('p', { cls: 'ert-color-section-desc' });
-    desc.appendText('Paste any SVG motif (e.g. from ');
+    desc.appendText('Paste any pattern from ');
     const link = desc.createEl('a', { text: 'heropatterns.com', href: 'https://heropatterns.com' });
     link.setAttr('target', '_blank');
     link.setAttr('rel', 'noopener');
-    desc.appendText(') — only <path> and <circle> shapes are allowed. Validation strips fills and re-renders from structured data, so the pasted markup never enters the DOM. Pro covers the paste / validate / render tooling, not the artwork: Hero Patterns remains free under CC BY 4.0.');
+    desc.appendText(' and use it as your Working scene fill. Patterns from Hero Patterns are free under the Creative Commons 4.0 license.');
 
     // --- Existing custom patterns list ---
     const list = card.createDiv({ cls: 'ert-custom-patterns-list' });
