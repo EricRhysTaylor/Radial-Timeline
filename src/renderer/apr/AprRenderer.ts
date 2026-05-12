@@ -334,11 +334,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // RING-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
     if (!showScenesFinal) {
-        // Ring mode: double the outer/inner border stroke for visible weight at small preview sizes.
-        // Rounded to integer pixels for crisp rendering (avoids sub-pixel antialiasing).
-        const ringBorderWidth = Math.max(2, Math.round(borderWidth * 2));
         svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, color, opacity, {
-            borderWidth: ringBorderWidth
+            borderWidth: centerStrokeW
         });
     } else {
         const ringFilter = grayscaleScenes ? ' filter="url(#aprGrayscale)"' : '';

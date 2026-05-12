@@ -113,9 +113,9 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
 
     // Pattern tile size tracks the rendered output size so preview and export
     // density stay visually consistent. At the 450px Social preview this yields
-    // a readable 39px Wiggle tile, close to the main timeline's visible scene
-    // texture, instead of sub-pixel tiles that collapse into a flat fill.
-    const patternScale = preset.density ?? (outerPx / 600);
+    // a readable 19.5px Wiggle tile: dense enough to show repeated motif lines,
+    // without returning to the sub-pixel tiles that collapse into a flat fill.
+    const patternScale = preset.density ?? (outerPx / 1200);
 
     // Scale clamp bounds proportionally (baseline 300px)
     const scaledClamp = (value: number, minAt300: number, maxAt300: number) =>

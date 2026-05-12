@@ -753,7 +753,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.createSectionHeading(sceneIdCard, 'Scene ID');
         sceneIdCard.createDiv({
             cls: 'ert-sub-card-note',
-            text: 'Controls inclusion of SceneID to identify scenes for use with editorial analysis AI tools. See Editorialist plugin.'
+            text: 'Controls inclusion of SceneID to identify scenes. Helpful for various AI-assisted editorial workflows.'
         });
         const sceneIdRow = sceneIdCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
         sceneIdRow.createSpan({
