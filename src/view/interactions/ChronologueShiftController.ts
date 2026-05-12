@@ -10,6 +10,7 @@ import type { PlanetaryProfile, RuntimeContentType } from '../../types/settings'
 import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary, formatPlanetaryDateAdaptive } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { parseRuntimeField, formatRuntimeValue } from '../../utils/runtimeEstimator';
+import { addTooltipData } from '../../utils/tooltip';
 import {
     ELAPSED_ARC_RADIUS,
     ELAPSED_TICK_LENGTH,
@@ -1271,9 +1272,7 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
             ? 'Toggle Runtime Mode (Screenplay)' 
             : 'Toggle Runtime Mode (Audiobook/Novel)';
     }
-    button.classList.add('rt-tooltip-target');
-    button.setAttribute('data-tooltip', tooltipText);
-    button.setAttribute('data-tooltip-placement', 'bottom');
+    addTooltipData(button, tooltipText, 'bottom');
     button.setAttribute('data-content-type', contentType);
 
     button.appendChild(bg);
