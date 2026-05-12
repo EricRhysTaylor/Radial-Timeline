@@ -1255,7 +1255,7 @@
 
 .ert-timeline-legend__row {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: start;
   column-gap: var(--size-4-2);
   min-height: 28px;
@@ -1263,7 +1263,7 @@
 }
 
 .ert-timeline-legend__icon {
-  width: 24px;
+  width: 28px;
   height: 24px;
   display: inline-flex;
   align-items: center;
@@ -1321,4 +1321,25 @@
 .ert-timeline-legend__detail-segment {
   font-weight: 750;
   color: var(--ert-legend-segment-color);
+}
+
+.ert-timeline-legend__icon--swatch {
+  color: inherit;
+  width: 28px;
+}
+
+.ert-timeline-legend__swatch {
+  width: 26px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--ert-legend-swatch-fill, var(--rt-color-empty));
+  border: 1px solid var(--ert-legend-swatch-stroke, var(--background-modifier-border));
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 1;
+  color: var(--ert-legend-swatch-text, var(--rt-legacy-black));
 }

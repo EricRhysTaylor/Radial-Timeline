@@ -746,7 +746,7 @@ export function buildAllGossamerRuns(
     : buildRunFromDefault(scenes as { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel, signal);
   
   // Default gray color for runs without stage data (legacy fallback)
-  const historicalColor = '#c0c0c0'; // Same as --rt-gossamer-historical-color
+  const historicalColor = '#c0c0c0'; // Same as --rt-color-muted-gray
 
   // Build historical runs from the remaining visible records (oldest to newest)
   const historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string; stage?: string; runIndex: number }> = [];

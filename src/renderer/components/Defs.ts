@@ -16,7 +16,8 @@ export function renderDefs(
   patternScale = 1.0,
   portableSvg = false,
   workingPatternId?: string,
-  customPatterns?: readonly HeroPattern[]
+  customPatterns?: readonly HeroPattern[],
+  idPrefix = ''
 ): string {
   const workingPattern = getHeroPattern(workingPatternId, customPatterns);
   // Pattern dimensions - scale for APR density control
@@ -35,7 +36,7 @@ export function renderDefs(
     // Working pattern: Hero Patterns motif (https://heropatterns.com, CC BY 4.0)
     // by Steve Schoger. Motif chosen via `settings.workingPatternId`.
     const workingPath = `
-      <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="${workingW}" height="${workingH}">
+      <pattern id="${idPrefix}plaidWorking${stage}" patternUnits="userSpaceOnUse" width="${workingW}" height="${workingH}">
         <rect width="${workingW}" height="${workingH}" fill="${workingFill}" opacity="${plaidOpacity}"/>
         <g transform="scale(${patternScale})">
           <g fill="${color}" fill-opacity="${workingPattern.fillOpacity}"${fillRuleAttr}>
@@ -43,13 +44,13 @@ export function renderDefs(
           </g>
         </g>
       </pattern>`;
-    
+
     // Todo is intentionally quiet; Working carries the visual activity.
     const todoPath = `
-      <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}">
+      <pattern id="${idPrefix}plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}">
         <rect width="${todoSize}" height="${todoSize}" fill="${todoFill}" opacity="${plaidOpacity}"/>
       </pattern>`;
-    
+
     return workingPath + todoPath;
   }).join('');
 

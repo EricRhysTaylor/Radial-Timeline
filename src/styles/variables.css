@@ -102,8 +102,13 @@
   /* Missing data / zero scores (red) */
   --rt-gossamer-default-color: #7a7a7a;
   /* Default fallback (gray) */
-  --rt-gossamer-historical-color: #c0c0c0;
-  /* Historical runs (Gossamer2-5, light gray) */
+  --rt-color-muted-gray: #c0c0c0;
+  /* Light gray for de-emphasized scene states (pending edits, gossamer historical runs) */
+
+  /* Pulse AI grade colors (applied to scene number text) */
+  --rt-grade-a-color: #00ff48;
+  --rt-grade-b-color: #ffbb00;
+  --rt-grade-c-color: #ff0000;
 
   /* Dot Sizes */
   --rt-gossamer-dot-current: 7px;

@@ -54,7 +54,8 @@ const HOVER_EXPAND_FACTOR = 1.05; // expansion multiplier when text doesn't fit
 const TIMELINE_LEGEND_MODES = new Set(['progress', 'narrative', 'chronologue']);
 
 interface TimelineLegendRow {
-    icon: string;
+    icon?: string;
+    swatch?: TimelineLegendSwatch;
     label: string;
     detail?: string;
     detailSegments?: TimelineLegendDetailSegment[];
@@ -65,6 +66,13 @@ interface TimelineLegendRow {
 interface TimelineLegendDetailSegment {
     text: string;
     color?: string;
+}
+
+interface TimelineLegendSwatch {
+    fill?: string;
+    stroke?: string;
+    text?: string;
+    textColor?: string;
 }
 
 interface TimelineLegendSection {
@@ -308,6 +316,7 @@ export class RadialTimelineView extends ItemView {
                     hideLegendTimer = null;
                 }
                 if (legendBtn.hidden) return;
+                this.updateTimelineLegend();
                 legendPanel.classList.add('is-visible');
                 legendBtn.setAttribute('aria-expanded', 'true');
             };
@@ -539,7 +548,18 @@ export class RadialTimelineView extends ItemView {
 
                 const iconEl = document.createElement('span');
                 iconEl.className = 'ert-timeline-legend__icon';
-                setIcon(iconEl, row.icon);
+                if (row.swatch) {
+                    iconEl.classList.add('ert-timeline-legend__icon--swatch');
+                    const swatchEl = document.createElement('span');
+                    swatchEl.className = 'ert-timeline-legend__swatch';
+                    if (row.swatch.fill) swatchEl.style.setProperty('--ert-legend-swatch-fill', row.swatch.fill);
+                    if (row.swatch.stroke) swatchEl.style.setProperty('--ert-legend-swatch-stroke', row.swatch.stroke);
+                    if (row.swatch.textColor) swatchEl.style.setProperty('--ert-legend-swatch-text', row.swatch.textColor);
+                    if (row.swatch.text) swatchEl.textContent = row.swatch.text;
+                    iconEl.appendChild(swatchEl);
+                } else if (row.icon) {
+                    setIcon(iconEl, row.icon);
+                }
 
                 const copyEl = document.createElement('span');
                 copyEl.className = 'ert-timeline-legend__copy';
@@ -592,6 +612,10 @@ export class RadialTimelineView extends ItemView {
         return 'Narrative';
     }
 
+    private randomSceneNumber(): string {
+        return String(1 + Math.floor(Math.random() * 99));
+    }
+
     private getTimelineLegendSections(mode: string): TimelineLegendSection[] {
         const sections: TimelineLegendSection[] = [
             {
@@ -622,6 +646,47 @@ export class RadialTimelineView extends ItemView {
                 ],
             });
         }
+
+        sections.push({
+            title: 'Number Square States',
+            rows: [
+                {
+                    swatch: { fill: 'var(--rt-color-due)', stroke: 'var(--rt-color-due)', text: this.randomSceneNumber(), textColor: 'var(--rt-color-empty)' },
+                    label: 'Missing date',
+                    detail: 'marked Complete but missing WHEN',
+                },
+                {
+                    swatch: { fill: 'var(--interactive-accent)', text: this.randomSceneNumber(), textColor: 'var(--rt-color-empty)' },
+                    label: 'Open in tab',
+                    detail: 'scene is currently open',
+                },
+                {
+                    swatch: { fill: 'var(--rt-color-search)', text: this.randomSceneNumber(), textColor: 'var(--rt-legacy-black)' },
+                    label: 'Search match',
+                    detail: 'matches active search',
+                },
+                {
+                    swatch: { fill: 'var(--rt-color-muted-gray)', text: this.randomSceneNumber(), textColor: 'var(--rt-legacy-black)' },
+                    label: 'Pending edits',
+                    detail: 'AI edits awaiting review',
+                },
+                {
+                    swatch: { fill: 'var(--rt-color-empty)', text: this.randomSceneNumber(), textColor: 'var(--rt-grade-a-color)' },
+                    label: 'Pulse AI grade A',
+                    detail: 'strong scene',
+                },
+                {
+                    swatch: { fill: 'var(--rt-color-empty)', text: this.randomSceneNumber(), textColor: 'var(--rt-grade-b-color)' },
+                    label: 'Pulse AI grade B',
+                    detail: 'acceptable',
+                },
+                {
+                    swatch: { fill: 'var(--rt-color-empty)', text: this.randomSceneNumber(), textColor: 'var(--rt-grade-c-color)' },
+                    label: 'Pulse AI grade C',
+                    detail: 'needs revision',
+                },
+            ],
+        });
 
         sections.push({
             title: 'Right Click Menu',

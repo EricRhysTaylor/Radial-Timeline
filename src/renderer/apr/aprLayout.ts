@@ -114,9 +114,11 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     // Pattern tile size. Preview sizes (≤450, i.e. settings hero + campaign stage cards)
     // are locked to a single small absolute tile so density is consistent regardless of which
     // preview size the user picks — and matches the campaign stage cards which always render
-    // at outerPx=150. Exports (≥1200) keep a moderate outerPx-relative divisor.
+    // at outerPx=150. The preview tile is 50% smaller than the export tile per visual area
+    // because preview SVGs are ~1/3 the size of full timeline renders.
+    // Exports (≥1200) keep a moderate outerPx-relative divisor.
     // A preset's `density` override is still honored for special cases.
-    const patternScale = preset.density ?? (outerPx <= 450 ? 0.025 : outerPx / 3600);
+    const patternScale = preset.density ?? (outerPx <= 450 ? 0.0125 : outerPx / 3600);
 
     // Scale clamp bounds proportionally (baseline 300px)
     const scaledClamp = (value: number, minAt300: number, maxAt300: number) =>

@@ -333,7 +333,7 @@ export function renderGossamerLayer(
     
     // Calculate color for each run based on stage and position
     const runColors = overlayRuns.map((ov, idx) => {
-      const historicalColor = getCSSVar('--rt-gossamer-historical-color', '#c0c0c0');
+      const historicalColor = getCSSVar('--rt-color-muted-gray', '#c0c0c0');
       
       // If no stage info or no publishStageColors, use legacy gray
       if (!ov.stage || !publishStageColors) {

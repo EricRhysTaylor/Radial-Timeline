@@ -141,7 +141,7 @@
   pointer-events: none;
   cursor: default;
   font-weight: 600;
-  fill: var(--rt-gossamer-historical-color);
+  fill: var(--rt-color-muted-gray);
   stroke: white;
   stroke-width: 5px;
   paint-order: stroke fill;

@@ -494,7 +494,7 @@
 
 /* Pending Edits text styling */
 .rt-pending-edits-text {
-  fill: var(--rt-gossamer-historical-color);
+  fill: var(--rt-color-muted-gray);
 }
 
 /* Search highlight parent tspan with dynamic fill */
@@ -547,7 +547,7 @@
 }
 
 .rt-number-square.rt-has-edits {
-  fill: var(--rt-gossamer-historical-color);
+  fill: var(--rt-color-muted-gray);
   /* Light gray for pending edits */
 }
 
@@ -682,7 +682,7 @@
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A,
 .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
-  fill: #00ff48;
+  fill: var(--rt-grade-a-color);
 }
 
 /* Grade B - Yellow */
@@ -692,7 +692,7 @@
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B,
 .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
-  fill: #ffbb00;
+  fill: var(--rt-grade-b-color);
 }
 
 /* Grade C - Red */
@@ -702,7 +702,7 @@
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C,
 .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
-  fill: #ff0000;
+  fill: var(--rt-grade-c-color);
 }
 
 /* Grade Non-Selected (Reset to white) */

@@ -175,6 +175,13 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const patternScale = layout.patternScale;
     const half = svgSize / 2;
 
+    // Unique pattern-id prefix per render. SVG <defs> IDs are document-scoped, and the timeline
+    // view defines patterns with the same base names (`plaidWorkingZero` etc.) at its own scale.
+    // Without a unique prefix, an APR preview injected via innerHTML alongside the timeline pane
+    // would have its scene fills resolved to the timeline's pattern defs — making any APR-side
+    // patternScale tweaks invisible. Hex char set so it's a valid SVG id.
+    const aprIdPrefix = `apr-${Math.random().toString(36).slice(2, 9)}-`;
+
     // Structural palette based on theme (with optional custom spokes color)
     const structural = resolveStructuralColors(theme, spokeColor);
 
@@ -321,7 +328,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             <feColorMatrix type="saturate" values="0" />
         </filter>
     ` : '';
-    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, opts.workingPatternId, opts.customWorkingPatterns)}${percentShadow}${grayscaleFilter}</defs>`;
+    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, opts.workingPatternId, opts.customWorkingPatterns, aprIdPrefix)}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // RING-ONLY MODE (Teaser): Solid progress ring, no scene details
@@ -337,7 +344,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         const ringFilter = grayscaleScenes ? ' filter="url(#aprGrayscale)"' : '';
         svg += `<g class="apr-rings"${ringFilter}>`;
         ringsToRender.forEach(ring => {
-            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural, color, opacity, portableSvg);
+            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural, color, opacity, portableSvg, aprIdPrefix);
         });
         svg += `</g>`;
 
@@ -429,7 +436,8 @@ function renderRing(
     structural: ReturnType<typeof resolveStructuralColors>,
     color: (name: string, fallback: string) => string,
     opacity: (varExpr: string, fallback: string) => string,
-    portableSvg: boolean
+    portableSvg: boolean,
+    aprIdPrefix: string
 ): string {
     const ringScenes = ring.scenes;
     const actScenes: TimelineItem[][] = [];
@@ -468,7 +476,10 @@ function renderRing(
             const pos = positions.get(idx);
             if (!pos) return;
             used += pos.endAngle - pos.startAngle;
-            const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
+            const rawSceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
+            // Rewrite plaid url refs to use this render's unique id prefix so the fills point at
+            // the APR's <defs>, not the timeline view's identically-named patterns elsewhere in the DOM.
+            const sceneColor = rawSceneColor.replace(/url\(#plaid/g, `url(#${aprIdPrefix}plaid`);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
             svg += `<path d="${path}" fill="${sceneColor}" stroke="none" />`;
             borderPaths.push(path);
