@@ -196,7 +196,7 @@ export const MICRO_RING_GAP = 2;
 export const CHRONOLOGUE_PROGRESS_RING_RADIUS_OFFSET = -3;
 
 /** Default progress ring radius offset (px, relative to lineInnerRadius) */
-export const PROGRESS_RING_RADIUS_OFFSET = 15;
+export const PROGRESS_RING_RADIUS_OFFSET = 13;
 
 /** Progress ring base stroke width (px) */
 export const PROGRESS_RING_BASE_WIDTH = 8;

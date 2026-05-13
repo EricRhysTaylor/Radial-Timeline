@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildSessionTimerRingState, renderSessionTimerRing, sessionTimerArcPath } from './SessionTimerRing';
+import { PROGRESS_RING_BASE_WIDTH, PROGRESS_RING_RADIUS_OFFSET, SESSION_TIMER_RING_WIDTH } from '../layout/LayoutConstants';
+import { renderProgressRingBaseLayer } from '../utils/ProgressRing';
+import { buildSessionTimerRingState, renderSessionTimerRing, renderSessionTimerRingLayer, sessionTimerArcPath } from './SessionTimerRing';
 
 describe('SessionTimerRing', () => {
     it('places the session ring directly outside the progress ring', () => {
@@ -14,6 +16,22 @@ describe('SessionTimerRing', () => {
         expect(state?.radius).toBe(705.5);
         expect(state?.strokeWidth).toBe(3);
         expect(state?.progress).toBe(0.25);
+    });
+
+    it('keeps the session ring in the gap before the first scene ring', () => {
+        const lineInnerRadius = 680;
+        const firstSceneInnerRadius = lineInnerRadius + 20;
+        const progressRadius = lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET;
+        const state = buildSessionTimerRingState({
+            progressRadius,
+            progressRingWidth: PROGRESS_RING_BASE_WIDTH,
+            sessionRingWidth: SESSION_TIMER_RING_WIDTH,
+            elapsedMs: 30 * 60000,
+            targetMinutes: 120,
+        });
+
+        expect(state).not.toBeNull();
+        expect((state?.radius ?? 0) + (SESSION_TIMER_RING_WIDTH / 2)).toBeLessThanOrEqual(firstSceneInnerRadius);
     });
 
     it('renders a closed two-arc path at completion', () => {
@@ -32,5 +50,23 @@ describe('SessionTimerRing', () => {
 
         expect(svg).toContain('is-progress-50');
         expect(svg).not.toContain('style=');
+    });
+
+    it('renders as an overlay layer after the progress backing ring', () => {
+        const progressLayer = renderProgressRingBaseLayer({
+            progressRadius: 693,
+            estimateResult: null,
+        });
+        const timerLayer = renderSessionTimerRingLayer({
+            radius: 698.5,
+            strokeWidth: SESSION_TIMER_RING_WIDTH,
+            progress: 0.5,
+            paused: false,
+        });
+        const svg = `${progressLayer}${timerLayer}`;
+
+        expect(svg.indexOf('class="progress-ring-base"')).toBeGreaterThanOrEqual(0);
+        expect(svg.indexOf('class="ert-timeline-session-ring-layer"')).toBeGreaterThan(svg.indexOf('class="progress-ring-base"'));
+        expect(timerLayer).not.toContain('style=');
     });
 });

@@ -67,3 +67,13 @@ export function renderSessionTimerRing(state: SessionTimerRingState | null): str
         </g>
     `;
 }
+
+export function renderSessionTimerRingLayer(state: SessionTimerRingState | null): string {
+    const ring = renderSessionTimerRing(state);
+    if (!ring.trim()) return '';
+    return `
+        <g class="ert-timeline-session-ring-layer">
+            ${ring}
+        </g>
+    `;
+}

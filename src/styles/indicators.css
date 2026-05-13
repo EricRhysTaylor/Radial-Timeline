@@ -212,6 +212,7 @@
   /* Optional: round ends */
 }
 
+.radial-timeline-container .ert-timeline-session-ring-layer,
 .radial-timeline-container .ert-timeline-session-ring {
   pointer-events: none;
 }

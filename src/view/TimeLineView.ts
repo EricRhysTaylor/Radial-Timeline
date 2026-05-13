@@ -27,7 +27,7 @@ import {
     SESSION_TIMER_RING_WIDTH,
     SVG_SIZE
 } from '../renderer/layout/LayoutConstants';
-import { buildSessionTimerRingState, renderSessionTimerRing } from '../renderer/components/SessionTimerRing';
+import { buildSessionTimerRingState, renderSessionTimerRingLayer } from '../renderer/components/SessionTimerRing';
 import { 
     createSnapshot, 
     detectChanges, 
@@ -142,6 +142,8 @@ export class RadialTimelineView extends ItemView {
     private writingSessionCountdownToggle?: HTMLInputElement;
     private writingSessionGoalInput?: HTMLInputElement;
     private writingSessionTickInterval?: number;
+    private writingSessionPulseTimeout?: number;
+    private writingSessionLastTitleCount?: string;
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
@@ -345,7 +347,7 @@ export class RadialTimelineView extends ItemView {
             sessionBtn.setAttribute('aria-label', 'Start writing session');
             const sessionLabel = document.createElement('span');
             sessionLabel.className = 'ert-timeline-session__label';
-            sessionLabel.textContent = 'Start';
+            this.renderWritingSessionIdleIcon(sessionLabel);
             sessionBtn.appendChild(sessionLabel);
             applyTooltip(sessionBtn, 'Start writing session', 'bottom');
             this.registerDomEvent(sessionBtn, 'click', (evt: MouseEvent) => {
@@ -461,6 +463,10 @@ export class RadialTimelineView extends ItemView {
                     window.clearInterval(this.writingSessionTickInterval);
                     this.writingSessionTickInterval = undefined;
                 }
+                if (this.writingSessionPulseTimeout !== undefined) {
+                    window.clearTimeout(this.writingSessionPulseTimeout);
+                    this.writingSessionPulseTimeout = undefined;
+                }
             });
             this.registerDomEvent(document.body, 'click', (evt: MouseEvent) => {
                 const target = evt.target as Node | null;
@@ -575,11 +581,22 @@ export class RadialTimelineView extends ItemView {
     private refreshWritingSessionControl(): void {
         if (!this.writingSessionButton || !this.writingSessionLabel) return;
         const snapshot = this.getSessionClockSnapshot();
-        this.writingSessionLabel.setText(snapshot.label);
+        const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.label);
+        this.writingSessionLabel.empty();
+        if (snapshot.state === 'idle') {
+            this.renderWritingSessionIdleIcon(this.writingSessionLabel);
+        } else {
+            this.writingSessionLabel.setText(snapshot.label);
+        }
+        this.writingSessionButton.classList.toggle('is-idle', snapshot.state === 'idle');
         this.writingSessionButton.classList.toggle('is-active', snapshot.state === 'active');
         this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
         this.applySessionProgressClass(this.writingSessionButton, snapshot.progressStep);
         this.writingSessionButton.setAttribute('aria-label', snapshot.detail);
+        if (shouldPulseCount) {
+            this.pulseWritingSessionTitleCount();
+        }
+        this.writingSessionLastTitleCount = snapshot.label;
         if (this.writingSessionPanel && !this.writingSessionPanel.classList.contains('ert-hidden')) {
             if (this.plugin.getWritingSessionService().getActiveSession()) {
                 this.renderWritingSessionPanel();
@@ -587,6 +604,64 @@ export class RadialTimelineView extends ItemView {
             this.positionWritingSessionPanel();
         }
         this.updateWritingSessionRing();
+    }
+
+    private shouldPulseWritingSessionTitleCount(nextLabel: string): boolean {
+        const previousLabel = this.writingSessionLastTitleCount;
+        return previousLabel !== undefined && previousLabel !== nextLabel && /\d/.test(nextLabel);
+    }
+
+    private pulseWritingSessionTitleCount(): void {
+        if (!this.writingSessionLabel) return;
+        this.writingSessionLabel.classList.remove('is-count-pulse');
+        void this.writingSessionLabel.offsetWidth;
+        this.writingSessionLabel.classList.add('is-count-pulse');
+        if (this.writingSessionPulseTimeout !== undefined) {
+            window.clearTimeout(this.writingSessionPulseTimeout);
+        }
+        this.writingSessionPulseTimeout = window.setTimeout(() => {
+            this.writingSessionLabel?.classList.remove('is-count-pulse');
+            this.writingSessionPulseTimeout = undefined;
+        }, 420);
+    }
+
+    private renderWritingSessionIdleIcon(target: HTMLElement): void {
+        target.empty();
+        setIcon(target, 'metronome');
+        const icon = target.querySelector('svg');
+        if (icon instanceof SVGSVGElement) {
+            icon.classList.add('ert-timeline-session__icon');
+            icon.setAttribute('aria-hidden', 'true');
+            return;
+        }
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.classList.add('svg-icon', 'lucide', 'lucide-metronome-icon', 'lucide-metronome', 'ert-timeline-session__icon');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+
+        [
+            'M12 11.4V9.1',
+            'm12 17 6.59-6.59',
+            'm15.05 5.7-.218-.691a3 3 0 0 0-5.663 0L4.418 19.695A1 1 0 0 0 5.37 21h13.253a1 1 0 0 0 .951-1.31L18.45 16.2',
+        ].forEach((d) => {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            svg.appendChild(path);
+        });
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '20');
+        circle.setAttribute('cy', '9');
+        circle.setAttribute('r', '2');
+        svg.appendChild(circle);
+
+        target.appendChild(svg);
     }
 
     private toggleWritingSessionPanel(): void {
@@ -661,6 +736,18 @@ export class RadialTimelineView extends ItemView {
         return titleEl;
     }
 
+    private revealGoalsSessionsSettings(): void {
+        this.plugin.settingsTab?.setActiveTab('core');
+        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+        if (setting) {
+            setting.open();
+            setting.openTabById('radial-timeline');
+        }
+        window.requestAnimationFrame(() => {
+            this.plugin.settingsTab?.revealSettingsSection('core', 'goals-sessions');
+        });
+    }
+
     private renderWritingSessionPanel(): void {
         const panel = this.writingSessionPanel;
         if (!panel) return;
@@ -678,12 +765,7 @@ export class RadialTimelineView extends ItemView {
         settingsBtn.onclick = (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
-            const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
-            if (setting) {
-                setting.open();
-                setting.openTabById('radial-timeline');
-            }
-            this.plugin.settingsTab?.revealSettingsSection('core', 'goals-sessions');
+            this.revealGoalsSessionsSettings();
             this.hideWritingSessionPanel();
         };
 
@@ -734,11 +816,12 @@ export class RadialTimelineView extends ItemView {
         countdownToggle.checked = true;
         countdownLabel.createSpan({ text: 'Countdown sprint' });
         this.writingSessionCountdownToggle = countdownToggle;
+        const quickRow = countdownRow.createDiv({ cls: 'ert-timeline-session-panel__quick ert-timeline-session-panel__quick--inline' });
 
         const goalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
         goalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Goal' });
         const goalControls = goalRow.createDiv({ cls: 'ert-timeline-session-panel__goal-controls' });
-        const goalInput = goalControls.createEl('input', { cls: 'ert-input ert-input--sm ert-timeline-session-panel__number' });
+        const goalInput = goalControls.createEl('input', { cls: 'ert-input ert-input--xs ert-timeline-session-panel__number' });
         goalInput.type = 'number';
         goalInput.min = '1';
         goalInput.max = '600';
@@ -747,20 +830,20 @@ export class RadialTimelineView extends ItemView {
         goalInput.setAttribute('aria-label', 'Session goal minutes');
         this.writingSessionGoalInput = goalInput;
 
-        const quickRow = goalControls.createDiv({ cls: 'ert-timeline-session-panel__quick ert-timeline-session-panel__quick--inline' });
-        [25, 50, defaultGoal].filter((value, index, values) => values.indexOf(value) === index).forEach(minutes => {
-            this.createSessionButton(quickRow, `${minutes}m`, 'ert-timeline-session-panel__chip', () => {
-                goalInput.value = String(minutes);
+        [
+            { label: '\u00BC', ariaLabel: '1/4 hour', minutes: 15 },
+            { label: '\u00BD', ariaLabel: '1/2 hour', minutes: 30 },
+            { label: '\u00BE', ariaLabel: '3/4 hour', minutes: 45 },
+        ].forEach(preset => {
+            const presetButton = this.createSessionButton(quickRow, preset.label, 'ert-timeline-session-panel__ratio', () => {
+                goalInput.value = String(preset.minutes);
                 countdownToggle.checked = true;
             });
+            presetButton.setAttribute('aria-label', `${preset.ariaLabel} (${preset.minutes} minutes)`);
+            applyTooltip(presetButton, `${preset.minutes} minutes`, 'bottom');
         });
 
-        countdownToggle.onchange = () => {
-            goalInput.disabled = !countdownToggle.checked;
-        };
-
-        const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
-        this.createSessionIconButton(actions, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
+        const startSession = async () => {
             const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
             const parsedGoal = Number(goalInput.value);
             const goalMinutes = countdownToggle.checked && Number.isFinite(parsedGoal) && parsedGoal > 0
@@ -773,7 +856,13 @@ export class RadialTimelineView extends ItemView {
             } catch (error) {
                 new Notice(error instanceof Error ? error.message : 'Could not start writing session.');
             }
-        });
+        };
+
+        this.createSessionIconButton(goalControls, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', startSession);
+
+        countdownToggle.onchange = () => {
+            goalInput.disabled = !countdownToggle.checked;
+        };
     }
 
     private renderActiveWritingSessionPanel(panel: HTMLElement, active: ActiveWritingSession): void {
@@ -843,7 +932,7 @@ export class RadialTimelineView extends ItemView {
 
     private updateWritingSessionRing(svg: SVGSVGElement | null = this.getRenderedTimelineSvg()): void {
         if (!svg) return;
-        svg.querySelectorAll('.ert-timeline-session-ring').forEach(el => el.remove());
+        svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
         const active = this.plugin.getWritingSessionService().getActiveSession();
         if (!active) return;
 
@@ -861,14 +950,14 @@ export class RadialTimelineView extends ItemView {
             targetMinutes,
             paused: !!active.pausedAt,
         });
-        const ringSvg = renderSessionTimerRing(state);
+        const ringSvg = renderSessionTimerRingLayer(state);
         if (!ringSvg.trim()) return;
 
         const doc = new DOMParser().parseFromString(`<svg>${ringSvg}</svg>`, 'image/svg+xml');
-        const ring = doc.documentElement.firstElementChild;
+        const ringLayer = doc.documentElement.firstElementChild;
         const timelineRoot = svg.querySelector('#timeline-root');
-        if (!ring || !timelineRoot) return;
-        const imported = document.importNode(ring, true);
+        if (!ringLayer || !timelineRoot) return;
+        const imported = document.importNode(ringLayer, true);
         imported.setAttribute('aria-hidden', 'true');
         timelineRoot.appendChild(imported);
     }

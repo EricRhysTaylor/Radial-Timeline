@@ -4,7 +4,7 @@
    Font loaded via embeddedFonts.ts and injected at runtime
    ============================================================================= */
 @font-face {
-    font-family: 'JetBrains Mono RT';
+    font-family: 'Radial Timeline JetBrains Mono';
     src: url('assets/fonts/jetbrains-mono/JetBrainsMono-Thin.woff2') format('woff2');
     font-weight: 100;
     font-style: normal;
