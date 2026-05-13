@@ -143,7 +143,7 @@ export class RadialTimelineView extends ItemView {
     private writingSessionGoalInput?: HTMLInputElement;
     private writingSessionTickInterval?: number;
     private writingSessionPulseTimeout?: number;
-    private writingSessionLastTitleCount?: string;
+    private writingSessionLastTitlePulseKey?: string;
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
@@ -349,7 +349,6 @@ export class RadialTimelineView extends ItemView {
             sessionLabel.className = 'ert-timeline-session__label';
             this.renderWritingSessionIdleIcon(sessionLabel);
             sessionBtn.appendChild(sessionLabel);
-            applyTooltip(sessionBtn, 'Start writing session', 'bottom');
             this.registerDomEvent(sessionBtn, 'click', (evt: MouseEvent) => {
                 evt.preventDefault();
                 evt.stopPropagation();
@@ -564,7 +563,7 @@ export class RadialTimelineView extends ItemView {
         }
     }
 
-    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number } {
+    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number; pulseKey?: string } {
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
         if (!active) return { label: 'Start', detail: 'Start writing session', state: 'idle' };
@@ -575,13 +574,14 @@ export class RadialTimelineView extends ItemView {
             detail: active.pausedAt ? `Paused ${active.mode} session, ${display.detail}` : `Active ${active.mode} session, ${display.detail}`,
             state: active.pausedAt ? 'paused' : 'active',
             progressStep: this.getActiveSessionProgressStep(active, elapsedMs),
+            pulseKey: display.tone === 'running' ? this.getSessionTitlePulseKey(active, elapsedMs) : undefined,
         };
     }
 
     private refreshWritingSessionControl(): void {
         if (!this.writingSessionButton || !this.writingSessionLabel) return;
         const snapshot = this.getSessionClockSnapshot();
-        const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.label);
+        const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.pulseKey);
         this.writingSessionLabel.empty();
         if (snapshot.state === 'idle') {
             this.renderWritingSessionIdleIcon(this.writingSessionLabel);
@@ -593,12 +593,14 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
         this.applySessionProgressClass(this.writingSessionButton, snapshot.progressStep);
         this.writingSessionButton.setAttribute('aria-label', snapshot.detail);
-        if (shouldPulseCount) {
+        if (shouldPulseCount && snapshot.pulseKey) {
             this.pulseWritingSessionTitleCount();
         }
-        this.writingSessionLastTitleCount = snapshot.label;
+        this.writingSessionLastTitlePulseKey = snapshot.pulseKey;
         if (this.writingSessionPanel && !this.writingSessionPanel.classList.contains('ert-hidden')) {
-            if (this.plugin.getWritingSessionService().getActiveSession()) {
+            const active = this.plugin.getWritingSessionService().getActiveSession();
+            const previousPanelState = this.writingSessionPanel.dataset.sessionState;
+            if (active || previousPanelState === 'active') {
                 this.renderWritingSessionPanel();
             }
             this.positionWritingSessionPanel();
@@ -606,14 +608,29 @@ export class RadialTimelineView extends ItemView {
         this.updateWritingSessionRing();
     }
 
-    private shouldPulseWritingSessionTitleCount(nextLabel: string): boolean {
-        const previousLabel = this.writingSessionLastTitleCount;
-        return previousLabel !== undefined && previousLabel !== nextLabel && /\d/.test(nextLabel);
+    private getSessionTitlePulseKey(active: ActiveWritingSession, elapsedMs: number): string {
+        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
+        if (goalMs) {
+            const remainingMs = Math.max(0, goalMs - elapsedMs);
+            return `remaining-min-${Math.ceil(remainingMs / 60000)}`;
+        }
+        return `elapsed-min-${Math.floor(elapsedMs / 60000)}`;
+    }
+
+    private shouldPulseWritingSessionTitleCount(nextPulseKey: string | undefined): boolean {
+        const previousPulseKey = this.writingSessionLastTitlePulseKey;
+        return previousPulseKey !== undefined && nextPulseKey !== undefined && previousPulseKey !== nextPulseKey;
+    }
+
+    private getWritingSessionPulseColor(): string {
+        const colors = ['white', 'red', 'yellow', 'lime', 'deepskyblue', 'magenta', 'orange'];
+        return colors[Math.floor(Math.random() * colors.length)] ?? 'white';
     }
 
     private pulseWritingSessionTitleCount(): void {
         if (!this.writingSessionLabel) return;
         this.writingSessionLabel.classList.remove('is-count-pulse');
+        this.writingSessionLabel.style.setProperty('--ert-session-pulse-color', this.getWritingSessionPulseColor());
         void this.writingSessionLabel.offsetWidth;
         this.writingSessionLabel.classList.add('is-count-pulse');
         if (this.writingSessionPulseTimeout !== undefined) {
@@ -755,6 +772,7 @@ export class RadialTimelineView extends ItemView {
 
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
+        panel.dataset.sessionState = active ? 'active' : 'idle';
         const header = panel.createDiv({ cls: 'ert-timeline-session-panel__header' });
         header.createDiv({ cls: 'ert-timeline-session-panel__title', text: 'Writing Session' });
 
@@ -816,11 +834,11 @@ export class RadialTimelineView extends ItemView {
         countdownToggle.checked = true;
         countdownLabel.createSpan({ text: 'Countdown sprint' });
         this.writingSessionCountdownToggle = countdownToggle;
-        const quickRow = countdownRow.createDiv({ cls: 'ert-timeline-session-panel__quick ert-timeline-session-panel__quick--inline' });
 
         const goalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
         goalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Goal' });
         const goalControls = goalRow.createDiv({ cls: 'ert-timeline-session-panel__goal-controls' });
+        const quickRow = goalControls.createDiv({ cls: 'ert-timeline-session-panel__quick ert-timeline-session-panel__quick--inline' });
         const goalInput = goalControls.createEl('input', { cls: 'ert-input ert-input--xs ert-timeline-session-panel__number' });
         goalInput.type = 'number';
         goalInput.min = '1';
@@ -840,7 +858,6 @@ export class RadialTimelineView extends ItemView {
                 countdownToggle.checked = true;
             });
             presetButton.setAttribute('aria-label', `${preset.ariaLabel} (${preset.minutes} minutes)`);
-            applyTooltip(presetButton, `${preset.minutes} minutes`, 'bottom');
         });
 
         const startSession = async () => {

@@ -18,9 +18,8 @@ describe('SessionTimerRing', () => {
         expect(state?.progress).toBe(0.25);
     });
 
-    it('keeps the session ring in the gap before the first scene ring', () => {
+    it('uses the diagnostic session ring width while timer visibility is being verified', () => {
         const lineInnerRadius = 680;
-        const firstSceneInnerRadius = lineInnerRadius + 20;
         const progressRadius = lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET;
         const state = buildSessionTimerRingState({
             progressRadius,
@@ -31,7 +30,8 @@ describe('SessionTimerRing', () => {
         });
 
         expect(state).not.toBeNull();
-        expect((state?.radius ?? 0) + (SESSION_TIMER_RING_WIDTH / 2)).toBeLessThanOrEqual(firstSceneInnerRadius);
+        expect(SESSION_TIMER_RING_WIDTH).toBe(40);
+        expect(state?.strokeWidth).toBe(40);
     });
 
     it('renders a closed two-arc path at completion', () => {

@@ -1044,7 +1044,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono RT', 'JetBrains Mono', var(--font-monospace);
+  font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-size: var(--font-ui-medium);
   font-weight: 100;
   font-synthesis: none;
@@ -1192,7 +1192,7 @@
   display: inline-block;
   min-width: 2ch;
   white-space: nowrap;
-  font-family: 'JetBrains Mono RT', 'JetBrains Mono', var(--font-monospace);
+  font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-weight: 100;
   font-synthesis: none;
   font-variant-numeric: tabular-nums;
@@ -1206,20 +1206,17 @@
 
 @keyframes ert-timeline-session-count-pulse {
   0% {
-    color: white;
-    text-shadow: 0 0 0.75rem color-mix(in srgb, white 80%, transparent);
-    transform: scale(1.08);
+    color: var(--ert-session-pulse-color, white);
+    text-shadow: 0 0 0.75rem color-mix(in srgb, var(--ert-session-pulse-color, white) 80%, transparent);
   }
 
   55% {
-    color: white;
-    text-shadow: 0 0 0.45rem color-mix(in srgb, white 55%, transparent);
-    transform: scale(1.03);
+    color: var(--ert-session-pulse-color, white);
+    text-shadow: 0 0 0.45rem color-mix(in srgb, var(--ert-session-pulse-color, white) 55%, transparent);
   }
 
   100% {
     text-shadow: none;
-    transform: scale(1);
   }
 }
 
@@ -1343,11 +1340,6 @@
   background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
   border: thin solid transparent;
   border-radius: var(--radius-m);
-  transition: border-color 120ms ease, transform 120ms ease;
-}
-
-.ert-timeline-session-panel__section:hover {
-  border-color: color-mix(in srgb, var(--interactive-accent) 45%, transparent);
 }
 
 .ert-timeline-session-panel__section-title {
@@ -1384,7 +1376,7 @@
   min-width: 0;
   max-width: 100%;
   flex: 0 0 auto;
-  font-family: 'JetBrains Mono RT', 'JetBrains Mono', var(--font-monospace);
+  font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-size: var(--font-ui-small);
   font-weight: 100;
   font-synthesis: none;
@@ -1422,7 +1414,7 @@
 .ert-timeline-session-panel__quick--inline {
   flex: 0 1 auto;
   flex-wrap: nowrap;
-  gap: var(--size-4-3);
+  gap: var(--size-4-2);
 }
 
 .ert-timeline-session-panel__goal-controls {
@@ -1444,15 +1436,15 @@
   font-size: var(--font-ui-small);
   line-height: 1;
   background: var(--background-modifier-hover);
-  transition: color 120ms ease, background-color 120ms ease, transform 120ms ease;
+  transition: color 120ms ease, background-color 120ms ease;
 }
 
 .ert-timeline-session-panel__chip:hover {
   color: var(--text-normal);
-  transform: translateY(calc(var(--size-2-1) * -1));
 }
 
-.ert-timeline-session-panel__ratio {
+.ert-timeline-session-panel .ert-timeline-session-panel__ratio,
+.ert-timeline-session-panel button.ert-timeline-session-panel__ratio {
   all: unset;
   appearance: none;
   -webkit-appearance: none;
@@ -1461,37 +1453,57 @@
   justify-content: center;
   height: auto;
   min-width: 0;
+  min-height: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
   box-shadow: none;
   background: transparent;
+  background-color: transparent;
+  background-image: none;
+  filter: none;
+  text-shadow: none;
+  transform: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-family: 'JetBrains Mono RT', 'JetBrains Mono', var(--font-monospace);
+  font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-size: var(--font-ui-medium);
   font-weight: 100;
   font-synthesis: none;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'zero' 0, 'tnum' 1;
   line-height: 1;
-  transition: color 120ms ease;
+  text-decoration: none;
 }
 
-.ert-timeline-session-panel__ratio:hover {
+.ert-timeline-session-panel .ert-timeline-session-panel__ratio:hover,
+.ert-timeline-session-panel button.ert-timeline-session-panel__ratio:hover {
   color: var(--text-accent);
   background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
   box-shadow: none;
+  filter: none;
+  text-shadow: none;
   transform: none;
 }
 
-.ert-timeline-session-panel__ratio:active,
-.ert-timeline-session-panel__ratio:focus {
+.ert-timeline-session-panel .ert-timeline-session-panel__ratio:active,
+.ert-timeline-session-panel .ert-timeline-session-panel__ratio:focus,
+.ert-timeline-session-panel button.ert-timeline-session-panel__ratio:active,
+.ert-timeline-session-panel button.ert-timeline-session-panel__ratio:focus {
   background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
   box-shadow: none;
+  filter: none;
+  text-shadow: none;
+  transform: none;
 }
 
-.ert-timeline-session-panel__ratio:focus-visible {
+.ert-timeline-session-panel .ert-timeline-session-panel__ratio:focus-visible {
   color: var(--text-accent);
   outline: thin solid currentColor;
   outline-offset: var(--size-2-1);
@@ -1514,7 +1526,8 @@
   font-size: var(--font-ui-small);
   line-height: 1;
   background: var(--interactive-accent);
-  transition: filter 120ms ease, transform 120ms ease;
+  transition: filter 120ms ease;
+  transform: none;
 }
 
 .ert-timeline-session-panel__secondary {
@@ -1527,7 +1540,8 @@
   font-size: var(--font-ui-small);
   line-height: 1;
   background: var(--background-modifier-hover);
-  transition: color 120ms ease, background-color 120ms ease, transform 120ms ease;
+  transition: color 120ms ease, background-color 120ms ease;
+  transform: none;
 }
 
 .ert-timeline-session-panel__ghost {
@@ -1540,19 +1554,20 @@
   font-size: var(--font-ui-small);
   line-height: 1;
   background: transparent;
-  transition: color 120ms ease, background-color 120ms ease, transform 120ms ease;
+  transition: color 120ms ease, background-color 120ms ease;
+  transform: none;
 }
 
 .ert-timeline-session-panel__primary:hover {
   filter: brightness(1.08);
-  transform: translateY(calc(var(--size-2-1) * -1));
+  transform: none;
 }
 
 .ert-timeline-session-panel__secondary:hover,
 .ert-timeline-session-panel__ghost:hover {
   color: var(--text-normal);
   background: var(--background-modifier-hover);
-  transform: translateY(calc(var(--size-2-1) * -1));
+  transform: none;
 }
 
 .ert-timeline-session-panel__icon-action {
@@ -1573,15 +1588,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 4.75rem;
-  padding: var(--size-4-2) var(--size-4-3);
-  border: thin solid color-mix(in srgb, currentColor 40%, transparent);
-  border-radius: var(--radius-m);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, currentColor 10%, transparent), transparent),
-    color-mix(in srgb, var(--background-secondary) 80%, var(--background-primary));
+  min-height: 3.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--rt-max-publish-stage-color, var(--text-accent));
-  font-family: 'JetBrains Mono RT', 'JetBrains Mono', var(--font-monospace);
+  font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-weight: 100;
   font-synthesis: none;
   line-height: 1;
@@ -1591,7 +1604,7 @@
 
 .ert-timeline-session-panel__clock-value {
   max-width: 100%;
-  font-family: 'JetBrains Mono RT', 'JetBrains Mono', var(--font-monospace);
+  font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-size: 2rem;
   font-weight: 100;
   font-synthesis: none;

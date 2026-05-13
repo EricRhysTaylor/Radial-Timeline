@@ -321,6 +321,10 @@
   stroke: var(--text-success);
 }
 
+.radial-timeline-container .ert-timeline-session-ring .ert-timeline-session-ring__arc {
+  stroke: var(--color-red, red);
+}
+
 /* Estimate tick group - hover interaction */
 .radial-timeline-container .rt-estimate-tick-group {
   cursor: pointer;

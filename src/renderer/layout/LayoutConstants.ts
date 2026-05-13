@@ -202,7 +202,7 @@ export const PROGRESS_RING_RADIUS_OFFSET = 13;
 export const PROGRESS_RING_BASE_WIDTH = 8;
 
 /** Width of the active writing-session timer ring (px) */
-export const SESSION_TIMER_RING_WIDTH = 3;
+export const SESSION_TIMER_RING_WIDTH = 40;
 
 // =============================================================================
 // INSETS AND OFFSETS

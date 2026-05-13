@@ -12,6 +12,33 @@ const srcDir = path.join(process.cwd(), 'src');
 const stylesDir = path.join(srcDir, 'styles');
 const outputFile = path.join(process.cwd(), 'styles.css');
 
+const fontUrlEmbeds = new Map([
+    [
+        'assets/fonts/jetbrains-mono/JetBrainsMono-Thin.woff2',
+        path.join(srcDir, 'assets/fonts/jetbrains-mono/JetBrainsMono-Thin.woff2')
+    ]
+]);
+
+function embedBundledFontUrls(content) {
+    let embedded = content;
+
+    for (const [cssUrl, fontPath] of fontUrlEmbeds) {
+        if (!embedded.includes(cssUrl)) continue;
+
+        if (!fs.existsSync(fontPath)) {
+            console.warn(`Warning: bundled font not found at ${fontPath}`);
+            continue;
+        }
+
+        const dataUrl = `data:font/woff2;base64,${fs.readFileSync(fontPath).toString('base64')}`;
+        embedded = embedded.replaceAll(`url('${cssUrl}')`, `url('${dataUrl}')`);
+        embedded = embedded.replaceAll(`url("${cssUrl}")`, `url("${dataUrl}")`);
+        embedded = embedded.replaceAll(`url(${cssUrl})`, `url(${dataUrl})`);
+    }
+
+    return embedded;
+}
+
 // Source CSS files relative to src/styles. Keep unique and do not include outputs.
 const files = [
     'font.css',
@@ -68,7 +95,7 @@ async function bundle(options = {}) {
 
     for (const filePath of filteredInputs) {
         if (fs.existsSync(filePath)) {
-            const content = fs.readFileSync(filePath, 'utf-8');
+            const content = embedBundledFontUrls(fs.readFileSync(filePath, 'utf-8'));
             bundleContent += `/* --- ${path.relative(stylesDir, filePath)} --- */\n`;
             bundleContent += content;
             bundleContent += '\n\n';
