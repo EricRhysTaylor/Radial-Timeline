@@ -199,17 +199,119 @@
   fill: none;
   stroke: #000000;
   /* Purple background to match estimation arc #5e0098*/
-  stroke-width: 10px;
+  stroke-width: 8px;
   /* Base width */
 }
 
 /* Year Progress Ring (Rainbow Segments) */
 .radial-timeline-container .progress-ring-fill {
   fill: none;
-  stroke-width: 6px;
+  stroke-width: 4px;
   /* Make rainbow ring thinner */
   stroke-linecap: round;
   /* Optional: round ends */
+}
+
+.radial-timeline-container .ert-timeline-session-ring__track {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--background-modifier-border);
+  opacity: 0.75;
+}
+
+.radial-timeline-container .ert-timeline-session-ring__arc {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--background-modifier-border);
+  stroke-linecap: round;
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc {
+  opacity: 0.55;
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-0 .ert-timeline-session-ring__arc {
+  stroke: var(--background-modifier-border);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-5 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 78%, var(--text-success) 22%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-10 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 74%, var(--text-success) 26%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-15 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 70%, var(--text-success) 30%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-20 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 66%, var(--text-success) 34%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-25 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 62%, var(--text-success) 38%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-30 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 57%, var(--text-success) 43%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-35 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 53%, var(--text-success) 47%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-40 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 49%, var(--text-success) 51%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-45 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 45%, var(--text-success) 55%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-50 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 41%, var(--text-success) 59%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-55 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 37%, var(--text-success) 63%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-60 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 33%, var(--text-success) 67%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-65 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 29%, var(--text-success) 71%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-70 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 25%, var(--text-success) 75%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-75 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 20%, var(--text-success) 80%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-80 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 16%, var(--text-success) 84%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-85 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 12%, var(--text-success) 88%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-90 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 8%, var(--text-success) 92%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-95 .ert-timeline-session-ring__arc {
+  stroke: color-mix(in srgb, var(--background-modifier-border) 4%, var(--text-success) 96%);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-progress-100 .ert-timeline-session-ring__arc {
+  stroke: var(--text-success);
 }
 
 /* Estimate tick group - hover interaction */

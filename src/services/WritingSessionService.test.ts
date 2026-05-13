@@ -4,7 +4,8 @@ import type { WritingSessionRecord } from '../types/settings';
 import {
     buildDailyWritingStats,
     collectSceneCompletionEvents,
-    normalizeWritingSessionsSettings
+    normalizeWritingSessionsSettings,
+    WritingSessionService
 } from './WritingSessionService';
 
 describe('WritingSessionService pure helpers', () => {
@@ -110,5 +111,43 @@ describe('WritingSessionService pure helpers', () => {
         expect(normalized.defaults.defaultMode).toBe('drafting');
         expect(normalized.records).toEqual([]);
         expect(normalized.active?.id).toBe('active');
+    });
+
+    it('starts countdown sessions with a goal minute target', async () => {
+        const plugin = {
+            settings: {
+                books: [{ id: 'book-1', title: 'Book One', folder: 'Book' }],
+                activeBookId: 'book-1',
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting' },
+                    records: [],
+                },
+                runtimeRateProfiles: [{
+                    id: 'default',
+                    label: 'Default',
+                    contentType: 'novel',
+                    dialogueWpm: 160,
+                    actionWpm: 100,
+                    narrationWpm: 150,
+                    beatSeconds: 2,
+                    pauseSeconds: 3,
+                    longPauseSeconds: 5,
+                    momentSeconds: 4,
+                    silenceSeconds: 5,
+                    sessionPlanning: { dailyMinutes: 120 },
+                }],
+                defaultRuntimeProfileId: 'default',
+            },
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        expect(service.getDefaultGoalMinutes()).toBe(120);
+        const session = await service.start({ mode: 'revising', goalMinutes: 50 });
+
+        expect(session.mode).toBe('revising');
+        expect(session.goalMinutes).toBe(50);
+        expect(session.bookId).toBe('book-1');
+        expect(plugin.settings.writingSessions.active?.goalMinutes).toBe(50);
     });
 });

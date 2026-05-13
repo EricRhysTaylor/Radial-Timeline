@@ -9,6 +9,7 @@ import type {
 import { STAGE_ORDER } from '../utils/constants';
 import { getActiveBook } from '../utils/books';
 import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
+import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
 const MAX_SESSION_RECORDS = 500;
 
@@ -19,6 +20,11 @@ export interface WritingSessionCompletionInput {
     scenesCompleted?: number;
     pagesEdited?: number;
     note?: string;
+}
+
+export interface WritingSessionStartOptions {
+    mode?: WritingSessionMode;
+    goalMinutes?: number;
 }
 
 export interface SceneCompletionEvent {
@@ -98,6 +104,12 @@ function coerceMode(mode: WritingSessionMode | undefined): WritingSessionMode {
 }
 
 function positiveInteger(value: number | undefined): number | undefined {
+    if (!Number.isFinite(value)) return undefined;
+    const rounded = Math.max(0, Math.round(value ?? 0));
+    return rounded > 0 ? rounded : undefined;
+}
+
+function positiveMinutes(value: number | undefined): number | undefined {
     if (!Number.isFinite(value)) return undefined;
     const rounded = Math.max(0, Math.round(value ?? 0));
     return rounded > 0 ? rounded : undefined;
@@ -205,21 +217,29 @@ export class WritingSessionService {
         return active ? activeElapsedMs(active, at) : 0;
     }
 
-    async start(mode?: WritingSessionMode): Promise<ActiveWritingSession> {
+    getDefaultGoalMinutes(): number | undefined {
+        return positiveMinutes(getRuntimeSettings(this.plugin.settings).sessionPlanning?.dailyMinutes);
+    }
+
+    async start(options: WritingSessionMode | WritingSessionStartOptions = {}): Promise<ActiveWritingSession> {
         const settings = this.getSettings();
         if (settings.active) {
             throw new Error('A writing session is already active.');
         }
+        const startOptions: WritingSessionStartOptions = typeof options === 'string'
+            ? { mode: options }
+            : options;
         const book = getActiveBook(this.plugin.settings);
         const startedAt = nowIso();
         const active: ActiveWritingSession = {
             id: generateSessionId(),
             bookId: book?.id,
             bookTitle: book?.title,
-            mode: coerceMode(mode ?? settings.defaults.defaultMode),
+            mode: coerceMode(startOptions.mode ?? settings.defaults.defaultMode),
             startedAt,
             lastResumedAt: startedAt,
             elapsedMsBeforePause: 0,
+            goalMinutes: positiveMinutes(startOptions.goalMinutes),
         };
         settings.active = active;
         await this.plugin.saveSettings();

@@ -20,7 +20,14 @@ import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
 import { renderWelcomeScreen } from './WelcomeScreen';
-import { MONTH_LABEL_RADIUS, SVG_SIZE } from '../renderer/layout/LayoutConstants';
+import {
+    MONTH_LABEL_RADIUS,
+    PROGRESS_RING_BASE_WIDTH,
+    PROGRESS_RING_RADIUS_OFFSET,
+    SESSION_TIMER_RING_WIDTH,
+    SVG_SIZE
+} from '../renderer/layout/LayoutConstants';
+import { buildSessionTimerRingState, renderSessionTimerRing } from '../renderer/components/SessionTimerRing';
 import { 
     createSnapshot, 
     detectChanges, 
@@ -33,7 +40,7 @@ import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { isMatterNote } from '../utils/sceneHelpers';
 import { DEFAULT_BOOK_TITLE, getTimelineScope, getTimelineScopeTitle, isSagaScopeAvailable } from '../utils/books';
 import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
-import type { StructuralMoveHistoryEntry } from '../types/settings';
+import type { ActiveWritingSession, StructuralMoveHistoryEntry, WritingSessionMode } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
 import { GOSSAMER_SIGNAL_METADATA, GOSSAMER_SIGNAL_TYPES, type GossamerSignalType } from '../types/gossamerSignals';
 import { tooltip as applyTooltip } from '../utils/tooltip';
@@ -43,6 +50,7 @@ export const TIMELINE_VIEW_TYPE = "radial-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 const TIMELINE_REFRESH_DELAY_MS = 1000;
 const SAGA_SCOPE_OPTION = '__rt_saga__';
+const SESSION_PROGRESS_STEP_PERCENT = 5;
 
 // Namespace rule for Timeline view work:
 // - New Timeline chrome (legends, panels, badges, overlays, tooltips, controls) uses ert-timeline-*.
@@ -112,6 +120,13 @@ export class RadialTimelineView extends ItemView {
     private timelineSearchButtonMode: 'search' | 'clear' = 'search';
     private timelineLegendTrigger?: HTMLButtonElement;
     private timelineLegendPanel?: HTMLElement;
+    private writingSessionButton?: HTMLButtonElement;
+    private writingSessionLabel?: HTMLElement;
+    private writingSessionPanel?: HTMLElement;
+    private writingSessionModeSelect?: HTMLSelectElement;
+    private writingSessionCountdownToggle?: HTMLInputElement;
+    private writingSessionGoalInput?: HTMLInputElement;
+    private writingSessionTickInterval?: number;
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
@@ -325,13 +340,15 @@ export class RadialTimelineView extends ItemView {
             this.registerDomEvent(sessionBtn, 'click', (evt: MouseEvent) => {
                 evt.preventDefault();
                 evt.stopPropagation();
-                const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
-                if (setting) {
-                    setting.open();
-                    setting.openTabById('radial-timeline');
-                }
-                this.plugin.settingsTab?.revealSettingsSection('core', 'goals-sessions');
+                this.toggleWritingSessionPanel();
             });
+
+            const sessionPanel = document.createElement('div');
+            sessionPanel.className = 'ert-timeline-session-panel ert-hidden';
+            sessionPanel.setAttribute('role', 'dialog');
+            sessionPanel.setAttribute('aria-label', 'Writing session');
+            document.body.appendChild(sessionPanel);
+            this.register(() => sessionPanel.remove());
 
             let hideLegendTimer: number | null = null;
             const showLegend = () => {
@@ -424,12 +441,348 @@ export class RadialTimelineView extends ItemView {
             this.timelineSearchButton = searchBtn;
             this.timelineLegendTrigger = legendBtn;
             this.timelineLegendPanel = legendPanel;
+            this.writingSessionButton = sessionBtn;
+            this.writingSessionLabel = sessionLabel;
+            this.writingSessionPanel = sessionPanel;
+            this.writingSessionTickInterval = window.setInterval(() => this.refreshWritingSessionControl(), 1000);
+            this.register(() => {
+                if (this.writingSessionTickInterval !== undefined) {
+                    window.clearInterval(this.writingSessionTickInterval);
+                    this.writingSessionTickInterval = undefined;
+                }
+            });
+            this.registerDomEvent(document.body, 'click', (evt: MouseEvent) => {
+                const target = evt.target as Node | null;
+                if (!target) return;
+                if (sessionPanel.contains(target) || sessionBtn.contains(target)) return;
+                this.hideWritingSessionPanel();
+            });
+            this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Escape') this.hideWritingSessionPanel();
+            });
             this.syncTimelineSearchControl();
+            this.refreshWritingSessionControl();
         }
 
         this.updateBookSwitcherOptions();
         this.updateTimelineLegend();
         this.syncTimelineSearchControl();
+        this.refreshWritingSessionControl();
+    }
+
+    private formatSessionClock(ms: number): string {
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    private getSessionProgressStep(progress: number): number {
+        const clamped = Math.min(1, Math.max(0, progress));
+        return Math.round((clamped * 100) / SESSION_PROGRESS_STEP_PERCENT) * SESSION_PROGRESS_STEP_PERCENT;
+    }
+
+    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused' } {
+        const service = this.plugin.getWritingSessionService();
+        const active = service.getActiveSession();
+        if (!active) return { label: 'Start', detail: 'Start writing session', state: 'idle' };
+        const elapsedMs = service.getActiveElapsedMs();
+        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
+        const displayMs = goalMs ? Math.max(0, goalMs - elapsedMs) : elapsedMs;
+        const label = this.formatSessionClock(displayMs);
+        return {
+            label,
+            detail: active.pausedAt ? `Paused ${active.mode} session` : `Active ${active.mode} session`,
+            state: active.pausedAt ? 'paused' : 'active',
+        };
+    }
+
+    private refreshWritingSessionControl(): void {
+        if (!this.writingSessionButton || !this.writingSessionLabel) return;
+        const snapshot = this.getSessionClockSnapshot();
+        this.writingSessionLabel.setText(snapshot.label);
+        this.writingSessionButton.classList.toggle('is-active', snapshot.state === 'active');
+        this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
+        this.writingSessionButton.setAttribute('aria-label', snapshot.detail);
+        if (this.writingSessionPanel && !this.writingSessionPanel.classList.contains('ert-hidden')) {
+            if (this.plugin.getWritingSessionService().getActiveSession()) {
+                this.renderWritingSessionPanel();
+            }
+            this.positionWritingSessionPanel();
+        }
+        this.updateWritingSessionRing();
+    }
+
+    private toggleWritingSessionPanel(): void {
+        if (!this.writingSessionPanel) return;
+        if (this.writingSessionPanel.classList.contains('ert-hidden')) {
+            this.showWritingSessionPanel();
+        } else {
+            this.hideWritingSessionPanel();
+        }
+    }
+
+    private showWritingSessionPanel(): void {
+        if (!this.writingSessionPanel) return;
+        this.renderWritingSessionPanel();
+        this.positionWritingSessionPanel();
+        this.writingSessionPanel.classList.remove('ert-hidden');
+        this.writingSessionButton?.setAttribute('aria-expanded', 'true');
+    }
+
+    private hideWritingSessionPanel(): void {
+        this.writingSessionPanel?.classList.add('ert-hidden');
+        this.writingSessionButton?.setAttribute('aria-expanded', 'false');
+    }
+
+    private positionWritingSessionPanel(): void {
+        if (!this.writingSessionPanel || !this.writingSessionButton) return;
+        const btnRect = this.writingSessionButton.getBoundingClientRect();
+        const panelRect = this.writingSessionPanel.getBoundingClientRect();
+        const viewportPadding = 12;
+        const left = Math.min(
+            Math.max(viewportPadding, btnRect.left),
+            Math.max(viewportPadding, window.innerWidth - panelRect.width - viewportPadding)
+        );
+        this.writingSessionPanel.style.left = `${left}px`;
+        this.writingSessionPanel.style.top = `${btnRect.bottom + 8}px`;
+    }
+
+    private getDefaultSessionGoalMinutes(): number {
+        return this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
+    }
+
+    private createSessionButton(parent: HTMLElement, label: string, className: string, onClick: () => void | Promise<void>): HTMLButtonElement {
+        const button = parent.createEl('button', { cls: className, text: label });
+        button.type = 'button';
+        button.onclick = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void onClick();
+        };
+        return button;
+    }
+
+    private renderWritingSessionPanel(): void {
+        const panel = this.writingSessionPanel;
+        if (!panel) return;
+        panel.empty();
+
+        const service = this.plugin.getWritingSessionService();
+        const active = service.getActiveSession();
+        const header = panel.createDiv({ cls: 'ert-timeline-session-panel__header' });
+        header.createDiv({ cls: 'ert-timeline-session-panel__title', text: 'Writing Session' });
+
+        const settingsBtn = header.createEl('button', { cls: 'ert-timeline-session-panel__icon clickable-icon' });
+        settingsBtn.type = 'button';
+        setIcon(settingsBtn, 'settings');
+        applyTooltip(settingsBtn, 'Goals & Sessions settings', 'bottom');
+        settingsBtn.onclick = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+            if (setting) {
+                setting.open();
+                setting.openTabById('radial-timeline');
+            }
+            this.plugin.settingsTab?.revealSettingsSection('core', 'goals-sessions');
+            this.hideWritingSessionPanel();
+        };
+
+        if (!active) {
+            this.renderIdleWritingSessionPanel(panel);
+            return;
+        }
+        this.renderActiveWritingSessionPanel(panel, active);
+    }
+
+    private renderIdleWritingSessionPanel(panel: HTMLElement): void {
+        const service = this.plugin.getWritingSessionService();
+        const defaultGoal = this.getDefaultSessionGoalMinutes();
+        const form = panel.createDiv({ cls: 'ert-timeline-session-panel__form' });
+        const sessionSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
+        sessionSection.createDiv({ cls: 'ert-timeline-session-panel__section-title', text: 'Session' });
+
+        const modeRow = sessionSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
+        modeRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Mode' });
+        const modeSelect = modeRow.createEl('select', { cls: 'ert-timeline-session-panel__select' });
+        const modeOptions: Array<{ value: WritingSessionMode; label: string }> = [
+            { value: 'drafting', label: 'Fresh drafting' },
+            { value: 'revising', label: 'Revision' },
+            { value: 'editing', label: 'Editing' },
+            { value: 'planning', label: 'Planning' },
+        ];
+        modeOptions.forEach(option => {
+            const opt = modeSelect.createEl('option', { text: option.label });
+            opt.value = option.value;
+        });
+        modeSelect.value = service.getSettings().defaults.defaultMode;
+        this.writingSessionModeSelect = modeSelect;
+
+        const sprintSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
+        sprintSection.createDiv({ cls: 'ert-timeline-session-panel__section-title', text: 'Timer' });
+
+        const countdownRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row ert-timeline-session-panel__row--toggle' });
+        const countdownLabel = countdownRow.createEl('label', { cls: 'ert-timeline-session-panel__toggle-label' });
+        const countdownToggle = countdownLabel.createEl('input', { cls: 'ert-timeline-session-panel__toggle' });
+        countdownToggle.type = 'checkbox';
+        countdownToggle.checked = true;
+        countdownLabel.createSpan({ text: 'Countdown sprint' });
+        this.writingSessionCountdownToggle = countdownToggle;
+
+        const goalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
+        goalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Goal' });
+        const goalInput = goalRow.createEl('input', { cls: 'ert-timeline-session-panel__number' });
+        goalInput.type = 'number';
+        goalInput.min = '1';
+        goalInput.max = '600';
+        goalInput.step = '5';
+        goalInput.value = String(defaultGoal);
+        goalInput.setAttribute('aria-label', 'Session goal minutes');
+        this.writingSessionGoalInput = goalInput;
+
+        const quickRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__quick' });
+        [25, 50, defaultGoal].filter((value, index, values) => values.indexOf(value) === index).forEach(minutes => {
+            this.createSessionButton(quickRow, `${minutes}m`, 'ert-timeline-session-panel__chip', () => {
+                goalInput.value = String(minutes);
+                countdownToggle.checked = true;
+            });
+        });
+
+        countdownToggle.onchange = () => {
+            goalInput.disabled = !countdownToggle.checked;
+        };
+
+        const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
+        this.createSessionButton(actions, 'Start', 'ert-timeline-session-panel__primary', async () => {
+            const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
+            const parsedGoal = Number(goalInput.value);
+            const goalMinutes = countdownToggle.checked && Number.isFinite(parsedGoal) && parsedGoal > 0
+                ? parsedGoal
+                : undefined;
+            try {
+                const session = await service.start({ mode, goalMinutes });
+                new Notice(`Started ${session.mode} session${session.goalMinutes ? ` for ${session.goalMinutes} min` : ''}.`);
+                this.refreshWritingSessionControl();
+            } catch (error) {
+                new Notice(error instanceof Error ? error.message : 'Could not start writing session.');
+            }
+        });
+    }
+
+    private renderActiveWritingSessionPanel(panel: HTMLElement, active: ActiveWritingSession): void {
+        const service = this.plugin.getWritingSessionService();
+        const elapsedMs = service.getActiveElapsedMs();
+        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
+        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
+        const progress = goalMs ? Math.min(1, elapsedMs / goalMs) : undefined;
+
+        const clock = panel.createDiv({ cls: 'ert-timeline-session-panel__clock' });
+        clock.setText(this.formatSessionClock(remainingMs ?? elapsedMs));
+        const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
+        meta.setText([
+            active.pausedAt ? 'Paused' : 'Running',
+            active.mode,
+            active.bookTitle,
+        ].filter(Boolean).join(' · '));
+
+        const statusSection = panel.createDiv({ cls: 'ert-timeline-session-panel__section' });
+        statusSection.createDiv({ cls: 'ert-timeline-session-panel__section-title', text: 'Progress' });
+        if (progress !== undefined) {
+            const progressPercent = Math.round(progress * 100);
+            const progressStep = this.getSessionProgressStep(progress);
+            const progressShell = statusSection.createDiv({ cls: 'ert-timeline-session-panel__progress' });
+            progressShell.createDiv({ cls: `ert-timeline-session-panel__progress-fill is-progress-${progressStep}` });
+            progressShell.createDiv({
+                cls: 'ert-timeline-session-panel__progress-label',
+                text: `${progressPercent}% of ${active.goalMinutes} min`,
+            });
+        } else {
+            statusSection.createDiv({ cls: 'ert-timeline-session-panel__note', text: 'Open-ended session' });
+        }
+
+        const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
+        if (active.pausedAt) {
+            this.createSessionButton(actions, 'Resume', 'ert-timeline-session-panel__primary', async () => {
+                try {
+                    await service.resume();
+                    this.refreshWritingSessionControl();
+                } catch (error) {
+                    new Notice(error instanceof Error ? error.message : 'Could not resume writing session.');
+                }
+            });
+        } else {
+            this.createSessionButton(actions, 'Pause', 'ert-timeline-session-panel__secondary', async () => {
+                try {
+                    await service.pause();
+                    this.refreshWritingSessionControl();
+                } catch (error) {
+                    new Notice(error instanceof Error ? error.message : 'Could not pause writing session.');
+                }
+            });
+        }
+        this.createSessionButton(actions, 'Stop', 'ert-timeline-session-panel__primary', async () => {
+            try {
+                const record = await service.stop();
+                new Notice(`Saved ${record.mode} session (${this.formatSessionClock(record.elapsedMs)}).`);
+                this.refreshWritingSessionControl();
+            } catch (error) {
+                new Notice(error instanceof Error ? error.message : 'Could not stop writing session.');
+            }
+        });
+        this.createSessionButton(actions, 'Discard', 'ert-timeline-session-panel__ghost', async () => {
+            try {
+                await service.discard();
+                new Notice('Discarded writing session.');
+                this.refreshWritingSessionControl();
+            } catch (error) {
+                new Notice(error instanceof Error ? error.message : 'Could not discard writing session.');
+            }
+        });
+    }
+
+    private getRenderedTimelineSvg(): SVGSVGElement | null {
+        return this.containerEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+    }
+
+    private updateWritingSessionRing(svg: SVGSVGElement | null = this.getRenderedTimelineSvg()): void {
+        if (!svg) return;
+        svg.querySelectorAll('.ert-timeline-session-ring').forEach(el => el.remove());
+        const active = this.plugin.getWritingSessionService().getActiveSession();
+        if (!active) return;
+
+        const lineInnerRadiusAttr = svg.getAttribute('data-line-inner-radius');
+        const lineInnerRadius = lineInnerRadiusAttr ? Number(lineInnerRadiusAttr) : NaN;
+        if (!Number.isFinite(lineInnerRadius)) return;
+
+        const elapsedMs = this.plugin.getWritingSessionService().getActiveElapsedMs();
+        const targetMinutes = active.goalMinutes ?? this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
+        const state = buildSessionTimerRingState({
+            progressRadius: lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET,
+            progressRingWidth: PROGRESS_RING_BASE_WIDTH,
+            sessionRingWidth: SESSION_TIMER_RING_WIDTH,
+            elapsedMs,
+            targetMinutes,
+            paused: !!active.pausedAt,
+        });
+        const ringSvg = renderSessionTimerRing(state);
+        if (!ringSvg.trim()) return;
+
+        const doc = new DOMParser().parseFromString(`<svg>${ringSvg}</svg>`, 'image/svg+xml');
+        const ring = doc.documentElement.firstElementChild;
+        const timelineRoot = svg.querySelector('#timeline-root');
+        if (!ring || !timelineRoot) return;
+        const imported = document.importNode(ring, true);
+        const firstSceneGroup = timelineRoot.querySelector('#timeline-rotatable');
+        if (firstSceneGroup) {
+            timelineRoot.insertBefore(imported, firstSceneGroup);
+        } else {
+            timelineRoot.appendChild(imported);
+        }
     }
 
     public focusTimelineSearchInput(): void {
@@ -1271,6 +1624,7 @@ export class RadialTimelineView extends ItemView {
                     } else {
                         svgElement.removeAttribute('data-chronologue-mode');
                     }
+                    this.updateWritingSessionRing(svgElement as unknown as SVGSVGElement);
                     
                     // If Gossamer mode is active, reuse hover-state styling: mute everything except Beat notes
                     if (this.currentMode === 'gossamer') {

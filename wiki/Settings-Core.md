@@ -50,7 +50,9 @@ Goals & Sessions is a Core workflow for writing accountability and basic plannin
 
 *   **Average drafting pace**: Optional words-per-minute estimate for new drafting. Used for writing-time estimates and completion planning.
 *   **Daily session target**: Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.
-*   **Timeline Start control**: The compact Start button in the timeline title bar opens Goals & Sessions in this stage. Later stages will turn it into the live writing-session timer.
+*   **Timeline Start control**: The compact Start button in the timeline title bar opens the writing-session popover. Start an open-ended session or a countdown sprint, then pause, resume, stop, or discard it from the clock control.
+*   **Session ring**: While a session is active, a thin timer ring appears just outside the rainbow progress ring. It fills toward the selected countdown goal, or toward the daily session target for open-ended sessions.
+*   **Daily writing stats**: The command palette keeps a single writing-session command, **Show daily writing stats**, which summarizes local timer records and scene completions for today.
 
 Runtime and export tools may read these values, but Goals & Sessions owns the writing/session estimate settings.
 

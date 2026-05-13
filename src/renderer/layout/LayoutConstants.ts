@@ -199,7 +199,10 @@ export const CHRONOLOGUE_PROGRESS_RING_RADIUS_OFFSET = -3;
 export const PROGRESS_RING_RADIUS_OFFSET = 15;
 
 /** Progress ring base stroke width (px) */
-export const PROGRESS_RING_BASE_WIDTH = 10;
+export const PROGRESS_RING_BASE_WIDTH = 8;
+
+/** Width of the active writing-session timer ring (px) */
+export const SESSION_TIMER_RING_WIDTH = 3;
 
 // =============================================================================
 // INSETS AND OFFSETS
