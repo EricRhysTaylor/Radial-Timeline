@@ -64,7 +64,6 @@ interface SessionClockDisplay {
 interface SessionStatusDisplay {
     headline: string;
     detail: string;
-    unit?: string;
     tone: 'running' | 'paused' | 'complete';
 }
 
@@ -493,6 +492,14 @@ export class RadialTimelineView extends ItemView {
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
+    private formatSessionClockHms(ms: number): string {
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
     private formatSessionClockDisplay(ms: number, mode: 'countdown' | 'elapsed'): SessionClockDisplay {
         const safeMs = Math.max(0, ms);
         const showSeconds = mode === 'countdown'
@@ -529,8 +536,7 @@ export class RadialTimelineView extends ItemView {
         }
         return {
             headline: clockDisplay.value,
-            detail: goalMs ? 'remaining' : 'elapsed',
-            unit: clockDisplay.unit,
+            detail: `${clockDisplay.label} ${goalMs ? 'remaining' : 'elapsed'}`,
             tone: 'running',
         };
     }
@@ -704,7 +710,7 @@ export class RadialTimelineView extends ItemView {
 
         const modeRow = sessionSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
         modeRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Mode' });
-        const modeSelect = modeRow.createEl('select', { cls: 'ert-timeline-session-panel__select' });
+        const modeSelect = modeRow.createEl('select', { cls: 'ert-input ert-input--md ert-timeline-session-panel__select' });
         const modeOptions: Array<{ value: WritingSessionMode; label: string }> = [
             { value: 'drafting', label: 'Fresh drafting' },
             { value: 'revising', label: 'Revision' },
@@ -731,7 +737,8 @@ export class RadialTimelineView extends ItemView {
 
         const goalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
         goalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Goal' });
-        const goalInput = goalRow.createEl('input', { cls: 'ert-timeline-session-panel__number' });
+        const goalControls = goalRow.createDiv({ cls: 'ert-timeline-session-panel__goal-controls' });
+        const goalInput = goalControls.createEl('input', { cls: 'ert-input ert-input--sm ert-timeline-session-panel__number' });
         goalInput.type = 'number';
         goalInput.min = '1';
         goalInput.max = '600';
@@ -740,7 +747,7 @@ export class RadialTimelineView extends ItemView {
         goalInput.setAttribute('aria-label', 'Session goal minutes');
         this.writingSessionGoalInput = goalInput;
 
-        const quickRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__quick' });
+        const quickRow = goalControls.createDiv({ cls: 'ert-timeline-session-panel__quick ert-timeline-session-panel__quick--inline' });
         [25, 50, defaultGoal].filter((value, index, values) => values.indexOf(value) === index).forEach(minutes => {
             this.createSessionButton(quickRow, `${minutes}m`, 'ert-timeline-session-panel__chip', () => {
                 goalInput.value = String(minutes);
@@ -773,35 +780,22 @@ export class RadialTimelineView extends ItemView {
         const service = this.plugin.getWritingSessionService();
         const elapsedMs = service.getActiveElapsedMs();
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const progress = goalMs ? Math.min(1, elapsedMs / goalMs) : undefined;
+        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
         const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
         const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
+        const clockText = statusDisplay.tone === 'complete'
+            ? 'Session Complete'
+            : this.formatSessionClockHms(remainingMs ?? elapsedMs);
 
         const clock = panel.createDiv({ cls: `ert-timeline-session-panel__clock is-${statusDisplay.tone}` });
         this.applySessionProgressClass(clock, clockProgressStep);
-        clock.createDiv({ cls: 'ert-timeline-session-panel__clock-value', text: statusDisplay.headline });
-        clock.createDiv({ cls: 'ert-timeline-session-panel__clock-unit', text: statusDisplay.unit ? `${statusDisplay.unit} ${statusDisplay.detail}` : statusDisplay.detail });
+        clock.createDiv({ cls: 'ert-timeline-session-panel__clock-value', text: clockText });
         const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
         meta.setText([
             statusDisplay.tone === 'complete' ? 'Complete' : active.pausedAt ? 'Paused' : 'Running',
             active.mode,
             active.bookTitle,
         ].filter(Boolean).join(' · '));
-
-        const statusSection = panel.createDiv({ cls: 'ert-timeline-session-panel__section' });
-        this.createSessionSectionTitle(statusSection, 'activity', 'Progress');
-        if (progress !== undefined) {
-            const progressPercent = Math.round(progress * 100);
-            const progressStep = this.getSessionProgressStep(progress);
-            const progressShell = statusSection.createDiv({ cls: 'ert-timeline-session-panel__progress' });
-            progressShell.createDiv({ cls: `ert-timeline-session-panel__progress-fill is-progress-${progressStep}` });
-            progressShell.createDiv({
-                cls: 'ert-timeline-session-panel__progress-label',
-                text: `${progressPercent}% of ${active.goalMinutes} min`,
-            });
-        } else {
-            statusSection.createDiv({ cls: 'ert-timeline-session-panel__note', text: 'Open-ended session' });
-        }
 
         const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
         if (active.pausedAt) {
@@ -875,12 +869,8 @@ export class RadialTimelineView extends ItemView {
         const timelineRoot = svg.querySelector('#timeline-root');
         if (!ring || !timelineRoot) return;
         const imported = document.importNode(ring, true);
-        const firstSceneGroup = timelineRoot.querySelector('#timeline-rotatable');
-        if (firstSceneGroup) {
-            timelineRoot.insertBefore(imported, firstSceneGroup);
-        } else {
-            timelineRoot.appendChild(imported);
-        }
+        imported.setAttribute('aria-hidden', 'true');
+        timelineRoot.appendChild(imported);
     }
 
     public focusTimelineSearchInput(): void {

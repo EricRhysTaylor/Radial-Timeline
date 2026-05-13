@@ -212,11 +212,16 @@
   /* Optional: round ends */
 }
 
+.radial-timeline-container .ert-timeline-session-ring {
+  pointer-events: none;
+}
+
 .radial-timeline-container .ert-timeline-session-ring__track {
   fill: none;
   pointer-events: none;
-  stroke: var(--background-modifier-border-hover);
-  opacity: 0.95;
+  stroke: color-mix(in srgb, var(--text-normal) 32%, var(--background-primary));
+  stroke-linecap: round;
+  opacity: 0.88;
 }
 
 .radial-timeline-container .ert-timeline-session-ring__arc {
