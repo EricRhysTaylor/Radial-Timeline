@@ -225,10 +225,6 @@
   opacity: 0.72;
 }
 
-.radial-timeline-container .ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track {
-  opacity: 0;
-}
-
 .radial-timeline-container .ert-timeline-session-ring__arc {
   fill: none;
   pointer-events: none;

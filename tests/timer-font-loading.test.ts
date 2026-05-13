@@ -99,8 +99,7 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).toContain('syncActiveWritingSessionPanelClock');
         expect(indicatorsCss).toContain('stroke-width: 11px;');
         expect(indicatorsCss).toContain('stroke-width: 7px;');
-        expect(indicatorsCss).toContain('.ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track');
-        expect(readRuleBlock(indicatorsCss, '.radial-timeline-container .ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track')).toContain('opacity: 0');
+        expect(indicatorsCss).not.toContain('.ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track');
         expect(indicatorsCss).toContain('ert-timeline-session-ring-count-pulse');
         expect(indicatorsCss).not.toContain('stroke: var(--color-red, red)');
     });

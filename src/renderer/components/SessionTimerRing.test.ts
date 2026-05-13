@@ -43,8 +43,8 @@ describe('SessionTimerRing', () => {
         expect(state).not.toBeNull();
         expect(state?.radius).toBe(progressRadius + (SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR / 2) + SESSION_TIMER_RING_GAP + (SESSION_TIMER_RING_WIDTH / 2));
         expect(PROGRESS_RING_BASE_WIDTH).toBe(11);
-        expect(PROGRESS_RING_RADIUS_OFFSET).toBe(15);
-        expect(SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR).toBe(13);
+        expect(PROGRESS_RING_RADIUS_OFFSET).toBe(13);
+        expect(SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR).toBe(11);
         expect(SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR).toBe(8);
         expect(SESSION_TIMER_RING_WIDTH).toBe(3);
         expect(SESSION_TIMER_RING_GAP).toBe(2);
@@ -68,7 +68,9 @@ describe('SessionTimerRing', () => {
         const svg = renderSessionTimerRing(state);
         expect(svg).toContain('is-counterclockwise');
         expect(svg).toContain('is-progress-25');
-        expect(sessionTimerArcPath(724, 0.75, 'counterclockwise')).toContain(' 0 1 0 ');
+        const path = sessionTimerArcPath(724, 0.75, 'counterclockwise');
+        expect(path).toContain('M -724 0');
+        expect(path).toContain(' 0 1 0 0 -724');
     });
 
     it('starts countdown sessions as a full stage-colored ring', () => {
@@ -90,7 +92,7 @@ describe('SessionTimerRing', () => {
         expect(svg.match(/ A /g)?.length).toBe(2);
     });
 
-    it('keeps countdown rings trackless so spent time disappears instead of growing gray', () => {
+    it('keeps countdown rings on the neutral track so spent time returns to gray', () => {
         const svg = renderSessionTimerRing({
             radius: 707.5,
             strokeWidth: 3,

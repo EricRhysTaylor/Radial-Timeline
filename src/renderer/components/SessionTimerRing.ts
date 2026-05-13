@@ -44,8 +44,11 @@ export function sessionTimerArcPath(
 ): string {
     const clampedProgress = clamp(progress, 0, 1);
     if (clampedProgress <= 0) return '';
-    const startAngle = -Math.PI / 2;
+    const topAngle = -Math.PI / 2;
     const sweep = direction === 'counterclockwise' ? -1 : 1;
+    const startAngle = direction === 'counterclockwise'
+        ? topAngle + (sweep * Math.PI * 2 * (1 - clampedProgress))
+        : topAngle;
     const endAngle = startAngle + (sweep * Math.PI * 2 * clampedProgress);
     const x0 = radius * Math.cos(startAngle);
     const y0 = radius * Math.sin(startAngle);
