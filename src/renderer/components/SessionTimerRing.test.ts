@@ -4,7 +4,7 @@ import { renderProgressRingBaseLayer } from '../utils/ProgressRing';
 import { buildSessionTimerRingState, renderSessionTimerRing, renderSessionTimerRingLayer, sessionTimerArcPath } from './SessionTimerRing';
 
 describe('SessionTimerRing', () => {
-    it('places the session ring on the same radius as the progress ring', () => {
+    it('places the session ring outside the progress ring', () => {
         const state = buildSessionTimerRingState({
             progressRadius: 700,
             progressRingWidth: 8,
@@ -13,9 +13,10 @@ describe('SessionTimerRing', () => {
             targetMinutes: 120,
         });
 
-        expect(state?.radius).toBe(700);
+        expect(state?.radius).toBe(705.5);
         expect(state?.strokeWidth).toBe(3);
         expect(state?.progress).toBe(0.25);
+        expect(state?.direction).toBe('clockwise');
     });
 
     it('uses the diagnostic session ring width while timer visibility is being verified', () => {
@@ -30,9 +31,25 @@ describe('SessionTimerRing', () => {
         });
 
         expect(state).not.toBeNull();
-        expect(state?.radius).toBe(progressRadius);
+        expect(state?.radius).toBe(progressRadius + (PROGRESS_RING_BASE_WIDTH / 2) + (SESSION_TIMER_RING_WIDTH / 2));
         expect(SESSION_TIMER_RING_WIDTH).toBe(40);
         expect(state?.strokeWidth).toBe(40);
+    });
+
+    it('renders countdown sessions as a counterclockwise remaining-time arc', () => {
+        const state = buildSessionTimerRingState({
+            progressRadius: 700,
+            progressRingWidth: 8,
+            sessionRingWidth: 40,
+            elapsedMs: 30 * 60000,
+            targetMinutes: 120,
+            countdown: true,
+        });
+
+        expect(state?.progress).toBe(0.75);
+        expect(state?.direction).toBe('counterclockwise');
+        expect(renderSessionTimerRing(state)).toContain('is-counterclockwise');
+        expect(sessionTimerArcPath(724, 0.75, 'counterclockwise')).toContain(' 0 1 0 ');
     });
 
     it('renders a closed two-arc path at completion', () => {
@@ -46,6 +63,7 @@ describe('SessionTimerRing', () => {
             radius: 705.5,
             strokeWidth: 3,
             progress: 0.51,
+            direction: 'clockwise',
             paused: false,
         });
 
@@ -62,6 +80,7 @@ describe('SessionTimerRing', () => {
             radius: 698.5,
             strokeWidth: SESSION_TIMER_RING_WIDTH,
             progress: 0.5,
+            direction: 'clockwise',
             paused: false,
         });
         const svg = `${progressLayer}${timerLayer}`;

@@ -38,6 +38,7 @@ describe('writing session timer font loading', () => {
         const countPulseBlock = timelineCss.match(/@keyframes ert-timeline-session-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
         const clockBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock {');
         const ratioBlock = readRuleBlock(timelineCss, 'button.ert-timeline-session-panel__ratio');
+        const inlineQuickBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__quick--inline');
         const sectionBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__section');
         const buttonBlocks = [
             '.ert-timeline-session-panel__primary',
@@ -53,6 +54,7 @@ describe('writing session timer font loading', () => {
         ].map(selector => readRuleBlock(timelineCss, selector));
 
         expect(ratioBlock).not.toContain('transition:');
+        expect(inlineQuickBlock).toContain('margin-inline-end');
         buttonBlocks.forEach(block => expect(block).not.toMatch(/transition:[^;]*transform/));
         hoverBlocks.forEach(block => expect(block).not.toContain('translateY'));
         expect(countPulseBlock).not.toContain('transform:');
@@ -70,6 +72,8 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).not.toContain("applyTooltip(sessionBtn, 'Start writing session'");
         expect(timelineViewSource).not.toContain("sessionPanel.setAttribute('aria-label', 'Writing session')");
         expect(timelineViewSource).not.toContain('applyTooltip(presetButton');
+        expect(timelineViewSource).toContain("settingsTab?.revealSettingsSection('core', 'goals-sessions')");
+        expect(timelineViewSource).toContain("setting.openTabById('radial-timeline')");
         expect(timelineViewSource).toContain("previousPanelState === 'active'");
         expect(indicatorsCss).toContain('stroke: var(--color-red, red)');
     });

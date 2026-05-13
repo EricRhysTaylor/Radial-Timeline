@@ -1415,6 +1415,7 @@
   flex: 0 1 auto;
   flex-wrap: nowrap;
   gap: var(--size-4-2);
+  margin-inline-end: var(--size-4-3);
 }
 
 .ert-timeline-session-panel__goal-controls {

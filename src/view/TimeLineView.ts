@@ -753,15 +753,16 @@ export class RadialTimelineView extends ItemView {
     }
 
     private revealGoalsSessionsSettings(): void {
-        this.plugin.settingsTab?.setActiveTab('core');
+        const settingsTab = this.plugin.settingsTab;
+        settingsTab?.revealSettingsSection('core', 'goals-sessions');
         const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
         if (setting) {
             setting.open();
             setting.openTabById('radial-timeline');
         }
-        window.requestAnimationFrame(() => {
-            this.plugin.settingsTab?.revealSettingsSection('core', 'goals-sessions');
-        });
+        window.setTimeout(() => {
+            settingsTab?.revealSettingsSection('core', 'goals-sessions');
+        }, 80);
     }
 
     private renderWritingSessionPanel(): void {
@@ -963,6 +964,7 @@ export class RadialTimelineView extends ItemView {
             sessionRingWidth: SESSION_TIMER_RING_WIDTH,
             elapsedMs,
             targetMinutes,
+            countdown: Boolean(active.goalMinutes),
             paused: !!active.pausedAt,
         });
         const ringSvg = renderSessionTimerRingLayer(state);
