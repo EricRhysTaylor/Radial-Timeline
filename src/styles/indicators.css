@@ -199,15 +199,15 @@
   fill: none;
   stroke: #000000;
   /* Purple background to match estimation arc #5e0098*/
-  stroke-width: 8px;
+  stroke-width: 11px;
   /* Base width */
 }
 
 /* Year Progress Ring (Rainbow Segments) */
 .radial-timeline-container .progress-ring-fill {
   fill: none;
-  stroke-width: 4px;
-  /* Make rainbow ring thinner */
+  stroke-width: 7px;
+  /* Keep the rainbow ring visibly stronger than the timer ring */
   stroke-linecap: round;
   /* Optional: round ends */
 }
@@ -220,9 +220,13 @@
 .radial-timeline-container .ert-timeline-session-ring__track {
   fill: none;
   pointer-events: none;
-  stroke: var(--color-red, red);
+  stroke: color-mix(in srgb, var(--text-normal) 32%, var(--background-primary));
   stroke-linecap: round;
-  opacity: 0.35;
+  opacity: 0.72;
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track {
+  opacity: 0;
 }
 
 .radial-timeline-container .ert-timeline-session-ring__arc {
@@ -321,8 +325,25 @@
   stroke: var(--text-success);
 }
 
-.radial-timeline-container .ert-timeline-session-ring .ert-timeline-session-ring__arc {
-  stroke: var(--color-red, red);
+.radial-timeline-container .ert-timeline-session-ring-layer.is-count-pulse .ert-timeline-session-ring__arc {
+  animation: ert-timeline-session-ring-count-pulse 300ms ease-out;
+}
+
+@keyframes ert-timeline-session-ring-count-pulse {
+  0% {
+    stroke: var(--ert-session-pulse-color, white);
+    filter: drop-shadow(0 0 0.75rem color-mix(in srgb, var(--ert-session-pulse-color, white) 80%, transparent));
+  }
+
+  45% {
+    stroke: var(--ert-session-pulse-color, white);
+    filter: drop-shadow(0 0 0.55rem color-mix(in srgb, var(--ert-session-pulse-color, white) 65%, transparent));
+  }
+
+  100% {
+    stroke: var(--ert-session-pulse-color, white);
+    filter: drop-shadow(0 0 0.2rem color-mix(in srgb, var(--ert-session-pulse-color, white) 35%, transparent));
+  }
 }
 
 /* Estimate tick group - hover interaction */

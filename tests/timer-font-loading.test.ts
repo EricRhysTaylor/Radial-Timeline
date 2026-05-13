@@ -35,8 +35,12 @@ describe('writing session timer font loading', () => {
 
     it('keeps timer ratio links and timer buttons free of movement animation', () => {
         const timelineCss = readTimelineCss();
+        const indicatorsCss = readIndicatorsCss();
         const countPulseBlock = timelineCss.match(/@keyframes ert-timeline-session-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
+        const ringPulseBlock = indicatorsCss.match(/@keyframes ert-timeline-session-ring-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
         const clockBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock {');
+        const titleCountBlock = readRuleBlock(timelineCss, '.ert-timeline-session__label {');
+        const clockValueBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock-value');
         const ratioBlock = readRuleBlock(timelineCss, 'button.ert-timeline-session-panel__ratio');
         const inlineQuickBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__quick--inline');
         const sectionBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__section');
@@ -59,23 +63,46 @@ describe('writing session timer font loading', () => {
         hoverBlocks.forEach(block => expect(block).not.toContain('translateY'));
         expect(countPulseBlock).not.toContain('transform:');
         expect(countPulseBlock).toContain('--ert-session-pulse-color');
+        expect(countPulseBlock).toContain('color: var(--ert-session-pulse-color, white)');
+        expect(ringPulseBlock).not.toContain('transform:');
+        expect(ringPulseBlock).toContain('--ert-session-pulse-color');
+        expect(ringPulseBlock).toContain('stroke: var(--ert-session-pulse-color, white)');
+        expect(timelineCss).toContain('animation: ert-timeline-session-count-pulse 300ms ease-out');
+        expect(indicatorsCss).toContain('animation: ert-timeline-session-ring-count-pulse 300ms ease-out');
         expect(clockBlock).toContain('background: transparent');
         expect(clockBlock).toContain('border: 0');
+        expect(titleCountBlock).toContain('min-width: 3.75ch');
+        expect(titleCountBlock).toContain('padding-inline');
+        expect(clockValueBlock).toContain('padding-inline: 0.5rem');
+        expect(timelineCss).toContain('.ert-timeline-session-panel__clock:not(.is-complete) .ert-timeline-session-panel__clock-value');
+        expect(timelineCss).toContain('min-width: 10.5ch');
         expect(sectionBlock).not.toContain('transition:');
         expect(timelineCss).not.toContain('.ert-timeline-session-panel__section:hover');
     });
 
-    it('keeps idle timer configuration stable and exposes the diagnostic red ring', () => {
+    it('keeps idle timer configuration stable and renders the timer ring as SVG', () => {
         const timelineViewSource = readTimelineViewSource();
         const indicatorsCss = readIndicatorsCss();
 
         expect(timelineViewSource).not.toContain("applyTooltip(sessionBtn, 'Start writing session'");
         expect(timelineViewSource).not.toContain("sessionPanel.setAttribute('aria-label', 'Writing session')");
         expect(timelineViewSource).not.toContain('applyTooltip(presetButton');
-        expect(timelineViewSource).toContain("settingsTab?.revealSettingsSection('core', 'goals-sessions')");
+        expect(timelineViewSource).toContain("settingsTab?.revealSettingsSection('core', 'goals-sessions', { force: true })");
         expect(timelineViewSource).toContain("setting.openTabById('radial-timeline')");
-        expect(timelineViewSource).toContain("previousPanelState === 'active'");
-        expect(indicatorsCss).toContain('stroke: var(--color-red, red)');
+        expect(timelineViewSource).toContain('<svg xmlns="http://www.w3.org/2000/svg">${ringSvg}</svg>');
+        expect(timelineViewSource).toContain('getSessionRingElapsedMs');
+        expect(timelineViewSource).toContain('elapsed-second-');
+        expect(timelineViewSource).toContain('writingSessionRingRenderKey');
+        expect(timelineViewSource).toContain('SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR');
+        expect(timelineViewSource).toContain('SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR');
+        expect(timelineViewSource).toContain('syncOpenWritingSessionPanel');
+        expect(timelineViewSource).toContain('syncActiveWritingSessionPanelClock');
+        expect(indicatorsCss).toContain('stroke-width: 11px;');
+        expect(indicatorsCss).toContain('stroke-width: 7px;');
+        expect(indicatorsCss).toContain('.ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track');
+        expect(readRuleBlock(indicatorsCss, '.radial-timeline-container .ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track')).toContain('opacity: 0');
+        expect(indicatorsCss).toContain('ert-timeline-session-ring-count-pulse');
+        expect(indicatorsCss).not.toContain('stroke: var(--color-red, red)');
     });
 
     it('keeps active popover copy lean and labels action buttons directly', () => {
@@ -85,6 +112,11 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).toContain("'save', 'Save'");
         expect(timelineViewSource).toContain("'pause', 'Pause'");
         expect(timelineViewSource).toContain("'trash-2', 'Cancel'");
+        expect(timelineViewSource).not.toContain("button.setAttribute('title', label)");
+        expect(timelineViewSource).not.toContain("settingsBtn.setAttribute('title'");
+        expect(timelineViewSource).toContain('formatCompletedSessionSummary');
+        expect(timelineViewSource).toContain("statusDisplay.tone !== 'complete'");
+        expect(timelineViewSource).not.toContain("? 'Session Complete'");
         expect(timelineViewSource).not.toContain("active.pausedAt ? 'Paused' : 'Running'");
     });
 });

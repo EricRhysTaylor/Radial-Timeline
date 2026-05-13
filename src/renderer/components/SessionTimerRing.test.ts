@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { PROGRESS_RING_BASE_WIDTH, PROGRESS_RING_RADIUS_OFFSET, SESSION_TIMER_RING_WIDTH } from '../layout/LayoutConstants';
+import {
+    PROGRESS_RING_BASE_WIDTH,
+    PROGRESS_RING_RADIUS_OFFSET,
+    SESSION_TIMER_RING_GAP,
+    SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
+    SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
+    SESSION_TIMER_RING_WIDTH,
+} from '../layout/LayoutConstants';
 import { renderProgressRingBaseLayer } from '../utils/ProgressRing';
 import { buildSessionTimerRingState, renderSessionTimerRing, renderSessionTimerRingLayer, sessionTimerArcPath } from './SessionTimerRing';
 
@@ -8,48 +15,93 @@ describe('SessionTimerRing', () => {
         const state = buildSessionTimerRingState({
             progressRadius: 700,
             progressRingWidth: 8,
+            ringGap: 2,
             sessionRingWidth: 3,
             elapsedMs: 30 * 60000,
             targetMinutes: 120,
         });
 
-        expect(state?.radius).toBe(705.5);
+        expect(state?.radius).toBe(707.5);
         expect(state?.strokeWidth).toBe(3);
         expect(state?.progress).toBe(0.25);
+        expect(state?.colorProgress).toBe(0.25);
         expect(state?.direction).toBe('clockwise');
     });
 
-    it('uses the diagnostic session ring width while timer visibility is being verified', () => {
+    it('uses a thin session ring with a small gap outside the progress ring', () => {
         const lineInnerRadius = 680;
-        const progressRadius = lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET;
+        const progressRadius = lineInnerRadius + SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR;
         const state = buildSessionTimerRingState({
             progressRadius,
-            progressRingWidth: PROGRESS_RING_BASE_WIDTH,
+            progressRingWidth: SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
+            ringGap: SESSION_TIMER_RING_GAP,
             sessionRingWidth: SESSION_TIMER_RING_WIDTH,
             elapsedMs: 30 * 60000,
             targetMinutes: 120,
         });
 
         expect(state).not.toBeNull();
-        expect(state?.radius).toBe(progressRadius + (PROGRESS_RING_BASE_WIDTH / 2) + (SESSION_TIMER_RING_WIDTH / 2));
-        expect(SESSION_TIMER_RING_WIDTH).toBe(40);
-        expect(state?.strokeWidth).toBe(40);
+        expect(state?.radius).toBe(progressRadius + (SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR / 2) + SESSION_TIMER_RING_GAP + (SESSION_TIMER_RING_WIDTH / 2));
+        expect(PROGRESS_RING_BASE_WIDTH).toBe(11);
+        expect(PROGRESS_RING_RADIUS_OFFSET).toBe(15);
+        expect(SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR).toBe(13);
+        expect(SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR).toBe(8);
+        expect(SESSION_TIMER_RING_WIDTH).toBe(3);
+        expect(SESSION_TIMER_RING_GAP).toBe(2);
+        expect(state?.strokeWidth).toBe(3);
     });
 
     it('renders countdown sessions as a counterclockwise remaining-time arc', () => {
         const state = buildSessionTimerRingState({
             progressRadius: 700,
             progressRingWidth: 8,
-            sessionRingWidth: 40,
+            ringGap: 2,
+            sessionRingWidth: 3,
             elapsedMs: 30 * 60000,
             targetMinutes: 120,
             countdown: true,
         });
 
         expect(state?.progress).toBe(0.75);
+        expect(state?.colorProgress).toBe(0.25);
         expect(state?.direction).toBe('counterclockwise');
-        expect(renderSessionTimerRing(state)).toContain('is-counterclockwise');
+        const svg = renderSessionTimerRing(state);
+        expect(svg).toContain('is-counterclockwise');
+        expect(svg).toContain('is-progress-25');
         expect(sessionTimerArcPath(724, 0.75, 'counterclockwise')).toContain(' 0 1 0 ');
+    });
+
+    it('starts countdown sessions as a full stage-colored ring', () => {
+        const state = buildSessionTimerRingState({
+            progressRadius: 700,
+            progressRingWidth: 8,
+            ringGap: 2,
+            sessionRingWidth: 3,
+            elapsedMs: 0,
+            targetMinutes: 120,
+            countdown: true,
+        });
+        const svg = renderSessionTimerRing(state);
+
+        expect(state?.progress).toBe(1);
+        expect(state?.colorProgress).toBe(0);
+        expect(svg).toContain('is-progress-0');
+        expect(svg).toContain('is-counterclockwise');
+        expect(svg.match(/ A /g)?.length).toBe(2);
+    });
+
+    it('keeps countdown rings trackless so spent time disappears instead of growing gray', () => {
+        const svg = renderSessionTimerRing({
+            radius: 707.5,
+            strokeWidth: 3,
+            progress: 0.75,
+            colorProgress: 0,
+            direction: 'counterclockwise',
+            paused: false,
+        });
+
+        expect(svg).toContain('is-counterclockwise');
+        expect(svg).toContain('ert-timeline-session-ring__track');
     });
 
     it('renders a closed two-arc path at completion', () => {
@@ -63,6 +115,7 @@ describe('SessionTimerRing', () => {
             radius: 705.5,
             strokeWidth: 3,
             progress: 0.51,
+            colorProgress: 0.51,
             direction: 'clockwise',
             paused: false,
         });
@@ -80,6 +133,7 @@ describe('SessionTimerRing', () => {
             radius: 698.5,
             strokeWidth: SESSION_TIMER_RING_WIDTH,
             progress: 0.5,
+            colorProgress: 0.5,
             direction: 'clockwise',
             paused: false,
         });

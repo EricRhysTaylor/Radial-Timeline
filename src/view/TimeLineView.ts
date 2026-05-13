@@ -22,8 +22,9 @@ import { ModeInteractionController, createInteractionController } from '../modes
 import { renderWelcomeScreen } from './WelcomeScreen';
 import {
     MONTH_LABEL_RADIUS,
-    PROGRESS_RING_BASE_WIDTH,
-    PROGRESS_RING_RADIUS_OFFSET,
+    SESSION_TIMER_RING_GAP,
+    SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
+    SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
     SESSION_TIMER_RING_WIDTH,
     SVG_SIZE
 } from '../renderer/layout/LayoutConstants';
@@ -144,6 +145,9 @@ export class RadialTimelineView extends ItemView {
     private writingSessionTickInterval?: number;
     private writingSessionPulseTimeout?: number;
     private writingSessionLastTitlePulseKey?: string;
+    private writingSessionLastPulseColor?: string;
+    private writingSessionRingRenderKey?: string;
+    private writingSessionRingPulseTimeout?: number;
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
@@ -465,6 +469,10 @@ export class RadialTimelineView extends ItemView {
                     window.clearTimeout(this.writingSessionPulseTimeout);
                     this.writingSessionPulseTimeout = undefined;
                 }
+                if (this.writingSessionRingPulseTimeout !== undefined) {
+                    window.clearTimeout(this.writingSessionRingPulseTimeout);
+                    this.writingSessionRingPulseTimeout = undefined;
+                }
             });
             this.registerDomEvent(document.body, 'click', (evt: MouseEvent) => {
                 const target = evt.target as Node | null;
@@ -502,6 +510,15 @@ export class RadialTimelineView extends ItemView {
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    private formatCompletedSessionSummary(active: ActiveWritingSession, elapsedMs: number): string {
+        const minutes = active.goalMinutes ?? Math.max(1, Math.round(elapsedMs / 60000));
+        return [
+            `${minutes} min`,
+            active.mode,
+            active.bookTitle,
+        ].filter(Boolean).join(' ');
     }
 
     private formatSessionClockDisplay(ms: number, mode: 'countdown' | 'elapsed'): SessionClockDisplay {
@@ -581,6 +598,7 @@ export class RadialTimelineView extends ItemView {
         if (!this.writingSessionButton || !this.writingSessionLabel) return;
         const snapshot = this.getSessionClockSnapshot();
         const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.pulseKey);
+        const pulseColor = shouldPulseCount ? this.getWritingSessionPulseColor() : undefined;
         this.writingSessionLabel.empty();
         if (snapshot.state === 'idle') {
             this.renderWritingSessionIdleIcon(this.writingSessionLabel);
@@ -592,19 +610,12 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
         this.applySessionProgressClass(this.writingSessionButton, snapshot.progressStep);
         this.writingSessionButton.setAttribute('aria-label', snapshot.detail);
-        if (shouldPulseCount && snapshot.pulseKey) {
-            this.pulseWritingSessionTitleCount();
+        if (shouldPulseCount && snapshot.pulseKey && pulseColor) {
+            this.pulseWritingSessionTitleCount(pulseColor);
         }
         this.writingSessionLastTitlePulseKey = snapshot.pulseKey;
-        if (this.writingSessionPanel && !this.writingSessionPanel.classList.contains('ert-hidden')) {
-            const active = this.plugin.getWritingSessionService().getActiveSession();
-            const previousPanelState = this.writingSessionPanel.dataset.sessionState;
-            if (active || previousPanelState === 'active') {
-                this.renderWritingSessionPanel();
-            }
-            this.positionWritingSessionPanel();
-        }
-        this.updateWritingSessionRing();
+        this.syncOpenWritingSessionPanel();
+        this.updateWritingSessionRing(undefined, { pulseColor });
     }
 
     private getSessionTitlePulseKey(active: ActiveWritingSession, elapsedMs: number): string {
@@ -622,14 +633,17 @@ export class RadialTimelineView extends ItemView {
     }
 
     private getWritingSessionPulseColor(): string {
-        const colors = ['white', 'red', 'yellow', 'lime', 'deepskyblue', 'magenta', 'orange'];
-        return colors[Math.floor(Math.random() * colors.length)] ?? 'white';
+        const colors = ['white', 'yellow', 'lime', 'cyan', 'deepskyblue', 'magenta', 'orange'];
+        const available = colors.filter(color => color !== this.writingSessionLastPulseColor);
+        const color = available[Math.floor(Math.random() * available.length)] ?? colors[0] ?? 'white';
+        this.writingSessionLastPulseColor = color;
+        return color;
     }
 
-    private pulseWritingSessionTitleCount(): void {
+    private pulseWritingSessionTitleCount(pulseColor: string): void {
         if (!this.writingSessionLabel) return;
         this.writingSessionLabel.classList.remove('is-count-pulse');
-        this.writingSessionLabel.style.setProperty('--ert-session-pulse-color', this.getWritingSessionPulseColor());
+        this.writingSessionLabel.style.setProperty('--ert-session-pulse-color', pulseColor);
         void this.writingSessionLabel.offsetWidth;
         this.writingSessionLabel.classList.add('is-count-pulse');
         if (this.writingSessionPulseTimeout !== undefined) {
@@ -638,7 +652,7 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionPulseTimeout = window.setTimeout(() => {
             this.writingSessionLabel?.classList.remove('is-count-pulse');
             this.writingSessionPulseTimeout = undefined;
-        }, 420);
+        }, 300);
     }
 
     private renderWritingSessionIdleIcon(target: HTMLElement): void {
@@ -754,15 +768,16 @@ export class RadialTimelineView extends ItemView {
 
     private revealGoalsSessionsSettings(): void {
         const settingsTab = this.plugin.settingsTab;
-        settingsTab?.revealSettingsSection('core', 'goals-sessions');
         const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
         if (setting) {
             setting.open();
             setting.openTabById('radial-timeline');
         }
-        window.setTimeout(() => {
-            settingsTab?.revealSettingsSection('core', 'goals-sessions');
-        }, 80);
+        settingsTab?.setActiveTab('core');
+        const reveal = () => settingsTab?.revealSettingsSection('core', 'goals-sessions', { force: true });
+        window.requestAnimationFrame(reveal);
+        window.setTimeout(reveal, 160);
+        window.setTimeout(reveal, 360);
     }
 
     private renderWritingSessionPanel(): void {
@@ -773,12 +788,14 @@ export class RadialTimelineView extends ItemView {
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
         panel.dataset.sessionState = active ? 'active' : 'idle';
+        delete panel.dataset.sessionRenderKey;
         const header = panel.createDiv({ cls: 'ert-timeline-session-panel__header' });
         header.createDiv({ cls: 'ert-timeline-session-panel__title', text: 'Writing Session' });
 
         const settingsBtn = header.createEl('button', { cls: 'ert-timeline-session-panel__icon clickable-icon' });
         settingsBtn.type = 'button';
         setIcon(settingsBtn, 'settings');
+        settingsBtn.setAttribute('aria-label', 'Goals & Sessions settings');
         applyTooltip(settingsBtn, 'Goals & Sessions settings', 'bottom');
         settingsBtn.onclick = (event: MouseEvent) => {
             event.preventDefault();
@@ -890,17 +907,20 @@ export class RadialTimelineView extends ItemView {
         const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
         const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
         const clockText = statusDisplay.tone === 'complete'
-            ? 'Session Complete'
+            ? this.formatCompletedSessionSummary(active, elapsedMs)
             : this.formatSessionClockHms(remainingMs ?? elapsedMs);
+        panel.dataset.sessionRenderKey = this.getActiveWritingSessionPanelRenderKey(active, elapsedMs);
 
         const clock = panel.createDiv({ cls: `ert-timeline-session-panel__clock is-${statusDisplay.tone}` });
         this.applySessionProgressClass(clock, clockProgressStep);
         clock.createDiv({ cls: 'ert-timeline-session-panel__clock-value', text: clockText });
-        const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
-        meta.setText([
-            active.mode,
-            active.bookTitle,
-        ].filter(Boolean).join(' · '));
+        if (statusDisplay.tone !== 'complete') {
+            const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
+            meta.setText([
+                active.mode,
+                active.bookTitle,
+            ].filter(Boolean).join(' · '));
+        }
 
         const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
         if (active.pausedAt) {
@@ -942,15 +962,105 @@ export class RadialTimelineView extends ItemView {
         });
     }
 
+    private getActiveWritingSessionPanelRenderKey(active: ActiveWritingSession, elapsedMs: number): string {
+        const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
+        return [
+            active.id,
+            active.pausedAt ? 'paused' : 'running',
+            statusDisplay.tone,
+            active.goalMinutes ? 'countdown' : 'elapsed',
+            active.mode,
+            active.bookTitle,
+        ].join('|');
+    }
+
+    private getActiveWritingSessionPanelClockText(active: ActiveWritingSession, elapsedMs: number): string {
+        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
+        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
+        const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
+        return statusDisplay.tone === 'complete'
+            ? this.formatCompletedSessionSummary(active, elapsedMs)
+            : this.formatSessionClockHms(remainingMs ?? elapsedMs);
+    }
+
+    private syncActiveWritingSessionPanelClock(panel: HTMLElement, active: ActiveWritingSession): boolean {
+        const service = this.plugin.getWritingSessionService();
+        const elapsedMs = service.getActiveElapsedMs();
+        const renderKey = this.getActiveWritingSessionPanelRenderKey(active, elapsedMs);
+        if (panel.dataset.sessionRenderKey !== renderKey) return false;
+
+        const clock = panel.querySelector<HTMLElement>('.ert-timeline-session-panel__clock');
+        const clockValue = panel.querySelector<HTMLElement>('.ert-timeline-session-panel__clock-value');
+        if (!clock || !clockValue) return false;
+
+        const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
+        const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
+        clock.classList.toggle('is-running', statusDisplay.tone === 'running');
+        clock.classList.toggle('is-paused', statusDisplay.tone === 'paused');
+        clock.classList.toggle('is-complete', statusDisplay.tone === 'complete');
+        this.applySessionProgressClass(clock, clockProgressStep);
+        clockValue.setText(this.getActiveWritingSessionPanelClockText(active, elapsedMs));
+        return true;
+    }
+
+    private syncOpenWritingSessionPanel(): void {
+        const panel = this.writingSessionPanel;
+        if (!panel || panel.classList.contains('ert-hidden')) return;
+
+        const active = this.plugin.getWritingSessionService().getActiveSession();
+        const previousPanelState = panel.dataset.sessionState;
+        let didRender = false;
+        if (active) {
+            const didSyncClockOnly = previousPanelState === 'active' && this.syncActiveWritingSessionPanelClock(panel, active);
+            if (!didSyncClockOnly) {
+                this.renderWritingSessionPanel();
+                didRender = true;
+            }
+        } else if (previousPanelState === 'active') {
+            this.renderWritingSessionPanel();
+            didRender = true;
+        }
+
+        if (didRender) this.positionWritingSessionPanel();
+    }
+
     private getRenderedTimelineSvg(): SVGSVGElement | null {
         return this.containerEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
     }
 
-    private updateWritingSessionRing(svg: SVGSVGElement | null = this.getRenderedTimelineSvg()): void {
+    private getSessionRingElapsedMs(elapsedMs: number, targetMinutes: number): number {
+        const targetMs = Math.max(1, targetMinutes) * 60000;
+        return Math.min(targetMs, Math.max(0, elapsedMs));
+    }
+
+    private getSessionRingRenderKey(active: ActiveWritingSession, elapsedMs: number, targetMinutes: number): string {
+        const targetMs = Math.max(1, targetMinutes) * 60000;
+        const clampedElapsedMs = Math.min(targetMs, Math.max(0, elapsedMs));
+        const timeKey = `elapsed-second-${Math.floor(clampedElapsedMs / 1000)}`;
+        return [
+            active.id,
+            timeKey,
+            active.pausedAt ? 'paused' : 'running',
+            active.goalMinutes ? 'countdown' : 'elapsed',
+            targetMinutes,
+            SESSION_TIMER_RING_WIDTH,
+            SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
+            SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
+            SESSION_TIMER_RING_GAP,
+        ].join('|');
+    }
+
+    private updateWritingSessionRing(
+        svg: SVGSVGElement | null = this.getRenderedTimelineSvg(),
+        options: { pulseColor?: string } = {}
+    ): void {
         if (!svg) return;
-        svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
         const active = this.plugin.getWritingSessionService().getActiveSession();
-        if (!active) return;
+        if (!active) {
+            svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
+            this.writingSessionRingRenderKey = undefined;
+            return;
+        }
 
         const lineInnerRadiusAttr = svg.getAttribute('data-line-inner-radius');
         const lineInnerRadius = lineInnerRadiusAttr ? Number(lineInnerRadiusAttr) : NaN;
@@ -958,11 +1068,17 @@ export class RadialTimelineView extends ItemView {
 
         const elapsedMs = this.plugin.getWritingSessionService().getActiveElapsedMs();
         const targetMinutes = active.goalMinutes ?? this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
+        const renderKey = this.getSessionRingRenderKey(active, elapsedMs, targetMinutes);
+        const hasRenderedRing = Boolean(svg.querySelector('.ert-timeline-session-ring-layer'));
+        if (this.writingSessionRingRenderKey === renderKey && hasRenderedRing && !options.pulseColor) return;
+        svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
+        const ringElapsedMs = this.getSessionRingElapsedMs(elapsedMs, targetMinutes);
         const state = buildSessionTimerRingState({
-            progressRadius: lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET,
-            progressRingWidth: PROGRESS_RING_BASE_WIDTH,
+            progressRadius: lineInnerRadius + SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
+            progressRingWidth: SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
+            ringGap: SESSION_TIMER_RING_GAP,
             sessionRingWidth: SESSION_TIMER_RING_WIDTH,
-            elapsedMs,
+            elapsedMs: ringElapsedMs,
             targetMinutes,
             countdown: Boolean(active.goalMinutes),
             paused: !!active.pausedAt,
@@ -970,13 +1086,25 @@ export class RadialTimelineView extends ItemView {
         const ringSvg = renderSessionTimerRingLayer(state);
         if (!ringSvg.trim()) return;
 
-        const doc = new DOMParser().parseFromString(`<svg>${ringSvg}</svg>`, 'image/svg+xml');
+        const doc = new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${ringSvg}</svg>`, 'image/svg+xml');
         const ringLayer = doc.documentElement.firstElementChild;
         const timelineRoot = svg.querySelector('#timeline-root');
         if (!ringLayer || !timelineRoot) return;
         const imported = document.importNode(ringLayer, true);
         imported.setAttribute('aria-hidden', 'true');
+        if (options.pulseColor) {
+            imported.classList.add('is-count-pulse');
+            (imported as SVGElement).style.setProperty('--ert-session-pulse-color', options.pulseColor);
+            if (this.writingSessionRingPulseTimeout !== undefined) {
+                window.clearTimeout(this.writingSessionRingPulseTimeout);
+            }
+            this.writingSessionRingPulseTimeout = window.setTimeout(() => {
+                imported.classList.remove('is-count-pulse');
+                this.writingSessionRingPulseTimeout = undefined;
+            }, 300);
+        }
         timelineRoot.appendChild(imported);
+        this.writingSessionRingRenderKey = renderKey;
     }
 
     public focusTimelineSearchInput(): void {

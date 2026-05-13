@@ -72,7 +72,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     public revealSettingsSection(
         tab: RadialTimelineSettingsTabId,
-        sectionKey: string
+        sectionKey: string,
+        options: { force?: boolean } = {}
     ): void {
         this._activeTab = tab;
         this._hasExplicitTabRequest = true;
@@ -83,13 +84,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
 
         window.requestAnimationFrame(() => {
-            const visibleAfterInitialPass = this.scrollToSettingsSection(sectionKey);
-            if (visibleAfterInitialPass) return;
+            const visibleAfterInitialPass = this.scrollToSettingsSection(sectionKey, { force: options.force });
+            if (visibleAfterInitialPass && !options.force) return;
 
             this._pendingSectionRevealTimer = window.setTimeout(() => {
                 this._pendingSectionRevealTimer = null;
                 this.scrollToSettingsSection(sectionKey, { force: true });
-            }, 180);
+            }, options.force ? 260 : 180);
         });
     }
 

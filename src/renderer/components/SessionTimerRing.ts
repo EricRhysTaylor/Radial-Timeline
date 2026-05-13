@@ -4,6 +4,7 @@ export interface SessionTimerRingState {
     radius: number;
     strokeWidth: number;
     progress: number;
+    colorProgress: number;
     direction: 'clockwise' | 'counterclockwise';
     paused: boolean;
 }
@@ -15,6 +16,7 @@ function clamp(value: number, min: number, max: number): number {
 export function buildSessionTimerRingState(params: {
     progressRadius: number;
     progressRingWidth: number;
+    ringGap: number;
     sessionRingWidth: number;
     elapsedMs: number;
     targetMinutes: number;
@@ -24,11 +26,12 @@ export function buildSessionTimerRingState(params: {
     const targetMs = Math.max(1, params.targetMinutes) * 60000;
     const elapsedProgress = clamp(params.elapsedMs / targetMs, 0, 1);
     const progress = params.countdown ? 1 - elapsedProgress : elapsedProgress;
-    const radius = params.progressRadius + (params.progressRingWidth / 2) + (params.sessionRingWidth / 2);
+    const radius = params.progressRadius + (params.progressRingWidth / 2) + params.ringGap + (params.sessionRingWidth / 2);
     return {
         radius,
         strokeWidth: params.sessionRingWidth,
         progress,
+        colorProgress: elapsedProgress,
         direction: params.countdown ? 'counterclockwise' : 'clockwise',
         paused: !!params.paused,
     };
@@ -69,7 +72,7 @@ export function sessionTimerArcPath(
 export function renderSessionTimerRing(state: SessionTimerRingState | null): string {
     if (!state) return '';
     const arcPath = sessionTimerArcPath(state.radius, state.progress, state.direction);
-    const progressStep = clamp(Math.round(state.progress * 20) * 5, 0, 100);
+    const progressStep = clamp(Math.round(state.colorProgress * 20) * 5, 0, 100);
     return `
         <g class="ert-timeline-session-ring is-progress-${progressStep} is-${state.direction}${state.paused ? ' is-paused' : ''}">
             <circle cx="0" cy="0" r="${formatNumber(state.radius)}" class="ert-timeline-session-ring__track" stroke-width="${formatNumber(state.strokeWidth)}" />

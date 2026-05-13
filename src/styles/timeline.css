@@ -1190,7 +1190,8 @@
 
 .ert-timeline-session__label {
   display: inline-block;
-  min-width: 2ch;
+  min-width: 3.75ch;
+  padding-inline: 0.18rem;
   white-space: nowrap;
   font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-weight: 100;
@@ -1201,7 +1202,7 @@
 }
 
 .ert-timeline-session__label.is-count-pulse {
-  animation: ert-timeline-session-count-pulse 420ms ease-out;
+  animation: ert-timeline-session-count-pulse 300ms ease-out;
 }
 
 @keyframes ert-timeline-session-count-pulse {
@@ -1210,13 +1211,14 @@
     text-shadow: 0 0 0.75rem color-mix(in srgb, var(--ert-session-pulse-color, white) 80%, transparent);
   }
 
-  55% {
+  45% {
     color: var(--ert-session-pulse-color, white);
-    text-shadow: 0 0 0.45rem color-mix(in srgb, var(--ert-session-pulse-color, white) 55%, transparent);
+    text-shadow: 0 0 0.55rem color-mix(in srgb, var(--ert-session-pulse-color, white) 65%, transparent);
   }
 
   100% {
-    text-shadow: none;
+    color: var(--ert-session-pulse-color, white);
+    text-shadow: 0 0 0.2rem color-mix(in srgb, var(--ert-session-pulse-color, white) 35%, transparent);
   }
 }
 
@@ -1590,7 +1592,7 @@
   align-items: center;
   justify-content: center;
   min-height: 3.25rem;
-  padding: 0;
+  padding: 0 var(--size-4-2);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1601,17 +1603,26 @@
   line-height: 1;
   letter-spacing: 0;
   text-align: center;
+  overflow: visible;
 }
 
 .ert-timeline-session-panel__clock-value {
   max-width: 100%;
+  padding-inline: 0.5rem;
+  box-sizing: border-box;
   font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-size: 2rem;
   font-weight: 100;
   font-synthesis: none;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'zero' 0, 'tnum' 1;
+  line-height: 1.12;
+  overflow: visible;
   overflow-wrap: anywhere;
+}
+
+.ert-timeline-session-panel__clock:not(.is-complete) .ert-timeline-session-panel__clock-value {
+  min-width: 10.5ch;
 }
 
 .ert-timeline-session-panel__clock.is-paused .ert-timeline-session-panel__clock-value,
