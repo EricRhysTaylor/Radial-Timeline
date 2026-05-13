@@ -215,15 +215,16 @@
 .radial-timeline-container .ert-timeline-session-ring__track {
   fill: none;
   pointer-events: none;
-  stroke: var(--background-modifier-border);
-  opacity: 0.75;
+  stroke: var(--background-modifier-border-hover);
+  opacity: 0.95;
 }
 
 .radial-timeline-container .ert-timeline-session-ring__arc {
   fill: none;
   pointer-events: none;
-  stroke: var(--background-modifier-border);
+  stroke: var(--rt-max-publish-stage-color, var(--text-accent));
   stroke-linecap: round;
+  opacity: 1;
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc {
@@ -231,83 +232,83 @@
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-0 .ert-timeline-session-ring__arc {
-  stroke: var(--background-modifier-border);
+  stroke: var(--rt-max-publish-stage-color, var(--text-accent));
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-5 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 78%, var(--text-success) 22%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 95%, var(--text-success) 5%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-10 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 74%, var(--text-success) 26%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 90%, var(--text-success) 10%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-15 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 70%, var(--text-success) 30%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 85%, var(--text-success) 15%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-20 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 66%, var(--text-success) 34%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 80%, var(--text-success) 20%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-25 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 62%, var(--text-success) 38%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 75%, var(--text-success) 25%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-30 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 57%, var(--text-success) 43%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 70%, var(--text-success) 30%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-35 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 53%, var(--text-success) 47%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 65%, var(--text-success) 35%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-40 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 49%, var(--text-success) 51%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 60%, var(--text-success) 40%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-45 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 45%, var(--text-success) 55%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 55%, var(--text-success) 45%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-50 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 41%, var(--text-success) 59%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 50%, var(--text-success) 50%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-55 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 37%, var(--text-success) 63%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 45%, var(--text-success) 55%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-60 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 33%, var(--text-success) 67%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 40%, var(--text-success) 60%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-65 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 29%, var(--text-success) 71%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 35%, var(--text-success) 65%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-70 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 25%, var(--text-success) 75%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 30%, var(--text-success) 70%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-75 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 20%, var(--text-success) 80%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 25%, var(--text-success) 75%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-80 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 16%, var(--text-success) 84%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 20%, var(--text-success) 80%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-85 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 12%, var(--text-success) 88%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 15%, var(--text-success) 85%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-90 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 8%, var(--text-success) 92%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 10%, var(--text-success) 90%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-95 .ert-timeline-session-ring__arc {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 4%, var(--text-success) 96%);
+  stroke: color-mix(in srgb, var(--rt-max-publish-stage-color, var(--text-accent)) 5%, var(--text-success) 95%);
 }
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-100 .ert-timeline-session-ring__arc {

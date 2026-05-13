@@ -51,6 +51,22 @@ export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 const TIMELINE_REFRESH_DELAY_MS = 1000;
 const SAGA_SCOPE_OPTION = '__rt_saga__';
 const SESSION_PROGRESS_STEP_PERCENT = 5;
+const SESSION_SECONDS_DISPLAY_THRESHOLD_MS = 15 * 60 * 1000;
+
+type SessionClockUnit = 'min' | 'sec';
+
+interface SessionClockDisplay {
+    value: string;
+    unit: SessionClockUnit;
+    label: string;
+}
+
+interface SessionStatusDisplay {
+    headline: string;
+    detail: string;
+    unit?: string;
+    tone: 'running' | 'paused' | 'complete';
+}
 
 // Namespace rule for Timeline view work:
 // - New Timeline chrome (legends, panels, badges, overlays, tooltips, controls) uses ert-timeline-*.
@@ -328,13 +344,9 @@ export class RadialTimelineView extends ItemView {
             sessionBtn.className = 'ert-timeline-session clickable-icon';
             sessionBtn.type = 'button';
             sessionBtn.setAttribute('aria-label', 'Start writing session');
-            const sessionIcon = document.createElement('span');
-            sessionIcon.className = 'ert-timeline-session__icon';
-            setIcon(sessionIcon, 'clock');
             const sessionLabel = document.createElement('span');
             sessionLabel.className = 'ert-timeline-session__label';
             sessionLabel.textContent = 'Start';
-            sessionBtn.appendChild(sessionIcon);
             sessionBtn.appendChild(sessionLabel);
             applyTooltip(sessionBtn, 'Start writing session', 'bottom');
             this.registerDomEvent(sessionBtn, 'click', (evt: MouseEvent) => {
@@ -481,23 +493,76 @@ export class RadialTimelineView extends ItemView {
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
+    private formatSessionClockDisplay(ms: number, mode: 'countdown' | 'elapsed'): SessionClockDisplay {
+        const safeMs = Math.max(0, ms);
+        const showSeconds = mode === 'countdown'
+            ? safeMs <= SESSION_SECONDS_DISPLAY_THRESHOLD_MS
+            : safeMs < 60000;
+        if (showSeconds) {
+            const value = String(Math.max(0, Math.ceil(safeMs / 1000)));
+            return { value, unit: 'sec', label: `${value} sec` };
+        }
+        const minutes = mode === 'countdown'
+            ? Math.ceil(safeMs / 60000)
+            : Math.floor(safeMs / 60000);
+        const value = String(Math.max(0, minutes));
+        return { value, unit: 'min', label: `${value} min` };
+    }
+
+    private getSessionStatusDisplay(active: ActiveWritingSession, elapsedMs: number): SessionStatusDisplay {
+        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
+        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
+        const clockDisplay = this.formatSessionClockDisplay(remainingMs ?? elapsedMs, goalMs ? 'countdown' : 'elapsed');
+        if (goalMs && remainingMs === 0) {
+            return {
+                headline: 'Session Complete',
+                detail: 'Good work. Stop to save this session.',
+                tone: 'complete',
+            };
+        }
+        if (active.pausedAt) {
+            return {
+                headline: 'Paused',
+                detail: `${clockDisplay.label} ${goalMs ? 'left' : 'elapsed'}`,
+                tone: 'paused',
+            };
+        }
+        return {
+            headline: clockDisplay.value,
+            detail: goalMs ? 'remaining' : 'elapsed',
+            unit: clockDisplay.unit,
+            tone: 'running',
+        };
+    }
+
     private getSessionProgressStep(progress: number): number {
         const clamped = Math.min(1, Math.max(0, progress));
         return Math.round((clamped * 100) / SESSION_PROGRESS_STEP_PERCENT) * SESSION_PROGRESS_STEP_PERCENT;
     }
 
-    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused' } {
+    private getActiveSessionProgressStep(active: ActiveWritingSession, elapsedMs: number): number {
+        const targetMinutes = active.goalMinutes ?? this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
+        const targetMs = Math.max(1, targetMinutes) * 60000;
+        return this.getSessionProgressStep(elapsedMs / targetMs);
+    }
+
+    private applySessionProgressClass(el: HTMLElement, progressStep: number | undefined): void {
+        for (let step = 0; step <= 100; step += SESSION_PROGRESS_STEP_PERCENT) {
+            el.classList.toggle(`is-progress-${step}`, progressStep === step);
+        }
+    }
+
+    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number } {
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
         if (!active) return { label: 'Start', detail: 'Start writing session', state: 'idle' };
         const elapsedMs = service.getActiveElapsedMs();
-        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const displayMs = goalMs ? Math.max(0, goalMs - elapsedMs) : elapsedMs;
-        const label = this.formatSessionClock(displayMs);
+        const display = this.getSessionStatusDisplay(active, elapsedMs);
         return {
-            label,
-            detail: active.pausedAt ? `Paused ${active.mode} session` : `Active ${active.mode} session`,
+            label: display.tone === 'complete' ? 'Complete' : display.headline,
+            detail: active.pausedAt ? `Paused ${active.mode} session, ${display.detail}` : `Active ${active.mode} session, ${display.detail}`,
             state: active.pausedAt ? 'paused' : 'active',
+            progressStep: this.getActiveSessionProgressStep(active, elapsedMs),
         };
     }
 
@@ -507,6 +572,7 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionLabel.setText(snapshot.label);
         this.writingSessionButton.classList.toggle('is-active', snapshot.state === 'active');
         this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
+        this.applySessionProgressClass(this.writingSessionButton, snapshot.progressStep);
         this.writingSessionButton.setAttribute('aria-label', snapshot.detail);
         if (this.writingSessionPanel && !this.writingSessionPanel.classList.contains('ert-hidden')) {
             if (this.plugin.getWritingSessionService().getActiveSession()) {
@@ -567,6 +633,28 @@ export class RadialTimelineView extends ItemView {
         return button;
     }
 
+    private createSessionIconButton(parent: HTMLElement, icon: string, label: string, className: string, onClick: () => void | Promise<void>): HTMLButtonElement {
+        const button = parent.createEl('button', { cls: className });
+        button.type = 'button';
+        setIcon(button, icon);
+        button.setAttribute('aria-label', label);
+        applyTooltip(button, label, 'bottom');
+        button.onclick = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void onClick();
+        };
+        return button;
+    }
+
+    private createSessionSectionTitle(parent: HTMLElement, icon: string, title: string): HTMLElement {
+        const titleEl = parent.createDiv({ cls: 'ert-timeline-session-panel__section-title' });
+        const iconEl = titleEl.createSpan({ cls: 'ert-timeline-session-panel__section-icon' });
+        setIcon(iconEl, icon);
+        titleEl.createSpan({ text: title });
+        return titleEl;
+    }
+
     private renderWritingSessionPanel(): void {
         const panel = this.writingSessionPanel;
         if (!panel) return;
@@ -603,9 +691,16 @@ export class RadialTimelineView extends ItemView {
     private renderIdleWritingSessionPanel(panel: HTMLElement): void {
         const service = this.plugin.getWritingSessionService();
         const defaultGoal = this.getDefaultSessionGoalMinutes();
+        const intro = panel.createDiv({ cls: 'ert-timeline-session-panel__idle-card' });
+        const introIcon = intro.createDiv({ cls: 'ert-timeline-session-panel__idle-icon' });
+        setIcon(introIcon, 'play');
+        const introText = intro.createDiv({ cls: 'ert-timeline-session-panel__idle-copy' });
+        introText.createDiv({ cls: 'ert-timeline-session-panel__idle-title', text: 'Ready to write' });
+        introText.createDiv({ cls: 'ert-timeline-session-panel__idle-meta', text: `${defaultGoal} min target · ${service.getSettings().defaults.defaultMode}` });
+
         const form = panel.createDiv({ cls: 'ert-timeline-session-panel__form' });
         const sessionSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
-        sessionSection.createDiv({ cls: 'ert-timeline-session-panel__section-title', text: 'Session' });
+        this.createSessionSectionTitle(sessionSection, 'pen-line', 'Session');
 
         const modeRow = sessionSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
         modeRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Mode' });
@@ -624,7 +719,7 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionModeSelect = modeSelect;
 
         const sprintSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
-        sprintSection.createDiv({ cls: 'ert-timeline-session-panel__section-title', text: 'Timer' });
+        this.createSessionSectionTitle(sprintSection, 'timer', 'Timer');
 
         const countdownRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row ert-timeline-session-panel__row--toggle' });
         const countdownLabel = countdownRow.createEl('label', { cls: 'ert-timeline-session-panel__toggle-label' });
@@ -658,7 +753,7 @@ export class RadialTimelineView extends ItemView {
         };
 
         const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
-        this.createSessionButton(actions, 'Start', 'ert-timeline-session-panel__primary', async () => {
+        this.createSessionIconButton(actions, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
             const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
             const parsedGoal = Number(goalInput.value);
             const goalMinutes = countdownToggle.checked && Number.isFinite(parsedGoal) && parsedGoal > 0
@@ -678,20 +773,23 @@ export class RadialTimelineView extends ItemView {
         const service = this.plugin.getWritingSessionService();
         const elapsedMs = service.getActiveElapsedMs();
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
         const progress = goalMs ? Math.min(1, elapsedMs / goalMs) : undefined;
+        const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
+        const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
 
-        const clock = panel.createDiv({ cls: 'ert-timeline-session-panel__clock' });
-        clock.setText(this.formatSessionClock(remainingMs ?? elapsedMs));
+        const clock = panel.createDiv({ cls: `ert-timeline-session-panel__clock is-${statusDisplay.tone}` });
+        this.applySessionProgressClass(clock, clockProgressStep);
+        clock.createDiv({ cls: 'ert-timeline-session-panel__clock-value', text: statusDisplay.headline });
+        clock.createDiv({ cls: 'ert-timeline-session-panel__clock-unit', text: statusDisplay.unit ? `${statusDisplay.unit} ${statusDisplay.detail}` : statusDisplay.detail });
         const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
         meta.setText([
-            active.pausedAt ? 'Paused' : 'Running',
+            statusDisplay.tone === 'complete' ? 'Complete' : active.pausedAt ? 'Paused' : 'Running',
             active.mode,
             active.bookTitle,
         ].filter(Boolean).join(' · '));
 
         const statusSection = panel.createDiv({ cls: 'ert-timeline-session-panel__section' });
-        statusSection.createDiv({ cls: 'ert-timeline-session-panel__section-title', text: 'Progress' });
+        this.createSessionSectionTitle(statusSection, 'activity', 'Progress');
         if (progress !== undefined) {
             const progressPercent = Math.round(progress * 100);
             const progressStep = this.getSessionProgressStep(progress);
@@ -707,7 +805,7 @@ export class RadialTimelineView extends ItemView {
 
         const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
         if (active.pausedAt) {
-            this.createSessionButton(actions, 'Resume', 'ert-timeline-session-panel__primary', async () => {
+            this.createSessionIconButton(actions, 'play', 'Resume session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
                 try {
                     await service.resume();
                     this.refreshWritingSessionControl();
@@ -716,7 +814,7 @@ export class RadialTimelineView extends ItemView {
                 }
             });
         } else {
-            this.createSessionButton(actions, 'Pause', 'ert-timeline-session-panel__secondary', async () => {
+            this.createSessionIconButton(actions, 'pause', 'Pause session', 'ert-timeline-session-panel__secondary ert-timeline-session-panel__icon-action', async () => {
                 try {
                     await service.pause();
                     this.refreshWritingSessionControl();
@@ -725,7 +823,7 @@ export class RadialTimelineView extends ItemView {
                 }
             });
         }
-        this.createSessionButton(actions, 'Stop', 'ert-timeline-session-panel__primary', async () => {
+        this.createSessionIconButton(actions, 'square', 'Stop and save session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
             try {
                 const record = await service.stop();
                 new Notice(`Saved ${record.mode} session (${this.formatSessionClock(record.elapsedMs)}).`);
@@ -734,7 +832,7 @@ export class RadialTimelineView extends ItemView {
                 new Notice(error instanceof Error ? error.message : 'Could not stop writing session.');
             }
         });
-        this.createSessionButton(actions, 'Discard', 'ert-timeline-session-panel__ghost', async () => {
+        this.createSessionIconButton(actions, 'trash-2', 'Discard session', 'ert-timeline-session-panel__ghost ert-timeline-session-panel__icon-action', async () => {
             try {
                 await service.discard();
                 new Notice('Discarded writing session.');

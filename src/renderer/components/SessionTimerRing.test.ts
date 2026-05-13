@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSessionTimerRingState, sessionTimerArcPath } from './SessionTimerRing';
+import { buildSessionTimerRingState, renderSessionTimerRing, sessionTimerArcPath } from './SessionTimerRing';
 
 describe('SessionTimerRing', () => {
     it('places the session ring directly outside the progress ring', () => {
@@ -20,5 +20,17 @@ describe('SessionTimerRing', () => {
         const path = sessionTimerArcPath(705.5, 1);
 
         expect(path.match(/ A /g)?.length).toBe(2);
+    });
+
+    it('quantizes timer color state without inline styles', () => {
+        const svg = renderSessionTimerRing({
+            radius: 705.5,
+            strokeWidth: 3,
+            progress: 0.51,
+            paused: false,
+        });
+
+        expect(svg).toContain('is-progress-50');
+        expect(svg).not.toContain('style=');
     });
 });

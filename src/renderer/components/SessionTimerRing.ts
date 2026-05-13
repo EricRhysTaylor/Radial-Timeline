@@ -5,7 +5,6 @@ export interface SessionTimerRingState {
     strokeWidth: number;
     progress: number;
     paused: boolean;
-    colorMixPercent: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -28,7 +27,6 @@ export function buildSessionTimerRingState(params: {
         strokeWidth: params.sessionRingWidth,
         progress,
         paused: !!params.paused,
-        colorMixPercent: Math.round(18 + (progress * 82)),
     };
 }
 
