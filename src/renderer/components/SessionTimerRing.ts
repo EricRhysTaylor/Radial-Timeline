@@ -21,7 +21,7 @@ export function buildSessionTimerRingState(params: {
 }): SessionTimerRingState | null {
     const targetMs = Math.max(1, params.targetMinutes) * 60000;
     const progress = clamp(params.elapsedMs / targetMs, 0, 1);
-    const radius = params.progressRadius + (params.progressRingWidth / 2) + (params.sessionRingWidth / 2);
+    const radius = params.progressRadius;
     return {
         radius,
         strokeWidth: params.sessionRingWidth,

@@ -68,8 +68,19 @@ describe('writing session timer font loading', () => {
         const indicatorsCss = readIndicatorsCss();
 
         expect(timelineViewSource).not.toContain("applyTooltip(sessionBtn, 'Start writing session'");
+        expect(timelineViewSource).not.toContain("sessionPanel.setAttribute('aria-label', 'Writing session')");
         expect(timelineViewSource).not.toContain('applyTooltip(presetButton');
         expect(timelineViewSource).toContain("previousPanelState === 'active'");
         expect(indicatorsCss).toContain('stroke: var(--color-red, red)');
+    });
+
+    it('keeps active popover copy lean and labels action buttons directly', () => {
+        const timelineViewSource = readTimelineViewSource();
+
+        expect(timelineViewSource).not.toContain("'square', 'Stop and save session'");
+        expect(timelineViewSource).toContain("'save', 'Save'");
+        expect(timelineViewSource).toContain("'pause', 'Pause'");
+        expect(timelineViewSource).toContain("'trash-2', 'Cancel'");
+        expect(timelineViewSource).not.toContain("active.pausedAt ? 'Paused' : 'Running'");
     });
 });

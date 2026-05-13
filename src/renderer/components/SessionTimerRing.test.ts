@@ -4,7 +4,7 @@ import { renderProgressRingBaseLayer } from '../utils/ProgressRing';
 import { buildSessionTimerRingState, renderSessionTimerRing, renderSessionTimerRingLayer, sessionTimerArcPath } from './SessionTimerRing';
 
 describe('SessionTimerRing', () => {
-    it('places the session ring directly outside the progress ring', () => {
+    it('places the session ring on the same radius as the progress ring', () => {
         const state = buildSessionTimerRingState({
             progressRadius: 700,
             progressRingWidth: 8,
@@ -13,7 +13,7 @@ describe('SessionTimerRing', () => {
             targetMinutes: 120,
         });
 
-        expect(state?.radius).toBe(705.5);
+        expect(state?.radius).toBe(700);
         expect(state?.strokeWidth).toBe(3);
         expect(state?.progress).toBe(0.25);
     });
@@ -30,6 +30,7 @@ describe('SessionTimerRing', () => {
         });
 
         expect(state).not.toBeNull();
+        expect(state?.radius).toBe(progressRadius);
         expect(SESSION_TIMER_RING_WIDTH).toBe(40);
         expect(state?.strokeWidth).toBe(40);
     });

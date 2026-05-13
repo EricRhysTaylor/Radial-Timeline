@@ -358,7 +358,6 @@ export class RadialTimelineView extends ItemView {
             const sessionPanel = document.createElement('div');
             sessionPanel.className = 'ert-timeline-session-panel ert-hidden';
             sessionPanel.setAttribute('role', 'dialog');
-            sessionPanel.setAttribute('aria-label', 'Writing session');
             document.body.appendChild(sessionPanel);
             this.register(() => sessionPanel.remove());
 
@@ -898,14 +897,13 @@ export class RadialTimelineView extends ItemView {
         clock.createDiv({ cls: 'ert-timeline-session-panel__clock-value', text: clockText });
         const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
         meta.setText([
-            statusDisplay.tone === 'complete' ? 'Complete' : active.pausedAt ? 'Paused' : 'Running',
             active.mode,
             active.bookTitle,
         ].filter(Boolean).join(' · '));
 
         const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
         if (active.pausedAt) {
-            this.createSessionIconButton(actions, 'play', 'Resume session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
+            this.createSessionIconButton(actions, 'play', 'Resume', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
                 try {
                     await service.resume();
                     this.refreshWritingSessionControl();
@@ -914,7 +912,7 @@ export class RadialTimelineView extends ItemView {
                 }
             });
         } else {
-            this.createSessionIconButton(actions, 'pause', 'Pause session', 'ert-timeline-session-panel__secondary ert-timeline-session-panel__icon-action', async () => {
+            this.createSessionIconButton(actions, 'pause', 'Pause', 'ert-timeline-session-panel__secondary ert-timeline-session-panel__icon-action', async () => {
                 try {
                     await service.pause();
                     this.refreshWritingSessionControl();
@@ -923,7 +921,7 @@ export class RadialTimelineView extends ItemView {
                 }
             });
         }
-        this.createSessionIconButton(actions, 'square', 'Stop and save session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
+        this.createSessionIconButton(actions, 'save', 'Save', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
             try {
                 const record = await service.stop();
                 new Notice(`Saved ${record.mode} session (${this.formatSessionClock(record.elapsedMs)}).`);
@@ -932,13 +930,13 @@ export class RadialTimelineView extends ItemView {
                 new Notice(error instanceof Error ? error.message : 'Could not stop writing session.');
             }
         });
-        this.createSessionIconButton(actions, 'trash-2', 'Discard session', 'ert-timeline-session-panel__ghost ert-timeline-session-panel__icon-action', async () => {
+        this.createSessionIconButton(actions, 'trash-2', 'Cancel', 'ert-timeline-session-panel__ghost ert-timeline-session-panel__icon-action', async () => {
             try {
                 await service.discard();
-                new Notice('Discarded writing session.');
+                new Notice('Cancelled writing session.');
                 this.refreshWritingSessionControl();
             } catch (error) {
-                new Notice(error instanceof Error ? error.message : 'Could not discard writing session.');
+                new Notice(error instanceof Error ? error.message : 'Could not cancel writing session.');
             }
         });
     }
