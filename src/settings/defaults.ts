@@ -240,6 +240,12 @@ Chapter:`,
     runtimeLongPauseSeconds: 5,
     runtimeMomentSeconds: 4,
     runtimeSilenceSeconds: 5,
+    writingSessions: {
+        defaults: {
+            defaultMode: 'drafting',
+        },
+        records: [],
+    },
 
     // Export / Pandoc defaults
     pandocPath: '',

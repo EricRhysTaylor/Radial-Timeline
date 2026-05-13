@@ -395,6 +395,11 @@ export interface TranslationKeys {
                 desc: string;
             };
         };
+        goalsSessions: {
+            header: { name: string; desc: string; };
+            draftingWpm: { name: string; desc: string; };
+            dailyMinutes: { name: string; desc: string; };
+        };
         inquiry: {
             contribution: { excluded: string; summary: string; full: string; };
             corpus: { errorEmptyMax: string; errorSketchyMin: string; errorMediumMin: string; errorSubstantiveMin: string; resetTooltip: string; name: string; desc: string; };
@@ -543,6 +548,12 @@ export interface TranslationKeys {
         gossamerScoreManager: string;
         gossamerAnalysis: string;
         authorProgressReport: string;
+        startWritingSession: string;
+        pauseWritingSession: string;
+        resumeWritingSession: string;
+        stopWritingSession: string;
+        discardWritingSession: string;
+        showDailyWritingStats: string;
     };
     common: {
         yes: string;
@@ -1764,7 +1775,7 @@ export const en: TranslationKeys = {
             },
             showEstimate: {
                 name: 'Show estimated completion date',
-                desc: 'Display a tick mark and label on the timeline for the estimated completion date. Tip: When you complete a scene, in addition to setting the Status to Complete, also set the Due date to the same day the scene was completed to improve the estimate.',
+                desc: 'Display a tick mark and label on the timeline for the estimated completion date. Tip: When you complete a scene, set Status to Complete and Due to the completion date to improve the estimate. The timeline right-click Complete action does this automatically.',
             },
             debounce: {
                 name: 'Metadata refresh debounce (ms)',
@@ -2197,6 +2208,20 @@ export const en: TranslationKeys = {
                 alreadyDefaultTooltip: 'Already default',
                 setDefaultTooltip: 'Set as default',
                 desc: 'Select, rename, duplicate, delete, or set as default. Current default: {{current}}',
+            },
+        },
+        goalsSessions: {
+            header: {
+                name: 'Goals & Sessions',
+                desc: 'Set your drafting pace and daily writing target. Radial Timeline uses these values for basic session estimates, completion planning, and future writing sessions.',
+            },
+            draftingWpm: {
+                name: 'Average drafting pace',
+                desc: 'Optional words per minute for new drafting. Used for writing-time estimates and completion planning.',
+            },
+            dailyMinutes: {
+                name: 'Daily session target',
+                desc: 'Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.',
             },
         },
         inquiry: {
@@ -2679,6 +2704,12 @@ export const en: TranslationKeys = {
         gossamerScoreManager: 'Gossamer score manager',
         gossamerAnalysis: 'Gossamer analysis',
         authorProgressReport: 'Author progress report (APR)',
+        startWritingSession: 'Start writing session',
+        pauseWritingSession: 'Pause writing session',
+        resumeWritingSession: 'Resume writing session',
+        stopWritingSession: 'Stop writing session',
+        discardWritingSession: 'Discard writing session',
+        showDailyWritingStats: 'Show daily writing stats',
     },
     common: {
         yes: 'Yes',

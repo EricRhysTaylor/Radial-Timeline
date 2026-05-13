@@ -99,7 +99,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     };
     
     // ─────────────────────────────────────────────────────────────────────────
-    // Section Headers — two sibling Pro cards: Runtime estimation + Writing schedule
+    // Runtime estimation remains Pro-owned. Writing/session goals are rendered
+    // separately in Core -> Goals & Sessions and may still be read by exports.
     // ─────────────────────────────────────────────────────────────────────────
     const proContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     if (!hasProfessional) {
@@ -125,30 +126,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // Content host within runtime card — all runtime rows re-render inside this element
     const runtimeBody = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
-    // Writing schedule sibling card
-    const scheduleContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    if (!hasProfessional) {
-        scheduleContainer.addClass('ert-pro-locked');
-    }
-
-    const scheduleHeader = new Setting(scheduleContainer)
-        .setName(t('settings.runtime.writingSchedule.header.name'))
-        .setHeading()
-        .setDesc(t('settings.runtime.writingSchedule.header.desc'));
-    addWikiLink(scheduleHeader, 'Settings#runtime-estimation');
-    const scheduleHeaderLayout = applyErtHeaderLayout(scheduleHeader);
-    if (scheduleHeaderLayout) {
-        scheduleHeaderLayout.header.removeClass(ERT_CLASSES.HEADER_NO_LEFT);
-        const badgeEl = scheduleHeaderLayout.left.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(badgeIcon, 'signature');
-        badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.runtime.writingSchedule.header.badgeText') });
-    }
-
-    const scheduleBody = scheduleContainer.createDiv({ cls: ERT_CLASSES.STACK });
-
     const addProRow = (setting: Setting) => setting;
 
     // Flash helper for input validation
@@ -163,7 +140,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const renderConditionalContent = () => {
         const scrollState = captureScrollState();
         runtimeBody.empty();
-        scheduleBody.empty();
 
         ensureProfiles();
         const profiles = plugin.settings.runtimeRateProfiles || [];
@@ -174,7 +150,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         const headerContainer = runtimeBody.createDiv({ cls: ERT_CLASSES.STACK });
         const ratesRow = runtimeBody.createDiv({ cls: ERT_CLASSES.STACK });
         const patternsRow = runtimeBody.createDiv({ cls: ERT_CLASSES.STACK });
-        const sessionPlanningRow = scheduleBody.createDiv({ cls: ERT_CLASSES.STACK });
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {
             const currentProfiles = plugin.settings.runtimeRateProfiles || [];
@@ -199,7 +174,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         const renderDetails = () => {
             const scrollState = captureScrollState();
             ratesRow.empty();
-            sessionPlanningRow.empty();
             patternsRow.empty();
             const selectedProfile = getSelectedProfile();
             if (!selectedProfile) {
@@ -336,53 +310,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         });
                     });
             }
-
-            // Writing schedule fields (rendered into sibling Pro card)
-            const session = selectedProfile.sessionPlanning || {};
-
-            addProRow(new Setting(sessionPlanningRow))
-                .setName(t('settings.runtime.draftingWpm.name'))
-                .setDesc(t('settings.runtime.draftingWpm.desc'))
-                .addText((text: TextComponent) => {
-                    text.inputEl.type = 'number';
-                    text.inputEl.min = '0';
-                    text.inputEl.max = '1000';
-                    text.inputEl.addClass('ert-input--xs');
-                    text.setValue(session.draftingWpm ? String(session.draftingWpm) : '');
-                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                        const num = parseInt(text.getValue());
-                        if (text.getValue() && (!Number.isFinite(num) || num < 0 || num > 1000)) {
-                            flash(text.inputEl, 'error');
-                            return;
-                        }
-                        await updateProfile((p) => {
-                            p.sessionPlanning = { ...p.sessionPlanning, draftingWpm: num || undefined };
-                        });
-                        flash(text.inputEl, 'success');
-                    });
-                });
-
-            addProRow(new Setting(sessionPlanningRow))
-                .setName(t('settings.runtime.dailyMinutes.name'))
-                .setDesc(t('settings.runtime.dailyMinutes.desc'))
-                .addText((text: TextComponent) => {
-                    text.inputEl.type = 'number';
-                    text.inputEl.min = '0';
-                    text.inputEl.max = '1440';
-                    text.inputEl.addClass('ert-input--xs');
-                    text.setValue(session.dailyMinutes ? String(session.dailyMinutes) : '');
-                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                        const num = parseInt(text.getValue());
-                        if (text.getValue() && (!Number.isFinite(num) || num < 0 || num > 1440)) {
-                            flash(text.inputEl, 'error');
-                            return;
-                        }
-                        await updateProfile((p) => {
-                            p.sessionPlanning = { ...p.sessionPlanning, dailyMinutes: num || undefined };
-                        });
-                        flash(text.inputEl, 'success');
-                    });
-                });
 
             // Explicit Duration Patterns (always shown when enabled)
             const patternsInfo = patternsRow.createDiv({

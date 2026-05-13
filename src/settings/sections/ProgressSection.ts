@@ -764,9 +764,8 @@ export function renderCompletionEstimatePreview(params: {
 export function renderProgressSection(params: {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
-    onCompletionPreviewRefresh?: () => void;
 }): void {
-    const { plugin, containerEl, onCompletionPreviewRefresh } = params;
+    const { plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 
     const progressHeading = new ObsidianSetting(containerEl)
@@ -890,6 +889,24 @@ export function renderProgressSection(params: {
         }
     }
 
+    // --- Show completion estimate ---
+    // Estimated completion uses a dot instead of square, different from target ticks
+    const estimateToggle = new ObsidianSetting(stackEl)
+        .setDesc(t('settings.configuration.showEstimate.desc'))
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.showCompletionEstimate ?? true)
+            .onChange(async (value) => {
+                plugin.settings.showCompletionEstimate = value;
+                await plugin.saveSettings();
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: estimate dot on timeline
+            }));
+
+    // Add estimate icon (line with dot at end, like the estimated completion tick)
+    estimateToggle.nameEl.empty();
+    const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
+    estimateToggle.nameEl.appendChild(estimateIcon);
+    estimateToggle.nameEl.appendText(` ${t('settings.configuration.showEstimate.name')}`);
+
     // --- Zero draft mode toggle ---
     const zeroStageColor = getStageColor(plugin, 'Zero');
     const zeroDraftSetting = new ObsidianSetting(stackEl)
@@ -914,80 +931,5 @@ export function renderProgressSection(params: {
         marginTop: '8px',
         backgroundColor: isEnabled ? `${zeroStageColor}20` : 'transparent'
     });
-
-    // --- Show completion estimate ---
-    // Estimated completion uses a dot instead of square, different from target ticks
-    const estimateToggle = new ObsidianSetting(stackEl)
-        .setDesc(t('settings.configuration.showEstimate.desc'))
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showCompletionEstimate ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showCompletionEstimate = value;
-                await plugin.saveSettings();
-                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: estimate dot on timeline
-            }));
-
-    // Add estimate icon (line with dot at end, like the estimated completion tick)
-    estimateToggle.nameEl.empty();
-    const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
-    estimateToggle.nameEl.appendChild(estimateIcon);
-    estimateToggle.nameEl.appendText(` ${t('settings.configuration.showEstimate.name')}`);
-
-    // --- Completion estimate window (days) ---
-    const windowSetting = new ObsidianSetting(stackEl)
-        .setName('Estimate window')
-        .addText(text => {
-            const current = String(plugin.settings.completionEstimateWindowDays ?? 30);
-            text.inputEl.type = 'number';
-            text.inputEl.min = '14';
-            text.inputEl.max = '90';
-            text.inputEl.addClass('ert-input--xs');
-            text.setValue(current);
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const raw = Number(text.getValue().trim());
-                if (!Number.isFinite(raw)) {
-                    text.setValue(String(plugin.settings.completionEstimateWindowDays ?? 30));
-                    return;
-                }
-                const clamped = Math.min(90, Math.max(14, Math.round(raw)));
-                plugin.settings.completionEstimateWindowDays = clamped;
-                text.setValue(String(clamped));
-                updateWindowDesc(clamped);
-                await plugin.saveSettings();
-                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: estimate calculation affects timeline
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => {
-                void handleBlur();
-                onCompletionPreviewRefresh?.();
-            });
-        });
-
-    // Dynamic description with bold N value + tip line
-    const descEl = windowSetting.descEl;
-    descEl.empty();
-    const primaryLine = descEl.createSpan({ cls: 'ert-estimate-window-desc' });
-    const tipLine = descEl.createDiv({ cls: 'ert-estimate-window-tip' });
-    tipLine.setText('Larger windows smooth out bursts. Smaller windows react faster.');
-
-    const updateWindowDesc = (n: number) => {
-        primaryLine.empty();
-        primaryLine.appendText('Projects your finish date based on your writing pace over the last ');
-        const updatedN = primaryLine.createSpan({ cls: 'ert-estimate-window-n' });
-        updatedN.setText(`${n}`);
-        primaryLine.appendText(' days.');
-        // Brief highlight animation on change
-        updatedN.addClass('ert-estimate-window-n--flash');
-        setTimeout(() => updatedN.removeClass('ert-estimate-window-n--flash'), 600);
-    };
-    updateWindowDesc(plugin.settings.completionEstimateWindowDays ?? 30);
 
 }

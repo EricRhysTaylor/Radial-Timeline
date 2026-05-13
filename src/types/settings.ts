@@ -301,6 +301,45 @@ export interface RuntimeRateProfile {
     };
 }
 
+export type WritingSessionMode = 'drafting' | 'revising' | 'editing' | 'planning';
+
+export interface WritingSessionDefaults {
+    defaultMode: WritingSessionMode;
+}
+
+export interface ActiveWritingSession {
+    id: string;
+    bookId?: string;
+    bookTitle?: string;
+    mode: WritingSessionMode;
+    startedAt: string;
+    lastResumedAt: string;
+    pausedAt?: string;
+    elapsedMsBeforePause: number;
+    goalMinutes?: number;
+}
+
+export interface WritingSessionRecord {
+    id: string;
+    bookId?: string;
+    bookTitle?: string;
+    mode: WritingSessionMode;
+    startedAt: string;
+    endedAt: string;
+    elapsedMs: number;
+    wordsAdded?: number;
+    scenesCompleted?: number;
+    pagesEdited?: number;
+    note?: string;
+    source: 'timer' | 'manual';
+}
+
+export interface WritingSessionsSettings {
+    defaults: WritingSessionDefaults;
+    active?: ActiveWritingSession;
+    records: WritingSessionRecord[];
+}
+
 export interface LlmTimingStats {
     averageTokenPerSec: number;
     lastJobTokenCount: number;
@@ -881,6 +920,9 @@ export interface RadialTimelineSettings {
     runtimeLongPauseSeconds?: number;
     runtimeMomentSeconds?: number;
     runtimeSilenceSeconds?: number;
+
+    // Local writing sessions and accountability stats
+    writingSessions?: WritingSessionsSettings;
 
     // LLM Timing Calibration (for progress bar animation)
     pulseTimingStats?: LlmTimingStats;

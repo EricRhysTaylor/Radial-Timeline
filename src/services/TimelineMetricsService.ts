@@ -5,6 +5,8 @@ import { STAGE_ORDER } from '../utils/constants';
 import { parseSceneTitle } from '../utils/text';
 import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
 
+const COMPLETION_ESTIMATE_WINDOW_DAYS = 30;
+
 export interface CompletionEstimate {
     date: Date | null;
     total: number;
@@ -56,7 +58,7 @@ export class TimelineMetricsService {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayTime = today.getTime();
-        const windowDays = this.clampWindowDays(this.plugin.settings.completionEstimateWindowDays ?? 30);
+        const windowDays = COMPLETION_ESTIMATE_WINDOW_DAYS;
         const windowStartTime = todayTime - windowDays * 24 * 60 * 60 * 1000;
 
         const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
@@ -326,8 +328,4 @@ export class TimelineMetricsService {
         return 'stalled';
     }
 
-    private clampWindowDays(value: number): number {
-        if (!Number.isFinite(value)) return 30;
-        return Math.min(90, Math.max(14, Math.round(value)));
-    }
 }

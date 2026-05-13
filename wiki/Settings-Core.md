@@ -28,9 +28,8 @@ Manage your project milestones and status tracking.
 
 Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
 
-*   **Zero draft mode**: A focused mode for first-draft writing. Intercepts clicks on scenes with `Publish Stage = Zero` and `Status = Complete` to open a `Pending Edits` panel instead of the full note.
 *   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
-*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active stage within the last N days / N (scenes/day).
+*   **Zero draft mode**: A focused mode for first-draft writing. Intercepts clicks on scenes with `Publish Stage = Zero` and `Status = Complete` to open a `Pending Edits` panel instead of the full note.
 
 **How the completion estimate works**
 
@@ -38,10 +37,22 @@ Target dates are validated to ensure proper stage ordering. Overdue dates are hi
 *   Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (for example, `Scene 70`) set a floor even if few notes exist.
 *   Remaining: Total - Completed (stage-scoped, deduped by path, clamped to `>= 0`).
 *   Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows `?`.
+*   Pace window: The estimate uses completions from the last 30 days.
 *   Staleness colors: fresh (`<= 7d`), warn (`8-10d`), late (`11-20d`), stalled (`>20d` or no pace/insufficient samples, red `?`).
 
 > [!NOTE]
 > Learn more in [Workflow Overview](Getting-Started#daily-workflow) and [Progress Mode](Progress-Mode).
+
+<a name="goals--sessions"></a>
+## Goals & Sessions
+
+Goals & Sessions is a Core workflow for writing accountability and basic planning.
+
+*   **Average drafting pace**: Optional words-per-minute estimate for new drafting. Used for writing-time estimates and completion planning.
+*   **Daily session target**: Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.
+*   **Timeline Start control**: The compact Start button in the timeline title bar opens Goals & Sessions in this stage. Later stages will turn it into the live writing-session timer.
+
+Runtime and export tools may read these values, but Goals & Sessions owns the writing/session estimate settings.
 
 <a name="runtime-estimation"></a>
 ## Runtime Estimation
@@ -63,12 +74,6 @@ Runtime estimation is a Pro workflow configured from the Core tab.
 **Novel/Audiobook mode settings:**
 
 *   **Narration words per minute**: Reading pace for all content (default 150).
-
-**Session planning (optional):**
-
-*   **Drafting words per minute**: Your writing speed for completion projections.
-*   **Daily minutes available**: For `45 min/day` style estimates.
-*   **Runtime arc cap default**: Controls Chronologue Runtime sub-mode arc scaling. Lower values emphasize shorter scenes.
 
 > [!NOTE]
 > See [Pro](Pro) for the full runtime workflow and [Runtime](Chronologue-Mode#runtime-mode-pro) for the visualization.

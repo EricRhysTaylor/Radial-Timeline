@@ -56,6 +56,7 @@ import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { PublishingValidationService } from './services/PublishingValidationService';
 import { TimelineAuditAiService } from './services/TimelineAuditAiService';
+import { WritingSessionService } from './services/WritingSessionService';
 import { ensureBundledPandocLayoutsRegistered, ensureSpecDrivenBundledFictionTemplatesCurrent, setBundledFontSourcePath, setPandocFontPathsForVault } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import type { GossamerRunRecord } from './utils/gossamer';
@@ -136,6 +137,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private beatsProcessingService!: BeatsProcessingService;
     private themeService!: ThemeService;
     private timelineMetricsService!: TimelineMetricsService;
+    private writingSessionService!: WritingSessionService;
     private settingsService!: SettingsService;
     private publishingValidationService!: PublishingValidationService;
     private timelineAuditAiService!: TimelineAuditAiService;
@@ -418,6 +420,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
+        this.writingSessionService = new WritingSessionService(this);
         this.publishingValidationService = new PublishingValidationService(this);
         this.timelineAuditAiService = new TimelineAuditAiService(this);
         
@@ -501,6 +504,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
     public getOutputProfileStore(): OutputProfileStore { return this.outputProfileStore; }
     public getPublishingValidationService(): PublishingValidationService { return this.publishingValidationService; }
+    public getWritingSessionService(): WritingSessionService { return this.writingSessionService; }
     public openManuscriptExportModal(): void { this.commandRegistrar.openManuscriptExportModal(); }
 
     public consumeInquiryFreshLaunchPending(): boolean {

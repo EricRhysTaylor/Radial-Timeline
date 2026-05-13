@@ -200,6 +200,122 @@ export class CommandRegistrar {
                 new AuthorProgressModal(this.app, this.plugin).open();
             }
         });
+
+        this.plugin.addCommand({
+            id: 'start-writing-session',
+            name: t('commands.startWritingSession'),
+            callback: () => {
+                void this.startWritingSession();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'pause-writing-session',
+            name: t('commands.pauseWritingSession'),
+            callback: () => {
+                void this.pauseWritingSession();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'resume-writing-session',
+            name: t('commands.resumeWritingSession'),
+            callback: () => {
+                void this.resumeWritingSession();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'stop-writing-session',
+            name: t('commands.stopWritingSession'),
+            callback: () => {
+                void this.stopWritingSession();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'discard-writing-session',
+            name: t('commands.discardWritingSession'),
+            callback: () => {
+                void this.discardWritingSession();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'show-daily-writing-stats',
+            name: t('commands.showDailyWritingStats'),
+            callback: () => {
+                void this.showDailyWritingStats();
+            }
+        });
+    }
+
+    private formatMinutes(ms: number): string {
+        const minutes = Math.max(0, Math.round(ms / 60000));
+        if (minutes < 60) return `${minutes} min`;
+        const hours = Math.floor(minutes / 60);
+        const remainder = minutes % 60;
+        return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`;
+    }
+
+    private async startWritingSession(): Promise<void> {
+        try {
+            const session = await this.plugin.getWritingSessionService().start();
+            new Notice(`Started ${session.mode} session${session.bookTitle ? ` for ${session.bookTitle}` : ''}.`);
+        } catch (error) {
+            new Notice(error instanceof Error ? error.message : 'Could not start writing session.');
+        }
+    }
+
+    private async pauseWritingSession(): Promise<void> {
+        try {
+            const session = await this.plugin.getWritingSessionService().pause();
+            new Notice(`Paused writing session at ${this.formatMinutes(session.elapsedMsBeforePause)}.`);
+        } catch (error) {
+            new Notice(error instanceof Error ? error.message : 'Could not pause writing session.');
+        }
+    }
+
+    private async resumeWritingSession(): Promise<void> {
+        try {
+            await this.plugin.getWritingSessionService().resume();
+            new Notice('Resumed writing session.');
+        } catch (error) {
+            new Notice(error instanceof Error ? error.message : 'Could not resume writing session.');
+        }
+    }
+
+    private async stopWritingSession(): Promise<void> {
+        try {
+            const record = await this.plugin.getWritingSessionService().stop();
+            new Notice(`Saved ${record.mode} session (${this.formatMinutes(record.elapsedMs)}).`);
+        } catch (error) {
+            new Notice(error instanceof Error ? error.message : 'Could not stop writing session.');
+        }
+    }
+
+    private async discardWritingSession(): Promise<void> {
+        try {
+            await this.plugin.getWritingSessionService().discard();
+            new Notice('Discarded writing session.');
+        } catch (error) {
+            new Notice(error instanceof Error ? error.message : 'Could not discard writing session.');
+        }
+    }
+
+    private async showDailyWritingStats(): Promise<void> {
+        try {
+            const stats = await this.plugin.getWritingSessionService().getDailyStats();
+            const completed = stats.scenesCompletedByStage;
+            new Notice(
+                `Today: ${stats.minutesLogged} min, ${stats.sessionsCompleted} session(s), `
+                + `${stats.wordsDrafted} drafted words, scenes complete `
+                + `Zero ${completed.Zero}, Author ${completed.Author}, House ${completed.House}, Press ${completed.Press}.`,
+                8000
+            );
+        } catch (error) {
+            new Notice(error instanceof Error ? error.message : 'Could not build daily writing stats.');
+        }
     }
 
     private resolveCleanupOptions(result: ManuscriptModalResult): ManuscriptExportCleanupOptions {

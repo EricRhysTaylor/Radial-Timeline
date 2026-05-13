@@ -309,6 +309,30 @@ export class RadialTimelineView extends ItemView {
                 this.plugin.openManuscriptExportModal();
             });
 
+            const sessionBtn = document.createElement('button');
+            sessionBtn.className = 'ert-timeline-session clickable-icon';
+            sessionBtn.type = 'button';
+            sessionBtn.setAttribute('aria-label', 'Start writing session');
+            const sessionIcon = document.createElement('span');
+            sessionIcon.className = 'ert-timeline-session__icon';
+            setIcon(sessionIcon, 'clock');
+            const sessionLabel = document.createElement('span');
+            sessionLabel.className = 'ert-timeline-session__label';
+            sessionLabel.textContent = 'Start';
+            sessionBtn.appendChild(sessionIcon);
+            sessionBtn.appendChild(sessionLabel);
+            applyTooltip(sessionBtn, 'Start writing session', 'bottom');
+            this.registerDomEvent(sessionBtn, 'click', (evt: MouseEvent) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+                if (setting) {
+                    setting.open();
+                    setting.openTabById('radial-timeline');
+                }
+                this.plugin.settingsTab?.revealSettingsSection('core', 'goals-sessions');
+            });
+
             let hideLegendTimer: number | null = null;
             const showLegend = () => {
                 if (hideLegendTimer !== null) {
@@ -381,6 +405,16 @@ export class RadialTimelineView extends ItemView {
                 actionsEl.parentElement.insertBefore(wrapper, actionsEl);
             } else {
                 headerEl.appendChild(wrapper);
+            }
+
+            const navButtonsEl = headerEl.querySelector('.view-header-nav-buttons') as HTMLElement | null;
+            const titleContainerEl = headerEl.querySelector('.view-header-title-container') as HTMLElement | null;
+            if (navButtonsEl?.parentElement) {
+                navButtonsEl.parentElement.insertBefore(sessionBtn, navButtonsEl.nextSibling);
+            } else if (titleContainerEl?.parentElement) {
+                titleContainerEl.parentElement.insertBefore(sessionBtn, titleContainerEl);
+            } else {
+                headerEl.insertBefore(sessionBtn, headerEl.firstChild);
             }
 
             this.bookSwitcherEl = wrapper;

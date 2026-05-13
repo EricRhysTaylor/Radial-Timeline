@@ -1033,6 +1033,35 @@
   cursor: default;
 }
 
+.ert-timeline-session.clickable-icon {
+  width: auto;
+  height: 24px;
+  padding-block: 0;
+  padding-inline: var(--size-4-2);
+  margin-inline-start: var(--size-4-1);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-2-1);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+}
+
+.ert-timeline-session.clickable-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ert-timeline-session.clickable-icon:hover {
+  color: var(--text-normal);
+}
+
+.ert-timeline-session__label {
+  white-space: nowrap;
+}
+
 .ert-timeline-search {
   --ert-timeline-search-input-x: 7px;
   --ert-timeline-search-icon-slot: 22px;

@@ -18,6 +18,7 @@ import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 
 import { renderRuntimeSection } from './sections/RuntimeSection';
+import { renderGoalsSessionsSection } from './sections/GoalsSessionsSection';
 import { renderProEntitlementPanel } from './sections/ProEntitlementPanel';
 import { getProEntitlement } from './proEntitlement';
 import { renderProFeaturePanels } from './sections/ProFeaturePanels';
@@ -789,7 +790,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             features: [
                 { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, profiles, and advanced fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
-                { icon: 'timer', text: 'Runtime estimation — calibrate pacing profiles and estimate reading or listening time.' },
+                { icon: 'timer', text: 'Goals & sessions — calibrate drafting pace, daily targets, and completion estimates.' },
             ]
         });
     }
@@ -968,11 +969,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         let chronologueSection: HTMLElement | null = null;
         let generalSection: HTMLElement | null = null;
         let progressSection: HTMLElement | null = null;
+        let goalsSessionsSection: HTMLElement | null = null;
 
         const quickLinksRow = coreStack.createDiv();
 
         const completionRow = coreStack.createDiv();
-        const completionPreviewRefresh = renderCompletionEstimatePreview({
+        renderCompletionEstimatePreview({
             app: this.app,
             plugin: this.plugin,
             containerEl: completionRow,
@@ -1002,9 +1004,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const progressStatusStack = progressStatusSection.createDiv({ cls: ERT_CLASSES.STACK });
         renderProgressSection({
             plugin: this.plugin,
-            containerEl: progressStatusStack,
-            onCompletionPreviewRefresh: completionPreviewRefresh
+            containerEl: progressStatusStack
         });
+
+        goalsSessionsSection = searchableContent.createDiv({
+            attr: { [ERT_DATA.SECTION]: 'goals-sessions' }
+        });
+        renderGoalsSessionsSection({ plugin: this.plugin, containerEl: goalsSessionsSection });
 
         const runtimeSection = searchableContent.createDiv({
             cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.STACK}`,
@@ -1047,6 +1053,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.renderCoreQuickLinks(quickLinksRow, [
             { label: 'Books', target: generalSection },
             { label: 'Progress', target: progressSection },
+            { label: 'Goals & Sessions', target: goalsSessionsSection },
             { label: 'Story beats', target: beatsStorySection },
             { label: 'Chronology', target: chronologueSection },
             { label: 'Backdrop', target: backdropSection }
