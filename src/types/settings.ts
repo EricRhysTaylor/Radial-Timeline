@@ -302,9 +302,12 @@ export interface RuntimeRateProfile {
 }
 
 export type WritingSessionMode = 'drafting' | 'revising' | 'editing' | 'planning';
+export type WritingSessionStage = 'Zero' | 'Author' | 'House' | 'Press' | 'Mixed';
+export type WritingSessionStagePreference = WritingSessionStage | 'auto';
 
 export interface WritingSessionDefaults {
     defaultMode: WritingSessionMode;
+    defaultStage?: WritingSessionStagePreference;
 }
 
 export interface ActiveWritingSession {
@@ -312,6 +315,8 @@ export interface ActiveWritingSession {
     bookId?: string;
     bookTitle?: string;
     mode: WritingSessionMode;
+    stage?: WritingSessionStage;
+    stagePreference?: WritingSessionStagePreference;
     startedAt: string;
     lastResumedAt: string;
     pausedAt?: string;
@@ -324,11 +329,14 @@ export interface WritingSessionRecord {
     bookId?: string;
     bookTitle?: string;
     mode: WritingSessionMode;
+    stage?: WritingSessionStage;
+    stagePreference?: WritingSessionStagePreference;
     startedAt: string;
     endedAt: string;
     elapsedMs: number;
     wordsAdded?: number;
     scenesCompleted?: number;
+    scenePaths?: string[];
     pagesEdited?: number;
     note?: string;
     source: 'timer' | 'manual';

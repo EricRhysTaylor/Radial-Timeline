@@ -1,7 +1,7 @@
 import { ButtonComponent, Modal, Setting, TextAreaComponent, TextComponent } from 'obsidian';
 import type { App } from 'obsidian';
 import type { ActiveWritingSession } from '../types/settings';
-import type { WritingSessionCompletionInput } from '../services/WritingSessionService';
+import type { WritingSessionCompletionInput, WritingSessionSceneSuggestion } from '../services/WritingSessionService';
 
 export interface WritingSessionCompletionResult extends WritingSessionCompletionInput {
     elapsedMinutes: number;
@@ -25,9 +25,32 @@ export class WritingSessionCompletionModal extends Modal {
         app: App,
         private active: ActiveWritingSession,
         private elapsedMs: number,
+        private sceneSuggestions: WritingSessionSceneSuggestion[],
         private onSubmit: (result: WritingSessionCompletionResult) => Promise<void>
     ) {
         super(app);
+    }
+
+    private formatMode(): string {
+        if (this.active.mode === 'drafting') return 'fresh drafting';
+        if (this.active.mode === 'revising') return 'revision';
+        if (this.active.mode === 'editing') return 'line edit';
+        return 'planning';
+    }
+
+    private formatSceneSuggestionDetail(suggestion: WritingSessionSceneSuggestion): string {
+        const reasonLabel = suggestion.reason === 'active'
+            ? 'active tab'
+            : suggestion.reason === 'open'
+                ? 'open tab'
+                : suggestion.reason === 'working'
+                    ? 'marked Working'
+                    : 'modified during session';
+        return [
+            suggestion.stage,
+            suggestion.status,
+            reasonLabel,
+        ].filter(Boolean).join(' · ');
     }
 
     onOpen(): void {
@@ -43,7 +66,7 @@ export class WritingSessionCompletionModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Save writing session' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: [this.active.mode, this.active.bookTitle].filter(Boolean).join(' · ') || 'Writing session',
+            text: [this.formatMode(), this.active.stage, this.active.bookTitle].filter(Boolean).join(' · ') || 'Writing session',
         });
 
         const form = contentEl.createDiv({ cls: 'ert-stack' });
@@ -52,6 +75,7 @@ export class WritingSessionCompletionModal extends Modal {
         let scenesCompleted: number | undefined;
         let pagesEdited: number | undefined;
         let note = '';
+        const selectedScenePaths = new Set(this.sceneSuggestions.map(suggestion => suggestion.path));
 
         const wireNumber = (setting: Setting, defaultValue: string, onChange: (value: string) => void): void => {
             setting.addText((text: TextComponent) => {
@@ -105,6 +129,23 @@ export class WritingSessionCompletionModal extends Modal {
             value => { pagesEdited = parseOptionalInteger(value); }
         );
 
+        if (this.sceneSuggestions.length > 0) {
+            const sceneSection = form.createDiv({ cls: 'ert-writing-session-scenes' });
+            sceneSection.createDiv({ cls: 'ert-writing-session-scenes__title', text: 'Touched scenes' });
+            this.sceneSuggestions.forEach(suggestion => {
+                new Setting(sceneSection)
+                    .setName(suggestion.title || suggestion.path)
+                    .setDesc(this.formatSceneSuggestionDetail(suggestion))
+                    .addToggle(toggle => {
+                        toggle.setValue(true);
+                        toggle.onChange(value => {
+                            if (value) selectedScenePaths.add(suggestion.path);
+                            else selectedScenePaths.delete(suggestion.path);
+                        });
+                    });
+            });
+        }
+
         new Setting(form)
             .setName('Note')
             .setDesc('Optional private note about what you worked on.')
@@ -122,6 +163,7 @@ export class WritingSessionCompletionModal extends Modal {
                 elapsedMs: elapsedMinutes * 60000,
                 wordsAdded,
                 scenesCompleted,
+                scenePaths: [...selectedScenePaths],
                 pagesEdited,
                 note,
             };

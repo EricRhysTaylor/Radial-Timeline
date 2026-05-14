@@ -74,16 +74,34 @@ describe('providerPricing', () => {
         expect(pricing.cacheReadPer1M).toBe(0.25);
     });
 
-    it('stores GPT-5.5 API coming-soon pricing without making it a picker default', () => {
+    it('stores GPT-5.5 standard pricing with cached input support', () => {
         const standard = getProviderPricing('openai', 'gpt-5.5');
-        const pro = getProviderPricing('openai', 'gpt-5.5-pro');
 
         expect(standard.inputPer1M).toBe(5);
         expect(standard.outputPer1M).toBe(30);
         expect(standard.cacheReadPer1M).toBe(0.5);
-        expect(pro.inputPer1M).toBe(30);
-        expect(pro.outputPer1M).toBe(180);
-        expect(pro.cacheReadPer1M).toBeUndefined();
+        expect(standard.longContext?.thresholdInputTokens).toBe(272_000);
+        expect(standard.longContext?.inputPer1M).toBe(10);
+        expect(standard.longContext?.outputPer1M).toBe(45);
+        expect(standard.longContext?.cacheReadPer1M).toBe(1);
+    });
+
+    it('does not include GPT-5.5 Pro in built-in pricing', () => {
+        expect(() => getProviderPricing('openai', 'gpt-5.5-pro')).toThrowError(/Missing provider pricing/);
+    });
+
+    it('applies GPT-5.5 long-context pricing above 272k input tokens', () => {
+        const standard = resolveProviderModelPricing('openai', 'gpt-5.5', 272_000);
+        const longContext = resolveProviderModelPricing('openai', 'gpt-5.5', 272_001);
+
+        expect(standard.pricingPhase).toBe('standard');
+        expect(standard.inputPer1M).toBe(5);
+        expect(standard.outputPer1M).toBe(30);
+        expect(standard.cacheReadPer1M).toBe(0.5);
+        expect(longContext.pricingPhase).toBe('longContext');
+        expect(longContext.inputPer1M).toBe(10);
+        expect(longContext.outputPer1M).toBe(45);
+        expect(longContext.cacheReadPer1M).toBe(1);
     });
 
     it('applies GPT-5.4 long-context pricing above 272k input tokens', () => {

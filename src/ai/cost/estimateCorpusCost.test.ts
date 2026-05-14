@@ -110,6 +110,21 @@ describe('estimateCorpusCost', () => {
         expect(result.cachedCostUSD).toBeLessThan(result.freshCostUSD);
     });
 
+    it('prices GPT-5.5 cached runs with the current short-context cached input rate', () => {
+        const result = estimateCorpusCost(
+            'openai',
+            'gpt-5.5',
+            61_600,
+            8_000,
+            1
+        );
+
+        expect(result.cacheReuseRatio).toBe(0.75);
+        expect(result.freshCostUSD).toBeCloseTo(0.548, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(0.3401, 6);
+        expect(result.cachedCostUSD).toBeLessThan(result.freshCostUSD);
+    });
+
     it('keeps GPT-5.4 Pro cached estimates equal to fresh estimates because cached pricing is unavailable', () => {
         const result = estimateCorpusCost(
             'openai',
@@ -140,6 +155,39 @@ describe('estimateCorpusCost', () => {
         expect(result?.inputCostUSD).toBeCloseTo(0.05005, 6);
         expect(result?.outputCostUSD).toBeCloseTo(0.12, 6);
         expect(result?.totalCostUSD).toBeCloseTo(0.17005, 6);
+    });
+
+    it('prices GPT-5.5 live usage with cached tokens at the short-context cached-input rate', () => {
+        const result = estimateUsageCost('openai', 'gpt-5.5', {
+            inputTokens: 61_600,
+            outputTokens: 8_000,
+            cacheReadInputTokens: 46_200
+        });
+
+        expect(result).toMatchObject({
+            inputTokens: 61_600,
+            outputTokens: 8_000,
+            cacheReadInputTokens: 46_200
+        });
+        expect(result?.rawInputCostUSD).toBeCloseTo(0.077, 6);
+        expect(result?.cacheReadCostUSD).toBeCloseTo(0.0231, 6);
+        expect(result?.inputCostUSD).toBeCloseTo(0.1001, 6);
+        expect(result?.outputCostUSD).toBeCloseTo(0.24, 6);
+        expect(result?.totalCostUSD).toBeCloseTo(0.3401, 6);
+    });
+
+    it('prices GPT-5.5 live usage with cached tokens at long-context rates above the threshold', () => {
+        const result = estimateUsageCost('openai', 'gpt-5.5', {
+            inputTokens: 300_000,
+            outputTokens: 10_000,
+            cacheReadInputTokens: 225_000
+        });
+
+        expect(result?.rawInputCostUSD).toBeCloseTo(0.75, 6);
+        expect(result?.cacheReadCostUSD).toBeCloseTo(0.225, 6);
+        expect(result?.inputCostUSD).toBeCloseTo(0.975, 6);
+        expect(result?.outputCostUSD).toBeCloseTo(0.45, 6);
+        expect(result?.totalCostUSD).toBeCloseTo(1.425, 6);
     });
 
     it('prices Gemini 2.5 Pro long-context cache hits at the context-cache rate', () => {

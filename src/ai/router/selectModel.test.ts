@@ -56,7 +56,7 @@ describe('selectModel', () => {
             outputTokensNeeded: 2000
         });
         expect(result.model.provider).toBe('openai');
-        expect(result.model.alias).toBe('gpt-5.4');
+        expect(result.model.alias).toBe('gpt-5.5');
         expect(result.model.capabilities.includes('highOutputCap')).toBe(true);
     });
 
@@ -84,7 +84,7 @@ describe('selectModel', () => {
             policy: { type: 'pinned', pinnedAlias: 'gpt-5.4-pro' },
             requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap']
         });
-        expect(result.model.alias).toBe('gpt-5.4');
+        expect(result.model.alias).toBe('gpt-5.5');
         expect(result.warnings.some(w => w.includes('gpt-5.4-pro'))).toBe(true);
     });
 
@@ -94,7 +94,7 @@ describe('selectModel', () => {
             policy: { type: 'latestPro' },
             requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap']
         });
-        expect(result.model.alias).toBe('gpt-5.4');
+        expect(result.model.alias).toBe('gpt-5.5');
         expect(result.warnings).toContain('OpenAI pro auto-selection is disabled for schema-required workflows; fallback to latest stable.');
     });
 
@@ -119,7 +119,7 @@ describe('selectModel', () => {
             requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap']
         });
         expect(standardSnapshot.model.alias).toBe('gpt-5.4-2026-03-05');
-        expect(proSnapshot.model.alias).toBe('gpt-5.4');
+        expect(proSnapshot.model.alias).toBe('gpt-5.5');
         expect(proSnapshot.warnings.some(w => w.includes('gpt-5.4-pro-2026-03-05'))).toBe(true);
     });
 
@@ -136,7 +136,7 @@ describe('selectModel', () => {
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
             accessTier: 4
         });
-        expect(tier1.model.alias).toBe('gpt-5.4');
-        expect(tier4.model.alias).toBe('gpt-5.4');
+        expect(tier1.model.alias).toBe('gpt-5.5');
+        expect(tier4.model.alias).toBe('gpt-5.5');
     });
 });

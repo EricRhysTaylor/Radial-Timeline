@@ -85,6 +85,50 @@ export const BUILTIN_MODELS: ModelInfo[] = [
     // legacy   = compatibility alias
     {
         provider: 'openai',
+        id: 'gpt-5.5',
+        alias: 'gpt-5.5',
+        label: 'GPT-5.5',
+        line: 'gpt-5',
+        tier: 'BALANCED',
+        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 10, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-04-23',
+        status: 'stable',
+        rollout: {
+            channel: 'stable',
+            status: 'stable',
+            supersedes: 'gpt-5.4',
+            fallbackModelId: 'gpt-5.4',
+            lane: 'default'
+        }
+    },
+    {
+        provider: 'openai',
+        id: 'gpt-5.5-2026-04-23',
+        alias: 'gpt-5.5-2026-04-23',
+        label: 'GPT-5.5 (2026-04-23)',
+        line: 'gpt-5',
+        tier: 'BALANCED',
+        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 10, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-04-23',
+        status: 'legacy',
+        rollout: {
+            channel: 'snapshot',
+            hiddenFromPicker: true,
+            status: 'provisional',
+            supersedes: 'gpt-5.5',
+            fallbackModelId: 'gpt-5.4',
+            lane: 'default',
+            datedVariantOf: 'gpt-5.5'
+        }
+    },
+    {
+        provider: 'openai',
         id: 'gpt-5.4',
         alias: 'gpt-5.4',
         label: 'GPT-5.4',
@@ -97,7 +141,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         releasedAt: '2026-03-05',
         status: 'stable',
         rollout: {
-            channel: 'stable',
+            channel: 'rollback',
             status: 'stable',
             supersedes: 'gpt-5.3',
             fallbackModelId: 'gpt-5.3',

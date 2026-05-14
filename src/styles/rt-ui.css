@@ -7738,6 +7738,21 @@
   max-width: 92vw;
 }
 
+.ert-ui .ert-writing-session-scenes {
+  border: 1px solid var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+  padding: var(--ert-pad-sm);
+  background: var(--ert-panel-bg);
+}
+
+.ert-ui .ert-writing-session-scenes__title {
+  color: var(--ert-text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .ert-ui .ert-modal-container {
   position: relative;
   isolation: isolate;

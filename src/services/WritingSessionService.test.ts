@@ -277,9 +277,35 @@ describe('WritingSessionService pure helpers', () => {
         const session = await service.start({ mode: 'revising', goalMinutes: 50 });
 
         expect(session.mode).toBe('revising');
+        expect(session.stage).toBe('Zero');
         expect(session.goalMinutes).toBe(50);
         expect(session.bookId).toBe('book-1');
         expect(plugin.settings.writingSessions.active?.goalMinutes).toBe(50);
+    });
+
+    it('resolves the automatic session stage from working scenes', async () => {
+        const plugin = {
+            app: { workspace: { getActiveFile: () => undefined, getLeavesOfType: () => [] } },
+            settings: {
+                books: [{ id: 'book-1', title: 'Book One', sourceFolder: 'Book' }],
+                activeBookId: 'book-1',
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting', defaultStage: 'auto' },
+                    records: [],
+                },
+            },
+            getSceneData: async () => [
+                { title: 'Zero pass', date: '', path: 'Book/Zero.md', status: 'Working', 'Publish Stage': 'Zero' },
+                { title: 'Author pass', date: '', path: 'Book/Author.md', status: 'Working', 'Publish Stage': 'Author' },
+            ],
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        const session = await service.start({ mode: 'revising', stage: 'auto' });
+
+        expect(session.stage).toBe('Mixed');
+        expect(session.stagePreference).toBe('auto');
     });
 
     it('persists the default writing session mode', async () => {
@@ -297,6 +323,23 @@ describe('WritingSessionService pure helpers', () => {
         await service.setDefaultMode('revising');
 
         expect(plugin.settings.writingSessions.defaults.defaultMode).toBe('revising');
+    });
+
+    it('persists the default writing session stage preference', async () => {
+        const plugin = {
+            settings: {
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting' },
+                    records: [],
+                },
+            },
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        await service.setDefaultStage('Author');
+
+        expect(plugin.settings.writingSessions.defaults.defaultStage).toBe('Author');
     });
 
     it('saves completion details from the stop confirmation modal', async () => {
@@ -320,6 +363,7 @@ describe('WritingSessionService pure helpers', () => {
             scenesCompleted: 2,
             pagesEdited: 4,
             note: 'Worked on the opening.',
+            scenePaths: ['Book/Scene 1.md', 'Book/Scene 1.md', 'Book/Scene 2.md'],
         });
 
         expect(record.elapsedMs).toBe(42 * 60000);
@@ -327,7 +371,65 @@ describe('WritingSessionService pure helpers', () => {
         expect(record.scenesCompleted).toBe(2);
         expect(record.pagesEdited).toBe(4);
         expect(record.note).toBe('Worked on the opening.');
+        expect(record.scenePaths).toEqual(['Book/Scene 1.md', 'Book/Scene 2.md']);
         expect(plugin.settings.writingSessions.active).toBeUndefined();
         expect(plugin.settings.writingSessions.records).toHaveLength(1);
+    });
+
+    it('suggests touched scenes from active, open, working, and modified files', async () => {
+        const start = Date.parse('2026-05-12T16:00:00.000Z');
+        const plugin = {
+            app: {
+                workspace: {
+                    getActiveFile: () => ({ path: 'Book/Active.md' }),
+                    getLeavesOfType: () => [
+                        { view: { file: { path: 'Book/Open.md' } } },
+                    ],
+                },
+                vault: {
+                    getAbstractFileByPath: (path: string) => ({
+                        stat: { mtime: path === 'Book/Modified.md' ? start + 5000 : start - 5000 },
+                    }),
+                },
+            },
+            settings: {
+                books: [{ id: 'book-1', title: 'Book One', sourceFolder: 'Book' }],
+                activeBookId: 'book-1',
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting' },
+                    active: {
+                        id: 'active',
+                        mode: 'drafting',
+                        startedAt: '2026-05-12T16:00:00.000Z',
+                        lastResumedAt: '2026-05-12T16:00:00.000Z',
+                        elapsedMsBeforePause: 0,
+                    },
+                    records: [],
+                },
+            },
+            getSceneData: async () => [
+                { title: 'Active', date: '', path: 'Book/Active.md', status: 'Todo', 'Publish Stage': 'Zero' },
+                { title: 'Open', date: '', path: 'Book/Open.md', status: 'Todo', 'Publish Stage': 'Author' },
+                { title: 'Working', date: '', path: 'Book/Working.md', status: 'Working', 'Publish Stage': 'Author' },
+                { title: 'Modified', date: '', path: 'Book/Modified.md', status: 'Todo', 'Publish Stage': 'House' },
+            ],
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        const suggestions = await service.collectTouchedSceneSuggestions();
+
+        expect(suggestions.map(suggestion => suggestion.path)).toEqual([
+            'Book/Active.md',
+            'Book/Open.md',
+            'Book/Working.md',
+            'Book/Modified.md',
+        ]);
+        expect(suggestions.map(suggestion => suggestion.reason)).toEqual([
+            'active',
+            'open',
+            'working',
+            'modified',
+        ]);
     });
 });

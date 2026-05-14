@@ -7,9 +7,11 @@ function byAlias(alias: string) {
     return model!;
 }
 
-describe('BUILTIN_MODELS OpenAI GPT-5.4 metadata', () => {
-    it('uses expanded context/output limits for GPT-5.4 variants', () => {
+describe('BUILTIN_MODELS OpenAI GPT-5 metadata', () => {
+    it('uses expanded context/output limits for GPT-5.4 and GPT-5.5 variants', () => {
         const aliases = [
+            'gpt-5.5',
+            'gpt-5.5-2026-04-23',
             'gpt-5.4',
             'gpt-5.4-pro',
             'gpt-5.4-2026-03-05',
@@ -23,11 +25,17 @@ describe('BUILTIN_MODELS OpenAI GPT-5.4 metadata', () => {
     });
 
     it('marks OpenAI release channels for stable/pro/rollback/snapshot', () => {
-        expect(byAlias('gpt-5.4').rollout?.channel).toBe('stable');
+        expect(byAlias('gpt-5.5').rollout?.channel).toBe('stable');
+        expect(byAlias('gpt-5.5').rollout?.supersedes).toBe('gpt-5.4');
+        expect(byAlias('gpt-5.5').rollout?.fallbackModelId).toBe('gpt-5.4');
+        expect(byAlias('gpt-5.4').rollout?.channel).toBe('rollback');
         expect(byAlias('gpt-5.4').rollout?.supersedes).toBe('gpt-5.3');
         expect(byAlias('gpt-5.4-pro').rollout?.channel).toBe('pro');
         expect(byAlias('gpt-5.4-pro').rollout?.supersedes).toBe('gpt-5.3');
         expect(byAlias('gpt-5.3').rollout?.channel).toBe('rollback');
+        expect(byAlias('gpt-5.5-2026-04-23').rollout?.channel).toBe('snapshot');
+        expect(byAlias('gpt-5.5-2026-04-23').rollout?.hiddenFromPicker).toBe(true);
+        expect(byAlias('gpt-5.5-2026-04-23').rollout?.supersedes).toBe('gpt-5.5');
         expect(byAlias('gpt-5.4-2026-03-05').rollout?.channel).toBe('snapshot');
         expect(byAlias('gpt-5.4-2026-03-05').rollout?.hiddenFromPicker).toBe(true);
         expect(byAlias('gpt-5.4-2026-03-05').rollout?.supersedes).toBe('gpt-5.4');
@@ -37,9 +45,15 @@ describe('BUILTIN_MODELS OpenAI GPT-5.4 metadata', () => {
     });
 
     it('keeps structured output capability off the OpenAI pro lane', () => {
+        expect(byAlias('gpt-5.5').capabilities).toContain('jsonStrict');
         expect(byAlias('gpt-5.4').capabilities).toContain('jsonStrict');
         expect(byAlias('gpt-5.4-pro').capabilities).not.toContain('jsonStrict');
         expect(byAlias('gpt-5.4-pro-2026-03-05').capabilities).not.toContain('jsonStrict');
+    });
+
+    it('does not curate GPT-5.5 Pro', () => {
+        expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro')).toBe(false);
+        expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro-2026-04-23')).toBe(false);
     });
 });
 

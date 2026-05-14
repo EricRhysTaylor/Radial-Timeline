@@ -71,7 +71,7 @@ describe('writing session timer font loading', () => {
         expect(indicatorsCss).toContain('animation: ert-timeline-session-ring-count-pulse 300ms ease-out');
         expect(clockBlock).toContain('background: transparent');
         expect(clockBlock).toContain('border: 0');
-        expect(titleCountBlock).toContain('min-width: 3.75ch');
+        expect(titleCountBlock).toContain('min-width: 4.5ch');
         expect(titleCountBlock).toContain('padding-inline');
         expect(clockValueBlock).toContain('padding-inline: 0.5rem');
         expect(timelineCss).toContain('.ert-timeline-session-panel__clock:not(.is-complete) .ert-timeline-session-panel__clock-value');
@@ -89,6 +89,9 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).not.toContain("applyTooltip(sessionBtn, 'Start writing session'");
         expect(timelineViewSource).not.toContain("sessionPanel.setAttribute('aria-label', 'Writing session')");
         expect(timelineViewSource).not.toContain('applyTooltip(presetButton');
+        expect(timelineViewSource).not.toContain("goalInput.setAttribute('aria-label'");
+        expect(timelineViewSource).not.toContain("presetButton.setAttribute('aria-label'");
+        expect(timelineViewSource).toContain("goalInput.step = '1'");
         expect(timelineViewSource).toContain("settingsTab?.revealSettingsSection('core', 'goals-sessions', { force: true })");
         expect(timelineViewSource).toContain("setting.openTabById('radial-timeline')");
         expect(timelineViewSource).toContain('<svg xmlns="http://www.w3.org/2000/svg">${ringSvg}</svg>');

@@ -154,7 +154,7 @@ describe('openai responses normalization', () => {
 
         const response = await callOpenAiResponsesApi(
             'test-key',
-            'gpt-5.4',
+            'gpt-5.5',
             'You are precise.',
             'Return JSON.',
             512,
@@ -179,7 +179,7 @@ describe('openai responses normalization', () => {
 
         expect(response.success).toBe(true);
         expect(response.requestPayload).toEqual({
-            model: 'gpt-5.4',
+            model: 'gpt-5.5',
             input: [
                 {
                     role: 'system',

@@ -1035,9 +1035,10 @@
 
 .ert-timeline-session.clickable-icon {
   width: auto;
-  height: 24px;
-  padding-block: 0;
-  padding-inline: var(--size-4-3);
+  height: 32px;
+  box-sizing: border-box;
+  padding-block: var(--size-2-1);
+  padding-inline: 0.7rem;
   margin-inline-start: var(--size-4-1);
   flex: 0 0 auto;
   display: inline-flex;
@@ -1049,13 +1050,16 @@
   font-weight: 100;
   font-synthesis: none;
   line-height: 1;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-m);
   background: transparent;
 }
 
 .ert-timeline-session.clickable-icon.is-idle {
   width: 24px;
+  height: 24px;
+  padding-block: 0;
   padding-inline: 0;
+  border-radius: var(--radius-s);
 }
 
 .ert-timeline-session.clickable-icon .ert-timeline-session__icon,
@@ -1190,8 +1194,8 @@
 
 .ert-timeline-session__label {
   display: inline-block;
-  min-width: 3.75ch;
-  padding-inline: 0.18rem;
+  min-width: 4.5ch;
+  padding-inline: 0.65rem;
   white-space: nowrap;
   font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
   font-weight: 100;

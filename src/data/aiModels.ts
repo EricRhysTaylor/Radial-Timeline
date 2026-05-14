@@ -10,9 +10,14 @@ export interface CuratedModel {
 export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     openai: [
         {
+            id: 'gpt-5.5',
+            label: 'GPT-5.5',
+            guidance: "→ GPT-5.5 (1,050,000 context). Current OpenAI flagship for complex reasoning and coding; RT uses the Responses API path with prompt caching support. [FYI](https://platform.openai.com/docs/models)",
+        },
+        {
             id: 'gpt-5.4',
             label: 'GPT-5.4',
-            guidance: "→ GPT-5.4 (1,050,000 context). [FYI](https://platform.openai.com/docs/models)",
+            guidance: "→ GPT-5.4 (1,050,000 context). Prior OpenAI stable lane retained as the rollback option. [FYI](https://platform.openai.com/docs/models)",
         },
     ],
     anthropic: [

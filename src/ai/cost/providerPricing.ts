@@ -94,11 +94,24 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
         'gpt-5.5': {
             inputPer1M: 5.0,
             outputPer1M: 30.0,
-            cacheReadPer1M: 0.5
+            cacheReadPer1M: 0.5,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 10.0,
+                outputPer1M: 45.0,
+                cacheReadPer1M: 1.0
+            }
         },
-        'gpt-5.5-pro': {
-            inputPer1M: 30.0,
-            outputPer1M: 180.0
+        'gpt-5.5-2026-04-23': {
+            inputPer1M: 5.0,
+            outputPer1M: 30.0,
+            cacheReadPer1M: 0.5,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 10.0,
+                outputPer1M: 45.0,
+                cacheReadPer1M: 1.0
+            }
         },
         'gpt-5.4': {
             inputPer1M: 2.5,

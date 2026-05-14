@@ -4,12 +4,15 @@ import type {
     ActiveWritingSession,
     WritingSessionMode,
     WritingSessionRecord,
+    WritingSessionStage,
+    WritingSessionStagePreference,
     WritingSessionsSettings
 } from '../types/settings';
 import { STAGE_ORDER } from '../utils/constants';
 import { getActiveBook } from '../utils/books';
 import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
+import { normalizeStatus } from '../utils/text';
 
 const MAX_SESSION_RECORDS = 500;
 
@@ -19,13 +22,23 @@ export interface WritingSessionCompletionInput {
     elapsedMs?: number;
     wordsAdded?: number;
     scenesCompleted?: number;
+    scenePaths?: string[];
     pagesEdited?: number;
     note?: string;
 }
 
 export interface WritingSessionStartOptions {
     mode?: WritingSessionMode;
+    stage?: WritingSessionStagePreference;
     goalMinutes?: number;
+}
+
+export interface WritingSessionSceneSuggestion {
+    path: string;
+    title?: string;
+    stage?: WritingSessionStage;
+    status?: string;
+    reason: 'active' | 'open' | 'working' | 'modified';
 }
 
 export interface SceneCompletionEvent {
@@ -159,6 +172,25 @@ function coerceMode(mode: WritingSessionMode | undefined): WritingSessionMode {
     return 'drafting';
 }
 
+function coerceStage(stage: WritingSessionStage | undefined): WritingSessionStage | undefined {
+    if (stage === 'Mixed') return 'Mixed';
+    return STAGE_ORDER.find(candidate => candidate === stage);
+}
+
+function coerceStagePreference(stage: WritingSessionStagePreference | undefined): WritingSessionStagePreference {
+    if (stage === 'auto' || stage === 'Mixed') return stage;
+    return STAGE_ORDER.find(candidate => candidate === stage) ?? 'auto';
+}
+
+function formatSceneStatus(status: TimelineItem['status']): string | undefined {
+    if (Array.isArray(status)) return status.filter(Boolean).join(', ') || undefined;
+    return status?.toString().trim() || undefined;
+}
+
+function uniquePaths(paths: Array<string | undefined>): string[] {
+    return [...new Set(paths.map(path => path?.trim()).filter((path): path is string => Boolean(path)))];
+}
+
 function positiveInteger(value: number | undefined): number | undefined {
     if (!Number.isFinite(value)) return undefined;
     const rounded = Math.max(0, Math.round(value ?? 0));
@@ -186,11 +218,25 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
             .slice(-MAX_SESSION_RECORDS)
         : [];
     const defaultMode = coerceMode(settings?.defaults?.defaultMode);
+    const defaultStage = coerceStagePreference(settings?.defaults?.defaultStage);
     const active = settings?.active;
     return {
-        defaults: { defaultMode },
-        ...(active ? { active: { ...active, mode: coerceMode(active.mode) } } : {}),
-        records,
+        defaults: { defaultMode, defaultStage },
+        ...(active ? {
+            active: {
+                ...active,
+                mode: coerceMode(active.mode),
+                stage: coerceStage(active.stage),
+                stagePreference: coerceStagePreference(active.stagePreference),
+            }
+        } : {}),
+        records: records.map(record => ({
+            ...record,
+            mode: coerceMode(record.mode),
+            stage: coerceStage(record.stage),
+            stagePreference: coerceStagePreference(record.stagePreference),
+            scenePaths: uniquePaths(record.scenePaths ?? []),
+        })),
     };
 }
 
@@ -380,6 +426,65 @@ export class WritingSessionService {
         await this.plugin.saveSettings();
     }
 
+    async setDefaultStage(stage: WritingSessionStagePreference): Promise<void> {
+        const settings = this.getSettings();
+        settings.defaults.defaultStage = coerceStagePreference(stage);
+        await this.plugin.saveSettings();
+    }
+
+    private getOpenScenePaths(): string[] {
+        const workspace = this.plugin.app?.workspace;
+        const activePath = workspace?.getActiveFile?.()?.path;
+        const leaves = workspace?.getLeavesOfType?.('markdown') ?? [];
+        const openPaths = leaves.map(leaf => {
+            const view = (leaf as { view?: { file?: { path?: string } } }).view;
+            return view?.file?.path;
+        });
+        return uniquePaths([activePath, ...openPaths]);
+    }
+
+    private getSceneFileModifiedAt(path: string): number | undefined {
+        const file = this.plugin.app?.vault?.getAbstractFileByPath?.(path) as { stat?: { mtime?: number } } | null | undefined;
+        const mtime = file?.stat?.mtime;
+        return Number.isFinite(mtime) ? mtime : undefined;
+    }
+
+    private isSceneInActiveBook(scene: TimelineItem): boolean {
+        const book = getActiveBook(this.plugin.settings);
+        if (!book) return true;
+        if (scene.bookId) return scene.bookId === book.id;
+        if (scene.bookTitle) return scene.bookTitle === book.title;
+        const sourceFolder = book.sourceFolder;
+        return sourceFolder ? Boolean(scene.path?.startsWith(`${sourceFolder}/`) || scene.path === sourceFolder) : true;
+    }
+
+    private resolveAutoStage(scenes: TimelineItem[]): WritingSessionStage {
+        const scopedScenes = scenes.filter(scene => this.isSceneInActiveBook(scene));
+        const workingStages = new Set(scopedScenes
+            .filter(scene => normalizeStatus(scene.status) === 'Working')
+            .map(scene => normalizePublishStage(scene['Publish Stage'])));
+        if (workingStages.size === 1) return [...workingStages][0];
+        if (workingStages.size > 1) return 'Mixed';
+
+        const stageWithIncomplete = [...STAGE_ORDER].reverse().find(stage =>
+            scopedScenes.some(scene => normalizePublishStage(scene['Publish Stage']) === stage && !isCompleteStatus(scene.status))
+        );
+        if (stageWithIncomplete) return stageWithIncomplete;
+
+        return [...STAGE_ORDER].reverse().find(stage =>
+            scopedScenes.some(scene => normalizePublishStage(scene['Publish Stage']) === stage)
+        ) ?? 'Zero';
+    }
+
+    private async resolveSessionStage(preference: WritingSessionStagePreference): Promise<WritingSessionStage> {
+        if (preference !== 'auto') return coerceStage(preference) ?? 'Zero';
+        try {
+            return this.resolveAutoStage(await this.plugin.getSceneData());
+        } catch {
+            return 'Zero';
+        }
+    }
+
     async start(options: WritingSessionMode | WritingSessionStartOptions = {}): Promise<ActiveWritingSession> {
         const settings = this.getSettings();
         if (settings.active) {
@@ -390,11 +495,15 @@ export class WritingSessionService {
             : options;
         const book = getActiveBook(this.plugin.settings);
         const startedAt = nowIso();
+        const stagePreference = coerceStagePreference(startOptions.stage ?? settings.defaults.defaultStage);
+        const stage = await this.resolveSessionStage(stagePreference);
         const active: ActiveWritingSession = {
             id: generateSessionId(),
             bookId: book?.id,
             bookTitle: book?.title,
             mode: coerceMode(startOptions.mode ?? settings.defaults.defaultMode),
+            stage,
+            stagePreference,
             startedAt,
             lastResumedAt: startedAt,
             elapsedMsBeforePause: 0,
@@ -438,11 +547,14 @@ export class WritingSessionService {
             bookId: active.bookId,
             bookTitle: active.bookTitle,
             mode: active.mode,
+            stage: active.stage,
+            stagePreference: active.stagePreference,
             startedAt: active.startedAt,
             endedAt: endedAt.toISOString(),
             elapsedMs: Math.max(0, Math.round(completion.elapsedMs ?? activeElapsedMs(active, endedAt))),
             wordsAdded: positiveInteger(completion.wordsAdded),
             scenesCompleted: positiveInteger(completion.scenesCompleted),
+            scenePaths: uniquePaths(completion.scenePaths ?? []),
             pagesEdited: positiveInteger(completion.pagesEdited),
             note: completion.note?.trim() || undefined,
             source: 'timer',
@@ -451,6 +563,43 @@ export class WritingSessionService {
         settings.active = undefined;
         await this.plugin.saveSettings();
         return record;
+    }
+
+    async collectTouchedSceneSuggestions(active: ActiveWritingSession | undefined = this.getActiveSession()): Promise<WritingSessionSceneSuggestion[]> {
+        if (!active) return [];
+        const scenes = await this.plugin.getSceneData();
+        const sceneByPath = new Map(scenes
+            .filter(scene => Boolean(scene.path) && this.isSceneInActiveBook(scene))
+            .map(scene => [scene.path as string, scene]));
+        const suggestions = new Map<string, WritingSessionSceneSuggestion>();
+        const addSuggestion = (scene: TimelineItem | undefined, reason: WritingSessionSceneSuggestion['reason']) => {
+            if (!scene?.path || suggestions.has(scene.path)) return;
+            suggestions.set(scene.path, {
+                path: scene.path,
+                title: scene.title,
+                stage: normalizePublishStage(scene['Publish Stage']),
+                status: formatSceneStatus(scene.status),
+                reason,
+            });
+        };
+
+        this.getOpenScenePaths().forEach((path, index) => addSuggestion(sceneByPath.get(path), index === 0 ? 'active' : 'open'));
+
+        scenes
+            .filter(scene => this.isSceneInActiveBook(scene) && normalizeStatus(scene.status) === 'Working')
+            .forEach(scene => addSuggestion(scene, 'working'));
+
+        const startedAt = Date.parse(active.startedAt);
+        if (Number.isFinite(startedAt)) {
+            scenes
+                .filter(scene => scene.path && this.isSceneInActiveBook(scene))
+                .forEach(scene => {
+                    const modifiedAt = this.getSceneFileModifiedAt(scene.path as string);
+                    if (modifiedAt && modifiedAt >= startedAt) addSuggestion(scene, 'modified');
+                });
+        }
+
+        return [...suggestions.values()].slice(0, 8);
     }
 
     async discard(): Promise<void> {

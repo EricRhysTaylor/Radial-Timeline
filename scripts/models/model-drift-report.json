@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-05-14T17:35:22.807Z",
+  "checkedAt": "2026-05-14T18:43:41.771Z",
   "mode": "report",
   "snapshotBefore": {
     "generatedAt": "2026-05-14T15:54:41.232Z"
@@ -24,28 +24,7 @@
   "aliasChanges": [],
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
-  "releaseAlerts": [
-    {
-      "id": "openai-gpt-5-5-2026-04-23",
-      "provider": "openai",
-      "modelId": "gpt-5.5",
-      "label": "GPT-5.5",
-      "announcedAt": "2026-04-23",
-      "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
-      "state": "announced_not_curated",
-      "message": "openai released GPT-5.5 on 2026-04-23, and RT has not curated gpt-5.5 yet."
-    },
-    {
-      "id": "openai-gpt-5-5-pro-2026-04-23",
-      "provider": "openai",
-      "modelId": "gpt-5.5-pro",
-      "label": "GPT-5.5 Pro",
-      "announcedAt": "2026-04-23",
-      "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
-      "state": "announced_not_curated",
-      "message": "openai released GPT-5.5 Pro on 2026-04-23, and RT has not curated gpt-5.5-pro yet."
-    }
-  ],
-  "hasActionableChanges": true,
+  "releaseAlerts": [],
+  "hasActionableChanges": false,
   "recommendedFollowUps": []
 }
