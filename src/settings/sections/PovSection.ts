@@ -15,6 +15,32 @@ const POV_LABELS: Record<string, string> = {
     '3': '³'
 };
 
+const POV_VALUE_KEYWORDS = [
+    'first', 'second', 'third', 'omni', 'objective',
+    'two', 'three', 'four', 'five', 'count', 'all', 'N'
+];
+
+function renderPovOverrideDesc(descEl: HTMLElement, raw: string): void {
+    descEl.empty();
+    const keywordRe = new RegExp(`\\b(${POV_VALUE_KEYWORDS.join('|')})\\b`, 'g');
+    // Split on backtick-wrapped tokens; odd indices are inside backticks.
+    raw.split(/`([^`]+)`/g).forEach((part, idx) => {
+        if (idx % 2 === 1) {
+            descEl.createSpan({ cls: 'ert-yaml-key', text: part });
+            return;
+        }
+        let last = 0;
+        let m: RegExpExecArray | null;
+        keywordRe.lastIndex = 0;
+        while ((m = keywordRe.exec(part)) !== null) {
+            if (m.index > last) descEl.appendText(part.slice(last, m.index));
+            descEl.createEl('strong', { cls: 'ert-yaml-value', text: m[0] });
+            last = m.index + m[0].length;
+        }
+        if (last < part.length) descEl.appendText(part.slice(last));
+    });
+}
+
 export function renderPovSection(params: {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
@@ -65,8 +91,8 @@ export function renderPovSection(params: {
     globalPovSetting.settingEl.addClass('ert-settingRow');
 
     const yamlOverridesSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.pov.yamlOverrides.name'))
-        .setDesc(t('settings.pov.yamlOverrides.desc'));
+        .setName(t('settings.pov.yamlOverrides.name'));
+    renderPovOverrideDesc(yamlOverridesSetting.descEl, t('settings.pov.yamlOverrides.desc'));
     yamlOverridesSetting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK_SKIP, 'ert-settingRow');
 
     // Preview section

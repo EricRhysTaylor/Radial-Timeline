@@ -580,10 +580,42 @@ export class RadialTimelineView extends ItemView {
         }
     }
 
-    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number; pulseKey?: string } {
+    private getIdleSessionClockSnapshot(): { label: string; detail: string; state: 'idle'; renderIcon?: boolean } {
+        const service = this.plugin.getWritingSessionService();
+        const dailyProgress = service.getDailySessionProgress();
+        const defaultGoalMinutes = this.getDefaultSessionGoalMinutes();
+        if (!dailyProgress.dailyTargetMinutes) {
+            return {
+                label: String(defaultGoalMinutes),
+                detail: `Start writing session, ${defaultGoalMinutes} min target`,
+                state: 'idle',
+            };
+        }
+        if (dailyProgress.remainingMinutes && dailyProgress.remainingMinutes > 0) {
+            return {
+                label: String(dailyProgress.remainingMinutes),
+                detail: `Start writing session, ${dailyProgress.remainingMinutes} min left today`,
+                state: 'idle',
+            };
+        }
+        if (dailyProgress.sessionsCompleted > 0) {
+            return {
+                label: 'Complete',
+                detail: `Daily writing goal complete, ${dailyProgress.minutesLogged} min logged today`,
+                state: 'idle',
+            };
+        }
+        return {
+            label: String(dailyProgress.dailyTargetMinutes),
+            detail: `Start writing session, ${dailyProgress.dailyTargetMinutes} min target`,
+            state: 'idle',
+        };
+    }
+
+    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number; pulseKey?: string; renderIcon?: boolean } {
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
-        if (!active) return { label: 'Start', detail: 'Start writing session', state: 'idle' };
+        if (!active) return this.getIdleSessionClockSnapshot();
         const elapsedMs = service.getActiveElapsedMs();
         const display = this.getSessionStatusDisplay(active, elapsedMs);
         return {
@@ -601,7 +633,7 @@ export class RadialTimelineView extends ItemView {
         const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.pulseKey);
         const pulseColor = shouldPulseCount ? this.getWritingSessionPulseColor() : undefined;
         this.writingSessionLabel.empty();
-        if (snapshot.state === 'idle') {
+        if (snapshot.state === 'idle' && snapshot.renderIcon) {
             this.renderWritingSessionIdleIcon(this.writingSessionLabel);
         } else {
             this.writingSessionLabel.setText(snapshot.label);

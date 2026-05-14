@@ -125,3 +125,24 @@
 .ert-path-chip__label {
   font-family: var(--font-monospace, monospace);
 }
+
+/* YAML key pill — used inline in setting descriptions to flag frontmatter keys
+   like `POV:` or `Character:` so they read as YAML tokens rather than prose. */
+.ert-yaml-key {
+  display: inline-block;
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.85em;
+  line-height: 1.4;
+  padding: var(--ert-gap-3xs) var(--ert-gap-tight);
+  margin: 0 var(--ert-gap-2xs);
+  border-radius: var(--ert-gap-xs);
+  color: var(--text-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary));
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 30%, var(--background-modifier-border));
+  white-space: nowrap;
+}
+
+.ert-yaml-value {
+  font-weight: 600;
+  color: var(--text-normal);
+}

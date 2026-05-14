@@ -1,4 +1,4 @@
-import { Setting, TextComponent } from 'obsidian';
+import { setIcon, Setting, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -102,43 +102,77 @@ function formatMinutes(minutes: number): string {
     return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
+function formatShortDate(date: string): string {
+    const [yearRaw, monthRaw, dayRaw] = date.split('-');
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    if (!Number.isFinite(month) || !Number.isFinite(day)) return date;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[month - 1] ?? yearRaw} ${day}`;
+}
+
+function formatRangeDate(stats: WritingRangeStats): string {
+    if (stats.days === 1) return formatShortDate(stats.endDate);
+    return `${formatShortDate(stats.startDate)}–${formatShortDate(stats.endDate)}`;
+}
+
 function formatRangeLabel(stats: WritingRangeStats): string {
     if (stats.days === 1) return 'Today';
     return `${stats.days} days`;
 }
 
-function createMetric(container: HTMLElement, label: string, value: string): void {
-    const metric = container.createDiv({ cls: 'ert-goals-stat' });
-    metric.createDiv({ cls: 'ert-goals-stat__value', text: value });
-    metric.createDiv({ cls: 'ert-goals-stat__label', text: label });
+function goalStatus(stats: WritingRangeStats): 'met' | 'missed' | 'neutral' {
+    if (!stats.dailyTargetMinutes) return 'neutral';
+    return stats.daysGoalMet >= stats.days ? 'met' : 'missed';
 }
 
-function createRangeCard(container: HTMLElement, stats: WritingRangeStats): void {
-    const card = container.createDiv({ cls: 'ert-goals-stat-card' });
+function createMetric(container: HTMLElement, icon: string, label: string, value: string, tone: string): void {
+    const metric = container.createDiv({ cls: `ert-goals-stat ert-goals-stat--${tone}` });
+    const iconEl = metric.createDiv({ cls: 'ert-goals-stat__icon' });
+    setIcon(iconEl, icon);
+    const copy = metric.createDiv({ cls: 'ert-goals-stat__copy' });
+    copy.createDiv({ cls: 'ert-goals-stat__value', text: value });
+    copy.createDiv({ cls: 'ert-goals-stat__label', text: label });
+}
+
+function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, stats: WritingRangeStats): void {
+    const status = goalStatus(stats);
+    const card = container.createDiv({ cls: `ert-goals-stat-card ert-goals-stat-card--${status}` });
     const header = card.createDiv({ cls: 'ert-goals-stat-card__header' });
-    header.createDiv({ cls: 'ert-goals-stat-card__title', text: formatRangeLabel(stats) });
-    header.createDiv({ cls: 'ert-goals-stat-card__date', text: stats.days === 1 ? stats.endDate : `${stats.startDate} to ${stats.endDate}` });
+    const titleWrap = header.createDiv({ cls: 'ert-goals-stat-card__title-wrap' });
+    const titleIcon = titleWrap.createSpan({ cls: 'ert-goals-stat-card__icon' });
+    setIcon(titleIcon, stats.days === 1 ? 'calendar-clock' : 'calendar');
+    titleWrap.createDiv({ cls: 'ert-goals-stat-card__title', text: formatRangeLabel(stats) });
+    const statusWrap = header.createDiv({ cls: 'ert-goals-stat-card__status' });
+    const statusIcon = statusWrap.createSpan({ cls: 'ert-goals-stat-card__status-icon' });
+    setIcon(statusIcon, status === 'met' ? 'check-circle-2' : status === 'missed' ? 'alert-triangle' : 'circle');
+    statusWrap.createSpan({ text: stats.dailyTargetMinutes ? `${stats.daysGoalMet}/${stats.days}` : 'No goal' });
+    card.createDiv({ cls: 'ert-goals-stat-card__date', text: formatRangeDate(stats) });
 
     const metrics = card.createDiv({ cls: 'ert-goals-stat-grid' });
-    createMetric(metrics, 'logged', formatMinutes(stats.minutesLogged));
-    createMetric(metrics, 'sessions', String(stats.sessionsCompleted));
-    createMetric(metrics, 'goal days', stats.dailyTargetMinutes ? `${stats.daysGoalMet}/${stats.days}` : '—');
-    createMetric(metrics, 'draft words', String(stats.wordsDrafted));
-    createMetric(metrics, 'fresh scenes', String(stats.freshScenesCompleted));
-    createMetric(metrics, 'revision scenes', String(stats.revisionScenesCompleted));
+    createMetric(metrics, 'timer', 'logged', formatMinutes(stats.minutesLogged), 'time');
+    createMetric(metrics, 'list-checks', 'sessions', String(stats.sessionsCompleted), 'sessions');
+    createMetric(metrics, status === 'met' ? 'check-circle-2' : 'alert-triangle', 'goal days', stats.dailyTargetMinutes ? `${stats.daysGoalMet}/${stats.days}` : '—', status === 'missed' ? 'warning' : 'goal');
+    createMetric(metrics, 'pencil', 'draft words', String(stats.wordsDrafted), 'draft');
+    createMetric(metrics, 'book-open-text', 'fresh scenes', String(stats.freshScenesCompleted), 'fresh');
+    createMetric(metrics, 'refresh-cw', 'revisions', String(stats.revisionScenesCompleted), 'revision');
 
     const stages = card.createDiv({ cls: 'ert-goals-stage-line' });
     (['Zero', 'Author', 'House', 'Press'] as const).forEach(stage => {
-        const item = stages.createSpan({ cls: 'ert-goals-stage-pill' });
+        const count = stats.scenesCompletedByStage[stage];
+        if (!count) return;
+        const item = stages.createSpan({ cls: `ert-goals-stage-pill ert-goals-stage-pill--${stage}` });
+        const stageColor = plugin.settings.publishStageColors?.[stage];
+        if (stageColor) item.style.setProperty('--ert-goals-stage-accent', stageColor);
         item.createSpan({ cls: 'ert-goals-stage-pill__label', text: stage });
-        item.createSpan({ cls: 'ert-goals-stage-pill__value', text: String(stats.scenesCompletedByStage[stage]) });
+        item.createSpan({ cls: 'ert-goals-stage-pill__value', text: String(count) });
     });
 }
 
-function renderStatsBody(container: HTMLElement, stats: WritingRangeStats[]): void {
+function renderStatsBody(plugin: RadialTimelinePlugin, container: HTMLElement, stats: WritingRangeStats[]): void {
     container.empty();
     const cards = container.createDiv({ cls: 'ert-goals-stats-grid' });
-    stats.forEach(stat => createRangeCard(cards, stat));
+    stats.forEach(stat => createRangeCard(plugin, cards, stat));
 }
 
 function renderStatsError(container: HTMLElement, message: string): void {
@@ -149,11 +183,21 @@ function renderStatsError(container: HTMLElement, message: string): void {
 function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTMLElement): void {
     const details = containerEl.createEl('details', { cls: 'ert-goals-stats-details' });
     const summary = details.createEl('summary', { cls: 'ert-goals-stats-summary' });
-    summary.createSpan({ cls: 'ert-goals-stats-summary__title', text: 'Writing stats' });
-    summary.createSpan({
+    const headingIcon = summary.createSpan({ cls: 'ert-goals-stats-summary__icon' });
+    setIcon(headingIcon, 'bar-chart-3');
+    const titleWrap = summary.createSpan({ cls: 'ert-goals-stats-summary__copy' });
+    titleWrap.createSpan({ cls: 'ert-goals-stats-summary__title', text: 'Writing stats' });
+    titleWrap.createSpan({
         cls: 'ert-goals-stats-summary__desc',
-        text: 'Local timer records and scene completion dates.',
+        text: 'Timer records and completed scenes.',
     });
+    const community = summary.createSpan({ cls: 'ert-goals-stats-summary__community' });
+    const communityOnline = community.createSpan({ cls: 'ert-goals-stats-summary__community-pill' });
+    setIcon(communityOnline.createSpan(), 'radio');
+    communityOnline.createSpan({ text: 'Community 34' });
+    const friendsOnline = community.createSpan({ cls: 'ert-goals-stats-summary__community-pill' });
+    setIcon(friendsOnline.createSpan(), 'users');
+    friendsOnline.createSpan({ text: 'Friends 3' });
     const body = details.createDiv({ cls: 'ert-goals-stats-body' });
     body.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: 'Loading writing stats…' });
 
@@ -165,7 +209,7 @@ function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTML
                 service.getRangeStats(7),
                 service.getRangeStats(30),
             ]);
-            renderStatsBody(body, stats);
+            renderStatsBody(plugin, body, stats);
         } catch (error) {
             renderStatsError(body, error instanceof Error ? error.message : 'Could not build writing stats.');
         }

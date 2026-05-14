@@ -179,6 +179,30 @@ describe('WritingSessionService pure helpers', () => {
         expect(stats.overGoalMinutes).toBe(0);
     });
 
+    it('starts a new day fresh when there are no completed sessions for that date', () => {
+        const sessions: WritingSessionRecord[] = [
+            {
+                id: 'session-1',
+                mode: 'drafting',
+                startedAt: '2026-05-12T16:00:00.000Z',
+                endedAt: '2026-05-12T18:00:00.000Z',
+                elapsedMs: 120 * 60 * 1000,
+                source: 'timer',
+            },
+        ];
+
+        const stats = buildDailyWritingSessionProgress({
+            date: '2026-05-13',
+            sessions,
+            dailyTargetMinutes: 120,
+        });
+
+        expect(stats.minutesLogged).toBe(0);
+        expect(stats.sessionsCompleted).toBe(0);
+        expect(stats.remainingMinutes).toBe(120);
+        expect(stats.overGoalMinutes).toBe(0);
+    });
+
     it('keeps extra completed sessions after the daily goal is exceeded', () => {
         const sessions: WritingSessionRecord[] = [
             {
