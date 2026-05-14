@@ -282,6 +282,23 @@ describe('WritingSessionService pure helpers', () => {
         expect(plugin.settings.writingSessions.active?.goalMinutes).toBe(50);
     });
 
+    it('persists the default writing session mode', async () => {
+        const plugin = {
+            settings: {
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting' },
+                    records: [],
+                },
+            },
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        await service.setDefaultMode('revising');
+
+        expect(plugin.settings.writingSessions.defaults.defaultMode).toBe('revising');
+    });
+
     it('saves completion details from the stop confirmation modal', async () => {
         const plugin = {
             settings: {

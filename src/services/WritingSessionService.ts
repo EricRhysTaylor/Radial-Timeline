@@ -374,6 +374,12 @@ export class WritingSessionService {
         return positiveMinutes(getRuntimeSettings(this.plugin.settings).sessionPlanning?.dailyMinutes);
     }
 
+    async setDefaultMode(mode: WritingSessionMode): Promise<void> {
+        const settings = this.getSettings();
+        settings.defaults.defaultMode = coerceMode(mode);
+        await this.plugin.saveSettings();
+    }
+
     async start(options: WritingSessionMode | WritingSessionStartOptions = {}): Promise<ActiveWritingSession> {
         const settings = this.getSettings();
         if (settings.active) {

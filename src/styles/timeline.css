@@ -1276,6 +1276,11 @@
   background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
 }
 
+.ert-timeline-session-panel__idle-card:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary));
+}
+
 .ert-timeline-session-panel__idle-icon {
   width: var(--size-4-8);
   height: var(--size-4-8);
@@ -1347,6 +1352,12 @@
   background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
   border: thin solid transparent;
   border-radius: var(--radius-m);
+}
+
+.ert-timeline-session-panel__section:hover,
+.ert-timeline-session-panel__section:focus-within {
+  border-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary));
 }
 
 .ert-timeline-session-panel__section-title {

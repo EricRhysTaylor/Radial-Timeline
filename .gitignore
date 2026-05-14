@@ -43,6 +43,9 @@ release/
 scripts/models/feature-audit.json
 release-ts/
 
+# Local gate-runner logs
+.gate-logs/
+
 # Publishing PDF QA artifact directory — regenerated on every smoke run.
 tmp/publishing-pdf-qa/
 

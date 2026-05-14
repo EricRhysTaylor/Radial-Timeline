@@ -891,7 +891,7 @@ export class RadialTimelineView extends ItemView {
             cls: 'ert-timeline-session-panel__idle-title',
             text: service.getDailySessionProgress().sessionsCompleted > 0 ? 'Resume today' : 'Ready to write',
         });
-        introText.createDiv({ cls: 'ert-timeline-session-panel__idle-meta', text: `${sessionGoal} min target · ${service.getSettings().defaults.defaultMode}` });
+        const idleMeta = introText.createDiv({ cls: 'ert-timeline-session-panel__idle-meta', text: `${sessionGoal} min target · ${service.getSettings().defaults.defaultMode}` });
         introText.createDiv({ cls: 'ert-timeline-session-panel__daily-meta', text: this.formatDailySessionProgress() });
 
         const form = panel.createDiv({ cls: 'ert-timeline-session-panel__form' });
@@ -913,6 +913,13 @@ export class RadialTimelineView extends ItemView {
         });
         modeSelect.value = service.getSettings().defaults.defaultMode;
         this.isolateSessionPanelControl(modeSelect);
+        this.registerDomEvent(modeSelect, 'change', () => {
+            const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
+            idleMeta.setText(`${sessionGoal} min target · ${mode}`);
+            void service.setDefaultMode(mode).catch(error => {
+                new Notice(error instanceof Error ? error.message : 'Could not save writing session mode.');
+            });
+        });
         this.writingSessionModeSelect = modeSelect;
 
         const sprintSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
@@ -960,6 +967,7 @@ export class RadialTimelineView extends ItemView {
                 ? parsedGoal
                 : undefined;
             try {
+                await service.setDefaultMode(mode);
                 const session = await service.start({ mode, goalMinutes });
                 new Notice(`Started ${session.mode} session${session.goalMinutes ? ` for ${session.goalMinutes} min` : ''}.`);
                 this.refreshWritingSessionControl();

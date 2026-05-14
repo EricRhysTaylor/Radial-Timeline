@@ -1,0 +1,291 @@
+#!/usr/bin/env node
+import fs from 'fs/promises';
+import path from 'path';
+import process from 'process';
+import { spawn } from 'child_process';
+import { performance } from 'perf_hooks';
+
+const ROOT = process.cwd();
+const LOG_ROOT = path.join(ROOT, '.gate-logs');
+const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const LOG_DIR = path.join(LOG_ROOT, timestamp);
+const verbose = process.argv.includes('--verbose');
+
+const colors = {
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    green: '\x1b[32m',
+    red: '\x1b[31m',
+    yellow: '\x1b[33m',
+    cyan: '\x1b[36m',
+    reset: '\x1b[0m',
+};
+
+const steps = [
+    {
+        id: 'model-drift',
+        label: 'AI model drift',
+        command: 'node scripts/check-model-updates.mjs --quiet',
+        report: summarizeModelDrift,
+    },
+    {
+        id: 'api-features',
+        label: 'API feature audit',
+        command: 'node scripts/check-api-features.mjs --summary',
+        report: summarizeApiFeatures,
+    },
+    {
+        id: 'pricing',
+        label: 'Pricing registry',
+        command: 'node scripts/validate-pricing.mjs',
+    },
+    {
+        id: 'css-duplicates-pre',
+        label: 'CSS duplicates',
+        command: 'node check-css-duplicates.mjs --quiet',
+    },
+    {
+        id: 'build',
+        label: 'Production build',
+        command: 'npm run build-only',
+    },
+    {
+        id: 'quality',
+        label: 'Code quality',
+        command: 'node code-quality-check.mjs --all',
+    },
+    {
+        id: 'css-drift',
+        label: 'CSS drift',
+        command: 'npm run css-drift -- --maintenance',
+        report: summarizeCssDrift,
+    },
+    {
+        id: 'compliance',
+        label: 'Compliance',
+        command: 'node scripts/compliance-check.mjs --maintenance',
+        report: summarizeCompliance,
+    },
+    {
+        id: 'spec-coverage',
+        label: 'Spec coverage',
+        command: 'npm run audit:spec-coverage',
+    },
+    {
+        id: 'tests',
+        label: 'Unit tests',
+        command: 'npm run test:quiet',
+    },
+];
+
+function color(name, text) {
+    return `${colors[name] ?? ''}${text}${colors.reset}`;
+}
+
+function rel(filePath) {
+    return path.relative(ROOT, filePath);
+}
+
+function duration(ms) {
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function stripAnsi(value) {
+    return value.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+function unique(values) {
+    return [...new Set(values.filter(Boolean))];
+}
+
+function extractNotices(output) {
+    const patterns = [
+        /\bALERT\b/i,
+        /\bWARN(?:ING)?\b/i,
+        /\bactionable\b/i,
+        /\bdrift\b/i,
+        /\boutdated\b/i,
+        /\bupdate(?:s|d| available)?\b/i,
+        /\bupgrade\b/i,
+    ];
+    return unique(stripAnsi(output)
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line && patterns.some(pattern => pattern.test(line)))
+        .filter(line => !line.startsWith('✓ '))
+    ).slice(0, 6);
+}
+
+function tail(output, count = 40) {
+    const lines = stripAnsi(output).trim().split(/\r?\n/).filter(Boolean);
+    return lines.slice(-count).join('\n');
+}
+
+async function readJson(filePath) {
+    try {
+        return JSON.parse(await fs.readFile(path.join(ROOT, filePath), 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+async function summarizeModelDrift() {
+    const report = await readJson('scripts/models/model-drift-report.json');
+    if (!report) return [];
+    const items = [];
+    const alerts = Array.isArray(report.releaseAlerts) ? report.releaseAlerts : [];
+    alerts.slice(0, 4).forEach(alert => {
+        if (alert?.message) items.push(`AI model drift: ${alert.message}`);
+    });
+    const followUps = Array.isArray(report.recommendedFollowUps) ? report.recommendedFollowUps : [];
+    followUps.slice(0, 3).forEach(item => {
+        if (typeof item === 'string') items.push(`AI model follow-up: ${item}`);
+        else if (item?.message) items.push(`AI model follow-up: ${item.message}`);
+    });
+    if (report.hasActionableChanges && items.length === 0) {
+        items.push('AI model drift: actionable provider changes detected. See scripts/models/model-drift-report.json.');
+    }
+    return unique(items);
+}
+
+async function summarizeApiFeatures() {
+    const report = await readJson('scripts/models/feature-audit.json');
+    if (!report) return [];
+    const items = [];
+    const validationErrors = Array.isArray(report.validationErrors) ? report.validationErrors : [];
+    const evidenceFailures = Array.isArray(report.evidenceFailures) ? report.evidenceFailures : [];
+    const priorities = Array.isArray(report.topPriorities) ? report.topPriorities : [];
+    if (validationErrors.length > 0) {
+        items.push(`API feature audit: ${validationErrors.length} validation error(s).`);
+    }
+    if (evidenceFailures.length > 0) {
+        items.push(`API feature audit: ${evidenceFailures.length} evidence failure(s).`);
+    }
+    priorities.slice(0, 3).forEach(priority => {
+        const label = priority?.name || priority?.id || priority?.capabilityId;
+        if (label) items.push(`API feature gap: ${label}.`);
+    });
+    return unique(items);
+}
+
+async function summarizeCssDrift(output) {
+    const clean = stripAnsi(output);
+    const deltaMatch = clean.match(/- delta:\s*([+-]\d+)/);
+    const delta = deltaMatch ? Number(deltaMatch[1]) : 0;
+    if (Number.isFinite(delta) && delta > 0) {
+        return [`CSS drift: warning count increased by ${delta}. See the CSS drift log.`];
+    }
+    return [];
+}
+
+async function summarizeCompliance(output) {
+    const clean = stripAnsi(output);
+    const deltaMatch = clean.match(/- delta:\s*([+-]\d+)/i);
+    const delta = deltaMatch ? Number(deltaMatch[1]) : 0;
+    if (Number.isFinite(delta) && delta !== 0) {
+        return [`Compliance: delta ${deltaMatch[1]}. See the compliance log.`];
+    }
+    return [];
+}
+
+function runCommand(command, logFile) {
+    return new Promise(resolve => {
+        const started = performance.now();
+        const child = spawn(command, {
+            cwd: ROOT,
+            env: process.env,
+            shell: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        const chunks = [];
+        child.stdout.on('data', chunk => {
+            chunks.push(chunk);
+            if (verbose) process.stdout.write(chunk);
+        });
+        child.stderr.on('data', chunk => {
+            chunks.push(chunk);
+            if (verbose) process.stderr.write(chunk);
+        });
+        child.on('close', async code => {
+            const output = Buffer.concat(chunks).toString('utf8');
+            await fs.writeFile(logFile, output, 'utf8');
+            resolve({
+                code,
+                output,
+                elapsedMs: performance.now() - started,
+            });
+        });
+    });
+}
+
+async function main() {
+    await fs.mkdir(LOG_DIR, { recursive: true });
+    const notices = [];
+    const actionItems = [];
+
+    console.log(color('bold', 'Radial Timeline gates'));
+    console.log(`${color('dim', 'Logs:')} ${rel(LOG_DIR)}`);
+
+    for (let index = 0; index < steps.length; index++) {
+        const step = steps[index];
+        const logFile = path.join(LOG_DIR, `${String(index + 1).padStart(2, '0')}-${step.id}.log`);
+        process.stdout.write(`[${index + 1}/${steps.length}] ${step.label} ... `);
+        const result = await runCommand(step.command, logFile);
+        const logPath = rel(logFile);
+        const outputNotices = step.report
+            ? []
+            : extractNotices(result.output).map(line => `${step.label}: ${line}`);
+        const reportItems = step.report ? await step.report(result.output) : [];
+        notices.push(...outputNotices);
+        actionItems.push(...reportItems);
+
+        if (result.code !== 0) {
+            console.log(`${color('red', 'FAIL')} (${duration(result.elapsedMs)})`);
+            console.log(`${color('red', 'Gate failed:')} ${step.label}`);
+            console.log(`${color('dim', 'Log:')} ${logPath}`);
+            const failureTail = tail(result.output);
+            if (failureTail) {
+                console.log('');
+                console.log(color('bold', 'Failure Tail'));
+                console.log(failureTail);
+            }
+            if (notices.length || actionItems.length) {
+                printSummary(actionItems, notices);
+            }
+            process.exitCode = result.code || 1;
+            return;
+        }
+
+        const noticeCount = outputNotices.length + reportItems.length;
+        const suffix = noticeCount > 0 ? ` ${color('yellow', `(${noticeCount} notice${noticeCount === 1 ? '' : 's'})`)}` : '';
+        console.log(`${color('green', 'PASS')} (${duration(result.elapsedMs)})${suffix}`);
+    }
+
+    printSummary(actionItems, notices);
+    console.log(color('green', 'All gates passed.'));
+}
+
+function printSummary(actionItems, notices) {
+    const actions = unique(actionItems).slice(0, 12);
+    const noticeLines = unique(notices).filter(line => !actions.some(action => line.includes(action))).slice(0, 12);
+
+    console.log('');
+    console.log(color('bold', 'Action Items'));
+    if (actions.length === 0) {
+        console.log('- None.');
+    } else {
+        actions.forEach(item => console.log(`- ${item}`));
+    }
+
+    if (noticeLines.length > 0) {
+        console.log('');
+        console.log(color('bold', 'Notices'));
+        noticeLines.forEach(item => console.log(`- ${item}`));
+    }
+}
+
+main().catch(error => {
+    console.error(color('red', error instanceof Error ? error.message : String(error)));
+    process.exitCode = 1;
+});

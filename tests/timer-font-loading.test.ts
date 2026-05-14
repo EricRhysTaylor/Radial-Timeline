@@ -77,7 +77,9 @@ describe('writing session timer font loading', () => {
         expect(timelineCss).toContain('.ert-timeline-session-panel__clock:not(.is-complete) .ert-timeline-session-panel__clock-value');
         expect(timelineCss).toContain('min-width: 10.5ch');
         expect(sectionBlock).not.toContain('transition:');
-        expect(timelineCss).not.toContain('.ert-timeline-session-panel__section:hover');
+        expect(timelineCss).toContain('.ert-timeline-session-panel__section:hover');
+        expect(timelineCss).toContain('.ert-timeline-session-panel__section:focus-within');
+        expect(timelineCss).not.toMatch(/\\.ert-timeline-session-panel__section:hover[\\s\\S]*?translateY/);
     });
 
     it('keeps idle timer configuration stable and renders the timer ring as SVG', () => {
