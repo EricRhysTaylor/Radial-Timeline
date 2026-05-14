@@ -27,8 +27,8 @@ function getModeLabel(modeId: string, fallback: string): string {
  */
 const MODE_ICON_BY_ID: Record<string, string> = {
     progress: 'waypoints',
-    narrative: 'line-squiggle',
-    chronologue: 'hourglass',
+    narrative: 'scroll-text',
+    chronologue: 'timeline',
     gossamer: 'audio-waveform',
 };
 
@@ -68,9 +68,9 @@ const ICON_NUMBER_X = 6;
 const ICON_NUMBER_Y = 8;
 
 // Bottom-left lucide glyph (inactive)
-const GLYPH_SIZE = 36;
-const GLYPH_X = 0;
-const GLYPH_Y = ICON_HEIGHT - GLYPH_SIZE;       // 6
+const GLYPH_SIZE = 18;
+const GLYPH_X = 4;
+const GLYPH_Y = ICON_HEIGHT - GLYPH_SIZE - 4;   // 20
 
 // Active mode dimensions (1.2x of the inactive size, also whole pixels).
 const ICON_WIDTH_ACTIVE = 36;
@@ -79,9 +79,9 @@ const ICON_NUMBER_X_ACTIVE = 7;
 const ICON_NUMBER_Y_ACTIVE = 10;
 
 // Bottom-left lucide glyph (active)
-const GLYPH_SIZE_ACTIVE = 42;
-const GLYPH_X_ACTIVE = 0;
-const GLYPH_Y_ACTIVE = ICON_HEIGHT_ACTIVE - GLYPH_SIZE_ACTIVE;  // 8
+const GLYPH_SIZE_ACTIVE = 21;
+const GLYPH_X_ACTIVE = 5;
+const GLYPH_Y_ACTIVE = ICON_HEIGHT_ACTIVE - GLYPH_SIZE_ACTIVE - 5;  // 24
 
 // Path scale factors derived from the original 43-wide source path.
 const ICON_BASE_SCALE = ICON_WIDTH / 43;        // -> 30/43 ≈ 0.6977
