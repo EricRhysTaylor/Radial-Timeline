@@ -241,6 +241,7 @@ describe('WritingSessionService pure helpers', () => {
 
         expect(normalized.defaults.defaultMode).toBe('drafting');
         expect(normalized.defaults.weeklyGoalDays).toBe(7);
+        expect(normalized.defaults.writingStatsOpen).toBe(false);
         expect(normalized.records).toEqual([]);
         expect(normalized.active?.id).toBe('active');
     });

@@ -36,8 +36,10 @@ describe('Goals & Sessions settings UI', () => {
         expect(source).toContain("return `${hours}:${String(remainder).padStart(2, '0')}`");
         expect(source).toContain("metric.createDiv({ cls: 'ert-goals-stat__label', text: label })");
         expect(source).toContain("if (unit) head.createDiv({ cls: 'ert-goals-stat__unit', text: unit })");
-        expect(source).toContain("'draft', String(stats.wordsDrafted), 'draft', 'wrds'");
-        expect(source).toContain("'fresh', String(stats.freshScenesCompleted), 'fresh', 'scns'");
+        expect(source).toContain("'draft', String(stats.wordsDrafted), 'draft', 'w'");
+        expect(source).toContain("targetDays ? 'd' : undefined");
+        expect(source).toContain("'fresh', String(stats.freshScenesCompleted), 'fresh', 's'");
+        expect(source).toContain("'revisions', String(stats.revisionScenesCompleted), 'revision', 's'");
         expect(statBlock).toContain('grid-template-rows: auto auto');
         expect(headBlock).toContain('align-items: flex-start');
         expect(valueBlock).toContain('font-size: var(--font-ui-medium)');
@@ -52,13 +54,15 @@ describe('Goals & Sessions settings UI', () => {
         const markerBlock = readRuleBlock(css, '.ert-ui.ert-scope--settings .ert-goals-stats-summary::marker');
 
         expect(source).toContain("cls: 'ert-iconBtn ert-goals-stats-summary__chevron'");
-        expect(source).toContain("setIcon(chevron, 'chevron-down')");
+        expect(source).toContain("setIcon(chevron, details.open ? 'chevron-down' : 'chevron-right')");
         expect(source).toContain("details.open = !details.open");
+        expect(source).toContain('details.open = plugin.getWritingSessionService().getSettings().defaults.writingStatsOpen === true');
+        expect(source).toContain('settings.defaults.writingStatsOpen = details.open');
         expect(source).toContain("chevron.setAttribute('aria-expanded'");
         expect(chevronBlock).toContain('margin-left: var(--ert-gap-xs)');
         expect(markerBlock).toContain("content: ''");
-        expect(css).toContain('.ert-goals-stats-details[open] .ert-goals-stats-summary__chevron svg');
-        expect(css).toContain('transform: rotate(180deg)');
+        expect(css).not.toContain('.ert-goals-stats-details[open] .ert-goals-stats-summary__chevron svg');
+        expect(css).not.toContain('transform: rotate(180deg)');
     });
 
     it('adds a weekly writing goal setting above stats', () => {
@@ -69,6 +73,6 @@ describe('Goals & Sessions settings UI', () => {
         expect(source).toContain('max: 7');
         expect(source).toContain('min: 1');
         expect(source).toContain('settings.defaults.weeklyGoalDays');
-        expect(locale).toContain('Weekly writing goal in days');
+        expect(locale).toContain("name: 'Weekly writing goal'");
     });
 });

@@ -231,20 +231,27 @@
   stroke-width: 2px;
 }
 
-.rt-mode-option .rt-mode-glyph {
+.rt-mode-option:hover .rt-mode-acronym-text {
+  fill: var(--text-on-accent);
+}
+
+.rt-mode-option .rt-mode-acronym-text {
   pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: var(--font-interface);
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  fill: var(--text-normal);
+  transition: fill 0.2s ease;
 }
 
-.rt-mode-option .rt-mode-glyph svg {
-  color: var(--text-normal);
-  stroke: currentColor;
-  fill: none;
-  transition: color 0.2s ease;
-}
-
-.rt-mode-option:hover .rt-mode-glyph svg,
-.rt-mode-option .rt-mode-glyph.rt-active svg {
-  color: var(--text-on-accent);
+.rt-mode-option .rt-active.rt-mode-acronym-text {
+  fill: var(--text-on-accent);
+  font-size: 14px;
+  font-weight: 300;
 }
 
 .rt-mode-option .rt-mode-number-label {

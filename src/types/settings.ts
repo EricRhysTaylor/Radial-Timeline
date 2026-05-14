@@ -309,6 +309,7 @@ export interface WritingSessionDefaults {
     defaultMode: WritingSessionMode;
     defaultStage?: WritingSessionStagePreference;
     weeklyGoalDays?: number;
+    writingStatsOpen?: boolean;
 }
 
 export interface ActiveWritingSession {

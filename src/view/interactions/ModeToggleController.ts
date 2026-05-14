@@ -1,4 +1,4 @@
-import { Notice, getIcon } from 'obsidian';
+import { Notice } from 'obsidian';
 import { resetGossamerModeState } from '../../GossamerCommands';
 import type { ModeManager } from '../../modes/ModeManager';
 import { TimelineMode } from '../../modes/ModeDefinition';
@@ -22,15 +22,13 @@ function getModeLabel(modeId: string, fallback: string): string {
 }
 
 /**
- * Lucide icon name shown in the bottom-left of each mode button.
- * Keyed by mode id from the registry.
+ * Resolve translated mode acronym by mode id. Falls back to definition acronym.
  */
-const MODE_ICON_BY_ID: Record<string, string> = {
-    progress: 'waypoints',
-    narrative: 'scroll-text',
-    chronologue: 'timeline',
-    gossamer: 'audio-waveform',
-};
+function getModeAcronym(modeId: string, fallback: string): string {
+    const key = `timeline.modes.${modeId}.acronym`;
+    const value = t(key);
+    return value && !value.startsWith('[missing:') ? value : fallback;
+}
 
 interface ModeToggleView {
     currentMode?: string;
@@ -46,13 +44,14 @@ interface ModeToggleView {
 }
 
 // Build MODE_OPTIONS dynamically from mode registry - SINGLE SOURCE OF TRUTH
-// label is resolved via t() at render time (so locale changes are honored)
+// label/acronym are resolved via t() at render time (so locale changes are honored)
 function buildModeOptions() {
     return getToggleableModes().map(mode => {
+        const fallbackAcronym = mode.ui.acronym || mode.name.charAt(0).toUpperCase();
         return {
             id: mode.id,
             get label() { return getModeLabel(mode.id, mode.name); },
-            iconName: MODE_ICON_BY_ID[mode.id] ?? '',
+            get acronym() { return getModeAcronym(mode.id, fallbackAcronym); },
             order: mode.ui.order
         };
     });
@@ -66,22 +65,17 @@ const ICON_WIDTH = 30;
 const ICON_HEIGHT = 42;
 const ICON_NUMBER_X = 6;
 const ICON_NUMBER_Y = 8;
-
-// Bottom-left lucide glyph (inactive)
-const GLYPH_SIZE = 18;
-const GLYPH_X = 4;
-const GLYPH_Y = ICON_HEIGHT - GLYPH_SIZE - 4;   // 20
+// Single-letter acronym, centered horizontally near the bottom
+const LETTER_X = ICON_WIDTH / 2;     // 15
+const LETTER_Y = 34;
 
 // Active mode dimensions (1.2x of the inactive size, also whole pixels).
 const ICON_WIDTH_ACTIVE = 36;
 const ICON_HEIGHT_ACTIVE = 50;
 const ICON_NUMBER_X_ACTIVE = 7;
 const ICON_NUMBER_Y_ACTIVE = 10;
-
-// Bottom-left lucide glyph (active)
-const GLYPH_SIZE_ACTIVE = 21;
-const GLYPH_X_ACTIVE = 5;
-const GLYPH_Y_ACTIVE = ICON_HEIGHT_ACTIVE - GLYPH_SIZE_ACTIVE - 5;  // 24
+const LETTER_X_ACTIVE = ICON_WIDTH_ACTIVE / 2;  // 18
+const LETTER_Y_ACTIVE = 40;
 
 // Path scale factors derived from the original 43-wide source path.
 const ICON_BASE_SCALE = ICON_WIDTH / 43;        // -> 30/43 ≈ 0.6977
@@ -125,26 +119,6 @@ function createActiveDocumentShape(): string {
 }
 
 /**
- * Build a positioned lucide glyph for the bottom-left of a mode button.
- * Wraps Obsidian's getIcon() output in a <g> so we can set x/y via transform
- * and a class hook for active-state styling.
- */
-function buildModeGlyph(iconName: string, x: number, y: number, size: number): SVGGElement | null {
-    if (!iconName) return null;
-    const lucide = getIcon(iconName);
-    if (!lucide) return null;
-
-    lucide.setAttribute('width', String(size));
-    lucide.setAttribute('height', String(size));
-
-    const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    wrap.setAttribute('class', 'rt-mode-glyph');
-    wrap.setAttribute('transform', `translate(${x}, ${y})`);
-    wrap.appendChild(lucide);
-    return wrap;
-}
-
-/**
  * Create the mode selector grid element
  */
 function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
@@ -175,8 +149,14 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createInactiveDocumentShape());
 
-        // Bottom-left lucide glyph (inactive size)
-        const glyph = buildModeGlyph(mode.iconName, GLYPH_X, GLYPH_Y, GLYPH_SIZE);
+        // Acronym letter centered near the bottom
+        const letter = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        letter.setAttribute('class', 'rt-mode-acronym-text');
+        letter.setAttribute('x', String(LETTER_X));
+        letter.setAttribute('y', String(LETTER_Y));
+        letter.setAttribute('text-anchor', 'middle');
+        letter.setAttribute('dominant-baseline', 'middle');
+        letter.textContent = mode.acronym;
 
         // Create number label (1, 2, 3, 4) at top left corner - Native Size
         const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -188,7 +168,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         numberLabel.textContent = String(index + 1);
 
         innerGroup.appendChild(path);
-        if (glyph) innerGroup.appendChild(glyph);
+        innerGroup.appendChild(letter);
         innerGroup.appendChild(numberLabel);
         optionGroup.appendChild(innerGroup);
         grid.appendChild(optionGroup);
@@ -285,8 +265,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         if (!modeElement) return;
 
         const bg = modeElement.querySelector('.rt-document-bg') as SVGElement;
-        const glyph = modeElement.querySelector('.rt-mode-glyph') as SVGGElement | null;
-        const glyphSvg = glyph?.querySelector('svg') as SVGSVGElement | null;
+        const letter = modeElement.querySelector('.rt-mode-acronym-text') as SVGElement | null;
         const numberLabel = modeElement.querySelector('.rt-mode-number-label') as SVGElement;
 
         const finalX = positions[index] + offset;
@@ -296,7 +275,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         modeElement.classList.toggle('rt-mode-current', isActive);
         bg.classList.toggle('rt-active', isActive);
         if (numberLabel) numberLabel.classList.toggle('rt-active', isActive);
-        if (glyph) glyph.classList.toggle('rt-active', isActive);
+        if (letter) letter.classList.toggle('rt-active', isActive);
 
         if (isActive) {
             bg.setAttribute('d', createActiveDocumentShape());
@@ -304,10 +283,9 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
                 numberLabel.setAttribute('x', String(ICON_NUMBER_X_ACTIVE));
                 numberLabel.setAttribute('y', String(ICON_NUMBER_Y_ACTIVE));
             }
-            if (glyph) glyph.setAttribute('transform', `translate(${GLYPH_X_ACTIVE}, ${GLYPH_Y_ACTIVE})`);
-            if (glyphSvg) {
-                glyphSvg.setAttribute('width', String(GLYPH_SIZE_ACTIVE));
-                glyphSvg.setAttribute('height', String(GLYPH_SIZE_ACTIVE));
+            if (letter) {
+                letter.setAttribute('x', String(LETTER_X_ACTIVE));
+                letter.setAttribute('y', String(LETTER_Y_ACTIVE));
             }
         } else {
             bg.setAttribute('d', createInactiveDocumentShape());
@@ -315,10 +293,9 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
                 numberLabel.setAttribute('x', String(ICON_NUMBER_X));
                 numberLabel.setAttribute('y', String(ICON_NUMBER_Y));
             }
-            if (glyph) glyph.setAttribute('transform', `translate(${GLYPH_X}, ${GLYPH_Y})`);
-            if (glyphSvg) {
-                glyphSvg.setAttribute('width', String(GLYPH_SIZE));
-                glyphSvg.setAttribute('height', String(GLYPH_SIZE));
+            if (letter) {
+                letter.setAttribute('x', String(LETTER_X));
+                letter.setAttribute('y', String(LETTER_Y));
             }
         }
     });

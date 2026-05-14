@@ -36,7 +36,7 @@ export const NARRATIVE_MODE: ModeDefinition = {
     },
     
     ui: {
-        acronym: 'NR',
+        acronym: 'N',
         tooltip: 'Switch to Narrative mode',
         showInToggleButton: true,
         order: 2

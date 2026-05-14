@@ -244,6 +244,7 @@ Chapter:`,
         defaults: {
             defaultMode: 'drafting',
             weeklyGoalDays: 7,
+            writingStatsOpen: false,
         },
         records: [],
     },

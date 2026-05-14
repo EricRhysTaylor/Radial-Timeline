@@ -2225,7 +2225,7 @@ export const en: TranslationKeys = {
                 desc: 'Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.',
             },
             weeklyGoalDays: {
-                name: 'Weekly writing goal in days',
+                name: 'Weekly writing goal',
                 desc: 'How many days per week you want to meet the daily session target.',
             },
         },
@@ -2669,10 +2669,10 @@ export const en: TranslationKeys = {
         renderError: 'Error rendering timeline. Check console for details.',
         overdue: 'Overdue: {{date}}',
         modes: {
-            narrative: { name: 'Narrative', acronym: 'NR' },
-            progress: { name: 'Progress', acronym: 'PR' },
-            chronologue: { name: 'Chronologue', acronym: 'CH' },
-            gossamer: { name: 'Gossamer', acronym: 'GS' },
+            narrative: { name: 'Narrative', acronym: 'N' },
+            progress: { name: 'Progress', acronym: 'P' },
+            chronologue: { name: 'Chronologue', acronym: 'C' },
+            gossamer: { name: 'Gossamer', acronym: 'G' },
         },
         subplotRing: {
             allScenes: 'ALL SCENES',

@@ -163,10 +163,10 @@ function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, s
     const metrics = card.createDiv({ cls: 'ert-goals-stat-grid' });
     createMetric(metrics, 'timer', 'logged', formatMinutes(stats.minutesLogged), 'time');
     createMetric(metrics, 'list-checks', 'sessions', String(stats.sessionsCompleted), 'sessions');
-    createMetric(metrics, status === 'met' ? 'check-circle-2' : 'alert-triangle', 'goal', goalValue, status === 'missed' ? 'warning' : 'goal', targetDays ? 'days' : undefined);
-    createMetric(metrics, 'pencil', 'draft', String(stats.wordsDrafted), 'draft', 'wrds');
-    createMetric(metrics, 'book-open-text', 'fresh', String(stats.freshScenesCompleted), 'fresh', 'scns');
-    createMetric(metrics, 'refresh-cw', 'revisions', String(stats.revisionScenesCompleted), 'revision', 'scns');
+    createMetric(metrics, status === 'met' ? 'check-circle-2' : 'alert-triangle', 'goal', goalValue, status === 'missed' ? 'warning' : 'goal', targetDays ? 'd' : undefined);
+    createMetric(metrics, 'pencil', 'draft', String(stats.wordsDrafted), 'draft', 'w');
+    createMetric(metrics, 'book-open-text', 'fresh', String(stats.freshScenesCompleted), 'fresh', 's');
+    createMetric(metrics, 'refresh-cw', 'revisions', String(stats.revisionScenesCompleted), 'revision', 's');
 
     const stages = card.createDiv({ cls: 'ert-goals-stage-line' });
     (['Zero', 'Author', 'House', 'Press'] as const).forEach(stage => {
@@ -194,6 +194,7 @@ function renderStatsError(container: HTMLElement, message: string): void {
 
 function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTMLElement): void {
     const details = containerEl.createEl('details', { cls: 'ert-goals-stats-details' });
+    details.open = plugin.getWritingSessionService().getSettings().defaults.writingStatsOpen === true;
     const summary = details.createEl('summary', { cls: 'ert-goals-stats-summary' });
     const headingIcon = summary.createSpan({ cls: 'ert-goals-stats-summary__icon ert-setting-heading-icon' });
     setIcon(headingIcon, 'chart-column');
@@ -218,7 +219,7 @@ function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTML
             'aria-expanded': details.open ? 'true' : 'false',
         },
     });
-    setIcon(chevron, 'chevron-down');
+    setIcon(chevron, details.open ? 'chevron-down' : 'chevron-right');
     chevron.onclick = (event: MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -227,6 +228,10 @@ function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTML
     details.ontoggle = () => {
         chevron.setAttribute('aria-label', details.open ? 'Collapse writing stats' : 'Expand writing stats');
         chevron.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+        setIcon(chevron, details.open ? 'chevron-down' : 'chevron-right');
+        const settings = plugin.getWritingSessionService().getSettings();
+        settings.defaults.writingStatsOpen = details.open;
+        void plugin.saveSettings();
     };
     const body = details.createDiv({ cls: 'ert-goals-stats-body' });
     body.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: 'Loading writing stats…' });

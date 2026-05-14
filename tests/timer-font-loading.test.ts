@@ -39,6 +39,9 @@ describe('writing session timer font loading', () => {
         const countPulseBlock = timelineCss.match(/@keyframes ert-timeline-session-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
         const ringPulseBlock = indicatorsCss.match(/@keyframes ert-timeline-session-ring-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
         const ringTrackBlock = readRuleBlock(indicatorsCss, '.radial-timeline-container .ert-timeline-session-ring__track');
+        const ringPausedBlock = readRuleBlock(indicatorsCss, '.radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc');
+        const ringCompleteProgressIndex = indicatorsCss.indexOf('.radial-timeline-container .ert-timeline-session-ring.is-progress-100 .ert-timeline-session-ring__arc');
+        const ringPausedIndex = indicatorsCss.indexOf('.radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc');
         const clockBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock {');
         const titleButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon:not(.is-icon-only)');
         const iconOnlyButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon.is-icon-only');
@@ -72,6 +75,9 @@ describe('writing session timer font loading', () => {
         expect(ringPulseBlock).toContain('stroke: var(--ert-session-pulse-color, white)');
         expect(ringTrackBlock).toContain('stroke: color-mix(in srgb, var(--text-normal) 44%, var(--background-primary))');
         expect(ringTrackBlock).toContain('opacity: 1');
+        expect(ringPausedBlock).toContain('stroke: var(--text-warning)');
+        expect(ringPausedBlock).toContain('opacity: 1');
+        expect(ringPausedIndex).toBeGreaterThan(ringCompleteProgressIndex);
         expect(timelineCss).toContain('animation: ert-timeline-session-count-pulse 300ms ease-out');
         expect(indicatorsCss).toContain('animation: ert-timeline-session-ring-count-pulse 300ms ease-out');
         expect(clockBlock).toContain('background: transparent');

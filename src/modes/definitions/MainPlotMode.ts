@@ -37,7 +37,7 @@ export const PROGRESS_MODE: ModeDefinition = {
     },
     
     ui: {
-        acronym: 'PR',
+        acronym: 'P',
         tooltip: 'Switch to Progress mode',
         showInToggleButton: true,
         order: 1

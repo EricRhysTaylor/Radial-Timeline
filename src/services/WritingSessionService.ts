@@ -225,9 +225,10 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
     const defaultMode = coerceMode(settings?.defaults?.defaultMode);
     const defaultStage = coerceStagePreference(settings?.defaults?.defaultStage);
     const weeklyGoalDays = coerceWeeklyGoalDays(settings?.defaults?.weeklyGoalDays);
+    const writingStatsOpen = settings?.defaults?.writingStatsOpen === true;
     const active = settings?.active;
     return {
-        defaults: { defaultMode, defaultStage, weeklyGoalDays },
+        defaults: { defaultMode, defaultStage, weeklyGoalDays, writingStatsOpen },
         ...(active ? {
             active: {
                 ...active,

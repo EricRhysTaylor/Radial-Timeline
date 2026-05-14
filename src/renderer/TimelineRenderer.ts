@@ -791,12 +791,6 @@ export function createTimelineSVG(
         runtimeContentType: plugin.settings.runtimeContentType || 'novel',
     });
 
-    // Add tick mark and label for the estimated completion date if available
-    // (Moved here to draw AFTER center stats so it appears on top)
-    if (estimateResult && settings.showCompletionEstimate !== false) {
-        svg += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
-    }
-
     // Add number squares after background layer but before synopses
     const numberSquareContext: NumberSquareRenderContext = {
         plugin,
@@ -834,6 +828,12 @@ export function createTimelineSVG(
 
     // Close rotatable container
     svg += `</g>`;
+
+    // Add tick mark for the estimated completion date outside the rotatable scene layer.
+    // It belongs to calendar time, so manual timeline rotation must not move it.
+    if (estimateResult && settings.showCompletionEstimate !== false) {
+        svg += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
+    }
 
     // Subplot labels - rendered OUTSIDE rotatable so they stay fixed when rotation is applied
     svg += `<g class="background-layer subplot-labels-fixed">`;

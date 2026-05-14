@@ -233,10 +233,6 @@
   opacity: 1;
 }
 
-.radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc {
-  opacity: 0.55;
-}
-
 .radial-timeline-container .ert-timeline-session-ring.is-progress-0 .ert-timeline-session-ring__arc {
   stroke: var(--rt-max-publish-stage-color, var(--text-accent));
 }
@@ -319,6 +315,11 @@
 
 .radial-timeline-container .ert-timeline-session-ring.is-progress-100 .ert-timeline-session-ring__arc {
   stroke: var(--text-success);
+}
+
+.radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc {
+  stroke: var(--text-warning);
+  opacity: 1;
 }
 
 .radial-timeline-container .ert-timeline-session-ring-layer.is-count-pulse .ert-timeline-session-ring__arc {
