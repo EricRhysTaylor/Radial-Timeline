@@ -1306,6 +1306,11 @@
   font-size: var(--font-ui-smaller);
 }
 
+.ert-timeline-session-panel__daily-meta {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smallest);
+}
+
 .ert-timeline-session-panel__row {
   display: flex;
   align-items: center;
@@ -1427,6 +1432,11 @@
   justify-content: flex-end;
   gap: var(--size-2-2);
   flex: 0 1 auto;
+}
+
+.ert-timeline-session-panel__goal-controls.is-countdown-disabled .ert-timeline-session-panel__quick,
+.ert-timeline-session-panel__goal-controls.is-countdown-disabled .ert-timeline-session-panel__number {
+  opacity: 0.62;
 }
 
 .ert-timeline-session-panel__chip {

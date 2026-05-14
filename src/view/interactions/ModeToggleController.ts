@@ -33,6 +33,7 @@ function getModeAcronym(modeId: string, fallback: string): string {
 
 interface ModeToggleView {
     currentMode?: string;
+    closeWritingSessionPanel?: () => void;
     getModeManager?: () => ModeManager | undefined;
     plugin: {
         settings: RadialTimelineSettings;
@@ -179,6 +180,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
  */
 async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: SVGGElement): Promise<void> {
     const modeManager = view.getModeManager?.();
+    view.closeWritingSessionPanel?.();
 
     // Update UI immediately for instant visual feedback
     updateModeSelectorState(modeSelector, modeId);

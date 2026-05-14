@@ -4,6 +4,7 @@ import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { ERT_CLASSES } from '../../ui/classes';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import type { WritingRangeStats } from '../../services/WritingSessionService';
 
 interface GoalsSessionsSectionParams {
     plugin: RadialTimelinePlugin;
@@ -94,6 +95,85 @@ function wireNumberInput(params: {
     });
 }
 
+function formatMinutes(minutes: number): string {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
+function formatRangeLabel(stats: WritingRangeStats): string {
+    if (stats.days === 1) return 'Today';
+    return `${stats.days} days`;
+}
+
+function createMetric(container: HTMLElement, label: string, value: string): void {
+    const metric = container.createDiv({ cls: 'ert-goals-stat' });
+    metric.createDiv({ cls: 'ert-goals-stat__value', text: value });
+    metric.createDiv({ cls: 'ert-goals-stat__label', text: label });
+}
+
+function createRangeCard(container: HTMLElement, stats: WritingRangeStats): void {
+    const card = container.createDiv({ cls: 'ert-goals-stat-card' });
+    const header = card.createDiv({ cls: 'ert-goals-stat-card__header' });
+    header.createDiv({ cls: 'ert-goals-stat-card__title', text: formatRangeLabel(stats) });
+    header.createDiv({ cls: 'ert-goals-stat-card__date', text: stats.days === 1 ? stats.endDate : `${stats.startDate} to ${stats.endDate}` });
+
+    const metrics = card.createDiv({ cls: 'ert-goals-stat-grid' });
+    createMetric(metrics, 'logged', formatMinutes(stats.minutesLogged));
+    createMetric(metrics, 'sessions', String(stats.sessionsCompleted));
+    createMetric(metrics, 'goal days', stats.dailyTargetMinutes ? `${stats.daysGoalMet}/${stats.days}` : '—');
+    createMetric(metrics, 'draft words', String(stats.wordsDrafted));
+    createMetric(metrics, 'fresh scenes', String(stats.freshScenesCompleted));
+    createMetric(metrics, 'revision scenes', String(stats.revisionScenesCompleted));
+
+    const stages = card.createDiv({ cls: 'ert-goals-stage-line' });
+    (['Zero', 'Author', 'House', 'Press'] as const).forEach(stage => {
+        const item = stages.createSpan({ cls: 'ert-goals-stage-pill' });
+        item.createSpan({ cls: 'ert-goals-stage-pill__label', text: stage });
+        item.createSpan({ cls: 'ert-goals-stage-pill__value', text: String(stats.scenesCompletedByStage[stage]) });
+    });
+}
+
+function renderStatsBody(container: HTMLElement, stats: WritingRangeStats[]): void {
+    container.empty();
+    const cards = container.createDiv({ cls: 'ert-goals-stats-grid' });
+    stats.forEach(stat => createRangeCard(cards, stat));
+}
+
+function renderStatsError(container: HTMLElement, message: string): void {
+    container.empty();
+    container.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: message });
+}
+
+function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTMLElement): void {
+    const details = containerEl.createEl('details', { cls: 'ert-goals-stats-details' });
+    const summary = details.createEl('summary', { cls: 'ert-goals-stats-summary' });
+    summary.createSpan({ cls: 'ert-goals-stats-summary__title', text: 'Writing stats' });
+    summary.createSpan({
+        cls: 'ert-goals-stats-summary__desc',
+        text: 'Local timer records and scene completion dates.',
+    });
+    const body = details.createDiv({ cls: 'ert-goals-stats-body' });
+    body.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: 'Loading writing stats…' });
+
+    const refresh = async () => {
+        try {
+            const service = plugin.getWritingSessionService();
+            const stats = await Promise.all([
+                service.getRangeStats(1),
+                service.getRangeStats(7),
+                service.getRangeStats(30),
+            ]);
+            renderStatsBody(body, stats);
+        } catch (error) {
+            renderStatsError(body, error instanceof Error ? error.message : 'Could not build writing stats.');
+        }
+    };
+
+    void refresh();
+}
+
 export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSessionsSectionParams): void {
     containerEl.classList.add(ERT_CLASSES.STACK);
 
@@ -140,4 +220,6 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
                 },
             });
         });
+
+    renderWritingStatsPanel(plugin, body);
 }

@@ -424,7 +424,7 @@
   gap: var(--ert-gap-sm);
   padding: var(--ert-pad-md);
   background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
+  border: var(--ert-gap-3xs) solid var(--background-modifier-border);
   border-radius: 12px;
 }
 
@@ -1173,7 +1173,7 @@
 .ert-ui.ert-scope--settings .ert-controlGroup__row--card {
   padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2));
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
-  border: 1px solid var(--background-modifier-border);
+  border: var(--ert-gap-3xs) solid var(--background-modifier-border);
   background: var(--background-secondary);
 }
 
@@ -1446,7 +1446,7 @@
   grid-template-columns: 1fr auto;
   gap: var(--ert-gap-sm);
   align-items: center;
-  border: 1px solid var(--background-modifier-border);
+  border: var(--ert-gap-3xs) solid var(--background-modifier-border);
   border-radius: 10px;
   padding: var(--ert-pad-sm);
   background: var(--background-primary);
@@ -7732,6 +7732,12 @@
   max-width: 94vw;
 }
 
+.ert-ui.ert-modal--writing-session.modal,
+.ert-ui .ert-modal--writing-session.modal {
+  width: 460px;
+  max-width: 92vw;
+}
+
 .ert-ui .ert-modal-container {
   position: relative;
   isolation: isolate;
@@ -13213,4 +13219,112 @@
   left: -10000px;
   pointer-events: none;
   margin: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stats-details {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-panel-radius);
+  background: var(--background-secondary);
+  overflow: hidden;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stats-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ert-gap-md);
+  padding: var(--ert-pad-cozy) var(--ert-pad-comfy);
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stats-summary__title {
+  color: var(--text-normal);
+  font-weight: 700;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stats-summary__desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stats-body {
+  padding: 0 var(--ert-pad-comfy) var(--ert-pad-comfy);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-control-radius);
+  padding: var(--ert-pad-cozy);
+  background: var(--background-primary);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat-card__title {
+  color: var(--text-normal);
+  font-weight: 700;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat-card__date {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  text-align: right;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat {
+  min-width: 0;
+  border-radius: calc(var(--ert-control-radius) - var(--ert-gap-2xs));
+  padding: var(--ert-pad-tight);
+  background: var(--background-secondary);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat__value {
+  color: var(--text-normal);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stat__label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stage-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999em;
+  padding: var(--ert-gap-2xs) var(--ert-pad-xs);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.ert-ui.ert-scope--settings .ert-goals-stage-pill__value {
+  color: var(--text-normal);
+  font-weight: 700;
 }

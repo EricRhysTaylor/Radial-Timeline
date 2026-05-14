@@ -38,6 +38,7 @@ import {
 } from '../renderer/ChangeDetection';
 import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
+import { WritingSessionCompletionModal } from '../modals/WritingSessionCompletionModal';
 import { isMatterNote } from '../utils/sceneHelpers';
 import { DEFAULT_BOOK_TITLE, getTimelineScope, getTimelineScopeTitle, isSagaScopeAvailable } from '../utils/books';
 import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
@@ -716,6 +717,10 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionButton?.setAttribute('aria-expanded', 'false');
     }
 
+    public closeWritingSessionPanel(): void {
+        this.hideWritingSessionPanel();
+    }
+
     private positionWritingSessionPanel(): void {
         if (!this.writingSessionPanel || !this.writingSessionButton) return;
         const btnRect = this.writingSessionButton.getBoundingClientRect();
@@ -733,6 +738,30 @@ export class RadialTimelineView extends ItemView {
         return this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
     }
 
+    private getSessionGoalMinutesForToday(): number {
+        const service = this.plugin.getWritingSessionService();
+        const dailyProgress = service.getDailySessionProgress();
+        return dailyProgress.remainingMinutes && dailyProgress.remainingMinutes > 0
+            ? dailyProgress.remainingMinutes
+            : this.getDefaultSessionGoalMinutes();
+    }
+
+    private formatDailySessionProgress(): string {
+        const dailyProgress = this.plugin.getWritingSessionService().getDailySessionProgress();
+        if (!dailyProgress.dailyTargetMinutes) {
+            return dailyProgress.minutesLogged > 0
+                ? `${dailyProgress.minutesLogged} min logged today`
+                : 'No daily target set';
+        }
+        if (dailyProgress.remainingMinutes && dailyProgress.remainingMinutes > 0) {
+            return `${dailyProgress.minutesLogged} min logged · ${dailyProgress.remainingMinutes} min left today`;
+        }
+        if (dailyProgress.overGoalMinutes > 0) {
+            return `${dailyProgress.minutesLogged} min logged · ${dailyProgress.overGoalMinutes} min over goal`;
+        }
+        return `${dailyProgress.minutesLogged} min logged · daily goal met`;
+    }
+
     private createSessionButton(parent: HTMLElement, label: string, className: string, onClick: () => void | Promise<void>): HTMLButtonElement {
         const button = parent.createEl('button', { cls: className, text: label });
         button.type = 'button';
@@ -742,6 +771,14 @@ export class RadialTimelineView extends ItemView {
             void onClick();
         };
         return button;
+    }
+
+    private isolateSessionPanelControl(control: HTMLElement): void {
+        (['keydown', 'keypress', 'keyup'] as const).forEach(eventName => {
+            this.registerDomEvent(control, eventName, event => {
+                event.stopPropagation();
+            });
+        });
     }
 
     private createSessionIconButton(parent: HTMLElement, icon: string, label: string, className: string, onClick: () => void | Promise<void>): HTMLButtonElement {
@@ -813,13 +850,17 @@ export class RadialTimelineView extends ItemView {
 
     private renderIdleWritingSessionPanel(panel: HTMLElement): void {
         const service = this.plugin.getWritingSessionService();
-        const defaultGoal = this.getDefaultSessionGoalMinutes();
+        const sessionGoal = this.getSessionGoalMinutesForToday();
         const intro = panel.createDiv({ cls: 'ert-timeline-session-panel__idle-card' });
         const introIcon = intro.createDiv({ cls: 'ert-timeline-session-panel__idle-icon' });
         setIcon(introIcon, 'play');
         const introText = intro.createDiv({ cls: 'ert-timeline-session-panel__idle-copy' });
-        introText.createDiv({ cls: 'ert-timeline-session-panel__idle-title', text: 'Ready to write' });
-        introText.createDiv({ cls: 'ert-timeline-session-panel__idle-meta', text: `${defaultGoal} min target · ${service.getSettings().defaults.defaultMode}` });
+        introText.createDiv({
+            cls: 'ert-timeline-session-panel__idle-title',
+            text: service.getDailySessionProgress().sessionsCompleted > 0 ? 'Resume today' : 'Ready to write',
+        });
+        introText.createDiv({ cls: 'ert-timeline-session-panel__idle-meta', text: `${sessionGoal} min target · ${service.getSettings().defaults.defaultMode}` });
+        introText.createDiv({ cls: 'ert-timeline-session-panel__daily-meta', text: this.formatDailySessionProgress() });
 
         const form = panel.createDiv({ cls: 'ert-timeline-session-panel__form' });
         const sessionSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
@@ -839,6 +880,7 @@ export class RadialTimelineView extends ItemView {
             opt.value = option.value;
         });
         modeSelect.value = service.getSettings().defaults.defaultMode;
+        this.isolateSessionPanelControl(modeSelect);
         this.writingSessionModeSelect = modeSelect;
 
         const sprintSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
@@ -850,6 +892,7 @@ export class RadialTimelineView extends ItemView {
         countdownToggle.type = 'checkbox';
         countdownToggle.checked = true;
         countdownLabel.createSpan({ text: 'Countdown sprint' });
+        this.isolateSessionPanelControl(countdownToggle);
         this.writingSessionCountdownToggle = countdownToggle;
 
         const goalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
@@ -861,8 +904,9 @@ export class RadialTimelineView extends ItemView {
         goalInput.min = '1';
         goalInput.max = '600';
         goalInput.step = '5';
-        goalInput.value = String(defaultGoal);
+        goalInput.value = String(sessionGoal);
         goalInput.setAttribute('aria-label', 'Session goal minutes');
+        this.isolateSessionPanelControl(goalInput);
         this.writingSessionGoalInput = goalInput;
 
         [
@@ -872,9 +916,9 @@ export class RadialTimelineView extends ItemView {
         ].forEach(preset => {
             const presetButton = this.createSessionButton(quickRow, preset.label, 'ert-timeline-session-panel__ratio', () => {
                 goalInput.value = String(preset.minutes);
-                countdownToggle.checked = true;
             });
             presetButton.setAttribute('aria-label', `${preset.ariaLabel} (${preset.minutes} minutes)`);
+            this.isolateSessionPanelControl(presetButton);
         });
 
         const startSession = async () => {
@@ -895,8 +939,14 @@ export class RadialTimelineView extends ItemView {
         this.createSessionIconButton(goalControls, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', startSession);
 
         countdownToggle.onchange = () => {
-            goalInput.disabled = !countdownToggle.checked;
+            goalControls.classList.toggle('is-countdown-disabled', !countdownToggle.checked);
         };
+        this.registerDomEvent(goalInput, 'keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            event.stopPropagation();
+            void startSession();
+        });
     }
 
     private renderActiveWritingSessionPanel(panel: HTMLElement, active: ActiveWritingSession): void {
@@ -943,13 +993,15 @@ export class RadialTimelineView extends ItemView {
             });
         }
         this.createSessionIconButton(actions, 'save', 'Save', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
-            try {
-                const record = await service.stop();
-                new Notice(`Saved ${record.mode} session (${this.formatSessionClock(record.elapsedMs)}).`);
-                this.refreshWritingSessionControl();
-            } catch (error) {
-                new Notice(error instanceof Error ? error.message : 'Could not stop writing session.');
-            }
+            new WritingSessionCompletionModal(this.app, active, service.getActiveElapsedMs(), async (completion) => {
+                try {
+                    const record = await service.stop(completion);
+                    new Notice(`Saved ${record.mode} session (${this.formatSessionClock(record.elapsedMs)}).`);
+                    this.refreshWritingSessionControl();
+                } catch (error) {
+                    new Notice(error instanceof Error ? error.message : 'Could not stop writing session.');
+                }
+            }).open();
         });
         this.createSessionIconButton(actions, 'trash-2', 'Cancel', 'ert-timeline-session-panel__ghost ert-timeline-session-panel__icon-action', async () => {
             try {

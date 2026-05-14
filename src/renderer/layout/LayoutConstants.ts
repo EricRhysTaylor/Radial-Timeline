@@ -202,7 +202,7 @@ export const PROGRESS_RING_RADIUS_OFFSET = 13;
 export const PROGRESS_RING_BASE_WIDTH = 11;
 
 /** Width of the active writing-session timer ring (px) */
-export const SESSION_TIMER_RING_WIDTH = 3;
+export const SESSION_TIMER_RING_WIDTH = 5;
 
 /** Progress-ring width used to keep the writing-session timer ring anchored while the visual progress ring can grow. */
 export const SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR = 8;

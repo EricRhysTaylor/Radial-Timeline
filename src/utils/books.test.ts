@@ -9,6 +9,7 @@ import {
   getTimelineScope,
   getTimelineScopeTitle,
   isSagaScopeAvailable,
+  normalizeBookProfile,
   shouldSeedBookProfileFromLegacySettings
 } from './books';
 import type RadialTimelinePlugin from '../main';
@@ -82,6 +83,37 @@ describe('shouldSeedBookProfileFromLegacySettings', () => {
 });
 
 describe('book sequencing', () => {
+  it('normalizes optional project metadata without leaking blank values', () => {
+    const book = normalizeBookProfile({
+      id: 'b1',
+      title: 'Private Title',
+      sourceFolder: 'Books/Private',
+      genre: ' sci-fi ',
+      projectStage: ' first book ',
+      publicLabel: ' Public Project ',
+      publicDescription: '  Drafting the sequel.  '
+    });
+
+    expect(book.genre).toBe('sci-fi');
+    expect(book.projectStage).toBe('first book');
+    expect(book.publicLabel).toBe('Public Project');
+    expect(book.publicDescription).toBe('Drafting the sequel.');
+
+    const blank = normalizeBookProfile({
+      id: 'b2',
+      title: 'Blank',
+      sourceFolder: 'Books/Blank',
+      genre: ' ',
+      projectStage: '',
+      publicLabel: ' ',
+      publicDescription: ''
+    });
+    expect(blank.genre).toBeUndefined();
+    expect(blank.projectStage).toBeUndefined();
+    expect(blank.publicLabel).toBeUndefined();
+    expect(blank.publicDescription).toBeUndefined();
+  });
+
   it('derives sequence identity from row order, not title text', () => {
     const books = [
       { id: 'b1', title: 'Book 1 Shail + Trisan', sourceFolder: 'Books/Shail-Trisan' },

@@ -16,6 +16,7 @@ const MAX_SESSION_RECORDS = 500;
 type Stage = typeof STAGE_ORDER[number];
 
 export interface WritingSessionCompletionInput {
+    elapsedMs?: number;
     wordsAdded?: number;
     scenesCompleted?: number;
     pagesEdited?: number;
@@ -50,6 +51,33 @@ export interface DailyWritingStats {
     sceneCompletionEvents: SceneCompletionEvent[];
 }
 
+export interface DailyWritingSessionProgress {
+    date: string;
+    dailyTargetMinutes?: number;
+    minutesLogged: number;
+    sessionsCompleted: number;
+    remainingMinutes?: number;
+    overGoalMinutes: number;
+}
+
+export interface WritingRangeStats {
+    startDate: string;
+    endDate: string;
+    days: number;
+    dailyTargetMinutes?: number;
+    minutesLogged: number;
+    sessionsCompleted: number;
+    wordsDrafted: number;
+    daysWithSessions: number;
+    daysGoalMet: number;
+    sessionCountByMode: Record<WritingSessionMode, number>;
+    minutesByMode: Record<WritingSessionMode, number>;
+    scenesCompletedByStage: Record<Stage, number>;
+    freshScenesCompleted: number;
+    revisionScenesCompleted: number;
+    sceneCompletionEvents: SceneCompletionEvent[];
+}
+
 const EMPTY_MODE_COUNTS: Record<WritingSessionMode, number> = {
     drafting: 0,
     revising: 0,
@@ -79,6 +107,34 @@ function localDateString(date = new Date()): string {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(value: string): Date {
+    const [yearRaw, monthRaw, dayRaw] = value.split('-');
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return new Date();
+    }
+    return new Date(year, month - 1, day);
+}
+
+function addLocalDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+}
+
+function dateRangeSet(endDate: string, days: number): { startDate: string; dates: Set<string> } {
+    const safeDays = Math.max(1, Math.round(days));
+    const end = parseLocalDate(endDate);
+    const start = addLocalDays(end, -(safeDays - 1));
+    const dates = new Set<string>();
+    for (let index = 0; index < safeDays; index++) {
+        dates.add(localDateString(addLocalDays(start, index)));
+    }
+    return { startDate: localDateString(start), dates };
 }
 
 function dateKey(value: string | undefined): string {
@@ -199,6 +255,103 @@ export function buildDailyWritingStats(params: {
     };
 }
 
+export function buildDailyWritingSessionProgress(params: {
+    date: string;
+    sessions: WritingSessionRecord[];
+    dailyTargetMinutes?: number;
+}): DailyWritingSessionProgress {
+    let minutesLogged = 0;
+    let sessionsCompleted = 0;
+    params.sessions.forEach(session => {
+        if (dateKey(session.endedAt) !== params.date) return;
+        sessionsCompleted += 1;
+        minutesLogged += Math.round(Math.max(0, session.elapsedMs || 0) / 60000);
+    });
+
+    const dailyTargetMinutes = positiveMinutes(params.dailyTargetMinutes);
+    const remainingMinutes = dailyTargetMinutes
+        ? Math.max(0, dailyTargetMinutes - minutesLogged)
+        : undefined;
+    const overGoalMinutes = dailyTargetMinutes
+        ? Math.max(0, minutesLogged - dailyTargetMinutes)
+        : 0;
+
+    return {
+        date: params.date,
+        dailyTargetMinutes,
+        minutesLogged,
+        sessionsCompleted,
+        remainingMinutes,
+        overGoalMinutes,
+    };
+}
+
+export function buildWritingRangeStats(params: {
+    endDate: string;
+    days: number;
+    sessions: WritingSessionRecord[];
+    scenes: TimelineItem[];
+    dailyTargetMinutes?: number;
+}): WritingRangeStats {
+    const safeDays = Math.max(1, Math.round(params.days));
+    const { startDate, dates } = dateRangeSet(params.endDate, safeDays);
+    const sessionCountByMode = cloneModeCounts();
+    const minutesByMode = cloneModeCounts();
+    const minutesByDate = new Map<string, number>();
+    let minutesLogged = 0;
+    let wordsDrafted = 0;
+    let sessionsCompleted = 0;
+
+    params.sessions.forEach(session => {
+        const sessionDate = dateKey(session.endedAt);
+        if (!dates.has(sessionDate)) return;
+        const mode = coerceMode(session.mode);
+        const minutes = Math.round(Math.max(0, session.elapsedMs || 0) / 60000);
+        sessionsCompleted += 1;
+        sessionCountByMode[mode] += 1;
+        minutesByMode[mode] += minutes;
+        minutesLogged += minutes;
+        minutesByDate.set(sessionDate, (minutesByDate.get(sessionDate) ?? 0) + minutes);
+        if (mode === 'drafting') {
+            wordsDrafted += positiveInteger(session.wordsAdded) ?? 0;
+        }
+    });
+
+    const scenesCompletedByStage = emptyStageCounts();
+    let freshScenesCompleted = 0;
+    let revisionScenesCompleted = 0;
+    const sceneCompletionEvents = collectSceneCompletionEvents(params.scenes).filter(event => dates.has(event.date));
+    sceneCompletionEvents.forEach(event => {
+        scenesCompletedByStage[event.stage] += 1;
+        if (event.workKind === 'fresh') freshScenesCompleted += 1;
+        else revisionScenesCompleted += 1;
+    });
+
+    const dailyTargetMinutes = positiveMinutes(params.dailyTargetMinutes);
+    const daysWithSessions = [...minutesByDate.values()].filter(minutes => minutes > 0).length;
+    const daysGoalMet = dailyTargetMinutes
+        ? [...minutesByDate.values()].filter(minutes => minutes >= dailyTargetMinutes).length
+        : 0;
+
+    return {
+        startDate,
+        endDate: params.endDate,
+        days: safeDays,
+        dailyTargetMinutes,
+        minutesLogged,
+        sessionsCompleted,
+        wordsDrafted,
+        daysWithSessions,
+        daysGoalMet,
+        sessionCountByMode,
+        minutesByMode,
+        scenesCompletedByStage,
+        freshScenesCompleted,
+        revisionScenesCompleted,
+        sceneCompletionEvents,
+    };
+}
+
 export class WritingSessionService {
     constructor(private plugin: RadialTimelinePlugin) {}
 
@@ -281,7 +434,7 @@ export class WritingSessionService {
             mode: active.mode,
             startedAt: active.startedAt,
             endedAt: endedAt.toISOString(),
-            elapsedMs: activeElapsedMs(active, endedAt),
+            elapsedMs: Math.max(0, Math.round(completion.elapsedMs ?? activeElapsedMs(active, endedAt))),
             wordsAdded: positiveInteger(completion.wordsAdded),
             scenesCompleted: positiveInteger(completion.scenesCompleted),
             pagesEdited: positiveInteger(completion.pagesEdited),
@@ -307,6 +460,25 @@ export class WritingSessionService {
             date,
             sessions: this.getSettings().records,
             scenes,
+        });
+    }
+
+    getDailySessionProgress(date = localDateString()): DailyWritingSessionProgress {
+        return buildDailyWritingSessionProgress({
+            date,
+            sessions: this.getSettings().records,
+            dailyTargetMinutes: this.getDefaultGoalMinutes(),
+        });
+    }
+
+    async getRangeStats(days: number, endDate = localDateString()): Promise<WritingRangeStats> {
+        const scenes = await this.plugin.getSceneData();
+        return buildWritingRangeStats({
+            endDate,
+            days,
+            sessions: this.getSettings().records,
+            scenes,
+            dailyTargetMinutes: this.getDefaultGoalMinutes(),
         });
     }
 }

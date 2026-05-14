@@ -35,6 +35,10 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
   const title = profile.title?.trim() || DEFAULT_BOOK_TITLE;
   const sourceFolder = (profile.sourceFolder || '').trim();
   const fileStem = profile.fileStem?.trim();
+  const genre = profile.genre?.trim();
+  const projectStage = profile.projectStage?.trim();
+  const publicLabel = profile.publicLabel?.trim();
+  const publicDescription = profile.publicDescription?.trim();
   const normalizedLayoutOptions: BookProfile['layoutOptions'] = {};
   const normalizeSceneHeadingMode = (value: unknown): ManuscriptSceneHeadingMode | undefined => {
     if (value === 'scene-number' || value === 'scene-number-title' || value === 'title-only') return value;
@@ -75,6 +79,10 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
     title,
     sourceFolder,
     fileStem: fileStem && fileStem.length > 0 ? fileStem : undefined,
+    ...(genre && genre.length > 0 ? { genre } : {}),
+    ...(projectStage && projectStage.length > 0 ? { projectStage } : {}),
+    ...(publicLabel && publicLabel.length > 0 ? { publicLabel } : {}),
+    ...(publicDescription && publicDescription.length > 0 ? { publicDescription } : {}),
     ...(profile.lastUsedPandocLayoutByPreset ? { lastUsedPandocLayoutByPreset: { ...profile.lastUsedPandocLayoutByPreset } } : {}),
     ...(Object.keys(normalizedLayoutOptions).length > 0 ? { layoutOptions: normalizedLayoutOptions } : {}),
     ...(normalizeBeatWorkspace(profile.beatWorkspace) ? { beatWorkspace: normalizeBeatWorkspace(profile.beatWorkspace) } : {}),

@@ -49,7 +49,7 @@ export interface RingRenderContext {
     manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
     outerRingChapterBoundaryGeometry?: Map<string, OuterRingChapterBoundaryGeometry>;
     numActs: number;
-    maxStageColor?: string; // For Gossamer mode: uses latest sweep stage color
+    maxStageColor?: string; // Shared project stage color for Gossamer beat strokes.
 }
 
 export function renderRings(ctx: RingRenderContext): string {
@@ -293,8 +293,7 @@ export function renderRings(ctx: RingRenderContext): string {
 
                     const plotStrokeAttr = (() => {
                         if (isBeatNote(scene)) {
-                            // In Gossamer mode, use the latest sweep stage color for all beat strokes
-                            // This reflects the stage at which the momentum analysis was performed
+                            // In Gossamer mode, use the same project stage color as the rest of the timeline.
                             const isGossamerMode = currentMode === 'gossamer';
                             if (isGossamerMode && ctx.maxStageColor) {
                                 return `stroke="${ctx.maxStageColor}" stroke-width="2"`;

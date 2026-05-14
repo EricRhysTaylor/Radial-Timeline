@@ -3,6 +3,8 @@ import type { TimelineItem } from '../types';
 import type { WritingSessionRecord } from '../types/settings';
 import {
     buildDailyWritingStats,
+    buildDailyWritingSessionProgress,
+    buildWritingRangeStats,
     collectSceneCompletionEvents,
     normalizeWritingSessionsSettings,
     WritingSessionService
@@ -95,6 +97,111 @@ describe('WritingSessionService pure helpers', () => {
         });
     });
 
+    it('builds range stats with goal days and fresh versus revision completions', () => {
+        const sessions: WritingSessionRecord[] = [
+            {
+                id: 'session-1',
+                mode: 'drafting',
+                startedAt: '2026-05-10T16:00:00.000Z',
+                endedAt: '2026-05-10T17:00:00.000Z',
+                elapsedMs: 60 * 60 * 1000,
+                wordsAdded: 900,
+                source: 'timer',
+            },
+            {
+                id: 'session-2',
+                mode: 'editing',
+                startedAt: '2026-05-12T16:00:00.000Z',
+                endedAt: '2026-05-12T16:45:00.000Z',
+                elapsedMs: 45 * 60 * 1000,
+                source: 'timer',
+            },
+        ];
+        const scenes: TimelineItem[] = [
+            { title: 'Fresh', date: '', status: 'Complete', due: '2026-05-10', 'Publish Stage': 'Zero' },
+            { title: 'Revision', date: '', status: 'Complete', due: '2026-05-12', 'Publish Stage': 'House' },
+            { title: 'Old', date: '', status: 'Complete', due: '2026-04-30', 'Publish Stage': 'Press' },
+        ];
+
+        const stats = buildWritingRangeStats({
+            endDate: '2026-05-12',
+            days: 7,
+            sessions,
+            scenes,
+            dailyTargetMinutes: 45,
+        });
+
+        expect(stats.startDate).toBe('2026-05-06');
+        expect(stats.minutesLogged).toBe(105);
+        expect(stats.sessionsCompleted).toBe(2);
+        expect(stats.wordsDrafted).toBe(900);
+        expect(stats.daysWithSessions).toBe(2);
+        expect(stats.daysGoalMet).toBe(2);
+        expect(stats.freshScenesCompleted).toBe(1);
+        expect(stats.revisionScenesCompleted).toBe(1);
+        expect(stats.scenesCompletedByStage).toEqual({
+            Zero: 1,
+            Author: 0,
+            House: 1,
+            Press: 0,
+        });
+    });
+
+    it('subtracts completed sessions from the daily writing goal', () => {
+        const sessions: WritingSessionRecord[] = [
+            {
+                id: 'session-1',
+                mode: 'drafting',
+                startedAt: '2026-05-12T16:00:00.000Z',
+                endedAt: '2026-05-12T16:02:00.000Z',
+                elapsedMs: 2 * 60 * 1000,
+                source: 'timer',
+            },
+            {
+                id: 'session-2',
+                mode: 'editing',
+                startedAt: '2026-05-12T17:00:00.000Z',
+                endedAt: '2026-05-12T17:03:00.000Z',
+                elapsedMs: 3 * 60 * 1000,
+                source: 'timer',
+            },
+        ];
+
+        const stats = buildDailyWritingSessionProgress({
+            date: '2026-05-12',
+            sessions,
+            dailyTargetMinutes: 10,
+        });
+
+        expect(stats.minutesLogged).toBe(5);
+        expect(stats.sessionsCompleted).toBe(2);
+        expect(stats.remainingMinutes).toBe(5);
+        expect(stats.overGoalMinutes).toBe(0);
+    });
+
+    it('keeps extra completed sessions after the daily goal is exceeded', () => {
+        const sessions: WritingSessionRecord[] = [
+            {
+                id: 'session-1',
+                mode: 'drafting',
+                startedAt: '2026-05-12T16:00:00.000Z',
+                endedAt: '2026-05-12T16:14:00.000Z',
+                elapsedMs: 14 * 60 * 1000,
+                source: 'timer',
+            },
+        ];
+
+        const stats = buildDailyWritingSessionProgress({
+            date: '2026-05-12',
+            sessions,
+            dailyTargetMinutes: 10,
+        });
+
+        expect(stats.minutesLogged).toBe(14);
+        expect(stats.remainingMinutes).toBe(0);
+        expect(stats.overGoalMinutes).toBe(4);
+    });
+
     it('normalizes missing or malformed writing session settings', () => {
         const normalized = normalizeWritingSessionsSettings({
             defaults: { defaultMode: 'drafting' },
@@ -149,5 +256,37 @@ describe('WritingSessionService pure helpers', () => {
         expect(session.goalMinutes).toBe(50);
         expect(session.bookId).toBe('book-1');
         expect(plugin.settings.writingSessions.active?.goalMinutes).toBe(50);
+    });
+
+    it('saves completion details from the stop confirmation modal', async () => {
+        const plugin = {
+            settings: {
+                books: [{ id: 'book-1', title: 'Book One', sourceFolder: 'Book' }],
+                activeBookId: 'book-1',
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting' },
+                    records: [],
+                },
+            },
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+        await service.start({ mode: 'drafting', goalMinutes: 25 });
+
+        const record = await service.stop({
+            elapsedMs: 42 * 60000,
+            wordsAdded: 1234,
+            scenesCompleted: 2,
+            pagesEdited: 4,
+            note: 'Worked on the opening.',
+        });
+
+        expect(record.elapsedMs).toBe(42 * 60000);
+        expect(record.wordsAdded).toBe(1234);
+        expect(record.scenesCompleted).toBe(2);
+        expect(record.pagesEdited).toBe(4);
+        expect(record.note).toBe('Worked on the opening.');
+        expect(plugin.settings.writingSessions.active).toBeUndefined();
+        expect(plugin.settings.writingSessions.records).toHaveLength(1);
     });
 });

@@ -16,13 +16,13 @@ describe('SessionTimerRing', () => {
             progressRadius: 700,
             progressRingWidth: 8,
             ringGap: 2,
-            sessionRingWidth: 3,
+            sessionRingWidth: 5,
             elapsedMs: 30 * 60000,
             targetMinutes: 120,
         });
 
-        expect(state?.radius).toBe(707.5);
-        expect(state?.strokeWidth).toBe(3);
+        expect(state?.radius).toBe(708.5);
+        expect(state?.strokeWidth).toBe(5);
         expect(state?.progress).toBe(0.25);
         expect(state?.colorProgress).toBe(0.25);
         expect(state?.direction).toBe('clockwise');
@@ -46,9 +46,9 @@ describe('SessionTimerRing', () => {
         expect(PROGRESS_RING_RADIUS_OFFSET).toBe(13);
         expect(SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR).toBe(11);
         expect(SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR).toBe(8);
-        expect(SESSION_TIMER_RING_WIDTH).toBe(3);
+        expect(SESSION_TIMER_RING_WIDTH).toBe(5);
         expect(SESSION_TIMER_RING_GAP).toBe(2);
-        expect(state?.strokeWidth).toBe(3);
+        expect(state?.strokeWidth).toBe(5);
     });
 
     it('renders countdown sessions as a counterclockwise remaining-time arc', () => {

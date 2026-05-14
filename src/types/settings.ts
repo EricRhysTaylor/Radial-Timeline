@@ -374,6 +374,10 @@ export interface BookProfile {
     title: string;
     sourceFolder: string;
     fileStem?: string;
+    genre?: string;
+    projectStage?: string;
+    publicLabel?: string;
+    publicDescription?: string;
     lastUsedPandocLayoutByPreset?: Partial<Record<'novel' | 'screenplay' | 'podcast', string>>;
     layoutOptions?: Record<string, BookLayoutOptions>;
     beatWorkspace?: BeatWorkspaceState;

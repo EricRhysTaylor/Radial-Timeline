@@ -1,6 +1,7 @@
 import type { App, TextComponent } from 'obsidian';
 import { Setting as ObsidianSetting, normalizePath, Notice, Modal, ButtonComponent, setIcon, setTooltip, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import type { BookProfile } from '../../types/settings';
 import { t } from '../../i18n';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { ModalFolderSuggest } from '../FolderSuggest';
@@ -172,6 +173,79 @@ class CreateDraftModal extends Modal {
         new ButtonComponent(actions)
             .setButtonText('Cancel')
             .onClick(() => this.close());
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
+class BookMetadataModal extends Modal {
+    constructor(
+        app: App,
+        private book: BookProfile,
+        private onSubmit: (metadata: Pick<BookProfile, 'genre' | 'projectStage' | 'publicLabel' | 'publicDescription'>) => Promise<void>
+    ) {
+        super(app);
+    }
+
+    onOpen() {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw';
+        }
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Book' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Project metadata' });
+        header.createDiv({
+            cls: 'ert-modal-subtitle',
+            text: 'Optional local metadata for future stats, cohorts, and public sharing.'
+        });
+
+        const form = contentEl.createDiv({ cls: 'ert-stack' });
+        let genre = this.book.genre ?? '';
+        let projectStage = this.book.projectStage ?? '';
+        let publicLabel = this.book.publicLabel ?? '';
+        let publicDescription = this.book.publicDescription ?? '';
+
+        const addText = (name: string, desc: string, value: string, onChange: (value: string) => void) => {
+            new ObsidianSetting(form)
+                .setName(name)
+                .setDesc(desc)
+                .addText(text => {
+                    text.setValue(value);
+                    text.inputEl.addClass('ert-input--full');
+                    text.onChange(onChange);
+                });
+        };
+
+        addText('Genre', 'Optional grouping such as sci-fi, romance, mystery, or memoir.', genre, value => { genre = value; });
+        addText('Project stage', 'Optional author-facing stage such as first book, querying, published, or revision.', projectStage, value => { projectStage = value; });
+        addText('Public label', 'Optional public-facing label. Private book title remains separate.', publicLabel, value => { publicLabel = value; });
+
+        new ObsidianSetting(form)
+            .setName('Description')
+            .setDesc('Optional author-facing or future public description.')
+            .addTextArea(text => {
+                text.setValue(publicDescription);
+                text.inputEl.addClass('ert-input--full');
+                text.inputEl.rows = 4;
+                text.onChange(value => { publicDescription = value; });
+            });
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const save = async () => {
+            await this.onSubmit({ genre, projectStage, publicLabel, publicDescription });
+            this.close();
+        };
+        new ButtonComponent(actions).setButtonText('Save').setCta().onClick(() => { void save(); });
+        new ButtonComponent(actions).setButtonText('Cancel').onClick(() => this.close());
     }
 
     onClose() {
@@ -516,6 +590,24 @@ export function renderGeneralSection(params: {
                         } finally {
                             setDraftButtonState(false);
                         }
+                    }).open();
+                });
+            });
+
+            row.addButton(button => {
+                button.buttonEl.empty();
+                button.buttonEl.addClass('ert-iconBtn');
+                button.buttonEl.setAttr('aria-label', 'Project metadata');
+                setIcon(button.buttonEl, 'tags');
+                button.setTooltip('Edit optional genre, project stage, public label, and description.');
+                button.onClick(() => {
+                    new BookMetadataModal(app, book, async metadata => {
+                        book.genre = metadata.genre?.trim() || undefined;
+                        book.projectStage = metadata.projectStage?.trim() || undefined;
+                        book.publicLabel = metadata.publicLabel?.trim() || undefined;
+                        book.publicDescription = metadata.publicDescription?.trim() || undefined;
+                        await plugin.persistBookSettings();
+                        renderBooksManager();
                     }).open();
                 });
             });
