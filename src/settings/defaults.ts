@@ -243,6 +243,7 @@ Chapter:`,
     writingSessions: {
         defaults: {
             defaultMode: 'drafting',
+            weeklyGoalDays: 7,
         },
         records: [],
     },

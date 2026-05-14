@@ -220,9 +220,9 @@
 .radial-timeline-container .ert-timeline-session-ring__track {
   fill: none;
   pointer-events: none;
-  stroke: color-mix(in srgb, var(--text-normal) 32%, var(--background-primary));
+  stroke: color-mix(in srgb, var(--text-normal) 44%, var(--background-primary));
   stroke-linecap: round;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .radial-timeline-container .ert-timeline-session-ring__arc {

@@ -240,6 +240,7 @@ describe('WritingSessionService pure helpers', () => {
         });
 
         expect(normalized.defaults.defaultMode).toBe('drafting');
+        expect(normalized.defaults.weeklyGoalDays).toBe(7);
         expect(normalized.records).toEqual([]);
         expect(normalized.active?.id).toBe('active');
     });
@@ -340,6 +341,23 @@ describe('WritingSessionService pure helpers', () => {
         await service.setDefaultStage('Author');
 
         expect(plugin.settings.writingSessions.defaults.defaultStage).toBe('Author');
+    });
+
+    it('persists the weekly writing goal day target', async () => {
+        const plugin = {
+            settings: {
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting' },
+                    records: [],
+                },
+            },
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        await service.setWeeklyGoalDays(5);
+
+        expect(plugin.settings.writingSessions.defaults.weeklyGoalDays).toBe(5);
     });
 
     it('saves completion details from the stop confirmation modal', async () => {

@@ -203,6 +203,11 @@ function positiveMinutes(value: number | undefined): number | undefined {
     return rounded > 0 ? rounded : undefined;
 }
 
+function coerceWeeklyGoalDays(value: number | undefined): number {
+    if (!Number.isFinite(value)) return 7;
+    return Math.min(7, Math.max(1, Math.round(value ?? 7)));
+}
+
 function activeElapsedMs(session: ActiveWritingSession, at = new Date()): number {
     const elapsedBeforePause = Math.max(0, session.elapsedMsBeforePause || 0);
     if (session.pausedAt) return elapsedBeforePause;
@@ -219,9 +224,10 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
         : [];
     const defaultMode = coerceMode(settings?.defaults?.defaultMode);
     const defaultStage = coerceStagePreference(settings?.defaults?.defaultStage);
+    const weeklyGoalDays = coerceWeeklyGoalDays(settings?.defaults?.weeklyGoalDays);
     const active = settings?.active;
     return {
-        defaults: { defaultMode, defaultStage },
+        defaults: { defaultMode, defaultStage, weeklyGoalDays },
         ...(active ? {
             active: {
                 ...active,
@@ -429,6 +435,12 @@ export class WritingSessionService {
     async setDefaultStage(stage: WritingSessionStagePreference): Promise<void> {
         const settings = this.getSettings();
         settings.defaults.defaultStage = coerceStagePreference(stage);
+        await this.plugin.saveSettings();
+    }
+
+    async setWeeklyGoalDays(days: number | undefined): Promise<void> {
+        const settings = this.getSettings();
+        settings.defaults.weeklyGoalDays = coerceWeeklyGoalDays(days);
         await this.plugin.saveSettings();
     }
 

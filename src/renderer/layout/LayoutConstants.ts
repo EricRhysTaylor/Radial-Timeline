@@ -208,7 +208,7 @@ export const SESSION_TIMER_RING_WIDTH = 5;
 export const SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR = 8;
 
 /** Progress-ring radius offset used to keep the writing-session timer ring anchored while the visual progress ring can move. */
-export const SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR = 9;
+export const SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR = 10;
 
 /** Gap between the progress ring outer edge and the writing-session timer ring (px) */
 export const SESSION_TIMER_RING_GAP = 2;
@@ -314,7 +314,7 @@ export const BOOK_TITLE_POS_X = 568;
 export const BOOK_TITLE_POS_Y = -780;
 
 /** Horizontal position for mode title text */
-export const MODE_TITLE_POS_X = 567;
+export const MODE_TITLE_POS_X = 598;
 
 /** Vertical position for mode title text */
 export const MODE_TITLE_POS_Y = -755;

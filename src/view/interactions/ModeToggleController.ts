@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, getIcon } from 'obsidian';
 import { resetGossamerModeState } from '../../GossamerCommands';
 import type { ModeManager } from '../../modes/ModeManager';
 import { TimelineMode } from '../../modes/ModeDefinition';
@@ -22,14 +22,15 @@ function getModeLabel(modeId: string, fallback: string): string {
 }
 
 /**
- * Resolve translated mode acronym by mode id. Falls back to definition acronym
- * (or first 4 chars of name uppercased).
+ * Lucide icon name shown in the bottom-left of each mode button.
+ * Keyed by mode id from the registry.
  */
-function getModeAcronym(modeId: string, fallback: string): string {
-    const key = `timeline.modes.${modeId}.acronym`;
-    const value = t(key);
-    return value && !value.startsWith('[missing:') ? value : fallback;
-}
+const MODE_ICON_BY_ID: Record<string, string> = {
+    progress: 'waypoints',
+    narrative: 'line-squiggle',
+    chronologue: 'hourglass',
+    gossamer: 'audio-waveform',
+};
 
 interface ModeToggleView {
     currentMode?: string;
@@ -45,14 +46,13 @@ interface ModeToggleView {
 }
 
 // Build MODE_OPTIONS dynamically from mode registry - SINGLE SOURCE OF TRUTH
-// label/acronym are resolved via t() at render time (so locale changes are honored)
+// label is resolved via t() at render time (so locale changes are honored)
 function buildModeOptions() {
     return getToggleableModes().map(mode => {
-        const fallbackAcronym = mode.ui.acronym || mode.name.substring(0, 4).toUpperCase();
         return {
             id: mode.id,
             get label() { return getModeLabel(mode.id, mode.name); },
-            get acronym() { return getModeAcronym(mode.id, fallbackAcronym); },
+            iconName: MODE_ICON_BY_ID[mode.id] ?? '',
             order: mode.ui.order
         };
     });
@@ -60,8 +60,32 @@ function buildModeOptions() {
 
 const MODE_OPTIONS = buildModeOptions();
 
-// Scaling applied on click/activation
-const ICON_ACTIVE_SCALE = 1.2;
+// Inactive icon dimensions (~30% smaller than the original 43x60 source path).
+// All values are whole pixels — no fractional positioning.
+const ICON_WIDTH = 30;
+const ICON_HEIGHT = 42;
+const ICON_NUMBER_X = 6;
+const ICON_NUMBER_Y = 8;
+
+// Bottom-left lucide glyph (inactive)
+const GLYPH_SIZE = 36;
+const GLYPH_X = 0;
+const GLYPH_Y = ICON_HEIGHT - GLYPH_SIZE;       // 6
+
+// Active mode dimensions (1.2x of the inactive size, also whole pixels).
+const ICON_WIDTH_ACTIVE = 36;
+const ICON_HEIGHT_ACTIVE = 50;
+const ICON_NUMBER_X_ACTIVE = 7;
+const ICON_NUMBER_Y_ACTIVE = 10;
+
+// Bottom-left lucide glyph (active)
+const GLYPH_SIZE_ACTIVE = 42;
+const GLYPH_X_ACTIVE = 0;
+const GLYPH_Y_ACTIVE = ICON_HEIGHT_ACTIVE - GLYPH_SIZE_ACTIVE;  // 8
+
+// Path scale factors derived from the original 43-wide source path.
+const ICON_BASE_SCALE = ICON_WIDTH / 43;        // -> 30/43 ≈ 0.6977
+const ICON_ACTIVE_SCALE = ICON_WIDTH_ACTIVE / 43; // -> 36/43 ≈ 0.8372
 
 // Visual spacing
 const ICON_VISUAL_GAP_INACTIVE = 4;
@@ -87,18 +111,37 @@ function scalePath(pathData: string, scale: number): string {
  */
 const ORIGINAL_DOCUMENT_PATH = 'M0.0349451 51.6667C0.0349438 56.1905 1.58191 60 8.89418 60H35.0768C40.5492 60 42.9307 53.5714 42.9651 50C43.0437 41.8254 42.9651 26.291 42.9651 22.8571C42.9651 20.4762 41.431 15.935 35.0768 8.33333C28.7081 0.714286 23.5187 0 21.7359 0H8.05486C2.28955 0 0.0577294 4.28571 0.0349455 8.33333C-0.043681 22.3016 0.0349463 47.8524 0.0349451 51.6667Z';
 
-/**
- * Create SVG path for document shape (Native Size)
- */
+// Pre-scaled path strings — the path numbers themselves are shrunk so there is
+// no runtime transform/scale on the rendered SVG.
+const INACTIVE_DOCUMENT_PATH = scalePath(ORIGINAL_DOCUMENT_PATH, ICON_BASE_SCALE);
+const ACTIVE_DOCUMENT_PATH = scalePath(ORIGINAL_DOCUMENT_PATH, ICON_ACTIVE_SCALE);
+
 function createInactiveDocumentShape(): string {
-    return ORIGINAL_DOCUMENT_PATH;
+    return INACTIVE_DOCUMENT_PATH;
+}
+
+function createActiveDocumentShape(): string {
+    return ACTIVE_DOCUMENT_PATH;
 }
 
 /**
- * Create SVG path for document shape scaled to active size (55px width)
+ * Build a positioned lucide glyph for the bottom-left of a mode button.
+ * Wraps Obsidian's getIcon() output in a <g> so we can set x/y via transform
+ * and a class hook for active-state styling.
  */
-function createActiveDocumentShape(): string {
-    return scalePath(ORIGINAL_DOCUMENT_PATH, ICON_ACTIVE_SCALE);
+function buildModeGlyph(iconName: string, x: number, y: number, size: number): SVGGElement | null {
+    if (!iconName) return null;
+    const lucide = getIcon(iconName);
+    if (!lucide) return null;
+
+    lucide.setAttribute('width', String(size));
+    lucide.setAttribute('height', String(size));
+
+    const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    wrap.setAttribute('class', 'rt-mode-glyph');
+    wrap.setAttribute('transform', `translate(${x}, ${y})`);
+    wrap.appendChild(lucide);
+    return wrap;
 }
 
 /**
@@ -110,9 +153,9 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     grid.setAttribute('id', 'mode-selector');
 
     // Initial positioning with inactive gaps (will be adjusted in updateState)
-    const spacePerIcon = 43 + ICON_VISUAL_GAP_INACTIVE;
-    const totalWidth = MODE_OPTIONS.length * 43 + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
-    const startX = MODE_SELECTOR_POS_X - totalWidth / 2 + 21.5;
+    const spacePerIcon = ICON_WIDTH + ICON_VISUAL_GAP_INACTIVE;
+    const totalWidth = MODE_OPTIONS.length * ICON_WIDTH + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
+    const startX = MODE_SELECTOR_POS_X - totalWidth / 2 + ICON_WIDTH / 2;
 
     MODE_OPTIONS.forEach((mode, index) => {
         const x = startX + index * spacePerIcon;
@@ -132,26 +175,20 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createInactiveDocumentShape());
 
-        // Create text element (acronym) - Native Size
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('class', 'rt-mode-acronym-text');
-        text.setAttribute('x', '21.5'); // Center of 43
-        text.setAttribute('y', '52'); // 60 - 12 + 4px offset
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'middle');
-        text.textContent = mode.acronym;
+        // Bottom-left lucide glyph (inactive size)
+        const glyph = buildModeGlyph(mode.iconName, GLYPH_X, GLYPH_Y, GLYPH_SIZE);
 
         // Create number label (1, 2, 3, 4) at top left corner - Native Size
         const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         numberLabel.setAttribute('class', 'rt-mode-number-label');
-        numberLabel.setAttribute('x', '8');
-        numberLabel.setAttribute('y', '12'); // moved up 4px
+        numberLabel.setAttribute('x', String(ICON_NUMBER_X));
+        numberLabel.setAttribute('y', String(ICON_NUMBER_Y));
         numberLabel.setAttribute('text-anchor', 'start');
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
 
         innerGroup.appendChild(path);
-        innerGroup.appendChild(text);
+        if (glyph) innerGroup.appendChild(glyph);
         innerGroup.appendChild(numberLabel);
         optionGroup.appendChild(innerGroup);
         grid.appendChild(optionGroup);
@@ -229,19 +266,18 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         positions.push(x);
 
         if (i === activeIndex) {
-            // After active icon, add larger gap (43 * 1.2 = 51.6)
-            x += 43 * ICON_ACTIVE_SCALE + ICON_VISUAL_GAP_ACTIVE;
+            // After active icon, add larger gap
+            x += ICON_WIDTH_ACTIVE + ICON_VISUAL_GAP_ACTIVE;
         } else if (i + 1 === activeIndex) {
             // Before active icon, add larger gap
-            x += 43 + ICON_VISUAL_GAP_ACTIVE;
+            x += ICON_WIDTH + ICON_VISUAL_GAP_ACTIVE;
         } else {
             // Between inactive icons
-            x += 43 + ICON_VISUAL_GAP_INACTIVE;
+            x += ICON_WIDTH + ICON_VISUAL_GAP_INACTIVE;
         }
     }
 
     // Center the group
-    const totalWidth = positions[positions.length - 1] + 43 - positions[0];
     const offset = MODE_SELECTOR_POS_X - (positions[0] + positions[positions.length - 1]) / 2;
 
     MODE_OPTIONS.forEach((mode, index) => {
@@ -249,46 +285,40 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         if (!modeElement) return;
 
         const bg = modeElement.querySelector('.rt-document-bg') as SVGElement;
-        const text = modeElement.querySelector('.rt-mode-acronym-text') as SVGElement;
+        const glyph = modeElement.querySelector('.rt-mode-glyph') as SVGGElement | null;
+        const glyphSvg = glyph?.querySelector('svg') as SVGSVGElement | null;
         const numberLabel = modeElement.querySelector('.rt-mode-number-label') as SVGElement;
 
         const finalX = positions[index] + offset;
+        const isActive = mode.id === currentMode;
 
-        if (mode.id === currentMode) {
-            // Active mode - no scale transform, use native active size path
-            modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
-            modeElement.classList.add('rt-mode-current');
-            bg.classList.add('rt-active');
-            text.classList.add('rt-active');
-            if (numberLabel) numberLabel.classList.add('rt-active');
+        modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
+        modeElement.classList.toggle('rt-mode-current', isActive);
+        bg.classList.toggle('rt-active', isActive);
+        if (numberLabel) numberLabel.classList.toggle('rt-active', isActive);
+        if (glyph) glyph.classList.toggle('rt-active', isActive);
 
-            // Update path to active size (native)
+        if (isActive) {
             bg.setAttribute('d', createActiveDocumentShape());
-
-            // Update text positions to active size (21.5 * 1.2 = 25.8, 52 * 1.2 = 62.4)
-            text.setAttribute('x', String(21.5 * ICON_ACTIVE_SCALE));
-            text.setAttribute('y', String(52 * ICON_ACTIVE_SCALE));
             if (numberLabel) {
-                numberLabel.setAttribute('x', String(8 * ICON_ACTIVE_SCALE));
-                numberLabel.setAttribute('y', String(12 * ICON_ACTIVE_SCALE));
+                numberLabel.setAttribute('x', String(ICON_NUMBER_X_ACTIVE));
+                numberLabel.setAttribute('y', String(ICON_NUMBER_Y_ACTIVE));
+            }
+            if (glyph) glyph.setAttribute('transform', `translate(${GLYPH_X_ACTIVE}, ${GLYPH_Y_ACTIVE})`);
+            if (glyphSvg) {
+                glyphSvg.setAttribute('width', String(GLYPH_SIZE_ACTIVE));
+                glyphSvg.setAttribute('height', String(GLYPH_SIZE_ACTIVE));
             }
         } else {
-            // Inactive mode - no scale transform, use native inactive size path
-            modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
-            modeElement.classList.remove('rt-mode-current');
-            bg.classList.remove('rt-active');
-            text.classList.remove('rt-active');
-            if (numberLabel) numberLabel.classList.remove('rt-active');
-
-            // Update path to inactive size (native)
             bg.setAttribute('d', createInactiveDocumentShape());
-
-            // Update text positions to inactive size (Native)
-            text.setAttribute('x', '21.5');
-            text.setAttribute('y', '52');
             if (numberLabel) {
-                numberLabel.setAttribute('x', '8');
-                numberLabel.setAttribute('y', '12');
+                numberLabel.setAttribute('x', String(ICON_NUMBER_X));
+                numberLabel.setAttribute('y', String(ICON_NUMBER_Y));
+            }
+            if (glyph) glyph.setAttribute('transform', `translate(${GLYPH_X}, ${GLYPH_Y})`);
+            if (glyphSvg) {
+                glyphSvg.setAttribute('width', String(GLYPH_SIZE));
+                glyphSvg.setAttribute('height', String(GLYPH_SIZE));
             }
         }
     });

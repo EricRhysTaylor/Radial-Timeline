@@ -64,12 +64,13 @@ function wireNumberInput(params: {
     plugin: RadialTimelinePlugin;
     text: TextComponent;
     currentValue?: number;
+    min?: number;
     max: number;
     onSave: (value: number | undefined) => void;
 }): void {
-    const { plugin, text, currentValue, max, onSave } = params;
+    const { plugin, text, currentValue, min = 0, max, onSave } = params;
     text.inputEl.type = 'number';
-    text.inputEl.min = '0';
+    text.inputEl.min = String(min);
     text.inputEl.max = String(max);
     text.inputEl.addClass('ert-input--xs');
     text.setValue(currentValue ? String(currentValue) : '');
@@ -84,7 +85,7 @@ function wireNumberInput(params: {
     plugin.registerDomEvent(text.inputEl, 'blur', async () => {
         const raw = text.getValue().trim();
         const num = parseInt(raw);
-        if (raw && (!Number.isFinite(num) || num < 0 || num > max)) {
+        if (raw && (!Number.isFinite(num) || num < min || num > max)) {
             flash(text.inputEl, 'error');
             return;
         }
@@ -99,7 +100,7 @@ function formatMinutes(minutes: number): string {
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     const remainder = minutes % 60;
-    return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+    return `${hours}:${String(remainder).padStart(2, '0')}`;
 }
 
 function formatShortDate(date: string): string {
@@ -121,22 +122,32 @@ function formatRangeLabel(stats: WritingRangeStats): string {
     return `${stats.days} days`;
 }
 
-function goalStatus(stats: WritingRangeStats): 'met' | 'missed' | 'neutral' {
-    if (!stats.dailyTargetMinutes) return 'neutral';
-    return stats.daysGoalMet >= stats.days ? 'met' : 'missed';
+function goalDayTarget(stats: WritingRangeStats, weeklyGoalDays: number): number | undefined {
+    if (!stats.dailyTargetMinutes) return undefined;
+    if (stats.days <= 1) return 1;
+    if (stats.days === 7) return weeklyGoalDays;
+    return Math.min(stats.days, Math.ceil((stats.days / 7) * weeklyGoalDays));
 }
 
-function createMetric(container: HTMLElement, icon: string, label: string, value: string, tone: string): void {
+function goalStatusForTarget(stats: WritingRangeStats, targetDays: number | undefined): 'met' | 'missed' | 'neutral' {
+    if (!targetDays) return 'neutral';
+    return stats.daysGoalMet >= targetDays ? 'met' : 'missed';
+}
+
+function createMetric(container: HTMLElement, icon: string, label: string, value: string, tone: string, unit?: string): void {
     const metric = container.createDiv({ cls: `ert-goals-stat ert-goals-stat--${tone}` });
-    const iconEl = metric.createDiv({ cls: 'ert-goals-stat__icon' });
+    const head = metric.createDiv({ cls: 'ert-goals-stat__head' });
+    const iconEl = head.createDiv({ cls: 'ert-goals-stat__icon' });
     setIcon(iconEl, icon);
-    const copy = metric.createDiv({ cls: 'ert-goals-stat__copy' });
-    copy.createDiv({ cls: 'ert-goals-stat__value', text: value });
-    copy.createDiv({ cls: 'ert-goals-stat__label', text: label });
+    head.createDiv({ cls: 'ert-goals-stat__value', text: value });
+    if (unit) head.createDiv({ cls: 'ert-goals-stat__unit', text: unit });
+    metric.createDiv({ cls: 'ert-goals-stat__label', text: label });
 }
 
-function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, stats: WritingRangeStats): void {
-    const status = goalStatus(stats);
+function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, stats: WritingRangeStats, weeklyGoalDays: number): void {
+    const targetDays = goalDayTarget(stats, weeklyGoalDays);
+    const goalValue = targetDays ? `${stats.daysGoalMet}/${targetDays}` : '—';
+    const status = goalStatusForTarget(stats, targetDays);
     const card = container.createDiv({ cls: `ert-goals-stat-card ert-goals-stat-card--${status}` });
     const header = card.createDiv({ cls: 'ert-goals-stat-card__header' });
     const titleWrap = header.createDiv({ cls: 'ert-goals-stat-card__title-wrap' });
@@ -146,16 +157,16 @@ function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, s
     const statusWrap = header.createDiv({ cls: 'ert-goals-stat-card__status' });
     const statusIcon = statusWrap.createSpan({ cls: 'ert-goals-stat-card__status-icon' });
     setIcon(statusIcon, status === 'met' ? 'check-circle-2' : status === 'missed' ? 'alert-triangle' : 'circle');
-    statusWrap.createSpan({ text: stats.dailyTargetMinutes ? `${stats.daysGoalMet}/${stats.days}` : 'No goal' });
+    statusWrap.createSpan({ text: targetDays ? goalValue : 'No goal' });
     card.createDiv({ cls: 'ert-goals-stat-card__date', text: formatRangeDate(stats) });
 
     const metrics = card.createDiv({ cls: 'ert-goals-stat-grid' });
     createMetric(metrics, 'timer', 'logged', formatMinutes(stats.minutesLogged), 'time');
     createMetric(metrics, 'list-checks', 'sessions', String(stats.sessionsCompleted), 'sessions');
-    createMetric(metrics, status === 'met' ? 'check-circle-2' : 'alert-triangle', 'goal days', stats.dailyTargetMinutes ? `${stats.daysGoalMet}/${stats.days}` : '—', status === 'missed' ? 'warning' : 'goal');
-    createMetric(metrics, 'pencil', 'draft words', String(stats.wordsDrafted), 'draft');
-    createMetric(metrics, 'book-open-text', 'fresh scenes', String(stats.freshScenesCompleted), 'fresh');
-    createMetric(metrics, 'refresh-cw', 'revisions', String(stats.revisionScenesCompleted), 'revision');
+    createMetric(metrics, status === 'met' ? 'check-circle-2' : 'alert-triangle', 'goal', goalValue, status === 'missed' ? 'warning' : 'goal', targetDays ? 'days' : undefined);
+    createMetric(metrics, 'pencil', 'draft', String(stats.wordsDrafted), 'draft', 'wrds');
+    createMetric(metrics, 'book-open-text', 'fresh', String(stats.freshScenesCompleted), 'fresh', 'scns');
+    createMetric(metrics, 'refresh-cw', 'revisions', String(stats.revisionScenesCompleted), 'revision', 'scns');
 
     const stages = card.createDiv({ cls: 'ert-goals-stage-line' });
     (['Zero', 'Author', 'House', 'Press'] as const).forEach(stage => {
@@ -172,7 +183,8 @@ function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, s
 function renderStatsBody(plugin: RadialTimelinePlugin, container: HTMLElement, stats: WritingRangeStats[]): void {
     container.empty();
     const cards = container.createDiv({ cls: 'ert-goals-stats-grid' });
-    stats.forEach(stat => createRangeCard(plugin, cards, stat));
+    const weeklyGoalDays = plugin.getWritingSessionService().getSettings().defaults.weeklyGoalDays ?? 7;
+    stats.forEach(stat => createRangeCard(plugin, cards, stat, weeklyGoalDays));
 }
 
 function renderStatsError(container: HTMLElement, message: string): void {
@@ -183,8 +195,8 @@ function renderStatsError(container: HTMLElement, message: string): void {
 function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTMLElement): void {
     const details = containerEl.createEl('details', { cls: 'ert-goals-stats-details' });
     const summary = details.createEl('summary', { cls: 'ert-goals-stats-summary' });
-    const headingIcon = summary.createSpan({ cls: 'ert-goals-stats-summary__icon' });
-    setIcon(headingIcon, 'bar-chart-3');
+    const headingIcon = summary.createSpan({ cls: 'ert-goals-stats-summary__icon ert-setting-heading-icon' });
+    setIcon(headingIcon, 'chart-column');
     const titleWrap = summary.createSpan({ cls: 'ert-goals-stats-summary__copy' });
     titleWrap.createSpan({ cls: 'ert-goals-stats-summary__title', text: 'Writing stats' });
     titleWrap.createSpan({
@@ -198,6 +210,24 @@ function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTML
     const friendsOnline = community.createSpan({ cls: 'ert-goals-stats-summary__community-pill' });
     setIcon(friendsOnline.createSpan(), 'users');
     friendsOnline.createSpan({ text: 'Friends 3' });
+    const chevron = summary.createEl('button', {
+        cls: 'ert-iconBtn ert-goals-stats-summary__chevron',
+        attr: {
+            type: 'button',
+            'aria-label': 'Expand writing stats',
+            'aria-expanded': details.open ? 'true' : 'false',
+        },
+    });
+    setIcon(chevron, 'chevron-down');
+    chevron.onclick = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        details.open = !details.open;
+    };
+    details.ontoggle = () => {
+        chevron.setAttribute('aria-label', details.open ? 'Collapse writing stats' : 'Expand writing stats');
+        chevron.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+    };
     const body = details.createDiv({ cls: 'ert-goals-stats-body' });
     body.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: 'Loading writing stats…' });
 
@@ -261,6 +291,23 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
                 onSave: (value) => {
                     const profile = ensureDefaultRuntimeProfile(plugin);
                     profile.sessionPlanning = { ...profile.sessionPlanning, dailyMinutes: value };
+                },
+            });
+        });
+
+    new Setting(body)
+        .setName(t('settings.goalsSessions.weeklyGoalDays.name'))
+        .setDesc(t('settings.goalsSessions.weeklyGoalDays.desc'))
+        .addText((text: TextComponent) => {
+            wireNumberInput({
+                plugin,
+                text,
+                currentValue: plugin.getWritingSessionService().getSettings().defaults.weeklyGoalDays ?? 7,
+                min: 1,
+                max: 7,
+                onSave: (value) => {
+                    const settings = plugin.getWritingSessionService().getSettings();
+                    settings.defaults.weeklyGoalDays = Math.min(7, Math.max(1, Math.round(value ?? 7)));
                 },
             });
         });

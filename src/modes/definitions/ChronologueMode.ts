@@ -37,7 +37,7 @@ export const CHRONOLOGUE_MODE: ModeDefinition = {
     },
     
     ui: {
-        acronym: 'CHRO',
+        acronym: 'CH',
         tooltip: 'Switch to Chronologue mode',
         showInToggleButton: true,
         order: 3

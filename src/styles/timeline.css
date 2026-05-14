@@ -231,22 +231,20 @@
   stroke-width: 2px;
 }
 
-.rt-mode-option:hover .rt-mode-acronym-text {
-  fill: var(--text-on-accent);
+.rt-mode-option .rt-mode-glyph {
+  pointer-events: none;
 }
 
-.rt-mode-option .rt-mode-acronym-text {
-  pointer-events: none;
-  text-anchor: middle;
-  dominant-baseline: middle;
-  font-family: var(--font-interface);
-  font-size: 12px;
-  /* Beat titles are 12px, this is slightly larger */
-  font-weight: normal;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  fill: var(--text-normal);
-  transition: fill 0.2s ease;
+.rt-mode-option .rt-mode-glyph svg {
+  color: var(--text-normal);
+  stroke: currentColor;
+  fill: none;
+  transition: color 0.2s ease;
+}
+
+.rt-mode-option:hover .rt-mode-glyph svg,
+.rt-mode-option .rt-mode-glyph.rt-active svg {
+  color: var(--text-on-accent);
 }
 
 .rt-mode-option .rt-mode-number-label {
@@ -254,7 +252,7 @@
   text-anchor: start;
   dominant-baseline: middle;
   font-family: var(--font-interface);
-  font-size: 15px;
+  font-size: 10px;
   font-weight: normal;
   fill: var(--text-normal);
 }
@@ -265,18 +263,10 @@
   stroke-width: 2px;
 }
 
-.rt-mode-option .rt-active.rt-mode-acronym-text {
-  fill: var(--text-on-accent);
-  stroke: none;
-  font-size: 14px;
-  font-weight: 300;
-  letter-spacing: 0.1em;
-}
-
 .rt-mode-option .rt-active.rt-mode-number-label {
   fill: var(--text-on-accent);
   stroke: none;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 300;
 
 }
@@ -1054,7 +1044,7 @@
   background: transparent;
 }
 
-.ert-timeline-session.clickable-icon.is-idle {
+.ert-timeline-session.clickable-icon.is-icon-only {
   width: 24px;
   height: 24px;
   padding-block: 0;
@@ -1205,6 +1195,10 @@
   text-align: center;
 }
 
+.ert-timeline-session.clickable-icon:not(.is-icon-only) {
+  min-width: calc(4.5ch + 2.7rem);
+}
+
 .ert-timeline-session__label.is-count-pulse {
   animation: ert-timeline-session-count-pulse 300ms ease-out;
 }
@@ -1226,7 +1220,7 @@
   }
 }
 
-.ert-timeline-session.clickable-icon.is-idle .ert-timeline-session__label {
+.ert-timeline-session.clickable-icon.is-icon-only .ert-timeline-session__label {
   min-width: 0;
   width: 100%;
   height: 100%;

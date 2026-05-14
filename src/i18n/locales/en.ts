@@ -399,6 +399,7 @@ export interface TranslationKeys {
             header: { name: string; desc: string; };
             draftingWpm: { name: string; desc: string; };
             dailyMinutes: { name: string; desc: string; };
+            weeklyGoalDays: { name: string; desc: string; };
         };
         inquiry: {
             contribution: { excluded: string; summary: string; full: string; };
@@ -2223,6 +2224,10 @@ export const en: TranslationKeys = {
                 name: 'Daily session target',
                 desc: 'Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.',
             },
+            weeklyGoalDays: {
+                name: 'Weekly writing goal in days',
+                desc: 'How many days per week you want to meet the daily session target.',
+            },
         },
         inquiry: {
             contribution: { excluded: 'Excluded', summary: 'Summary', full: 'Full' },
@@ -2664,10 +2669,10 @@ export const en: TranslationKeys = {
         renderError: 'Error rendering timeline. Check console for details.',
         overdue: 'Overdue: {{date}}',
         modes: {
-            narrative: { name: 'Narrative', acronym: 'NARR' },
-            progress: { name: 'Progress', acronym: 'PROG' },
-            chronologue: { name: 'Chronologue', acronym: 'CHRO' },
-            gossamer: { name: 'Gossamer', acronym: 'GOSS' },
+            narrative: { name: 'Narrative', acronym: 'NR' },
+            progress: { name: 'Progress', acronym: 'PR' },
+            chronologue: { name: 'Chronologue', acronym: 'CH' },
+            gossamer: { name: 'Gossamer', acronym: 'GS' },
         },
         subplotRing: {
             allScenes: 'ALL SCENES',

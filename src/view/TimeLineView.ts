@@ -667,6 +667,7 @@ export class RadialTimelineView extends ItemView {
             this.writingSessionLabel.setText(snapshot.label);
         }
         this.writingSessionButton.classList.toggle('is-idle', snapshot.state === 'idle');
+        this.writingSessionButton.classList.toggle('is-icon-only', snapshot.state === 'idle' && Boolean(snapshot.renderIcon));
         this.writingSessionButton.classList.toggle('is-active', snapshot.state === 'active');
         this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
         this.applySessionProgressClass(this.writingSessionButton, snapshot.progressStep);
@@ -1219,20 +1220,24 @@ export class RadialTimelineView extends ItemView {
         options: { pulseColor?: string } = {}
     ): void {
         if (!svg) return;
-        const active = this.plugin.getWritingSessionService().getActiveSession();
-        if (!active) {
-            svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
-            this.writingSessionRingRenderKey = undefined;
-            return;
-        }
-
         const lineInnerRadiusAttr = svg.getAttribute('data-line-inner-radius');
         const lineInnerRadius = lineInnerRadiusAttr ? Number(lineInnerRadiusAttr) : NaN;
         if (!Number.isFinite(lineInnerRadius)) return;
 
-        const elapsedMs = this.plugin.getWritingSessionService().getActiveElapsedMs();
-        const targetMinutes = active.goalMinutes ?? this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
-        const renderKey = this.getSessionRingRenderKey(active, elapsedMs, targetMinutes);
+        const service = this.plugin.getWritingSessionService();
+        const active = service.getActiveSession();
+        const elapsedMs = active ? service.getActiveElapsedMs() : 0;
+        const targetMinutes = active?.goalMinutes ?? service.getDefaultGoalMinutes() ?? 120;
+        const renderKey = active
+            ? this.getSessionRingRenderKey(active, elapsedMs, targetMinutes)
+            : [
+                'inactive',
+                targetMinutes,
+                SESSION_TIMER_RING_WIDTH,
+                SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
+                SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
+                SESSION_TIMER_RING_GAP,
+            ].join('|');
         const hasRenderedRing = Boolean(svg.querySelector('.ert-timeline-session-ring-layer'));
         if (this.writingSessionRingRenderKey === renderKey && hasRenderedRing && !options.pulseColor) return;
         svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
@@ -1244,8 +1249,8 @@ export class RadialTimelineView extends ItemView {
             sessionRingWidth: SESSION_TIMER_RING_WIDTH,
             elapsedMs: ringElapsedMs,
             targetMinutes,
-            countdown: Boolean(active.goalMinutes),
-            paused: !!active.pausedAt,
+            countdown: Boolean(active?.goalMinutes),
+            paused: !!active?.pausedAt,
         });
         const ringSvg = renderSessionTimerRingLayer(state);
         if (!ringSvg.trim()) return;

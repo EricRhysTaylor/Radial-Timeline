@@ -4,6 +4,16 @@ This is a visual polish and APR reliability release.
 
 Note: Pandoc PDF Designer is still under development and is not yet released. Use one of the four built-in PDF templates for now.
 
+### Visual Highlights
+
+**Working-scene patterns**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.0.6/wiki/images/mode-progress.png" alt="Progress Mode showing Working-scene patterns" width="720">
+
+**Author Progress Report**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.0.6/wiki/images/panel-apr.png" alt="Author Progress Report preview and export controls" width="720">
+
 ### New Features
 
 - Added selectable Working-scene patterns in Settings → Core, with new built-in SVG motifs for customizing how active scenes appear on the timeline.

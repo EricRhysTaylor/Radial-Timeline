@@ -308,6 +308,7 @@ export type WritingSessionStagePreference = WritingSessionStage | 'auto';
 export interface WritingSessionDefaults {
     defaultMode: WritingSessionMode;
     defaultStage?: WritingSessionStagePreference;
+    weeklyGoalDays?: number;
 }
 
 export interface ActiveWritingSession {

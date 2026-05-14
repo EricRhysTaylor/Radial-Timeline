@@ -38,7 +38,10 @@ describe('writing session timer font loading', () => {
         const indicatorsCss = readIndicatorsCss();
         const countPulseBlock = timelineCss.match(/@keyframes ert-timeline-session-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
         const ringPulseBlock = indicatorsCss.match(/@keyframes ert-timeline-session-ring-count-pulse \{[\s\S]*?\n\}/)?.[0] ?? '';
+        const ringTrackBlock = readRuleBlock(indicatorsCss, '.radial-timeline-container .ert-timeline-session-ring__track');
         const clockBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock {');
+        const titleButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon:not(.is-icon-only)');
+        const iconOnlyButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon.is-icon-only');
         const titleCountBlock = readRuleBlock(timelineCss, '.ert-timeline-session__label {');
         const clockValueBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock-value');
         const ratioBlock = readRuleBlock(timelineCss, 'button.ert-timeline-session-panel__ratio');
@@ -67,10 +70,14 @@ describe('writing session timer font loading', () => {
         expect(ringPulseBlock).not.toContain('transform:');
         expect(ringPulseBlock).toContain('--ert-session-pulse-color');
         expect(ringPulseBlock).toContain('stroke: var(--ert-session-pulse-color, white)');
+        expect(ringTrackBlock).toContain('stroke: color-mix(in srgb, var(--text-normal) 44%, var(--background-primary))');
+        expect(ringTrackBlock).toContain('opacity: 1');
         expect(timelineCss).toContain('animation: ert-timeline-session-count-pulse 300ms ease-out');
         expect(indicatorsCss).toContain('animation: ert-timeline-session-ring-count-pulse 300ms ease-out');
         expect(clockBlock).toContain('background: transparent');
         expect(clockBlock).toContain('border: 0');
+        expect(titleButtonBlock).toContain('min-width: calc(4.5ch + 2.7rem)');
+        expect(iconOnlyButtonBlock).toContain('width: 24px');
         expect(titleCountBlock).toContain('min-width: 4.5ch');
         expect(titleCountBlock).toContain('padding-inline');
         expect(clockValueBlock).toContain('padding-inline: 0.5rem');

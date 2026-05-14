@@ -45,7 +45,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
     },
     
     ui: {
-        acronym: 'GOSS',
+        acronym: 'GS',
         tooltip: 'Gossamer mode — beat-level signal analysis (requires beat notes)',
         showInToggleButton: true, // Show in mode toggle button
         order: 4

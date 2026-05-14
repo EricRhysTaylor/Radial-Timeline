@@ -44,7 +44,7 @@ describe('SessionTimerRing', () => {
         expect(state?.radius).toBe(progressRadius + (SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR / 2) + SESSION_TIMER_RING_GAP + (SESSION_TIMER_RING_WIDTH / 2));
         expect(PROGRESS_RING_BASE_WIDTH).toBe(11);
         expect(PROGRESS_RING_RADIUS_OFFSET).toBe(13);
-        expect(SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR).toBe(9);
+        expect(SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR).toBe(10);
         expect(SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR).toBe(8);
         expect(SESSION_TIMER_RING_WIDTH).toBe(5);
         expect(SESSION_TIMER_RING_GAP).toBe(2);
@@ -104,6 +104,20 @@ describe('SessionTimerRing', () => {
 
         expect(svg).toContain('is-counterclockwise');
         expect(svg).toContain('ert-timeline-session-ring__track');
+    });
+
+    it('renders the neutral track without an active arc for inactive sessions', () => {
+        const svg = renderSessionTimerRing({
+            radius: 708.5,
+            strokeWidth: 5,
+            progress: 0,
+            colorProgress: 0,
+            direction: 'clockwise',
+            paused: false,
+        });
+
+        expect(svg).toContain('ert-timeline-session-ring__track');
+        expect(svg).not.toContain('ert-timeline-session-ring__arc');
     });
 
     it('renders a closed two-arc path at completion', () => {
