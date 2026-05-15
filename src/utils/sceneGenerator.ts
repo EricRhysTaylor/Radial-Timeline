@@ -17,6 +17,7 @@ export function mergeTemplates(baseTemplate: string, advancedFields: string): st
 export interface SceneCreationData {
     act: number;
     when: string;
+    due?: string;
     sceneNumber: number | string;
     subplots: string[];
     character: string;
@@ -42,6 +43,9 @@ export function generateSceneContent(template: string, data: SceneCreationData):
 
     // {{When}}
     content = content.replace(/{{When}}/g, data.when);
+
+    // {{Due}}
+    content = content.replace(/{{Due}}/g, data.due ?? data.when);
 
     // {{SceneNumber}}
     content = content.replace(/{{SceneNumber}}/g, data.sceneNumber.toString());

@@ -41,6 +41,13 @@ function beat(path: string, actNumber = 1): TimelineItem {
 }
 
 describe('SceneInsertService', () => {
+    const today = new Date();
+    const todayString = [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2, '0'),
+        String(today.getDate()).padStart(2, '0')
+    ].join('-');
+
     it('builds a decimal scene prefix after the anchor beat gap', () => {
         const items = [
             scene('Book/1 Opening.md'),
@@ -100,7 +107,7 @@ describe('SceneInsertService', () => {
         expect(created).toBeInstanceOf(TFile);
         const content = await app.vault.read(created as TFile);
         expect(content).toContain('When: 2024-01-01 09:00');
-        expect(content).toContain('Due: 2024-01-01 09:00');
+        expect(content).toContain(`Due: ${todayString}`);
         expect(content).toContain('Subplot: Romance');
         expect(content).not.toContain('Place:');
     });

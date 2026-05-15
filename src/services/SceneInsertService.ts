@@ -25,6 +25,29 @@ export interface SceneInsertResult {
     renameCount: number;
 }
 
+export interface SceneRenamePreview {
+    fromPath: string;
+    toPath: string;
+}
+
+export interface SceneInsertionPlan {
+    anchorPath: string;
+    anchorBasename: string;
+    initialPath: string;
+    finalPath: string;
+    filename: string;
+    actNumber: number;
+    when: string;
+    subplotLabel: string;
+    yamlMode: 'Basic' | 'Advanced';
+    numberingMode: 'Decimal insert' | 'Ripple renumber';
+    usedRippleRename: boolean;
+    renameCount: number;
+    renamePreviews: SceneRenamePreview[];
+    frontmatter: string;
+    ripplePlan?: RippleRenamePlan;
+}
+
 interface InsertionCandidate {
     path: string;
     itemType: 'Scene' | 'Beat';
@@ -38,6 +61,13 @@ interface OrderedInsertionCandidate extends InsertionCandidate {
 }
 
 const NEW_SCENE_LABEL = 'New Scene';
+
+function getLocalDateString(date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 function basenameFromPath(path: string): string {
     const fileName = path.split('/').pop() ?? path;
@@ -317,7 +347,16 @@ function finalPathAfterRename(initialPath: string, newNumber: string): string {
     return [...segments, `${finalBasename}${extension}`].filter(Boolean).join('/');
 }
 
-export async function insertSceneAfterAnchor(options: SceneInsertOptions): Promise<SceneInsertResult> {
+function buildRenamePreviews(updates: SceneUpdate[]): SceneRenamePreview[] {
+    return updates
+        .map((update) => ({
+            fromPath: update.path,
+            toPath: finalPathAfterRename(update.path, update.newNumber)
+        }))
+        .filter((preview) => preview.fromPath !== preview.toPath);
+}
+
+export async function planSceneInsertion(options: SceneInsertOptions): Promise<SceneInsertionPlan> {
     const anchorPath = options.anchorFile.path;
     const sceneData = await options.getSceneData();
     const actNumber = await resolveAnchorActNumber(sceneData, anchorPath, options.app, options.anchorFile);
@@ -332,6 +371,7 @@ export async function insertSceneAfterAnchor(options: SceneInsertOptions): Promi
     const content = generateSceneContent(template, {
         act: actNumber,
         when,
+        due: getLocalDateString(),
         sceneNumber: initialPrefix,
         subplots,
         character: '',
@@ -340,15 +380,23 @@ export async function insertSceneAfterAnchor(options: SceneInsertOptions): Promi
         placeList: []
     });
     const finalFrontmatter = ensureSceneTemplateFrontmatter(content).frontmatter;
-    await options.app.vault.create(initialPath, `---\n${finalFrontmatter}\n---\n\n`);
 
     if (!options.settings.enableManuscriptRippleRename) {
         return {
+            anchorPath,
+            anchorBasename: options.anchorFile.basename,
             initialPath,
             finalPath: initialPath,
             filename,
+            actNumber,
+            when,
+            subplotLabel: subplots[0] ?? 'Main Plot',
+            yamlMode: useAdvanced ? 'Advanced' : 'Basic',
+            numberingMode: 'Decimal insert',
             usedRippleRename: false,
-            renameCount: 0
+            renameCount: 0,
+            renamePreviews: [],
+            frontmatter: finalFrontmatter
         };
     }
 
@@ -359,21 +407,62 @@ export async function insertSceneAfterAnchor(options: SceneInsertOptions): Promi
         insertedActNumber: actNumber,
         beatModel: options.beatModel
     });
-    await applySceneNumberUpdates(options.app, plan.updates, {
+
+    const insertedNumber = plan.expectedNumbersByPath[initialPath] ?? initialPrefix;
+    const finalPath = finalPathAfterRename(initialPath, insertedNumber);
+    const renamePreviews = buildRenamePreviews(plan.updates);
+
+    return {
+        anchorPath,
+        anchorBasename: options.anchorFile.basename,
+        initialPath,
+        finalPath,
+        filename,
+        actNumber,
+        when,
+        subplotLabel: subplots[0] ?? 'Main Plot',
+        yamlMode: useAdvanced ? 'Advanced' : 'Basic',
+        numberingMode: 'Ripple renumber',
+        usedRippleRename: true,
+        renameCount: renamePreviews.length,
+        renamePreviews,
+        frontmatter: finalFrontmatter,
+        ripplePlan: plan
+    };
+}
+
+export async function applySceneInsertionPlan(app: App, plan: SceneInsertionPlan): Promise<SceneInsertResult> {
+    await app.vault.create(plan.initialPath, `---\n${plan.frontmatter}\n---\n\n`);
+
+    if (!plan.ripplePlan) {
+        return {
+            initialPath: plan.initialPath,
+            finalPath: plan.finalPath,
+            filename: plan.filename,
+            usedRippleRename: false,
+            renameCount: 0
+        };
+    }
+
+    await applySceneNumberUpdates(app, plan.ripplePlan.updates, {
         verification: {
-            expectedOrderedPaths: plan.orderedPaths,
-            expectedNumbersByPath: plan.expectedNumbersByPath,
-            movedItemPath: initialPath,
-            expectedMovedIndex: plan.orderedPaths.indexOf(initialPath)
+            expectedOrderedPaths: plan.ripplePlan.orderedPaths,
+            expectedNumbersByPath: plan.ripplePlan.expectedNumbersByPath,
+            movedItemPath: plan.initialPath,
+            expectedMovedIndex: plan.ripplePlan.orderedPaths.indexOf(plan.initialPath)
         }
     });
 
-    const insertedNumber = plan.expectedNumbersByPath[initialPath] ?? initialPrefix;
     return {
-        initialPath,
-        finalPath: finalPathAfterRename(initialPath, insertedNumber),
-        filename,
+        initialPath: plan.initialPath,
+        finalPath: plan.finalPath,
+        filename: plan.filename,
         usedRippleRename: true,
-        renameCount: plan.needRename
+        renameCount: plan.renameCount
     };
+}
+
+export async function insertSceneAfterAnchor(options: SceneInsertOptions): Promise<SceneInsertResult> {
+    const plan = await planSceneInsertion(options);
+    return applySceneInsertionPlan(options.app, plan);
 }

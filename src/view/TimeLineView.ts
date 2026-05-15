@@ -1577,7 +1577,7 @@ export class RadialTimelineView extends ItemView {
                     detailIconLabel: 'Complete updates Due Date to today',
                 },
                 { icon: 'component', label: 'Change Stage', detail: 'Zero, Author, House, Press', detailSegments: this.getStageLegendDetailSegments() },
-                { icon: 'flag', label: 'Misc', detail: 'Flag Triplet Pulse' },
+                { icon: 'flag', label: 'Misc', detail: 'Add Scene, Flag Triplet Pulse' },
             ],
         });
 

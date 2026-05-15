@@ -179,7 +179,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     titleText.setAttribute('class', 'rt-mode-title-text');
     titleText.setAttribute('x', String(MODE_TITLE_POS_X));
     titleText.setAttribute('y', String(MODE_TITLE_POS_Y));
-    titleText.setAttribute('text-anchor', 'start');
+    titleText.setAttribute('text-anchor', 'middle');
     titleText.setAttribute('dominant-baseline', 'baseline');
     titleText.setAttribute('id', 'mode-title');
     // Set initial text content to first mode

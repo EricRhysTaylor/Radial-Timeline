@@ -154,7 +154,7 @@ Words:
 Runtime:
 Publish Stage: Zero
 Status: Todo
-Due: {{When}}
+Due: {{Due}}
 Pulse Update:
 Summary Update:`,
         advanced: `Place:

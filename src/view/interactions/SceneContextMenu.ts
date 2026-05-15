@@ -1,9 +1,10 @@
 import { Menu, Notice, TFile, type App } from 'obsidian';
 import { normalizeStatus } from '../../utils/text';
-import { insertSceneAfterAnchor } from '../../services/SceneInsertService';
+import { applySceneInsertionPlan, planSceneInsertion } from '../../services/SceneInsertService';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import type { RadialTimelineSettings, TimelineItem } from '../../types';
+import { AddSceneConfirmModal } from '../../modals/AddSceneConfirmModal';
 
 type SceneContextMenuView = {
     plugin: {
@@ -120,7 +121,7 @@ async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, f
     }
 
     try {
-        const result = await insertSceneAfterAnchor({
+        const plan = await planSceneInsertion({
             app: view.plugin.app,
             settings: view.plugin.settings,
             anchorFile: file,
@@ -128,6 +129,9 @@ async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, f
             getSceneData: view.plugin.getSceneData.bind(view.plugin),
             beatModel: resolveSelectedBeatModelFromSettings(view.plugin.settings)
         });
+        const confirmed = await new AddSceneConfirmModal(view.plugin.app, plan).waitForConfirm();
+        if (!confirmed) return;
+        const result = await applySceneInsertionPlan(view.plugin.app, plan);
         const finalFile = view.plugin.app.vault.getAbstractFileByPath(result.finalPath);
         if (finalFile instanceof TFile) {
             refreshTimelineView(view, finalFile);

@@ -290,10 +290,10 @@
   fill: var(--text-normal);
 }
 
-/* Mode title text above the first page icon */
+/* Mode title text centered above the mode button group */
 .rt-mode-title-text {
   pointer-events: none;
-  text-anchor: start;
+  text-anchor: middle;
   dominant-baseline: baseline;
   font-family: var(--font-interface);
   font-size: 26px;
