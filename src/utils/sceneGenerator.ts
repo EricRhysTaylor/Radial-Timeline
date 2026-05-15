@@ -17,7 +17,7 @@ export function mergeTemplates(baseTemplate: string, advancedFields: string): st
 export interface SceneCreationData {
     act: number;
     when: string;
-    sceneNumber: number;
+    sceneNumber: number | string;
     subplots: string[];
     character: string;
     place: string;

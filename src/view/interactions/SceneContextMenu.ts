@@ -1,9 +1,15 @@
 import { Menu, Notice, TFile, type App } from 'obsidian';
 import { normalizeStatus } from '../../utils/text';
+import { insertSceneAfterAnchor } from '../../services/SceneInsertService';
+import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
+import { openOrRevealFile } from '../../utils/fileUtils';
+import type { RadialTimelineSettings, TimelineItem } from '../../types';
 
 type SceneContextMenuView = {
     plugin: {
         app: App;
+        settings: RadialTimelineSettings;
+        getSceneData?: () => Promise<TimelineItem[]>;
         refreshTimelineIfNeeded?: (file: TFile | null, delayMs?: number) => void;
     };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -99,6 +105,44 @@ function menuTitle(label: string, active: boolean): string {
     return active ? `${label}  ✓` : label;
 }
 
+function resolvePrimarySubplotFromGroup(group: Element): string | undefined {
+    const subplotIndex = group.getAttribute('data-subplot-index');
+    const svg = group instanceof SVGElement ? group.ownerSVGElement : null;
+    if (!svg || subplotIndex === null) return undefined;
+    const label = svg.querySelector(`.rt-subplot-ring-label-text[data-subplot-index="${subplotIndex}"]`);
+    return label?.getAttribute('data-subplot-name') ?? undefined;
+}
+
+async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, file: TFile): Promise<void> {
+    if (typeof view.plugin.getSceneData !== 'function') {
+        new Notice('Could not add scene because timeline scene data is unavailable.', 5000);
+        return;
+    }
+
+    try {
+        const result = await insertSceneAfterAnchor({
+            app: view.plugin.app,
+            settings: view.plugin.settings,
+            anchorFile: file,
+            primarySubplot: resolvePrimarySubplotFromGroup(group),
+            getSceneData: view.plugin.getSceneData.bind(view.plugin),
+            beatModel: resolveSelectedBeatModelFromSettings(view.plugin.settings)
+        });
+        const finalFile = view.plugin.app.vault.getAbstractFileByPath(result.finalPath);
+        if (finalFile instanceof TFile) {
+            refreshTimelineView(view, finalFile);
+            await openOrRevealFile(view.plugin.app as any, finalFile, false);
+        } else {
+            refreshTimelineView(view, file);
+        }
+        const rippleText = result.usedRippleRename ? ` Ripple renamed ${result.renameCount} file(s).` : '';
+        new Notice(`Added scene after ${file.basename}.${rippleText}`, 3500);
+    } catch (error) {
+        console.error('[SceneContextMenu] Failed to add scene:', error);
+        new Notice(`Could not add a scene after ${file.basename}. Review the console for details.`, 7000);
+    }
+}
+
 function showSceneContextMenu(view: SceneContextMenuView, group: Element, event: MouseEvent): void {
     const file = getSceneFile(view, group);
     if (!file) {
@@ -114,6 +158,18 @@ function showSceneContextMenu(view: SceneContextMenuView, group: Element, event:
     const pulseAlreadyFlagged = /^(yes|true|1)$/i.test(pulseFlag);
 
     const menu = new Menu();
+    const itemType = group.getAttribute('data-item-type');
+
+    if (itemType === 'Scene') {
+        menu.addItem(item => {
+            item.setIcon('file-plus-2');
+            item.setTitle('Add scene');
+            item.onClick(() => {
+                void addSceneAfterAnchor(view, group, file);
+            });
+        });
+        menu.addSeparator();
+    }
 
     STATUS_OPTIONS.forEach(option => {
         menu.addItem(item => {
