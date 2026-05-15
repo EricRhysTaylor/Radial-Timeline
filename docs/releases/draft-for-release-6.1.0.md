@@ -1,6 +1,6 @@
 ## Radial Timeline 6.1.0
 
-This release adds workflow enhancements and improved UI, with session tracking, daily goals, clearer timeline controls, and faster scene insertion from the timeline itself.
+This release adds workflow enhancements and improved UI, with session tracking, daily goals, clearer timeline controls, and contextual scene insertion from the timeline.
 
 ### New Features
 
