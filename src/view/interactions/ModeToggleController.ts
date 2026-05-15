@@ -65,17 +65,17 @@ const ICON_WIDTH = 30;
 const ICON_HEIGHT = 42;
 const ICON_NUMBER_X = 6;
 const ICON_NUMBER_Y = 8;
-// Single-letter acronym, centered horizontally near the bottom
-const LETTER_X = ICON_WIDTH / 2;     // 15
-const LETTER_Y = 34;
+// Single-letter acronym, anchored bottom-left (mirrors the top-left number label).
+const LETTER_X = 6;
+const LETTER_Y = 34;   // 42 - 8, mirror of ICON_NUMBER_Y
 
 // Active mode dimensions (1.2x of the inactive size, also whole pixels).
 const ICON_WIDTH_ACTIVE = 36;
 const ICON_HEIGHT_ACTIVE = 50;
 const ICON_NUMBER_X_ACTIVE = 7;
 const ICON_NUMBER_Y_ACTIVE = 10;
-const LETTER_X_ACTIVE = ICON_WIDTH_ACTIVE / 2;  // 18
-const LETTER_Y_ACTIVE = 40;
+const LETTER_X_ACTIVE = 7;
+const LETTER_Y_ACTIVE = 40;   // 50 - 10, mirror of ICON_NUMBER_Y_ACTIVE
 
 // Path scale factors derived from the original 43-wide source path.
 const ICON_BASE_SCALE = ICON_WIDTH / 43;        // -> 30/43 ≈ 0.6977
@@ -149,12 +149,12 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createInactiveDocumentShape());
 
-        // Acronym letter centered near the bottom
+        // Acronym letter in bottom-left, mirroring the top-left number label
         const letter = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         letter.setAttribute('class', 'rt-mode-acronym-text');
         letter.setAttribute('x', String(LETTER_X));
         letter.setAttribute('y', String(LETTER_Y));
-        letter.setAttribute('text-anchor', 'middle');
+        letter.setAttribute('text-anchor', 'start');
         letter.setAttribute('dominant-baseline', 'middle');
         letter.textContent = mode.acronym;
 

@@ -237,7 +237,7 @@
 
 .rt-mode-option .rt-mode-acronym-text {
   pointer-events: none;
-  text-anchor: middle;
+  text-anchor: start;
   dominant-baseline: middle;
   font-family: var(--font-interface);
   font-size: 12px;
