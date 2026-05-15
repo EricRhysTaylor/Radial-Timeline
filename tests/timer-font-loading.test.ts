@@ -64,7 +64,11 @@ describe('writing session timer font loading', () => {
         ].map(selector => readRuleBlock(timelineCss, selector));
 
         expect(ratioBlock).not.toContain('transition:');
+        expect(ratioBlock).toContain('padding: 0.125rem 0.275rem');
+        expect(ratioBlock).toContain('border: var(--border-width) solid var(--background-modifier-border)');
+        expect(ratioBlock).toContain('border-radius: var(--radius-s)');
         expect(inlineQuickBlock).toContain('margin-inline-end');
+        expect(inlineQuickBlock).toContain('gap: var(--size-2-2)');
         buttonBlocks.forEach(block => expect(block).not.toMatch(/transition:[^;]*transform/));
         hoverBlocks.forEach(block => expect(block).not.toContain('translateY'));
         expect(countPulseBlock).not.toContain('transform:');
@@ -115,6 +119,11 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).toContain('SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR');
         expect(timelineViewSource).toContain('syncOpenWritingSessionPanel');
         expect(timelineViewSource).toContain('syncActiveWritingSessionPanelClock');
+        expect(timelineViewSource).toContain('resolveWritingSessionStageSelection');
+        expect(timelineViewSource).toContain("mode === 'drafting' && stage === 'auto'");
+        expect(timelineViewSource).toContain("return 'Zero'");
+        expect(timelineViewSource).toContain("stageSelect.value = 'Zero'");
+        expect(timelineViewSource).toContain("mode === 'drafting' ? service.setDefaultStage('Zero') : Promise.resolve()");
         expect(indicatorsCss).toContain('stroke-width: 11px;');
         expect(indicatorsCss).toContain('stroke-width: 7px;');
         expect(indicatorsCss).not.toContain('.ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track');

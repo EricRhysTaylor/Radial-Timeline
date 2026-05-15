@@ -531,6 +531,14 @@ export class RadialTimelineView extends ItemView {
         return stage;
     }
 
+    private resolveWritingSessionStageSelection(
+        mode: WritingSessionMode,
+        stage: WritingSessionStagePreference
+    ): WritingSessionStagePreference {
+        if (mode === 'drafting' && stage === 'auto') return 'Zero';
+        return stage;
+    }
+
     private formatIdleWritingSessionMeta(goalMinutes: number, mode: WritingSessionMode, stage: WritingSessionStagePreference): string {
         return [
             `${goalMinutes} min target`,
@@ -917,7 +925,7 @@ export class RadialTimelineView extends ItemView {
         const introText = intro.createDiv({ cls: 'ert-timeline-session-panel__idle-copy' });
         const sessionSettings = service.getSettings();
         const defaultMode = sessionSettings.defaults.defaultMode;
-        const defaultStage = sessionSettings.defaults.defaultStage ?? 'auto';
+        const defaultStage = this.resolveWritingSessionStageSelection(defaultMode, sessionSettings.defaults.defaultStage ?? 'auto');
         introText.createDiv({
             cls: 'ert-timeline-session-panel__idle-title',
             text: service.getDailySessionProgress().sessionsCompleted > 0 ? 'Resume today' : 'Ready to write',
@@ -960,9 +968,15 @@ export class RadialTimelineView extends ItemView {
         };
         this.registerDomEvent(modeSelect, 'change', () => {
             const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
+            if (mode === 'drafting') {
+                stageSelect.value = 'Zero';
+            }
             updateIdleMeta();
-            void service.setDefaultMode(mode).catch(error => {
-                new Notice(error instanceof Error ? error.message : 'Could not save writing session mode.');
+            Promise.all([
+                service.setDefaultMode(mode),
+                mode === 'drafting' ? service.setDefaultStage('Zero') : Promise.resolve(),
+            ]).catch(error => {
+                new Notice(error instanceof Error ? error.message : 'Could not save writing session defaults.');
             });
         });
         this.writingSessionModeSelect = modeSelect;
