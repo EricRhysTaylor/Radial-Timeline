@@ -469,7 +469,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         hero.createDiv({
             cls: 'ert-modal-title',
-            text: 'Export configuration'
+            text: 'Export manuscript'
         });
         hero.createDiv({
             cls: 'ert-modal-subtitle',

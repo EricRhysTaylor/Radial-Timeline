@@ -11655,8 +11655,12 @@ export class InquiryView extends ItemView {
                 const sagaContext = result.scope === 'saga'
                     ? [finding.subject ? `Subject: ${finding.subject}` : '', finding.span ? `Span: ${finding.span}` : ''].filter(Boolean)
                     : [];
+                const sceneLabel = finding.refId
+                    ? referenceLabels.get(finding.refId.trim().toLowerCase())
+                    : undefined;
                 return {
                     headline: this.normalizeInquiryBriefText(normalizeInquiryHeadline(finding.headline), referenceLabels),
+                    ...(sceneLabel ? { sceneLabel } : {}),
                     role: this.getFindingRole(finding),
                     lens: finding.lens === 'both'
                         ? 'Flow / Depth'

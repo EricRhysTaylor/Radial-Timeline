@@ -9,7 +9,7 @@ export class AddSceneConfirmModal extends Modal {
     private resolver: ((confirmed: boolean) => void) | null = null;
     private resolved = false;
 
-    constructor(app: App, private readonly plan: SceneInsertionPlan) {
+    constructor(app: App, private readonly plan: SceneInsertionPlan, private readonly accent?: string) {
         super(app);
     }
 
@@ -30,6 +30,9 @@ export class AddSceneConfirmModal extends Modal {
         });
 
         contentEl.addClass('ert-modal-container', 'ert-drag-confirm-modal', 'ert-stack');
+        if (this.accent) {
+            contentEl.style.setProperty('--ert-confirm-accent', this.accent);
+        }
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Add Scene' });
@@ -55,23 +58,16 @@ export class AddSceneConfirmModal extends Modal {
             this.addSummaryRow(renameSection, 'list-ordered', `${this.plan.renamePreviews.length} file${this.plan.renamePreviews.length === 1 ? '' : 's'} will be renamed.`);
             const frame = renameSection.createDiv({ cls: 'ert-drag-confirm-history-frame' });
             const list = frame.createDiv({ cls: 'ert-drag-confirm-history-list' });
-            this.plan.renamePreviews.slice(0, 12).forEach((preview) => {
+            this.plan.renamePreviews.forEach((preview) => {
                 const row = list.createDiv({ cls: 'ert-drag-confirm-history-item' });
                 const rowHeader = row.createDiv({ cls: 'ert-drag-confirm-history-header' });
-                const rowIcon = rowHeader.createDiv({ cls: 'ert-drag-confirm-history-icon' });
+                const rowIcon = rowHeader.createDiv({ cls: 'ert-drag-confirm-history-icon ert-drag-confirm-row-icon' });
                 setIcon(rowIcon, 'arrow-right-to-line');
                 rowHeader.createDiv({
                     cls: 'ert-drag-confirm-history-summary',
                     text: `${basename(preview.fromPath)} -> ${basename(preview.toPath)}`
                 });
             });
-            const remaining = this.plan.renamePreviews.length - 12;
-            if (remaining > 0) {
-                list.createDiv({
-                    cls: 'ert-drag-confirm-history-meta',
-                    text: `And ${remaining} more...`
-                });
-            }
         }
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });

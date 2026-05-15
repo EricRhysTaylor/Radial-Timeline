@@ -313,6 +313,12 @@ export class InquiryBriefingModal extends Modal {
         group.createDiv({ cls: 'rt-briefing-group-label', text: label });
         findings.forEach(finding => {
             const card = group.createEl('article', { cls: 'rt-briefing-block rt-briefing-finding' });
+            if (finding.sceneLabel) {
+                card.createDiv({
+                    cls: 'rt-briefing-group-label',
+                    text: finding.sceneLabel
+                });
+            }
             this.renderTextElement(card, 'h3', 'rt-briefing-finding-title', finding.headline, 'headline');
             if (finding.lens) {
                 card.createDiv({

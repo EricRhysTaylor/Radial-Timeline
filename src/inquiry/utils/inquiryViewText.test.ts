@@ -23,12 +23,14 @@ describe('inquiryViewText', () => {
             findings: [
                 {
                     headline: 'Primary scene issue',
+                    sceneLabel: '24 Shail Grounded',
                     role: 'target',
                     lens: 'Flow',
                     bullets: ['Target bullet']
                 },
                 {
                     headline: 'Supporting context issue',
+                    sceneLabel: '50 Long Road Up',
                     role: 'context',
                     lens: 'Depth',
                     bullets: ['Context bullet']
@@ -45,8 +47,10 @@ describe('inquiryViewText', () => {
 
         expect(content).toContain('## Target Findings');
         expect(content).toContain('### Primary scene issue');
+        expect(content).toContain('Scene: 24 Shail Grounded');
         expect(content).toContain('## Context Findings');
         expect(content).toContain('### Supporting context issue');
+        expect(content).toContain('Scene: 50 Long Road Up');
     });
 
     it('builds scope indicators from the canonical scopeLabel field', () => {

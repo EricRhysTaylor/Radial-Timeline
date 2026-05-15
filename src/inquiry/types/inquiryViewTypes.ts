@@ -39,6 +39,7 @@ export type InquiryBriefModel = {
     depthSummary: string;
     findings: Array<{
         headline: string;
+        sceneLabel?: string;
         role: FindingRole;
         lens: string;
         bullets: string[];

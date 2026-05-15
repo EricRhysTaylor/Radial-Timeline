@@ -252,6 +252,9 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
         }
         findings.forEach(finding => {
             lines.push('', `### ${finding.headline}`);
+            if (finding.sceneLabel) {
+                lines.push(`Scene: ${finding.sceneLabel}`);
+            }
             if (finding.lens) {
                 lines.push(`Lens: ${finding.lens}`);
             }
