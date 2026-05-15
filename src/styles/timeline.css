@@ -290,10 +290,10 @@
   fill: var(--text-normal);
 }
 
-/* Mode title text centered above the mode button group */
+/* Mode title text — left-aligned with the leftmost button (x set dynamically) */
 .rt-mode-title-text {
   pointer-events: none;
-  text-anchor: middle;
+  text-anchor: start;
   dominant-baseline: baseline;
   font-family: var(--font-interface);
   font-size: 26px;

@@ -102,6 +102,12 @@ export const BUILTIN_MODELS: ModelInfo[] = [
             supersedes: 'gpt-5.4',
             fallbackModelId: 'gpt-5.4',
             lane: 'default'
+        },
+        constraints: {
+            supportsTemperature: false,
+            supportsTopP: false,
+            supportsReasoningEffort: true,
+            preferredOpenAiEndpoint: 'responses'
         }
     },
     {
@@ -125,6 +131,12 @@ export const BUILTIN_MODELS: ModelInfo[] = [
             fallbackModelId: 'gpt-5.4',
             lane: 'default',
             datedVariantOf: 'gpt-5.5'
+        },
+        constraints: {
+            supportsTemperature: false,
+            supportsTopP: false,
+            supportsReasoningEffort: true,
+            preferredOpenAiEndpoint: 'responses'
         }
     },
     {

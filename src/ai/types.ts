@@ -68,6 +68,14 @@ export interface ModelInfo {
         cacheVsCitationsExclusive?: boolean;
         /** Known limitations for diagnostics/logging (not author-facing UI). */
         knownLimitations?: string[];
+        /** Whether the provider accepts request-level temperature for this model. */
+        supportsTemperature?: boolean;
+        /** Whether the provider accepts request-level top_p/topP for this model. */
+        supportsTopP?: boolean;
+        /** Whether this model exposes provider reasoning effort controls. */
+        supportsReasoningEffort?: boolean;
+        /** Provider endpoint/lane RT should use for this model. */
+        preferredOpenAiEndpoint?: 'responses' | 'chat_completions';
     };
 }
 

@@ -55,6 +55,17 @@ describe('BUILTIN_MODELS OpenAI GPT-5 metadata', () => {
         expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro')).toBe(false);
         expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro-2026-04-23')).toBe(false);
     });
+
+    it('captures GPT-5.5 request-shape constraints in the model contract', () => {
+        const model = byAlias('gpt-5.5');
+
+        expect(model.constraints).toMatchObject({
+            supportsTemperature: false,
+            supportsTopP: false,
+            supportsReasoningEffort: true,
+            preferredOpenAiEndpoint: 'responses'
+        });
+    });
 });
 
 describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {

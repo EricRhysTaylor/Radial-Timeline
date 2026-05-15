@@ -205,11 +205,11 @@ describe('openai responses normalization', () => {
                     }
                 }
             },
-            temperature: 0.1,
-            top_p: 0.9,
             prompt_cache_retention: '24h',
             prompt_cache_key: 'rt:inquiry:book-b1'
         });
+        expect(response.adapterNotes).toContain('Stripped temperature for OpenAI Responses request: model does not support sampling controls.');
+        expect(response.adapterNotes).toContain('Stripped top_p for OpenAI Responses request: model does not support sampling controls.');
         expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
     });
 

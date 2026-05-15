@@ -179,7 +179,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     titleText.setAttribute('class', 'rt-mode-title-text');
     titleText.setAttribute('x', String(MODE_TITLE_POS_X));
     titleText.setAttribute('y', String(MODE_TITLE_POS_Y));
-    titleText.setAttribute('text-anchor', 'middle');
+    titleText.setAttribute('text-anchor', 'start');
     titleText.setAttribute('dominant-baseline', 'baseline');
     titleText.setAttribute('id', 'mode-title');
     // Set initial text content to first mode
@@ -300,10 +300,11 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         }
     });
 
-    // Update mode title text content only (position stays fixed)
+    // Update mode title: text content and left-edge alignment to the leftmost button
     const titleText = modeSelector.querySelector('#mode-title') as SVGTextElement;
     if (titleText && activeIndex >= 0) {
         titleText.textContent = MODE_OPTIONS[activeIndex].label;
+        titleText.setAttribute('x', String(positions[0] + offset));
     }
 }
 

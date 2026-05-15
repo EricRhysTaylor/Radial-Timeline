@@ -1,5 +1,11 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import type { OpenAiResponseFormat } from './openaiApi';
+import {
+    modelSupportsDisableThinking,
+    modelSupportsRequestTemperature,
+    modelSupportsRequestTopP,
+    modelSupportsThinkingBudget
+} from '../ai/registry/modelRequestProfiles';
 
 export type AiProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
@@ -128,7 +134,14 @@ export function sanitizeProviderArgs(
     const capabilities = PROVIDER_CAPABILITIES[provider];
     const normalizedModelId = normalizeModelId(provider, modelId);
     const temperatureAllowed = capabilities.supportsTemperature &&
+        modelSupportsRequestTemperature(provider, normalizedModelId) &&
         !MODEL_TEMPERATURE_UNSUPPORTED[provider].has(normalizedModelId);
+    const topPAllowed = capabilities.supportsTopP &&
+        modelSupportsRequestTopP(provider, normalizedModelId);
+    const thinkingBudgetAllowed = capabilities.supportsExtendedThinking &&
+        modelSupportsThinkingBudget(provider, normalizedModelId);
+    const disableThinkingAllowed = capabilities.supportsThinkingConfig &&
+        modelSupportsDisableThinking(provider, normalizedModelId);
     const supportsCitationControl = capabilities.supportsCitations || provider === 'google';
 
     const sanitized: ProviderCallArgs = {
@@ -144,7 +157,7 @@ export function sanitizeProviderArgs(
     if (temperatureAllowed && typeof args.temperature === 'number') {
         sanitized.temperature = args.temperature;
     }
-    if (capabilities.supportsTopP && typeof args.top_p === 'number') {
+    if (topPAllowed && typeof args.top_p === 'number') {
         sanitized.top_p = args.top_p;
     }
     if (capabilities.supportsResponseFormat && args.responseFormat) {
@@ -153,10 +166,10 @@ export function sanitizeProviderArgs(
     if (capabilities.supportsJsonSchema && args.jsonSchema) {
         sanitized.jsonSchema = args.jsonSchema;
     }
-    if (capabilities.supportsThinkingConfig && args.disableThinking !== undefined) {
+    if (disableThinkingAllowed && args.disableThinking !== undefined) {
         sanitized.disableThinking = args.disableThinking;
     }
-    if (capabilities.supportsExtendedThinking && typeof args.thinkingBudgetTokens === 'number') {
+    if (thinkingBudgetAllowed && typeof args.thinkingBudgetTokens === 'number') {
         sanitized.thinkingBudgetTokens = args.thinkingBudgetTokens;
     }
     if (supportsCitationControl && args.citationsEnabled) {
@@ -224,7 +237,7 @@ export function sanitizeDispatchParams(
     // --- Temperature ---
     if (typeof sanitized.temperature === 'number') {
         const normalizedId = normalizeModelId(provider, params.modelId);
-        if (MODEL_TEMPERATURE_UNSUPPORTED[provider]?.has(normalizedId)) {
+        if (!modelSupportsRequestTemperature(provider, normalizedId) || MODEL_TEMPERATURE_UNSUPPORTED[provider]?.has(normalizedId)) {
             notes.push(`Stripped temperature for ${modelLabel}: model does not support temperature`);
             sanitized.temperature = undefined;
         } else if (provider === 'google' && isGeminiThinkingModel(params.modelId)) {
@@ -235,7 +248,11 @@ export function sanitizeDispatchParams(
 
     // --- topP ---
     if (typeof sanitized.topP === 'number') {
-        if (!capabilities.supportsTopP) {
+        const normalizedId = normalizeModelId(provider, params.modelId);
+        if (!modelSupportsRequestTopP(provider, normalizedId)) {
+            notes.push(`Stripped topP for ${modelLabel}: model does not support topP`);
+            sanitized.topP = undefined;
+        } else if (!capabilities.supportsTopP) {
             notes.push(`Stripped topP for ${modelLabel}: unsupported by provider`);
             sanitized.topP = undefined;
         } else if (provider === 'google' && isGeminiThinkingModel(params.modelId)) {
@@ -245,14 +262,20 @@ export function sanitizeDispatchParams(
     }
 
     // --- thinkingBudgetTokens (Anthropic extended thinking only) ---
-    if (typeof sanitized.thinkingBudgetTokens === 'number' && !capabilities.supportsExtendedThinking) {
-        notes.push(`Stripped thinkingBudgetTokens for ${modelLabel}: unsupported by provider`);
+    if (typeof sanitized.thinkingBudgetTokens === 'number' && (
+        !capabilities.supportsExtendedThinking
+        || !modelSupportsThinkingBudget(provider, params.modelId)
+    )) {
+        notes.push(`Stripped thinkingBudgetTokens for ${modelLabel}: unsupported by model/provider`);
         sanitized.thinkingBudgetTokens = undefined;
     }
 
     // --- disableThinking (Google thinkingConfig only) ---
-    if (sanitized.disableThinking !== undefined && !capabilities.supportsThinkingConfig) {
-        notes.push(`Stripped disableThinking for ${modelLabel}: unsupported by provider`);
+    if (sanitized.disableThinking !== undefined && (
+        !capabilities.supportsThinkingConfig
+        || !modelSupportsDisableThinking(provider, params.modelId)
+    )) {
+        notes.push(`Stripped disableThinking for ${modelLabel}: unsupported by model/provider`);
         sanitized.disableThinking = undefined;
     }
 

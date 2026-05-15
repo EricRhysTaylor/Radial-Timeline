@@ -7,6 +7,7 @@
 import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { modelSupportsSystemRole } from './providerCapabilities';
+import { modelSupportsRequestTemperature, modelSupportsRequestTopP } from '../ai/registry/modelRequestProfiles';
 import type { OpenAiPromptCacheRetention, SourceAttributionType, SourceCitation } from '../ai/types';
 
 /** @deprecated Use modelSupportsSystemRole(provider, modelId) from providerCapabilities.
@@ -561,10 +562,10 @@ export async function callOpenAiApi(
     if (responseFormat) {
         requestBody.response_format = responseFormat;
     }
-    if (typeof temperature === 'number') {
+    if (typeof temperature === 'number' && modelSupportsRequestTemperature('openai', modelId)) {
         requestBody.temperature = temperature;
     }
-    if (typeof topP === 'number') {
+    if (typeof topP === 'number' && modelSupportsRequestTopP('openai', modelId)) {
         requestBody.top_p = topP;
     }
 
@@ -670,11 +671,15 @@ export async function callOpenAiResponsesApi(
     if (responseFormat) {
         requestBody.text = { format: toResponsesTextFormat(responseFormat) };
     }
-    if (typeof temperature === 'number') {
+    if (typeof temperature === 'number' && modelSupportsRequestTemperature('openai', modelId)) {
         requestBody.temperature = temperature;
+    } else if (typeof temperature === 'number') {
+        adapterNotes.push('Stripped temperature for OpenAI Responses request: model does not support sampling controls.');
     }
-    if (typeof topP === 'number') {
+    if (typeof topP === 'number' && modelSupportsRequestTopP('openai', modelId)) {
         requestBody.top_p = topP;
+    } else if (typeof topP === 'number') {
+        adapterNotes.push('Stripped top_p for OpenAI Responses request: model does not support sampling controls.');
     }
     if (promptCacheRetention) {
         requestBody.prompt_cache_retention = promptCacheRetention;

@@ -5,6 +5,7 @@
  */
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
+import { modelSupportsDisableThinking, modelSupportsRequestTemperature, modelSupportsRequestTopP } from '../ai/registry/modelRequestProfiles';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import type { SourceCitation, TokenCountResult } from '../ai/types';
 
@@ -255,18 +256,17 @@ export async function callGeminiApi(
   if (maxTokens !== null) {
     body.generationConfig.maxOutputTokens = maxTokens;
   }
-  // Secondary safety net for temperature/topP on Gemini thinking models.
+  // Secondary safety net for temperature/topP on models with managed sampling.
   // Central sanitization in sanitizeDispatchParams is authoritative;
   // this guard prevents direct callGeminiApi callers from hitting API errors.
-  const isThinkingModel = /\b2\.5\b|\b3\.\d/.test(cleanModelId);
-  if (typeof temperature === 'number' && !isThinkingModel) {
+  if (typeof temperature === 'number' && modelSupportsRequestTemperature('google', cleanModelId)) {
     body.generationConfig.temperature = temperature;
   }
-  if (typeof topP === 'number' && !isThinkingModel) {
+  if (typeof topP === 'number' && modelSupportsRequestTopP('google', cleanModelId)) {
     body.generationConfig.topP = topP;
   }
   // Disable thinking mode when explicitly requested (2.5+ thinking models).
-  if (disableThinking && isThinkingModel) {
+  if (disableThinking && modelSupportsDisableThinking('google', cleanModelId)) {
     body.generationConfig.thinkingConfig = { mode: 'NONE' };
   }
   // Enable JSON mode if schema provided
