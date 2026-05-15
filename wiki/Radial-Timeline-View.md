@@ -19,14 +19,16 @@ A radial manuscript workspace with four modes:
 | **[Gossamer](Gossamer-Mode)** | `4` | Beat-level scoring and comparison |
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/ui-navigation.png" alt="Navigating in Radial Timeline" style="width: 235px; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Mode navigation in the Radial Timeline View</div>
+  <img src="images/view-rt-mode-buttons.png" alt="Radial Timeline mode buttons" style="width: 358px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Mode buttons — Progress, Narrative, Chronologue, and Gossamer</div>
 </div>
 
 ## What You Can Do
 
 *   write and reorganize scenes
 *   switch between one book and Saga scope from the title-bar book selector
+*   open a writing session from the title-bar count/session button
+*   use the timeline legend to read scene actions and mode-specific controls
 *   compare subplot balance and structure
 *   check chronology and elapsed time
 *   score beats and compare Gossamer runs
@@ -55,7 +57,7 @@ Three sub-modes for deeper temporal analysis:
 *   **Alt** (press `Alt`) — planetary wireframe overlay translating Earth dates into your active local time profile.
 *   **Runtime** ✦ Pro (click the `RT` button) — blue wireframe showing scene runtime duration arcs instead of elapsed story time.
 
-Additional features: discontinuities marked with ∞, smart duration labels, dynamic duration arc cap.
+Additional features: discontinuities marked with ∞ and smart duration labels.
 
 ### Gossamer Mode (`4`)
 Visualizes beat-level scoring across your active story beat system. Supports **Momentum**, **Tension**, **Activity**, and **Interiority**, with saved run history and a top-left plots panel for switching signals and comparing runs.
@@ -70,3 +72,44 @@ The tab title bar includes a book selector. Choose an individual Book Manager pr
 </div>
 
 See [Narrative Mode](Narrative-Mode#book-and-saga-scope) for Saga behavior and limits.
+
+## Writing Session Control
+
+The title bar also includes the compact count/session button used for Goals & Sessions.
+
+*   Click it to open the **Writing Session** panel.
+*   Start an open-ended session or a countdown sprint.
+*   Pause, resume, save, stop, or discard the current session from the panel.
+*   Use the settings icon in that panel to jump straight to **Settings → Core → Goals & Sessions**.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/ui-count-popover.png" alt="Radial Timeline writing session and count popover" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Writing Session panel — timer, daily goal context, and session controls</div>
+</div>
+
+## Timeline Legend
+
+The legend is a quick visual guide for the current mode.
+
+*   It explains basic scene actions such as **Hover**, **Click**, and **Right click**.
+*   It includes mode-specific help for **Narrative**, **Progress**, and **Chronologue**.
+*   The right-click guidance now includes **Add scene** alongside status, stage, and Pulse actions.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/ui-rt-legend.png" alt="Radial Timeline legend" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline legend — scene actions and mode-specific controls</div>
+</div>
+
+## Mode Controls
+
+The mode buttons in the title bar switch between the four main views:
+
+*   **Progress**
+*   **Narrative**
+*   **Chronologue**
+*   **Gossamer**
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/view-rt-mode-buttons.png" alt="Radial Timeline mode buttons" style="width: 358px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Mode buttons — Progress, Narrative, Chronologue, and Gossamer</div>
+</div>

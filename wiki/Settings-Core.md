@@ -7,10 +7,10 @@ The Core tab is the main structural control center for Radial Timeline. It cover
 
 ## Books
 
-*   **Books manager**: Create one profile per book, set the title, and link each profile to its manuscript folder.
+*   **Book profile manager**: Create one profile per book, set the title, and link each profile to its manuscript folder.
 *   **Active book**: The active book drives the timeline view, central title, and exports.
-*   **Source folder**: Each book profile stores its own linked folder. This is where Radial Timeline looks for that book's scene notes.
-*   **Project metadata**: Add optional genre, project stage, public label, and description for future local summaries and community grouping. Private book titles remain separate from public labels.
+*   **Linked folder**: Each book profile stores its own folder path. That is where Radial Timeline looks for that book's notes.
+*   **Project metadata**: Add optional genre, project stage, public label, and description.
 *   **Scene count**: Each book card shows how many `Class: Scene` notes are currently found in that folder.
 *   **Reorder books**: Drag books to control saga order.
 *   **Create draft**: Make a sibling draft copy of a book folder and add it as a new book profile.
@@ -52,16 +52,13 @@ Goals & Sessions is a Core workflow for writing accountability and basic plannin
 *   **Average drafting pace**: Optional words-per-minute estimate for new drafting. Used for writing-time estimates and completion planning.
 *   **Daily session target**: Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.
 *   **Writing stats**: A collapsible local stats panel summarizes today, the last 7 days, and the last 30 days from timer records and scene completion dates.
-*   **Timeline Start control**: The compact Start button in the timeline title bar opens the writing-session popover. Start an open-ended session or a countdown sprint, then pause, resume, stop, or discard it from the clock control.
+*   **Timeline count/session button**: The compact title-bar button opens the writing-session popover. Start an open-ended session or a countdown sprint, then pause, resume, stop, or discard it there.
 *   **Session ring**: While a session is active, a thin timer ring appears just outside the rainbow progress ring. It fills toward the selected countdown goal, or toward the daily session target for open-ended sessions.
 *   **Save session details**: Saving a timer session opens a confirmation modal for minutes, words added, scenes completed, pages edited, and an optional note.
-*   **Daily writing stats**: The command palette keeps a single writing-session command, **Show daily writing stats**, which summarizes local timer records and scene completions for today.
 
 Runtime and export tools may read these values, but Goals & Sessions owns the writing/session estimate settings.
 
 Scene completion stats use scenes with `Status = Complete` and a `Due` date. `Publish Stage = Zero` counts as fresh scene completion; `Author`, `House`, and `Press` count as revision rounds.
-
-Website/community sync remains a later opt-in stage. Local stats and project metadata are designed so a future hosted service can consume public rollups without exposing private titles or raw scene filenames by default.
 
 <a name="runtime-estimation"></a>
 ## Runtime Estimation
@@ -176,6 +173,12 @@ Configure the Chronologue backdrop ring and micro-backdrop rings.
 
 > [!NOTE]
 > See [Backdrop](Chronologue-Mode#backdrop-notes-and-micro-backdrop-rings).
+
+## Working Patterns
+
+*   **Working patterns**: The pattern library used for scenes whose `Status` is `Working`.
+*   **Working pattern**: Choose the live motif used on the timeline for `Working` scenes.
+*   **Custom patterns**: Pro adds a custom-pattern editor for author-defined motifs.
 
 <a name="progress-stage-colors"></a>
 ## Progress Stage Colors
