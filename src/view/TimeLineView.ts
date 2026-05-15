@@ -1519,7 +1519,7 @@ export class RadialTimelineView extends ItemView {
                 rows: [
                     { icon: 'square-mouse-pointer', label: 'Hover scene', detail: mode === 'chronologue' ? 'show property fields and matching scenes' : 'show property fields and expand title *' },
                     { icon: 'mouse-pointer-click', label: 'Click scene', detail: 'open scene note' },
-                    { icon: 'mouse', label: 'Right click scene', detail: 'set status, stage, or triplet pulse' },
+                    { icon: 'mouse', label: 'Right click scene', detail: 'Add scene, set status, stage or flag pulse' },
                 ],
             },
         ];
@@ -1595,7 +1595,7 @@ export class RadialTimelineView extends ItemView {
                     detailIconLabel: 'Complete updates Due Date to today',
                 },
                 { icon: 'component', label: 'Change Stage', detail: 'Zero, Author, House, Press', detailSegments: this.getStageLegendDetailSegments() },
-                { icon: 'flag', label: 'Misc', detail: 'Add Scene, Flag Triplet Pulse' },
+                { icon: 'flag', label: 'Misc', detail: 'Flag Triplet Pulse' },
             ],
         });
 

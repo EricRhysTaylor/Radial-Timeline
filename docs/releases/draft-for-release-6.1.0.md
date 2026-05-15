@@ -16,27 +16,27 @@ This release adds workflow enhancements and improved UI, with session tracking, 
 
 **Goals & Sessions**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/settings-writing-goal.png" alt="Settings Core Goals and Sessions panel" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/settings-writing-goal.png" alt="Settings Core Goals and Sessions panel" width="600">
 
 **Timeline session controls**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-count-popover.png" alt="Timeline writing session and count popover" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/ui-count-popover.png" alt="Timeline writing session and count popover" width="600">
 
 **Right-click Add Scene**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-rt-rightclick-menu.png" alt="Radial Timeline right-click menu" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/ui-rt-rightclick-menu.png" alt="Radial Timeline right-click menu" width="272">
 
 **Add Scene confirmation**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/panel-rightclick-add-scene.png" alt="Add Scene confirmation panel" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-rightclick-add-scene.png" alt="Add Scene confirmation panel" width="600">
 
 **Radial Timeline mode buttons**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/view-rt-mode-buttons.png" alt="Radial Timeline mode buttons" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/view-rt-mode-buttons.png" alt="Radial Timeline mode buttons" width="358">
 
 **Radial Timeline legend**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-rt-legend.png" alt="Radial Timeline legend" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/ui-rt-legend.png" alt="Radial Timeline legend" width="600">
 
 ### Improvements
 
