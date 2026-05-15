@@ -1,6 +1,6 @@
 ## Radial Timeline 6.1.0
 
-This release adds a new writing momentum layer to Radial Timeline, with session tracking, daily goals, clearer timeline controls, and faster scene insertion from the timeline itself.
+This release adds workflow enhancements and improved UI, with session tracking, daily goals, clearer timeline controls, and faster scene insertion from the timeline itself.
 
 ### New Features
 
@@ -16,27 +16,27 @@ This release adds a new writing momentum layer to Radial Timeline, with session 
 
 **Goals & Sessions**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/settings-writing-goal.png" alt="Settings Core Goals and Sessions panel" width="360">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/settings-writing-goal.png" alt="Settings Core Goals and Sessions panel" width="600">
 
 **Timeline session controls**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/view-count-popover.png" alt="Timeline writing session and count popover" width="360">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-count-popover.png" alt="Timeline writing session and count popover" width="600">
 
 **Right-click Add Scene**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-rt-rightclick-menu.png" alt="Radial Timeline right-click menu" width="360">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-rt-rightclick-menu.png" alt="Radial Timeline right-click menu" width="600">
 
 **Add Scene confirmation**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/panel-rightclick-add-scene.png" alt="Add Scene confirmation panel" width="360">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/panel-rightclick-add-scene.png" alt="Add Scene confirmation panel" width="600">
 
 **Radial Timeline mode buttons**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/view-rt-mode-buttons.png" alt="Radial Timeline mode buttons" width="520">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/view-rt-mode-buttons.png" alt="Radial Timeline mode buttons" width="600">
 
 **Radial Timeline legend**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/view-rt-legend.png" alt="Radial Timeline legend" width="320">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/6.1.0/wiki/images/ui-rt-legend.png" alt="Radial Timeline legend" width="600">
 
 ### Improvements
 
