@@ -35,6 +35,11 @@ Location: `docs/engineering/standards/`
 - **[refactor-playbook.md](standards/refactor-playbook.md)**
   Step-by-step rules for performing structural refactors safely.
 
+- **[feature-audit-playbook.md](standards/feature-audit-playbook.md)**
+  Mandatory post-feature audit, cleanup, and harden pass for every new
+  feature or significant addition before it is release-ready. Invoke via the
+  `/feature-audit` slash command.
+
 - **[fallback-policy.md](standards/fallback-policy.md)**
   Authoritative no-fallback policy. Hard-fail at boundaries, surface real errors, never silently substitute. Enforced by `scripts/fallback-gate.mjs` and wired into `npm run gates`.
 

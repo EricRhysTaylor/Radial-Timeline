@@ -549,12 +549,6 @@ export interface TranslationKeys {
         gossamerScoreManager: string;
         gossamerAnalysis: string;
         authorProgressReport: string;
-        startWritingSession: string;
-        pauseWritingSession: string;
-        resumeWritingSession: string;
-        stopWritingSession: string;
-        discardWritingSession: string;
-        showDailyWritingStats: string;
     };
     common: {
         yes: string;
@@ -2214,7 +2208,7 @@ export const en: TranslationKeys = {
         goalsSessions: {
             header: {
                 name: 'Goals & Sessions',
-                desc: 'Set your drafting pace and daily writing target. Radial Timeline uses these values for basic session estimates, completion planning, and future writing sessions.',
+                desc: 'Set your drafting pace, session timer target, and writing goals. Radial Timeline uses these values for session tracking, completion planning, and basic estimates.',
             },
             draftingWpm: {
                 name: 'Average drafting pace',
@@ -2222,7 +2216,7 @@ export const en: TranslationKeys = {
             },
             dailyMinutes: {
                 name: 'Daily session target',
-                desc: 'Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.',
+                desc: 'Optional minutes you want to write each day. Used by the title-bar timer, count ring, daily goal stats, and planning estimates.',
             },
             weeklyGoalDays: {
                 name: 'Weekly writing goal',
@@ -2709,12 +2703,6 @@ export const en: TranslationKeys = {
         gossamerScoreManager: 'Gossamer score manager',
         gossamerAnalysis: 'Gossamer analysis',
         authorProgressReport: 'Author progress report (APR)',
-        startWritingSession: 'Start writing session',
-        pauseWritingSession: 'Pause writing session',
-        resumeWritingSession: 'Resume writing session',
-        stopWritingSession: 'Stop writing session',
-        discardWritingSession: 'Discard writing session',
-        showDailyWritingStats: 'Show daily writing stats',
     },
     common: {
         yes: 'Yes',

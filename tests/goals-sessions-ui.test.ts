@@ -74,5 +74,7 @@ describe('Goals & Sessions settings UI', () => {
         expect(source).toContain('min: 1');
         expect(source).toContain('settings.defaults.weeklyGoalDays');
         expect(locale).toContain("name: 'Weekly writing goal'");
+        expect(locale).toContain('title-bar timer, count ring, daily goal stats, and planning estimates');
+        expect(locale).toContain('session timer target');
     });
 });

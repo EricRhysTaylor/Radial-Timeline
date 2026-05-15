@@ -1,3 +1,4 @@
+import { TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import type {
@@ -15,6 +16,33 @@ import { getRuntimeSettings } from '../utils/runtimeEstimator';
 import { normalizeStatus } from '../utils/text';
 
 const MAX_SESSION_RECORDS = 500;
+
+/**
+ * Bumped whenever the persisted writing-session data shape changes in a way
+ * that future plugin releases or the companion website must migrate. Stamped
+ * onto settings and the portable vault export so the author's data stays
+ * forward-readable even after they stop using this plugin.
+ */
+export const WRITING_SESSIONS_SCHEMA_VERSION = 1;
+
+/**
+ * If a running session goes this long without a heartbeat it is assumed the
+ * app was closed/crashed and the dead time is not real writing time. Elapsed
+ * time is frozen at the last heartbeat instead of counting the gap.
+ */
+const ACTIVE_SESSION_STALE_MS = 5 * 60 * 1000;
+
+/** Minimum spacing between heartbeat writes so we don't save every tick. */
+const HEARTBEAT_PERSIST_MS = 30 * 1000;
+
+/**
+ * Author-owned, plain-JSON copy of every session, written into the vault so
+ * the data is portable, human-visible, survives the 500-record settings cap,
+ * and stays with the author if they uninstall the plugin. Local only — never
+ * uploaded.
+ */
+const PORTABLE_LOG_FOLDER = 'Radial Timeline';
+const PORTABLE_LOG_PATH = `${PORTABLE_LOG_FOLDER}/Writing Sessions.json`;
 
 type Stage = typeof STAGE_ORDER[number];
 
@@ -208,12 +236,30 @@ function coerceWeeklyGoalDays(value: number | undefined): number {
     return Math.min(7, Math.max(1, Math.round(value ?? 7)));
 }
 
+/**
+ * True when a running session's heartbeat is older than the stale threshold,
+ * i.e. the app was almost certainly closed/crashed during the gap.
+ */
+function isActiveSessionStale(session: ActiveWritingSession, at = new Date()): boolean {
+    if (session.pausedAt || !session.lastSeenAt) return false;
+    const seenAt = Date.parse(session.lastSeenAt);
+    if (!Number.isFinite(seenAt)) return false;
+    return at.getTime() - seenAt > ACTIVE_SESSION_STALE_MS;
+}
+
 function activeElapsedMs(session: ActiveWritingSession, at = new Date()): number {
     const elapsedBeforePause = Math.max(0, session.elapsedMsBeforePause || 0);
     if (session.pausedAt) return elapsedBeforePause;
     const resumedAt = Date.parse(session.lastResumedAt);
     if (!Number.isFinite(resumedAt)) return elapsedBeforePause;
-    return elapsedBeforePause + Math.max(0, at.getTime() - resumedAt);
+    // Abandoned session: stop counting at the last heartbeat, not `at`, so a
+    // forgotten timer left running across an app quit doesn't report hours of
+    // phantom writing time.
+    const seenAt = session.lastSeenAt ? Date.parse(session.lastSeenAt) : NaN;
+    const cutoff = isActiveSessionStale(session, at) && Number.isFinite(seenAt)
+        ? seenAt
+        : at.getTime();
+    return elapsedBeforePause + Math.max(0, cutoff - resumedAt);
 }
 
 export function normalizeWritingSessionsSettings(settings: WritingSessionsSettings | undefined): WritingSessionsSettings {
@@ -228,6 +274,7 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
     const writingStatsOpen = settings?.defaults?.writingStatsOpen === true;
     const active = settings?.active;
     return {
+        schemaVersion: WRITING_SESSIONS_SCHEMA_VERSION,
         defaults: { defaultMode, defaultStage, weeklyGoalDays, writingStatsOpen },
         ...(active ? {
             active: {
@@ -406,12 +453,59 @@ export function buildWritingRangeStats(params: {
 }
 
 export class WritingSessionService {
+    private hydrated = false;
+    private lastHeartbeatPersistMs = 0;
+
     constructor(private plugin: RadialTimelinePlugin) {}
 
+    /**
+     * Normalize persisted settings exactly once (at plugin load), then reuse
+     * the normalized object. Avoids re-allocating the records array on every
+     * read — `getSettings()` is called from a 1-second UI tick.
+     */
+    async hydrate(): Promise<void> {
+        this.hydrated = false;
+        this.getSettings();
+        await this.reconcileActiveSession();
+    }
+
     getSettings(): WritingSessionsSettings {
-        const normalized = normalizeWritingSessionsSettings(this.plugin.settings.writingSessions);
+        const existing = this.plugin.settings.writingSessions;
+        if (this.hydrated && existing) return existing;
+        const normalized = normalizeWritingSessionsSettings(existing);
         this.plugin.settings.writingSessions = normalized;
+        this.hydrated = true;
         return normalized;
+    }
+
+    /**
+     * Convert a session abandoned by an app crash/quit into a paused session
+     * frozen at its last heartbeat, so the author resumes/stops from real
+     * elapsed time instead of hours of dead time. Runs once on load.
+     */
+    private async reconcileActiveSession(): Promise<void> {
+        const settings = this.getSettings();
+        const active = settings.active;
+        if (!active || active.pausedAt || !isActiveSessionStale(active)) return;
+        active.elapsedMsBeforePause = activeElapsedMs(active);
+        active.pausedAt = active.lastSeenAt ?? nowIso();
+        await this.plugin.saveSettings();
+    }
+
+    /**
+     * Heartbeat for the running session. Called from the UI tick; persists at
+     * most once per HEARTBEAT_PERSIST_MS so a hard quit loses at worst that
+     * much unrecorded time (and never counts the dead gap — see activeElapsedMs).
+     */
+    async markActiveSessionSeen(): Promise<void> {
+        const settings = this.getSettings();
+        const active = settings.active;
+        if (!active || active.pausedAt) return;
+        active.lastSeenAt = nowIso();
+        const now = Date.now();
+        if (now - this.lastHeartbeatPersistMs < HEARTBEAT_PERSIST_MS) return;
+        this.lastHeartbeatPersistMs = now;
+        await this.plugin.saveSettings();
     }
 
     getActiveSession(): ActiveWritingSession | undefined {
@@ -519,10 +613,12 @@ export class WritingSessionService {
             stagePreference,
             startedAt,
             lastResumedAt: startedAt,
+            lastSeenAt: startedAt,
             elapsedMsBeforePause: 0,
             goalMinutes: positiveMinutes(startOptions.goalMinutes),
         };
         settings.active = active;
+        this.lastHeartbeatPersistMs = Date.now();
         await this.plugin.saveSettings();
         return active;
     }
@@ -546,6 +642,8 @@ export class WritingSessionService {
         if (!active.pausedAt) return active;
         active.pausedAt = undefined;
         active.lastResumedAt = nowIso();
+        active.lastSeenAt = active.lastResumedAt;
+        this.lastHeartbeatPersistMs = Date.now();
         await this.plugin.saveSettings();
         return active;
     }
@@ -572,10 +670,63 @@ export class WritingSessionService {
             note: completion.note?.trim() || undefined,
             source: 'timer',
         };
-        settings.records = [...settings.records, record].slice(-MAX_SESSION_RECORDS);
+        const allRecords = [...settings.records, record];
+        settings.records = allRecords.slice(-MAX_SESSION_RECORDS);
         settings.active = undefined;
         await this.plugin.saveSettings();
+        // Mirror the full history (pre-cap) into the author-owned vault file so
+        // records pruned from settings are never permanently lost.
+        await this.flushPortableSessionLog(allRecords);
         return record;
+    }
+
+    /**
+     * Write/refresh the author-owned portable JSON log in the vault. Merges by
+     * id with any existing file so the complete history survives the in-settings
+     * MAX_SESSION_RECORDS cap and a plugin uninstall. Best-effort: a failure
+     * here must never break stopping a session.
+     */
+    private async flushPortableSessionLog(currentRecords: WritingSessionRecord[]): Promise<void> {
+        try {
+            const vault = this.plugin.app?.vault;
+            if (!vault) return;
+
+            const byId = new Map<string, WritingSessionRecord>();
+            const existing = vault.getAbstractFileByPath(PORTABLE_LOG_PATH) as TFile | null;
+            if (existing) {
+                try {
+                    const parsed = JSON.parse(await vault.read(existing)) as { records?: unknown };
+                    if (Array.isArray(parsed?.records)) {
+                        for (const raw of parsed.records) {
+                            const rec = raw as WritingSessionRecord;
+                            if (rec?.id && rec.startedAt && rec.endedAt) byId.set(rec.id, rec);
+                        }
+                    }
+                } catch {
+                    // Corrupt/hand-edited file — fall back to current records only.
+                }
+            }
+            for (const rec of currentRecords) byId.set(rec.id, rec);
+
+            const merged = [...byId.values()].sort((a, b) => a.endedAt.localeCompare(b.endedAt));
+            const payload = `${JSON.stringify({
+                schemaVersion: WRITING_SESSIONS_SCHEMA_VERSION,
+                generatedBy: 'Radial Timeline',
+                generatedAt: nowIso(),
+                records: merged,
+            }, null, 2)}\n`;
+
+            if (!vault.getAbstractFileByPath(PORTABLE_LOG_FOLDER)) {
+                await vault.createFolder(PORTABLE_LOG_FOLDER).catch(() => undefined);
+            }
+            if (existing) {
+                await vault.modify(existing, payload);
+            } else {
+                await vault.create(PORTABLE_LOG_PATH, payload);
+            }
+        } catch (error) {
+            console.warn('[RT WritingSession] Could not write portable session log:', error);
+        }
     }
 
     async collectTouchedSceneSuggestions(active: ActiveWritingSession | undefined = this.getActiveSession()): Promise<WritingSessionSceneSuggestion[]> {

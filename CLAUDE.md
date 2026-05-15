@@ -36,3 +36,17 @@ Refactors must reduce complexity and remove fallback logic
 rather than adding additional abstraction layers.
 
 Or use `/refactor` slash command which loads them automatically.
+
+## Feature Audit Guard
+
+Before considering any new feature or significant addition complete, the
+agent must run a post-feature audit, cleanup, and harden pass per:
+
+- `docs/engineering/standards/feature-audit-playbook.md`
+
+This pass is report-first (no edits without approval), does not add
+features, and verifies via `build-only` / `tsc --noEmit` / `vitest` —
+never `npm run build` (it auto-commits).
+
+Or use the `/feature-audit` slash command which loads the playbook and
+supporting doctrine automatically.

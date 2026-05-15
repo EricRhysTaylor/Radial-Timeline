@@ -668,6 +668,9 @@ export class RadialTimelineView extends ItemView {
 
     private refreshWritingSessionControl(): void {
         if (!this.writingSessionButton || !this.writingSessionLabel) return;
+        // Heartbeat: marks the running session as still alive so an app
+        // crash/quit freezes elapsed time instead of counting dead time.
+        void this.plugin.getWritingSessionService().markActiveSessionSeen();
         const snapshot = this.getSessionClockSnapshot();
         const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.pulseKey);
         const pulseColor = shouldPulseCount ? this.getWritingSessionPulseColor() : undefined;

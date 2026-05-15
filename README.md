@@ -40,14 +40,14 @@
 
 ---
 
-<p>Radial Timeline™ captures and visualizes all 4 critical timelines, revealing your manuscript's evolution from the nucleus of an idea to the final polished novel.</p>
+<p>Radial Timeline™ captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.</p>
 
 1. **Narrative time**: the sequence you reveal events to readers.
-2. **Chronological time**: when events happen in your story's world. (Includes Planetary Time calculator for sci-fi/fantasy calendars).
-3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
-4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
+2. **Chronological time**: when events happen in your story's world.
+3. **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete, and Overdue.
+4. **Progress stages**: manuscript revision stages from Zero draft through Press-ready.
 
-<p>Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or publish stage colors, jump into Publication Mode (formerly Subplot Mode), where the All Scenes outer ring is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.</p>
+<p>The mode buttons now run in this order: Progress, Narrative, Chronologue, and Gossamer. Narrative and Chronologue keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or progress stage colors, switch to Progress Mode, where the combined outer ring is replaced by a single-subplot view and scenes inherit the author-status and progress-stage palette.</p>
 
 ---
 

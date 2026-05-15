@@ -324,6 +324,13 @@ export interface ActiveWritingSession {
     pausedAt?: string;
     elapsedMsBeforePause: number;
     goalMinutes?: number;
+    /**
+     * Heartbeat timestamp written while the session is actively running. Used
+     * to detect sessions abandoned by an app crash/quit: if the gap since the
+     * last heartbeat exceeds the stale threshold, elapsed time is frozen at
+     * this point instead of counting the dead time.
+     */
+    lastSeenAt?: string;
 }
 
 export interface WritingSessionRecord {
@@ -345,6 +352,12 @@ export interface WritingSessionRecord {
 }
 
 export interface WritingSessionsSettings {
+    /**
+     * Persisted data-shape version. Stamped by `normalizeWritingSessionsSettings`.
+     * Lets future plugin releases (and the planned companion website) migrate
+     * older exported session data deterministically. Absent = pre-versioned (v0).
+     */
+    schemaVersion?: number;
     defaults: WritingSessionDefaults;
     active?: ActiveWritingSession;
     records: WritingSessionRecord[];

@@ -421,6 +421,9 @@ export default class RadialTimelinePlugin extends Plugin {
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
         this.writingSessionService = new WritingSessionService(this);
+        // Normalize session settings once and reconcile any session abandoned
+        // by a previous crash/quit before the UI starts ticking.
+        await this.writingSessionService.hydrate();
         this.publishingValidationService = new PublishingValidationService(this);
         this.timelineAuditAiService = new TimelineAuditAiService(this);
         

@@ -200,29 +200,6 @@ export class CommandRegistrar {
                 new AuthorProgressModal(this.app, this.plugin).open();
             }
         });
-
-        this.plugin.addCommand({
-            id: 'show-daily-writing-stats',
-            name: t('commands.showDailyWritingStats'),
-            callback: () => {
-                void this.showDailyWritingStats();
-            }
-        });
-    }
-
-    private async showDailyWritingStats(): Promise<void> {
-        try {
-            const stats = await this.plugin.getWritingSessionService().getDailyStats();
-            const completed = stats.scenesCompletedByStage;
-            new Notice(
-                `Today: ${stats.minutesLogged} min, ${stats.sessionsCompleted} session(s), `
-                + `${stats.wordsDrafted} drafted words, scenes complete `
-                + `Zero ${completed.Zero}, Author ${completed.Author}, House ${completed.House}, Press ${completed.Press}.`,
-                8000
-            );
-        } catch (error) {
-            new Notice(error instanceof Error ? error.message : 'Could not build daily writing stats.');
-        }
     }
 
     private resolveCleanupOptions(result: ManuscriptModalResult): ManuscriptExportCleanupOptions {
