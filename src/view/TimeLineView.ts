@@ -549,11 +549,12 @@ export class RadialTimelineView extends ItemView {
 
     private formatCompletedSessionSummary(active: ActiveWritingSession, elapsedMs: number): string {
         const minutes = active.goalMinutes ?? Math.max(1, Math.round(elapsedMs / 60000));
-        return [
+        const details = [
             `${minutes} min`,
             this.formatWritingSessionMode(active.mode),
             active.bookTitle,
         ].filter(Boolean).join(' ');
+        return `Save ${details}?`;
     }
 
     private formatSessionClockDisplay(ms: number, mode: 'countdown' | 'elapsed'): SessionClockDisplay {
@@ -614,7 +615,7 @@ export class RadialTimelineView extends ItemView {
         }
     }
 
-    private getIdleSessionClockSnapshot(): { label: string; detail: string; state: 'idle'; renderIcon?: boolean } {
+    private getIdleSessionClockSnapshot(): { label: string; detail: string; state: 'idle'; renderIcon?: boolean; goalMet?: boolean } {
         const service = this.plugin.getWritingSessionService();
         const dailyProgress = service.getDailySessionProgress();
         const defaultGoalMinutes = this.getDefaultSessionGoalMinutes();
@@ -634,9 +635,11 @@ export class RadialTimelineView extends ItemView {
         }
         if (dailyProgress.sessionsCompleted > 0) {
             return {
-                label: 'Complete',
+                label: '',
                 detail: `Daily writing goal complete, ${dailyProgress.minutesLogged} min logged today`,
                 state: 'idle',
+                renderIcon: true,
+                goalMet: true,
             };
         }
         return {
@@ -646,7 +649,7 @@ export class RadialTimelineView extends ItemView {
         };
     }
 
-    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number; pulseKey?: string; renderIcon?: boolean } {
+    private getSessionClockSnapshot(): { label: string; detail: string; state: 'idle' | 'active' | 'paused'; progressStep?: number; pulseKey?: string; renderIcon?: boolean; goalMet?: boolean } {
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
         if (!active) return this.getIdleSessionClockSnapshot();
@@ -678,6 +681,7 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionButton.classList.toggle('is-icon-only', snapshot.state === 'idle' && Boolean(snapshot.renderIcon));
         this.writingSessionButton.classList.toggle('is-active', snapshot.state === 'active');
         this.writingSessionButton.classList.toggle('is-paused', snapshot.state === 'paused');
+        this.writingSessionButton.classList.toggle('is-goal-met', Boolean(snapshot.goalMet));
         this.applySessionProgressClass(this.writingSessionButton, snapshot.progressStep);
         this.writingSessionButton.setAttribute('aria-label', snapshot.detail);
         if (shouldPulseCount && snapshot.pulseKey && pulseColor) {
@@ -1117,7 +1121,7 @@ export class RadialTimelineView extends ItemView {
                 }
             });
         }
-        this.createSessionIconButton(actions, 'save', 'Save', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
+        this.createSessionIconButton(actions, 'save', 'Save', `ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action${statusDisplay.tone === 'complete' ? ' is-save-ready' : ''}`, async () => {
             const sceneSuggestions = await service.collectTouchedSceneSuggestions(active).catch(() => []);
             new WritingSessionCompletionModal(this.app, active, service.getActiveElapsedMs(), sceneSuggestions, async (completion) => {
                 try {

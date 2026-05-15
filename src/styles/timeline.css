@@ -1084,6 +1084,15 @@
   background: color-mix(in srgb, var(--text-warning) 10%, var(--background-secondary));
 }
 
+.ert-timeline-session.clickable-icon.is-goal-met {
+  color: var(--text-success);
+}
+
+.ert-timeline-session.clickable-icon.is-goal-met:hover {
+  color: var(--text-success);
+  background: color-mix(in srgb, var(--text-success) 10%, var(--background-secondary));
+}
+
 .ert-timeline-session.clickable-icon.is-active.is-progress-0,
 .ert-timeline-session-panel__clock.is-progress-0 {
   color: var(--rt-max-publish-stage-color, var(--text-accent));
@@ -1557,6 +1566,11 @@
   background: var(--interactive-accent);
   transition: filter 120ms ease;
   transform: none;
+}
+
+.ert-timeline-session-panel__primary.is-save-ready {
+  color: var(--text-on-accent);
+  background: var(--text-success);
 }
 
 .ert-timeline-session-panel__secondary {

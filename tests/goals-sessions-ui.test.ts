@@ -36,9 +36,9 @@ describe('Goals & Sessions settings UI', () => {
         expect(source).toContain("return `${hours}:${String(remainder).padStart(2, '0')}`");
         expect(source).toContain("metric.createDiv({ cls: 'ert-goals-stat__label', text: label })");
         expect(source).toContain("if (unit) head.createDiv({ cls: 'ert-goals-stat__unit', text: unit })");
-        expect(source).toContain("'draft', String(stats.wordsDrafted), 'draft', 'w'");
+        expect(source).toContain("'written', String(stats.wordsDrafted), 'draft', 'w'");
         expect(source).toContain("targetDays ? 'd' : undefined");
-        expect(source).toContain("'fresh', String(stats.freshScenesCompleted), 'fresh', 's'");
+        expect(source).toContain("'draft', String(stats.freshScenesCompleted), 'fresh', 's'");
         expect(source).toContain("'revisions', String(stats.revisionScenesCompleted), 'revision', 's'");
         expect(statBlock).toContain('grid-template-rows: auto auto');
         expect(headBlock).toContain('align-items: flex-start');

@@ -164,8 +164,8 @@ function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, s
     createMetric(metrics, 'timer', 'logged', formatMinutes(stats.minutesLogged), 'time');
     createMetric(metrics, 'list-checks', 'sessions', String(stats.sessionsCompleted), 'sessions');
     createMetric(metrics, status === 'met' ? 'check-circle-2' : 'alert-triangle', 'goal', goalValue, status === 'missed' ? 'warning' : 'goal', targetDays ? 'd' : undefined);
-    createMetric(metrics, 'pencil', 'draft', String(stats.wordsDrafted), 'draft', 'w');
-    createMetric(metrics, 'book-open-text', 'fresh', String(stats.freshScenesCompleted), 'fresh', 's');
+    createMetric(metrics, 'pencil', 'written', String(stats.wordsDrafted), 'draft', 'w');
+    createMetric(metrics, 'book-open-text', 'draft', String(stats.freshScenesCompleted), 'fresh', 's');
     createMetric(metrics, 'refresh-cw', 'revisions', String(stats.revisionScenesCompleted), 'revision', 's');
 
     const stages = card.createDiv({ cls: 'ert-goals-stage-line' });

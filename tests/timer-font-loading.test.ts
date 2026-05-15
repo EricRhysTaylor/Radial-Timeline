@@ -88,6 +88,8 @@ describe('writing session timer font loading', () => {
         expect(clockBlock).toContain('border: 0');
         expect(titleButtonBlock).toContain('min-width: calc(4.5ch + 2.7rem)');
         expect(iconOnlyButtonBlock).toContain('width: 24px');
+        expect(timelineCss).toContain('.ert-timeline-session.clickable-icon.is-goal-met');
+        expect(timelineCss).toContain('color: var(--text-success)');
         expect(titleCountBlock).toContain('min-width: 4.5ch');
         expect(titleCountBlock).toContain('padding-inline');
         expect(clockValueBlock).toContain('padding-inline: 0.5rem');
@@ -124,6 +126,8 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).toContain("return 'Zero'");
         expect(timelineViewSource).toContain("stageSelect.value = 'Zero'");
         expect(timelineViewSource).toContain("mode === 'drafting' ? service.setDefaultStage('Zero') : Promise.resolve()");
+        expect(timelineViewSource).toContain('goalMet: true');
+        expect(timelineViewSource).toContain("is-goal-met");
         expect(indicatorsCss).toContain('stroke-width: 11px;');
         expect(indicatorsCss).toContain('stroke-width: 7px;');
         expect(indicatorsCss).not.toContain('.ert-timeline-session-ring.is-counterclockwise .ert-timeline-session-ring__track');
@@ -133,11 +137,16 @@ describe('writing session timer font loading', () => {
 
     it('keeps active popover copy lean and labels action buttons directly', () => {
         const timelineViewSource = readTimelineViewSource();
+        const timelineCss = readTimelineCss();
 
         expect(timelineViewSource).not.toContain("'square', 'Stop and save session'");
         expect(timelineViewSource).toContain("'save', 'Save'");
         expect(timelineViewSource).toContain("'pause', 'Pause'");
         expect(timelineViewSource).toContain("'trash-2', 'Cancel'");
+        expect(timelineViewSource).toContain('return `Save ${details}?`');
+        expect(timelineViewSource).toContain('is-save-ready');
+        expect(timelineCss).toContain('.ert-timeline-session-panel__primary.is-save-ready');
+        expect(timelineCss).toContain('background: var(--text-success)');
         expect(timelineViewSource).not.toContain("button.setAttribute('title', label)");
         expect(timelineViewSource).not.toContain("settingsBtn.setAttribute('title'");
         expect(timelineViewSource).toContain('formatCompletedSessionSummary');
