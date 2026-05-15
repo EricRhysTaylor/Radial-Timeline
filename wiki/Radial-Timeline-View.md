@@ -25,8 +25,8 @@ A radial manuscript workspace with four modes:
 
 ## What You Can Do
 
-*   write and reorganize scenes
-*   switch between one book and Saga scope from the title-bar book selector
+*   write, add, or reorganize scenes
+*   switch between books or view an entire Saga from the title-bar book selector
 *   open a writing session from the title-bar count/session button
 *   use the timeline legend to read scene actions and mode-specific controls
 *   compare subplot balance and structure

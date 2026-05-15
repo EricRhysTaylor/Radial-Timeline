@@ -1,6 +1,6 @@
 **Keyboard Shortcut**: `2`
 
-Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Core → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story).
+Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Core → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story). Status and progress stage overlays are hidden so the focus stays on story structure and subplot balance.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/mode-narrative.jpeg" alt="Narrative Mode Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
@@ -14,17 +14,19 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 *   **Publishing markers**: Optional outer-ring placards can show chapter starts and part boundaries from your active novel PDF layout.
 *   **Story Beats**: Displays story beats (like Save the Cat) along the timeline, helping you pace your narrative structure.
 *   **Interactive Reordering**: You can drag scenes on the outer ring to reorder them. See [Reorder Scenes](How-to#reorder-scenes) for details.
-*   **Scene right-click menu**: Quickly change a scene's Status, Publish Stage, or flag it for Pulse — see below.
+*   **Scene right-click menu**: Add a scene after the current one, change Status, change Publish Stage, or flag it for Pulse — see below.
 *   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [Settings → Advanced → Configuration](Settings-Advanced#configuration).
 
 ## Scene Right-Click Menu
 
-Right-click any scene on the timeline to open a context menu that lets you update the scene's frontmatter without opening the note. The current value in each group is marked with a checkmark.
+Right-click any scene on the timeline to open a context menu that lets you add a scene or update scene frontmatter without opening the note. The current value in each group is marked with a checkmark.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/menu-narrative-rightclick.png" alt="Narrative scene right-click context menu" style="width: 420px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Scene right-click menu — quick Status, Publish Stage, and Pulse actions</div>
+  <img src="images/ui-rt-rightclick-menu.png" alt="Narrative scene right-click context menu" style="width: 420px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Scene right-click menu — Add scene, Status, Publish Stage, and Pulse actions</div>
 </div>
+
+**Add scene** — inserts a new scene after the selected one, using that scene as the anchor for placement and context.
 
 **Status** — set `Status` to **Todo**, **Working**, or **Complete**. When you mark a scene **Complete**, the `Due` date is automatically set to today, keeping the [Progress Mode](Progress-Mode) completion estimate and pace tracker accurate.
 
@@ -72,4 +74,3 @@ When a scene belongs to multiple subplots, the outer All Scenes ring must choose
     *   **Missing** — the subplot is not assigned to this scene.
     *   **Gray** — the subplot is assigned but is not dominant.
     *   **Darker hue** of the subplot ring color — this subplot is dominant and expressed on the outer ring above all others.
-This mode hides status and progress stage overlays to keep the focus on story structure and the weaving of subplots.
