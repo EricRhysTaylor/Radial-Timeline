@@ -40,7 +40,7 @@ class FirstBookSetupModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Create your first book' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Pick a name. A folder of the same name will be created in your vault to hold this book’s scenes. You can rename either later in Settings.'
+            text: 'Choose a name. A folder of the same name will be created in your vault to hold this book’s scenes. You can rename either later in Settings.'
         });
 
         const inputContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });

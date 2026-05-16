@@ -68,7 +68,7 @@ Runtime estimation is a Pro workflow configured from the Core tab.
 *   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime sub-mode.
 *   **Default runtime profile**: The profile used when no per-scene override is set.
 *   **Edit profile**: Manage multiple profiles with different settings for various project types.
-*   **Profile label**: Display name shown in pickers and the runtime panel.
+*   **Profile label**: Display name shown in selectors and the runtime panel.
 *   **Content type**: Choose between Novel/Audiobook (unified narration pace) or Screenplay (separate dialogue/action pacing).
 
 **Screenplay mode settings:**

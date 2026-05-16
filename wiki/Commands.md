@@ -17,7 +17,7 @@ These are the main command-palette entries, listed in the same order as the pale
 
 1. **Open** — opens the [Radial Timeline View](Radial-Timeline-View).
 2. **[Create note…](#create-note)**
-3. **Open inquiry** — opens the [Inquiry View](Inquiry).
+3. **Open inquiry** — opens the [Inquiry View](Inquiry-View).
 4. **[Book Designer](Book-Designer)** ← standalone guide
 5. **[Timeline order](#timeline-order)** *(beta)*
 6. **[Timeline audit](#timeline-audit)** *(beta)*
@@ -47,13 +47,13 @@ Some commands only appear in the palette when their required feature is enabled:
 <a name="create-note"></a>
 ## Create note…
 
-Opens the guided RT note picker.
+Opens the guided RT note selector.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/panel-create-note.png" alt="Create note command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
 </div>
 
-The picker is organized into three families:
+The selector is organized into three families:
 
 *   **Scene** — Core scene, scene with advanced properties, screenplay scene, podcast scene.
 *   **Manuscript matter** — Front matter, back matter, `BookMeta`.
@@ -148,7 +148,7 @@ Run modes: flagged scenes, missing summaries only, missing/weak/stale, or regene
 
 This command is separate from scene pulse analysis: **Pulse** writes short structured editorial feedback per scene; **Summary refresh** writes longer summary text for corpus-level use.
 
-Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Inquiry View](Inquiry).
+Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Inquiry View](Inquiry-View).
 
 ---
 
@@ -161,7 +161,7 @@ Opens the timeline search bar.
   <img src="images/panel-search-timeline.png" alt="Search timeline panel" style="width: 500px; max-width: 100%; border-radius: 8px;" />
 </div>
 
-Case-insensitive text search across multiple fields: title, synopsis, characters, subplot, location, POV, duration, date/time, AI Pulse Triplet Analysis, and planetary time (if enabled). Requires at least **3 characters**.
+Case-insensitive text search across title, `Synopsis`, `Character`, `Subplot`, `Duration`, scene date/time, current AI Pulse analysis, and planetary-time conversion text when planetary time is active.
 
 Related: [How to → Search](How-to#search).
 
@@ -211,7 +211,7 @@ Runs all enabled Inquiry questions in one batch.
 
 Executes enabled questions across the Inquiry zones and returns a combined set of findings for the current corpus. Works with the active scope (Book or Saga). Depending on provider and engine path, the run may execute as a combined omnibus flow or as sequential provider calls behind the scenes.
 
-Related: [Inquiry View](Inquiry), [Running an Inquiry](Inquiry#running-an-inquiry).
+Related: [Inquiry View](Inquiry-View), [Running an Inquiry](Inquiry#running-an-inquiry).
 
 ---
 
@@ -239,7 +239,7 @@ Opens the planetary conversion panel.
   <img src="images/panel-planet-calculator.png" alt="Planetary time calculator panel" style="width: 440px; max-width: 100%; border-radius: 8px;" />
 </div>
 
-Uses the active planetary profile from [Settings → Core](Settings-Core) and lets you pick a date and time, convert that Earth timestamp to local planetary time, and copy a YAML-friendly result block. If no planetary profile exists or no active profile is selected, the calculator cannot produce a result.
+Uses the active planetary profile from [Settings → Core](Settings-Core) and lets you select a date and time, convert that Earth timestamp to local planetary time, and copy a YAML-friendly result block. If no planetary profile exists or no active profile is selected, the calculator cannot produce a result.
 
 Related: [Planetary Calendar](Chronologue-Mode#alt-sub-mode).
 
@@ -248,13 +248,13 @@ Related: [Planetary Calendar](Chronologue-Mode#alt-sub-mode).
 <a name="scene-pulse-analysis-subplot-order"></a>
 ## Scene pulse analysis (subplot order)
 
-Opens the subplot pulse picker first, then runs pulse analysis for a selected subplot.
+Opens the subplot pulse selector first, then runs pulse analysis for a selected subplot.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/panel-scene-pulse-subplot.png" alt="Scene pulse analysis subplot order command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
 </div>
 
-The subplot picker shows flagged scenes, processable scenes, and total scenes. From there you can choose **Process flagged scenes**, **Process entire subplot**, or **Purge all pulse** for that subplot.
+The subplot selector shows flagged scenes, processable scenes, and total scenes. From there you can choose **Process flagged scenes**, **Process entire subplot**, or **Purge all pulse** for that subplot.
 
 Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Manage subplots](#manage-subplots).
 

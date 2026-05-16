@@ -73,7 +73,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/mode-chronologue-shift.jpeg" alt="Chronologue Shift mode: elapsed-time arc between selected scenes and infinity gap markers" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-chronologue-shift.png" alt="Chronologue Shift mode: elapsed-time arc between selected scenes and infinity gap markers" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Shift — compare elapsed time between scenes and surface discontinuity gaps</div>
   </div>
   <div style="text-align: center;">

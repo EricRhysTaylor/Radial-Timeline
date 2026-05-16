@@ -15,7 +15,7 @@ You get two co-equal workspaces: the **[Radial Timeline View](Radial-Timeline-Vi
 
 ## Setup
 
-Pick a vault layout and stick with it: a single-book vault, a single vault with a dedicated Manuscript folder, or a multi-book vault with one folder per book.
+Choose a vault layout and stick with it: a single-book vault, a single vault with a dedicated Manuscript folder, or a multi-book vault with one folder per book.
 
 **1. Install and add a book profile.** Install Radial Timeline from Community Plugins, open **Settings → Core → Books**, add a profile, and link its **Source folder** to your manuscript folder.
 
@@ -24,7 +24,7 @@ Pick a vault layout and stick with it: a single-book vault, a single vault with 
 *   *Fresh vault:* run **Radial Timeline: Book designer** to generate a scaffold (acts, subplots, optional beats), or run **Radial Timeline: Create note… → Scene → Basic scene** to start with a single scene.
 *   *Existing vault:* your scene notes should use `Class: Scene`. The main scene properties are `Act`, `Synopsis`, and `Subplot`. Chronologue uses `When` and `Duration`; Progress uses `Status` and `Publish Stage`. If your vault uses different property names, enable **Remap frontmatter field keys** under **Settings → Advanced → Configuration**.
 
-**3. Choose a beat system (optional).** Pick **Save the Cat**, **Hero's Journey**, or **Custom** in [Settings → Core → Story beats system](Settings-Core#story-beats-system). Use **Create** to generate beat notes; **Merge** to realign existing files after changes.
+**3. Choose a beat system (optional).** Select **Save the Cat**, **Hero's Journey**, or **Custom** in [Settings → Core → Story beats system](Settings-Core#story-beats-system). Use **Create** to generate beat notes; **Merge** to realign existing files after changes.
 
 ---
 

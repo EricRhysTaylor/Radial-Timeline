@@ -30,7 +30,7 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 
 **Mode**: Chronologue (key `3`)
 **Sub-modes**: Shift (key `Shift`), Alt (key `Alt`), Runtime ✦ (click `RT`)
-**Settings**: Duration arc cap, Discontinuity gap threshold (Chronologue section)
+**Settings**: Discontinuity gap threshold, Runtime estimation
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/feature-discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
@@ -46,16 +46,16 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 
 ## Sub-modes
 
-Chronologue mode includes three sub-modes, each rendering a distinct wireframe overlay. Only one sub-mode can be active at a time.
+Chronologue mode includes three sub-modes, each rendering a distinct wireframe overlay.
 
 <a name="shift-sub-mode"></a>
 ### Shift sub-mode (bones view)
 - Toggle with `Shift` (or `Caps Lock`) to strip the overlays and see the raw chronological scaffold.
 - Gray wireframe. Click any two scenes to measure elapsed story time; keep clicking to update the arc.
-- Discontinuities (infinity gaps) stay visible so you can spot missing bridges fast.
+- Discontinuities (infinity symbols) help you spot opportunities for bridge scenes.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/mode-chronologue-shift.jpeg" alt="Shift sub-mode wireframe in Chronologue" style="width: 420; max-width: 100%;" />
+  <img src="images/mode-chronologue-shift.png" alt="Shift sub-mode wireframe in Chronologue" style="width: 420; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Shift sub-mode — gray wireframe view</div>
 </div>
 
@@ -67,8 +67,7 @@ The Runtime sub-mode replaces elapsed story time with **runtime duration arcs** 
 
 - Toggle with the `RT` button in Chronologue mode (requires Runtime Estimation to be enabled in Settings → Core)
 - Blue wireframe overlay distinguishes it from Shift (gray) and Alt (red)
-- Duration arcs scale to show relative scene runtime — longer scenes have larger arcs
-- Use the **runtime cap slider** to adjust maximum arc size, emphasizing shorter or longer scenes
+- Duration arcs scale automatically to show relative scene runtime — longer scenes have larger arcs
 - Click scenes to compare their runtime visually
 
 **Use cases:**
@@ -108,7 +107,7 @@ Backdrop notes visualize major contextual events — historical wars, planetary 
 For lighter-weight context that doesn't need its own note file, **micro-backdrop rings** are configured directly in Settings. Each micro-backdrop is a thin colored ring segment with a title and date range.
 
 *   **Use cases**: Eras, seasons, political regimes, historical milestones, or any contextual time span you want visible at a glance.
-*   **Configure**: Settings → Core → Backdrop → **Micro backdrops**. Add a title, pick a color, and set start/end dates.
+*   **Configure**: Settings → Core → Backdrop → **Micro backdrops**. Add a title, select a color, and set start/end dates.
 *   **Appearance**: Micro-backdrops render as compact rings below the backdrop ring, keeping the timeline clean while still providing temporal context.
 
 > [!NOTE]

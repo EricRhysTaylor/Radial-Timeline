@@ -393,7 +393,7 @@ export function validateDesignedStyleSpec(
             ? 'the active header preset already emits the page number'
             : 'the folio is shown at the bottom of the page';
         warnings.push(
-            `Header corner ${cornerWithPage} uses "Page #" but ${otherSource} — the page number will appear twice. Pick a non-page field for that corner, or change the conflicting setting.`,
+            `Header corner ${cornerWithPage} uses "Page #" but ${otherSource} — the page number will appear twice. Select a non-page field for that corner, or change the conflicting setting.`,
         );
     }
 
@@ -408,7 +408,7 @@ export function validateDesignedStyleSpec(
     try {
         const fontDiag = getFontDiagnosticForFontKey(spec.body.font);
         if (fontDiag.state !== 'ok') {
-            warnings.push(`${fontDiag.primaryFontName} is not installed. Click Install next to the Font row, or pick a different font — the export will fail until this is resolved.`);
+            warnings.push(`${fontDiag.primaryFontName} is not installed. Click Install next to the Font row, or select a different font — the export will fail until this is resolved.`);
         }
     } catch {
         // Probing the font catalog can fail in headless / sandboxed
@@ -615,7 +615,7 @@ export class DesignedStyleWizardModal extends Modal {
         });
         overlay.createDiv({
             cls: 'ert-style-wizard__archetype-subtitle',
-            text: 'Pick a starting point — every value is editable afterward.',
+            text: 'Select a starting point — every value is editable afterward.',
         });
         const grid = overlay.createDiv({ cls: 'ert-style-wizard__archetype-grid' });
         (Object.keys(ARCHETYPE_INFO) as DesignArchetype[]).forEach((archetype) => {
@@ -2216,7 +2216,7 @@ export class DesignedStyleWizardModal extends Modal {
 
         if (!this.archetypePicked) {
             const empty = this.previewColumn.createDiv({ cls: 'ert-style-wizard__preview-empty' });
-            empty.setText('Pick an archetype to begin previewing.');
+            empty.setText('Select an archetype to begin previewing.');
             return;
         }
 
@@ -2402,4 +2402,3 @@ export class DesignedStyleWizardModal extends Modal {
         }
     }
 }
-

@@ -3,7 +3,7 @@
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → Publish</div>
 </div>
 
-Radial Timeline turns your scene notes into a finished manuscript using **Pandoc** and **LaTeX**. You pick a template that defines the look of the page — fonts, headers, chapter openers, part dividers — and the plugin assembles your scenes into that format and hands the result to Pandoc to produce a PDF.
+Radial Timeline turns your scene notes into a finished manuscript using **Pandoc** and **LaTeX**. You select a template that defines the look of the page — fonts, headers, chapter openers, part dividers — and the plugin assembles your scenes into that format and hands the result to Pandoc to produce a PDF.
 
 **Core includes Pandoc-based PDF export.** Core users can export PDFs with the bundled Core publishing layouts. **Pro** extends that system with extra bundled PDF layouts and more advanced publishing customization.
 
@@ -188,7 +188,7 @@ The template file writes to `Radial Timeline/Pandoc/rt_modern_classic.tex` in yo
 
 **Settings → Core → Acts → Act count**
 
-This is a global plugin setting (not a per-template one). Most novels use 3 acts; some use 4 or 5. Whatever you pick here is the number of Parts your book will have.
+This is a global plugin setting (not a per-template one). Most novels use 3 acts; some use 4 or 5. Whatever you select here is the number of Parts your book will have.
 
 ### Step 3 — Make sure your scenes carry an `Act:` value
 
@@ -206,7 +206,7 @@ Decide where each chapter should begin. On the first scene of each chapter, add:
 Chapter: The Gathering Storm
 ```
 
-You can have many chapters per act. There's no upper limit and no naming requirement — pick titles that fit your book.
+You can have many chapters per act. There's no upper limit and no naming requirement — choose titles that fit your book.
 
 ### Step 5 — (Optional) Add act epigraphs
 
@@ -267,7 +267,7 @@ Find this in **Settings → Publish → PDF Styles → [template] → +** (expan
 **Command Palette → Manuscript export**
 
 The export panel lets you:
-- Pick the output format (Novel, Screenplay, Podcast Script)
+- Select the output format (Novel, Screenplay, Podcast Script)
 - Choose the template for that format
 - Select which scenes to include (all, or filtered by act/subplot)
 - Toggle Markdown-only vs. PDF

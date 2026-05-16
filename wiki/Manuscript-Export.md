@@ -20,7 +20,7 @@ The panel supports ordering, selection range, output presets, and publishing-ori
 
 ## PDF Layouts
 
-For PDF exports, choose a novel PDF layout from the layout picker. The selected layout controls the page style, required font checks, chapter opener behavior, and whether the export prints Part pages.
+For PDF exports, choose a novel PDF layout from the layout selector. The selected layout controls the page style, required font checks, chapter opener behavior, and whether the export prints Part pages.
 
 The preview cards show the expected chapter, part, and body-page structure before export. Export checks report missing Pandoc, LaTeX, bundled fonts, and layout-token problems before you generate the PDF.
 

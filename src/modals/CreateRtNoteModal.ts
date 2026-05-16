@@ -135,7 +135,7 @@ export class CreateRtNoteModal extends Modal {
         this.headerSubtitleEl.setText(
             activeFamily
                 ? 'Choose the exact note type you want to create.'
-                : 'Pick a note family first, then choose the specific note type.'
+                : 'Select a note family first, then choose the specific note type.'
         );
         this.headerMetaEl.empty();
         if (activeFamily) {

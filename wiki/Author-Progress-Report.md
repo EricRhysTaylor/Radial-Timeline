@@ -70,7 +70,7 @@ You can click the middle stages in the preview (Scenes, Colors) to skip them and
 
 ## Preview Size
 
-The **Size** picker (Thumbnail, Small, Medium, Large) controls the **design intent** of the graphic — which elements are shown and how dense the layout is — not the final export resolution. The dimensions below refer to the in-modal preview only.
+The **Size** selector (Thumbnail, Small, Medium, Large) controls the **design intent** of the graphic — which elements are shown and how dense the layout is — not the final export resolution. The dimensions below refer to the in-modal preview only.
 
 | Size | Preview | Design Intent |
 |------|---------|---------------|

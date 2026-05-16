@@ -1830,7 +1830,7 @@ export const en: TranslationKeys = {
             },
             modelOverride: {
                 name: 'Model',
-                desc: 'Auto uses the latest stable model. Pick a specific model to pin it.',
+                desc: 'Auto uses the latest stable model. Select a specific model to pin it.',
             },
             accessTier: {
                 name: 'Access',
@@ -2337,7 +2337,7 @@ export const en: TranslationKeys = {
             },
             configuration: {
                 name: 'Progress tracking',
-                desc: 'Pick how APR measures your book — one stage at a time, the whole pipeline, or elapsed time.',
+                desc: 'Select how APR measures your book — one stage at a time, the whole pipeline, or elapsed time.',
                 autoUpdateExportPaths: {
                     name: 'Auto-update export paths',
                     desc: 'When size or schedule changes, update default and campaign export paths if they still match the default pattern.',
@@ -2797,7 +2797,7 @@ export const en: TranslationKeys = {
         },
         active: {
             name: 'Active profile',
-            desc: 'Pick which planet or setting profile is used for conversions.',
+            desc: 'Select which planet or setting profile is used for conversions.',
             disabled: '— Disabled —',
         },
         actions: {
@@ -2824,7 +2824,7 @@ export const en: TranslationKeys = {
             title: 'Planetary time converter',
             activeProfile: 'Active profile',
             datetimeLabel: 'Earth date & time',
-            datetimeDesc: 'Pick a local date and time to convert.',
+            datetimeDesc: 'Select a local date and time to convert.',
             now: 'Now',
             convert: 'Convert',
             noProfile: 'Select an active planetary profile in Settings first.',
@@ -3807,7 +3807,7 @@ export const en: TranslationKeys = {
                 flaggedScenes: 'Flagged scenes',
                 processableScenes: 'Processable scenes',
                 totalScenes: 'Total scenes',
-                pickLabel: 'Pick a subplot to process',
+                pickLabel: 'Select a subplot to process',
                 processFlagged: 'Process flagged scenes',
                 processEntire: 'Process entire subplot',
                 purgeAll: 'Purge all pulse',
