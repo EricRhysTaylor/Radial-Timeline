@@ -49,7 +49,7 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 Chronologue mode includes three sub-modes, each rendering a distinct wireframe overlay.
 
 <a name="shift-sub-mode"></a>
-### Shift sub-mode (bones view)
+### Shift sub-mode (x-ray view)
 - Toggle with `Shift` (or `Caps Lock`) to strip the overlays and see the raw chronological scaffold.
 - Gray wireframe. Click any two scenes to measure elapsed story time; keep clicking to update the arc.
 - Discontinuities (infinity symbols) help you spot opportunities for bridge scenes.

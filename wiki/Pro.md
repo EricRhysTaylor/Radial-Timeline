@@ -97,15 +97,13 @@ The Runtime sub-mode is one of three sub-modes within Chronologue mode. It repla
 
 **Features:**
 - **Blue wireframe overlay** — Distinct from the Shift sub-mode (gray) and Alt sub-mode (red)
-- **Duration arcs** — Arc length represents estimated runtime, not story elapsed time
-- **Runtime cap slider** — Adjust the maximum arc size to emphasize shorter or longer scenes
+- **Duration arcs** — Arc length represents estimated runtime, not story elapsed time, and scales automatically relative to the other scenes in view
 - **Scene selection** — Click scenes to compare their runtime visually
 
 **Usage:**
 1. Enable Runtime Estimation in Settings → Core
 2. Switch to Chronologue mode (`3`)
 3. Click the `RT` button to enter the Runtime sub-mode
-4. Adjust the cap slider to tune visualization
 
 > **Sub-mode details**: [Runtime](Chronologue-Mode#runtime-mode-pro)
 
