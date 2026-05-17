@@ -43,6 +43,40 @@ describe('resolveBookPages', () => {
         expect(dedication?.path).toBeUndefined();
     });
 
+    it('a disabled canonical-role note steps aside so BookMeta resurfaces', () => {
+        const disabled: MatterNoteSummary = { ...dedicationNote, enabled: false };
+        const pages = resolveBookPages(baseBookMeta, [disabled]);
+        const dedication = pages.find(p => p.role === 'dedication');
+        // The note is dropped; BookMeta fills the dedication slot instead.
+        expect(dedication).toBeDefined();
+        expect(dedication?.source).toBe('bookmeta');
+        expect(pages.some(p => p.path === disabled.path)).toBe(false);
+    });
+
+    it('a disabled custom note is dropped entirely (no BookMeta to resurface)', () => {
+        const customDisabled: MatterNoteSummary = {
+            role: '',
+            path: 'Books/X/0.9 Bonus Quote.md',
+            title: '0.9 Bonus Quote',
+            bodyMode: 'latex',
+            side: 'frontmatter',
+            enabled: false,
+        };
+        const pages = resolveBookPages(baseBookMeta, [customDisabled]);
+        expect(pages.some(p => p.path === customDisabled.path)).toBe(false);
+    });
+
+    it('enabled:true and undefined both resolve normally (no migration needed)', () => {
+        const explicitTrue: MatterNoteSummary = { ...dedicationNote, enabled: true };
+        const undefinedFlag: MatterNoteSummary = { ...dedicationNote };
+        for (const note of [explicitTrue, undefinedFlag]) {
+            const pages = resolveBookPages(baseBookMeta, [note]);
+            const dedication = pages.find(p => p.role === 'dedication');
+            expect(dedication?.source).toBe('note');
+            expect(dedication?.path).toBe(note.path);
+        }
+    });
+
     it('excludes roles with neither note nor BookMeta content', () => {
         // BookMeta has no epigraph, no acknowledgments — they must NOT appear.
         const pages = resolveBookPages(baseBookMeta, []);

@@ -138,9 +138,12 @@ const MODERN_CLASSIC_SPEC: DesignedStyleSpec = {
         mode: 'numbered-titled',
         pageBreak: true,
         resetSceneCounter: false,
-        // Explicit centered position so wizard slider reads 50% on open.
-        // Locks the v1 default — earlier the .tex used a 1.9in fixed offset.
-        spacing: { topFraction: 0.5, bottomFraction: 0.08 },
+        // Upper-third bias: the chapter number + title block sits ~20% down
+        // the text block, leaving the lower portion open. A centered (0.5)
+        // placement read as lower-third once the number/title/gap stack and
+        // the body that follows were accounted for. The wizard slider opens
+        // at 20% to match this .tex output.
+        spacing: { topFraction: 0.20, bottomFraction: 0.08 },
     },
     scene: {
         opener: 'roman-with-rule',

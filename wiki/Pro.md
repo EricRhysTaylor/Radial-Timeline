@@ -1,119 +1,31 @@
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/settings-pro.png" alt="Settings → PRO tab" style="width: 600px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → PRO — entitlement and activation</div>
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Settings → PRO</div>
 </div>
 
 **Advanced workflows for authors who want more.**
 
-Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaign tools, and specialized visualization modes. The core writing experience remains free — Pro adds capabilities for authors ready to go further.
+Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaign tools, and specialized visualization modes. The core writing experience remains free.
 
-> **Early Access**: During the Open Beta, all Pro features are available free to early adopters. Your feedback shapes the future of Radial Timeline. When paid licensing launches, early supporters may receive special perks.
+> **Early Access**: During the Open Beta, all Pro features are available free to early adopters. When paid licensing launches, early supporters may receive special perks.
 
 ---
 
 ## What Pro Adds
 
-*   **Inquiry+** — Additional custom question slots per zone (up to 7 vs 2 in Core)
-*   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis
-*   **Advanced publishing layouts** — Pro PDF styles, advanced bundled layouts, screenplay, and podcast formats
-*   **Chronologue Runtime sub-mode** — Blue wireframe showing scene runtime duration arcs
-*   **Campaign Manager** — Multiple Author Progress Report campaigns with independent schedules and Teaser Reveal
-*   **Website Exclusives** — Template vaults, Omnibus Inquiry briefings, and guided workflow demonstrations
+*   **Inquiry+** — more custom question slots. See [Settings → Inquiry](Settings-Inquiry) and [Inquiry](Inquiry).
+*   **Runtime Estimation** — screen time, audiobook duration, and manuscript-length analysis. See [Runtime Estimator](Runtime-Estimator), [Chronologue Runtime](Chronologue-Mode#runtime-mode-pro), and [Settings → Core](Settings-Core#runtime-estimation).
+*   **Advanced publishing layouts** — extra templates and deeper export customization. See [Publishing](Publishing) and [Manuscript Export](Manuscript-Export).
+*   **Campaign Manager / Teaser Reveal** — multiple APR campaigns and staged public reveals. See [Author Progress Report](Author-Progress-Report).
+*   **Website exclusives** — additional template vaults, guided materials, and related extras.
 
 ---
 
-## Runtime Estimation
-
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/panel-runtime-estimator.png" alt="Runtime Estimator panel with mode selection and progress" style="width: 500px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Runtime Estimator — select mode and scope for duration analysis</div>
-</div>
-
-*Estimate screen time, audiobook duration, and manuscript length with precision.*
-
-Runtime Estimation analyzes your scenes to calculate realistic duration estimates for different content types. Create multiple profiles for different projects or formats.
-
-**Capabilities:**
-- **Screenplay mode** — Separates dialogue and action line pacing, with parenthetical timing for (beat), (pause), (long pause), (a moment), and (silence)
-- **Novel/Audiobook mode** — Unified narration pace calculation for prose content
-- **Custom word rates** — Fine-tune words-per-minute for dialogue, action, and narration
-- **Session planning** — Track drafting speed and daily writing minutes for completion projections
-- **Scene hover metadata** — Runtime estimates appear in scene hover tooltips
-- **Chronologue integration** — Duration arcs visualize scene length in the timeline
-
-**Explicit duration patterns** are always parsed when found in your scene content:
-- `(30 seconds)` or `(30s)`
-- `(2 minutes)` or `(2m)`
-- `(runtime: 3m)`
-- `(allow 5 minutes)` — for demos, podcasts, presentations
-
-> **Settings**: [Runtime estimation](Settings-Core#runtime-estimation)
-
----
-
-## Advanced Publishing Layouts
-
-*Extend the Core publishing flow with extra Pandoc layouts and deeper publishing customization.*
-
-Core already includes Pandoc-based PDF export and the bundled Core publishing layouts. Pro adds extra bundled layouts and deeper publishing customization.
-
-**Supported formats:**
-- **Screenplay** — Industry-standard screenplay formatting
-- **Podcast Script** — Structured audio content with timing
-- **Novel Manuscript** — Standard submission format for prose
-
-**Configuration:**
-- Primary and fallback Pandoc binary paths
-- Duplicated bundled LaTeX layout files per format
-- Output to your export folder alongside analysis files
-
-> **Full guide**: [Publishing](Publishing) — template catalog, Signature setup, Chapters, Parts, act epigraphs.
-> **Settings**: [Publish](Publishing)
-
----
-
-## Campaign Manager and Teaser Reveal
-
-*Run multiple Author Progress Report (APR) campaigns and reveal your timeline over time.*
-
-Campaign Manager lets you manage multiple APR configurations for different platforms (Kickstarter, Patreon, newsletter, website) with independent schedules and export targets. Teaser Reveal adds a progressive reveal system that exposes more detail as your completion percentage rises.
-
-**Capabilities:**
-- **Multiple campaigns** - Separate refresh schedules, export sizes, and export paths per platform
-- **Update frequency** - Manual, Daily, Weekly, or Monthly auto-updates
-- **Refresh alerts** - Custom reminder thresholds for manual campaigns
-- **Manual reveal options** - Toggle acts, subplots, status colors, and percent display when Teaser Reveal is disabled
-- **Teaser Reveal presets** - Slow (15/40/70), Standard (10/30/60), Fast (5/20/45), or custom thresholds
-
-> **Settings**: [Social](Author-Progress-Report)
-
----
-
-## Chronologue Runtime Sub-mode
-
-*Visualize scene duration in the chronological timeline.*
-
-The Runtime sub-mode is one of three sub-modes within Chronologue mode. It replaces elapsed story time with runtime duration arcs. Toggle it using the **RT** button in Chronologue mode.
-
-**Features:**
-- **Blue wireframe overlay** — Distinct from the Shift sub-mode (gray) and Alt sub-mode (red)
-- **Duration arcs** — Arc length represents estimated runtime, not story elapsed time, and scales automatically relative to the other scenes in view
-- **Scene selection** — Click scenes to compare their runtime visually
-
-**Usage:**
-1. Enable Runtime Estimation in Settings → Core
-2. Switch to Chronologue mode (`3`)
-3. Click the `RT` button to enter the Runtime sub-mode
-
-> **Sub-mode details**: [Runtime](Chronologue-Mode#runtime-mode-pro)
-
----
-
-## Access and Entitlement
+## Access
 
 1. **Open Beta** — Pro is active by default during the beta period.
 2. **Pro access key** — When paid licensing launches, enter your key in Settings → PRO to unlock Pro features.
-3. **Core remains free** — The core writing, timeline, and analysis experience is always available without Pro.
+3. **Core remains free** — The core writing, timeline, and analysis experience remains available without Pro.
 
 Pro workflows appear throughout Radial Timeline in magenta.
 

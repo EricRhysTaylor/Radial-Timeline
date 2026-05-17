@@ -96,4 +96,16 @@ describe('matterMeta parser', () => {
 
     expect(parsed).toBeNull();
   });
+
+  it('records only an explicit Enabled:false; absence/true leave it unset (no migration)', () => {
+    expect(parseMatterMetaFromFrontmatter({ Class: 'Frontmatter', Enabled: false }))
+      .toEqual({ side: 'front', bodyMode: 'plain', enabled: false });
+    expect(parseMatterMetaFromFrontmatter({ Class: 'Frontmatter', Enabled: 'no' }))
+      .toEqual({ side: 'front', bodyMode: 'plain', enabled: false });
+    // true / absent → enabled key omitted (undefined === enabled everywhere).
+    expect(parseMatterMetaFromFrontmatter({ Class: 'Frontmatter', Enabled: true }))
+      .toEqual({ side: 'front', bodyMode: 'plain' });
+    expect(parseMatterMetaFromFrontmatter({ Class: 'Frontmatter' }))
+      .toEqual({ side: 'front', bodyMode: 'plain' });
+  });
 });

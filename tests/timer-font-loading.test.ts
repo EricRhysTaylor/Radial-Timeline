@@ -86,6 +86,10 @@ describe('writing session timer font loading', () => {
         expect(indicatorsCss).toContain('animation: ert-timeline-session-ring-count-pulse 300ms ease-out');
         expect(clockBlock).toContain('background: transparent');
         expect(clockBlock).toContain('border: 0');
+        expect(timelineCss).toContain('.ert-timeline-search .ert-timeline-search__input[type="search"]');
+        expect(timelineCss).toContain('height: 24px');
+        expect(timelineCss).toContain('min-height: 24px');
+        expect(timelineCss).toContain('max-height: 24px');
         expect(titleButtonBlock).toContain('min-width: calc(4.5ch + 2.7rem)');
         expect(iconOnlyButtonBlock).toContain('width: 24px');
         expect(timelineCss).toContain('.ert-timeline-session.clickable-icon.is-goal-met');

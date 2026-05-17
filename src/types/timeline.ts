@@ -61,6 +61,13 @@ export interface MatterMeta {
     usesBookMeta?: boolean;
     /** How the body should be rendered. `plain` escapes for LaTeX; `latex` passes through untouched. */
     bodyMode?: 'latex' | 'plain';
+    /**
+     * `false` excludes this note from the resolved Book Pages list and the
+     * export without deleting it. Undefined/absent = enabled (no migration
+     * needed). Disabling a canonical-role note lets the BookMeta page for
+     * that role surface again instead of being silently overridden.
+     */
+    enabled?: boolean;
     /** @deprecated Matter ordering uses filename prefixes only (0.* / 200.*). */
     order?: number;
 }

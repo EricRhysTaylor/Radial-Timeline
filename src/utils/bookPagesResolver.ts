@@ -96,6 +96,13 @@ export interface MatterNoteSummary {
     title: string;
     bodyMode: MatterBodyMode;
     side?: BookPageSide;
+    /**
+     * `false` → the note is excluded from resolution entirely (it neither
+     * claims its canonical role nor appears as a custom page). Undefined or
+     * `true` → resolved normally. A disabled canonical-role note steps aside
+     * so the BookMeta page for that role can surface.
+     */
+    enabled?: boolean;
 }
 
 export interface ResolvedPage {
@@ -281,6 +288,12 @@ export function resolveBookPages(
     const customNotes: MatterNoteSummary[] = [];
 
     for (const note of matterNotes) {
+        // Explicitly-disabled notes are dropped before any role resolution.
+        // This is the mechanism that lets a canonical-role note "step aside":
+        // skipping it here means bookMetaHasRoleContent() can surface the
+        // BookMeta page for that role below, instead of the note silently
+        // winning. Undefined/true → resolved normally (no migration needed).
+        if (note.enabled === false) continue;
         const role = resolveNoteRole(note);
         if (role) {
             // First-wins: deterministic dedup for malformed input with two notes per role.

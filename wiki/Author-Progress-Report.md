@@ -101,11 +101,11 @@ The combination of **Size** (design intent) and **Export quality** (resolution) 
 
 ## Export And Refresh
 
-APR exports a static **PNG or SVG** file to the export path. Re-export it manually, or set a schedule to be reminded when it's time to refresh.
+APR exports a static **PNG or SVG** file. The **Output file** row in the panel is clickable and reveals the current export file in your system file manager.
 
 *   **Update frequency**: Manual Only, Daily, Weekly, or Monthly. Manual mode requires clicking the update button in the modal.
 *   **Refresh alert threshold**: Days before showing a refresh reminder in the Radial Timeline View.
-*   **Export path**: Location for the exported file.
+*   **Output file**: Shows the current export file path for the default report or the selected campaign. Click it to reveal the file.
 *   **Auto-update export paths**: When size or schedule changes, updates the default export path if it still matches the default pattern.
 
 ## Campaigns (Pro)
@@ -117,4 +117,4 @@ Create multiple APR configurations for different platforms:
 - **Newsletter**: 14-day refresh reminders
 - **Website**: 30-day refresh reminders
 
-Each campaign can have its own update frequency, refresh alert threshold, export path, export size, and reveal settings. Teaser Reveal can be enabled per campaign, and manual reveal options are available when Teaser Reveal is disabled.
+Each campaign can have its own update frequency, refresh alert threshold, output file, export size, and reveal settings. Teaser Reveal can be enabled per campaign, and manual reveal options are available when Teaser Reveal is disabled.

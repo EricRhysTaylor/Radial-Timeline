@@ -1032,9 +1032,11 @@
 
 .ert-timeline-session.clickable-icon {
   width: auto;
-  height: 32px;
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
   box-sizing: border-box;
-  padding-block: var(--size-2-1);
+  padding-block: 0;
   padding-inline: 0.7rem;
   margin-inline-start: var(--size-4-1);
   flex: 0 0 auto;

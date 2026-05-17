@@ -23,7 +23,7 @@ import { confirmWithErtModal } from '../../modals/ErtConfirmModal';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
-import { normalizeMatterClassValue } from '../../utils/matterMeta';
+import { normalizeMatterClassValue, parseMatterMetaFromFrontmatter } from '../../utils/matterMeta';
 import { resolveBookPages, applyBookPageOrder, inferRoleFromFilename, ROLE_SIDE, type BookPageRole, type MatterNoteSummary, type ResolvedPage } from '../../utils/bookPagesResolver';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
@@ -930,12 +930,17 @@ function getActiveBookMatterNoteSummaries(plugin: RadialTimelinePlugin): MatterN
             ? 'latex'
             : 'plain';
         const side: 'frontmatter' | 'backmatter' = matterClass === 'backmatter' ? 'backmatter' : 'frontmatter';
+        // Only an explicit Enabled:false disables the note; absence/true keep
+        // it resolved normally (parsed via the same canonical helper the
+        // export path uses, so preview and export agree).
+        const enabled = parseMatterMetaFromFrontmatter(normalized)?.enabled;
         result.push({
             role,
             path: file.path,
             title: file.basename,
             bodyMode,
-            side
+            side,
+            ...(enabled === false ? { enabled: false } : {})
         });
     }
     return result;
@@ -3896,6 +3901,23 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         await plugin.saveSettings();
     };
 
+    /**
+     * Toggle a matter note's `Enabled` frontmatter. Writing `false` excludes
+     * the note from the resolver (and the export) so a canonical-role note
+     * steps aside and the BookMeta page for that role surfaces again; writing
+     * `true` is recorded explicitly so the intent is visible in the YAML
+     * rather than relying on absence. Atomic via processFrontMatter.
+     */
+    const setNoteEnabled = async (notePath: string, nextEnabled: boolean): Promise<void> => {
+        const file = plugin.app.vault.getAbstractFileByPath(notePath);
+        if (!(file instanceof TFile)) return;
+        await plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
+            const fm = frontmatter as Record<string, unknown>;
+            fm.Enabled = nextEnabled;
+        });
+        await renderMatterPreview();
+    };
+
     const renderMatterPreview = async () => {
         matterPreviewBody.empty();
         try {
@@ -4034,6 +4056,25 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 handle.setAttr('aria-label', 'Drag to reorder');
 
                 if (page.source === 'note' && page.path) {
+                    // Enable/disable toggle — only note-backed pages have a
+                    // physical file to write `Enabled` into. Rows reaching
+                    // this list are enabled by definition (the resolver drops
+                    // disabled notes); unchecking writes Enabled:false so the
+                    // note steps aside and any BookMeta page for its role
+                    // resurfaces. stopPropagation keeps the row drag intact.
+                    const notePath = page.path;
+                    const toggle = row.createEl('input', {
+                        cls: 'ert-matter-preview-enable',
+                        attr: { type: 'checkbox', title: 'Enabled — uncheck to exclude this page from export without deleting the note' },
+                    });
+                    toggle.checked = true;
+                    plugin.registerDomEvent(toggle, 'click', (e: MouseEvent) => {
+                        e.stopPropagation();
+                    });
+                    plugin.registerDomEvent(toggle, 'change', () => {
+                        void setNoteEnabled(notePath, false);
+                    });
+
                     const item = previewByPath.get(page.path);
                     const titleLink = row.createEl('a', {
                         cls: 'ert-matter-preview-link',
@@ -4146,6 +4187,56 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             };
 
             for (const page of resolvedPages) renderRow(page);
+
+            // Disabled notes don't reach `resolvedPages` (the resolver drops
+            // them), so render them in a muted group below the live list.
+            // Without this they'd vanish from the UI entirely once disabled,
+            // leaving no way to turn them back on. Re-checking writes
+            // Enabled:true and the note rejoins the resolved list.
+            const disabledNotes = matterNotes.filter(n => n.enabled === false);
+            if (disabledNotes.length > 0) {
+                list.createDiv({
+                    cls: 'ert-matter-preview-divider ert-matter-preview-divider--disabled',
+                    text: 'Disabled — excluded from export',
+                });
+                for (const note of disabledNotes) {
+                    const drow = list.createDiv({ cls: 'ert-matter-preview-row is-disabled' });
+                    const dToggle = drow.createEl('input', {
+                        cls: 'ert-matter-preview-enable',
+                        attr: { type: 'checkbox', title: 'Disabled — check to include this page in export again' },
+                    });
+                    dToggle.checked = false;
+                    const dNotePath = note.path;
+                    plugin.registerDomEvent(dToggle, 'change', () => {
+                        void setNoteEnabled(dNotePath, true);
+                    });
+                    const dLink = drow.createEl('a', {
+                        cls: 'ert-matter-preview-link',
+                        text: note.title || note.path,
+                        attr: { href: '#', title: note.path },
+                    });
+                    plugin.registerDomEvent(dLink, 'click', (evt: MouseEvent) => {
+                        evt.preventDefault();
+                        void plugin.app.workspace.openLinkText(note.path, '', false);
+                    });
+                    const dBadges = drow.createDiv({ cls: 'ert-matter-preview-badges' });
+                    const dTone = note.bodyMode === 'latex' ? 'latex' : 'plain';
+                    dBadges.createSpan({
+                        cls: `ert-matter-preview-badge ert-matter-preview-badge--${dTone}`,
+                        text: dTone === 'latex' ? 'LATEX' : 'PLAIN',
+                    });
+                    // Show the role this note WOULD claim if re-enabled, so
+                    // the user can see what it's currently suppressing.
+                    const explicitRole = (note.role || '').trim().toLowerCase();
+                    const inferredRole = explicitRole || inferRoleFromFilename(note.path || note.title) || '';
+                    if (inferredRole) {
+                        dBadges.createSpan({
+                            cls: 'ert-matter-preview-badge ert-matter-preview-badge--role',
+                            text: formatRoleLabel(inferredRole),
+                        });
+                    }
+                }
+            }
         } catch (e) {
             const message = (e as Error).message || String(e);
             matterPreviewBody.createDiv({ cls: 'ert-matter-preview-empty-line', text: `Matter preview unavailable: ${message}` });

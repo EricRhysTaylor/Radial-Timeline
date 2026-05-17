@@ -66,6 +66,10 @@ export function isMatterClassValue(value: unknown): boolean {
  *   - Role
  *   - UseBookMeta
  *   - BodyMode
+ *   - Enabled       (default true; `Enabled: false` keeps the note on disk
+ *                    but excludes it from the resolved Book Pages list and
+ *                    the export — lets a canonical-role note step aside so
+ *                    the BookMeta page for that role surfaces again)
  */
 export function parseMatterMetaFromFrontmatter(
   frontmatter: Record<string, unknown> | undefined
@@ -90,6 +94,12 @@ export function parseMatterMetaFromFrontmatter(
 
   const order = parseOrder(frontmatter.Order);
   if (order !== undefined) meta.order = order;
+
+  // Enabled defaults to true. Only an explicit `Enabled: false` is recorded;
+  // absence or `true` leaves `meta.enabled` undefined (treated as enabled
+  // everywhere), so existing notes need no migration.
+  const enabled = parseOptionalBoolean(frontmatter.Enabled);
+  if (enabled === false) meta.enabled = false;
 
   return meta;
 }

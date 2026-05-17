@@ -1157,6 +1157,7 @@ export async function assembleManuscript(
       title: c.file.basename,
       bodyMode: normalizeMatterBodyMode(meta.bodyMode),
       side,
+      ...(meta.enabled === false ? { enabled: false } : {}),
     };
   });
 

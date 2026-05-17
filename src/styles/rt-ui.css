@@ -11599,6 +11599,26 @@
   margin: var(--ert-gap-xs) 0;
 }
 
+/* Disabled-group divider + rows: muted so excluded pages read as parked,
+   not active. The re-enable checkbox stays full-opacity for affordance. */
+.ert-ui.ert-scope--settings .ert-matter-preview-divider--disabled {
+  color: var(--text-faint);
+}
+.ert-ui.ert-scope--settings .ert-matter-preview-row.is-disabled {
+  opacity: 0.55;
+}
+.ert-ui.ert-scope--settings .ert-matter-preview-row.is-disabled .ert-matter-preview-enable {
+  opacity: 1;
+}
+
+/* Enable/disable checkbox — sits where the drag handle would on disabled
+   rows; on live rows it follows the handle. Compact, no layout shift. */
+.ert-ui.ert-scope--settings .ert-matter-preview-enable {
+  flex: 0 0 auto;
+  margin: 0 var(--ert-gap-xs) 0 0;
+  cursor: pointer;
+}
+
 .ert-ui.ert-scope--settings .ert-matter-preview-empty-line {
   color: var(--text-muted);
   font-size: 0.88rem;
