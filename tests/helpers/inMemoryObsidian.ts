@@ -14,7 +14,9 @@ export interface InMemoryApp {
         getFiles: () => TFile[];
         getAbstractFileByPath: (path: string) => TFile | TFolder | null;
         read: (file: TFile) => Promise<string>;
+        cachedRead: (file: TFile) => Promise<string>;
         modify: (file: TFile, content: string) => Promise<void>;
+        process: (file: TFile, fn: (data: string) => string) => Promise<string>;
         create: (path: string, content: string) => Promise<TFile>;
         createFolder: (path: string) => Promise<void>;
     };
@@ -138,11 +140,26 @@ export function createInMemoryApp(initialFiles: Record<string, string>): InMemor
                 if (!record) throw new Error(`File not found: ${file.path}`);
                 return record.content;
             },
+            async cachedRead(file: TFile): Promise<string> {
+                const record = records.get(normalizeVaultPath(file.path));
+                if (!record) throw new Error(`File not found: ${file.path}`);
+                return record.content;
+            },
             async modify(file: TFile, content: string): Promise<void> {
                 const key = normalizeVaultPath(file.path);
                 const record = records.get(key);
                 if (!record) throw new Error(`File not found: ${file.path}`);
                 record.content = content;
+            },
+            async process(file: TFile, fn: (data: string) => string): Promise<string> {
+                const key = normalizeVaultPath(file.path);
+                const record = records.get(key);
+                if (!record) throw new Error(`File not found: ${file.path}`);
+                // Mirrors Obsidian: read current content, apply fn, write the
+                // result atomically. If fn throws, no write occurs.
+                const next = fn(record.content);
+                record.content = next;
+                return next;
             },
             async create(path: string, content: string): Promise<TFile> {
                 return addFile(path, content);

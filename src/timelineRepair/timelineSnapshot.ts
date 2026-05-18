@@ -177,11 +177,13 @@ export async function restoreTimelineSnapshot(
             continue;
         }
         try {
-            const content = await app.vault.read(file);
-            const updated = applyWhenToFrontmatter(content, entry.previousWhenRaw);
-            if (updated !== content) {
-                await app.vault.modify(file, updated);
-            }
+            // Atomic read-modify-write: process() guarantees the file is not
+            // changed by another process between reading the current `When`
+            // line and writing the restored value. applyWhenToFrontmatter is
+            // a no-op when there is nothing to change.
+            await app.vault.process(file, (content) =>
+                applyWhenToFrontmatter(content, entry.previousWhenRaw)
+            );
             restored++;
         } catch {
             failed++;

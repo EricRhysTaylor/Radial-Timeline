@@ -1,11 +1,10 @@
 import { App, stringifyYaml, TFile } from 'obsidian';
 import type { NoteType } from './yamlTemplateNormalize';
 import { ensureReferenceIdFrontmatter, generateSceneId, readReferenceId } from './sceneIds';
-import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from './frontmatterDocument';
+import { buildFrontmatterDocument } from './frontmatterDocument';
 import {
     formatAliasConflictMessage,
     prepareFrontmatterRewrite,
-    type FrontmatterRewriteInfo,
     verifyFrontmatterRewrite,
 } from './frontmatterWriteSafety';
 
@@ -54,39 +53,54 @@ export async function runReferenceIdBackfill(options: ReferenceIdBackfillOptions
         onProgress?.(idx + 1, files.length, file.basename);
 
         try {
-            const content = await app.vault.read(file);
-            const prepared = prepareFrontmatterRewrite(content);
-            if (!prepared) {
+            // Cheap pre-check on a cached snapshot to classify skip/fail
+            // without an unnecessary atomic write.
+            const snapshot = await app.vault.cachedRead(file);
+            const pre = prepareFrontmatterRewrite(snapshot);
+            if (!pre) {
                 result.skipped += 1;
                 continue;
             }
-            if (prepared.aliasConflicts.length > 0) {
+            if (pre.aliasConflicts.length > 0) {
                 result.failed += 1;
                 result.errors.push({
                     file,
-                    error: `Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`
+                    error: `Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(pre.aliasConflicts)}`
                 });
                 continue;
             }
-
-            const normalized = ensureReferenceIdFrontmatter(prepared.parsed, { classFallback });
-            if (!normalized.changed) {
+            if (!ensureReferenceIdFrontmatter(pre.parsed, { classFallback }).changed) {
                 result.skipped += 1;
                 continue;
             }
 
-            const rebuiltYaml = stringifyYaml(normalized.frontmatter);
-            const updatedContent = buildFrontmatterDocument(rebuiltYaml, prepared.body);
-            await app.vault.modify(file, updatedContent);
-            const verifiedContent = await app.vault.read(file);
-            const verification = verifyFrontmatterRewrite(verifiedContent, {
-                originalBody: prepared.body,
-                verifyParsed: (verifiedFrontmatter) => readReferenceId(verifiedFrontmatter) === normalized.id
+            // Atomic read-modify-write. Frontmatter and body are derived from
+            // the authoritative content inside the callback so a concurrent
+            // edit cannot be clobbered, and verification runs on the exact
+            // bytes about to be written — throwing aborts the write entirely.
+            let changed = false;
+            await app.vault.process(file, (content) => {
+                const prepared = prepareFrontmatterRewrite(content);
+                if (!prepared) return content;
+                if (prepared.aliasConflicts.length > 0) {
+                    throw new Error(`Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`);
+                }
+                const normalized = ensureReferenceIdFrontmatter(prepared.parsed, { classFallback });
+                if (!normalized.changed) return content;
+                const rebuiltYaml = stringifyYaml(normalized.frontmatter);
+                const updatedContent = buildFrontmatterDocument(rebuiltYaml, prepared.body);
+                const verification = verifyFrontmatterRewrite(updatedContent, {
+                    originalBody: prepared.body,
+                    verifyParsed: (verifiedFrontmatter) => readReferenceId(verifiedFrontmatter) === normalized.id
+                });
+                if (!verification.ok) {
+                    throw new Error(verification.reason ?? 'Reference ID backfill verification failed.');
+                }
+                changed = true;
+                return updatedContent;
             });
-            if (!verification.ok) {
-                throw new Error(verification.reason ?? 'Reference ID backfill verification failed.');
-            }
-            result.updated += 1;
+            if (changed) result.updated += 1;
+            else result.skipped += 1;
         } catch (error) {
             result.failed += 1;
             result.errors.push({
@@ -111,9 +125,6 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
 
     type ParsedRecord = {
         file: TFile;
-        content: string;
-        info: FrontmatterRewriteInfo;
-        parsed: Record<string, unknown>;
         referenceId?: string;
     };
 
@@ -125,8 +136,9 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
         onProgress?.(idx + 1, files.length, file.basename);
 
         try {
-            const content = await app.vault.read(file);
-            const prepared = prepareFrontmatterRewrite(content);
+            // Detection is read-only; cachedRead avoids redundant disk reads.
+            const snapshot = await app.vault.cachedRead(file);
+            const prepared = prepareFrontmatterRewrite(snapshot);
             if (!prepared) {
                 result.skipped += 1;
                 continue;
@@ -142,9 +154,6 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
 
             parsedRecords.push({
                 file,
-                content,
-                info: prepared.info,
-                parsed: prepared.parsed,
                 referenceId: readReferenceId(prepared.parsed)
             });
         } catch (error) {
@@ -186,28 +195,40 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
                 }
                 usedIds.add(nextId);
 
-                const normalized = ensureReferenceIdFrontmatter(target.parsed, {
-                    classFallback,
-                    forceId: nextId
+                // Atomic read-modify-write. Frontmatter and body are derived
+                // from the authoritative content inside the callback — closing
+                // the long read→write gap that previously spanned the whole
+                // batch. Verification runs on the exact bytes to be written.
+                let changed = false;
+                await app.vault.process(target.file, (content) => {
+                    const prepared = prepareFrontmatterRewrite(content);
+                    if (!prepared) return content;
+                    if (prepared.aliasConflicts.length > 0) {
+                        throw new Error(`Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`);
+                    }
+                    // If the on-disk Reference ID no longer matches the
+                    // duplicate we grouped on, another process already changed
+                    // it — leave it alone.
+                    if (readReferenceId(prepared.parsed) !== target.referenceId) return content;
+                    const normalized = ensureReferenceIdFrontmatter(prepared.parsed, {
+                        classFallback,
+                        forceId: nextId
+                    });
+                    if (!normalized.changed) return content;
+                    const rebuiltYaml = stringifyYaml(normalized.frontmatter);
+                    const updatedContent = buildFrontmatterDocument(rebuiltYaml, prepared.body);
+                    const verification = verifyFrontmatterRewrite(updatedContent, {
+                        originalBody: prepared.body,
+                        verifyParsed: (verifiedFrontmatter) => readReferenceId(verifiedFrontmatter) === nextId
+                    });
+                    if (!verification.ok) {
+                        throw new Error(verification.reason ?? 'Duplicate Reference ID repair verification failed.');
+                    }
+                    changed = true;
+                    return updatedContent;
                 });
-                if (!normalized.changed) {
-                    result.skipped += 1;
-                    continue;
-                }
-
-                const rebuiltYaml = stringifyYaml(normalized.frontmatter);
-                const body = extractBodyAfterFrontmatter(target.content, target.info);
-                const updatedContent = buildFrontmatterDocument(rebuiltYaml, body);
-                await app.vault.modify(target.file, updatedContent);
-                const verifiedContent = await app.vault.read(target.file);
-                const verification = verifyFrontmatterRewrite(verifiedContent, {
-                    originalBody: body,
-                    verifyParsed: (verifiedFrontmatter) => readReferenceId(verifiedFrontmatter) === nextId
-                });
-                if (!verification.ok) {
-                    throw new Error(verification.reason ?? 'Duplicate Reference ID repair verification failed.');
-                }
-                result.updated += 1;
+                if (changed) result.updated += 1;
+                else result.skipped += 1;
             } catch (error) {
                 result.failed += 1;
                 result.errors.push({

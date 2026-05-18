@@ -333,48 +333,65 @@ async function reorderSingleFile(
     canonicalOrder: string[],
     isDynamic: (key: string) => boolean
 ): Promise<boolean> {
-    const content = await app.vault.read(file);
-    const prepared = prepareFrontmatterRewrite(content);
-    if (!prepared) {
+    // Cheap pre-check on a cached snapshot to decide whether a rewrite is
+    // needed at all (avoids a no-op atomic write when order is already canonical).
+    const snapshot = await app.vault.cachedRead(file);
+    const pre = prepareFrontmatterRewrite(snapshot);
+    if (!pre) {
         return false;
     }
-    if (prepared.aliasConflicts.length > 0) {
-        throw new Error(`Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`);
+    if (pre.aliasConflicts.length > 0) {
+        throw new Error(`Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(pre.aliasConflicts)}`);
     }
-
-    const rawFrontmatter = prepared.parsed;
-    const normalizedFrontmatter = normalizeFrontmatterKeys(rawFrontmatter);
-    const currentKeys = Object.keys(rawFrontmatter);
-    const normalizedCurrentKeys = Object.keys(normalizedFrontmatter);
-    const orderedKeys = buildOrderedKeyList(normalizedCurrentKeys, canonicalOrder, isDynamic);
-
-    // Check if order or canonical casing actually changed
-    if (arraysEqual(currentKeys, orderedKeys)) {
+    const preNormalized = normalizeFrontmatterKeys(pre.parsed);
+    const preOrdered = buildOrderedKeyList(Object.keys(preNormalized), canonicalOrder, isDynamic);
+    if (arraysEqual(Object.keys(pre.parsed), preOrdered)) {
         return false;
     }
 
-    // Rebuild frontmatter in the new order
-    const reorderedObj: Record<string, unknown> = {};
-    for (const key of orderedKeys) {
-        reorderedObj[key] = normalizedFrontmatter[key];
-    }
-
-    const newYamlStr = stringifyYaml(reorderedObj);
-    const newContent = buildFrontmatterDocument(newYamlStr, prepared.body);
-
-    await app.vault.modify(file, newContent);
-    const verifiedContent = await app.vault.read(file);
-    const verification = verifyFrontmatterRewrite(verifiedContent, {
-        originalBody: prepared.body,
-        verifyParsed: (verifiedFrontmatter) => {
-            const normalizedVerified = normalizeFrontmatterKeys(verifiedFrontmatter);
-            return arraysEqual(Object.keys(normalizedVerified), orderedKeys);
+    // Atomic read-modify-write. Frontmatter and body are derived from the
+    // authoritative content inside the callback so a concurrent edit to the
+    // note body cannot be clobbered, and verification runs on the exact bytes
+    // about to be written — throwing aborts the write entirely.
+    let changed = false;
+    await app.vault.process(file, (content) => {
+        const prepared = prepareFrontmatterRewrite(content);
+        if (!prepared) return content;
+        if (prepared.aliasConflicts.length > 0) {
+            throw new Error(`Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`);
         }
+
+        const rawFrontmatter = prepared.parsed;
+        const normalizedFrontmatter = normalizeFrontmatterKeys(rawFrontmatter);
+        const currentKeys = Object.keys(rawFrontmatter);
+        const normalizedCurrentKeys = Object.keys(normalizedFrontmatter);
+        const orderedKeys = buildOrderedKeyList(normalizedCurrentKeys, canonicalOrder, isDynamic);
+
+        // Order/casing already canonical on disk (race) — no-op.
+        if (arraysEqual(currentKeys, orderedKeys)) return content;
+
+        // Rebuild frontmatter in the new order
+        const reorderedObj: Record<string, unknown> = {};
+        for (const key of orderedKeys) {
+            reorderedObj[key] = normalizedFrontmatter[key];
+        }
+
+        const newYamlStr = stringifyYaml(reorderedObj);
+        const newContent = buildFrontmatterDocument(newYamlStr, prepared.body);
+        const verification = verifyFrontmatterRewrite(newContent, {
+            originalBody: prepared.body,
+            verifyParsed: (verifiedFrontmatter) => {
+                const normalizedVerified = normalizeFrontmatterKeys(verifiedFrontmatter);
+                return arraysEqual(Object.keys(normalizedVerified), orderedKeys);
+            }
+        });
+        if (!verification.ok) {
+            throw new Error(verification.reason ?? 'Frontmatter reorder verification failed.');
+        }
+        changed = true;
+        return newContent;
     });
-    if (!verification.ok) {
-        throw new Error(verification.reason ?? 'Frontmatter reorder verification failed.');
-    }
-    return true;
+    return changed;
 }
 
 /**
