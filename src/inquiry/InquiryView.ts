@@ -336,11 +336,15 @@ import {
     buildManifestTocLines,
     buildSceneDossierBodyLines,
     buildSceneDossierHeader,
+    countSynopsisWords,
     formatBriefLabel,
     formatInquiryBriefLink,
+    getDocumentStatusFields,
+    getOrdinalSuffix,
     getSceneNoteSortOrder,
     normalizeInquiryHeadline,
     parseCorpusLabelNumber,
+    readFrontmatterWordCount,
     replaceInquiryReferenceTokens,
     renderInquiryBrief,
     resolveInquiryScopeIndicator,
@@ -5383,7 +5387,7 @@ export class InquiryView extends ItemView {
         const mtime = file.stat.mtime ?? 0;
         const title = this.getDocumentTitle(file);
         const frontmatter = this.getNormalizedFrontmatter(file) ?? {};
-        const { statusRaw, due } = this.getDocumentStatusFields(frontmatter);
+        const { statusRaw, due } = getDocumentStatusFields(frontmatter);
         const cached = this.ccWordCache.get(filePath);
         if (cached && cached.mtime === mtime && cached.statusRaw === statusRaw && cached.due === due && cached.title === title) {
             return {
@@ -5395,7 +5399,7 @@ export class InquiryView extends ItemView {
                 title: cached.title
             };
         }
-        const yamlWords = this.readFrontmatterWordCount(frontmatter);
+        const yamlWords = readFrontmatterWordCount(frontmatter);
         let bodyWords: number;
         if (yamlWords !== null) {
             bodyWords = yamlWords;
@@ -5404,7 +5408,7 @@ export class InquiryView extends ItemView {
             bodyWords = countManuscriptWords(cleanEvidenceBody(content));
         }
         const summary = this.extractSummary(frontmatter);
-        const synopsisWords = this.countWords(summary);
+        const synopsisWords = countSynopsisWords(summary);
         const synopsisQuality = classifySynopsis(summary);
         this.ccWordCache.set(filePath, {
             mtime,
@@ -5438,21 +5442,6 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private getDocumentStatusFields(frontmatter: Record<string, unknown>): { statusRaw?: string; due?: string } {
-        const rawStatus = frontmatter['Status'];
-        const statusCandidate = Array.isArray(rawStatus)
-            ? String(rawStatus[0] ?? '').trim()
-            : (typeof rawStatus === 'string' ? rawStatus.trim() : '');
-
-        const rawDue = frontmatter['Due'];
-        const due = typeof rawDue === 'string' ? rawDue.trim() : '';
-
-        return {
-            statusRaw: statusCandidate || undefined,
-            due: due || undefined
-        };
-    }
-
     private getDocumentTitle(file: TFile): string {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
         if (frontmatter) {
@@ -5463,35 +5452,6 @@ export class InquiryView extends ItemView {
             }
         }
         return file.basename;
-    }
-
-    private stripFrontmatter(content: string): string {
-        if (!content.startsWith('---')) return content;
-        const match = content.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
-        if (!match) return content;
-        return content.slice(match[0].length);
-    }
-
-    private countWords(content: string): number {
-        const trimmed = content.trim();
-        if (!trimmed) return 0;
-        const matches = trimmed.match(/[A-Za-z0-9]+(?:['\u2019'-][A-Za-z0-9]+)*/g);
-        return matches ? matches.length : 0;
-    }
-
-    /**
-     * Read the authoritative `words` value from frontmatter (written by manuscript export).
-     * Returns null if the field is absent or unparseable, so the caller can fall back to
-     * a live count that aligns with the export algorithm (cleanEvidenceBody + whitespace split).
-     */
-    private readFrontmatterWordCount(frontmatter: Record<string, unknown>): number | null {
-        const raw = frontmatter['Words'] ?? frontmatter['words'];
-        if (typeof raw === 'number' && Number.isFinite(raw)) return Math.max(0, Math.round(raw));
-        if (typeof raw === 'string') {
-            const parsed = parseFloat(raw.replace(/,/g, '').trim());
-            if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
-        }
-        return null;
     }
 
     private getStyleSource(): Element {
@@ -5835,18 +5795,8 @@ export class InquiryView extends ItemView {
         const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
         const month = date.toLocaleDateString(undefined, { month: 'long' });
         const day = String(date.getDate());
-        const ordinal = this.getOrdinalSuffix(date.getDate());
+        const ordinal = getOrdinalSuffix(date.getDate());
         return t('inquiry.nav.welcome', { weekday, month, day, ordinal });
-    }
-
-    private getOrdinalSuffix(day: number): string {
-        const mod100 = day % 100;
-        if (mod100 >= 11 && mod100 <= 13) return 'th';
-        const mod10 = day % 10;
-        if (mod10 === 1) return 'st';
-        if (mod10 === 2) return 'nd';
-        if (mod10 === 3) return 'rd';
-        return 'th';
     }
 
     private updateRunningState(): void {

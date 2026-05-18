@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+    countSynopsisWords,
+    getDocumentStatusFields,
+    getOrdinalSuffix,
+    readFrontmatterWordCount,
     replaceInquiryReferenceTokens,
     renderInquiryBrief,
     resolveInquiryScopeIndicator,
@@ -218,5 +222,69 @@ describe('inquiryViewText', () => {
             'Shail\'s hybrid nature must be implied here for S23/S34 revelation to read as payoff.',
             refs
         )).toBe('Shail\'s hybrid nature must be implied here for 23 Shail Grounded / 34 Stage 3 Volcano revelation to read as payoff.');
+    });
+
+    describe('getDocumentStatusFields', () => {
+        it('reads scalar Status/Due strings and trims them', () => {
+            expect(getDocumentStatusFields({ Status: '  Working ', Due: ' 2026-05-18 ' }))
+                .toEqual({ statusRaw: 'Working', due: '2026-05-18' });
+        });
+        it('reads the first element of an array Status', () => {
+            expect(getDocumentStatusFields({ Status: ['  Done ', 'Ignored'] }))
+                .toEqual({ statusRaw: 'Done', due: undefined });
+        });
+        it('returns undefined for missing/empty/non-string fields', () => {
+            expect(getDocumentStatusFields({})).toEqual({ statusRaw: undefined, due: undefined });
+            expect(getDocumentStatusFields({ Status: '   ', Due: 42 }))
+                .toEqual({ statusRaw: undefined, due: undefined });
+        });
+    });
+
+    describe('countSynopsisWords', () => {
+        it('counts whitespace/punctuation-separated words', () => {
+            expect(countSynopsisWords('The quick brown fox')).toBe(4);
+        });
+        it('treats apostrophes and hyphens as intra-word', () => {
+            expect(countSynopsisWords("Shail's hybrid mother-ship")).toBe(3);
+        });
+        it('returns 0 for empty or whitespace-only input', () => {
+            expect(countSynopsisWords('')).toBe(0);
+            expect(countSynopsisWords('   \n\t ')).toBe(0);
+        });
+    });
+
+    describe('readFrontmatterWordCount', () => {
+        it('reads a finite numeric Words field, rounded and clamped', () => {
+            expect(readFrontmatterWordCount({ Words: 1234.6 })).toBe(1235);
+            expect(readFrontmatterWordCount({ words: -5 })).toBe(0);
+        });
+        it('parses a comma-formatted string Words field', () => {
+            expect(readFrontmatterWordCount({ Words: ' 12,345 ' })).toBe(12345);
+        });
+        it('returns null when absent or unparseable', () => {
+            expect(readFrontmatterWordCount({})).toBeNull();
+            expect(readFrontmatterWordCount({ Words: 'n/a' })).toBeNull();
+        });
+    });
+
+    describe('getOrdinalSuffix', () => {
+        it('uses th for the 11-13 teen exception', () => {
+            expect(getOrdinalSuffix(11)).toBe('th');
+            expect(getOrdinalSuffix(12)).toBe('th');
+            expect(getOrdinalSuffix(13)).toBe('th');
+            expect(getOrdinalSuffix(113)).toBe('th');
+        });
+        it('uses st/nd/rd for 1/2/3 and 21/22/23', () => {
+            expect(getOrdinalSuffix(1)).toBe('st');
+            expect(getOrdinalSuffix(2)).toBe('nd');
+            expect(getOrdinalSuffix(3)).toBe('rd');
+            expect(getOrdinalSuffix(21)).toBe('st');
+            expect(getOrdinalSuffix(22)).toBe('nd');
+            expect(getOrdinalSuffix(23)).toBe('rd');
+        });
+        it('uses th for other days', () => {
+            expect(getOrdinalSuffix(4)).toBe('th');
+            expect(getOrdinalSuffix(30)).toBe('th');
+        });
     });
 });

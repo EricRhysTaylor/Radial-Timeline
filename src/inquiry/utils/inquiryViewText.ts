@@ -386,3 +386,54 @@ export const buildManifestTocLines = (options: {
         return `- ${classLabel} · ${modeLabel} · ${itemLabel} (${entry.path})`;
     });
 };
+
+export const getDocumentStatusFields = (
+    frontmatter: Record<string, unknown>
+): { statusRaw?: string; due?: string } => {
+    const rawStatus = frontmatter['Status'];
+    const statusCandidate = Array.isArray(rawStatus)
+        ? String(rawStatus[0] ?? '').trim()
+        : (typeof rawStatus === 'string' ? rawStatus.trim() : '');
+
+    const rawDue = frontmatter['Due'];
+    const due = typeof rawDue === 'string' ? rawDue.trim() : '';
+
+    return {
+        statusRaw: statusCandidate || undefined,
+        due: due || undefined
+    };
+};
+
+export const countSynopsisWords = (content: string): number => {
+    const trimmed = content.trim();
+    if (!trimmed) return 0;
+    const matches = trimmed.match(/[A-Za-z0-9]+(?:['’'-][A-Za-z0-9]+)*/g);
+    return matches ? matches.length : 0;
+};
+
+/**
+ * Read the authoritative `words` value from frontmatter (written by manuscript export).
+ * Returns null if the field is absent or unparseable, so the caller can fall back to
+ * a live count that aligns with the export algorithm (cleanEvidenceBody + whitespace split).
+ */
+export const readFrontmatterWordCount = (
+    frontmatter: Record<string, unknown>
+): number | null => {
+    const raw = frontmatter['Words'] ?? frontmatter['words'];
+    if (typeof raw === 'number' && Number.isFinite(raw)) return Math.max(0, Math.round(raw));
+    if (typeof raw === 'string') {
+        const parsed = parseFloat(raw.replace(/,/g, '').trim());
+        if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
+    }
+    return null;
+};
+
+export const getOrdinalSuffix = (day: number): string => {
+    const mod100 = day % 100;
+    if (mod100 >= 11 && mod100 <= 13) return 'th';
+    const mod10 = day % 10;
+    if (mod10 === 1) return 'st';
+    if (mod10 === 2) return 'nd';
+    if (mod10 === 3) return 'rd';
+    return 'th';
+};
