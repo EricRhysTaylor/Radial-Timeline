@@ -3,7 +3,11 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 
-// Adjust if you bundle to a single styles.css
+// Full source CSS scope. The hard-FAIL rules (!important, global element
+// selectors, unscoped Obsidian selectors, rt- backslide in rt-ui.css) apply
+// everywhere; the WARN rules (raw-hex / spacing-px / shadow-rgba / rt-legacy)
+// are budgeted against scripts/css-drift-baseline.json so previously-invisible
+// renderer-island debt is frozen, not silently growable.
 const FILES = [
   "src/styles/rt-ui.css",
   "src/styles/settings.css",
@@ -13,6 +17,22 @@ const FILES = [
   "src/styles/book-designer.css",
   "src/styles/legacy/apr-legacy.css",
   "src/styles/legacy/rt-ui-legacy.css",
+  "src/styles/apr-thumb.css",
+  "src/styles/base.css",
+  "src/styles/briefing.css",
+  "src/styles/chronologue-alt.css",
+  "src/styles/chronologue-base.css",
+  "src/styles/chronologue-runtime.css",
+  "src/styles/chronologue-shift.css",
+  "src/styles/drag.css",
+  "src/styles/font.css",
+  "src/styles/grid.css",
+  "src/styles/indicators.css",
+  "src/styles/inquiry.css",
+  "src/styles/pulse.css",
+  "src/styles/scenes.css",
+  "src/styles/timeline.css",
+  "src/styles/variables.css",
   "styles.css", // optional: if your bundler emits this
 ].map((p) => path.join(ROOT, p));
 
