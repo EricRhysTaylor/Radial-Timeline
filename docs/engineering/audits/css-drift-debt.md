@@ -1,6 +1,6 @@
 # CSS Drift Debt
 
-Generated: 2026-05-04T00:18:30.786Z
+Generated: 2026-05-18T15:28:34.394Z
 
 Snapshot of every WARN-level drift hit at the time of baseline reset. Work through these to ratchet the baseline down. After fixing a batch, run `npm run css-drift -- --maintenance --update-baseline` to lock in the new lower ceiling.
 
