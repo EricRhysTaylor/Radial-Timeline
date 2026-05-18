@@ -1992,6 +1992,10 @@ export class InquiryView extends ItemView {
     }
 
     private handleBackgroundRunCompleted(detail: BackgroundRunCompletedDetail): void {
+        // This view may have been opened before the background instance
+        // persisted the completed session; re-sync from the authoritative
+        // cache so peekSession can see it.
+        this.sessionStore.reloadFromSettings();
         const session = this.sessionStore.peekSession(detail.sessionKey);
         const ok = shouldAutoRehydrateReopenedView({
             isRunning: this.state.isRunning,

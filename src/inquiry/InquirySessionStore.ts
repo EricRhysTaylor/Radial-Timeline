@@ -8,9 +8,19 @@ export class InquirySessionStore {
     private saveTimeout: number | null = null;
 
     constructor(private plugin: RadialTimelinePlugin) {
+        this.cache = this.snapshotFromSettings();
+        this.prune();
+    }
+
+    /**
+     * Snapshot + clone the persisted cache from plugin settings. Single
+     * source of truth for both initial construction and reloadFromSettings().
+     * Pure read — does not write or schedule a save.
+     */
+    private snapshotFromSettings(): InquirySessionCache {
         const max = DEFAULT_INQUIRY_HISTORY_LIMIT;
-        const stored = plugin.settings.inquirySessionCache as InquirySessionCache | undefined;
-        this.cache = stored && Array.isArray(stored.sessions)
+        const stored = this.plugin.settings.inquirySessionCache as InquirySessionCache | undefined;
+        const cache: InquirySessionCache = stored && Array.isArray(stored.sessions)
             ? {
                 sessions: stored.sessions.map(session => ({
                     ...session,
@@ -21,7 +31,18 @@ export class InquirySessionStore {
                 max: stored.max || max
             }
             : { sessions: [], max };
-        this.cache.max = max;
+        cache.max = max;
+        return cache;
+    }
+
+    /**
+     * Re-snapshot from the authoritative persisted cache. Lets a view opened
+     * before another instance persisted a session see that session (fixes the
+     * stale per-instance snapshot for background-run completion). Pure re-read:
+     * no persistence write, no semantics change. Idempotent.
+     */
+    reloadFromSettings(): void {
+        this.cache = this.snapshotFromSettings();
         this.prune();
     }
 
