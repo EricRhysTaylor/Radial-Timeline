@@ -8,6 +8,8 @@ import type RadialTimelinePlugin from '../main';
 import type { BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, PublishingValidationSnapshot } from '../types';
 import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
+import { registerRuntimeCommands } from '../RuntimeCommands';
+import type { SceneAnalysisService } from './SceneAnalysisService';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult, type ManuscriptExportOutcome } from '../modals/ManuscriptOptionsModal';
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
@@ -44,9 +46,15 @@ export class CommandRegistrar {
 
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
 
-    registerAll(): void {
+    // Single orchestration point for every command + ribbon registration.
+    // All command paths (registrar-owned, scene-analysis, runtime) flow
+    // through here so there is one canonical answer to "what does this
+    // plugin register" — no parallel wiring in main.ts.
+    registerAll(sceneAnalysisService: SceneAnalysisService): void {
         this.registerRibbon();
         this.registerCommands();
+        sceneAnalysisService.registerCommands();
+        registerRuntimeCommands(this.plugin);
     }
 
     public openManuscriptExportModal(): void {

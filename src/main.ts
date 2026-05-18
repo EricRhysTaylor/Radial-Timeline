@@ -52,7 +52,6 @@ import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getAct
 import { adaptPandocLayoutsToPublishingModel } from './utils/publishingModel';
 import { convertExportProfileToLegacyManuscriptExportTemplate, migratePublishingModelState } from './utils/publishingMigration';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
-import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { PublishingValidationService } from './services/PublishingValidationService';
 import { TimelineAuditAiService } from './services/TimelineAuditAiService';
@@ -118,6 +117,12 @@ export default class RadialTimelinePlugin extends Plugin {
     searchResults: Set<string> = new Set<string>();
     private readonly eventBus = new EventTarget();
     private metadataCacheListener: (() => void) | null = null;
+    // Serialized settings persistence: a single in-flight save drain plus a
+    // coalescing request flag. Concurrent saveSettings() callers never run
+    // saveData() in parallel (no last-writer-wins clobbering); every caller's
+    // mutation is guaranteed to be covered by a save that starts after its call.
+    private saveInFlight: Promise<void> | null = null;
+    private saveRequested = false;
 
     // Services
     private timelineService!: TimelineService;
@@ -451,10 +456,8 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         );
 
-        // Register ribbon + commands
-        this.commandRegistrar.registerAll();
-        this.sceneAnalysisService.registerCommands();
-        registerRuntimeCommands(this);
+        // Register ribbon + commands (single orchestration point)
+        this.commandRegistrar.registerAll(this.sceneAnalysisService);
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
@@ -897,7 +900,24 @@ export default class RadialTimelinePlugin extends Plugin {
         }
     }
 
-    async saveSettings() {
+    async saveSettings(): Promise<void> {
+        this.saveRequested = true;
+        if (!this.saveInFlight) {
+            this.saveInFlight = (async () => {
+                try {
+                    while (this.saveRequested) {
+                        this.saveRequested = false;
+                        await this.performSave();
+                    }
+                } finally {
+                    this.saveInFlight = null;
+                }
+            })();
+        }
+        await this.saveInFlight;
+    }
+
+    private async performSave(): Promise<void> {
         this.syncGossamerRunFilterSettings();
         this.syncLegacySourcePathFromActiveBook();
         this.syncPublishingModelState();
