@@ -3,6 +3,17 @@ import { execSync } from 'node:child_process';
 
 const quiet = process.argv.includes('--quiet');
 
+// Opt-out for verification-gated work (e.g. Step-C/D boundaries that require
+// manual Obsidian verification BEFORE any commit). Set RT_SKIP_AUTO_BACKUP=1
+// in the shell to make every auto-backup path (npm run build /
+// build-with-backup-check.mjs / npm run backup) a no-op: no git add, no
+// commit, no push. Changes stay in the working tree until you commit
+// deliberately. Default (unset) preserves the normal auto-backup behavior.
+if (process.env.RT_SKIP_AUTO_BACKUP === '1') {
+  console.log('[backup] RT_SKIP_AUTO_BACKUP=1 — skipping auto add/commit/push (verification-gated work).');
+  process.exit(0);
+}
+
 function run(cmd) {
   return execSync(cmd, { stdio: 'pipe' }).toString().trim();
 }
