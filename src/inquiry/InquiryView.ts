@@ -373,6 +373,7 @@ import {
 } from './utils/inquiryViewText';
 import { polarToCartesian } from './utils/inquiryGeometry';
 import { RunClockController } from './runtime/RunClockController';
+import { resolveBackgroundCompletionNotice, shouldNotifyStillRunning } from './runtime/backgroundRunNotice';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
 
@@ -408,6 +409,9 @@ export class InquiryView extends ItemView {
     }
 
     private runClockController!: RunClockController;
+    // Set in onClose() when a run is still in flight; read+cleared in the
+    // runInquiry finally to fire the background-completion notice exactly once.
+    private runContinuedAfterClose = false;
     // Resolved 1 Hz tick decision (run active or cache countdown). Set by
     // reconcileEngineTimerInterval; read by the controller host. This is a
     // start/stop decision flag, not HUD/progress state.
@@ -732,6 +736,13 @@ export class InquiryView extends ItemView {
             this.sourcesRefreshTimer = undefined;
         }
         this.payloadStatsRefreshDirty = false;
+        // A run still in flight continues in the background (not cancelled).
+        // Tell the author once; the completion notice fires from runInquiry's
+        // finally. Run/cancel/discard/token semantics are intentionally untouched.
+        if (shouldNotifyStillRunning(this.activeInquiryRunToken !== 0)) {
+            this.runContinuedAfterClose = true;
+            new Notice(t('inquiry.notice.runContinuesAfterClose'));
+        }
         this.contentEl.empty();
     }
 
@@ -6263,6 +6274,9 @@ export class InquiryView extends ItemView {
         this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
         let runTrace: InquiryRunTrace | null = null;
+        // Terminal error state for the background-completion notice. null until
+        // a stable result exists (setup threw -> stays null -> no notice).
+        let runTerminalIsError: boolean | null = null;
         new Notice(t('inquiry.runner.contactingProvider'));
         const submittedAt = new Date();
         const simulationProvider: Exclude<AIProviderId, 'none'> = engineSelection.provider === 'none'
@@ -6335,7 +6349,8 @@ export class InquiryView extends ItemView {
                 result = this.withCitationBindingFailure(result);
             }
 
-            if (!this.isErrorResult(result)) {
+            runTerminalIsError = this.isErrorResult(result);
+            if (!runTerminalIsError) {
                 cacheStatus = 'fresh';
             } else {
                 cacheStatus = 'missing';
@@ -6441,6 +6456,15 @@ export class InquiryView extends ItemView {
             this.currentRunElapsedMs = 0;
             this.currentRunEstimatedMaxMs = 0;
             this.finishInquiryRunToken(runToken);
+            if (this.runContinuedAfterClose) {
+                this.runContinuedAfterClose = false;
+                const notice = resolveBackgroundCompletionNotice(true, runTerminalIsError);
+                if (notice === 'complete') {
+                    new Notice(t('inquiry.notice.runCompleteReopen'));
+                } else if (notice === 'error') {
+                    new Notice(t('inquiry.notice.runErrorReopen'));
+                }
+            }
         }
     }
 

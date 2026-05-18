@@ -783,6 +783,9 @@ export interface TranslationKeys {
             purgedScenes: string;
             purgedScenesWithRearm: string;
             coreSetLoaded: string;
+            runContinuesAfterClose: string;
+            runCompleteReopen: string;
+            runErrorReopen: string;
         };
         interaction: {
             running: string;
@@ -2947,6 +2950,9 @@ export const en: TranslationKeys = {
             purgedScenes: 'Purged Inquiry action items from {{count}} {{sceneWord}}.',
             purgedScenesWithRearm: 'Purged Inquiry action items from {{count}} {{sceneWord}}. Re-armed {{rearmCount}} {{sessionWord}}.',
             coreSetLoaded: '{{label}} loaded.',
+            runContinuesAfterClose: 'Inquiry is still running. Reopen Inquiry View shortly to rehydrate the findings.',
+            runCompleteReopen: 'Inquiry complete. Reopen Inquiry View to rehydrate the findings.',
+            runErrorReopen: 'Inquiry finished with errors. Reopen Inquiry View for details.',
         },
         interaction: {
             running: 'Inquiry running. Please wait.',
