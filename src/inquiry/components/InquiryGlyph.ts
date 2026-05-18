@@ -1,4 +1,5 @@
 import type { InquiryCanonicalQuestionTier } from '../../types/settings';
+import { polarToCartesian } from '../utils/inquiryGeometry';
 import type { InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
 
@@ -714,12 +715,12 @@ export class InquiryGlyph {
         let sweepDeg = safeVisualValue * 360;
         if (sweepDeg > 359.999) sweepDeg = 359.999;
         const endDeg = startDeg + sweepDeg;
-        const start = this.polarToCartesian(radius, startDeg);
-        const end = this.polarToCartesian(radius, endDeg);
+        const start = this.polarToCartesianSvg(radius, startDeg);
+        const end = this.polarToCartesianSvg(radius, endDeg);
         const largeArc = sweepDeg > 180 ? 1 : 0;
         let d = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
         if (safeValue >= 0.9999) {
-            const mid = this.polarToCartesian(radius, startDeg + 180);
+            const mid = this.polarToCartesianSvg(radius, startDeg + 180);
             d = [
                 `M ${start.x} ${start.y}`,
                 `A ${radius} ${radius} 0 1 1 ${mid.x} ${mid.y}`,
@@ -848,11 +849,13 @@ export class InquiryGlyph {
         return `#${((1 << 24) + (dr << 16) + (dg << 8) + db).toString(16).slice(1)}`;
     }
 
-    private polarToCartesian(radius: number, degrees: number): { x: string; y: string } {
-        const radians = (degrees * Math.PI) / 180;
+    // SVG path-serialization boundary: canonical numeric polar math +
+    // fixed 2-decimal precision for compact, stable path `d` strings.
+    private polarToCartesianSvg(radius: number, degrees: number): { x: string; y: string } {
+        const point = polarToCartesian(radius, degrees);
         return {
-            x: (radius * Math.cos(radians)).toFixed(2),
-            y: (radius * Math.sin(radians)).toFixed(2)
+            x: point.x.toFixed(2),
+            y: point.y.toFixed(2)
         };
     }
 }

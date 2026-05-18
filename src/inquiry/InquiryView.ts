@@ -361,6 +361,7 @@ import {
     stripInquiryReferenceArtifacts,
     stripNumericTitlePrefix
 } from './utils/inquiryViewText';
+import { polarToCartesian } from './utils/inquiryGeometry';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
 
@@ -3348,7 +3349,7 @@ export class InquiryView extends ItemView {
         this.zonePromptElements.clear();
 
         zones.forEach(zone => {
-            const pos = this.polarToCartesian(rZone, zone.angle);
+            const pos = polarToCartesian(rZone, zone.angle);
             const zoneEl = createSvgGroup(parent, `ert-inquiry-zone-pod ert-inquiry-zone--${zone.id}`, pos.x, pos.y);
             zoneEl.setAttribute('role', 'button');
             zoneEl.setAttribute('tabindex', '0');
@@ -3399,14 +3400,6 @@ export class InquiryView extends ItemView {
                 }
             });
         });
-    }
-
-    private polarToCartesian(radius: number, degrees: number): { x: number; y: number } {
-        const radians = (degrees * Math.PI) / 180;
-        return {
-            x: radius * Math.cos(radians),
-            y: radius * Math.sin(radians)
-        };
     }
 
     private buildDebugOverlay(parent: SVGElement): void {
