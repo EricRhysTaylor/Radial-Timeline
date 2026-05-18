@@ -372,6 +372,7 @@ import {
     stripNumericTitlePrefix
 } from './utils/inquiryViewText';
 import { polarToCartesian } from './utils/inquiryGeometry';
+import { RunClockController } from './runtime/RunClockController';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
 
@@ -406,7 +407,11 @@ export class InquiryView extends ItemView {
         if (counterKey) this.perfCounters[counterKey]++;
     }
 
-    private updateRunningClockInterval?: number;
+    private runClockController!: RunClockController;
+    // Resolved 1 Hz tick decision (run active or cache countdown). Set by
+    // reconcileEngineTimerInterval; read by the controller host. This is a
+    // start/stop decision flag, not HUD/progress state.
+    private runClockShouldTick = false;
 
     private plugin: RadialTimelinePlugin;
     private state = createDefaultInquiryState();
@@ -600,6 +605,11 @@ export class InquiryView extends ItemView {
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, mappings);
+        this.runClockController = new RunClockController({
+            shouldTick: () => this.runClockShouldTick,
+            onTick: () => this.updateRunningHud()
+        });
+        this.register(() => this.runClockController.dispose());
     }
 
     private registerSvgEvent<TEvent extends Event>(
@@ -689,10 +699,6 @@ export class InquiryView extends ItemView {
     }
 
     async onClose(): Promise<void> {
-        if (this.updateRunningClockInterval) {
-            window.clearInterval(this.updateRunningClockInterval);
-            this.updateRunningClockInterval = undefined;
-        }
         if (this.targetPersistTimer) {
             window.clearTimeout(this.targetPersistTimer);
             this.targetPersistTimer = undefined;
@@ -5724,13 +5730,8 @@ export class InquiryView extends ItemView {
         const cacheActive = typeof hasCacheCountdown === 'boolean'
             ? hasCacheCountdown
             : !!this.getActiveCacheWindowExpiry();
-        const shouldRunTimer = this.state.isRunning || cacheActive;
-        if (shouldRunTimer && !this.updateRunningClockInterval) {
-            this.updateRunningClockInterval = window.setInterval(() => this.updateRunningHud(), 1000);
-        } else if (!shouldRunTimer && this.updateRunningClockInterval) {
-            window.clearInterval(this.updateRunningClockInterval);
-            this.updateRunningClockInterval = undefined;
-        }
+        this.runClockShouldTick = this.state.isRunning || cacheActive;
+        this.runClockController.reconcile();
     }
 
     private resolveGuidanceState(): InquiryGuidanceState {
