@@ -6,7 +6,10 @@ import {
     formatApiErrorReason,
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
+    formatInquiryBriefTimestamp,
+    formatInquiryId,
     formatPendingEditsSuccessMessage,
+    formatRunDurationEstimate,
     formatPendingEditsTargetsTooltip,
     formatSessionOverrides,
     formatSessionProviderModel,
@@ -437,6 +440,49 @@ describe('inquiryViewText', () => {
             expect(formatAuthorFacingErrorDetail(resultWith({ aiReason: 'invalid_response' })))
                 .toBe('Invalid structured response from AI.');
             expect(formatAuthorFacingErrorDetail(resultWith({}))).toBe('');
+        });
+    });
+
+    describe('formatRunDurationEstimate', () => {
+        it('formats seconds with singular/plural and ranges', () => {
+            expect(formatRunDurationEstimate(1, 1)).toBe('1 second');
+            expect(formatRunDurationEstimate(5, 5)).toBe('5 seconds');
+            expect(formatRunDurationEstimate(5, 30)).toBe('5-30 seconds');
+        });
+        it('clamps sub-1 inputs to a 1-second floor', () => {
+            expect(formatRunDurationEstimate(0, 0)).toBe('1 second');
+            expect(formatRunDurationEstimate(-10, 0.4)).toBe('1 second');
+        });
+        it('rolls into minutes with singular/plural and ranges', () => {
+            expect(formatRunDurationEstimate(60, 60)).toBe('1 minute');
+            expect(formatRunDurationEstimate(120, 120)).toBe('2 minutes');
+            expect(formatRunDurationEstimate(90, 300)).toBe('2-5 minutes');
+        });
+    });
+
+    describe('formatInquiryBriefTimestamp', () => {
+        // Local-component Date so getMonth/getHours are timezone-stable.
+        it('formats am/pm with 12-hour wrap', () => {
+            expect(formatInquiryBriefTimestamp(new Date(2026, 4, 18, 13, 5, 9)))
+                .toBe('May 18 2026 @ 1.05pm');
+            expect(formatInquiryBriefTimestamp(new Date(2026, 0, 1, 0, 0, 0)))
+                .toBe('Jan 1 2026 @ 12.00am');
+            expect(formatInquiryBriefTimestamp(new Date(2026, 11, 31, 12, 30, 0)))
+                .toBe('Dec 31 2026 @ 12.30pm');
+        });
+        it('optionally includes zero-padded seconds', () => {
+            expect(formatInquiryBriefTimestamp(new Date(2026, 4, 18, 9, 7, 3), { includeSeconds: true }))
+                .toBe('May 18 2026 @ 9.07.03am');
+        });
+        it('returns Unknown date for an invalid Date', () => {
+            expect(formatInquiryBriefTimestamp(new Date('not-a-date'))).toBe('Unknown date');
+        });
+    });
+
+    describe('formatInquiryId', () => {
+        it('produces a zero-padded sortable id', () => {
+            expect(formatInquiryId(new Date(2026, 0, 5, 4, 8, 2)))
+                .toBe('2026-01-05 04.08.02');
         });
     });
 });

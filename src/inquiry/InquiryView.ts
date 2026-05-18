@@ -341,6 +341,9 @@ import {
     formatAuthorFacingErrorHero,
     formatBriefLabel,
     formatInquiryBriefLink,
+    formatInquiryBriefTimestamp,
+    formatInquiryId,
+    formatRunDurationEstimate,
     formatPendingEditsSuccessMessage,
     formatPendingEditsTargetsTooltip,
     formatSessionOverrides,
@@ -7060,7 +7063,7 @@ export class InquiryView extends ItemView {
     private async saveOmnibusIndexNote(briefPaths: string[], scopeLabel: string): Promise<string | null> {
         const folder = await ensureInquiryArtifactFolder(this.app);
         if (!folder) return null;
-        const timestamp = this.formatInquiryBriefTimestamp(new Date());
+        const timestamp = formatInquiryBriefTimestamp(new Date());
         const scopeTitle = this.state.scope === 'saga' ? 'Saga' : `Book ${scopeLabel}`;
         const title = `Inquiry Omnibus — ${scopeTitle} ${timestamp}`;
         const filePath = this.getAvailableArtifactPath(folder.path, title);
@@ -9390,22 +9393,6 @@ export class InquiryView extends ItemView {
         this.updateRunningState();
     }
 
-    private formatRunDurationEstimate(minSeconds: number, maxSeconds: number): string {
-        const min = Math.max(1, Math.round(minSeconds));
-        const max = Math.max(min, Math.round(maxSeconds));
-        if (max < 60) {
-            if (min === max) {
-                return `${min} ${min === 1 ? 'second' : 'seconds'}`;
-            }
-            return `${min}-${max} seconds`;
-        }
-        const minMinutes = Math.max(1, Math.round(min / 60));
-        const maxMinutes = Math.max(minMinutes, Math.round(max / 60));
-        if (minMinutes === maxMinutes) {
-            return `${minMinutes} ${minMinutes === 1 ? 'minute' : 'minutes'}`;
-        }
-        return `${minMinutes}-${maxMinutes} minutes`;
-    }
 
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
         const readinessUi = this.buildReadinessUiState();
@@ -9449,7 +9436,7 @@ export class InquiryView extends ItemView {
     private buildRunningStatusNote(questionText: string): string {
         if (!this.cachedRunningStatusStatic || this.cachedRunningStatusQuestion !== questionText) {
             const estimate = this.estimateRunDurationRange(questionText);
-            const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+            const estimateLabel = formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
             const evidenceMode = this.describeRunEvidenceMode();
             this.cachedRunningStatusStatic = t('inquiry.runner.running', { evidenceMode, estimateLabel });
             this.cachedRunningStatusQuestion = questionText;
@@ -9825,7 +9812,7 @@ export class InquiryView extends ItemView {
 
     private async promptCancelInquiryRun(questionText: string): Promise<boolean> {
         const estimate = this.estimateRunDurationRange(questionText);
-        const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+        const estimateLabel = formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
         return await new Promise<boolean>(resolve => {
             const modal = new InquiryCancelRunModal(
                 this.app,
@@ -11830,7 +11817,7 @@ export class InquiryView extends ItemView {
 
     private formatInquiryLogTitle(result: InquiryResult): string {
         const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
-        const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
+        const timestamp = formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
@@ -11851,7 +11838,7 @@ export class InquiryView extends ItemView {
 
     private formatInquiryContentLogTitle(result: InquiryResult): string {
         const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
-        const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
+        const timestamp = formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
@@ -11882,7 +11869,7 @@ export class InquiryView extends ItemView {
 
     private formatInquiryBriefTitle(result: InquiryResult): string {
         const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
-        const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
+        const timestamp = formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
@@ -11968,34 +11955,6 @@ export class InquiryView extends ItemView {
         return null;
     }
 
-    private formatInquiryBriefTimestamp(date: Date, options?: { includeSeconds?: boolean }): string {
-        if (!Number.isFinite(date.getTime())) {
-            return 'Unknown date';
-        }
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const day = date.getDate();
-        const year = date.getFullYear();
-        let hours = date.getHours();
-        const minutes = date.getMinutes();
-        const seconds = date.getSeconds();
-        const am = hours < 12;
-        hours = hours % 12;
-        if (hours === 0) hours = 12;
-        const minuteText = String(minutes).padStart(2, '0');
-        const includeSeconds = options?.includeSeconds ?? false;
-        const secondText = includeSeconds ? `.${String(seconds).padStart(2, '0')}` : '';
-        return `${month} ${day} ${year} @ ${hours}.${minuteText}${secondText}${am ? 'am' : 'pm'}`;
-    }
-
-    private stringifyLogValue(value: unknown): string {
-        if (value === undefined) return 'undefined';
-        try {
-            return JSON.stringify(value, null, 2);
-        } catch {
-            return String(value);
-        }
-    }
 
     private getInquiryTimestamp(result: InquiryResult, fallbackToNow = false): Date | null {
         const completedAt = result.completedAt ? new Date(result.completedAt) : null;
@@ -12010,20 +11969,11 @@ export class InquiryView extends ItemView {
         return null;
     }
 
-    private formatInquiryId(date: Date): string {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hours}.${minutes}.${seconds}`;
-    }
 
     private formatInquiryIdFromResult(result: InquiryResult): string | null {
         const timestamp = this.getInquiryTimestamp(result);
         if (!timestamp) return null;
-        return this.formatInquiryId(timestamp);
+        return formatInquiryId(timestamp);
     }
 
     private formatInquiryActionNote(
@@ -12067,13 +12017,6 @@ export class InquiryView extends ItemView {
         return headline || null;
     }
 
-    private formatRoundTripDuration(ms: number): string {
-        if (!Number.isFinite(ms) || ms <= 0) return '0s';
-        const seconds = ms / 1000;
-        if (seconds < 1) return `${Math.round(ms)}ms`;
-        const rounded = seconds >= 10 ? seconds.toFixed(1) : seconds.toFixed(2);
-        return `${rounded.replace(/\.0+$/, '')}s`;
-    }
 
     private getAvailableArtifactPath(folderPath: string, baseName: string): string {
         const sanitizedFolder = normalizePath(folderPath);

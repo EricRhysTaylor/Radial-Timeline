@@ -543,6 +543,56 @@ export const extractSpendCapResetDate = (detail?: string | null): string | null 
     return match[2] ? `${match[1]} ${match[2]} UTC` : match[1];
 };
 
+export const formatRunDurationEstimate = (minSeconds: number, maxSeconds: number): string => {
+    const min = Math.max(1, Math.round(minSeconds));
+    const max = Math.max(min, Math.round(maxSeconds));
+    if (max < 60) {
+        if (min === max) {
+            return `${min} ${min === 1 ? 'second' : 'seconds'}`;
+        }
+        return `${min}-${max} seconds`;
+    }
+    const minMinutes = Math.max(1, Math.round(min / 60));
+    const maxMinutes = Math.max(minMinutes, Math.round(max / 60));
+    if (minMinutes === maxMinutes) {
+        return `${minMinutes} ${minMinutes === 1 ? 'minute' : 'minutes'}`;
+    }
+    return `${minMinutes}-${maxMinutes} minutes`;
+};
+
+export const formatInquiryBriefTimestamp = (
+    date: Date,
+    options?: { includeSeconds?: boolean }
+): string => {
+    if (!Number.isFinite(date.getTime())) {
+        return 'Unknown date';
+    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const am = hours < 12;
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    const minuteText = String(minutes).padStart(2, '0');
+    const includeSeconds = options?.includeSeconds ?? false;
+    const secondText = includeSeconds ? `.${String(seconds).padStart(2, '0')}` : '';
+    return `${month} ${day} ${year} @ ${hours}.${minuteText}${secondText}${am ? 'am' : 'pm'}`;
+};
+
+export const formatInquiryId = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}.${minutes}.${seconds}`;
+};
+
 export const formatAuthorFacingErrorDetail = (result: InquiryResult): string => {
     if (result.aiReason === 'spend_cap') {
         const reset = extractSpendCapResetDate(result.aiErrorDetail);
