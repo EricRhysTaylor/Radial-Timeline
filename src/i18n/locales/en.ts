@@ -786,6 +786,8 @@ export interface TranslationKeys {
             runContinuesAfterClose: string;
             runCompleteReopen: string;
             runErrorReopen: string;
+            runCompleteLoaded: string;
+            runErrorLoaded: string;
         };
         interaction: {
             running: string;
@@ -2953,6 +2955,8 @@ export const en: TranslationKeys = {
             runContinuesAfterClose: 'Inquiry is still running. Reopen Inquiry View shortly to rehydrate the findings.',
             runCompleteReopen: 'Inquiry complete. Reopen Inquiry View to rehydrate the findings.',
             runErrorReopen: 'Inquiry finished with errors. Reopen Inquiry View for details.',
+            runCompleteLoaded: 'Inquiry complete. Findings loaded.',
+            runErrorLoaded: 'Inquiry finished with errors. Details loaded.',
         },
         interaction: {
             running: 'Inquiry running. Please wait.',

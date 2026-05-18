@@ -373,7 +373,13 @@ import {
 } from './utils/inquiryViewText';
 import { polarToCartesian } from './utils/inquiryGeometry';
 import { RunClockController } from './runtime/RunClockController';
-import { resolveBackgroundCompletionNotice, shouldNotifyStillRunning } from './runtime/backgroundRunNotice';
+import {
+    BACKGROUND_RUN_COMPLETED_EVENT,
+    type BackgroundRunCompletedDetail,
+    resolveBackgroundCompletionNotice,
+    shouldAutoRehydrateReopenedView,
+    shouldNotifyStillRunning
+} from './runtime/backgroundRunNotice';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
 
@@ -614,6 +620,10 @@ export class InquiryView extends ItemView {
             onTick: () => this.updateRunningHud()
         });
         this.register(() => this.runClockController.dispose());
+        this.register(this.plugin.subscribe<BackgroundRunCompletedDetail>(
+            BACKGROUND_RUN_COMPLETED_EVENT,
+            detail => this.handleBackgroundRunCompleted(detail)
+        ));
     }
 
     private registerSvgEvent<TEvent extends Event>(
@@ -1979,6 +1989,28 @@ export class InquiryView extends ItemView {
         }
 
         return { purgedCount, totalScenes: scenes.length };
+    }
+
+    private handleBackgroundRunCompleted(detail: BackgroundRunCompletedDetail): void {
+        const session = this.sessionStore.peekSession(detail.sessionKey);
+        const ok = shouldAutoRehydrateReopenedView({
+            isRunning: this.state.isRunning,
+            activeRunToken: this.activeInquiryRunToken,
+            currentSessionId: this.state.activeSessionId,
+            eventSessionKey: detail.sessionKey,
+            sessionExists: !!session,
+            pristine: this.startupFreshMode,
+            alreadyHandled: detail.handled
+        });
+        if (!ok || !session) return;
+        // Mark handled BEFORE rehydrating so the emitter skips the "reopen"
+        // notice and any second listener no-ops. Reuses the existing rehydrate
+        // path (activateSession) — error results show the error UI there.
+        detail.handled = true;
+        this.activateSession(session);
+        new Notice(detail.isError
+            ? t('inquiry.notice.runErrorLoaded')
+            : t('inquiry.notice.runCompleteLoaded'));
     }
 
     private activateSession(session: InquirySession): void {
@@ -6277,6 +6309,9 @@ export class InquiryView extends ItemView {
         // Terminal error state for the background-completion notice. null until
         // a stable result exists (setup threw -> stays null -> no notice).
         let runTerminalIsError: boolean | null = null;
+        // Persisted session key for background-completion auto-rehydrate.
+        // Null until the session is actually stored (nothing to rehydrate).
+        let completedSessionKey: string | null = null;
         new Notice(t('inquiry.runner.contactingProvider'));
         const submittedAt = new Date();
         const simulationProvider: Exclude<AIProviderId, 'none'> = engineSelection.provider === 'none'
@@ -6395,6 +6430,7 @@ export class InquiryView extends ItemView {
                         : undefined));
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
             this.sessionStore.setSession(session);
+            completedSessionKey = session.key;
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
             await this.saveInquiryLog(result, traceForLog, manifest, {
@@ -6459,10 +6495,27 @@ export class InquiryView extends ItemView {
             if (this.runContinuedAfterClose) {
                 this.runContinuedAfterClose = false;
                 const notice = resolveBackgroundCompletionNotice(true, runTerminalIsError);
-                if (notice === 'complete') {
-                    new Notice(t('inquiry.notice.runCompleteReopen'));
-                } else if (notice === 'error') {
-                    new Notice(t('inquiry.notice.runErrorReopen'));
+                if (notice !== 'none') {
+                    const isError = notice === 'error';
+                    // Offer the completed run to any open, pristine, idle view.
+                    // If one auto-rehydrates it sets detail.handled and shows
+                    // its own "loaded" notice; otherwise fall back to the
+                    // C1.1 "reopen" notice.
+                    let handled = false;
+                    if (completedSessionKey) {
+                        const detail: BackgroundRunCompletedDetail = {
+                            sessionKey: completedSessionKey,
+                            isError,
+                            handled: false
+                        };
+                        this.plugin.dispatch(BACKGROUND_RUN_COMPLETED_EVENT, detail);
+                        handled = detail.handled;
+                    }
+                    if (!handled) {
+                        new Notice(isError
+                            ? t('inquiry.notice.runErrorReopen')
+                            : t('inquiry.notice.runCompleteReopen'));
+                    }
                 }
             }
         }
