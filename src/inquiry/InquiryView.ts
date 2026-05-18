@@ -34,7 +34,6 @@ import {
     InquiryScope,
     InquiryStaleDiagnosis,
     InquiryStaleReason,
-    InquiryTokenUsageScope,
     InquiryZone
 } from './state';
 import { replayTransientClass } from '../utils/domClassEffects';
@@ -337,6 +336,9 @@ import {
     buildSceneDossierBodyLines,
     buildSceneDossierHeader,
     countSynopsisWords,
+    formatApiErrorReason,
+    formatAuthorFacingErrorDetail,
+    formatAuthorFacingErrorHero,
     formatBriefLabel,
     formatInquiryBriefLink,
     formatPendingEditsSuccessMessage,
@@ -345,6 +347,7 @@ import {
     formatSessionProviderModel,
     formatSessionScope,
     formatSessionTime,
+    formatTokenUsageVisibility,
     getDocumentStatusFields,
     getOrdinalSuffix,
     getSceneNoteSortOrder,
@@ -1141,7 +1144,7 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         if (!result) return null;
         if (!this.isErrorResult(result)) return null;
-        const hero = this.formatAuthorFacingErrorHero(result);
+        const hero = formatAuthorFacingErrorHero(result);
         const detail = result.aiErrorDetail ? `\n${result.aiErrorDetail}` : '';
         return {
             message: `${hero}${detail}\nOpen Inquiry Log for detailed error report.`
@@ -1966,7 +1969,7 @@ export class InquiryView extends ItemView {
             questionZone: session.questionZone
         }, 'fresh');
         if (this.isErrorResult(session.result)) {
-            this.setApiStatus('error', this.formatApiErrorReason(session.result));
+            this.setApiStatus('error', formatApiErrorReason(session.result));
         } else {
             this.setApiStatus('success');
         }
@@ -5600,8 +5603,8 @@ export class InquiryView extends ItemView {
             this.previewHideTimer = undefined;
         }
         const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
-        const hero = this.formatAuthorFacingErrorHero(result);
-        const meta = this.formatAuthorFacingErrorDetail(result);
+        const hero = formatAuthorFacingErrorHero(result);
+        const meta = formatAuthorFacingErrorDetail(result);
         const emptyRows = Array(this.previewRows.length || 6).fill('');
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-error');
@@ -6502,7 +6505,7 @@ export class InquiryView extends ItemView {
                 questionZone: session.questionZone
             }, cacheStatus);
             if (this.isErrorResult(result)) {
-                this.setApiStatus('error', this.formatApiErrorReason(result));
+                this.setApiStatus('error', formatApiErrorReason(result));
             } else {
                 this.setApiStatus('success');
             }
@@ -6780,7 +6783,7 @@ export class InquiryView extends ItemView {
                     questionZone: lastSession.questionZone
                 }, 'missing');
                 if (this.isErrorResult(lastResult)) {
-                    this.setApiStatus('error', this.formatApiErrorReason(lastResult));
+                    this.setApiStatus('error', formatApiErrorReason(lastResult));
                 } else {
                     this.setApiStatus('success');
                 }
@@ -6950,7 +6953,7 @@ export class InquiryView extends ItemView {
                     questionZone: lastSession.questionZone
                 }, 'missing');
                 if (this.isErrorResult(lastResult)) {
-                    this.setApiStatus('error', this.formatApiErrorReason(lastResult));
+                    this.setApiStatus('error', formatApiErrorReason(lastResult));
                 } else {
                     this.setApiStatus('success');
                 }
@@ -7703,80 +7706,6 @@ export class InquiryView extends ItemView {
             }
         }
         return outcome ?? 'skipped';
-    }
-
-    private formatApiErrorClassification(result: InquiryResult): string {
-        const status = result.aiStatus || 'unknown';
-        const reason = result.aiReason;
-        const reasonText = reason ? `${status} (${reason})` : status;
-        const executionBits: string[] = [];
-        if (result.executionState) executionBits.push(`state=${result.executionState}`);
-        if (result.executionPath) executionBits.push(`path=${result.executionPath}`);
-        if (result.failureStage) executionBits.push(`stage=${result.failureStage}`);
-        if (typeof result.tokenUsageKnown === 'boolean') {
-            executionBits.push(`usage=${this.formatTokenUsageVisibility(result.tokenUsageKnown, result.tokenUsageScope)}`);
-        }
-        return executionBits.length
-            ? `${reasonText} [${executionBits.join(', ')}]`
-            : reasonText;
-    }
-
-    private formatApiErrorReason(result: InquiryResult): string {
-        const classification = this.formatApiErrorClassification(result);
-        if (result.aiErrorDetail) {
-            return `${classification}\n${result.aiErrorDetail}`;
-        }
-        return classification;
-    }
-
-    private formatAuthorFacingErrorHero(result: InquiryResult): string {
-        const status = result.aiStatus;
-        const reason = result.aiReason;
-        if (status === 'rejected' && reason === 'spend_cap') return 'Monthly spend cap reached.';
-        if (status === 'rejected' && reason === 'quota_exceeded') return 'OpenAI API quota exceeded.';
-        if (status === 'rejected' && reason === 'invalid_response') return 'Briefing received with errors.';
-        if (status === 'rejected' && reason === 'citation_binding_failed') return 'AI response could not be matched to this corpus.';
-        if (status === 'rejected' && reason === 'multi_pass_failed') return 'Multi-pass analysis could not complete.';
-        if (status === 'rejected' && reason === 'unsupported_param') return 'Request rejected by provider.';
-        if (status === 'rejected') return 'Request rejected by provider.';
-        if (status === 'auth') return 'Authentication failed.';
-        if (status === 'timeout') return 'Request timed out.';
-        if (status === 'rate_limit') return 'Rate limit reached. Try again shortly.';
-        if (status === 'unavailable') return 'Provider unavailable.';
-        return 'Inquiry could not complete.';
-    }
-
-    private formatAuthorFacingErrorDetail(result: InquiryResult): string {
-        if (result.aiReason === 'spend_cap') {
-            const reset = this.extractSpendCapResetDate(result.aiErrorDetail);
-            const resetLine = reset ? ` Resets ${reset}.` : '';
-            return `This is your own monthly spending cap in the Anthropic Console (Limits → Spend limits) — not an API tier rate limit.${resetLine} Raise it in Console → Limits, or wait for the reset.`;
-        }
-        if (result.aiReason === 'quota_exceeded') {
-            return 'Your OpenAI API account has run out of quota, credits, or billing allowance. Add funds or raise the API billing limit in the OpenAI dashboard, then retry. ChatGPT subscription quota is separate from API billing.';
-        }
-        if (result.aiErrorDetail) return result.aiErrorDetail;
-        if (result.aiReason === 'citation_binding_failed') return 'No findings could be placed on the minimap.';
-        if (result.aiReason === 'invalid_response') return 'Invalid structured response from AI.';
-        return '';
-    }
-
-    private extractSpendCapResetDate(detail?: string | null): string | null {
-        if (!detail) return null;
-        const match = detail.match(/on\s+(\d{4}-\d{2}-\d{2})(?:\s+at\s+(\d{2}:\d{2})\s+UTC)?/i);
-        if (!match) return null;
-        return match[2] ? `${match[1]} ${match[2]} UTC` : match[1];
-    }
-
-    private formatTokenUsageVisibility(
-        known: boolean,
-        scope?: InquiryTokenUsageScope
-    ): string {
-        if (!known) return 'unknown';
-        if (scope === 'full') return 'full multi-pass';
-        if (scope === 'partial') return 'partial multi-pass';
-        if (scope === 'synthesis_only') return 'synthesis-only';
-        return 'known';
     }
 
     private applyExecutionObservabilityFromTrace(
@@ -11851,7 +11780,7 @@ export class InquiryView extends ItemView {
                 getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
                 getTokenTier: this.getTokenTier.bind(this),
                 buildInquiryLogCostEstimateInput: this.buildInquiryLogCostEstimateInput.bind(this),
-                formatTokenUsageVisibility: this.formatTokenUsageVisibility.bind(this),
+                formatTokenUsageVisibility,
                 isErrorResult: this.isErrorResult.bind(this),
                 isDegradedResult: this.isDegradedResult.bind(this),
                 formatMetricDisplay: this.formatMetricDisplay.bind(this),
@@ -11890,7 +11819,7 @@ export class InquiryView extends ItemView {
                 getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
                 getTokenTier: this.getTokenTier.bind(this),
                 buildInquiryLogCostEstimateInput: this.buildInquiryLogCostEstimateInput.bind(this),
-                formatTokenUsageVisibility: this.formatTokenUsageVisibility.bind(this),
+                formatTokenUsageVisibility,
                 isErrorResult: this.isErrorResult.bind(this),
                 isDegradedResult: this.isDegradedResult.bind(this),
                 formatMetricDisplay: this.formatMetricDisplay.bind(this),

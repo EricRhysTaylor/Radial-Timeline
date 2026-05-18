@@ -297,10 +297,11 @@ describe('InquiryView payload accounting', () => {
     });
 
     it('uses explicit OpenAI quota-exceeded copy for provider quota failures', () => {
-        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
-        expect(viewSource.includes("reason === 'quota_exceeded') return 'OpenAI API quota exceeded.'")).toBe(true);
-        expect(viewSource.includes('Your OpenAI API account has run out of quota, credits, or billing allowance.')).toBe(true);
-        expect(viewSource.includes('ChatGPT subscription quota is separate from API billing.')).toBe(true);
+        // Author-facing error copy now lives in the canonical inquiryViewText module.
+        const textSource = readFileSync(resolve(process.cwd(), 'src/inquiry/utils/inquiryViewText.ts'), 'utf8');
+        expect(textSource.includes("reason === 'quota_exceeded') return 'OpenAI API quota exceeded.'")).toBe(true);
+        expect(textSource.includes('Your OpenAI API account has run out of quota, credits, or billing allowance.')).toBe(true);
+        expect(textSource.includes('ChatGPT subscription quota is separate from API billing.')).toBe(true);
     });
 
     it('passes actual usage-based cost into the engine popover recent-run snapshot', () => {

@@ -1,6 +1,6 @@
 import type { SceneInclusion } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
-import type { InquiryFinding, InquiryResult, InquiryScope } from '../state';
+import type { InquiryFinding, InquiryResult, InquiryScope, InquiryTokenUsageScope } from '../state';
 import type { InquiryBriefModel, InquirySceneDossier } from '../types/inquiryViewTypes';
 import type { InquirySession } from '../sessionTypes';
 import { getModelDisplayName } from '../../utils/modelResolver';
@@ -482,4 +482,78 @@ export const formatSessionOverrides = (session: InquirySession): string | null =
     const summary = result.corpusOverrideSummary;
     if (!summary) return 'Overrides on';
     return `Overrides ${summary.classCount}c/${summary.itemCount}i`;
+};
+
+export const formatTokenUsageVisibility = (
+    known: boolean,
+    scope?: InquiryTokenUsageScope
+): string => {
+    if (!known) return 'unknown';
+    if (scope === 'full') return 'full multi-pass';
+    if (scope === 'partial') return 'partial multi-pass';
+    if (scope === 'synthesis_only') return 'synthesis-only';
+    return 'known';
+};
+
+export const formatApiErrorClassification = (result: InquiryResult): string => {
+    const status = result.aiStatus || 'unknown';
+    const reason = result.aiReason;
+    const reasonText = reason ? `${status} (${reason})` : status;
+    const executionBits: string[] = [];
+    if (result.executionState) executionBits.push(`state=${result.executionState}`);
+    if (result.executionPath) executionBits.push(`path=${result.executionPath}`);
+    if (result.failureStage) executionBits.push(`stage=${result.failureStage}`);
+    if (typeof result.tokenUsageKnown === 'boolean') {
+        executionBits.push(`usage=${formatTokenUsageVisibility(result.tokenUsageKnown, result.tokenUsageScope)}`);
+    }
+    return executionBits.length
+        ? `${reasonText} [${executionBits.join(', ')}]`
+        : reasonText;
+};
+
+export const formatApiErrorReason = (result: InquiryResult): string => {
+    const classification = formatApiErrorClassification(result);
+    if (result.aiErrorDetail) {
+        return `${classification}\n${result.aiErrorDetail}`;
+    }
+    return classification;
+};
+
+export const formatAuthorFacingErrorHero = (result: InquiryResult): string => {
+    const status = result.aiStatus;
+    const reason = result.aiReason;
+    if (status === 'rejected' && reason === 'spend_cap') return 'Monthly spend cap reached.';
+    if (status === 'rejected' && reason === 'quota_exceeded') return 'OpenAI API quota exceeded.';
+    if (status === 'rejected' && reason === 'invalid_response') return 'Briefing received with errors.';
+    if (status === 'rejected' && reason === 'citation_binding_failed') return 'AI response could not be matched to this corpus.';
+    if (status === 'rejected' && reason === 'multi_pass_failed') return 'Multi-pass analysis could not complete.';
+    if (status === 'rejected' && reason === 'unsupported_param') return 'Request rejected by provider.';
+    if (status === 'rejected') return 'Request rejected by provider.';
+    if (status === 'auth') return 'Authentication failed.';
+    if (status === 'timeout') return 'Request timed out.';
+    if (status === 'rate_limit') return 'Rate limit reached. Try again shortly.';
+    if (status === 'unavailable') return 'Provider unavailable.';
+    return 'Inquiry could not complete.';
+};
+
+export const extractSpendCapResetDate = (detail?: string | null): string | null => {
+    if (!detail) return null;
+    const match = detail.match(/on\s+(\d{4}-\d{2}-\d{2})(?:\s+at\s+(\d{2}:\d{2})\s+UTC)?/i);
+    if (!match) return null;
+    return match[2] ? `${match[1]} ${match[2]} UTC` : match[1];
+};
+
+export const formatAuthorFacingErrorDetail = (result: InquiryResult): string => {
+    if (result.aiReason === 'spend_cap') {
+        const reset = extractSpendCapResetDate(result.aiErrorDetail);
+        const resetLine = reset ? ` Resets ${reset}.` : '';
+        return `This is your own monthly spending cap in the Anthropic Console (Limits → Spend limits) — not an API tier rate limit.${resetLine} Raise it in Console → Limits, or wait for the reset.`;
+    }
+    if (result.aiReason === 'quota_exceeded') {
+        return 'Your OpenAI API account has run out of quota, credits, or billing allowance. Add funds or raise the API billing limit in the OpenAI dashboard, then retry. ChatGPT subscription quota is separate from API billing.';
+    }
+    if (result.aiErrorDetail) return result.aiErrorDetail;
+    if (result.aiReason === 'citation_binding_failed') return 'No findings could be placed on the minimap.';
+    if (result.aiReason === 'invalid_response') return 'Invalid structured response from AI.';
+    return '';
 };

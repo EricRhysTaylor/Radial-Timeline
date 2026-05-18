@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
     countSynopsisWords,
+    extractSpendCapResetDate,
+    formatApiErrorClassification,
+    formatApiErrorReason,
+    formatAuthorFacingErrorDetail,
+    formatAuthorFacingErrorHero,
     formatPendingEditsSuccessMessage,
     formatPendingEditsTargetsTooltip,
     formatSessionOverrides,
     formatSessionProviderModel,
     formatSessionScope,
+    formatTokenUsageVisibility,
     getDocumentStatusFields,
     getOrdinalSuffix,
     readFrontmatterWordCount,
@@ -330,6 +336,107 @@ describe('inquiryViewText', () => {
     describe('formatSessionProviderModel', () => {
         it('reports Engine unknown when no model is resolved or requested', () => {
             expect(formatSessionProviderModel({ result: sessionWith({}) } as never)).toBe('Engine unknown');
+        });
+    });
+
+    const resultWith = (r: Record<string, unknown>): InquiryResult =>
+        r as unknown as InquiryResult;
+
+    describe('formatTokenUsageVisibility', () => {
+        it('returns unknown when usage is not known', () => {
+            expect(formatTokenUsageVisibility(false)).toBe('unknown');
+            expect(formatTokenUsageVisibility(false, 'full')).toBe('unknown');
+        });
+        it('maps each known scope', () => {
+            expect(formatTokenUsageVisibility(true, 'full')).toBe('full multi-pass');
+            expect(formatTokenUsageVisibility(true, 'partial')).toBe('partial multi-pass');
+            expect(formatTokenUsageVisibility(true, 'synthesis_only')).toBe('synthesis-only');
+            expect(formatTokenUsageVisibility(true)).toBe('known');
+        });
+    });
+
+    describe('formatApiErrorClassification', () => {
+        it('formats status with and without a reason', () => {
+            expect(formatApiErrorClassification(resultWith({ aiStatus: 'rejected', aiReason: 'spend_cap' })))
+                .toBe('rejected (spend_cap)');
+            expect(formatApiErrorClassification(resultWith({ aiStatus: 'timeout' }))).toBe('timeout');
+            expect(formatApiErrorClassification(resultWith({}))).toBe('unknown');
+        });
+        it('appends execution + usage bits when present', () => {
+            expect(formatApiErrorClassification(resultWith({
+                aiStatus: 'rejected',
+                aiReason: 'multi_pass_failed',
+                executionState: 'failed',
+                executionPath: 'segmented',
+                failureStage: 'synthesis',
+                tokenUsageKnown: true,
+                tokenUsageScope: 'partial'
+            }))).toBe('rejected (multi_pass_failed) [state=failed, path=segmented, stage=synthesis, usage=partial multi-pass]');
+        });
+    });
+
+    describe('formatApiErrorReason', () => {
+        it('appends aiErrorDetail on a new line when present', () => {
+            expect(formatApiErrorReason(resultWith({ aiStatus: 'auth', aiErrorDetail: 'bad key' })))
+                .toBe('auth\nbad key');
+        });
+        it('returns just the classification when no detail', () => {
+            expect(formatApiErrorReason(resultWith({ aiStatus: 'auth' }))).toBe('auth');
+        });
+    });
+
+    describe('formatAuthorFacingErrorHero', () => {
+        it('maps rejected reasons to author-facing copy', () => {
+            const hero = (aiStatus: string, aiReason?: string) =>
+                formatAuthorFacingErrorHero(resultWith({ aiStatus, aiReason }));
+            expect(hero('rejected', 'spend_cap')).toBe('Monthly spend cap reached.');
+            expect(hero('rejected', 'quota_exceeded')).toBe('OpenAI API quota exceeded.');
+            expect(hero('rejected', 'invalid_response')).toBe('Briefing received with errors.');
+            expect(hero('rejected', 'citation_binding_failed')).toBe('AI response could not be matched to this corpus.');
+            expect(hero('rejected', 'multi_pass_failed')).toBe('Multi-pass analysis could not complete.');
+            expect(hero('rejected', 'unsupported_param')).toBe('Request rejected by provider.');
+            expect(hero('rejected')).toBe('Request rejected by provider.');
+            expect(hero('auth')).toBe('Authentication failed.');
+            expect(hero('timeout')).toBe('Request timed out.');
+            expect(hero('rate_limit')).toBe('Rate limit reached. Try again shortly.');
+            expect(hero('unavailable')).toBe('Provider unavailable.');
+            expect(hero('something-else')).toBe('Inquiry could not complete.');
+        });
+    });
+
+    describe('extractSpendCapResetDate', () => {
+        it('returns null for missing or non-matching detail', () => {
+            expect(extractSpendCapResetDate(null)).toBeNull();
+            expect(extractSpendCapResetDate('')).toBeNull();
+            expect(extractSpendCapResetDate('no date here')).toBeNull();
+        });
+        it('extracts a bare date and a date+time UTC', () => {
+            expect(extractSpendCapResetDate('Resets on 2026-06-01.')).toBe('2026-06-01');
+            expect(extractSpendCapResetDate('on 2026-06-01 at 00:00 UTC')).toBe('2026-06-01 00:00 UTC');
+        });
+    });
+
+    describe('formatAuthorFacingErrorDetail', () => {
+        it('explains the spend cap with and without a reset line', () => {
+            const withReset = formatAuthorFacingErrorDetail(resultWith({
+                aiReason: 'spend_cap', aiErrorDetail: 'on 2026-06-01 at 00:00 UTC'
+            }));
+            expect(withReset).toContain('Anthropic Console');
+            expect(withReset).toContain('Resets 2026-06-01 00:00 UTC.');
+            const noReset = formatAuthorFacingErrorDetail(resultWith({ aiReason: 'spend_cap' }));
+            expect(noReset).toContain('Anthropic Console');
+            expect(noReset).not.toContain('Resets');
+        });
+        it('covers quota, passthrough, citation, invalid, and empty default', () => {
+            expect(formatAuthorFacingErrorDetail(resultWith({ aiReason: 'quota_exceeded' })))
+                .toContain('OpenAI API account');
+            expect(formatAuthorFacingErrorDetail(resultWith({ aiErrorDetail: 'raw detail' })))
+                .toBe('raw detail');
+            expect(formatAuthorFacingErrorDetail(resultWith({ aiReason: 'citation_binding_failed' })))
+                .toBe('No findings could be placed on the minimap.');
+            expect(formatAuthorFacingErrorDetail(resultWith({ aiReason: 'invalid_response' })))
+                .toBe('Invalid structured response from AI.');
+            expect(formatAuthorFacingErrorDetail(resultWith({}))).toBe('');
         });
     });
 });
