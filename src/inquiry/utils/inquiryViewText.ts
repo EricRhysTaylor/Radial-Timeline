@@ -4,6 +4,7 @@ import type { InquiryFinding, InquiryResult, InquiryScope, InquiryStaleReason, I
 import { SIGMA_CHAR } from '../constants/inquiryUi';
 import type { InquiryBriefModel, InquirySceneDossier } from '../types/inquiryViewTypes';
 import type { InquirySession } from '../sessionTypes';
+import type { InquiryCorpusItem } from '../services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../../utils/modelResolver';
 import { t } from '../../i18n';
 
@@ -722,4 +723,34 @@ export const sanitizeInquirySummary = (rawSummary?: string | null): string => {
     }
 
     return text || fallback;
+};
+
+export const resolveFindingChipLabel = (
+    finding: InquiryFinding,
+    result: InquiryResult,
+    items: InquiryCorpusItem[]
+): string | null => {
+    const refId = finding.refId?.trim();
+    if (!refId) return null;
+    const refLower = refId.toLowerCase();
+
+    const displayMatch = items.find(item => item.displayLabel.toLowerCase() === refLower);
+    if (displayMatch) return displayMatch.displayLabel;
+
+    const idMatch = items.find(item => item.id === refId || item.id.toLowerCase() === refLower);
+    if (idMatch) return idMatch.displayLabel;
+
+    const sceneIdMatch = items.find(item => typeof item.sceneId === 'string' && item.sceneId.toLowerCase() === refLower);
+    if (sceneIdMatch) return sceneIdMatch.displayLabel;
+
+    const pathMatch = items.find(item => item.filePaths?.some(path => path === refId));
+    if (pathMatch) return pathMatch.displayLabel;
+
+    const scopePrefix = result.scope === 'saga' ? 'B' : 'S';
+    const pattern = new RegExp(`^${scopePrefix}\\d+$`, 'i');
+    if (pattern.test(refId)) {
+        return refId.toUpperCase();
+    }
+
+    return null;
 };

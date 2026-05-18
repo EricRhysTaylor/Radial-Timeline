@@ -364,6 +364,7 @@ import {
     readFrontmatterWordCount,
     replaceInquiryReferenceTokens,
     renderInquiryBrief,
+    resolveFindingChipLabel,
     resolveInquiryScopeIndicator,
     sanitizeDossierText,
     stripNumericTitlePrefix
@@ -7493,7 +7494,7 @@ export class InquiryView extends ItemView {
 
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
-            const targetLabel = this.resolveFindingChipLabel(finding, result, items)
+            const targetLabel = resolveFindingChipLabel(finding, result, items)
                 ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
             const note = this.formatInquiryActionNote(finding, briefTitle, targetLabel, referenceLabels);
             if (!note) return; // Skip findings that didn't produce an actionable suggestion.
@@ -8658,7 +8659,7 @@ export class InquiryView extends ItemView {
             if (refId && candidateKeys.has(refId)) {
                 return finding;
             }
-            const resolvedLabel = this.resolveFindingChipLabel(finding, result, items)?.toLowerCase();
+            const resolvedLabel = resolveFindingChipLabel(finding, result, items)?.toLowerCase();
             if (resolvedLabel && candidateKeys.has(resolvedLabel)) {
                 return finding;
             }
@@ -8984,7 +8985,7 @@ export class InquiryView extends ItemView {
         const ordered = this.getOrderedFindings(result, result.mode || this.state.mode);
         ordered.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
-            const label = this.resolveFindingChipLabel(finding, result, items);
+            const label = resolveFindingChipLabel(finding, result, items);
             if (!label) return;
             if (map.has(label)) return;
             map.set(label, finding);
@@ -9887,35 +9888,6 @@ export class InquiryView extends ItemView {
         return result.scope === 'saga' ? this.corpus.books : this.corpus.scenes;
     }
 
-    private resolveFindingChipLabel(
-        finding: InquiryFinding,
-        result: InquiryResult,
-        items: InquiryCorpusItem[]
-    ): string | null {
-        const refId = finding.refId?.trim();
-        if (!refId) return null;
-        const refLower = refId.toLowerCase();
-
-        const displayMatch = items.find(item => item.displayLabel.toLowerCase() === refLower);
-        if (displayMatch) return displayMatch.displayLabel;
-
-        const idMatch = items.find(item => item.id === refId || item.id.toLowerCase() === refLower);
-        if (idMatch) return idMatch.displayLabel;
-
-        const sceneIdMatch = items.find(item => typeof item.sceneId === 'string' && item.sceneId.toLowerCase() === refLower);
-        if (sceneIdMatch) return sceneIdMatch.displayLabel;
-
-        const pathMatch = items.find(item => item.filePaths?.some(path => path === refId));
-        if (pathMatch) return pathMatch.displayLabel;
-
-        const scopePrefix = result.scope === 'saga' ? 'B' : 'S';
-        const pattern = new RegExp(`^${scopePrefix}\\d+$`, 'i');
-        if (pattern.test(refId)) {
-            return refId.toUpperCase();
-        }
-
-        return null;
-    }
 
 
     private getResultSummaryForMode(result: InquiryResult, mode: InquiryLens): string {
@@ -11490,7 +11462,7 @@ export class InquiryView extends ItemView {
 
         orderedFindings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
-            const label = this.resolveFindingChipLabel(finding, result, items)
+            const label = resolveFindingChipLabel(finding, result, items)
                 ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : null);
             if (!label) return;
             const labelLower = label.toLowerCase();
@@ -11890,7 +11862,7 @@ export class InquiryView extends ItemView {
     ): { targetLabel?: string; text: string } | null {
         const text = this.getInquiryActionText(finding, referenceLabels);
         if (!text) return null;
-        const targetLabel = this.resolveFindingChipLabel(finding, result, items)
+        const targetLabel = resolveFindingChipLabel(finding, result, items)
             ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
         return {
             targetLabel,

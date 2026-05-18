@@ -6,6 +6,7 @@ import {
     countSynopsisWords,
     getCorpusCcOrderNumber,
     getCorpusClassShort,
+    resolveFindingChipLabel,
     sanitizeInquirySummary,
     extractSpendCapResetDate,
     formatApiErrorClassification,
@@ -577,6 +578,49 @@ describe('inquiryViewText', () => {
         });
         it('returns the fallback when nothing survives sanitization', () => {
             expect(sanitizeInquirySummary('Summary:')).toBe('Summary unavailable.');
+        });
+    });
+
+    describe('resolveFindingChipLabel', () => {
+        const finding = (refId?: string) => ({ refId } as unknown as Parameters<typeof resolveFindingChipLabel>[0]);
+        const result = (scope: string) => ({ scope } as unknown as Parameters<typeof resolveFindingChipLabel>[1]);
+        const item = (o: Partial<{ id: string; displayLabel: string; filePaths: string[]; sceneId: string }>) =>
+            ({ id: '', displayLabel: '', filePaths: [], ...o } as Parameters<typeof resolveFindingChipLabel>[2][number]);
+
+        it('returns null for a missing or whitespace refId', () => {
+            expect(resolveFindingChipLabel(finding(undefined), result('book'), [])).toBeNull();
+            expect(resolveFindingChipLabel(finding('   '), result('book'), [])).toBeNull();
+        });
+        it('matches displayLabel case-insensitively', () => {
+            const items = [item({ id: 'x', displayLabel: '24 Shail Grounded' })];
+            expect(resolveFindingChipLabel(finding('24 shail grounded'), result('book'), items))
+                .toBe('24 Shail Grounded');
+        });
+        it('matches id exactly and case-insensitively', () => {
+            const items = [item({ id: 'scn_AB', displayLabel: 'Scene AB' })];
+            expect(resolveFindingChipLabel(finding('scn_AB'), result('book'), items)).toBe('Scene AB');
+            expect(resolveFindingChipLabel(finding('SCN_ab'), result('book'), items)).toBe('Scene AB');
+        });
+        it('matches sceneId case-insensitively', () => {
+            const items = [item({ id: 'a', displayLabel: 'Scene Q', sceneId: 'Scn_99' })];
+            expect(resolveFindingChipLabel(finding('scn_99'), result('book'), items)).toBe('Scene Q');
+        });
+        it('matches an exact file path', () => {
+            const items = [item({ id: 'a', displayLabel: 'Path Scene', filePaths: ['Book/Ch/Scene.md'] })];
+            expect(resolveFindingChipLabel(finding('Book/Ch/Scene.md'), result('book'), items))
+                .toBe('Path Scene');
+        });
+        it('uppercases an Sxx ref for non-saga scope when nothing else matches', () => {
+            expect(resolveFindingChipLabel(finding('s12'), result('book'), [])).toBe('S12');
+            expect(resolveFindingChipLabel(finding('b12'), result('book'), [])).toBeNull();
+        });
+        it('uppercases a Bxx ref for saga scope when nothing else matches', () => {
+            expect(resolveFindingChipLabel(finding('b3'), result('saga'), [])).toBe('B3');
+            expect(resolveFindingChipLabel(finding('s3'), result('saga'), [])).toBeNull();
+        });
+        it('returns null when no match and ref is not a scope-prefixed ordinal', () => {
+            expect(resolveFindingChipLabel(finding('totally-unknown'), result('book'), []))
+                .toBeNull();
         });
     });
 });
