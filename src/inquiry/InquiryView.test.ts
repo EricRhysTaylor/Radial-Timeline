@@ -258,12 +258,14 @@ describe('InquiryView payload accounting', () => {
 
     it('spells briefing writeback targets from the computed pending-edits plan', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const textSource = readFileSync(resolve(process.cwd(), 'src/inquiry/utils/inquiryViewText.ts'), 'utf8');
         const rendererSource = readFileSync(resolve(process.cwd(), 'src/inquiry/briefing/inquiryBriefingRenderer.ts'), 'utf8');
         expect(viewSource.includes('private buildInquiryPendingEditsPlan(')).toBe(true);
         expect(viewSource.includes('pendingEditsTooltip')).toBe(true);
-        expect(viewSource.includes("return `Write to Pending Edits: ${labels.join(', ')}`;")).toBe(true);
-        expect(viewSource.includes("return `Pending Edits updated for ${labels.join(', ')}.`;")).toBe(true);
-        expect(viewSource.includes("this.formatPendingEditsSuccessMessage(pendingPlan.targetLabels).replace(/\\.$/, '')")).toBe(true);
+        // Pending-edits label spelling now lives in the canonical inquiryViewText module.
+        expect(textSource.includes("return `Write to Pending Edits: ${labels.join(', ')}`;")).toBe(true);
+        expect(textSource.includes("return `Pending Edits updated for ${labels.join(', ')}.`;")).toBe(true);
+        expect(viewSource.includes("formatPendingEditsSuccessMessage(pendingPlan.targetLabels).replace(/\\.$/, '')")).toBe(true);
         expect(rendererSource.includes('pendingEditsTooltip?: string;')).toBe(true);
         expect(rendererSource.includes('const pendingLabel = args.pendingEditsTooltip ||')).toBe(true);
     });
