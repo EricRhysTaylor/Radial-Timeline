@@ -249,7 +249,7 @@ describe('InquiryView payload accounting', () => {
         const domSource = readFileSync(resolve(process.cwd(), 'src/inquiry/dom/inquiryDomFactory.ts'), 'utf8');
         const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
         expect(viewSource.includes("'flame-kindling'")).toBe(true);
-        expect(viewSource.includes("return `${this.formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
+        expect(viewSource.includes("return `${formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
         expect(domSource.includes("engineTimerIcon.setAttribute('href', '#ert-icon-flame-kindling');")).toBe(true);
         expect(domSource.includes("engineTimerIcon.setAttribute('width', '34');")).toBe(true);
         expect(cssSource.includes('font-size: 18px;')).toBe(true);

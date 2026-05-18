@@ -585,6 +585,20 @@ export const formatInquiryBriefTimestamp = (
     return `${month} ${day} ${year} @ ${hours}.${minuteText}${secondText}${am ? 'am' : 'pm'}`;
 };
 
+export const formatElapsedRunClock = (elapsedMs: number): string => {
+    const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+export const formatCacheCountdown = (remainingMs: number): string => {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 export const formatInquiryId = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

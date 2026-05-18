@@ -345,6 +345,8 @@ import {
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
     formatBriefLabel,
+    formatCacheCountdown,
+    formatElapsedRunClock,
     formatInquiryBriefLink,
     formatInquiryBriefTimestamp,
     formatInquiryId,
@@ -9374,19 +9376,6 @@ export class InquiryView extends ItemView {
         ].filter(Boolean).join(' ');
     }
 
-    private formatElapsedRunClock(elapsedMs: number): string {
-        const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-
-    private formatCacheCountdown(remainingMs: number): string {
-        const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    }
 
     private getAnthropicDispatchDiagnostics(trace: InquiryRunTrace | null | undefined): {
         requestedCacheTtl: string;
@@ -9645,7 +9634,7 @@ export class InquiryView extends ItemView {
 
         const remainingMs = session.cacheWindowExpiresAt - Date.now();
         if (remainingMs > 0) {
-            return `${this.formatCacheCountdown(remainingMs)} remaining`;
+            return `${formatCacheCountdown(remainingMs)} remaining`;
         }
         return 'Cache expired';
     }
@@ -9702,10 +9691,10 @@ export class InquiryView extends ItemView {
             isRunning: this.state.isRunning,
             currentRunElapsedMs: this.currentRunElapsedMs,
             currentRunProgress: this.currentRunProgress,
-            formatElapsedRunClock: this.formatElapsedRunClock.bind(this),
+            formatElapsedRunClock,
             buildRunningStageLabel: this.buildRunningStageLabel.bind(this),
             engineTimerText: this.state.isRunning
-                ? this.formatElapsedRunClock(this.currentRunElapsedMs)
+                ? formatElapsedRunClock(this.currentRunElapsedMs)
                 : (contextLabel ?? ''),
             engineTimerVisible: this.state.isRunning || !!contextLabel,
             engineTimerIconVisible: hasWarmContextCountdown,

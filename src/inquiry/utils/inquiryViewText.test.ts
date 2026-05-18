@@ -13,6 +13,8 @@ import {
     formatApiErrorReason,
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
+    formatCacheCountdown,
+    formatElapsedRunClock,
     formatInquiryBriefTimestamp,
     formatInquiryId,
     formatPendingEditsSuccessMessage,
@@ -490,6 +492,34 @@ describe('inquiryViewText', () => {
         it('produces a zero-padded sortable id', () => {
             expect(formatInquiryId(new Date(2026, 0, 5, 4, 8, 2)))
                 .toBe('2026-01-05 04.08.02');
+        });
+    });
+
+    describe('formatElapsedRunClock', () => {
+        it('formats elapsed milliseconds as zero-padded MM:SS', () => {
+            expect(formatElapsedRunClock(0)).toBe('00:00');
+            expect(formatElapsedRunClock(65_000)).toBe('01:05');
+            expect(formatElapsedRunClock(599_000)).toBe('09:59');
+            expect(formatElapsedRunClock(3_600_000)).toBe('60:00');
+        });
+        it('floors sub-second remainders and clamps negatives to zero', () => {
+            expect(formatElapsedRunClock(1_999)).toBe('00:01');
+            expect(formatElapsedRunClock(-5_000)).toBe('00:00');
+        });
+    });
+
+    describe('formatCacheCountdown', () => {
+        it('formats remaining milliseconds as zero-padded HH:MM (no seconds)', () => {
+            expect(formatCacheCountdown(0)).toBe('00:00');
+            expect(formatCacheCountdown(90_000)).toBe('00:01');
+            expect(formatCacheCountdown(3_600_000)).toBe('01:00');
+            expect(formatCacheCountdown(3_661_000)).toBe('01:01');
+        });
+        it('ceils to the next second (crossing the minute boundary) and clamps negatives', () => {
+            // 59_001ms -> ceil 60s -> 1 minute; floor would yield 00:00.
+            expect(formatCacheCountdown(59_001)).toBe('00:01');
+            expect(formatCacheCountdown(1)).toBe('00:00');
+            expect(formatCacheCountdown(-5_000)).toBe('00:00');
         });
     });
 
