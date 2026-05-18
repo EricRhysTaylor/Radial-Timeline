@@ -339,6 +339,12 @@ import {
     countSynopsisWords,
     formatBriefLabel,
     formatInquiryBriefLink,
+    formatPendingEditsSuccessMessage,
+    formatPendingEditsTargetsTooltip,
+    formatSessionOverrides,
+    formatSessionProviderModel,
+    formatSessionScope,
+    formatSessionTime,
     getDocumentStatusFields,
     getOrdinalSuffix,
     getSceneNoteSortOrder,
@@ -1459,8 +1465,8 @@ export class InquiryView extends ItemView {
 
     private renderBriefingSessionItem(container: HTMLElement, session: InquirySession, blocked: boolean): void {
         const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
-        const overrideLabel = this.formatSessionOverrides(session);
-        const metaText = `${this.formatSessionScope(session)} · ${this.formatSessionProviderModel(session)} · ${this.formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
+        const overrideLabel = formatSessionOverrides(session);
+        const metaText = `${formatSessionScope(session)} · ${formatSessionProviderModel(session)} · ${formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
         const status = this.resolveSessionStatus(session);
         const pendingPlan = this.buildInquiryPendingEditsPlan(session.result, session.activeBookId);
         const pendingEditsApplied = this.syncPendingEditsAppliedState(session, pendingPlan.notesByMaterial);
@@ -1475,10 +1481,10 @@ export class InquiryView extends ItemView {
         const pendingEditsTooltip = blocked
             ? 'Inquiry is blocked'
             : pendingEditsApplied
-                ? this.formatPendingEditsSuccessMessage(pendingPlan.targetLabels).replace(/\.$/, '')
+                ? formatPendingEditsSuccessMessage(pendingPlan.targetLabels).replace(/\.$/, '')
                 : status === 'error'
                     ? 'No pending edits (run failed)'
-                    : this.formatPendingEditsTargetsTooltip(pendingPlan.targetLabels);
+                    : formatPendingEditsTargetsTooltip(pendingPlan.targetLabels);
         const refs = renderInquiryBriefingSessionItem({
             container,
             zoneId,
@@ -1651,49 +1657,6 @@ export class InquiryView extends ItemView {
             return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
         });
         return { notesByMaterial, targetLabels };
-    }
-
-    private formatPendingEditsTargetsTooltip(labels: string[]): string {
-        if (!labels.length) return 'No pending edits';
-        return `Write to Pending Edits: ${labels.join(', ')}`;
-    }
-
-    private formatPendingEditsSuccessMessage(labels: string[]): string {
-        if (!labels.length) return t('inquiry.interaction.pendingEditsUpdatedDefault');
-        return `Pending Edits updated for ${labels.join(', ')}.`;
-    }
-
-    private formatSessionProviderModel(session: InquirySession): string {
-        const model = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
-        if (!model) return 'Engine unknown';
-        return getModelDisplayName(model);
-    }
-
-    private formatSessionTime(session: InquirySession): string {
-        const timestamp = session.createdAt || session.lastAccessed;
-        const date = new Date(timestamp);
-        const formatted = date.toLocaleString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-        return formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
-    }
-
-    private formatSessionScope(session: InquirySession): string {
-        const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
-        const focus = session.result.scopeLabel || '';
-        return `${scopeLabel} ${focus}`.trim();
-    }
-
-    private formatSessionOverrides(session: InquirySession): string | null {
-        const result = session.result;
-        if (!result?.corpusOverridesActive) return null;
-        const summary = result.corpusOverrideSummary;
-        if (!summary) return 'Overrides on';
-        return `Overrides ${summary.classCount}c/${summary.itemCount}i`;
     }
 
     private updateBriefingButtonState(): void {
@@ -7563,7 +7526,7 @@ export class InquiryView extends ItemView {
             this.refreshBriefingPanel();
             void this.refreshBriefingPurgeAvailability();
             if (options?.notify) {
-                this.notifyInteraction(this.formatPendingEditsSuccessMessage(pendingPlan.targetLabels));
+                this.notifyInteraction(formatPendingEditsSuccessMessage(pendingPlan.targetLabels));
             }
         }
         if (refusedAny) {

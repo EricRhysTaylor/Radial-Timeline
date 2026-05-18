@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
     countSynopsisWords,
+    formatPendingEditsSuccessMessage,
+    formatPendingEditsTargetsTooltip,
+    formatSessionOverrides,
+    formatSessionProviderModel,
+    formatSessionScope,
     getDocumentStatusFields,
     getOrdinalSuffix,
     readFrontmatterWordCount,
@@ -285,6 +290,46 @@ describe('inquiryViewText', () => {
         it('uses th for other days', () => {
             expect(getOrdinalSuffix(4)).toBe('th');
             expect(getOrdinalSuffix(30)).toBe('th');
+        });
+    });
+
+    const sessionWith = (result: Record<string, unknown>): InquiryResult & Record<string, unknown> =>
+        result as unknown as InquiryResult & Record<string, unknown>;
+
+    describe('formatPendingEdits messages', () => {
+        it('handles empty and populated target label lists', () => {
+            expect(formatPendingEditsTargetsTooltip([])).toBe('No pending edits');
+            expect(formatPendingEditsTargetsTooltip(['A', 'B'])).toBe('Write to Pending Edits: A, B');
+            expect(formatPendingEditsSuccessMessage(['Scene 1'])).toBe('Pending Edits updated for Scene 1.');
+        });
+    });
+
+    describe('formatSessionScope', () => {
+        it('labels saga vs book and trims missing focus', () => {
+            expect(formatSessionScope({ result: sessionWith({ scope: 'saga', scopeLabel: 'My Saga' }) } as never))
+                .toBe('Saga My Saga');
+            expect(formatSessionScope({ result: sessionWith({ scope: 'book', scopeLabel: '' }) } as never))
+                .toBe('Book');
+        });
+    });
+
+    describe('formatSessionOverrides', () => {
+        it('returns null when overrides inactive', () => {
+            expect(formatSessionOverrides({ result: sessionWith({ corpusOverridesActive: false }) } as never)).toBeNull();
+        });
+        it('summarizes class/item counts when present', () => {
+            expect(formatSessionOverrides({ result: sessionWith({
+                corpusOverridesActive: true,
+                corpusOverrideSummary: { classCount: 2, itemCount: 5 }
+            }) } as never)).toBe('Overrides 2c/5i');
+            expect(formatSessionOverrides({ result: sessionWith({ corpusOverridesActive: true }) } as never))
+                .toBe('Overrides on');
+        });
+    });
+
+    describe('formatSessionProviderModel', () => {
+        it('reports Engine unknown when no model is resolved or requested', () => {
+            expect(formatSessionProviderModel({ result: sessionWith({}) } as never)).toBe('Engine unknown');
         });
     });
 });

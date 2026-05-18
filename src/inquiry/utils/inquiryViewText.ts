@@ -2,6 +2,9 @@ import type { SceneInclusion } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
 import type { InquiryFinding, InquiryResult, InquiryScope } from '../state';
 import type { InquiryBriefModel, InquirySceneDossier } from '../types/inquiryViewTypes';
+import type { InquirySession } from '../sessionTypes';
+import { getModelDisplayName } from '../../utils/modelResolver';
+import { t } from '../../i18n';
 
 export const parseCorpusLabelNumber = (label?: string): number | null => {
     if (!label) return null;
@@ -436,4 +439,47 @@ export const getOrdinalSuffix = (day: number): string => {
     if (mod10 === 2) return 'nd';
     if (mod10 === 3) return 'rd';
     return 'th';
+};
+
+export const formatPendingEditsTargetsTooltip = (labels: string[]): string => {
+    if (!labels.length) return 'No pending edits';
+    return `Write to Pending Edits: ${labels.join(', ')}`;
+};
+
+export const formatPendingEditsSuccessMessage = (labels: string[]): string => {
+    if (!labels.length) return t('inquiry.interaction.pendingEditsUpdatedDefault');
+    return `Pending Edits updated for ${labels.join(', ')}.`;
+};
+
+export const formatSessionProviderModel = (session: InquirySession): string => {
+    const model = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
+    if (!model) return 'Engine unknown';
+    return getModelDisplayName(model);
+};
+
+export const formatSessionTime = (session: InquirySession): string => {
+    const timestamp = session.createdAt || session.lastAccessed;
+    const date = new Date(timestamp);
+    const formatted = date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+    return formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
+};
+
+export const formatSessionScope = (session: InquirySession): string => {
+    const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
+    const focus = session.result.scopeLabel || '';
+    return `${scopeLabel} ${focus}`.trim();
+};
+
+export const formatSessionOverrides = (session: InquirySession): string | null => {
+    const result = session.result;
+    if (!result?.corpusOverridesActive) return null;
+    const summary = result.corpusOverrideSummary;
+    if (!summary) return 'Overrides on';
+    return `Overrides ${summary.classCount}c/${summary.itemCount}i`;
 };
