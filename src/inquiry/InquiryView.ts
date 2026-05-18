@@ -335,7 +335,12 @@ import {
     buildManifestTocLines,
     buildSceneDossierBodyLines,
     buildSceneDossierHeader,
+    buildStaleShortLabel,
+    buildStaleTooltipLines,
     countSynopsisWords,
+    getCorpusCcOrderNumber,
+    getCorpusClassShort,
+    sanitizeInquirySummary,
     formatApiErrorReason,
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
@@ -361,7 +366,6 @@ import {
     renderInquiryBrief,
     resolveInquiryScopeIndicator,
     sanitizeDossierText,
-    stripInquiryReferenceArtifacts,
     stripNumericTitlePrefix
 } from './utils/inquiryViewText';
 import { polarToCartesian } from './utils/inquiryGeometry';
@@ -2113,52 +2117,11 @@ export class InquiryView extends ItemView {
 
         return {
             reasons,
-            shortLabel: this.buildStaleShortLabel(reasons),
-            tooltipLines: this.buildStaleTooltipLines(reasons)
+            shortLabel: buildStaleShortLabel(reasons),
+            tooltipLines: buildStaleTooltipLines(reasons)
         };
     }
 
-    private buildStaleShortLabel(reasons: InquiryStaleReason[]): string {
-        // Prefer the most specific, highest-signal reason.
-        const edited = reasons.find(r => r.kind === 'scenes_edited');
-        if (edited) {
-            return edited.paths.length === 1 ? '1 scene edited' : `${edited.paths.length} scenes edited`;
-        }
-        const added = reasons.find(r => r.kind === 'scenes_added');
-        if (added) {
-            return added.paths.length === 1 ? '1 scene added' : `${added.paths.length} scenes added`;
-        }
-        const removed = reasons.find(r => r.kind === 'scenes_removed');
-        if (removed) {
-            return removed.paths.length === 1 ? '1 scene removed' : `${removed.paths.length} scenes removed`;
-        }
-        if (reasons.some(r => r.kind === 'inclusion_changed')) return 'inclusion changed';
-        if (reasons.some(r => r.kind === 'target_changed')) return 'targets changed';
-        return 'corpus changed';
-    }
-
-    private buildStaleTooltipLines(reasons: InquiryStaleReason[]): string[] {
-        const lines: string[] = [];
-        const sceneLabel = (path: string): string => {
-            const name = path.split('/').pop() ?? path;
-            return name.replace(/\.md$/i, '');
-        };
-        const summarize = (label: string, paths: string[]): string => {
-            if (paths.length <= 3) return `${label}: ${paths.map(sceneLabel).join(', ')}`;
-            return `${label}: ${paths.slice(0, 3).map(sceneLabel).join(', ')} +${paths.length - 3} more`;
-        };
-        for (const reason of reasons) {
-            switch (reason.kind) {
-                case 'scenes_edited': lines.push(summarize('Edited', reason.paths)); break;
-                case 'scenes_added': lines.push(summarize('Added', reason.paths)); break;
-                case 'scenes_removed': lines.push(summarize('Removed', reason.paths)); break;
-                case 'inclusion_changed': lines.push(summarize('Inclusion changed', reason.paths)); break;
-                case 'target_changed': lines.push(summarize('Target changed', reason.paths)); break;
-                case 'corpus_changed': lines.push('Corpus changed (details unavailable for this run)'); break;
-            }
-        }
-        return lines;
-    }
 
     private getMostRecentInquiryLogFile(): TFile | null {
         const folderPath = resolveInquiryLogFolder();
@@ -4878,7 +4841,7 @@ export class InquiryView extends ItemView {
         if (className === 'outline-saga') {
             return `${SIGMA_CHAR}`;
         }
-        return `${this.getCorpusClassShort(className)}${count}`;
+        return `${getCorpusClassShort(className)}${count}`;
     }
 
     private getCorpusCcHeaderTooltip(
@@ -4906,18 +4869,6 @@ export class InquiryView extends ItemView {
         return 'Class';
     }
 
-    private getCorpusClassShort(className: string): string {
-        switch (className) {
-            case 'outline-saga': return SIGMA_CHAR;
-            case 'character': return 'C';
-            case 'scene': return 'S';
-            case 'outline': return 'O';
-            default: {
-                const first = className.trim().charAt(0).toUpperCase();
-                return first || 'C';
-            }
-        }
-    }
 
     private getSceneBookMetaFromEntry(entry: CorpusCcEntry): { bookId: string; bookLabel: string; order: number } {
         const books = this.corpus?.books ?? [];
@@ -4950,7 +4901,7 @@ export class InquiryView extends ItemView {
 
         const fallback = entry.filePath.split('/').filter(Boolean);
         const folder = fallback.length > 1 ? fallback[0] : 'book';
-        const numeric = this.getCorpusCcOrderNumber(folder, 'outline');
+        const numeric = getCorpusCcOrderNumber(folder, 'outline');
         const fallbackLabel = numeric !== null ? `B${numeric}` : '?';
         return {
             bookId: folder || entry.filePath,
@@ -5099,7 +5050,7 @@ export class InquiryView extends ItemView {
         }
 
         const fallbackRoot = segments[0] || path;
-        const numeric = this.getCorpusCcOrderNumber(fallbackRoot, 'outline');
+        const numeric = getCorpusCcOrderNumber(fallbackRoot, 'outline');
         return {
             id: fallbackRoot,
             label: numeric !== null ? `B${numeric}` : '?'
@@ -5168,8 +5119,8 @@ export class InquiryView extends ItemView {
     private compareCorpusCcEntries(a: CorpusCcEntry, b: CorpusCcEntry): number {
         const aLabel = (a.sortLabel ?? a.label).trim();
         const bLabel = (b.sortLabel ?? b.label).trim();
-        const aNumber = this.getCorpusCcOrderNumber(aLabel, a.className);
-        const bNumber = this.getCorpusCcOrderNumber(bLabel, b.className);
+        const aNumber = getCorpusCcOrderNumber(aLabel, a.className);
+        const bNumber = getCorpusCcOrderNumber(bLabel, b.className);
         const aHasNumber = aNumber !== null;
         const bHasNumber = bNumber !== null;
 
@@ -5185,33 +5136,6 @@ export class InquiryView extends ItemView {
         return a.filePath.localeCompare(b.filePath);
     }
 
-    private getCorpusCcOrderNumber(label: string, className: string): number | null {
-        const normalized = label.toLowerCase();
-        const patterns: RegExp[] = [];
-        const isOutline = className === 'outline' || className === 'outline-saga';
-
-        if (className === 'scene') {
-            patterns.push(/^\s*(?:scene|sc)\s*#?\s*(\d+)/);
-            patterns.push(/^\s*s(\d+)\b/);
-            patterns.push(/^\s*(\d+)\b/);
-            patterns.push(/\bscene\s*#?\s*(\d+)/);
-        } else if (isOutline) {
-            patterns.push(/^\s*(?:book|bk)\s*#?\s*(\d+)/);
-            patterns.push(/\bbook\s*#?\s*(\d+)/);
-            patterns.push(/^\s*(\d+)\b/);
-        } else {
-            patterns.push(/^\s*(\d+)\b/);
-        }
-
-        for (const pattern of patterns) {
-            const match = normalized.match(pattern);
-            if (!match) continue;
-            const num = Number.parseInt(match[1], 10);
-            if (Number.isFinite(num)) return num;
-        }
-
-        return null;
-    }
 
     private buildSagaCcEntries(corpus: InquiryCorpusSnapshot): CorpusCcEntry[] {
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
@@ -9993,43 +9917,12 @@ export class InquiryView extends ItemView {
         return null;
     }
 
-    private sanitizeInquirySummary(rawSummary?: string | null): string {
-        const fallback = 'Summary unavailable.';
-        if (!rawSummary) return fallback;
-        let text = stripInquiryReferenceArtifacts(rawSummary).replace(/\s+/g, ' ').trim();
-        if (!text) return fallback;
-        const prefixes: RegExp[] = [
-            /^(summary(?: of)?|executive summary)\s*/i,
-            /^(here(?:'s| is) (?:a )?(?:summary|overview)(?: of)?)\s*/i,
-            /^(a (?:summary|overview) of)\s*/i,
-            /^(in summary|overall|in conclusion|to summarize|to sum up|in short|in brief|in essence|in overview)\s*/i,
-            /^(this (?:inquiry|analysis|assessment|report|result)s?)(?:\s+(?:suggests|shows|indicates|points|implies|reveals|finds|highlights|notes))?(?:\s+that)?\s*/i,
-            /^(the (?:inquiry|analysis|assessment|results?) (?:suggests|shows|indicates|points|implies|reveals|finds|highlights|notes))(?:\s+that)?\s*/i,
-            /^(based on (?:the|this) (?:inquiry|analysis|assessment|results?))\s*/i,
-            /^(it (?:appears|seems|looks))(?:\s+that)?\s*/i
-        ];
-
-        let changed = true;
-        while (changed) {
-            changed = false;
-            for (const prefix of prefixes) {
-                const next = text.replace(prefix, '').trim();
-                if (next !== text) {
-                    text = next.replace(/^[^\w\s]+/, '').trim();
-                    changed = true;
-                    break;
-                }
-            }
-        }
-
-        return text || fallback;
-    }
 
     private getResultSummaryForMode(result: InquiryResult, mode: InquiryLens): string {
         const raw = mode === 'flow'
             ? (result.summaryFlow || result.summary)
             : (result.summaryDepth || result.summary);
-        return this.sanitizeInquirySummary(raw);
+        return sanitizeInquirySummary(raw);
     }
 
     private getOrderedFindings(result: InquiryResult, mode: InquiryLens): InquiryFinding[] {

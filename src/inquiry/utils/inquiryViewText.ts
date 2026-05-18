@@ -1,6 +1,7 @@
 import type { SceneInclusion } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
-import type { InquiryFinding, InquiryResult, InquiryScope, InquiryTokenUsageScope } from '../state';
+import type { InquiryFinding, InquiryResult, InquiryScope, InquiryStaleReason, InquiryTokenUsageScope } from '../state';
+import { SIGMA_CHAR } from '../constants/inquiryUi';
 import type { InquiryBriefModel, InquirySceneDossier } from '../types/inquiryViewTypes';
 import type { InquirySession } from '../sessionTypes';
 import { getModelDisplayName } from '../../utils/modelResolver';
@@ -606,4 +607,119 @@ export const formatAuthorFacingErrorDetail = (result: InquiryResult): string => 
     if (result.aiReason === 'citation_binding_failed') return 'No findings could be placed on the minimap.';
     if (result.aiReason === 'invalid_response') return 'Invalid structured response from AI.';
     return '';
+};
+
+export const buildStaleShortLabel = (reasons: InquiryStaleReason[]): string => {
+    // Prefer the most specific, highest-signal reason.
+    const edited = reasons.find(r => r.kind === 'scenes_edited');
+    if (edited) {
+        return edited.paths.length === 1 ? '1 scene edited' : `${edited.paths.length} scenes edited`;
+    }
+    const added = reasons.find(r => r.kind === 'scenes_added');
+    if (added) {
+        return added.paths.length === 1 ? '1 scene added' : `${added.paths.length} scenes added`;
+    }
+    const removed = reasons.find(r => r.kind === 'scenes_removed');
+    if (removed) {
+        return removed.paths.length === 1 ? '1 scene removed' : `${removed.paths.length} scenes removed`;
+    }
+    if (reasons.some(r => r.kind === 'inclusion_changed')) return 'inclusion changed';
+    if (reasons.some(r => r.kind === 'target_changed')) return 'targets changed';
+    return 'corpus changed';
+};
+
+export const buildStaleTooltipLines = (reasons: InquiryStaleReason[]): string[] => {
+    const lines: string[] = [];
+    const sceneLabel = (path: string): string => {
+        const name = path.split('/').pop() ?? path;
+        return name.replace(/\.md$/i, '');
+    };
+    const summarize = (label: string, paths: string[]): string => {
+        if (paths.length <= 3) return `${label}: ${paths.map(sceneLabel).join(', ')}`;
+        return `${label}: ${paths.slice(0, 3).map(sceneLabel).join(', ')} +${paths.length - 3} more`;
+    };
+    for (const reason of reasons) {
+        switch (reason.kind) {
+            case 'scenes_edited': lines.push(summarize('Edited', reason.paths)); break;
+            case 'scenes_added': lines.push(summarize('Added', reason.paths)); break;
+            case 'scenes_removed': lines.push(summarize('Removed', reason.paths)); break;
+            case 'inclusion_changed': lines.push(summarize('Inclusion changed', reason.paths)); break;
+            case 'target_changed': lines.push(summarize('Target changed', reason.paths)); break;
+            case 'corpus_changed': lines.push('Corpus changed (details unavailable for this run)'); break;
+        }
+    }
+    return lines;
+};
+
+export const getCorpusClassShort = (className: string): string => {
+    switch (className) {
+        case 'outline-saga': return SIGMA_CHAR;
+        case 'character': return 'C';
+        case 'scene': return 'S';
+        case 'outline': return 'O';
+        default: {
+            const first = className.trim().charAt(0).toUpperCase();
+            return first || 'C';
+        }
+    }
+};
+
+export const getCorpusCcOrderNumber = (label: string, className: string): number | null => {
+    const normalized = label.toLowerCase();
+    const patterns: RegExp[] = [];
+    const isOutline = className === 'outline' || className === 'outline-saga';
+
+    if (className === 'scene') {
+        patterns.push(/^\s*(?:scene|sc)\s*#?\s*(\d+)/);
+        patterns.push(/^\s*s(\d+)\b/);
+        patterns.push(/^\s*(\d+)\b/);
+        patterns.push(/\bscene\s*#?\s*(\d+)/);
+    } else if (isOutline) {
+        patterns.push(/^\s*(?:book|bk)\s*#?\s*(\d+)/);
+        patterns.push(/\bbook\s*#?\s*(\d+)/);
+        patterns.push(/^\s*(\d+)\b/);
+    } else {
+        patterns.push(/^\s*(\d+)\b/);
+    }
+
+    for (const pattern of patterns) {
+        const match = normalized.match(pattern);
+        if (!match) continue;
+        const num = Number.parseInt(match[1], 10);
+        if (Number.isFinite(num)) return num;
+    }
+
+    return null;
+};
+
+export const sanitizeInquirySummary = (rawSummary?: string | null): string => {
+    const fallback = 'Summary unavailable.';
+    if (!rawSummary) return fallback;
+    let text = stripInquiryReferenceArtifacts(rawSummary).replace(/\s+/g, ' ').trim();
+    if (!text) return fallback;
+    const prefixes: RegExp[] = [
+        /^(summary(?: of)?|executive summary)\s*/i,
+        /^(here(?:'s| is) (?:a )?(?:summary|overview)(?: of)?)\s*/i,
+        /^(a (?:summary|overview) of)\s*/i,
+        /^(in summary|overall|in conclusion|to summarize|to sum up|in short|in brief|in essence|in overview)\s*/i,
+        /^(this (?:inquiry|analysis|assessment|report|result)s?)(?:\s+(?:suggests|shows|indicates|points|implies|reveals|finds|highlights|notes))?(?:\s+that)?\s*/i,
+        /^(the (?:inquiry|analysis|assessment|results?) (?:suggests|shows|indicates|points|implies|reveals|finds|highlights|notes))(?:\s+that)?\s*/i,
+        /^(based on (?:the|this) (?:inquiry|analysis|assessment|results?))\s*/i,
+        /^(it (?:appears|seems|looks))(?:\s+that)?\s*/i
+    ];
+
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const prefix of prefixes) {
+            const next = text.replace(prefix, '').trim();
+            if (next !== text) {
+                text = next.replace(/^[^\w\s]+/, '').trim();
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    return text || fallback;
 };

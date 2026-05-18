@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { InquiryStaleReason } from '../state';
 import {
+    buildStaleShortLabel,
+    buildStaleTooltipLines,
     countSynopsisWords,
+    getCorpusCcOrderNumber,
+    getCorpusClassShort,
+    sanitizeInquirySummary,
     extractSpendCapResetDate,
     formatApiErrorClassification,
     formatApiErrorReason,
@@ -483,6 +489,94 @@ describe('inquiryViewText', () => {
         it('produces a zero-padded sortable id', () => {
             expect(formatInquiryId(new Date(2026, 0, 5, 4, 8, 2)))
                 .toBe('2026-01-05 04.08.02');
+        });
+    });
+
+    describe('buildStaleShortLabel', () => {
+        const r = (kind: InquiryStaleReason['kind'], paths: string[]): InquiryStaleReason =>
+            ({ kind, paths } as InquiryStaleReason);
+        it('uses singular vs plural for edited/added/removed', () => {
+            expect(buildStaleShortLabel([r('scenes_edited', ['a'])])).toBe('1 scene edited');
+            expect(buildStaleShortLabel([r('scenes_edited', ['a', 'b'])])).toBe('2 scenes edited');
+            expect(buildStaleShortLabel([r('scenes_added', ['a'])])).toBe('1 scene added');
+            expect(buildStaleShortLabel([r('scenes_removed', ['a', 'b', 'c'])])).toBe('3 scenes removed');
+        });
+        it('prefers edited > added > removed precedence', () => {
+            expect(buildStaleShortLabel([r('scenes_removed', ['x']), r('scenes_edited', ['y'])]))
+                .toBe('1 scene edited');
+        });
+        it('falls back to inclusion/target/corpus phrases', () => {
+            expect(buildStaleShortLabel([r('inclusion_changed', [])])).toBe('inclusion changed');
+            expect(buildStaleShortLabel([r('target_changed', [])])).toBe('targets changed');
+            expect(buildStaleShortLabel([r('corpus_changed', [])])).toBe('corpus changed');
+            expect(buildStaleShortLabel([])).toBe('corpus changed');
+        });
+    });
+
+    describe('buildStaleTooltipLines', () => {
+        const r = (kind: InquiryStaleReason['kind'], paths: string[]): InquiryStaleReason =>
+            ({ kind, paths } as InquiryStaleReason);
+        it('strips folders and .md, joins up to 3 then summarizes overflow', () => {
+            expect(buildStaleTooltipLines([r('scenes_edited', ['Book/Ch/Scene One.md', 'b/Two.md'])]))
+                .toEqual(['Edited: Scene One, Two']);
+            expect(buildStaleTooltipLines([r('scenes_added', ['1.md', '2.md', '3.md', '4.md', '5.md'])]))
+                .toEqual(['Added: 1, 2, 3 +2 more']);
+        });
+        it('emits one line per reason with the corpus_changed special case', () => {
+            expect(buildStaleTooltipLines([
+                r('inclusion_changed', ['x.md']),
+                r('target_changed', ['y.md']),
+                r('corpus_changed', [])
+            ])).toEqual([
+                'Inclusion changed: x',
+                'Target changed: y',
+                'Corpus changed (details unavailable for this run)'
+            ]);
+        });
+    });
+
+    describe('getCorpusClassShort', () => {
+        it('maps known classes and falls back to an uppercased initial', () => {
+            expect(getCorpusClassShort('outline-saga')).toBe(String.fromCharCode(931));
+            expect(getCorpusClassShort('character')).toBe('C');
+            expect(getCorpusClassShort('scene')).toBe('S');
+            expect(getCorpusClassShort('outline')).toBe('O');
+            expect(getCorpusClassShort('reference')).toBe('R');
+            expect(getCorpusClassShort('   ')).toBe('C');
+        });
+    });
+
+    describe('getCorpusCcOrderNumber', () => {
+        it('parses scene ordinals from several spellings', () => {
+            expect(getCorpusCcOrderNumber('Scene 12 — Title', 'scene')).toBe(12);
+            expect(getCorpusCcOrderNumber('S5 Something', 'scene')).toBe(5);
+            expect(getCorpusCcOrderNumber('07 Foo', 'scene')).toBe(7);
+            expect(getCorpusCcOrderNumber('Prologue scene #3', 'scene')).toBe(3);
+        });
+        it('parses book/outline ordinals', () => {
+            expect(getCorpusCcOrderNumber('Book 3', 'outline')).toBe(3);
+            expect(getCorpusCcOrderNumber('bk2 arc', 'outline-saga')).toBe(2);
+            expect(getCorpusCcOrderNumber('4 Outline', 'outline')).toBe(4);
+        });
+        it('uses the leading-number default for other classes and returns null on no match', () => {
+            expect(getCorpusCcOrderNumber('9 Character', 'character')).toBe(9);
+            expect(getCorpusCcOrderNumber('no digits', 'scene')).toBeNull();
+        });
+    });
+
+    describe('sanitizeInquirySummary', () => {
+        it('returns the unavailable fallback for empty input', () => {
+            expect(sanitizeInquirySummary(null)).toBe('Summary unavailable.');
+            expect(sanitizeInquirySummary('   ')).toBe('Summary unavailable.');
+        });
+        it('collapses whitespace and strips leading summary prefixes iteratively', () => {
+            expect(sanitizeInquirySummary('Summary: The plot   works well.'))
+                .toBe('The plot works well.');
+            expect(sanitizeInquirySummary('In summary, the analysis shows that pacing lags.'))
+                .toBe('pacing lags.');
+        });
+        it('returns the fallback when nothing survives sanitization', () => {
+            expect(sanitizeInquirySummary('Summary:')).toBe('Summary unavailable.');
         });
     });
 });
