@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 import type { MetadataCache, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { extractSummary, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
 import type { CitationIntegrityWarning, EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryFinding, InquiryResult, InquiryRoleValidation, InquiryTokenUsageScope, UnverifiedCitation } from '../state';
@@ -618,7 +618,7 @@ export class InquiryRunnerService implements InquiryRunner {
             if (!file || !('path' in file)) return;
             if (!this.isTFile(file)) return;
             const frontmatter = this.getFrontmatter(file);
-            const summary = this.extractSummary(frontmatter);
+            const summary = extractSummary(frontmatter);
             const sceneNumber = this.extractSceneNumber(frontmatter) ?? this.extractSceneNumberFromText(file.basename);
             const title = this.getSceneTitle(file, frontmatter);
             let sceneId = this.resolveCanonicalSceneId(entry.sceneId ?? readSceneId(frontmatter) ?? undefined);
@@ -760,7 +760,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const file = this.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return null;
         const frontmatter = this.getFrontmatter(file);
-        const summary = this.extractSummary(frontmatter);
+        const summary = extractSummary(frontmatter);
         return summary ? summary : null;
     }
 
@@ -2816,15 +2816,6 @@ export class InquiryRunnerService implements InquiryRunner {
      * Extract extended Summary from frontmatter for Inquiry context.
      * Reads exclusively from frontmatter["Summary"]. Synopsis is never used.
      */
-    private extractSummary(frontmatter: Record<string, unknown>): string {
-        const raw = frontmatter['Summary'];
-        if (Array.isArray(raw)) {
-            return raw.map(value => String(value)).join('\n').trim();
-        }
-        if (typeof raw === 'string') return raw.trim();
-        if (raw === null || raw === undefined) return '';
-        return String(raw).trim();
-    }
 
     private extractSceneNumber(frontmatter: Record<string, unknown>): number | undefined {
         const value = frontmatter['Scene Number'];

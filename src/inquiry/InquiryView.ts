@@ -118,7 +118,7 @@ import type {
 } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
 import type { InquirySession, InquirySessionStatus } from './sessionTypes';
-import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { extractSummary, getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { getSequencedBooks } from '../utils/books';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
@@ -5294,7 +5294,7 @@ export class InquiryView extends ItemView {
             const content = await this.app.vault.cachedRead(file);
             bodyWords = countManuscriptWords(cleanEvidenceBody(content));
         }
-        const summary = this.extractSummary(frontmatter);
+        const summary = extractSummary(frontmatter);
         const synopsisWords = countSynopsisWords(summary);
         const synopsisQuality = classifySynopsis(summary);
         this.ccWordCache.set(filePath, {
@@ -10753,7 +10753,7 @@ export class InquiryView extends ItemView {
         if (!file || !this.isTFile(file)) return '';
         const frontmatter = this.getNormalizedFrontmatter(file);
         if (!frontmatter) return '';
-        return this.extractSummary(frontmatter);
+        return extractSummary(frontmatter);
     }
 
     private getEntryContentLength(entry: CorpusManifestEntry): number {
@@ -10815,15 +10815,6 @@ export class InquiryView extends ItemView {
      * Extract extended Summary from frontmatter for Inquiry context.
      * Reads exclusively from frontmatter["Summary"]. Synopsis is never used.
      */
-    private extractSummary(frontmatter: Record<string, unknown>): string {
-        const raw = frontmatter['Summary'];
-        if (Array.isArray(raw)) {
-            return raw.map(value => String(value)).join('\n').trim();
-        }
-        if (typeof raw === 'string') return raw.trim();
-        if (raw === null || raw === undefined) return '';
-        return String(raw).trim();
-    }
 
     private getPreviewPayloadRows(zone?: InquiryZone, questionId?: string): string[] {
         return [

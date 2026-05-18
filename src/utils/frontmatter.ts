@@ -240,3 +240,17 @@ export function normalizeBeatFrontmatterKeys(fm: Record<string, unknown>, custom
 
   return normalized;
 }
+
+/**
+ * Canonical extraction of the `Summary` frontmatter field as a normalized
+ * string. Single source of truth for inquiry/forecast corpus summary text:
+ * array -> newline-joined (each element String-coerced); string -> trimmed;
+ * null/undefined/missing -> ''; anything else -> String(raw).trim().
+ */
+export function extractSummary(frontmatter: Record<string, unknown>): string {
+  const raw = frontmatter['Summary'];
+  if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
+  if (typeof raw === 'string') return raw.trim();
+  if (raw === null || raw === undefined) return '';
+  return String(raw).trim();
+}

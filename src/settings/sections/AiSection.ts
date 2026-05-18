@@ -46,7 +46,7 @@ import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
 import { buildInquiryJsonSchema } from '../../inquiry/jsonSchema';
 import type { CorpusManifestEntry } from '../../inquiry/runner/types';
 import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../../inquiry/promptScaffold';
-import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { extractSummary, getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
 import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
@@ -712,13 +712,6 @@ export function renderAiSection(params: {
                 })()
             }
         ];
-    };
-    const extractSummary = (frontmatter: Record<string, unknown>): string => {
-        const raw = frontmatter['Summary'];
-        if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
-        if (typeof raw === 'string') return raw.trim();
-        if (raw === null || raw === undefined) return '';
-        return String(raw).trim();
     };
     const toBreakdown = (sceneChars: number, outlineChars: number, referenceChars: number): RTCorpusTokenBreakdown => ({
         scenesTokens: sceneChars > 0 ? Math.ceil(sceneChars / 4) : 0,

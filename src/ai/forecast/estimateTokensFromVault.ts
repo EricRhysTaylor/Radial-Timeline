@@ -1,7 +1,7 @@
 import type { MetadataCache, TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { BookProfile, InquiryClassConfig, InquirySourcesSettings, SceneInclusion } from '../../types/settings';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { extractSummary, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { isPathIncludedByInquiryBooks, resolveBookManagerInquiryBooks } from '../../inquiry/services/bookResolution';
 import { InquiryCorpusResolver } from '../../inquiry/services/InquiryCorpusResolver';
@@ -89,14 +89,6 @@ export interface GossamerTokenEstimate {
 }
 
 const SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
-
-const extractSummary = (frontmatter: Record<string, unknown>): string => {
-    const raw = frontmatter['Summary'];
-    if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
-    if (typeof raw === 'string') return raw.trim();
-    if (raw === null || raw === undefined) return '';
-    return String(raw).trim();
-};
 
 const extractClassValues = (frontmatter: Record<string, unknown>): string[] => {
     const rawClass = frontmatter['Class'];

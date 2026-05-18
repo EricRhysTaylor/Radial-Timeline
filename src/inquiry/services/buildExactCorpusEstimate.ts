@@ -1,7 +1,7 @@
 import type { MetadataCache, TFile, Vault } from 'obsidian';
 import type { RTCorpusTokenBreakdown, RTCorpusTokenEstimate } from '../../ai/types';
 import type { CorpusManifestEntry } from '../runner/types';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { extractSummary, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
 type BuildExactCorpusEstimateParams = {
@@ -20,14 +20,6 @@ const toBreakdown = (
     outlineTokens: outlineChars > 0 ? Math.ceil(outlineChars / 4) : 0,
     referenceTokens: referenceChars > 0 ? Math.ceil(referenceChars / 4) : 0
 });
-
-const extractSummary = (frontmatter: Record<string, unknown>): string => {
-    const raw = frontmatter['Summary'];
-    if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
-    if (typeof raw === 'string') return raw.trim();
-    if (raw === null || raw === undefined) return '';
-    return String(raw).trim();
-};
 
 function isTFile(file: unknown): file is TFile {
     return !!file && typeof (file as TFile).path === 'string';
