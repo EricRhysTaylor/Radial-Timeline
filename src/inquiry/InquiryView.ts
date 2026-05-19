@@ -372,15 +372,6 @@ import {
     stripNumericTitlePrefix
 } from './utils/inquiryViewText';
 import { polarToCartesian } from './utils/inquiryGeometry';
-import { RunClockController } from './runtime/RunClockController';
-import {
-    BACKGROUND_RUN_COMPLETED_EVENT,
-    type BackgroundRunCompletedDetail,
-    resolveBackgroundCompletionNotice,
-    resolveInquirySubmitAvailability,
-    shouldAutoRehydrateReopenedView,
-    shouldNotifyStillRunning
-} from './runtime/backgroundRunNotice';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
 
@@ -415,14 +406,7 @@ export class InquiryView extends ItemView {
         if (counterKey) this.perfCounters[counterKey]++;
     }
 
-    private runClockController!: RunClockController;
-    // Set in onClose() when a run is still in flight; read+cleared in the
-    // runInquiry finally to fire the background-completion notice exactly once.
-    private runContinuedAfterClose = false;
-    // Resolved 1 Hz tick decision (run active or cache countdown). Set by
-    // reconcileEngineTimerInterval; read by the controller host. This is a
-    // start/stop decision flag, not HUD/progress state.
-    private runClockShouldTick = false;
+    private updateRunningClockInterval?: number;
 
     private plugin: RadialTimelinePlugin;
     private state = createDefaultInquiryState();
@@ -616,15 +600,6 @@ export class InquiryView extends ItemView {
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, mappings);
-        this.runClockController = new RunClockController({
-            shouldTick: () => this.runClockShouldTick,
-            onTick: () => this.updateRunningHud()
-        });
-        this.register(() => this.runClockController.dispose());
-        this.register(this.plugin.subscribe<BackgroundRunCompletedDetail>(
-            BACKGROUND_RUN_COMPLETED_EVENT,
-            detail => this.handleBackgroundRunCompleted(detail)
-        ));
     }
 
     private registerSvgEvent<TEvent extends Event>(
@@ -714,6 +689,10 @@ export class InquiryView extends ItemView {
     }
 
     async onClose(): Promise<void> {
+        if (this.updateRunningClockInterval) {
+            window.clearInterval(this.updateRunningClockInterval);
+            this.updateRunningClockInterval = undefined;
+        }
         if (this.targetPersistTimer) {
             window.clearTimeout(this.targetPersistTimer);
             this.targetPersistTimer = undefined;
@@ -747,13 +726,6 @@ export class InquiryView extends ItemView {
             this.sourcesRefreshTimer = undefined;
         }
         this.payloadStatsRefreshDirty = false;
-        // A run still in flight continues in the background (not cancelled).
-        // Tell the author once; the completion notice fires from runInquiry's
-        // finally. Run/cancel/discard/token semantics are intentionally untouched.
-        if (shouldNotifyStillRunning(this.activeInquiryRunToken !== 0)) {
-            this.runContinuedAfterClose = true;
-            new Notice(t('inquiry.notice.runContinuesAfterClose'));
-        }
         this.contentEl.empty();
     }
 
@@ -1990,36 +1962,6 @@ export class InquiryView extends ItemView {
         }
 
         return { purgedCount, totalScenes: scenes.length };
-    }
-
-    private handleBackgroundRunCompleted(detail: BackgroundRunCompletedDetail): void {
-        // This view may have been opened before the background instance
-        // persisted the completed session; re-sync from the authoritative
-        // cache so peekSession can see it.
-        this.sessionStore.reloadFromSettings();
-        // The background run just ended (in-flight already cleared): refresh
-        // the status line so any open view drops the "submission underway"
-        // message even if it does not auto-rehydrate below.
-        this.updateNavSessionLabel();
-        const session = this.sessionStore.peekSession(detail.sessionKey);
-        const ok = shouldAutoRehydrateReopenedView({
-            isRunning: this.state.isRunning,
-            activeRunToken: this.activeInquiryRunToken,
-            currentSessionId: this.state.activeSessionId,
-            eventSessionKey: detail.sessionKey,
-            sessionExists: !!session,
-            pristine: this.startupFreshMode,
-            alreadyHandled: detail.handled
-        });
-        if (!ok || !session) return;
-        // Mark handled BEFORE rehydrating so the emitter skips the "reopen"
-        // notice and any second listener no-ops. Reuses the existing rehydrate
-        // path (activateSession) — error results show the error UI there.
-        detail.handled = true;
-        this.activateSession(session);
-        new Notice(detail.isError
-            ? t('inquiry.notice.runErrorLoaded')
-            : t('inquiry.notice.runCompleteLoaded'));
     }
 
     private activateSession(session: InquirySession): void {
@@ -5658,10 +5600,6 @@ export class InquiryView extends ItemView {
             this.setTextIfChanged(this.navSessionLabel, this.buildRunningStageLabel(this.currentRunProgress) || t('inquiry.nav.waitingForProvider'), 'hudTextWrites');
             return;
         }
-        if (this.plugin.isInquiryRunInFlight()) {
-            this.setTextIfChanged(this.navSessionLabel, t('inquiry.nav.backgroundRunInFlight'), 'hudTextWrites');
-            return;
-        }
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
             const glyphSeed = this.resolveGlyphSeed();
@@ -5786,8 +5724,13 @@ export class InquiryView extends ItemView {
         const cacheActive = typeof hasCacheCountdown === 'boolean'
             ? hasCacheCountdown
             : !!this.getActiveCacheWindowExpiry();
-        this.runClockShouldTick = this.state.isRunning || cacheActive;
-        this.runClockController.reconcile();
+        const shouldRunTimer = this.state.isRunning || cacheActive;
+        if (shouldRunTimer && !this.updateRunningClockInterval) {
+            this.updateRunningClockInterval = window.setInterval(() => this.updateRunningHud(), 1000);
+        } else if (!shouldRunTimer && this.updateRunningClockInterval) {
+            window.clearInterval(this.updateRunningClockInterval);
+            this.updateRunningClockInterval = undefined;
+        }
     }
 
     private resolveGuidanceState(): InquiryGuidanceState {
@@ -6203,9 +6146,7 @@ export class InquiryView extends ItemView {
         options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
-        // Block a new submission if a run is in flight here OR in a background
-        // instance (e.g. a run started before this view was reopened).
-        if (!resolveInquirySubmitAvailability(this.state.isRunning, this.plugin.isInquiryRunInFlight()).canSubmit) {
+        if (this.state.isRunning) {
             this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
@@ -6321,12 +6262,6 @@ export class InquiryView extends ItemView {
         this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
         let runTrace: InquiryRunTrace | null = null;
-        // Terminal error state for the background-completion notice. null until
-        // a stable result exists (setup threw -> stays null -> no notice).
-        let runTerminalIsError: boolean | null = null;
-        // Persisted session key for background-completion auto-rehydrate.
-        // Null until the session is actually stored (nothing to rehydrate).
-        let completedSessionKey: string | null = null;
         new Notice(t('inquiry.runner.contactingProvider'));
         const submittedAt = new Date();
         const simulationProvider: Exclude<AIProviderId, 'none'> = engineSelection.provider === 'none'
@@ -6354,12 +6289,6 @@ export class InquiryView extends ItemView {
         };
         const runToken = this.beginInquiryRunToken();
         try {
-            // Paired strictly with endInquiryRun() in this try's finally.
-            // Kept as the first statement inside the try so a pre-flight
-            // early return above (e.g. cache short-circuit) cannot leak the
-            // in-flight counter — that previously froze the status line on
-            // "submission underway" and blocked further submissions.
-            this.plugin.beginInquiryRun();
             try {
                 // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
                 // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
@@ -6405,8 +6334,7 @@ export class InquiryView extends ItemView {
                 result = this.withCitationBindingFailure(result);
             }
 
-            runTerminalIsError = this.isErrorResult(result);
-            if (!runTerminalIsError) {
+            if (!this.isErrorResult(result)) {
                 cacheStatus = 'fresh';
             } else {
                 cacheStatus = 'missing';
@@ -6451,7 +6379,6 @@ export class InquiryView extends ItemView {
                         : undefined));
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
             this.sessionStore.setSession(session);
-            completedSessionKey = session.key;
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
             await this.saveInquiryLog(result, traceForLog, manifest, {
@@ -6513,36 +6440,6 @@ export class InquiryView extends ItemView {
             this.currentRunElapsedMs = 0;
             this.currentRunEstimatedMaxMs = 0;
             this.finishInquiryRunToken(runToken);
-            // Decrement BEFORE dispatching completion so listeners (incl. a
-            // reopened view) observe no in-flight run and clear the waiting
-            // status / re-enable submission.
-            this.plugin.endInquiryRun();
-            if (this.runContinuedAfterClose) {
-                this.runContinuedAfterClose = false;
-                const notice = resolveBackgroundCompletionNotice(true, runTerminalIsError);
-                if (notice !== 'none') {
-                    const isError = notice === 'error';
-                    // Offer the completed run to any open, pristine, idle view.
-                    // If one auto-rehydrates it sets detail.handled and shows
-                    // its own "loaded" notice; otherwise fall back to the
-                    // C1.1 "reopen" notice.
-                    let handled = false;
-                    if (completedSessionKey) {
-                        const detail: BackgroundRunCompletedDetail = {
-                            sessionKey: completedSessionKey,
-                            isError,
-                            handled: false
-                        };
-                        this.plugin.dispatch(BACKGROUND_RUN_COMPLETED_EVENT, detail);
-                        handled = detail.handled;
-                    }
-                    if (!handled) {
-                        new Notice(isError
-                            ? t('inquiry.notice.runErrorReopen')
-                            : t('inquiry.notice.runCompleteReopen'));
-                    }
-                }
-            }
         }
     }
 
@@ -9176,10 +9073,7 @@ export class InquiryView extends ItemView {
         this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
 
         const service = this.plugin.getInquiryEstimateService();
-        // Awaited so the build settles before we refresh; the return value is
-        // intentionally unused — refreshEstimateDisplays() reads the cached
-        // snapshot, which is correct even if this request was superseded.
-        await service.requestSnapshot({
+        const snapshot = await service.requestSnapshot({
             scope: this.state.scope,
             activeBookId,
             targetSceneIds,
@@ -9203,13 +9097,10 @@ export class InquiryView extends ItemView {
             citationsEnabled,
         });
 
-        // Always refresh from the *cached* snapshot (getSnapshot()), even when
-        // this request returned null because it was superseded by a newer
-        // in-flight build. Returning early here left the pressure gauge stuck
-        // in its pending "stub" state forever while a valid snapshot existed
-        // (the cache-window chip is independent, so it still showed the time —
-        // the visible inconsistency). UI must always reflect system truth.
-        this.refreshEstimateDisplays(); // Renders with final values (or honest "Estimating…")
+        if (!snapshot) {
+            return;
+        }
+        this.refreshEstimateDisplays(); // Renders once with final values
     }
 
     /**

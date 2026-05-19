@@ -691,7 +691,6 @@ export interface TranslationKeys {
             bookUnresolved: string;
             waitingForProvider: string;
             welcome: string;
-            backgroundRunInFlight: string;
             previousBook: string;
             nextBook: string;
             noPreviousBook: string;
@@ -784,11 +783,6 @@ export interface TranslationKeys {
             purgedScenes: string;
             purgedScenesWithRearm: string;
             coreSetLoaded: string;
-            runContinuesAfterClose: string;
-            runCompleteReopen: string;
-            runErrorReopen: string;
-            runCompleteLoaded: string;
-            runErrorLoaded: string;
         };
         interaction: {
             running: string;
@@ -2861,7 +2855,6 @@ export const en: TranslationKeys = {
             bookUnresolved: 'Book scope unresolved. Check Inquiry sources.',
             waitingForProvider: 'Waiting for the provider response.',
             welcome: 'Welcome to Inquiry. {{weekday}} {{month}} {{day}}{{ordinal}}.',
-            backgroundRunInFlight: 'Inquiry submission underway. Please wait…',
             previousBook: 'Previous book.',
             nextBook: 'Next book.',
             noPreviousBook: 'No previous book.',
@@ -2954,11 +2947,6 @@ export const en: TranslationKeys = {
             purgedScenes: 'Purged Inquiry action items from {{count}} {{sceneWord}}.',
             purgedScenesWithRearm: 'Purged Inquiry action items from {{count}} {{sceneWord}}. Re-armed {{rearmCount}} {{sessionWord}}.',
             coreSetLoaded: '{{label}} loaded.',
-            runContinuesAfterClose: 'Inquiry is still running. Reopen Inquiry View shortly to rehydrate the findings.',
-            runCompleteReopen: 'Inquiry complete. Reopen Inquiry View to rehydrate the findings.',
-            runErrorReopen: 'Inquiry finished with errors. Reopen Inquiry View for details.',
-            runCompleteLoaded: 'Inquiry complete. Findings loaded.',
-            runErrorLoaded: 'Inquiry finished with errors. Details loaded.',
         },
         interaction: {
             running: 'Inquiry running. Please wait.',

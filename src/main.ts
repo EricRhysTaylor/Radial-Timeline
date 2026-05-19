@@ -101,10 +101,6 @@ export interface GetSceneDataOptions {
 export default class RadialTimelinePlugin extends Plugin {
     settings: RadialTimelineSettings;
     public inquiryFreshLaunchPending = true;
-    // Cross-instance count of inquiry API runs currently in flight. Lets a
-    // view (e.g. one reopened mid-run) know another instance's run is active
-    // so it can block a concurrent submission and show a waiting status.
-    private inquiryActiveRunCount = 0;
 
     // Do not store persistent references to views (per Obsidian guidelines)
 
@@ -521,18 +517,6 @@ export default class RadialTimelinePlugin extends Plugin {
         const pending = this.inquiryFreshLaunchPending;
         this.inquiryFreshLaunchPending = false;
         return pending;
-    }
-
-    public isInquiryRunInFlight(): boolean {
-        return this.inquiryActiveRunCount > 0;
-    }
-
-    public beginInquiryRun(): void {
-        this.inquiryActiveRunCount += 1;
-    }
-
-    public endInquiryRun(): void {
-        this.inquiryActiveRunCount = Math.max(0, this.inquiryActiveRunCount - 1);
     }
 
     /** Show or hide the Inquiry ribbon icon and close open Inquiry views when hiding. */
