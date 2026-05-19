@@ -1,7 +1,18 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 const quiet = process.argv.includes('--quiet');
+
+// Env-independent verification hold. A bare `.rt-verification-hold` file in
+// the repo root makes every auto-backup path a no-op regardless of how the
+// build was triggered (covers out-of-band `npm run build` started by Obsidian
+// during manual verification, where RT_SKIP_AUTO_BACKUP isn't exported).
+// Delete the file to resume normal auto-backup.
+if (existsSync('.rt-verification-hold')) {
+  console.log('[backup] .rt-verification-hold present — skipping auto add/commit/push (verification hold).');
+  process.exit(0);
+}
 
 // Opt-out for verification-gated work (e.g. Step-C/D boundaries that require
 // manual Obsidian verification BEFORE any commit). Set RT_SKIP_AUTO_BACKUP=1

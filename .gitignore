@@ -51,3 +51,6 @@ tmp/publishing-pdf-qa/
 
 # Claude Code agent worktrees — created/destroyed by the chip system, never committed.
 .claude/worktrees/
+
+# Local verification hold marker — presence makes backup.mjs a no-op. Never committed.
+.rt-verification-hold
