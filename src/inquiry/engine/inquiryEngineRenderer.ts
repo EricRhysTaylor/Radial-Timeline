@@ -164,11 +164,20 @@ type ActualCostPillState = {
  *   - No recent run yet → "—" (no pill rendered)
  *   - cache_read > 0 → confirmed (green) with reuse percentage
  *   - cache_creation > 0 only → primed (cache established but not yet reused)
- *   - both zero → miss (this run did not benefit from cache)
+ *   - both zero, but a cache window is armed for this corpus → primed
+ *     (provider-agnostic: OpenAI/Gemini never report cache-creation tokens,
+ *     so the armed window is the only honest signal that the first run wrote
+ *     a cache the next run will reuse — without it this read the alarming
+ *     "Cache miss" while the TTL pill and model preview said "armed")
+ *   - both zero and no armed window → miss (genuine: no cache exists)
  *
  * Pure: no DOM access, fully testable.
  */
-export function computeCachePillState(usage: TokenUsage | undefined): CachePillState | null {
+export function computeCachePillState(
+    usage: TokenUsage | undefined,
+    cacheWindow?: EngineCacheWindowSnapshot,
+    now: number = Date.now()
+): CachePillState | null {
     if (!usage) return null;
     const cacheRead = usage.cacheReadInputTokens ?? 0;
     const cacheCreation = usage.cacheCreationInputTokens ?? 0;
@@ -196,6 +205,14 @@ export function computeCachePillState(usage: TokenUsage | undefined): CachePillS
         };
     }
     if (totalInput > 0) {
+        const windowArmed = !!cacheWindow && cacheWindow.expiresAt > now;
+        if (windowArmed) {
+            return {
+                label: 'Cache primed',
+                state: 'primed',
+                tooltip: 'This run established the provider cache. The provider does not report cache-creation tokens, so the active cache window confirms the next run on this corpus should reuse it.'
+            };
+        }
         return {
             label: 'Cache miss',
             state: 'miss',
@@ -327,7 +344,7 @@ function renderEnginePostRunPills(
 ): void {
     const pillRow = container.createDiv({ cls: 'ert-inquiry-engine-pill-row' });
 
-    const cachePill = computeCachePillState(args.recentRun?.tokenUsage);
+    const cachePill = computeCachePillState(args.recentRun?.tokenUsage, args.cacheWindow, args.now);
     if (cachePill) {
         const el = pillRow.createSpan({
             cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--cache is-${cachePill.state}`,

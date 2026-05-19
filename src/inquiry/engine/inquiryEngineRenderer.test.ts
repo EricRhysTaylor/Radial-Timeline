@@ -53,7 +53,7 @@ describe('computeCachePillState', () => {
         expect(pill?.tooltip).toContain('95,000');
     });
 
-    it('reports miss when input is non-zero but neither cache field is populated', () => {
+    it('reports miss when input is non-zero, no cache fields, and NO armed window (genuine miss)', () => {
         const pill = computeCachePillState({
             inputTokens: 50_000
         });
@@ -68,6 +68,44 @@ describe('computeCachePillState', () => {
             cacheCreationInputTokens: 100_000
         });
         expect(pill?.state).toBe('primed');
+    });
+
+    // OpenAI/Gemini never report cache-creation tokens. On a first run the
+    // provider usage looks identical to a genuine miss (read=0, creation
+    // absent) — the only honest signal that a cache was written is the armed
+    // cache window. Without this the pill read "Cache miss" (red) while the
+    // TTL pill and model preview both said the cache was armed.
+    it('reports primed (not miss) when usage has no cache fields but a cache window is armed', () => {
+        const now = 1_000_000;
+        const pill = computeCachePillState(
+            { inputTokens: 130_134 },
+            { expiresAt: now + 23 * 3600 * 1000 },
+            now
+        );
+        expect(pill?.state).toBe('primed');
+        expect(pill?.label).toBe('Cache primed');
+    });
+
+    it('still reports genuine miss when the cache window has already expired', () => {
+        const now = 1_000_000;
+        const pill = computeCachePillState(
+            { inputTokens: 130_134 },
+            { expiresAt: now - 1 },
+            now
+        );
+        expect(pill?.state).toBe('miss');
+        expect(pill?.label).toBe('Cache miss');
+    });
+
+    it('a confirmed cache read still wins over an armed window (real hit, not just primed)', () => {
+        const now = 1_000_000;
+        const pill = computeCachePillState(
+            { inputTokens: 2_000, cacheReadInputTokens: 8_000 },
+            { expiresAt: now + 3600 * 1000 },
+            now
+        );
+        expect(pill?.state).toBe('confirmed');
+        expect(pill?.label).toBe('Cache reused · 80%');
     });
 });
 
