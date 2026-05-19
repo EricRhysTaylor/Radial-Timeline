@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-05-19T02:10:58.013Z",
+  "checkedAt": "2026-05-19T03:18:55.897Z",
   "mode": "report",
   "snapshotBefore": {
-    "generatedAt": "2026-05-17T23:46:20.360Z"
+    "generatedAt": "2026-05-19T02:10:58.005Z"
   },
   "snapshotAfter": {
     "generatedAt": "2026-05-19T02:10:58.005Z"
@@ -10,18 +10,7 @@
   "changes": {
     "openai": {
       "added": [],
-      "removed": [
-        "gpt-4o-audio-preview",
-        "gpt-4o-audio-preview-2024-12-17",
-        "gpt-4o-audio-preview-2025-06-03",
-        "gpt-4o-mini-audio-preview",
-        "gpt-4o-mini-audio-preview-2024-12-17",
-        "gpt-4o-mini-realtime-preview",
-        "gpt-4o-mini-realtime-preview-2024-12-17",
-        "gpt-4o-realtime-preview",
-        "gpt-4o-realtime-preview-2024-12-17",
-        "gpt-4o-realtime-preview-2025-06-03"
-      ]
+      "removed": []
     },
     "anthropic": {
       "added": [],
@@ -36,10 +25,6 @@
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [],
-  "hasActionableChanges": true,
-  "recommendedFollowUps": [
-    "Review scripts/models/latest-models.json and scripts/models/model-drift-report.json for provider catalog drift.",
-    "If a new provider model should ship in RT, update scripts/models/registry.json and src/ai/registry/builtinModels.ts.",
-    "If RT surfaces cost or positioning for the model, update src/ai/cost/providerPricing.ts and src/data/aiModels.ts."
-  ]
+  "hasActionableChanges": false,
+  "recommendedFollowUps": []
 }
