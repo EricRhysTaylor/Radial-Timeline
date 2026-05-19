@@ -84,6 +84,72 @@ export function renderSessionTimerRing(state: SessionTimerRingState | null): str
     `;
 }
 
+// Compact filled-pie variant for the workspace tab icon. Mirrors the count
+// ring's direction semantics (countdown depletes counterclockwise; elapsed
+// grows clockwise) but as a solid wedge so it reads at ~16px.
+export function tabTimerWedgePath(
+    radius: number,
+    progress: number,
+    direction: 'clockwise' | 'counterclockwise'
+): string {
+    const p = clamp(progress, 0, 1);
+    if (p <= 0) return '';
+    if (p >= 0.999) {
+        return [
+            `M 0 ${formatNumber(-radius)}`,
+            `A ${formatNumber(radius)} ${formatNumber(radius)} 0 1 1 0 ${formatNumber(radius)}`,
+            `A ${formatNumber(radius)} ${formatNumber(radius)} 0 1 1 0 ${formatNumber(-radius)}`,
+            'Z',
+        ].join(' ');
+    }
+    const topAngle = -Math.PI / 2;
+    const sweep = direction === 'counterclockwise' ? -1 : 1;
+    const endAngle = topAngle + (sweep * Math.PI * 2 * p);
+    const x0 = radius * Math.cos(topAngle);
+    const y0 = radius * Math.sin(topAngle);
+    const x1 = radius * Math.cos(endAngle);
+    const y1 = radius * Math.sin(endAngle);
+    const largeArc = p > 0.5 ? 1 : 0;
+    const sweepFlag = direction === 'counterclockwise' ? 0 : 1;
+    return [
+        'M 0 0',
+        `L ${formatNumber(x0)} ${formatNumber(y0)}`,
+        `A ${formatNumber(radius)} ${formatNumber(radius)} 0 ${largeArc} ${sweepFlag} ${formatNumber(x1)} ${formatNumber(y1)}`,
+        'Z',
+    ].join(' ');
+}
+
+export const TAB_TIMER_DISC_RADIUS = 9;
+
+export function buildTabTimerDiscSvg(params: {
+    progress: number;
+    direction: 'clockwise' | 'counterclockwise';
+    paused: boolean;
+}): SVGSVGElement {
+    const ns = 'http://www.w3.org/2000/svg';
+    const radius = TAB_TIMER_DISC_RADIUS;
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', `svg-icon ert-tab-timer-disc${params.paused ? ' is-paused' : ''}`);
+    svg.setAttribute('viewBox', '-12 -12 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const track = document.createElementNS(ns, 'circle');
+    track.setAttribute('cx', '0');
+    track.setAttribute('cy', '0');
+    track.setAttribute('r', formatNumber(radius));
+    track.setAttribute('class', 'ert-tab-timer-disc__track');
+    svg.appendChild(track);
+
+    const wedge = tabTimerWedgePath(radius, params.progress, params.direction);
+    if (wedge) {
+        const fill = document.createElementNS(ns, 'path');
+        fill.setAttribute('d', wedge);
+        fill.setAttribute('class', 'ert-tab-timer-disc__fill');
+        svg.appendChild(fill);
+    }
+    return svg;
+}
+
 export function renderSessionTimerRingLayer(state: SessionTimerRingState | null): string {
     const ring = renderSessionTimerRing(state);
     if (!ring.trim()) return '';

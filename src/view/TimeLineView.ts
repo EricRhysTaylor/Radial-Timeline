@@ -28,7 +28,7 @@ import {
     SESSION_TIMER_RING_WIDTH,
     SVG_SIZE
 } from '../renderer/layout/LayoutConstants';
-import { buildSessionTimerRingState, renderSessionTimerRingLayer } from '../renderer/components/SessionTimerRing';
+import { buildSessionTimerRingState, renderSessionTimerRingLayer, buildTabTimerDiscSvg } from '../renderer/components/SessionTimerRing';
 import { 
     createSnapshot, 
     detectChanges, 
@@ -150,6 +150,7 @@ export class RadialTimelineView extends ItemView {
     private writingSessionCountdownToggle?: HTMLInputElement;
     private writingSessionGoalInput?: HTMLInputElement;
     private writingSessionTickInterval?: number;
+    private tabTimerIconActive = false;
     private writingSessionPulseTimeout?: number;
     private writingSessionLastTitlePulseKey?: string;
     private writingSessionLastPulseColor?: string;
@@ -693,6 +694,37 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionLastTitlePulseKey = snapshot.pulseKey;
         this.syncOpenWritingSessionPanel();
         this.updateWritingSessionRing(undefined, { pulseColor });
+        this.updateTabTimerIcon();
+    }
+
+    // Paints a muted filled-pie over the workspace tab icon while a session is
+    // running so the timer stays visible even when editing a note. Falls back
+    // to the plugin logo when idle. `tabHeaderInnerIconEl` is an Obsidian
+    // internal — guarded so a missing element no-ops instead of throwing.
+    private updateTabTimerIcon(): void {
+        const iconEl = (this.leaf as unknown as { tabHeaderInnerIconEl?: HTMLElement }).tabHeaderInnerIconEl;
+        if (!iconEl) return;
+        const service = this.plugin.getWritingSessionService();
+        const active = service.getActiveSession();
+        if (!active) {
+            if (this.tabTimerIconActive) {
+                setIcon(iconEl, 'rt-logo');
+                this.tabTimerIconActive = false;
+            }
+            return;
+        }
+        const elapsedMs = service.getActiveElapsedMs();
+        const countdown = Boolean(active.goalMinutes);
+        const targetMinutes = active.goalMinutes ?? service.getDefaultGoalMinutes() ?? 120;
+        const targetMs = Math.max(1, targetMinutes) * 60000;
+        const elapsedProgress = Math.min(1, Math.max(0, elapsedMs / targetMs));
+        iconEl.empty();
+        iconEl.appendChild(buildTabTimerDiscSvg({
+            progress: countdown ? 1 - elapsedProgress : elapsedProgress,
+            direction: countdown ? 'counterclockwise' : 'clockwise',
+            paused: Boolean(active.pausedAt),
+        }));
+        this.tabTimerIconActive = true;
     }
 
     private getSessionTitlePulseKey(active: ActiveWritingSession, elapsedMs: number): string {
@@ -2073,6 +2105,11 @@ export class RadialTimelineView extends ItemView {
         if (this.beatLabelAdjustRaf !== null) {
             window.cancelAnimationFrame(this.beatLabelAdjustRaf);
             this.beatLabelAdjustRaf = null;
+        }
+        if (this.tabTimerIconActive) {
+            const iconEl = (this.leaf as unknown as { tabHeaderInnerIconEl?: HTMLElement }).tabHeaderInnerIconEl;
+            if (iconEl) setIcon(iconEl, 'rt-logo');
+            this.tabTimerIconActive = false;
         }
         // Note: ModeToggleController keyboard listeners are cleaned up automatically via view.register()
     }

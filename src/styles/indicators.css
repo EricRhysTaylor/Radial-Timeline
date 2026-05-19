@@ -343,6 +343,28 @@
   }
 }
 
+/* Workspace tab timer disc - muted while running, brighter when paused.
+   Lives in the tab header (outside .radial-timeline-container). */
+.ert-tab-timer-disc__track {
+  fill: var(--text-faint);
+  opacity: 0.25;
+}
+
+.ert-tab-timer-disc__fill {
+  fill: var(--text-muted);
+  opacity: 0.45;
+}
+
+.ert-tab-timer-disc.is-paused .ert-tab-timer-disc__fill {
+  fill: var(--text-warning);
+  opacity: 1;
+}
+
+.ert-tab-timer-disc.is-paused .ert-tab-timer-disc__track {
+  fill: var(--text-warning);
+  opacity: 0.3;
+}
+
 /* Estimate tick group - hover interaction */
 .radial-timeline-container .rt-estimate-tick-group {
   cursor: pointer;
