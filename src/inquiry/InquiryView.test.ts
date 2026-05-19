@@ -200,7 +200,11 @@ describe('InquiryView payload accounting', () => {
     it('keeps context reuse HUD tied to the current engine instead of hydrated result state', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('private getLatestCacheSessionForResolvedEngine(): InquirySession | null {')).toBe(true);
-        expect(viewSource.includes("return 'Cache expired';")).toBe(true);
+        // R1 chunk 3b: countdown label shaping moved to the pure module;
+        // InquiryView delegates after the session lookup.
+        expect(viewSource.includes('return formatContextCountdownLabelPure(session, Date.now());')).toBe(true);
+        const statusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryCacheStatus.ts'), 'utf8');
+        expect(statusSource.includes("return 'Cache expired';")).toBe(true);
         expect(viewSource.includes('scope: this.state.scope')).toBe(true);
         expect(viewSource.includes("const hasLiveContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();")).toBe(true);
         expect(viewSource.includes('this.reconcileEngineTimerInterval(hasLiveContextCountdown);')).toBe(true);
@@ -214,11 +218,19 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('const pendingActions = this.buildBriefPendingActions(result, items, referenceLabels);')).toBe(true);
     });
 
-    it('prefers the strongest live warm-cache metrics over stale persisted reuse data', () => {
+    it('prefers the strongest live warm-cache metrics over stale persisted reuse data (via pure picker)', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        // R1 chunk 3a: selection moved to the pure inquiryCacheStatus
+        // module; InquiryView resolves both inputs (impure lookups) then
+        // delegates. Behaviour (strongest warm wins, ties keep persisted)
+        // is characterized by the module's own tests.
         expect(viewSource.includes('private getLiveReuseAdvancedContext(): AIRunAdvancedContext | null {')).toBe(true);
-        expect(viewSource.includes('private scoreReuseAdvancedContext(context: AIRunAdvancedContext | null): number {')).toBe(true);
-        expect(viewSource.includes('return this.scoreReuseAdvancedContext(live) > this.scoreReuseAdvancedContext(persisted)')).toBe(true);
+        expect(viewSource.includes('return pickEffectiveReuseAdvancedContextPure(persisted, live);')).toBe(true);
+        // Old inline scoring/selection must be gone from InquiryView.
+        expect(viewSource.includes('private scoreReuseAdvancedContext(context: AIRunAdvancedContext | null): number {')).toBe(false);
+        expect(viewSource.includes('return this.scoreReuseAdvancedContext(live) > this.scoreReuseAdvancedContext(persisted)')).toBe(false);
+        const statusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryCacheStatus.ts'), 'utf8');
+        expect(statusSource.includes('export function pickEffectiveReuseAdvancedContext(')).toBe(true);
     });
 
     it('defines a visibly tinted cached-overlay hatch for the minimap token bar', () => {
@@ -249,7 +261,9 @@ describe('InquiryView payload accounting', () => {
         const domSource = readFileSync(resolve(process.cwd(), 'src/inquiry/dom/inquiryDomFactory.ts'), 'utf8');
         const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
         expect(viewSource.includes("'flame-kindling'")).toBe(true);
-        expect(viewSource.includes("return `${formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
+        // R1 chunk 3b: countdown text shaping lives in the pure module now.
+        const statusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryCacheStatus.ts'), 'utf8');
+        expect(statusSource.includes("return `${formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
         expect(domSource.includes("engineTimerIcon.setAttribute('href', '#ert-icon-flame-kindling');")).toBe(true);
         expect(domSource.includes("engineTimerIcon.setAttribute('width', '34');")).toBe(true);
         expect(cssSource.includes('font-size: 18px;')).toBe(true);

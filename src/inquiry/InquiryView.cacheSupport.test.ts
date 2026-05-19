@@ -5,10 +5,17 @@ import { resolve } from 'node:path';
 describe('InquiryView OpenAI cache support', () => {
     it('persists OpenAI cache windows and exposes persisted eligible reuse context', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        // resolveCacheWindowExpiry is untouched (chunk 3b explicitly excludes it).
         expect(viewSource.includes("if (trace?.cacheReuseState !== 'eligible' && trace?.cacheReuseState !== 'warm') return null;")).toBe(true);
-        expect(viewSource.includes("session.result.aiProvider?.trim().toLowerCase() !== engine.provider")).toBe(true);
-        expect(viewSource.includes("reuseState = session.cacheReuseState === 'warm'")).toBe(true);
-        expect(viewSource.includes('? \'eligible\'')).toBe(true);
+        // R1 chunk 3b: persisted-reuse mapping moved to the pure module;
+        // InquiryView keeps engine + sessionStore lookup then delegates.
+        // The provider-mismatch + reuseState derivation now live there and
+        // are characterized by inquiryCacheStatus.test.ts.
+        expect(viewSource.includes('return mapSessionToPersistedReuseContextPure(session, engine.provider, engine.modelLabel, Date.now());')).toBe(true);
+        const statusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryCacheStatus.ts'), 'utf8');
+        expect(statusSource.includes("session.result.aiProvider?.trim().toLowerCase() !== provider")).toBe(true);
+        expect(statusSource.includes("const reuseState = session.cacheReuseState === 'warm'")).toBe(true);
+        expect(statusSource.includes("? 'eligible'")).toBe(true);
     });
 
     it('renders the minimap cache overlay as a solid green indicator instead of the plaid hatch', () => {

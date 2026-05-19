@@ -215,12 +215,16 @@ import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './ren
 import { createInquiryEngineActionButtons } from './engine/inquiryEngineDom';
 import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip, type EngineRecentRunSnapshot, type EngineCacheWindowSnapshot } from './engine/inquiryEngineRenderer';
 import {
-    scoreReuseAdvancedContext as scoreReuseAdvancedContextPure,
     getAnthropicAcceptedCacheTtl as getAnthropicAcceptedCacheTtlPure,
     getDispatchEngineKey as getDispatchEngineKeyPure,
     resolveActualUsageCostForResult as resolveActualUsageCostForResultPure,
     buildEngineRecentRunSnapshot as buildEngineRecentRunSnapshotPure,
-    buildEngineCacheWindowSnapshotFromSession as buildEngineCacheWindowSnapshotFromSessionPure
+    buildEngineCacheWindowSnapshotFromSession as buildEngineCacheWindowSnapshotFromSessionPure,
+    pickEffectiveReuseAdvancedContext as pickEffectiveReuseAdvancedContextPure,
+    mapSessionToPersistedReuseContext as mapSessionToPersistedReuseContextPure,
+    matchLiveReuseAdvancedContext as matchLiveReuseAdvancedContextPure,
+    resolveActiveCacheWindowExpiry as resolveActiveCacheWindowExpiryPure,
+    formatContextCountdownLabel as formatContextCountdownLabelPure
 } from './engine/inquiryCacheStatus';
 import { buildInquiryEngineCorpusSummary } from './engine/inquiryEngineViewModel';
 import {
@@ -352,7 +356,6 @@ import {
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
     formatBriefLabel,
-    formatCacheCountdown,
     formatElapsedRunClock,
     formatInquiryBriefLink,
     formatInquiryBriefTimestamp,
@@ -9573,77 +9576,28 @@ export class InquiryView extends ItemView {
             cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined,
             scope: this.state.scope
         });
-        if (!session || session.result.aiProvider?.trim().toLowerCase() !== engine.provider) {
-            return null;
-        }
-        const reuseState = session.cacheReuseState === 'warm'
-            ? 'warm'
-            : session.cacheWindowExpiresAt && session.cacheWindowExpiresAt > Date.now()
-                ? 'eligible'
-                : 'idle';
-        if (reuseState === 'idle') return null;
-        const cachedStableRatio = typeof session.cachedStableRatio === 'number' && Number.isFinite(session.cachedStableRatio)
-            ? Math.min(1, Math.max(0, session.cachedStableRatio))
-            : undefined;
-        const cachedStableTokens = typeof session.cachedStableTokens === 'number' && Number.isFinite(session.cachedStableTokens)
-            ? Math.max(0, Math.floor(session.cachedStableTokens))
-            : undefined;
-        const totalInputTokens = typeof session.totalInputTokens === 'number' && Number.isFinite(session.totalInputTokens)
-            ? Math.max(0, Math.floor(session.totalInputTokens))
-            : undefined;
-        return {
-            roleTemplateName: '',
-            provider: engine.provider,
-            modelAlias: '',
-            modelLabel: engine.modelLabel,
-            modelSelectionReason: 'persisted_cache_certificate',
-            availabilityStatus: 'unknown',
-            maxInputTokens: 0,
-            maxOutputTokens: 0,
-            executionPassCount: 1,
-            reuseState,
-            cachedStableRatio,
-            cachedStableTokens,
-            totalInputTokens,
-            cacheStatus: session.providerCacheStatus,
-            featureModeInstructions: '',
-            finalPrompt: ''
-        };
+        return mapSessionToPersistedReuseContextPure(session, engine.provider, engine.modelLabel, Date.now());
     }
 
     private getLiveReuseAdvancedContext(): AIRunAdvancedContext | null {
         const context = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
-        if (!context) return null;
         const engine = this.getResolvedEngine();
         if (engine.provider === 'none' || engine.provider === 'ollama') return null;
-        if (context.provider !== engine.provider) return null;
-        const normalizedEngineLabel = engine.modelLabel.trim().toLowerCase();
-        const normalizedContextLabel = (context.modelLabel || '').trim().toLowerCase();
-        if (normalizedEngineLabel && normalizedContextLabel && normalizedEngineLabel !== normalizedContextLabel) {
-            return null;
-        }
-        return context;
+        return matchLiveReuseAdvancedContextPure(context, engine.provider, engine.modelLabel);
     }
 
-    private scoreReuseAdvancedContext(context: AIRunAdvancedContext | null): number {
-        return scoreReuseAdvancedContextPure(context);
-    }
 
     private getEffectiveReuseAdvancedContext(): AIRunAdvancedContext | null {
+        // Preserve persisted-then-live evaluation order (args evaluate
+        // left-to-right). Selection logic is the pure module helper.
         const persisted = this.getPersistedReuseAdvancedContext();
         const live = this.getLiveReuseAdvancedContext();
-        if (!persisted) return live ?? null;
-        if (!live) return persisted;
-        return this.scoreReuseAdvancedContext(live) > this.scoreReuseAdvancedContext(persisted)
-            ? live
-            : persisted;
+        return pickEffectiveReuseAdvancedContextPure(persisted, live);
     }
 
     private getActiveCacheWindowExpiry(): number | null {
         const session = this.getLatestCacheSessionForResolvedEngine();
-        if (!session?.cacheWindowExpiresAt) return null;
-        if (session.cacheWindowExpiresAt <= Date.now()) return null;
-        return session.cacheWindowExpiresAt;
+        return resolveActiveCacheWindowExpiryPure(session, Date.now());
     }
 
     private getLatestCacheSessionForResolvedEngine(): InquirySession | null {
@@ -9659,13 +9613,7 @@ export class InquiryView extends ItemView {
 
     private buildContextCountdownLabel(): string | null {
         const session = this.getLatestCacheSessionForResolvedEngine();
-        if (!session?.cacheWindowExpiresAt) return null;
-
-        const remainingMs = session.cacheWindowExpiresAt - Date.now();
-        if (remainingMs > 0) {
-            return `${formatCacheCountdown(remainingMs)} remaining`;
-        }
-        return 'Cache expired';
+        return formatContextCountdownLabelPure(session, Date.now());
     }
 
     private clearContextWindow(): void {
