@@ -6317,7 +6317,6 @@ export class InquiryView extends ItemView {
 
         const startTime = Date.now();
         this.state.isRunning = true;
-        this.plugin.beginInquiryRun();
         this.setApiStatus('running');
         this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
@@ -6355,6 +6354,12 @@ export class InquiryView extends ItemView {
         };
         const runToken = this.beginInquiryRunToken();
         try {
+            // Paired strictly with endInquiryRun() in this try's finally.
+            // Kept as the first statement inside the try so a pre-flight
+            // early return above (e.g. cache short-circuit) cannot leak the
+            // in-flight counter — that previously froze the status line on
+            // "submission underway" and blocked further submissions.
+            this.plugin.beginInquiryRun();
             try {
                 // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
                 // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
