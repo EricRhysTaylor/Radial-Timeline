@@ -691,6 +691,7 @@ export interface TranslationKeys {
             bookUnresolved: string;
             waitingForProvider: string;
             welcome: string;
+            backgroundRunInFlight: string;
             previousBook: string;
             nextBook: string;
             noPreviousBook: string;
@@ -2860,6 +2861,7 @@ export const en: TranslationKeys = {
             bookUnresolved: 'Book scope unresolved. Check Inquiry sources.',
             waitingForProvider: 'Waiting for the provider response.',
             welcome: 'Welcome to Inquiry. {{weekday}} {{month}} {{day}}{{ordinal}}.',
+            backgroundRunInFlight: 'Inquiry submission underway. Please wait…',
             previousBook: 'Previous book.',
             nextBook: 'Next book.',
             noPreviousBook: 'No previous book.',

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-17T23:46:20.360Z",
+  "generatedAt": "2026-05-19T02:10:58.005Z",
   "summary": {
-    "openai": 130,
+    "openai": 120,
     "anthropic": 9,
     "google": 50
   },
@@ -272,39 +272,6 @@
     },
     {
       "provider": "openai",
-      "id": "gpt-4o-audio-preview",
-      "raw": {
-        "id": "gpt-4o-audio-preview",
-        "object": "model",
-        "created": 1727460443,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-09-27T18:07:23.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-audio-preview-2024-12-17",
-      "raw": {
-        "id": "gpt-4o-audio-preview-2024-12-17",
-        "object": "model",
-        "created": 1734034239,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-12-12T20:10:39.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-audio-preview-2025-06-03",
-      "raw": {
-        "id": "gpt-4o-audio-preview-2025-06-03",
-        "object": "model",
-        "created": 1748908498,
-        "owned_by": "system"
-      },
-      "createdAt": "2025-06-02T23:54:58.000Z"
-    },
-    {
-      "provider": "openai",
       "id": "gpt-4o-mini",
       "raw": {
         "id": "gpt-4o-mini",
@@ -324,50 +291,6 @@
         "owned_by": "system"
       },
       "createdAt": "2024-07-16T23:31:57.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-mini-audio-preview",
-      "raw": {
-        "id": "gpt-4o-mini-audio-preview",
-        "object": "model",
-        "created": 1734387424,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-12-16T22:17:04.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-mini-audio-preview-2024-12-17",
-      "raw": {
-        "id": "gpt-4o-mini-audio-preview-2024-12-17",
-        "object": "model",
-        "created": 1734115920,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-12-13T18:52:00.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-mini-realtime-preview",
-      "raw": {
-        "id": "gpt-4o-mini-realtime-preview",
-        "object": "model",
-        "created": 1734387380,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-12-16T22:16:20.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-mini-realtime-preview-2024-12-17",
-      "raw": {
-        "id": "gpt-4o-mini-realtime-preview-2024-12-17",
-        "object": "model",
-        "created": 1734112601,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-12-13T17:56:41.000Z"
     },
     {
       "provider": "openai",
@@ -456,39 +379,6 @@
         "owned_by": "system"
       },
       "createdAt": "2025-12-13T07:27:17.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-realtime-preview",
-      "raw": {
-        "id": "gpt-4o-realtime-preview",
-        "object": "model",
-        "created": 1727659998,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-09-30T01:33:18.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-realtime-preview-2024-12-17",
-      "raw": {
-        "id": "gpt-4o-realtime-preview-2024-12-17",
-        "object": "model",
-        "created": 1733945430,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-12-11T19:30:30.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4o-realtime-preview-2025-06-03",
-      "raw": {
-        "id": "gpt-4o-realtime-preview-2025-06-03",
-        "object": "model",
-        "created": 1748907838,
-        "owned_by": "system"
-      },
-      "createdAt": "2025-06-02T23:43:58.000Z"
     },
     {
       "provider": "openai",

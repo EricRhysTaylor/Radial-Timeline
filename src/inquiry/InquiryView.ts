@@ -377,6 +377,7 @@ import {
     BACKGROUND_RUN_COMPLETED_EVENT,
     type BackgroundRunCompletedDetail,
     resolveBackgroundCompletionNotice,
+    resolveInquirySubmitAvailability,
     shouldAutoRehydrateReopenedView,
     shouldNotifyStillRunning
 } from './runtime/backgroundRunNotice';
@@ -1996,6 +1997,10 @@ export class InquiryView extends ItemView {
         // persisted the completed session; re-sync from the authoritative
         // cache so peekSession can see it.
         this.sessionStore.reloadFromSettings();
+        // The background run just ended (in-flight already cleared): refresh
+        // the status line so any open view drops the "submission underway"
+        // message even if it does not auto-rehydrate below.
+        this.updateNavSessionLabel();
         const session = this.sessionStore.peekSession(detail.sessionKey);
         const ok = shouldAutoRehydrateReopenedView({
             isRunning: this.state.isRunning,
@@ -5653,6 +5658,10 @@ export class InquiryView extends ItemView {
             this.setTextIfChanged(this.navSessionLabel, this.buildRunningStageLabel(this.currentRunProgress) || t('inquiry.nav.waitingForProvider'), 'hudTextWrites');
             return;
         }
+        if (this.plugin.isInquiryRunInFlight()) {
+            this.setTextIfChanged(this.navSessionLabel, t('inquiry.nav.backgroundRunInFlight'), 'hudTextWrites');
+            return;
+        }
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
             const glyphSeed = this.resolveGlyphSeed();
@@ -6194,7 +6203,9 @@ export class InquiryView extends ItemView {
         options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
-        if (this.state.isRunning) {
+        // Block a new submission if a run is in flight here OR in a background
+        // instance (e.g. a run started before this view was reopened).
+        if (!resolveInquirySubmitAvailability(this.state.isRunning, this.plugin.isInquiryRunInFlight()).canSubmit) {
             this.notifyInteraction(t('inquiry.interaction.running'));
             return;
         }
@@ -6306,6 +6317,7 @@ export class InquiryView extends ItemView {
 
         const startTime = Date.now();
         this.state.isRunning = true;
+        this.plugin.beginInquiryRun();
         this.setApiStatus('running');
         this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
@@ -6496,6 +6508,10 @@ export class InquiryView extends ItemView {
             this.currentRunElapsedMs = 0;
             this.currentRunEstimatedMaxMs = 0;
             this.finishInquiryRunToken(runToken);
+            // Decrement BEFORE dispatching completion so listeners (incl. a
+            // reopened view) observe no in-flight run and clear the waiting
+            // status / re-enable submission.
+            this.plugin.endInquiryRun();
             if (this.runContinuedAfterClose) {
                 this.runContinuedAfterClose = false;
                 const notice = resolveBackgroundCompletionNotice(true, runTerminalIsError);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     type AutoRehydrateInputs,
     resolveBackgroundCompletionNotice,
+    resolveInquirySubmitAvailability,
     shouldAutoRehydrateReopenedView,
     shouldNotifyStillRunning
 } from './backgroundRunNotice';
@@ -30,6 +31,23 @@ describe('resolveBackgroundCompletionNotice', () => {
 
     it('returns none when the terminal result is unknown', () => {
         expect(resolveBackgroundCompletionNotice(true, null)).toBe('none');
+    });
+});
+
+describe('resolveInquirySubmitAvailability', () => {
+    it('allows submission only when nothing is running anywhere', () => {
+        expect(resolveInquirySubmitAvailability(false, false))
+            .toEqual({ canSubmit: true, showWaitingStatus: false });
+    });
+    it('blocks and shows waiting when a background run is in flight', () => {
+        expect(resolveInquirySubmitAvailability(false, true))
+            .toEqual({ canSubmit: false, showWaitingStatus: true });
+    });
+    it('blocks (no waiting status) when this view is the one running', () => {
+        expect(resolveInquirySubmitAvailability(true, false))
+            .toEqual({ canSubmit: false, showWaitingStatus: false });
+        expect(resolveInquirySubmitAvailability(true, true))
+            .toEqual({ canSubmit: false, showWaitingStatus: false });
     });
 });
 

@@ -18,6 +18,27 @@ export interface BackgroundRunCompletedDetail {
 /** Show the "still running" notice on close iff a run is currently active. */
 export const shouldNotifyStillRunning = (runActive: boolean): boolean => runActive;
 
+export interface InquirySubmitAvailability {
+    /** A new inquiry question may be submitted from this view. */
+    canSubmit: boolean;
+    /** This view is idle but a background run (elsewhere) is in flight —
+     *  show the "submission underway, please wait" status. */
+    showWaitingStatus: boolean;
+}
+
+/**
+ * Decide whether a view may submit a new inquiry and whether it should show
+ * the background-run waiting status. A run in flight anywhere (this view or a
+ * background instance) blocks a new submission.
+ */
+export const resolveInquirySubmitAvailability = (
+    isRunningHere: boolean,
+    backgroundRunInFlight: boolean
+): InquirySubmitAvailability => ({
+    canSubmit: !isRunningHere && !backgroundRunInFlight,
+    showWaitingStatus: !isRunningHere && backgroundRunInFlight
+});
+
 export type BackgroundCompletionNotice = 'none' | 'complete' | 'error';
 
 /**
