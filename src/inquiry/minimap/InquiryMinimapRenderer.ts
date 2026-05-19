@@ -949,30 +949,32 @@ export class InquiryMinimapRenderer {
             && Number.isFinite(cachedTokens)
             && cachedTokens > 0;
 
-        if (hasRealCacheMetric) {
-            // Warm or eligible with confirmed cache data — proportional overlay.
-            // Debug mode: render the full observed width so the cache bar is unambiguous.
-            const barWidth = this.minimapLayout.length * Math.min(Math.max(fillRatio, 0), 1);
-            const overlayWidth = barWidth * Math.min(cachedRatio!, 1);
-            if (overlayWidth < 1) {
-                // Too small to render meaningfully — show the stub instead.
-                this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
-                this.minimapTokenCapCachedOverlay.classList.add('is-stub');
-                this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
-                this.minimapTokenCapCachedOverlay.setAttribute('width', String(CACHE_STUB_PX));
-                return;
-            }
-            this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden', 'is-stub');
-            this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
-            this.minimapTokenCapCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
-        } else {
-            // Eligible but no confirmed data — honest 4px white stub.
-            // Shows the system is checking; no fabricated values.
+        // DOCTRINE: the cached overlay is a positive cache claim. It renders
+        // ONLY from a payload-proven metric (cachedStableRatio/Tokens are set
+        // post-run solely from real provider cache tokens — OpenAI cached_tokens
+        // > 0, Anthropic cache_read/creation). An 'eligible' (attempted but
+        // unproven) reuse state shows NOTHING — a stub would imply a cache
+        // that the provider payload has not confirmed exists.
+        if (!hasRealCacheMetric) {
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+            this.minimapTokenCapCachedOverlay.classList.remove('is-stub');
+            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
+            return;
+        }
+        const barWidth = this.minimapLayout.length * Math.min(Math.max(fillRatio, 0), 1);
+        const overlayWidth = barWidth * Math.min(cachedRatio!, 1);
+        if (overlayWidth < 1) {
+            // Proven reuse but too thin to paint a proportional bar — a small
+            // marker is honest here because the payload DID confirm reuse.
             this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
             this.minimapTokenCapCachedOverlay.classList.add('is-stub');
             this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
             this.minimapTokenCapCachedOverlay.setAttribute('width', String(CACHE_STUB_PX));
+            return;
         }
+        this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden', 'is-stub');
+        this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
+        this.minimapTokenCapCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
     }
 
     private updateExecutionPassSegments(

@@ -9,6 +9,66 @@ import { buildManifestTocLines, formatManifestClassLabel } from '../utils/inquir
 import { buildInquirySourcesViewModel } from '../services/inquirySources';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
+import { CACHE_BREAK_DELIMITER } from '../../ai/prompts/composeEnvelope';
+
+/**
+ * Extract the ACTUAL outgoing prompt text from the captured provider
+ * request payload (not the scaffold `trace.userPrompt`, which OpenAI
+ * never receives — see docs/engineering/audits/openai-cache-miss-rootcause.md).
+ *
+ * Supports:
+ *  - OpenAI Responses shape: { input: [{ role, content: [{ text }] }] }
+ *  - Legacy chat shape:      { messages: [{ role, content }] }
+ * Returns null when the payload was not captured or is an unknown shape —
+ * the caller must then say so explicitly and NOT fall back to the scaffold.
+ */
+function extractRequestPromptText(
+    requestPayload: unknown
+): { systemText: string; userText: string } | null {
+    const payload = asRecord(requestPayload);
+    if (!payload) return null;
+
+    const readContent = (content: unknown): string => {
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+            return content
+                .map(part => {
+                    const rec = asRecord(part);
+                    return rec && typeof rec.text === 'string' ? rec.text : '';
+                })
+                .join('');
+        }
+        return '';
+    };
+
+    const collect = (entries: unknown): { systemText: string; userText: string } | null => {
+        if (!Array.isArray(entries)) return null;
+        let systemText = '';
+        let userText = '';
+        for (const entry of entries) {
+            const rec = asRecord(entry);
+            if (!rec) continue;
+            const role = typeof rec.role === 'string' ? rec.role : '';
+            const text = readContent(rec.content);
+            if (role === 'system' || role === 'developer') systemText += text;
+            else if (role === 'user') userText += text;
+        }
+        if (!systemText && !userText) return null;
+        return { systemText, userText };
+    };
+
+    return collect(payload.input) ?? collect(payload.messages);
+}
+
+/** Stable, non-cryptographic FNV-1a hash for comparing prefixes across runs. */
+function prefixFingerprint(text: string): string {
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    }
+    return (hash >>> 0).toString(16);
+}
 
 const PROVIDER_LABELS = {
     anthropic: 'Anthropic',
@@ -428,14 +488,29 @@ export function buildInquiryLogContent(args: {
         const rawUsageJson = rawUsageRecord !== undefined
             ? JSON.stringify(rawUsageRecord)
             : (usage ? 'not captured; normalized token usage available' : 'not captured');
-        const userPromptChars = typeof trace.userPrompt === 'string' ? trace.userPrompt.length : 0;
-        const evidenceChars = typeof trace.evidenceText === 'string' ? trace.evidenceText.length : 0;
-        const prefixChars = Math.max(0, userPromptChars - evidenceChars);
+        // DOCTRINE (Audit 4): the cacheable-prefix metric MUST be derived
+        // from the real outgoing provider request payload, never from
+        // trace.userPrompt (the scaffold variant OpenAI never receives).
+        // If the payload was not captured we say so — no scaffold fallback.
+        const promptText = extractRequestPromptText(requestPayload);
         lines.push('## Cache Diagnostics');
         lines.push(`- cacheReuseFingerprint: ${result.cacheReuseFingerprint ?? '(unset)'}`); // SAFE: log diagnostic, not analysis input
         lines.push(formatCacheTransportDiagnostic(result.aiProvider ?? '', requestPayload)); // SAFE: provider may be absent on malformed/error legacy logs
-        lines.push(`- Cacheable prefix chars (user prompt minus evidence): ${prefixChars}`);
-        lines.push(`- User prompt chars (total): ${userPromptChars}`);
+        if (promptText) {
+            const { systemText, userText } = promptText;
+            const breakIdx = userText.indexOf(CACHE_BREAK_DELIMITER);
+            // OpenAI caches the serialized input prefix: system message
+            // (always first) + user text up to the cache break.
+            const userPrefix = breakIdx >= 0 ? userText.slice(0, breakIdx) : userText;
+            const cacheablePrefix = systemText + userPrefix;
+            const totalPromptChars = systemText.length + userText.length;
+            lines.push(`- Cacheable prefix chars (real request, system + user up to ${breakIdx >= 0 ? 'cache break' : 'end'}): ${cacheablePrefix.length}`);
+            lines.push(`- Cacheable prefix fingerprint: ${prefixFingerprint(cacheablePrefix)}`); // SAFE: stable hash for cross-run byte-diff; no payload content emitted
+            lines.push(`- Outgoing prompt chars (system + user, total): ${totalPromptChars}`);
+            lines.push(`- Cache break present in request: ${breakIdx >= 0 ? 'yes' : 'no'}`);
+        } else {
+            lines.push('- Cacheable prefix: request payload not captured — cannot measure (scaffold prompt is NOT a substitute)');
+        }
         lines.push(`- Raw provider usage JSON: ${rawUsageJson}`);
         lines.push('');
     }

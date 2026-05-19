@@ -9,8 +9,13 @@ describe('AI settings cache preview signals', () => {
         expect(source.includes("extraCls: 'ert-ai-pill--active'")).toBe(true);
         expect(source.includes("extraPills.push({ text: 'Cache · Ready', extraCls: 'ert-ai-pill--active' });")).toBe(false);
         expect(source.includes("extraPills.push({ text: 'Cache · Warm hit', extraCls: 'ert-ai-pill--active' });")).toBe(false);
+        // DOCTRINE: only payload-proven 'warm' may show success/TTL copy.
+        // 'Cache ready …' (derived from an unproven cacheWindowExpiresAt) is
+        // a fabrication and must not exist in the source.
         expect(source.includes('Warm cache confirmed for current corpus')).toBe(true);
-        expect(source.includes('Cache ready for current corpus')).toBe(true);
+        expect(source.includes('Cache ready for current corpus')).toBe(false);
+        expect(source.includes('Cache ready on last Inquiry corpus')).toBe(false);
+        expect(source.includes("cacheSession?.cacheReuseState === 'warm'")).toBe(true);
         expect(source.includes('Observed cache hit ·')).toBe(true);
     });
 });

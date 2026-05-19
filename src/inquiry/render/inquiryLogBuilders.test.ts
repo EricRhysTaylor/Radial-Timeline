@@ -236,4 +236,82 @@ describe('buildInquiryLogContent', () => {
         expect(content).toContain('- OpenAI prompt_cache_key: h578972009');
         expect(content).not.toContain('bypassProviderReuse or unsupported');
     });
+
+    // ── Audit 4 doctrine lock ────────────────────────────────────────
+    // The cacheable-prefix diagnostic MUST measure the real outgoing
+    // provider request payload, never the scaffold trace.userPrompt
+    // (which OpenAI never receives).
+    describe('Audit 4: cacheable-prefix diagnostic measures the provider payload', () => {
+        const CACHE_BREAK = '<<<CACHE_BREAK>>>';
+        const baseResult = {
+            scope: 'book',
+            scopeLabel: 'B1',
+            aiProvider: 'openai',
+            aiModelResolved: 'gpt-5.5',
+            aiModelRequested: 'gpt-5.5',
+            findings: [],
+            verdict: { flow: 60, depth: 70 },
+            cacheReuseFingerprint: 'h1479981785'
+        } as never;
+
+        it('derives the prefix from requestPayload.input, not trace.userPrompt', () => {
+            const systemText = 'SYS: editorial engine';
+            const stablePrefix = 'INSTRUCTIONS\nSCHEMA\nMANIFEST\nEVIDENCE: ' + 'x'.repeat(5000);
+            const userText = `${stablePrefix}\n\n${CACHE_BREAK}\n\nUser Question: Pres8`;
+            const content = buildInquiryLogContent({
+                result: baseResult,
+                trace: {
+                    // Deliberately a DIFFERENT, short scaffold string that
+                    // OpenAI never receives — must NOT drive the metric.
+                    userPrompt: 'SCAFFOLD-ONLY-NEVER-SENT',
+                    evidenceText: 'unused-by-new-diagnostic',
+                    tokenUsageKnown: true,
+                    tokenUsageScope: 'known',
+                    requestPayload: {
+                        model: 'gpt-5.5',
+                        input: [
+                            { role: 'system', content: [{ type: 'input_text', text: systemText }] },
+                            { role: 'user', content: [{ type: 'input_text', text: userText }] }
+                        ],
+                        prompt_cache_key: 'h1479981785'
+                    },
+                    response: null,
+                    usage: { inputTokens: 5100, outputTokens: 10, totalTokens: 5110 }
+                } as never,
+                manifest: null,
+                deps,
+                contentLogWritten: true
+            });
+
+            const expectedPrefixLen = systemText.length + userText.indexOf(CACHE_BREAK);
+            expect(content).toContain(
+                `- Cacheable prefix chars (real request, system + user up to cache break): ${expectedPrefixLen}`
+            );
+            expect(content).toContain('- Cache break present in request: yes');
+            expect(content).toMatch(/- Cacheable prefix fingerprint: [0-9a-f]+/);
+            // The scaffold length (24 chars) must never appear as the metric.
+            expect(content).not.toContain('Cacheable prefix chars (user prompt minus evidence)');
+            expect(content).not.toContain(': 24\n');
+        });
+
+        it('says payload not captured (no scaffold fallback) when no input/messages present', () => {
+            const content = buildInquiryLogContent({
+                result: baseResult,
+                trace: {
+                    userPrompt: 'SCAFFOLD-ONLY-NEVER-SENT',
+                    evidenceText: 'scene text',
+                    tokenUsageKnown: true,
+                    tokenUsageScope: 'known',
+                    requestPayload: { prompt_cache_key: 'h1479981785' },
+                    response: null,
+                    usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 }
+                } as never,
+                manifest: null,
+                deps,
+                contentLogWritten: true
+            });
+            expect(content).toContain('- Cacheable prefix: request payload not captured — cannot measure (scaffold prompt is NOT a substitute)');
+            expect(content).not.toContain('Cacheable prefix chars');
+        });
+    });
 });

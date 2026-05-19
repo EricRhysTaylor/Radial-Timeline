@@ -955,7 +955,11 @@ export function renderAiSection(params: {
         pill: PreviewPill;
     }
 
-    const CACHE_ARMED_PILL_TEXT = 'Cache armed — second run benefits';
+    // DOCTRINE: this is a static model-capability statement, not a claim of
+    // realized reuse. It must NOT promise a benefit ("armed", "second run
+    // benefits") — that is only proven by an actual provider payload, which
+    // is surfaced separately as "Observed cache hit · N% reused".
+    const CACHE_ARMED_PILL_TEXT = 'Provider cache supported';
 
     const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
         'citation',
@@ -1574,7 +1578,18 @@ export function renderAiSection(params: {
             };
         }
 
-        if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
+        // DOCTRINE: success tone + a TTL countdown are only honest once the
+        // provider payload PROVED reuse. 'warm' is set in aiClient.ts solely
+        // when execution.cacheUsed is true (OpenAI: cached_tokens > 0). A
+        // future cacheWindowExpiresAt timestamp on an 'eligible' (attempted,
+        // unproven) session is optimism, not proof — it must NOT render
+        // "Cache ready … • Xh remaining". Such sessions fall through to the
+        // neutral "completed" default below.
+        if (
+            cacheSession?.cacheReuseState === 'warm'
+            && cacheSession.cacheWindowExpiresAt
+            && cacheSession.cacheWindowExpiresAt > Date.now()
+        ) {
             const observedCachePills: PreviewPill[] = cacheLabel
                 ? [{ text: cacheLabel, extraCls: 'ert-ai-pill--active' }]
                 : [];
@@ -1587,13 +1602,9 @@ export function renderAiSection(params: {
                 comparatorLabel: null,
                 comparatorValue: null,
                 statusIcon: 'badge-check',
-                statusText: cacheSession.cacheReuseState === 'warm'
-                    ? (hasCurrentCorpusMatch
-                        ? `Warm cache confirmed for current corpus • ${activeCacheTimeLabel}`
-                        : `Warm cache confirmed on last Inquiry corpus • ${activeCacheTimeLabel}`)
-                    : (hasCurrentCorpusMatch
-                        ? `Cache ready for current corpus • ${activeCacheTimeLabel}`
-                        : `Cache ready on last Inquiry corpus • ${activeCacheTimeLabel}`),
+                statusText: hasCurrentCorpusMatch
+                    ? `Warm cache confirmed for current corpus • ${activeCacheTimeLabel}`
+                    : `Warm cache confirmed on last Inquiry corpus • ${activeCacheTimeLabel}`,
                 extraPills: [...extraPills, ...observedCachePills],
                 cacheRatio,
                 cacheLabel

@@ -160,24 +160,23 @@ type ActualCostPillState = {
 /**
  * Compute the cache pill from the most recent run's token usage.
  *
- * Rules:
- *   - No recent run yet → "—" (no pill rendered)
- *   - cache_read > 0 → confirmed (green) with reuse percentage
- *   - cache_creation > 0 only → primed (cache established but not yet reused)
- *   - both zero, but a cache window is armed for this corpus → primed
- *     (provider-agnostic: OpenAI/Gemini never report cache-creation tokens,
- *     so the armed window is the only honest signal that the first run wrote
- *     a cache the next run will reuse — without it this read the alarming
- *     "Cache miss" while the TTL pill and model preview said "armed")
- *   - both zero and no armed window → miss (genuine: no cache exists)
+ * DOCTRINE: Truth beats optimism. This reports ONLY what the provider's
+ * response payload proves. No claim is derived from cacheWindowExpiresAt,
+ * reuseState, eligibility, prompt_cache_key, or fingerprint stability.
+ *
+ * Rules (payload only):
+ *   - No usage / no input yet → no pill
+ *   - cache_read > 0 → confirmed reuse (green), with reuse percentage
+ *   - cache_creation > 0 → confirmed creation (Anthropic only ever reports
+ *     this field; OpenAI/Gemini never do, so they can never reach this branch)
+ *   - otherwise → "No cache reuse" (neutral). cached_tokens === 0 means the
+ *     provider reused nothing this call. We do NOT infer "primed"/"armed"
+ *     for OpenAI/Gemini — the payload gives no cache-write signal, so any
+ *     positive claim there would be a fabrication.
  *
  * Pure: no DOM access, fully testable.
  */
-export function computeCachePillState(
-    usage: TokenUsage | undefined,
-    cacheWindow?: EngineCacheWindowSnapshot,
-    now: number = Date.now()
-): CachePillState | null {
+export function computeCachePillState(usage: TokenUsage | undefined): CachePillState | null {
     if (!usage) return null;
     const cacheRead = usage.cacheReadInputTokens ?? 0;
     const cacheCreation = usage.cacheCreationInputTokens ?? 0;
@@ -194,29 +193,21 @@ export function computeCachePillState(
         return {
             label: `Cache reused · ${reusePct}%`,
             state: 'confirmed',
-            tooltip: `Last run hit the provider's prompt cache for ${cacheRead.toLocaleString()} input tokens (${reusePct}% of input).`
+            tooltip: `Provider payload reported ${cacheRead.toLocaleString()} cached input tokens reused (${reusePct}% of input).`
         };
     }
     if (cacheCreation > 0) {
         return {
-            label: 'Cache primed',
+            label: 'Cache created',
             state: 'primed',
-            tooltip: `Last run established a cache prefix (${cacheCreation.toLocaleString()} tokens). The next run on the same corpus should reuse it.`
+            tooltip: `Provider payload reported a cache write of ${cacheCreation.toLocaleString()} tokens (Anthropic cache_creation). A subsequent run on the same prefix can reuse it.`
         };
     }
     if (totalInput > 0) {
-        const windowArmed = !!cacheWindow && cacheWindow.expiresAt > now;
-        if (windowArmed) {
-            return {
-                label: 'Cache primed',
-                state: 'primed',
-                tooltip: 'This run established the provider cache. The provider does not report cache-creation tokens, so the active cache window confirms the next run on this corpus should reuse it.'
-            };
-        }
         return {
-            label: 'Cache miss',
-            state: 'miss',
-            tooltip: 'Last run did not use the provider cache. Either the cache window expired or the request prefix changed.'
+            label: 'No cache reuse',
+            state: 'none',
+            tooltip: 'The provider response reported no cache reuse for this run (cached input tokens = 0).'
         };
     }
     return null;
@@ -344,7 +335,7 @@ function renderEnginePostRunPills(
 ): void {
     const pillRow = container.createDiv({ cls: 'ert-inquiry-engine-pill-row' });
 
-    const cachePill = computeCachePillState(args.recentRun?.tokenUsage, args.cacheWindow, args.now);
+    const cachePill = computeCachePillState(args.recentRun?.tokenUsage);
     if (cachePill) {
         const el = pillRow.createSpan({
             cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--cache is-${cachePill.state}`,
@@ -353,7 +344,15 @@ function renderEnginePostRunPills(
         el.setAttr('title', cachePill.tooltip);
     }
 
-    const ttlPill = computeTtlPillState(args.cacheWindow, args.now);
+    // DOCTRINE: the TTL countdown is only honest once the provider payload
+    // has proven a cache actually exists for this engine+corpus. A cache
+    // window timestamp alone (cacheWindowExpiresAt) is optimism, not proof —
+    // OpenAI/Gemini runs with cached_tokens === 0 must NOT show "23h left".
+    const provenUsage = args.recentRun?.tokenUsage;
+    const cacheProven = !!provenUsage
+        && ((provenUsage.cacheReadInputTokens ?? 0) > 0
+            || (provenUsage.cacheCreationInputTokens ?? 0) > 0);
+    const ttlPill = cacheProven ? computeTtlPillState(args.cacheWindow, args.now) : null;
     if (ttlPill) {
         const el = pillRow.createSpan({
             cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--ttl is-ttl-${ttlPill.state}`,

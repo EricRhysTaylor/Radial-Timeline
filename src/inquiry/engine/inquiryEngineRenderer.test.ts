@@ -43,69 +43,73 @@ describe('computeCachePillState', () => {
         expect(pill?.label).toBe('Cache reused · 100%');
     });
 
-    it('reports primed when cache_creation > 0 but cache_read == 0', () => {
+    // Anthropic is the only provider whose payload reports cache_creation.
+    it('reports confirmed creation (Anthropic) when cache_creation > 0', () => {
         const pill = computeCachePillState({
             inputTokens: 5_000,
             cacheCreationInputTokens: 95_000
         });
         expect(pill?.state).toBe('primed');
-        expect(pill?.label).toBe('Cache primed');
+        expect(pill?.label).toBe('Cache created');
         expect(pill?.tooltip).toContain('95,000');
     });
 
-    it('reports miss when input is non-zero, no cache fields, and NO armed window (genuine miss)', () => {
-        const pill = computeCachePillState({
-            inputTokens: 50_000
-        });
-        expect(pill?.state).toBe('miss');
-        expect(pill?.label).toBe('Cache miss');
+    // ── DOCTRINE LOCK: Truth beats optimism ──────────────────────────
+    // Cache UI reports ONLY what the provider payload proves. cached_tokens
+    // === 0 means no reuse, full stop — regardless of any armed window,
+    // eligibility, prompt_cache_key or fingerprint stability.
+
+    it('OpenAI cached_tokens: 0 must render "No cache reuse" (never miss/primed)', () => {
+        const pill = computeCachePillState({ inputTokens: 130_134 });
+        expect(pill?.state).toBe('none');
+        expect(pill?.label).toBe('No cache reuse');
     });
 
-    it('treats cache_read of 0 with positive cache_creation as primed (pass-1 priming behavior)', () => {
+    it('OpenAI cached_tokens: 0 with explicit zero cache fields → "No cache reuse"', () => {
         const pill = computeCachePillState({
-            inputTokens: 1_000,
+            inputTokens: 130_134,
             cacheReadInputTokens: 0,
-            cacheCreationInputTokens: 100_000
+            cacheCreationInputTokens: 0
         });
-        expect(pill?.state).toBe('primed');
+        expect(pill?.state).toBe('none');
+        expect(pill?.label).toBe('No cache reuse');
     });
 
-    // OpenAI/Gemini never report cache-creation tokens. On a first run the
-    // provider usage looks identical to a genuine miss (read=0, creation
-    // absent) — the only honest signal that a cache was written is the armed
-    // cache window. Without this the pill read "Cache miss" (red) while the
-    // TTL pill and model preview both said the cache was armed.
-    it('reports primed (not miss) when usage has no cache fields but a cache window is armed', () => {
-        const now = 1_000_000;
-        const pill = computeCachePillState(
-            { inputTokens: 130_134 },
-            { expiresAt: now + 23 * 3600 * 1000 },
-            now
-        );
-        expect(pill?.state).toBe('primed');
-        expect(pill?.label).toBe('Cache primed');
+    it('never emits "primed"/"armed"/"ready" language without a proven payload field', () => {
+        const pill = computeCachePillState({ inputTokens: 130_134 });
+        expect(pill?.state).not.toBe('primed');
+        expect(pill?.state).not.toBe('confirmed');
+        expect(pill?.label.toLowerCase()).not.toContain('primed');
+        expect(pill?.label.toLowerCase()).not.toContain('armed');
+        expect(pill?.label.toLowerCase()).not.toContain('ready');
+        expect(pill?.tooltip.toLowerCase()).not.toContain('should reuse');
     });
 
-    it('still reports genuine miss when the cache window has already expired', () => {
-        const now = 1_000_000;
-        const pill = computeCachePillState(
-            { inputTokens: 130_134 },
-            { expiresAt: now - 1 },
-            now
-        );
-        expect(pill?.state).toBe('miss');
-        expect(pill?.label).toBe('Cache miss');
+    it('computeCachePillState takes ONLY usage — no window/now params can fabricate a positive state', () => {
+        // Signature is payload-only by design: there is no cacheWindow/now
+        // argument an unproven armed window could be passed through.
+        expect(computeCachePillState.length).toBe(1);
     });
 
-    it('a confirmed cache read still wins over an armed window (real hit, not just primed)', () => {
-        const now = 1_000_000;
-        const pill = computeCachePillState(
-            { inputTokens: 2_000, cacheReadInputTokens: 8_000 },
-            { expiresAt: now + 3600 * 1000 },
-            now
-        );
+    it('a confirmed cache read is the only thing that turns the pill green', () => {
+        const pill = computeCachePillState({ inputTokens: 2_000, cacheReadInputTokens: 8_000 });
         expect(pill?.state).toBe('confirmed');
         expect(pill?.label).toBe('Cache reused · 80%');
+    });
+});
+
+describe('DOCTRINE LOCK: TTL pill is gated on payload-proven reuse', () => {
+    it('renderEnginePostRunPills only computes the TTL pill when cache is proven', () => {
+        const source = readFileSync(
+            resolve(process.cwd(), 'src/inquiry/engine/inquiryEngineRenderer.ts'),
+            'utf8'
+        );
+        // The TTL countdown must not render off cacheWindowExpiresAt alone.
+        expect(source.includes('const cacheProven =')).toBe(true);
+        expect(source.includes('const ttlPill = cacheProven ? computeTtlPillState(args.cacheWindow, args.now) : null;')).toBe(true);
+        // The fabricated armed-window→primed inference must be gone.
+        expect(source.includes("label: 'Cache miss'")).toBe(false);
+        expect(source.includes('windowArmed')).toBe(false);
     });
 });
 
