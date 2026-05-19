@@ -9171,7 +9171,10 @@ export class InquiryView extends ItemView {
         this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
 
         const service = this.plugin.getInquiryEstimateService();
-        const snapshot = await service.requestSnapshot({
+        // Awaited so the build settles before we refresh; the return value is
+        // intentionally unused — refreshEstimateDisplays() reads the cached
+        // snapshot, which is correct even if this request was superseded.
+        await service.requestSnapshot({
             scope: this.state.scope,
             activeBookId,
             targetSceneIds,
@@ -9195,10 +9198,13 @@ export class InquiryView extends ItemView {
             citationsEnabled,
         });
 
-        if (!snapshot) {
-            return;
-        }
-        this.refreshEstimateDisplays(); // Renders once with final values
+        // Always refresh from the *cached* snapshot (getSnapshot()), even when
+        // this request returned null because it was superseded by a newer
+        // in-flight build. Returning early here left the pressure gauge stuck
+        // in its pending "stub" state forever while a valid snapshot existed
+        // (the cache-window chip is independent, so it still showed the time —
+        // the visible inconsistency). UI must always reflect system truth.
+        this.refreshEstimateDisplays(); // Renders with final values (or honest "Estimating…")
     }
 
     /**
