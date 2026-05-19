@@ -206,7 +206,6 @@ import {
 } from '../ai/tokens/inputTokenEstimate';
 import {
     estimateCorpusCost,
-    estimateUsageCost,
     formatApproxUsdCost
 } from '../ai/cost/estimateCorpusCost';
 import { resolveInquirySourceRoots } from './utils/sourceRoots';
@@ -215,6 +214,14 @@ import { applyInquiryCorpusCcSlotViewModel, buildInquiryCorpusCcSlotViewModel } 
 import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './render/inquiryDossierRenderer';
 import { createInquiryEngineActionButtons } from './engine/inquiryEngineDom';
 import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip, type EngineRecentRunSnapshot, type EngineCacheWindowSnapshot } from './engine/inquiryEngineRenderer';
+import {
+    scoreReuseAdvancedContext as scoreReuseAdvancedContextPure,
+    getAnthropicAcceptedCacheTtl as getAnthropicAcceptedCacheTtlPure,
+    getDispatchEngineKey as getDispatchEngineKeyPure,
+    resolveActualUsageCostForResult as resolveActualUsageCostForResultPure,
+    buildEngineRecentRunSnapshot as buildEngineRecentRunSnapshotPure,
+    buildEngineCacheWindowSnapshotFromSession as buildEngineCacheWindowSnapshotFromSessionPure
+} from './engine/inquiryCacheStatus';
 import { buildInquiryEngineCorpusSummary } from './engine/inquiryEngineViewModel';
 import {
     renderInquiryPromptPreviewLayout,
@@ -3682,33 +3689,11 @@ export class InquiryView extends ItemView {
     private buildEngineRecentRunSnapshot(): EngineRecentRunSnapshot | undefined {
         const result = this.state.activeResult;
         if (!result || this.isErrorResult(result)) return undefined;
-        const citationsRequested = this.areInquiryProviderCitationsEnabled();
-        const sourcesVM = buildInquirySourcesViewModel(
-            result.citations,
-            result.evidenceDocumentMeta,
-            result.findings
-        );
-        return {
-            citationsRequested,
-            citationCount: sourcesVM.totalCount,
-            tokenUsage: result.tokenUsage,
-            actualCostUSD: this.getActualUsageCostForResult(result)
-        };
+        return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());
     }
 
     private getActualUsageCostForResult(result: InquiryResult): number | undefined {
-        const provider = (result.aiProvider ?? '').trim().toLowerCase();
-        if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'google') return undefined;
-        const modelId = result.aiModelResolved || result.aiModelRequested;
-        if (!modelId || !result.tokenUsage) return undefined;
-        try {
-            const breakdown = estimateUsageCost(provider, modelId, result.tokenUsage);
-            return typeof breakdown?.totalCostUSD === 'number' && Number.isFinite(breakdown.totalCostUSD)
-                ? breakdown.totalCostUSD
-                : undefined;
-        } catch {
-            return undefined;
-        }
+        return resolveActualUsageCostForResultPure(result);
     }
 
     /**
@@ -3733,14 +3718,7 @@ export class InquiryView extends ItemView {
                 scope: this.state.scope
             }
         );
-        if (!session?.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= Date.now()) return undefined;
-        const cachedTokens = typeof session.cachedStableTokens === 'number' && Number.isFinite(session.cachedStableTokens)
-            ? Math.max(0, Math.floor(session.cachedStableTokens))
-            : undefined;
-        return {
-            expiresAt: session.cacheWindowExpiresAt,
-            cachedTokens
-        };
+        return buildEngineCacheWindowSnapshotFromSessionPure(session, Date.now());
     }
 
     /** Called externally (e.g. from Settings) when AI strategy changes. */
@@ -9476,20 +9454,11 @@ export class InquiryView extends ItemView {
     }
 
     private getAnthropicAcceptedCacheTtl(trace: InquiryRunTrace | null | undefined): '5m' | '1h' | 'mixed' | 'unknown' {
-        const usage = trace?.usage;
-        const has5m = !!(usage?.cacheCreation5mInputTokens && usage.cacheCreation5mInputTokens > 0);
-        const has1h = !!(usage?.cacheCreation1hInputTokens && usage.cacheCreation1hInputTokens > 0);
-        if (has5m && has1h) return 'mixed';
-        if (has1h) return '1h';
-        if (has5m) return '5m';
-        return 'unknown';
+        return getAnthropicAcceptedCacheTtlPure(trace);
     }
 
     private getDispatchEngineKey(result: InquiryResult): string | null {
-        const provider = (result.aiProvider ?? '').trim().toLowerCase();
-        const model = (result.aiModelResolved || result.aiModelRequested || '').trim().toLowerCase();
-        if (!provider || !model) return null;
-        return `${provider}::${model}`;
+        return getDispatchEngineKeyPure(result);
     }
 
     private appendAnthropicDispatchTraceNote(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {
@@ -9657,17 +9626,7 @@ export class InquiryView extends ItemView {
     }
 
     private scoreReuseAdvancedContext(context: AIRunAdvancedContext | null): number {
-        if (!context || context.reuseState !== 'warm') return 0;
-        const ratioScore = typeof context.cachedStableRatio === 'number' && Number.isFinite(context.cachedStableRatio)
-            ? Math.max(0, context.cachedStableRatio)
-            : 0;
-        const tokenScore = typeof context.cachedStableTokens === 'number' && Number.isFinite(context.cachedStableTokens)
-            ? Math.max(0, context.cachedStableTokens)
-            : 0;
-        const inputScore = typeof context.totalInputTokens === 'number' && Number.isFinite(context.totalInputTokens)
-            ? Math.max(0, context.totalInputTokens)
-            : 0;
-        return (ratioScore * 1_000_000) + tokenScore + (inputScore * 0.001);
+        return scoreReuseAdvancedContextPure(context);
     }
 
     private getEffectiveReuseAdvancedContext(): AIRunAdvancedContext | null {

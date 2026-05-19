@@ -304,11 +304,19 @@ describe('InquiryView payload accounting', () => {
         expect(textSource.includes('ChatGPT subscription quota is separate from API billing.')).toBe(true);
     });
 
-    it('passes actual usage-based cost into the engine popover recent-run snapshot', () => {
+    it('passes actual usage-based cost into the engine popover recent-run snapshot (via pure helper)', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
-        expect(viewSource.includes('actualCostUSD: this.getActualUsageCostForResult(result)')).toBe(true);
-        expect(viewSource.includes('private getActualUsageCostForResult(result: InquiryResult): number | undefined')).toBe(true);
-        expect(viewSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(true);
+        // R1 chunk 2: the snapshot + pricing logic moved to the pure
+        // inquiryCacheStatus module; InquiryView delegates. Behaviour
+        // (cost flows into the recent-run snapshot) is unchanged — the
+        // pure module's own tests characterize actualCostUSD output.
+        expect(viewSource.includes('return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());')).toBe(true);
+        expect(viewSource.includes('return resolveActualUsageCostForResultPure(result);')).toBe(true);
+        // The pricing call now lives in the pure module, not InquiryView.
+        expect(viewSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(false);
+        const statusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryCacheStatus.ts'), 'utf8');
+        expect(statusSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(true);
+        expect(statusSource.includes('actualCostUSD: resolveActualUsageCostForResult(result)')).toBe(true);
     });
 
     it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
