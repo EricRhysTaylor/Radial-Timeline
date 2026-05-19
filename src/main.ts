@@ -115,6 +115,14 @@ export default class RadialTimelinePlugin extends Plugin {
     searchTerm: string = '';
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
+
+    // Transient (not persisted): an Inquiry run currently in flight.
+    // Lives on the plugin so it survives InquiryView close/reopen — the run
+    // promise is owned by the (possibly orphaned) view instance, but this
+    // marker lets a freshly reopened view observe that a run is still
+    // running and pick up its persisted result without starting a new one.
+    public _inquiryRunInFlight: { sessionKey: string; question: string; startedAt: number } | null = null;
+
     private readonly eventBus = new EventTarget();
     private metadataCacheListener: (() => void) | null = null;
     // Serialized settings persistence: a single in-flight save drain plus a

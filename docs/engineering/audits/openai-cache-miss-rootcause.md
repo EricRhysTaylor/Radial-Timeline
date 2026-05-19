@@ -1,8 +1,33 @@
 # Investigation: OpenAI returns `cached_tokens: 0` across identical-fingerprint runs
 
-Status: ANALYSIS COMPLETE — primary hypothesis REFUTED. Real cause
-narrowed to two candidates; verification step defined. No prompt code
-changed (investigation only; "no broad refactor" honored).
+Status: **RESOLVED — NO DEFECT.** The cache works correctly. Closed by
+Audit-4 real-payload byte-diff. No prompt code changed.
+
+## RESOLUTION (Audit 4, real payload evidence)
+
+Two same-corpus runs, different questions, fixed diagnostic:
+
+| | Run 1 (Set3) | Run 2 (Pay2) |
+|---|---|---|
+| Cacheable prefix fingerprint | `390aa726` | `390aa726` (identical) |
+| Cacheable prefix chars | 555,189 | 555,189 (identical) |
+| `cached_tokens` | 0 (cold write) | 129,792 (warm hit) |
+| Cost | $0.760 | $0.267 |
+
+The outgoing prefix is **byte-identical** across different questions and
+OpenAI delivered a ~100% cache hit on the second run. The original
+`cached_tokens: 0` was a **cold first run** (a cache must be written
+before it can be read), made to look pathological by the old
+scaffold-based diagnostic (now fixed). Decision rule outcome: prefix
+identical AND provider now hits → nothing to fix, no determinism change,
+no prompt-architecture change, no invented UI. The Audit-2 honesty UI
+correctly shows payload-proven green only on the real hit (Run 2).
+
+Everything below is retained as the investigation trail.
+
+---
+
+Status (historical): ANALYSIS COMPLETE — primary hypothesis REFUTED.
 
 ## Symptom (unchanged)
 

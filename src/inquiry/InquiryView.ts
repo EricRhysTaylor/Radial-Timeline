@@ -407,6 +407,8 @@ export class InquiryView extends ItemView {
     }
 
     private updateRunningClockInterval?: number;
+    /** Light poll started on reopen when an Inquiry run is in flight elsewhere. */
+    private inquiryRecoveryPollHandle?: number;
 
     private plugin: RadialTimelinePlugin;
     private state = createDefaultInquiryState();
@@ -686,9 +688,66 @@ export class InquiryView extends ItemView {
         this.loadTargetCache({ adoptPersistedSelection: !this.startupFreshMode });
         this.renderDesktopLayout();
         this.refreshUI();
+        this.recoverInquiryRunOnOpen();
+    }
+
+    /**
+     * If a run is in flight on the plugin marker (started by a now-closed
+     * view instance), surface a passive status and lightly poll the
+     * persisted session cache until that run completes, then load its
+     * result through the existing session-load path. Starts no new run and
+     * never touches cancellation or cache-truth semantics.
+     */
+    private recoverInquiryRunOnOpen(): void {
+        // This view itself running its own run → nothing to recover.
+        if (this.state.isRunning) return;
+        this.sessionStore.reloadFromSettings();
+        const marker = this.plugin._inquiryRunInFlight;
+        if (!marker) return;
+        const sessionKey = marker.sessionKey;
+
+        // Already finished between persist and our reopen → load immediately.
+        if (this.sessionStore.peekSession(sessionKey)) {
+            this.reopenSessionByKey(sessionKey);
+            return;
+        }
+
+        // Passive in-progress status (no spinner, no run state change).
+        this.setTextIfChanged(
+            this.navSessionLabel,
+            t('inquiry.nav.backgroundRunInProgress'),
+            'hudTextWrites'
+        );
+        if (this.inquiryRecoveryPollHandle !== undefined) {
+            window.clearInterval(this.inquiryRecoveryPollHandle);
+        }
+        const handle = window.setInterval(() => {
+            this.sessionStore.reloadFromSettings();
+            const stillRunning = this.plugin._inquiryRunInFlight?.sessionKey === sessionKey;
+            const session = this.sessionStore.peekSession(sessionKey);
+            if (!stillRunning && session) {
+                window.clearInterval(handle);
+                if (this.inquiryRecoveryPollHandle === handle) {
+                    this.inquiryRecoveryPollHandle = undefined;
+                }
+                this.reopenSessionByKey(sessionKey);
+            }
+        }, 2000);
+        this.registerInterval(handle);
+        this.inquiryRecoveryPollHandle = handle;
     }
 
     async onClose(): Promise<void> {
+        // The run promise is owned by this instance but is NOT aborted on
+        // close — it keeps running and persists its session. Tell the user
+        // they can come back; the reopened view will pick it up.
+        if (this.state.isRunning) {
+            new Notice(t('inquiry.notice.runContinuesInBackground'));
+        }
+        if (this.inquiryRecoveryPollHandle !== undefined) {
+            window.clearInterval(this.inquiryRecoveryPollHandle);
+            this.inquiryRecoveryPollHandle = undefined;
+        }
         if (this.updateRunningClockInterval) {
             window.clearInterval(this.updateRunningClockInterval);
             this.updateRunningClockInterval = undefined;
@@ -6258,6 +6317,11 @@ export class InquiryView extends ItemView {
 
         const startTime = Date.now();
         this.state.isRunning = true;
+        // Plugin-level marker: survives this view being closed mid-run so a
+        // reopened view can observe the in-flight run and pick up its
+        // persisted result. Cleared in this method's finally (keyed by `key`
+        // so a newer run's marker is never clobbered by a stale finally).
+        this.plugin._inquiryRunInFlight = { sessionKey: key, question: questionText, startedAt: startTime };
         this.setApiStatus('running');
         this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
@@ -6440,6 +6504,12 @@ export class InquiryView extends ItemView {
             this.currentRunElapsedMs = 0;
             this.currentRunEstimatedMaxMs = 0;
             this.finishInquiryRunToken(runToken);
+            // Clear only if this run still owns the marker — a newer run
+            // (or an already-recovered reopen) must not be cleared by this
+            // possibly-orphaned instance's finally.
+            if (this.plugin._inquiryRunInFlight?.sessionKey === key) {
+                this.plugin._inquiryRunInFlight = null;
+            }
         }
     }
 

@@ -690,6 +690,7 @@ export interface TranslationKeys {
         nav: {
             bookUnresolved: string;
             waitingForProvider: string;
+            backgroundRunInProgress: string;
             welcome: string;
             previousBook: string;
             nextBook: string;
@@ -759,6 +760,7 @@ export interface TranslationKeys {
             omnibusUnavailable: string;
             omnibusFailed: string;
             running: string;
+            runContinuesInBackground: string;
             noEnabledQuestions: string;
             logNotFound: string;
             pendingEditsBroken: string;
@@ -2854,6 +2856,7 @@ export const en: TranslationKeys = {
         nav: {
             bookUnresolved: 'Book scope unresolved. Check Inquiry sources.',
             waitingForProvider: 'Waiting for the provider response.',
+            backgroundRunInProgress: 'Inquiry run in progress — it will load here when it completes.',
             welcome: 'Welcome to Inquiry. {{weekday}} {{month}} {{day}}{{ordinal}}.',
             previousBook: 'Previous book.',
             nextBook: 'Next book.',
@@ -2923,6 +2926,7 @@ export const en: TranslationKeys = {
             omnibusUnavailable: 'Omnibus unavailable: {{reason}}.',
             omnibusFailed: 'Inquiry omnibus failed: {{message}}',
             running: 'Inquiry running. Please wait.',
+            runContinuesInBackground: 'Inquiry is still running. You can return any time — the result will load automatically when you reopen this view.',
             noEnabledQuestions: 'No enabled Inquiry questions found.',
             logNotFound: 'No Inquiry log found for this run.',
             pendingEditsBroken: 'Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.',
