@@ -315,9 +315,12 @@ describe('WritingSessionService pure helpers', () => {
 
             expect(continued.id).toBe('active-session');
             expect(continued.goalMinutes).toBe(40);
+            expect(continued.elapsedMsBeforePause).toBe(42 * 60000);
             expect(continued.countdownSegmentStartElapsedMs).toBe(42 * 60000);
             expect(continued.pausedAt).toBeUndefined();
             expect(continued.lastResumedAt).toBe('2026-05-20T16:42:00.000Z');
+            vi.setSystemTime(new Date('2026-05-20T16:43:00.000Z'));
+            expect(service.getActiveElapsedMs()).toBe(43 * 60000);
             expect(plugin.settings.writingSessions.active).toBe(continued);
             expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
         } finally {

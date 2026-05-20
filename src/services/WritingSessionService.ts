@@ -658,7 +658,9 @@ export class WritingSessionService {
         if (!active) throw new Error('No writing session is active.');
         if (!active.goalMinutes) throw new Error('Only countdown sessions can be continued.');
         const now = new Date();
-        active.countdownSegmentStartElapsedMs = activeElapsedMs(active, now);
+        const elapsedBeforeNextSegment = activeElapsedMs(active, now);
+        active.elapsedMsBeforePause = elapsedBeforeNextSegment;
+        active.countdownSegmentStartElapsedMs = elapsedBeforeNextSegment;
         active.pausedAt = undefined;
         active.lastResumedAt = now.toISOString();
         active.lastSeenAt = active.lastResumedAt;
