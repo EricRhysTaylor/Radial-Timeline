@@ -16,6 +16,8 @@ describe('AI settings cache preview signals', () => {
         expect(source.includes('Cache ready for current corpus')).toBe(false);
         expect(source.includes('Cache ready on last Inquiry corpus')).toBe(false);
         expect(source.includes("cacheSession?.cacheReuseState === 'warm'")).toBe(true);
-        expect(source.includes('Observed cache hit ·')).toBe(true);
+        // formatPreviewCacheObservedLabel template literal moved into aiSettingsPreview.ts.
+        const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
+        expect(previewSource.includes('Observed cache hit ·')).toBe(true);
     });
 });

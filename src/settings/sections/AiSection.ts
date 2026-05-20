@@ -67,6 +67,28 @@ import { inferLocalLlmCapability } from '../../ai/localLlm/capabilityInference';
 import type { LocalLlmCapabilityAssessment, LocalLlmFeatureSupport } from '../../ai/localLlm/capabilityInference';
 import type { LocalLlmModelEntry } from '../../ai/localLlm/transport';
 import type { LocalLlmBackendId } from '../../ai/types';
+import {
+    CACHE_ARMED_PILL_TEXT,
+    MAX_PREVIEW_SIGNALS,
+    PREVIEW_SIGNAL_PRIORITY,
+    buildOutlineCapacityLine,
+    buildReferenceCapacityLine,
+    buildScenesCapacityLine,
+    buildTokenCapacityLine,
+    estimateTokensFromChars,
+    formatApproxTokens,
+    formatCorpusBreakdownToken,
+    formatCorpusStructureSummary,
+    formatCorpusTokenSummary,
+    formatInquiryCount,
+    formatPreviewCacheObservedLabel,
+    formatPreviewCacheRemaining,
+    formatPreviewReasonLabel,
+    formatPromptToken,
+    mergePreviewCachePills,
+    resolvePreviewSignals
+} from './aiSettingsPreview';
+import type { PreviewPill } from './aiSettingsPreview';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean; extraCls?: string };
@@ -586,40 +608,7 @@ export function renderAiSection(params: {
             });
         });
     };
-    const formatInquiryCount = (count: number | null): string => count === null ? '?' : count.toLocaleString();
-    const formatCorpusBreakdownToken = (tokens: number | null): string => (
-        tokens === null
-            ? '—'
-            : `~${(Math.round((Number.isFinite(tokens) ? tokens : 0) / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`
-    );
-    const estimateTokensFromChars = (chars: number): number => chars > 0 ? Math.ceil(chars / 4) : 0;
-    const formatPromptToken = (tokens: number | null): string => (
-        tokens === null
-            ? '—'
-            : tokens >= 1000
-                ? formatCorpusBreakdownToken(tokens)
-                : `~${tokens.toLocaleString()}`
-    );
-    const buildTokenCapacityLine = (label: string, tokens: number | null): string => (
-        `${label} (${formatPromptToken(tokens)})`
-    );
-    const buildScenesCapacityLine = (sceneCount: number | null, scenesTokens: number | null): string => (
-        `Scenes (${formatInquiryCount(sceneCount)}) — full text (${formatCorpusBreakdownToken(scenesTokens)})`
-    );
-    const buildOutlineCapacityLine = (outlineCount: number | null, outlineTokens: number | null): string => (
-        outlineCount === null
-            ? `Outline (?) — unavailable (${formatCorpusBreakdownToken(outlineTokens)})`
-            : outlineCount > 0
-                ? `Outline (${formatInquiryCount(outlineCount)}) — full text (${formatCorpusBreakdownToken(outlineTokens)})`
-                : 'Outline — none'
-    );
-    const buildReferenceCapacityLine = (referenceCount: number | null, referenceTokens: number | null): string => (
-        referenceCount === null
-            ? `References (?) — unavailable (${formatCorpusBreakdownToken(referenceTokens)})`
-            : referenceCount > 0
-                ? `References (${formatInquiryCount(referenceCount)}) — included (${formatCorpusBreakdownToken(referenceTokens)})`
-                : 'References — none'
-    );
+    // Pure preview/cost formatters live in ./aiSettingsPreview.
     const buildInquiryCapacitySections = (counts?: {
         sceneCount: number;
         outlineCount: number;
@@ -928,45 +917,9 @@ export function renderAiSection(params: {
         none: 'Disabled'
     };
 
-    const formatApproxTokens = (value: number): string => {
-        if (!Number.isFinite(value) || value <= 0) return 'n/a';
-        if (value >= 1_000_000) {
-            const millions = value / 1_000_000;
-            const formatted = millions >= 10 ? millions.toFixed(1) : millions.toFixed(2);
-            return `~${formatted}M`;
-        }
-        if (value < 1000) return `~${Math.round(value)}`;
-        const rounded = Math.round(value / 1000);
-        return `~${rounded}k`;
-    };
-
-    type PreviewSignalType =
-        | 'citation'
-        | 'reuse'
-        | 'passBehavior';
-
-    interface PreviewPill {
-        text: string;
-        extraCls?: string;
-    }
-
-    interface PreviewSignal {
-        type: PreviewSignalType;
-        pill: PreviewPill;
-    }
-
-    // DOCTRINE: this is a static model-capability statement, not a claim of
-    // realized reuse. It must NOT promise a benefit ("armed", "second run
-    // benefits") — that is only proven by an actual provider payload, which
-    // is surfaced separately as "Observed cache hit · N% reused".
-    const CACHE_ARMED_PILL_TEXT = 'Provider cache supported';
-
-    const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
-        'citation',
-        'reuse',
-        'passBehavior'
-    ] as const;
-    const MAX_PREVIEW_SIGNALS = 4;
+    // formatApproxTokens, PreviewPill / PreviewSignal types,
+    // CACHE_ARMED_PILL_TEXT, PREVIEW_SIGNAL_PRIORITY, and
+    // MAX_PREVIEW_SIGNALS live in ./aiSettingsPreview.
 
     const resolvePreviewCitationSignal = (_model: ModelInfo): PreviewPill | null => {
         // Citation/sources/annotation pills are suppressed in the preview card
@@ -998,42 +951,7 @@ export function renderAiSection(params: {
             : { text: label, extraCls: 'ert-ai-pill--muted' };
     };
 
-    const resolvePreviewSignals = (state: {
-        citationLabel: PreviewPill | null;
-        reuseLabel: PreviewPill | null;
-        passBehaviorLabel: PreviewPill | null;
-    }): PreviewPill[] => {
-        const candidates: PreviewSignal[] = [];
-
-        if (state.citationLabel) {
-            candidates.push({
-                type: 'citation',
-                pill: state.citationLabel
-            });
-        }
-
-        if (state.reuseLabel) {
-            candidates.push({
-                type: 'reuse',
-                pill: state.reuseLabel
-            });
-        }
-
-        if (state.passBehaviorLabel) {
-            candidates.push({
-                type: 'passBehavior',
-                pill: state.passBehaviorLabel
-            });
-        }
-
-        const allowed = new Set<PreviewSignalType>(PREVIEW_SIGNAL_PRIORITY);
-        const sorted = candidates
-            .filter(signal => allowed.has(signal.type))
-            .sort((left, right) => PREVIEW_SIGNAL_PRIORITY.indexOf(left.type) - PREVIEW_SIGNAL_PRIORITY.indexOf(right.type))
-            .slice(0, MAX_PREVIEW_SIGNALS)
-            .map(signal => signal.pill);
-        return sorted;
-    };
+    // resolvePreviewSignals lives in ./aiSettingsPreview.
 
     const getProviderAllowedAliases = (provider: AIProviderId): string[] =>
         BUILTIN_MODELS
@@ -1374,26 +1292,7 @@ export function renderAiSection(params: {
 
     const getInquirySessionStoreSnapshot = (): InquirySessionStore => new InquirySessionStore(plugin);
 
-    const formatPreviewReasonLabel = (status?: string, reason?: string): string => {
-        if (reason === 'quota_exceeded') return 'Quota exceeded';
-        if (reason === 'spend_cap') return 'Spend cap reached';
-        const normalizedReason = (reason ?? status ?? '')
-            .trim()
-            .replace(/_/g, ' ')
-            .replace(/\s+/g, ' ');
-        if (!normalizedReason) return 'issue detected';
-        return normalizedReason.charAt(0).toUpperCase() + normalizedReason.slice(1);
-    };
-
-    const formatPreviewCacheRemaining = (remainingMs: number): string => {
-        const totalMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
-        if (totalMinutes >= 60) {
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            return minutes > 0 ? `${hours}h ${minutes}m remaining` : `${hours}h remaining`;
-        }
-        return `${totalMinutes}m remaining`;
-    };
+    // formatPreviewReasonLabel + formatPreviewCacheRemaining live in ./aiSettingsPreview.
 
     const formatPreviewRunCompletedAt = (timestamp: number): string => {
         const formatted = new Date(timestamp).toLocaleString(undefined, {
@@ -1406,54 +1305,7 @@ export function renderAiSection(params: {
         return formatted.replace(/\s+(AM|PM)$/i, (_, meridiem: string) => meridiem.toLowerCase());
     };
 
-    const formatPreviewCacheObservedLabel = (ratio?: number): string | null => {
-        if (typeof ratio !== 'number' || !Number.isFinite(ratio) || ratio <= 0) return null;
-        return `Observed cache hit · ${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}% reused`;
-    };
-
-    const mergePreviewCachePills = (pills: PreviewPill[]): PreviewPill[] => {
-        let cacheBase: PreviewPill | null = null;
-        const cacheSegments: string[] = [];
-        let cacheTone: string | undefined;
-        const otherPills: PreviewPill[] = [];
-
-        for (const pill of pills) {
-            if (pill.text === CACHE_ARMED_PILL_TEXT || pill.text === 'Cache enabled' || pill.text === 'Provider cache enabled') {
-                cacheBase = { text: CACHE_ARMED_PILL_TEXT, extraCls: pill.extraCls };
-                cacheTone = pill.extraCls;
-                continue;
-            }
-            if (/^Cache off\b/i.test(pill.text)) {
-                cacheBase = pill;
-                cacheTone = pill.extraCls;
-                continue;
-            }
-            if (pill.text === 'Cache window expired') {
-                cacheSegments.push('window expired');
-                cacheTone = 'ert-ai-pill--muted';
-                continue;
-            }
-            if (/^Observed cache hit\b/i.test(pill.text)) {
-                cacheSegments.push(pill.text.replace(/^Observed cache hit\s*·\s*/i, ''));
-                if (!cacheTone) cacheTone = pill.extraCls;
-                continue;
-            }
-            otherPills.push(pill);
-        }
-
-        if (!cacheBase && cacheSegments.length <= 0) {
-            return otherPills;
-        }
-        const baseText = cacheBase?.text ?? CACHE_ARMED_PILL_TEXT;
-        const mergedText = [baseText, ...cacheSegments].join(' — ');
-        return [
-            ...otherPills,
-            {
-                text: mergedText,
-                extraCls: cacheTone
-            }
-        ];
-    };
+    // formatPreviewCacheObservedLabel + mergePreviewCachePills live in ./aiSettingsPreview.
 
     const getPreviewCurrentCacheReuseFingerprint = (): string | null =>
         getCurrentCorpusContext()?.cacheReuseFingerprint?.trim() || null;
@@ -1806,19 +1658,7 @@ export function renderAiSection(params: {
         });
     };
 
-    const formatCorpusStructureSummary = (sceneCount: number, outlineCount: number): string => {
-        const parts: string[] = [];
-        if (sceneCount > 0 || outlineCount <= 0) {
-            parts.push(`${sceneCount} ${sceneCount === 1 ? 'scene' : 'scenes'}`);
-        }
-        if (outlineCount > 0) {
-            parts.push(`${outlineCount} ${outlineCount === 1 ? 'outline' : 'outlines'}`);
-        }
-        return parts.length ? parts.join(' + ') : 'No scenes or outlines';
-    };
-
-    const formatCorpusTokenSummary = (tokens: number): string =>
-        `${formatCorpusBreakdownToken(tokens)} tokens`;
+    // formatCorpusStructureSummary + formatCorpusTokenSummary live in ./aiSettingsPreview.
 
     const renderCostEstimateCorpusSummary = (options: {
         sizeText: string;

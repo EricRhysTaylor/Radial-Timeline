@@ -43,14 +43,15 @@ describe('AI settings models table', () => {
 
     it('locks gossamer to bodies-only with no evidence mode dropdown', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
         // No gossamer evidence mode dropdown exists
         expect(source.includes('gossamerEvidenceDropdown')).toBe(false);
         expect(source.includes('GossamerEvidencePreference')).toBe(false);
         expect(source.includes('getGossamerEvidencePreference')).toBe(false);
-        // Composition copy confirms bodies-only
-        expect(source.includes('Scenes (${formatInquiryCount(sceneCount)}) — full text')).toBe(true);
-        expect(source.includes("'Outline — none'")).toBe(true);
-        expect(source.includes("'References — none'")).toBe(true);
+        // Composition copy confirms bodies-only (helpers extracted to aiSettingsPreview.ts)
+        expect(previewSource.includes('Scenes (${formatInquiryCount(sceneCount)}) — full text')).toBe(true);
+        expect(previewSource.includes("'Outline — none'")).toBe(true);
+        expect(previewSource.includes("'References — none'")).toBe(true);
     });
 
     it('renders active model preview with author-facing pill signals only', () => {
@@ -195,7 +196,9 @@ describe('AI settings models table', () => {
         expect(source.includes("title: 'Prompt'")).toBe(true);
         expect(source.includes("title: 'Output'")).toBe(true);
         expect(source.includes("title: 'Processing'")).toBe(true);
-        expect(source.includes('Scenes (')).toBe(true);
+        // 'Scenes (' literal moved into aiSettingsPreview.ts (buildScenesCapacityLine).
+        const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
+        expect(previewSource.includes('Scenes (')).toBe(true);
         expect(source.includes('Editorial analysis instructions')).toBe(true);
         expect(source.includes('Strict JSON structure')).toBe(true);
         expect(source.includes('AI role template (author-defined)')).toBe(true);
@@ -268,7 +271,9 @@ describe('AI settings models table', () => {
 
     it('renders OpenAI quota failures as quota exceeded in the preview card', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("if (reason === 'quota_exceeded') return 'Quota exceeded';")).toBe(true);
+        // formatPreviewReasonLabel quota branch moved into aiSettingsPreview.ts.
+        const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
+        expect(previewSource.includes("if (reason === 'quota_exceeded') return 'Quota exceeded';")).toBe(true);
         expect(source.includes("const quotaFailure = latestSession.result.aiReason === 'quota_exceeded';")).toBe(true);
         expect(source.includes('Latest ${latestScopeLabel} Inquiry run failed because API quota was exceeded.')).toBe(true);
     });
@@ -297,14 +302,17 @@ describe('AI settings models table', () => {
 
     it('distinguishes static cache capability from an expired cache window in the preview card', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        // CACHE_ARMED_PILL_TEXT + mergePreviewCachePills body moved into aiSettingsPreview.ts.
+        const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
         // DOCTRINE: capability pill must not promise a realized benefit.
-        expect(source.includes("const CACHE_ARMED_PILL_TEXT = 'Provider cache supported';")).toBe(true);
+        expect(previewSource.includes("export const CACHE_ARMED_PILL_TEXT = 'Provider cache supported';")).toBe(true);
         expect(source.includes('Cache armed — second run benefits')).toBe(false);
+        expect(previewSource.includes('Cache armed — second run benefits')).toBe(false);
         expect(source.includes("text: CACHE_ARMED_PILL_TEXT")).toBe(true);
         expect(source.includes("text: 'Cache window expired'")).toBe(true);
-        expect(source.includes('const mergePreviewCachePills = (pills: PreviewPill[]): PreviewPill[] => {')).toBe(true);
-        expect(source.includes("cacheSegments.push('window expired');")).toBe(true);
-        expect(source.includes("const mergedText = [baseText, ...cacheSegments].join(' — ');")).toBe(true);
+        expect(previewSource.includes('export const mergePreviewCachePills = (pills: PreviewPill[]): PreviewPill[] => {')).toBe(true);
+        expect(previewSource.includes("cacheSegments.push('window expired');")).toBe(true);
+        expect(previewSource.includes("const mergedText = [baseText, ...cacheSegments].join(' — ');")).toBe(true);
         expect(source.includes('mergePreviewCachePills((')).toBe(true);
     });
 
