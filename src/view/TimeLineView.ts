@@ -55,7 +55,7 @@ import { tooltip as applyTooltip } from '../utils/tooltip';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
-export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
+export const TIMELINE_VIEW_DISPLAY_TEXT = "RT";
 const TIMELINE_REFRESH_DELAY_MS = 1000;
 const SAGA_SCOPE_OPTION = '__rt_saga__';
 const SESSION_PROGRESS_STEP_PERCENT = 5;
@@ -228,7 +228,7 @@ export class RadialTimelineView extends ItemView {
     
     getDisplayText(): string {
         const title = getTimelineScopeTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
-        return `Radial Timeline: ${title}`;
+        return `${TIMELINE_VIEW_DISPLAY_TEXT}: ${title}`;
     }
     
     getIcon(): string {

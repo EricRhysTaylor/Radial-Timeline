@@ -261,7 +261,7 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
         .setHeading()
         .setDesc(t('settings.goalsSessions.header.desc'));
     addHeadingIcon(heading, 'timer');
-    addWikiLink(heading, 'Settings-Core#goals--sessions');
+    addWikiLink(heading, 'Settings-Core#sessions');
     applyErtHeaderLayout(heading);
 
     const body = containerEl.createDiv({ cls: ERT_CLASSES.STACK });

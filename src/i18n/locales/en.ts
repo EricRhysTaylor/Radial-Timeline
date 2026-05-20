@@ -2209,7 +2209,7 @@ export const en: TranslationKeys = {
         },
         goalsSessions: {
             header: {
-                name: 'Goals & Sessions',
+                name: 'Sessions',
                 desc: 'Set your drafting pace, session timer target, and writing goals. Radial Timeline uses these values for session tracking, completion planning, and basic estimates.',
             },
             draftingWpm: {

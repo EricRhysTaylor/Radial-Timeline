@@ -75,12 +75,12 @@ See [Narrative Mode](Narrative-Mode#book-and-saga-scope) for Saga behavior and l
 
 ## Writing Session Control
 
-The title bar also includes the compact count/session button used for Goals & Sessions.
+The title bar also includes the compact count/session button used for Sessions.
 
 *   Click it to open the **Writing Session** panel.
 *   Start an open-ended session or a countdown sprint.
 *   Pause, resume, save, stop, or discard the current session from the panel.
-*   Use the settings icon in that panel to jump straight to **Settings → Core → Goals & Sessions**.
+*   Use the settings icon in that panel to jump straight to **Settings → Core → Sessions**.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/ui-count-popover.png" alt="Radial Timeline writing session and count popover" style="width: 600px; max-width: 100%; border-radius: 8px;" />

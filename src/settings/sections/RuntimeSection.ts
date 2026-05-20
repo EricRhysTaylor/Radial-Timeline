@@ -100,7 +100,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     
     // ─────────────────────────────────────────────────────────────────────────
     // Runtime estimation remains Pro-owned. Writing/session goals are rendered
-    // separately in Core -> Goals & Sessions and may still be read by exports.
+    // separately in Core -> Sessions and may still be read by exports.
     // ─────────────────────────────────────────────────────────────────────────
     const proContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     if (!hasProfessional) {

@@ -5,7 +5,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../../wikiLin
 import { IconSuggest } from '../../IconSuggest';
 import type { HoverMetadataField } from '../../../types/settings';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert } from '../../refactorAlerts';
-import { ERT_CLASSES } from '../../../ui/classes';
+import { ERT_CLASSES, ERT_DATA } from '../../../ui/classes';
 import {
     extractKeysInOrder,
     safeParseYaml,
@@ -77,6 +77,7 @@ export function renderScenePropertiesSection(params: {
     parentEl: HTMLElement;
 }): void {
     const { app, plugin, parentEl } = params;
+    parentEl.setAttr(ERT_DATA.SECTION, 'scene-properties');
 
     const sectionHeading = new Settings(parentEl)
         .setName('Scene properties')

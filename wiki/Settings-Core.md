@@ -44,10 +44,11 @@ Target dates are validated to ensure proper stage ordering. Overdue dates are hi
 > [!NOTE]
 > Learn more in [Workflow Overview](Getting-Started#daily-workflow) and [Progress Mode](Progress-Mode).
 
+<a name="sessions"></a>
 <a name="goals--sessions"></a>
-## Goals & Sessions
+## Sessions
 
-Goals & Sessions is a Core workflow for writing accountability and basic planning.
+Sessions is a Core workflow for writing accountability and basic planning.
 
 *   **Average drafting pace**: Optional words-per-minute estimate for new drafting. Used for writing-time estimates and completion planning.
 *   **Daily session target**: Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.
@@ -56,7 +57,7 @@ Goals & Sessions is a Core workflow for writing accountability and basic plannin
 *   **Session ring**: While a session is active, a thin timer ring appears just outside the rainbow progress ring. It fills toward the selected countdown goal, or toward the daily session target for open-ended sessions.
 *   **Save session details**: Saving a timer session opens a confirmation modal for minutes, words added, scenes completed, pages edited, and an optional note.
 
-Runtime and export tools may read these values, but Goals & Sessions owns the writing/session estimate settings.
+Runtime and export tools may read these values, but Sessions owns the writing/session estimate settings.
 
 Scene completion stats use scenes with `Status = Complete` and a `Due` date. `Publish Stage = Zero` counts as fresh scene completion; `Author`, `House`, and `Press` count as revision rounds.
 

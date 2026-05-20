@@ -791,7 +791,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             features: [
                 { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, profiles, and advanced fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
-                { icon: 'timer', text: 'Goals & sessions — calibrate drafting pace, daily targets, and completion estimates.' },
+                { icon: 'timer', text: 'Sessions — calibrate drafting pace, daily targets, and completion estimates.' },
             ]
         });
     }
@@ -804,7 +804,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             if (!target) return;
             const button = row.createEl('button', {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ert-coreQuickLinks__pill`,
-                attr: { type: 'button', 'aria-label': `Jump to ${text}` }
+                attr: { type: 'button' }
             });
             button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
             const iconEl = button.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
@@ -971,6 +971,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         let generalSection: HTMLElement | null = null;
         let progressSection: HTMLElement | null = null;
         let goalsSessionsSection: HTMLElement | null = null;
+        let scenePropertiesSection: HTMLElement | null = null;
+        let colorsWorkingPatternSection: HTMLElement | null = null;
 
         const quickLinksRow = coreStack.createDiv();
 
@@ -1025,6 +1027,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
         const beatsActsSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);
         const beatsYamlSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-yaml"]`);
+        scenePropertiesSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="scene-properties"]`);
         if (beatsStorySection) beatsWrapper.appendChild(beatsStorySection);
         if (beatsActsSection) beatsWrapper.appendChild(beatsActsSection);
         if (beatsYamlSection) beatsWrapper.appendChild(beatsYamlSection);
@@ -1044,6 +1047,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const colorsWrapper = searchableContent.createDiv();
         renderColorsSection(colorsWrapper, this.plugin);
+        colorsWorkingPatternSection = colorsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="colors-working-pattern"]`);
 
         const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
         void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
@@ -1052,12 +1056,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
         this.renderCoreQuickLinks(quickLinksRow, [
-            { label: 'Books', target: generalSection },
-            { label: 'Progress', target: progressSection },
-            { label: 'Goals & Sessions', target: goalsSessionsSection },
+            { label: 'Sessions', target: goalsSessionsSection },
             { label: 'Story beats', target: beatsStorySection },
+            { label: 'Scene properties', target: scenePropertiesSection },
             { label: 'Chronology', target: chronologueSection },
-            { label: 'Backdrop', target: backdropSection }
+            { label: 'Backdrop', target: backdropSection },
+            { label: 'Colors', target: colorsWorkingPatternSection },
+            { label: 'Readme', target: readmeSection }
         ]);
 
         const inquirySection = inquiryBody.createDiv({
