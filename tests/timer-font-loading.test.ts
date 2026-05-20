@@ -146,8 +146,11 @@ describe('writing session timer font loading', () => {
         expect(timelineViewSource).not.toContain("'square', 'Stop and save session'");
         expect(timelineViewSource).toContain("'save', 'Save'");
         expect(timelineViewSource).toContain("'pause', 'Pause'");
+        expect(timelineViewSource).toContain("'play', 'Continue'");
         expect(timelineViewSource).toContain("'trash-2', 'Cancel'");
         expect(timelineViewSource).toContain('return `Save ${details}?`');
+        expect(timelineViewSource).toContain('const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs)');
+        expect(timelineViewSource).toContain('await service.continueCountdown()');
         expect(timelineViewSource).toContain('is-save-ready');
         expect(timelineCss).toContain('.ert-timeline-session-panel__primary.is-save-ready');
         expect(timelineCss).toContain('background: var(--text-success)');

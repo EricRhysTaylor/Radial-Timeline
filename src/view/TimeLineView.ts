@@ -1126,7 +1126,8 @@ export class RadialTimelineView extends ItemView {
         const service = this.plugin.getWritingSessionService();
         const elapsedMs = service.getActiveElapsedMs();
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
+        const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs);
+        const remainingMs = goalMs ? Math.max(0, goalMs - countdownElapsedMs) : undefined;
         const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
         const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
         const clockText = statusDisplay.tone === 'complete'
@@ -1214,7 +1215,8 @@ export class RadialTimelineView extends ItemView {
 
     private getActiveWritingSessionPanelClockText(active: ActiveWritingSession, elapsedMs: number): string {
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
+        const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs);
+        const remainingMs = goalMs ? Math.max(0, goalMs - countdownElapsedMs) : undefined;
         const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
         return statusDisplay.tone === 'complete'
             ? this.formatCompletedSessionSummary(active, elapsedMs)
