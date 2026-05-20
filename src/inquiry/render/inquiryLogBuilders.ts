@@ -10,6 +10,20 @@ import { buildInquirySourcesViewModel } from '../services/inquirySources';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
 import { CACHE_BREAK_DELIMITER } from '../../ai/prompts/composeEnvelope';
+import {
+    buildLogOverrideLabel,
+    buildLogSourceResultDetail,
+    buildLogSuggestedFixes,
+    buildLogUsageDetailParts,
+    buildLogUsageText,
+    describeLogCorpusMode,
+    formatLogTokenCount,
+    resolveLogFailureReason,
+    resolveLogModelLabel,
+    resolveLogProviderLabel,
+    resolveLogStatusDetail,
+    resolveLogStatusLabel
+} from './inquiryLogFields';
 
 /**
  * Extract the ACTUAL outgoing prompt text from the captured provider
@@ -69,13 +83,6 @@ function prefixFingerprint(text: string): string {
     }
     return (hash >>> 0).toString(16);
 }
-
-const PROVIDER_LABELS = {
-    anthropic: 'Anthropic',
-    google: 'Google',
-    openai: 'OpenAI',
-    ollama: 'Ollama'
-} as const;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
     return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -156,19 +163,8 @@ export function buildInquiryLogContent(args: {
     const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
     const target = result.scopeLabel || (result.scope === 'saga' ? 'Σ' : '?');
     const providerRaw = result.aiProvider ? result.aiProvider.trim() : '';
-    const providerLabel = isSimulated
-        ? 'Simulation'
-        : providerRaw
-            ? (['anthropic', 'google', 'openai', 'ollama'].includes(providerRaw)
-                ? PROVIDER_LABELS[providerRaw as keyof typeof PROVIDER_LABELS]
-                : providerRaw)
-            : 'Unknown';
-    const modelLabel = isSimulated
-        ? 'No provider call'
-        : deps.getBriefModelLabel(result)
-            || result.aiModelResolved
-            || result.aiModelRequested
-            || 'unknown';
+    const providerLabel = resolveLogProviderLabel(providerRaw, isSimulated);
+    const modelLabel = resolveLogModelLabel(result, deps.getBriefModelLabel(result), isSimulated);
     const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
         ? result.roundTripMs
         : null;
@@ -176,10 +172,8 @@ export function buildInquiryLogContent(args: {
     const tokenTier = typeof tokenEstimateInput === 'number'
         ? deps.getTokenTier(tokenEstimateInput)
         : (result.tokenEstimateTier || null);
-    const overrideSummary = result.corpusOverridesActive ? result.corpusOverrideSummary : null;
-    const overrideLabel = overrideSummary
-        ? `On (classes: ${overrideSummary.classCount}, items: ${overrideSummary.itemCount})`
-        : (result.corpusOverridesActive ? 'On' : 'None');
+    const overrideSummary = result.corpusOverridesActive ? (result.corpusOverrideSummary ?? null) : null;
+    const overrideLabel = buildLogOverrideLabel(overrideSummary, result.corpusOverridesActive ?? false);
 
     let status: AiLogStatus = 'success';
     const degraded = deps.isDegradedResult(result);
@@ -188,23 +182,10 @@ export function buildInquiryLogContent(args: {
     } else if (deps.isErrorResult(result)) {
         status = 'error';
     }
-    const statusLabel = degraded
-        ? 'Degraded'
-        : (status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Simulated');
-    const statusDetail = result.aiReason
-        ? ` (${result.aiReason})`
-        : (result.aiStatus && result.aiStatus !== 'success' && result.aiStatus !== 'degraded' ? ` (${result.aiStatus})` : '');
+    const statusLabel = resolveLogStatusLabel(status, degraded);
+    const statusDetail = resolveLogStatusDetail(result);
 
-    const formatTokenCount = (value?: number | null, approximate = false): string => {
-        if (typeof value !== 'number' || !Number.isFinite(value)) return 'unknown';
-        const prefix = approximate ? '~' : '';
-        if (value >= 1000) {
-            const scaled = value / 1000;
-            const fixed = scaled >= 100 ? scaled.toFixed(0) : scaled.toFixed(1);
-            return `${prefix}${fixed.replace(/\.0$/, '')}k`;
-        }
-        return `${prefix}${Math.round(value)}`;
-    };
+    const formatTokenCount = formatLogTokenCount;
 
     const usage = trace.usage
         ?? (trace.response?.responseData && result.aiProvider
@@ -217,20 +198,8 @@ export function buildInquiryLogContent(args: {
         ? trace.tokenUsageKnown
         : !!usage;
     const usageVisibility = deps.formatTokenUsageVisibility(usageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
-    const formatUsageMetric = (value?: number | null): string => {
-        if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
-        return formatTokenCount(value);
-    };
-    const usageDetailParts = usage
-        ? [
-            typeof usage.rawInputTokens === 'number' ? `raw input=${formatTokenCount(usage.rawInputTokens)}` : null,
-            typeof usage.cacheReadInputTokens === 'number' ? `cache read=${formatTokenCount(usage.cacheReadInputTokens)}` : null,
-            typeof usage.cacheCreationInputTokens === 'number' ? `cache write=${formatTokenCount(usage.cacheCreationInputTokens)}` : null
-        ].filter((value): value is string => !!value)
-        : [];
-    const usageText = usage
-        ? `input=${formatUsageMetric(usage.inputTokens)}, output=${formatUsageMetric(usage.outputTokens)}, total=${formatUsageMetric(usage.totalTokens)}`
-        : 'not available';
+    const usageDetailParts = buildLogUsageDetailParts(usage);
+    const usageText = buildLogUsageText(usage);
     const cacheReuseLabel = trace.cacheReuseState
         ? trace.cacheReuseState.replace(/_/g, ' ')
         : null;
@@ -251,34 +220,10 @@ export function buildInquiryLogContent(args: {
     const citationSupportLabel = resolvedModel
         ? getModelUiSignals(resolvedModel).citationLabel
         : null;
-    const sourceResultDetail = (() => {
-        if (!sourcesVM.hasContent) return 'none surfaced';
-        const counts = new Map<string, number>();
-        for (const item of sourcesVM.items) {
-            counts.set(item.classLabel, (counts.get(item.classLabel) ?? 0) + 1);
-        }
-        const ordered = [...counts.entries()]
-            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-            .map(([label, count]) => `${label.toLowerCase()}=${count}`);
-        return `${sourcesVM.totalCount} item${sourcesVM.totalCount === 1 ? '' : 's'} · ${ordered.join(', ')}`;
-    })();
+    const sourceResultDetail = buildLogSourceResultDetail(sourcesVM);
 
-    const describeMode = (className: string): string | null => {
-        if (!manifest) return null;
-        const modes = new Set(
-            manifest.entries
-                .filter(entry => entry.class === className)
-                .map(entry => deps.normalizeEvidenceMode(entry.mode))
-                .filter(mode => mode !== 'excluded')
-        );
-        if (modes.size === 1) {
-            return modes.has('summary') ? 'Summary' : 'Full Scene';
-        }
-        if (modes.size > 1) {
-            return 'Mixed';
-        }
-        return null;
-    };
+    const describeMode = (className: string): string | null =>
+        describeLogCorpusMode(manifest, className, deps.normalizeEvidenceMode);
 
     const buildCorpusSummary = (): string[] => {
         const summaryLines: string[] = [];
@@ -324,69 +269,11 @@ export function buildInquiryLogContent(args: {
         return summaryLines;
     };
 
-    const resolveFailureReason = (): string | null => {
-        if (!deps.isErrorResult(result)) return null;
-        const errorMessage = trace.response?.error;
-        if (errorMessage && String(errorMessage).trim().length > 0) {
-            return String(errorMessage);
-        }
-        if (trace.notes && trace.notes.length) {
-            return trace.notes[0];
-        }
-        if (result.summary && result.summary.trim().length > 0) {
-            return result.summary;
-        }
-        if (result.aiReason === 'truncated') {
-            return 'Response exceeded maximum output tokens before completion.';
-        }
-        return result.aiReason ? `AI request failed (${result.aiReason}).` : 'Unknown failure.';
-    };
+    const resolveFailureReason = (): string | null =>
+        resolveLogFailureReason(result, trace, deps.isErrorResult);
 
-    const buildSuggestedFixes = (): string[] => {
-        if (!deps.isErrorResult(result)) return ['None.'];
-        const suggestions: string[] = [];
-        const reason = result.aiReason ?? '';
-        const reasonLower = reason.toLowerCase();
-        const failureReason = resolveFailureReason() ?? '';
-        const failureLower = failureReason.toLowerCase();
-        const isPackagingFailure = reasonLower === 'multi_pass_failed'
-            || trace.failureStage === 'chunk_execution'
-            || trace.failureStage === 'synthesis'
-            || trace.failureStage === 'preflight';
-        const isInvalidStructuredOutput = reasonLower === 'invalid_response'
-            || failureLower.includes('invalid_response')
-            || failureLower.includes('malformed json')
-            || failureLower.includes('structured output');
-        const isTruncated = reasonLower === 'truncated'
-            || failureLower.includes('truncated')
-            || failureLower.includes('max tokens')
-            || failureLower.includes('token limit')
-            || failureLower.includes('context length')
-            || failureLower.includes('length exceeded');
-
-        if (isPackagingFailure) {
-            suggestions.push('Run failed during multi-pass analysis. Open Inquiry Log for exact chunk/synthesis failure details.');
-            suggestions.push('Retry once with the same settings after reviewing the log.');
-        } else if (isInvalidStructuredOutput) {
-            suggestions.push('Run failed because Inquiry did not receive valid structured output.');
-            suggestions.push('Open Inquiry Log for the exact parser failure detail, then retry once.');
-        } else if (isTruncated) {
-            suggestions.push('Reduce corpus scope and rerun.');
-        } else if (reasonLower === 'rate_limit') {
-            suggestions.push('Retry later.');
-        } else if (reasonLower === 'auth') {
-            suggestions.push('Verify API key and provider access.');
-        } else if (reasonLower === 'timeout'
-            || reasonLower === 'unavailable'
-            || reasonLower === 'unsupported_param') {
-            suggestions.push('Retry and review Inquiry Log for provider error details.');
-        }
-
-        if (!suggestions.length) {
-            suggestions.push('Open Inquiry Log for details, then retry.');
-        }
-        return suggestions;
-    };
+    const buildSuggestedFixes = (): string[] =>
+        buildLogSuggestedFixes(result, trace, deps.isErrorResult, resolveFailureReason);
 
     const costBreakdownLines = !isSimulated
         ? formatUsageCostBreakdownLines(
