@@ -391,6 +391,13 @@ import {
     buildInquirySceneNotes as buildInquirySceneNotesPure,
     buildInquiryBriefModel as buildInquiryBriefModelPure
 } from './utils/inquiryBriefModel';
+import {
+    getResultSelectionMode as getResultSelectionModePure,
+    getResultRoleValidation as getResultRoleValidationPure,
+    computeRoleValidation as computeRoleValidationPure,
+    buildFindingRowData as buildFindingRowDataPure,
+    buildUnverifiedFindingRowData as buildUnverifiedFindingRowDataPure
+} from './utils/inquiryFindingsPanel';
 import { polarToCartesian } from './utils/inquiryGeometry';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
@@ -8466,11 +8473,11 @@ export class InquiryView extends ItemView {
     }
 
     private getResultSelectionMode(result: InquiryResult | null | undefined): InquirySelectionMode {
-        return result?.selectionMode === 'focused' ? 'focused' : 'discover';
+        return getResultSelectionModePure(result);
     }
 
     private getResultRoleValidation(result: InquiryResult | null | undefined): InquiryRoleValidation {
-        return result?.roleValidation === 'missing-target-roles' ? 'missing-target-roles' : 'ok';
+        return getResultRoleValidationPure(result);
     }
 
     private computeRoleValidation(
@@ -8478,9 +8485,7 @@ export class InquiryView extends ItemView {
         findings: InquiryFinding[],
         persisted?: InquiryRoleValidation
     ): InquiryRoleValidation {
-        if (selectionMode !== 'focused') return 'ok';
-        if (persisted === 'ok' || persisted === 'missing-target-roles') return persisted;
-        return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';
+        return computeRoleValidationPure(selectionMode, findings, persisted);
     }
 
     private updateMinimapTargetStates(result?: InquiryResult | null): void {
@@ -9924,28 +9929,24 @@ export class InquiryView extends ItemView {
                 return;
             }
             findings.forEach(finding => {
-                const role = this.getFindingRole(finding);
-                const roleLabel = role === 'target' ? '[Target]' : '[Context]';
+                const row = buildFindingRowDataPure(finding, result.mode);
                 createSvgText(
                     findingsListEl,
-                    `ert-inquiry-finding-head is-role-${role}`,
-                    `${roleLabel} ${normalizeInquiryHeadline(finding.headline)}`,
+                    `ert-inquiry-finding-head is-role-${row.role}`,
+                    `${row.roleLabel} ${row.headline}`,
                     0,
                     cursorY
                 );
                 cursorY += 16;
-                const lensLabel = finding.lens === 'both'
-                    ? 'Flow / Depth'
-                    : formatBriefLabel(finding.lens || result.mode || 'flow');
                 createSvgText(
                     findingsListEl,
                     'ert-inquiry-finding-meta',
-                    t('inquiry.findings.lens', { label: lensLabel }),
+                    t('inquiry.findings.lens', { label: row.lensLabel }),
                     0,
                     cursorY
                 );
                 cursorY += 14;
-                (finding.bullets || []).filter(Boolean).slice(0, 2).forEach(bullet => {
+                row.bullets.forEach(bullet => {
                     createSvgText(findingsListEl, 'ert-inquiry-finding-bullet', `• ${bullet}`, 12, cursorY);
                     cursorY += 14;
                 });
@@ -9978,24 +9979,24 @@ export class InquiryView extends ItemView {
             );
             cursorY += 16;
             unverifiedFindings.forEach(item => {
+                const row = buildUnverifiedFindingRowDataPure(item);
                 createSvgText(
                     findingsListEl,
                     `ert-inquiry-finding-head ${severityClass}`,
-                    `${t('inquiry.findings.unverifiedHeadlinePrefix')}${normalizeInquiryHeadline(item.headline)}`,
+                    `${t('inquiry.findings.unverifiedHeadlinePrefix')}${row.headline}`,
                     0,
                     cursorY
                 );
                 cursorY += 16;
-                const rawDescriptor = item.rawRefId || item.rawRefLabel || item.rawRefPath || '(missing ref)';
                 createSvgText(
                     findingsListEl,
                     `ert-inquiry-finding-meta ${severityClass}`,
-                    t('inquiry.findings.citedAs', { descriptor: rawDescriptor }),
+                    t('inquiry.findings.citedAs', { descriptor: row.citedAsDescriptor }),
                     0,
                     cursorY
                 );
                 cursorY += 14;
-                (item.bullets || []).filter(Boolean).slice(0, 2).forEach(bullet => {
+                row.bullets.forEach(bullet => {
                     createSvgText(findingsListEl, 'ert-inquiry-finding-bullet', `• ${bullet}`, 12, cursorY);
                     cursorY += 14;
                 });

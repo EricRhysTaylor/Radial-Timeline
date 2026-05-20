@@ -20,7 +20,9 @@ describe('InquiryView payload accounting', () => {
     it('persists focused role validation separately from selection mode truth', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
-        expect(source.includes("return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';")).toBe(true);
+        // R1 findings-panel: computeRoleValidation logic moved to pure module.
+        const fpSource = readFileSync(resolve(process.cwd(), 'src/inquiry/utils/inquiryFindingsPanel.ts'), 'utf8');
+        expect(fpSource.includes("return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';")).toBe(true);
         expect(source.includes("const roleValidation = this.getResultRoleValidation(result);")).toBe(true);
         // The validation copy lives in the i18n catalog now.
         expect(source.includes("t('inquiry.findings.validationMissingTargetRoles')")).toBe(true);
