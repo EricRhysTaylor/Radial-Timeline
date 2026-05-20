@@ -80,7 +80,6 @@ import {
     type InquiryQuestionPromptForm
 } from './questions/resolveQuestionPrompt';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
-import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
 import { cleanEvidenceBody } from './utils/evidenceCleaning';
 import { countWords as countManuscriptWords } from '../utils/manuscript';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
@@ -128,9 +127,7 @@ import {
     isPathIncludedByInquiryBooks,
     resolveBookManagerInquiryBooks
 } from './services/bookResolution';
-import { getModelDisplayName } from '../utils/modelResolver';
 import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
-import { buildInquirySourcesViewModel } from './services/inquirySources';
 import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
 import {
     blendSampleRate,
@@ -238,8 +235,6 @@ import {
 import { buildInquiryContentLogContent, buildInquiryLogContent } from './render/inquiryLogBuilders';
 import {
     CC_PAGE_BASE_SIZE,
-    DEPTH_FINDING_ORDER,
-    FLOW_FINDING_ORDER,
     GLYPH_EMPTY_STATE_STUB,
     GLYPH_OFFSET_Y,
     GLYPH_PLACEHOLDER_DEPTH,
@@ -344,14 +339,12 @@ import {
 import { prepareFrontmatterRewrite, verifyFrontmatterRewrite } from '../utils/frontmatterWriteSafety';
 import {
     buildManifestTocLines,
-    buildSceneDossierBodyLines,
     buildSceneDossierHeader,
     buildStaleShortLabel,
     buildStaleTooltipLines,
     countSynopsisWords,
     getCorpusCcOrderNumber,
     getCorpusClassShort,
-    sanitizeInquirySummary,
     formatApiErrorReason,
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
@@ -370,17 +363,34 @@ import {
     formatTokenUsageVisibility,
     getDocumentStatusFields,
     getOrdinalSuffix,
-    getSceneNoteSortOrder,
     normalizeInquiryHeadline,
-    parseCorpusLabelNumber,
     readFrontmatterWordCount,
-    replaceInquiryReferenceTokens,
     renderInquiryBrief,
     resolveFindingChipLabel,
-    resolveInquiryScopeIndicator,
-    sanitizeDossierText,
-    stripNumericTitlePrefix
+    resolveInquiryScopeIndicator
 } from './utils/inquiryViewText';
+import {
+    getBriefModelLabel as getBriefModelLabelPure,
+    buildSceneDossierHoverKey as buildSceneDossierHoverKeyPure,
+    getBriefSceneAnchorId as getBriefSceneAnchorIdPure,
+    buildResultsHeroText as buildResultsHeroTextPure,
+    buildResultsMetaText as buildResultsMetaTextPure,
+    resolveInquiryBriefZoneLabel as resolveInquiryBriefZoneLabelPure,
+    buildSceneDossierModel as buildSceneDossierModelPure,
+    formatInquiryBriefTitle as formatInquiryBriefTitlePure,
+    isFindingHit as isFindingHitPure,
+    getFindingRole as getFindingRolePure,
+    getResultSummaryForMode as getResultSummaryForModePure,
+    getOrderedFindings as getOrderedFindingsPure,
+    normalizeInquiryBriefText as normalizeInquiryBriefTextPure,
+    buildInquiryReferenceLabelMap as buildInquiryReferenceLabelMapPure,
+    buildInquirySceneReferenceIndex as buildInquirySceneReferenceIndexPure,
+    getInquiryActionText as getInquiryActionTextPure,
+    buildInquiryPendingAction as buildInquiryPendingActionPure,
+    buildBriefPendingActions as buildBriefPendingActionsPure,
+    buildInquirySceneNotes as buildInquirySceneNotesPure,
+    buildInquiryBriefModel as buildInquiryBriefModelPure
+} from './utils/inquiryBriefModel';
 import { polarToCartesian } from './utils/inquiryGeometry';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
@@ -7609,18 +7619,7 @@ export class InquiryView extends ItemView {
         items: InquiryCorpusItem[] = this.getResultItems(result),
         referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
     ): Array<{ targetLabel?: string; text: string }> {
-        const actions: Array<{ targetLabel?: string; text: string }> = [];
-        const seen = new Set<string>();
-        result.findings.forEach(finding => {
-            if (!this.isFindingHit(finding)) return;
-            const action = this.buildInquiryPendingAction(finding, result, items, referenceLabels);
-            if (!action) return;
-            const key = `${action.targetLabel ?? ''}::${action.text}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            actions.push(action);
-        });
-        return actions;
+        return buildBriefPendingActionsPure(result, items, referenceLabels);
     }
 
     private resolveBookOutlinePath(activeBookId?: string): string | null {
@@ -8285,7 +8284,7 @@ export class InquiryView extends ItemView {
     }
 
     private getBriefSceneAnchorId(source: string): string {
-        return `inquiry-${this.hashString(source || 'scene')}`;
+        return getBriefSceneAnchorIdPure(source, (value) => this.hashString(value));
     }
 
     private setFocusByIndex(index: number): void {
@@ -8675,13 +8674,7 @@ export class InquiryView extends ItemView {
     }
 
     private buildSceneDossierHoverKey(item: InquiryCorpusItem, label: string, finding: InquiryFinding): string {
-        return [
-            item.id,
-            item.sceneId ?? '',
-            label,
-            finding.refId ?? '',
-            finding.headline ?? ''
-        ].join('::');
+        return buildSceneDossierHoverKeyPure(item, label, finding);
     }
 
     private resolveFindingForMinimapHover(
@@ -8736,21 +8729,14 @@ export class InquiryView extends ItemView {
         finding: InquiryFinding,
         result: InquiryResult
     ): InquirySceneDossier {
-        const fallbackTitle = buildSceneDossierHeader({
+        return buildSceneDossierModelPure(
+            item,
             label,
-            itemDisplayLabel: item.displayLabel,
-            itemTitle: this.getMinimapItemTitle(item),
-            hoverLabel
-        });
-        return buildInquiryDossierPresentation({
+            hoverLabel,
             finding,
-            sceneNumber: parseCorpusLabelNumber(item.displayLabel) ?? parseCorpusLabelNumber(label),
-            sceneTitle: stripNumericTitlePrefix(this.getMinimapItemTitle(item)),
-            fallbackTitle,
-            runId: result.runId,
-            selectionMode: result.selectionMode,
-            roleValidation: result.roleValidation
-        });
+            result,
+            (i) => this.getMinimapItemTitle(i)
+        );
     }
 
     private queueSceneDossier(hoverKey: string, dossier: InquirySceneDossier): void {
@@ -9047,7 +9033,7 @@ export class InquiryView extends ItemView {
     }
 
     private isFindingHit(finding: InquiryFinding): boolean {
-        return finding.kind !== 'none' && finding.kind !== 'strength';
+        return isFindingHitPure(finding);
     }
 
     private formatMetricDisplay(value: number): string {
@@ -9832,20 +9818,21 @@ export class InquiryView extends ItemView {
     }
 
     private buildResultsHeroText(result: InquiryResult, mode: InquiryLens): string {
-        const summary = this.getResultSummaryForMode(result, mode);
-        if ((result.refNormalizationCount ?? 0) > 0) {
-            return summary + ' *';
-        }
-        return summary;
+        return buildResultsHeroTextPure(
+            result,
+            mode,
+            (r, m) => this.getResultSummaryForMode(r, m)
+        );
     }
 
     private buildResultsMetaText(result: InquiryResult, mode: InquiryLens, zone: InquiryZone): string {
-        const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
-        const selectionText = this.getResultSelectionMode(result) === 'focused' ? 'Focused' : 'Discover';
-        const flowText = `Flow ${this.formatMetricDisplay(result.verdict.flow)}`;
-        const depthText = `Depth ${this.formatMetricDisplay(result.verdict.depth)}`;
-        const ordered = mode === 'flow' ? [flowText, depthText] : [depthText, flowText];
-        return `${zoneLabel} · ${selectionText} · ${ordered.join(' · ')}`.toUpperCase();
+        return buildResultsMetaTextPure(
+            result,
+            mode,
+            zone,
+            (value) => this.formatMetricDisplay(value),
+            (r) => this.getResultSelectionMode(r)
+        );
     }
 
     private getResultItems(result: InquiryResult): InquiryCorpusItem[] {
@@ -9857,38 +9844,15 @@ export class InquiryView extends ItemView {
 
 
     private getResultSummaryForMode(result: InquiryResult, mode: InquiryLens): string {
-        const raw = mode === 'flow'
-            ? (result.summaryFlow || result.summary)
-            : (result.summaryDepth || result.summary);
-        return sanitizeInquirySummary(raw);
+        return getResultSummaryForModePure(result, mode);
     }
 
     private getOrderedFindings(result: InquiryResult, mode: InquiryLens): InquiryFinding[] {
-        const findings = result.findings.filter(finding => this.isFindingHit(finding));
-        const order = mode === 'flow' ? FLOW_FINDING_ORDER : DEPTH_FINDING_ORDER;
-        const rankForRole = (role: InquiryFinding['role'] | undefined): number => role === 'target' ? 0 : 1;
-        const rankForLens = (lens: InquiryFinding['lens'] | undefined): number => {
-            if (!lens) return 2;
-            if (lens === 'both') return 1;
-            return lens === mode ? 0 : 3;
-        };
-        const rankForKind = (kind: InquiryFinding['kind']): number => {
-            const idx = order.indexOf(kind);
-            return idx >= 0 ? idx : order.length + 1;
-        };
-        return findings.slice().sort((a, b) => {
-            const roleDelta = rankForRole(a.role) - rankForRole(b.role);
-            if (roleDelta !== 0) return roleDelta;
-            const lensDelta = rankForLens(a.lens) - rankForLens(b.lens);
-            if (lensDelta !== 0) return lensDelta;
-            const kindDelta = rankForKind(a.kind) - rankForKind(b.kind);
-            if (kindDelta !== 0) return kindDelta;
-            return normalizeInquiryHeadline(a.headline).localeCompare(normalizeInquiryHeadline(b.headline));
-        });
+        return getOrderedFindingsPure(result, mode);
     }
 
     private getFindingRole(finding: InquiryFinding): FindingRole {
-        return finding.role === 'target' ? 'target' : 'context';
+        return getFindingRolePure(finding);
     }
 
     private updateFindingsPanel(): void {
@@ -11260,133 +11224,25 @@ export class InquiryView extends ItemView {
         logPath?: string,
         rawResponse?: string | null
     ): InquiryBriefModel {
-        const questionTitle = this.findPromptLabelById(result.questionId) || 'Inquiry Question';
-        const questionTextRaw = result.questionText?.trim() || this.getQuestionTextById(result.questionId);
-        const questionText = questionTextRaw && questionTextRaw.trim().length > 0
-            ? questionTextRaw
-            : 'Question text unavailable.';
-        const scopeIndicator = this.resolveInquiryBriefScopeIndicator(result);
-
-        const pills: string[] = [
-            `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
-            `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `Selection ${formatBriefLabel(result.selectionMode)}`
-        ];
-
-        if (result.mode) {
-            pills.push(`Mode ${formatBriefLabel(result.mode)}`);
-        }
-
-        const modelLabel = this.getBriefModelLabel(result);
-        if (modelLabel) pills.push(modelLabel);
-
         const items = this.getResultItems(result);
         const referenceLabels = this.buildInquiryReferenceLabelMap(items);
-
-        const flowSummary = this.normalizeInquiryBriefText(
-            this.getResultSummaryForMode(result, 'flow') || 'No flow summary available.',
-            referenceLabels
-        );
-        const depthSummary = this.normalizeInquiryBriefText(
-            this.getResultSummaryForMode(result, 'depth') || 'No depth summary available.',
-            referenceLabels
-        );
-
-        const orderedFindings = this.getOrderedFindings(result, result.mode);
-        const findings = orderedFindings
-            .filter(finding => this.isFindingHit(finding))
-            .map(finding => {
-                const sagaContext = result.scope === 'saga'
-                    ? [finding.subject ? `Subject: ${finding.subject}` : '', finding.span ? `Span: ${finding.span}` : ''].filter(Boolean)
-                    : [];
-                const sceneLabel = finding.refId
-                    ? referenceLabels.get(finding.refId.trim().toLowerCase())
-                    : undefined;
-                return {
-                    headline: this.normalizeInquiryBriefText(normalizeInquiryHeadline(finding.headline), referenceLabels),
-                    ...(sceneLabel ? { sceneLabel } : {}),
-                    role: this.getFindingRole(finding),
-                    lens: finding.lens === 'both'
-                        ? 'Flow / Depth'
-                        : formatBriefLabel(finding.lens || result.mode || 'flow'),
-                    bullets: [...sagaContext, ...(finding.bullets || [])]
-                    .filter(Boolean)
-                    .slice(0, 3)
-                    .map(entry => this.normalizeInquiryBriefText(entry, referenceLabels))
-                };
-            });
-
-        const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta, result.findings);
-        const sources = sourcesVM.items.map(item => ({
-            title: item.title,
-            excerpt: item.excerpt,
-            classLabel: item.classLabel,
-            path: item.path,
-            url: item.url,
-            citationCount: item.citationCount
-        }));
-
-        const sceneNotes = this.buildInquirySceneNotes(result, items, referenceLabels);
-        const sceneReferences = this.buildInquirySceneReferenceIndex(items);
-        const pendingActions = this.buildBriefPendingActions(result, items, referenceLabels);
-        const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
-        const rawResponseText = typeof rawResponse === 'string' ? rawResponse.trim() : '';
-        const includeRawResponse = rawResponseText.length > 0 && this.isErrorResult(result);
-
-        const unverifiedFindings = (result.unverifiedFindings || []).map(item => ({
-            headline: this.normalizeInquiryBriefText(
-                normalizeInquiryHeadline(item.headline),
-                referenceLabels
-            ),
-            bullets: (item.bullets || [])
-                .filter(Boolean)
-                .slice(0, 3)
-                .map(entry => this.normalizeInquiryBriefText(entry, referenceLabels)),
-            lens: item.lens === 'both'
-                ? 'Flow / Depth'
-                : formatBriefLabel(item.lens || result.mode || 'flow'),
-            rawRefId: item.rawRefId,
-            rawRefLabel: item.rawRefLabel,
-            rawRefPath: item.rawRefPath,
-            warning: item.warning
-        }));
-
-        const citationIntegrityWarnings = (result.citationIntegrityWarnings || []).map(entry => ({
-            stage: entry.stage,
-            message: entry.message
-        }));
-
-        const integritySummary = computeCitationIntegritySummary(result);
-
-        return {
-            questionTitle,
-            questionText,
-            scopeIndicator,
-            mode: result.mode,
-            selectionMode: result.selectionMode,
-            roleValidation: result.roleValidation,
-            pills,
-            flowSummary,
-            depthSummary,
-            findings,
-            sources,
-            sceneNotes,
-            sceneReferences,
-            pendingActions,
-            logTitle,
-            rawResponse: includeRawResponse ? rawResponseText : null,
-            refNormalized: (result.refNormalizationCount ?? 0) > 0,
-            ...(citationIntegrityWarnings.length ? { citationIntegrityWarnings } : {}),
-            ...(unverifiedFindings.length ? { unverifiedFindings } : {}),
-            ...(integritySummary.evidenceCompromised ? { evidenceCompromised: true } : {})
-        };
+        return buildInquiryBriefModelPure(result, {
+            items,
+            referenceLabels,
+            sceneNotes: this.buildInquirySceneNotes(result, items, referenceLabels),
+            sceneReferences: this.buildInquirySceneReferenceIndex(items),
+            pendingActions: this.buildBriefPendingActions(result, items, referenceLabels),
+            promptLabel: this.findPromptLabelById(result.questionId),
+            questionTextById: this.getQuestionTextById(result.questionId),
+            scopeIndicator: this.resolveInquiryBriefScopeIndicator(result),
+            logTitle: this.resolveInquiryLogLinkTitle(result, logPath),
+            isError: this.isErrorResult(result),
+            rawResponse
+        });
     }
 
     private getBriefModelLabel(result: InquiryResult): string | null {
-        const raw = result.aiModelResolved || result.aiModelRequested;
-        if (!raw) return null;
-        const label = getModelDisplayName(raw.replace(/^models\//, ''));
-        return label.replace(/\s*\(.*\)\s*$/, '').trim() || null;
+        return getBriefModelLabelPure(result);
     }
 
     private buildInquirySceneNotes(
@@ -11403,105 +11259,29 @@ export class InquiryView extends ItemView {
             lens: string;
         }>;
     }> {
-        if (result.scope !== 'book') return [];
-        const orderedFindings = this.getOrderedFindings(result, result.mode);
-        const notes = new Map<string, {
-            label: string;
-            header: string;
-            anchorId?: string;
-            order: number;
-            entries: Array<{
-                headline: string;
-                bullets: string[];
-                lens: string;
-            }>;
-        }>();
-
-        orderedFindings.forEach(finding => {
-            if (!this.isFindingHit(finding)) return;
-            const label = resolveFindingChipLabel(finding, result, items)
-                ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : null);
-            if (!label) return;
-            const labelLower = label.toLowerCase();
-            const match = items.find(item => {
-                if (item.displayLabel.toLowerCase() === labelLower) return true;
-                if (item.id.toLowerCase() === labelLower) return true;
-                if (item.sceneId && item.sceneId.toLowerCase() === labelLower) return true;
-                return item.filePaths?.some(path => path.toLowerCase() === labelLower) ?? false;
-            });
-            const anchorSource = match
-                ? (this.getMinimapItemFilePath(match) || match.id || label)
-                : label;
-            const anchorId = anchorSource ? this.getBriefSceneAnchorId(anchorSource) : undefined;
-            const existing = notes.get(label);
-            const header = match
-                ? this.formatInquiryReferenceDisplay(match, label)
-                : label.toUpperCase();
-            const entry = {
-                headline: sanitizeDossierText(
-                    this.normalizeInquiryBriefText(finding.headline, referenceLabels)
-                ) || 'Finding text unavailable.',
-                bullets: buildSceneDossierBodyLines(finding)
-                    .map(line => this.normalizeInquiryBriefText(line, referenceLabels))
-                    .filter(line => line.startsWith('• '))
-                    .map(line => line.replace(/^•\s*/, '')),
-                lens: finding.lens === 'both'
-                    ? 'Flow / Depth'
-                    : formatBriefLabel(finding.lens || result.mode || 'flow')
-            };
-            if (existing) {
-                existing.entries.push(entry);
-                return;
-            }
-            const order = match
-                ? items.indexOf(match)
-                : getSceneNoteSortOrder(label);
-            notes.set(label, {
-                label,
-                header,
-                anchorId,
-                order: order >= 0 ? order : Number.MAX_SAFE_INTEGER,
-                entries: [entry]
-            });
-        });
-
-        return Array.from(notes.values())
-            .sort((a, b) => {
-                if (a.order !== b.order) return a.order - b.order;
-                return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
-            })
-            .map(entry => ({
-                label: entry.label,
-                header: entry.header,
-                anchorId: entry.anchorId,
-                entries: entry.entries
-            }));
+        return buildInquirySceneNotesPure(
+            result,
+            items,
+            referenceLabels,
+            (item) => this.getMinimapItemFilePath(item),
+            (source) => this.getBriefSceneAnchorId(source),
+            (item, label) => this.formatInquiryReferenceDisplay(item, label)
+        );
     }
 
     private buildInquiryReferenceLabelMap(items: InquiryCorpusItem[]): Map<string, string> {
-        const labels = new Map<string, string>();
-        const add = (raw: string | undefined, display: string): void => {
-            const key = raw?.trim().toLowerCase();
-            if (!key || labels.has(key)) return;
-            labels.set(key, display);
-        };
-
-        items.forEach(item => {
-            const display = this.formatInquiryReferenceDisplay(item, item.displayLabel);
-            add(item.displayLabel, display);
-            add(item.id, display);
-            add(item.sceneId, display);
-            item.filePaths?.forEach(path => add(path, display));
-        });
-
-        return labels;
+        return buildInquiryReferenceLabelMapPure(
+            items,
+            (item) => this.formatInquiryReferenceDisplay(item, item.displayLabel)
+        );
     }
 
     private buildInquirySceneReferenceIndex(items: InquiryCorpusItem[]): Array<{ label: string; anchorId?: string }> {
-        return items.map(item => ({
-            label: this.formatInquiryReferenceDisplay(item, item.displayLabel),
-            anchorId: this.getBriefSceneAnchorId(this.getMinimapItemFilePath(item) || item.id || item.displayLabel)
-        }));
+        return buildInquirySceneReferenceIndexPure(
+            items,
+            (item) => this.formatInquiryReferenceDisplay(item, item.displayLabel),
+            (item) => this.getBriefSceneAnchorId(this.getMinimapItemFilePath(item) || item.id || item.displayLabel)
+        );
     }
 
     private formatInquiryReferenceDisplay(item: InquiryCorpusItem, fallbackLabel?: string): string {
@@ -11514,7 +11294,7 @@ export class InquiryView extends ItemView {
     }
 
     private normalizeInquiryBriefText(value: string | undefined, referenceLabels: ReadonlyMap<string, string>): string {
-        return replaceInquiryReferenceTokens(value, referenceLabels);
+        return normalizeInquiryBriefTextPure(value, referenceLabels);
     }
 
     private resolveInquiryBriefScopeIndicator(result: InquiryResult): string | null {
@@ -11691,25 +11471,14 @@ export class InquiryView extends ItemView {
 
     private formatInquiryBriefTitle(result: InquiryResult): string {
         const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
-        const timestamp = formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
-        const parts: string[] = [];
-        if (result.scope === 'saga') {
-            parts.push('Saga');
-        }
-        if (questionPrefix) {
-            parts.push(questionPrefix);
-        } else {
-            parts.push(zoneLabel, lensLabel);
-        }
-        return `Inquiry Brief — ${parts.join(' · ')} ${timestamp}`;
+        return formatInquiryBriefTitlePure(result, timestampSource, zoneLabel, lensLabel, questionPrefix);
     }
 
     private resolveInquiryBriefZoneLabel(result: InquiryResult): string {
-        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
-        return zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+        return resolveInquiryBriefZoneLabelPure(result, (qid) => this.findPromptZoneById(qid));
     }
 
     private resolveInquiryBriefLensLabel(result: InquiryResult, zoneLabel: string): string {
@@ -11817,26 +11586,14 @@ export class InquiryView extends ItemView {
         items: InquiryCorpusItem[] = this.getResultItems(result),
         referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
     ): { targetLabel?: string; text: string } | null {
-        const text = this.getInquiryActionText(finding, referenceLabels);
-        if (!text) return null;
-        const targetLabel = resolveFindingChipLabel(finding, result, items)
-            ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
-        return {
-            targetLabel,
-            text
-        };
+        return buildInquiryPendingActionPure(finding, result, items, referenceLabels);
     }
 
     private getInquiryActionText(
         finding: InquiryFinding,
         referenceLabels: ReadonlyMap<string, string>
     ): string | null {
-        if (finding.kind === 'none' || finding.kind === 'strength') return null;
-        const headline = this.normalizeInquiryBriefText(
-            normalizeInquiryHeadline(finding.headline),
-            referenceLabels
-        ).trim();
-        return headline || null;
+        return getInquiryActionTextPure(finding, referenceLabels);
     }
 
 

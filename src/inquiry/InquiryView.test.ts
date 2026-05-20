@@ -115,8 +115,17 @@ describe('InquiryView payload accounting', () => {
     it('persists executed prompt truth on results instead of rebuilding it from current config', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const runnerSource = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        // R1 brief/dossier B4e: question-text fallback chain moved into
+        // the pure assembler; the InquiryView wrapper still resolves the
+        // registry value (`questionTextById`) and the runner still uses
+        // executed prompt truth (`input.questionText`). Test the seam:
+        // the wrapper resolves via getQuestionTextById, and the fallback
+        // chain logic lives in the pure module.
         expect(viewSource.includes("questionText: result.questionText?.trim() || this.getQuestionTextById(result.questionId) || undefined")).toBe(true);
-        expect(viewSource.includes("const questionTextRaw = result.questionText?.trim() || this.getQuestionTextById(result.questionId)")).toBe(true);
+        expect(viewSource.includes('questionTextById: this.getQuestionTextById(result.questionId),')).toBe(true);
+        const briefSource = readFileSync(resolve(process.cwd(), 'src/inquiry/utils/inquiryBriefModel.ts'), 'utf8');
+        expect(briefSource.includes("const questionTextRaw = result.questionText?.trim() || questionTextById;")).toBe(true);
+        expect(briefSource.includes("'Question text unavailable.'")).toBe(true);
         expect(runnerSource.includes('questionPromptForm: input.questionPromptForm')).toBe(true);
         expect(runnerSource.includes('questionText: input.questionText')).toBe(true);
     });
@@ -215,7 +224,10 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('const prior = session.pendingEditsEmpty;')).toBe(true);
         expect(viewSource.includes('if (session.key && prior !== pendingEditsEmpty) {')).toBe(true);
         expect(viewSource.includes('private buildBriefPendingActions(')).toBe(true);
-        expect(viewSource.includes('const pendingActions = this.buildBriefPendingActions(result, items, referenceLabels);')).toBe(true);
+        // R1 brief/dossier B4e: brief-model assembly moved to the pure
+        // module; the wrapper passes pendingActions through the options
+        // bag instead of materializing it as a local.
+        expect(viewSource.includes('pendingActions: this.buildBriefPendingActions(result, items, referenceLabels),')).toBe(true);
     });
 
     it('prefers the strongest live warm-cache metrics over stale persisted reuse data (via pure picker)', () => {

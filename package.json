@@ -48,7 +48,11 @@
 		"audit:spec-coverage": "node scripts/audit-spec-coverage.mjs",
 		"audit:tsc-unused": "mkdir -p docs/audits && tsc -p tsconfig.audit.json --noEmit > docs/audits/tsc-unused.txt 2>&1 || true",
 		"audit:eslint": "mkdir -p docs/audits && eslint . > docs/audits/eslint.txt 2>&1 || true",
-		"audit:all": "npm run audit:sanitation && npm run audit:tsc-unused && npm run audit:eslint"
+		"audit:all": "npm run audit:sanitation && npm run audit:tsc-unused && npm run audit:eslint",
+		"audit:codebase": "node -e \"console.log('Weekly Codebase Health Audit\\n  Prompt: docs/engineering/audits/prompts/weekly-codebase-health-audit.md\\n  Template: docs/engineering/audits/templates/codebase-health-report.md\\n  Save report to: docs/engineering/audits/reports/YYYY-MM-DD-codebase-health.md\\n\\nThis script does not run the audit automatically — paste the prompt into an IDE agent at the repo root.')\"",
+		"audit:architecture": "node -e \"console.log('Weekly Architecture Drift Audit\\n  Prompt: docs/engineering/audits/prompts/weekly-architecture-drift-audit.md\\n  Template: docs/engineering/audits/templates/architecture-drift-report.md\\n  Save report to: docs/engineering/audits/reports/YYYY-MM-DD-architecture-drift.md\\n\\nThis script does not run the audit automatically — paste the prompt into an IDE agent at the repo root.')\"",
+		"audit:obsidian": "node -e \"console.log('Biweekly Obsidian Ecosystem Audit\\n  Prompt: docs/engineering/audits/prompts/biweekly-obsidian-ecosystem-audit.md\\n  Template: docs/engineering/audits/templates/obsidian-ecosystem-report.md\\n  Save report to: docs/engineering/audits/reports/YYYY-MM-DD-obsidian-ecosystem.md\\n\\nThis script does not run the audit automatically — paste the prompt into an IDE agent at the repo root.')\"",
+		"audit:refactor-board": "node -e \"console.log('Monthly Refactor Recommendation Board\\n  Prompt: docs/engineering/audits/prompts/monthly-refactor-board.md\\n  Template: docs/engineering/audits/templates/refactor-board-report.md\\n  Save report to: docs/engineering/audits/reports/YYYY-MM-DD-refactor-board.md\\n\\nThis script does not run the board automatically — paste the prompt into an IDE agent at the repo root. The agent will synthesize the prior month of reports under docs/engineering/audits/reports/.')\""
 	},
 	"keywords": [
 		"obsidian",
