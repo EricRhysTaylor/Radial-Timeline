@@ -344,7 +344,6 @@ import {
     buildStaleTooltipLines,
     countSynopsisWords,
     getCorpusCcOrderNumber,
-    getCorpusClassShort,
     formatApiErrorReason,
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
@@ -398,6 +397,13 @@ import {
     buildFindingRowData as buildFindingRowDataPure,
     buildUnverifiedFindingRowData as buildUnverifiedFindingRowDataPure
 } from './utils/inquiryFindingsPanel';
+import {
+    getMinimapItemFilePath as getMinimapItemFilePathPure,
+    getCorpusCcModeMeta as getCorpusCcModeMetaPure,
+    getCorpusCcHeaderLabel as getCorpusCcHeaderLabelPure,
+    getCorpusCcHeaderDisplayLabel as getCorpusCcHeaderDisplayLabelPure,
+    getCorpusCcHeaderTooltip as getCorpusCcHeaderTooltipPure
+} from './utils/inquiryCorpusStripMinimap';
 import { polarToCartesian } from './utils/inquiryGeometry';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
@@ -3998,11 +4004,7 @@ export class InquiryView extends ItemView {
     }
 
     private getMinimapItemFilePath(item: InquiryCorpusItem): string | undefined {
-        const scenePath = (item as { filePath?: string }).filePath;
-        if (scenePath) return scenePath;
-        const bookPath = (item as { rootPath?: string }).rootPath;
-        if (bookPath) return bookPath;
-        return item.filePaths?.[0];
+        return getMinimapItemFilePathPure(item);
     }
 
     private getMinimapItemTitle(item: InquiryCorpusItem): string {
@@ -4885,23 +4887,11 @@ export class InquiryView extends ItemView {
         icon: string;
         isActive: boolean;
     } {
-        if (mode === 'summary') {
-            return { label: 'Summary', short: 'SUM', icon: 'circle-dot', isActive: true };
-        }
-        if (mode === 'full') {
-            return { label: 'Full Scene', short: 'FULL', icon: 'disc', isActive: true };
-        }
-        return { label: 'Exclude', short: 'EXCL', icon: 'circle', isActive: false };
+        return getCorpusCcModeMetaPure(mode);
     }
 
     private getCorpusCcHeaderLabel(className: string, count: number, overrideLabel?: string): string {
-        if (overrideLabel && overrideLabel.trim().length > 0) {
-            return overrideLabel.trim();
-        }
-        if (className === 'outline-saga') {
-            return `${SIGMA_CHAR}`;
-        }
-        return `${getCorpusClassShort(className)}${count}`;
+        return getCorpusCcHeaderLabelPure(className, count, overrideLabel);
     }
 
     private getCorpusCcHeaderTooltip(
@@ -4910,23 +4900,11 @@ export class InquiryView extends ItemView {
         count: number,
         overrideLabel?: string
     ): string {
-        const meta = this.getCorpusCcModeMeta(mode);
-        const label = (overrideLabel && overrideLabel.trim().length > 0)
-            ? overrideLabel.trim()
-            : this.getCorpusCcHeaderDisplayLabel(className);
-        const parts = [label, meta.label];
-        if (meta.isActive || count > 0) {
-            parts.push(String(count));
-        }
-        return parts.join(' · ');
+        return getCorpusCcHeaderTooltipPure(className, mode, count, overrideLabel);
     }
 
     private getCorpusCcHeaderDisplayLabel(className: string): string {
-        if (className === 'outline-saga') return 'Saga Outline';
-        if (className === 'character') return 'Character';
-        if (className === 'scene') return 'Scene';
-        if (className === 'outline') return 'Outline';
-        return 'Class';
+        return getCorpusCcHeaderDisplayLabelPure(className);
     }
 
 
