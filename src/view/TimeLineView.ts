@@ -549,13 +549,18 @@ export class RadialTimelineView extends ItemView {
     }
 
     private formatCompletedSessionSummary(active: ActiveWritingSession, elapsedMs: number): string {
-        const minutes = active.goalMinutes ?? Math.max(1, Math.round(elapsedMs / 60000));
+        const minutes = Math.max(1, Math.round(elapsedMs / 60000));
         const details = [
             `${minutes} min`,
             this.formatWritingSessionMode(active.mode),
             active.bookTitle,
         ].filter(Boolean).join(' ');
         return `Save ${details}?`;
+    }
+
+    private getCountdownSegmentElapsedMs(active: ActiveWritingSession, elapsedMs: number): number {
+        if (!active.goalMinutes) return elapsedMs;
+        return Math.max(0, elapsedMs - (active.countdownSegmentStartElapsedMs ?? 0));
     }
 
     private formatSessionClockDisplay(ms: number, mode: 'countdown' | 'elapsed'): SessionClockDisplay {
@@ -576,12 +581,13 @@ export class RadialTimelineView extends ItemView {
 
     private getSessionStatusDisplay(active: ActiveWritingSession, elapsedMs: number): SessionStatusDisplay {
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const remainingMs = goalMs ? Math.max(0, goalMs - elapsedMs) : undefined;
+        const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs);
+        const remainingMs = goalMs ? Math.max(0, goalMs - countdownElapsedMs) : undefined;
         const clockDisplay = this.formatSessionClockDisplay(remainingMs ?? elapsedMs, goalMs ? 'countdown' : 'elapsed');
         if (goalMs && remainingMs === 0) {
             return {
                 headline: 'Session Complete',
-                detail: 'Good work. Stop to save this session.',
+                detail: 'Good work. Continue the timer or save this session.',
                 tone: 'complete',
             };
         }
@@ -607,7 +613,10 @@ export class RadialTimelineView extends ItemView {
     private getActiveSessionProgressStep(active: ActiveWritingSession, elapsedMs: number): number {
         const targetMinutes = active.goalMinutes ?? this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
         const targetMs = Math.max(1, targetMinutes) * 60000;
-        return this.getSessionProgressStep(elapsedMs / targetMs);
+        const progressElapsedMs = active.goalMinutes
+            ? this.getCountdownSegmentElapsedMs(active, elapsedMs)
+            : elapsedMs;
+        return this.getSessionProgressStep(progressElapsedMs / targetMs);
     }
 
     private applySessionProgressClass(el: HTMLElement, progressStep: number | undefined): void {
@@ -717,7 +726,8 @@ export class RadialTimelineView extends ItemView {
         const countdown = Boolean(active.goalMinutes);
         const targetMinutes = active.goalMinutes ?? service.getDefaultGoalMinutes() ?? 120;
         const targetMs = Math.max(1, targetMinutes) * 60000;
-        const elapsedProgress = Math.min(1, Math.max(0, elapsedMs / targetMs));
+        const timerElapsedMs = countdown ? this.getCountdownSegmentElapsedMs(active, elapsedMs) : elapsedMs;
+        const elapsedProgress = Math.min(1, Math.max(0, timerElapsedMs / targetMs));
         iconEl.empty();
         iconEl.appendChild(buildTabTimerDiscSvg({
             progress: countdown ? 1 - elapsedProgress : elapsedProgress,
@@ -730,7 +740,7 @@ export class RadialTimelineView extends ItemView {
     private getSessionTitlePulseKey(active: ActiveWritingSession, elapsedMs: number): string {
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
         if (goalMs) {
-            const remainingMs = Math.max(0, goalMs - elapsedMs);
+            const remainingMs = Math.max(0, goalMs - this.getCountdownSegmentElapsedMs(active, elapsedMs));
             return `remaining-min-${Math.ceil(remainingMs / 60000)}`;
         }
         return `elapsed-min-${Math.floor(elapsedMs / 60000)}`;
@@ -1137,7 +1147,16 @@ export class RadialTimelineView extends ItemView {
         }
 
         const actions = panel.createDiv({ cls: 'ert-timeline-session-panel__actions' });
-        if (active.pausedAt) {
+        if (statusDisplay.tone === 'complete' && active.goalMinutes) {
+            this.createSessionIconButton(actions, 'play', 'Continue', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
+                try {
+                    await service.continueCountdown();
+                    this.refreshWritingSessionControl();
+                } catch (error) {
+                    new Notice(error instanceof Error ? error.message : 'Could not continue writing session.');
+                }
+            });
+        } else if (active.pausedAt) {
             this.createSessionIconButton(actions, 'play', 'Resume', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', async () => {
                 try {
                     await service.resume();
@@ -1186,6 +1205,7 @@ export class RadialTimelineView extends ItemView {
             active.pausedAt ? 'paused' : 'running',
             statusDisplay.tone,
             active.goalMinutes ? 'countdown' : 'elapsed',
+            active.countdownSegmentStartElapsedMs ?? 0,
             active.mode,
             active.stage,
             active.bookTitle,
@@ -1260,6 +1280,7 @@ export class RadialTimelineView extends ItemView {
             timeKey,
             active.pausedAt ? 'paused' : 'running',
             active.goalMinutes ? 'countdown' : 'elapsed',
+            active.countdownSegmentStartElapsedMs ?? 0,
             targetMinutes,
             SESSION_TIMER_RING_WIDTH,
             SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
@@ -1281,8 +1302,11 @@ export class RadialTimelineView extends ItemView {
         const active = service.getActiveSession();
         const elapsedMs = active ? service.getActiveElapsedMs() : 0;
         const targetMinutes = active?.goalMinutes ?? service.getDefaultGoalMinutes() ?? 120;
+        const timerElapsedMs = active?.goalMinutes
+            ? this.getCountdownSegmentElapsedMs(active, elapsedMs)
+            : elapsedMs;
         const renderKey = active
-            ? this.getSessionRingRenderKey(active, elapsedMs, targetMinutes)
+            ? this.getSessionRingRenderKey(active, timerElapsedMs, targetMinutes)
             : [
                 'inactive',
                 targetMinutes,
@@ -1294,7 +1318,7 @@ export class RadialTimelineView extends ItemView {
         const hasRenderedRing = Boolean(svg.querySelector('.ert-timeline-session-ring-layer'));
         if (this.writingSessionRingRenderKey === renderKey && hasRenderedRing && !options.pulseColor) return;
         svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
-        const ringElapsedMs = this.getSessionRingElapsedMs(elapsedMs, targetMinutes);
+        const ringElapsedMs = this.getSessionRingElapsedMs(timerElapsedMs, targetMinutes);
         const state = buildSessionTimerRingState({
             progressRadius: lineInnerRadius + SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
             progressRingWidth: SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,

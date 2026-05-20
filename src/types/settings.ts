@@ -325,6 +325,12 @@ export interface ActiveWritingSession {
     elapsedMsBeforePause: number;
     goalMinutes?: number;
     /**
+     * Total elapsed milliseconds at the start of the current countdown sprint.
+     * Allows a completed countdown to continue as the same saved session while
+     * restarting the visible countdown interval.
+     */
+    countdownSegmentStartElapsedMs?: number;
+    /**
      * Heartbeat timestamp written while the session is actively running. Used
      * to detect sessions abandoned by an app crash/quit: if the gap since the
      * last heartbeat exceeds the stale threshold, elapsed time is frozen at

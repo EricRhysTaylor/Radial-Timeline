@@ -101,6 +101,31 @@ function isEmptyValue(value: unknown): boolean {
     return false;
 }
 
+function formatBatchNotice(params: {
+    updated: number;
+    skipped?: number;
+    failed?: number;
+    unit: string;
+    updatedVerb?: string;
+    skippedLabel?: string;
+    noChangeText?: string;
+}): string {
+    const {
+        updated,
+        skipped = 0,
+        failed = 0,
+        unit,
+        updatedVerb = 'Updated',
+        skippedLabel = 'unchanged',
+        noChangeText = 'No changes made.',
+    } = params;
+    const parts: string[] = [];
+    if (updated > 0) parts.push(`${updatedVerb} ${updated} ${unit}${updated !== 1 ? 's' : ''}`);
+    if (skipped > 0) parts.push(`${skipped} ${skippedLabel}`);
+    if (failed > 0) parts.push(`${failed} failed`);
+    return parts.join(', ') || noChangeText;
+}
+
 async function ensureVaultFolder(app: App, folderPath: string): Promise<string> {
     const normalized = normalizePath(folderPath.trim());
     if (!normalized) return '';
@@ -548,7 +573,16 @@ export function renderSceneNormalizerSection(params: {
                 settings: plugin.settings,
                 files: sceneAudit.notes.filter((note) => note.missingSceneId).map((note) => note.file),
             });
-            new Notice(result.updated > 0 ? `Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}.` : 'No changes made.');
+            if (result.failed > 0) {
+                console.warn('[Radial Timeline] Failed to add missing scene IDs.', result.errors);
+            }
+            new Notice(formatBatchNotice({
+                updated: result.updated,
+                skipped: result.skipped,
+                failed: result.failed,
+                unit: 'scene',
+                skippedLabel: 'already had IDs',
+            }));
             setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
@@ -670,7 +704,15 @@ export function renderSceneNormalizerSection(params: {
                 settings: plugin.settings,
                 files: targetFiles,
             });
-            new Notice(result.updated > 0 ? `Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}.` : 'No changes made.');
+            if (result.failed > 0) {
+                console.warn('[Radial Timeline] Failed to fix duplicate scene IDs.', result.errors);
+            }
+            new Notice(formatBatchNotice({
+                updated: result.updated,
+                skipped: result.skipped,
+                failed: result.failed,
+                unit: 'scene',
+            }));
             setTimeout(() => { void runCheckScenes(); }, 750);
         });
 

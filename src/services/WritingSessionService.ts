@@ -23,7 +23,7 @@ const MAX_SESSION_RECORDS = 500;
  * onto settings and the portable vault export so the author's data stays
  * forward-readable even after they stop using this plugin.
  */
-export const WRITING_SESSIONS_SCHEMA_VERSION = 1;
+export const WRITING_SESSIONS_SCHEMA_VERSION = 2;
 
 /**
  * If a running session goes this long without a heartbeat it is assumed the
@@ -282,6 +282,9 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
                 mode: coerceMode(active.mode),
                 stage: coerceStage(active.stage),
                 stagePreference: coerceStagePreference(active.stagePreference),
+                countdownSegmentStartElapsedMs: Number.isFinite(active.countdownSegmentStartElapsedMs)
+                    ? Math.max(0, Math.round(active.countdownSegmentStartElapsedMs ?? 0))
+                    : undefined,
             }
         } : {}),
         records: records.map(record => ({
@@ -616,6 +619,7 @@ export class WritingSessionService {
             lastSeenAt: startedAt,
             elapsedMsBeforePause: 0,
             goalMinutes: positiveMinutes(startOptions.goalMinutes),
+            countdownSegmentStartElapsedMs: positiveMinutes(startOptions.goalMinutes) ? 0 : undefined,
         };
         settings.active = active;
         this.lastHeartbeatPersistMs = Date.now();
@@ -642,6 +646,21 @@ export class WritingSessionService {
         if (!active.pausedAt) return active;
         active.pausedAt = undefined;
         active.lastResumedAt = nowIso();
+        active.lastSeenAt = active.lastResumedAt;
+        this.lastHeartbeatPersistMs = Date.now();
+        await this.plugin.saveSettings();
+        return active;
+    }
+
+    async continueCountdown(): Promise<ActiveWritingSession> {
+        const settings = this.getSettings();
+        const active = settings.active;
+        if (!active) throw new Error('No writing session is active.');
+        if (!active.goalMinutes) throw new Error('Only countdown sessions can be continued.');
+        const now = new Date();
+        active.countdownSegmentStartElapsedMs = activeElapsedMs(active, now);
+        active.pausedAt = undefined;
+        active.lastResumedAt = now.toISOString();
         active.lastSeenAt = active.lastResumedAt;
         this.lastHeartbeatPersistMs = Date.now();
         await this.plugin.saveSettings();

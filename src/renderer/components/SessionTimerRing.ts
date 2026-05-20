@@ -104,9 +104,12 @@ export function tabTimerWedgePath(
     }
     const topAngle = -Math.PI / 2;
     const sweep = direction === 'counterclockwise' ? -1 : 1;
-    const endAngle = topAngle + (sweep * Math.PI * 2 * p);
-    const x0 = radius * Math.cos(topAngle);
-    const y0 = radius * Math.sin(topAngle);
+    const startAngle = direction === 'counterclockwise'
+        ? topAngle + (sweep * Math.PI * 2 * (1 - p))
+        : topAngle;
+    const endAngle = startAngle + (sweep * Math.PI * 2 * p);
+    const x0 = radius * Math.cos(startAngle);
+    const y0 = radius * Math.sin(startAngle);
     const x1 = radius * Math.cos(endAngle);
     const y1 = radius * Math.sin(endAngle);
     const largeArc = p > 0.5 ? 1 : 0;

@@ -8,7 +8,7 @@ import {
     SESSION_TIMER_RING_WIDTH,
 } from '../layout/LayoutConstants';
 import { renderProgressRingBaseLayer } from '../utils/ProgressRing';
-import { buildSessionTimerRingState, renderSessionTimerRing, renderSessionTimerRingLayer, sessionTimerArcPath } from './SessionTimerRing';
+import { buildSessionTimerRingState, renderSessionTimerRing, renderSessionTimerRingLayer, sessionTimerArcPath, tabTimerWedgePath } from './SessionTimerRing';
 
 describe('SessionTimerRing', () => {
     it('places the session ring outside the progress ring', () => {
@@ -90,6 +90,20 @@ describe('SessionTimerRing', () => {
         expect(svg).toContain('is-progress-0');
         expect(svg).toContain('is-counterclockwise');
         expect(svg.match(/ A /g)?.length).toBe(2);
+    });
+
+    it('depletes the tab countdown wedge counterclockwise from the top', () => {
+        const path = tabTimerWedgePath(9, 0.75, 'counterclockwise');
+
+        expect(path).toContain('L -9 0');
+        expect(path).toContain(' 0 1 0 0 -9');
+    });
+
+    it('grows the tab elapsed wedge clockwise from the top', () => {
+        const path = tabTimerWedgePath(9, 0.25, 'clockwise');
+
+        expect(path).toContain('L 0 -9');
+        expect(path).toContain(' 0 0 1 9 0');
     });
 
     it('keeps countdown rings on the neutral track so spent time returns to gray', () => {

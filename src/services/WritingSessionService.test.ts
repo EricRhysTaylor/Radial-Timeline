@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { TimelineItem } from '../types';
 import type { WritingSessionRecord } from '../types/settings';
 import {
@@ -283,6 +283,46 @@ describe('WritingSessionService pure helpers', () => {
         expect(session.goalMinutes).toBe(50);
         expect(session.bookId).toBe('book-1');
         expect(plugin.settings.writingSessions.active?.goalMinutes).toBe(50);
+    });
+
+    it('continues a completed countdown as the same session with a fresh sprint segment', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:42:00.000Z'));
+            const plugin = {
+                settings: {
+                    writingSessions: {
+                        defaults: { defaultMode: 'revising' },
+                        active: {
+                            id: 'active-session',
+                            mode: 'revising',
+                            stage: 'Author',
+                            stagePreference: 'Author',
+                            startedAt: '2026-05-20T16:00:00.000Z',
+                            lastResumedAt: '2026-05-20T16:00:00.000Z',
+                            lastSeenAt: '2026-05-20T16:41:30.000Z',
+                            elapsedMsBeforePause: 0,
+                            goalMinutes: 40,
+                        },
+                        records: [],
+                    },
+                },
+                saveSettings: vi.fn(async () => undefined),
+            };
+            const service = new WritingSessionService(plugin as any);
+
+            const continued = await service.continueCountdown();
+
+            expect(continued.id).toBe('active-session');
+            expect(continued.goalMinutes).toBe(40);
+            expect(continued.countdownSegmentStartElapsedMs).toBe(42 * 60000);
+            expect(continued.pausedAt).toBeUndefined();
+            expect(continued.lastResumedAt).toBe('2026-05-20T16:42:00.000Z');
+            expect(plugin.settings.writingSessions.active).toBe(continued);
+            expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('resolves the automatic session stage from working scenes', async () => {
