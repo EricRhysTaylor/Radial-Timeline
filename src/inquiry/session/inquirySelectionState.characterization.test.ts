@@ -48,9 +48,15 @@ describe('characterization: activeBookId mutation paths (post Slice 2c)', () => 
         );
     });
 
-    it('path C1 — refreshCorpus syncs via setActiveBookId(this.corpus.activeBookId)', () => {
+    it('path C1 — refreshCorpus syncs via setActiveBookId(snapshot.activeBookId) (post Corpus Slice 1)', () => {
+        // Corpus Slice 1 introduced a `const snapshot = this.corpusSnapshot.refresh(...)`
+        // local; the reconcile chain inside refreshCorpus now reads
+        // `snapshot.activeBookId` instead of `this.corpus.activeBookId`.
+        // Behavior identical — controller wrote `this.corpus = snapshot`
+        // synchronously, so the two reads see the same value. The local
+        // binding is just TS-narrowing convenience.
         expect(INQUIRY_VIEW_SRC).toContain(
-            'this.selection.setActiveBookId(this.corpus.activeBookId);'
+            'this.selection.setActiveBookId(snapshot.activeBookId);'
         );
     });
 

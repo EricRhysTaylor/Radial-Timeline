@@ -88,6 +88,7 @@ import { buildBriefingPurgeAvailabilityKey } from './briefing/briefingPurgeAvail
 import { InquiryActiveSessionState } from './session/inquiryActiveSessionState';
 import { InquirySelectionState } from './session/inquirySelectionState';
 import { InquirySettingsAccessor } from './settings/inquirySettingsAccessor';
+import { InquiryCorpusSnapshotController } from './corpus/InquiryCorpusSnapshotController';
 import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
@@ -637,8 +638,14 @@ export class InquiryView extends ItemView {
     private freshModeTouchedBookIds = new Set<string>();
     // lastTargetSceneIdsByBookId + targetPersistTimer moved into
     // InquirySelectionState (Slice 2b). See selection.* method calls.
-    private corpusResolver: InquiryCorpusResolver;
-    private corpus?: InquiryCorpusSnapshot;
+    // Corpus snapshot lifecycle (Slice 1) — the InquiryCorpusSnapshotController
+    // owns the resolver and the refresh() entry point. `corpus` is the
+    // write-through slot the controller writes to, so the 22+ existing
+    // `this.corpus?.X` read sites are unchanged. Field is non-private so
+    // the controller's host reference can write to it from outside the
+    // class without TS access-modifier complaints.
+    corpus?: InquiryCorpusSnapshot;
+    private corpusSnapshot!: InquiryCorpusSnapshotController;
     private runner: InquiryRunnerService;
     private sessionStore: InquirySessionStore;
     private minimapResultPreviewActive = false;
@@ -675,7 +682,16 @@ export class InquiryView extends ItemView {
         this.ensurePromptConfig();
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
-        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, mappings);
+        // Corpus snapshot lifecycle. The controller's host reference is
+        // `this` — it writes through to the `corpus` field on this view.
+        // The mappings closure is read on every refresh so frontmatter-
+        // mapping changes between refreshes are observed (audit Risk #1).
+        this.corpusSnapshot = new InquiryCorpusSnapshotController(
+            this,
+            this.app.vault,
+            this.app.metadataCache,
+            () => getActiveFrontmatterMappings(this.plugin.settings)
+        );
     }
 
     private registerSvgEvent<TEvent extends Event>(
@@ -3795,19 +3811,22 @@ export class InquiryView extends ItemView {
 
     private refreshCorpus(): void {
         this.invalidateBriefingPurgeAvailability();
-        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, getActiveFrontmatterMappings(this.plugin.settings));
-        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        this.corpus = this.corpusResolver.resolve({
+        // Controller resolves the snapshot, writes through to `this.corpus`,
+        // and returns it. The local binding lets the reconcile chain below
+        // read the just-resolved snapshot without re-asserting non-null on
+        // every access. Behavior identical to the inline form: the view's
+        // `this.corpus` field is updated synchronously by refresh().
+        const snapshot = this.corpusSnapshot.refresh({
             scope: this.state.scope,
             activeBookId: this.state.activeBookId,
-            sources,
-            bookProfiles: this.plugin.settings.books
+            sources: this.normalizeInquirySources(this.settingsAccessor.getSources()),
+            bookProfiles: this.plugin.settings.books,
         });
 
         let shouldPersist = false;
-        if (this.corpus.activeBookId) {
-            if (this.state.activeBookId !== this.corpus.activeBookId) {
-                this.selection.setActiveBookId(this.corpus.activeBookId);
+        if (snapshot.activeBookId) {
+            if (this.state.activeBookId !== snapshot.activeBookId) {
+                this.selection.setActiveBookId(snapshot.activeBookId);
                 shouldPersist = true;
             }
         } else {
@@ -3818,17 +3837,17 @@ export class InquiryView extends ItemView {
         }
 
         if (this.state.scope === 'book') {
-            const nextTargetSceneIds = this.resolveTargetSceneIds(this.corpus.activeBookId, this.corpus.scenes);
+            const nextTargetSceneIds = this.resolveTargetSceneIds(snapshot.activeBookId, snapshot.scenes);
             if (!this.areTargetSceneIdsEqual(this.state.targetSceneIds, nextTargetSceneIds)) {
                 this.selection.setTargetSceneIds(nextTargetSceneIds);
                 shouldPersist = true;
             }
-            if (this.corpus.activeBookId) {
-                const shouldSyncTargetCache = !this.startupFreshMode || this.freshModeTouchedBookIds.has(this.corpus.activeBookId);
+            if (snapshot.activeBookId) {
+                const shouldSyncTargetCache = !this.startupFreshMode || this.freshModeTouchedBookIds.has(snapshot.activeBookId);
                 if (shouldSyncTargetCache) {
-                    const prior = this.selection.getRememberedTargetSceneIdsForBook(this.corpus.activeBookId) ?? [];
+                    const prior = this.selection.getRememberedTargetSceneIdsForBook(snapshot.activeBookId) ?? [];
                     if (!this.areTargetSceneIdsEqual(prior, nextTargetSceneIds)) {
-                        this.selection.rememberTargetSceneIdsForBook(this.corpus.activeBookId, nextTargetSceneIds);
+                        this.selection.rememberTargetSceneIdsForBook(snapshot.activeBookId, nextTargetSceneIds);
                         shouldPersist = true;
                     }
                 }
