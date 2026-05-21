@@ -7197,10 +7197,6 @@ export class InquiryView extends ItemView {
         this.artifactButton?.classList.remove('is-rehydrate-pulse');
     }
 
-    private clearPersistedTargetCache(): void {
-        this.selection.clearPersistedTargetCache();
-    }
-
     private resetInquiryToFreshBaseState(options?: { clearPersistedTargets?: boolean }): void {
         const defaults = createDefaultInquiryState();
         this.state.scope = defaults.scope;
@@ -7222,7 +7218,7 @@ export class InquiryView extends ItemView {
         this.startupFreshMode = true;
         this.freshModeTouchedBookIds.clear();
         if (options?.clearPersistedTargets) {
-            this.clearPersistedTargetCache();
+            this.selection.clearPersistedTargetCache();
         }
     }
 

@@ -197,12 +197,20 @@ describe('characterization: inquiryTargetCache persistence (post Slice 2b)', () 
         expect(INQUIRY_VIEW_SRC).not.toContain('lastBookId: this.state.activeBookId,');
     });
 
-    it('clearPersistedTargetCache is a 1-line delegator to selection.clearPersistedTargetCache', () => {
+    it('resetInquiryToFreshBaseState invokes selection.clearPersistedTargetCache directly (no view-side wrapper)', () => {
+        // Cleanup pass: the 1-line view-side `clearPersistedTargetCache`
+        // delegator was inlined. The single caller — the
+        // `resetInquiryToFreshBaseState({ clearPersistedTargets: true })`
+        // branch — now invokes the controller method directly.
         expect(INQUIRY_VIEW_SRC).toContain(
             'this.selection.clearPersistedTargetCache();'
         );
+        // The view no longer declares the wrapper method.
+        expect(INQUIRY_VIEW_SRC).not.toMatch(
+            /private clearPersistedTargetCache\(\)/
+        );
         // The inline { lastBookId: undefined, lastTargetSceneIdsByBookId: {} }
-        // construction is gone.
+        // construction is gone (was already removed in Slice 2b).
         expect(INQUIRY_VIEW_SRC).not.toMatch(
             /this\.plugin\.settings\.inquiryTargetCache\s*=\s*\{\s*lastBookId:\s*undefined/
         );
