@@ -3,6 +3,7 @@ import { TIMELINE_VIEW_TYPE } from '../view/TimeLineView';
 import { RadialTimelineView } from '../view/TimeLineView';
 import { ChangeType } from '../renderer/ChangeDetection';
 import type RadialTimelinePlugin from '../main';
+import type { Disposable } from '../core/disposable';
 
 const TIMELINE_REFRESH_DELAY_MS = 1000;
 
@@ -15,7 +16,7 @@ interface RenderRequest {
     priority: number; // Lower = higher priority
 }
 
-export class TimelineService {
+export class TimelineService implements Disposable {
     private app: App;
     private plugin: RadialTimelinePlugin;
     private refreshTimeout: number | null = null;
@@ -137,6 +138,10 @@ export class TimelineService {
             this.refreshTimeout = null;
         }
         this.pendingRequest = null;
+    }
+
+    cleanup(): void {
+        this.cancelPendingRender();
     }
     /**
      * Activate or create the timeline view

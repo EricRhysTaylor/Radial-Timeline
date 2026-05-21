@@ -73,6 +73,10 @@ import {
 } from './interactions/inquiryEventBinder';
 import { buildInquiryBriefingSections } from './briefing/inquiryBriefingGrouping';
 import { renderInquiryBriefingSessionItem } from './briefing/inquiryBriefingRenderer';
+import { HoverPopoverController } from './dom/hoverPopoverController';
+import { anchorPanelNearTrigger } from './dom/panelAnchoring';
+import { deriveBriefingArtifactClassFlags } from './briefing/briefingArtifactStatus';
+import { DisposableRegistry, clearTrackedTimer } from '../core/disposable';
 import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
@@ -460,8 +464,11 @@ export class InquiryView extends ItemView {
     private briefingResetButton?: HTMLButtonElement;
     private briefingPurgeButton?: HTMLButtonElement;
     private briefingEmptyEl?: HTMLDivElement;
-    private briefingPinned = false;
-    private briefingHideTimer?: number;
+    private briefingPopover!: HoverPopoverController;
+    private enginePopover!: HoverPopoverController;
+    // View-scoped disposables — re-instantiated on each onOpen so the same
+    // view instance can be reopened after onClose without leaking.
+    private viewDisposables = new DisposableRegistry();
     private briefingPurgeAvailabilityKey = '';
     private briefingPurgeAvailable = false;
     private briefingPurgeScanPending = false;
@@ -480,7 +487,6 @@ export class InquiryView extends ItemView {
     private enginePanelReadinessMessageEl?: HTMLDivElement;
     private enginePanelReadinessActionsEl?: HTMLDivElement;
     private enginePanelReadinessScopeEl?: HTMLDivElement;
-    private enginePanelHideTimer?: number;
     private pendingGuardQuestion?: InquiryQuestion;
     private enginePanelFailureGuidance: EngineFailureGuidance | null = null;
     private lastEngineAdvisoryContext: InquiryAdvisoryContext | null = null;
@@ -708,6 +714,8 @@ export class InquiryView extends ItemView {
             this.renderMobileGate();
             return;
         }
+        this.viewDisposables = new DisposableRegistry();
+        this.registerViewTimerCleanups();
         const freshLaunchPending = this.plugin.consumeInquiryFreshLaunchPending();
         if (!this.state.isRunning) {
             this.clearRehydrateState();
@@ -777,48 +785,36 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) {
             new Notice(t('inquiry.notice.runContinuesInBackground'));
         }
-        if (this.inquiryRecoveryPollHandle !== undefined) {
-            window.clearInterval(this.inquiryRecoveryPollHandle);
-            this.inquiryRecoveryPollHandle = undefined;
-        }
-        if (this.updateRunningClockInterval) {
-            window.clearInterval(this.updateRunningClockInterval);
-            this.updateRunningClockInterval = undefined;
-        }
-        if (this.targetPersistTimer) {
-            window.clearTimeout(this.targetPersistTimer);
-            this.targetPersistTimer = undefined;
-        }
-        if (this.apiSimulationTimer) {
-            window.clearTimeout(this.apiSimulationTimer);
-            this.apiSimulationTimer = undefined;
-        }
-        if (this.briefingHideTimer) {
-            window.clearTimeout(this.briefingHideTimer);
-            this.briefingHideTimer = undefined;
-        }
-        if (this.enginePanelHideTimer) {
-            window.clearTimeout(this.enginePanelHideTimer);
-            this.enginePanelHideTimer = undefined;
-        }
-        if (this.sceneDossierShowTimer) {
-            window.clearTimeout(this.sceneDossierShowTimer);
-            this.sceneDossierShowTimer = undefined;
-        }
-        if (this.sceneDossierHideTimer) {
-            window.clearTimeout(this.sceneDossierHideTimer);
-            this.sceneDossierHideTimer = undefined;
-        }
-        if (this.payloadStatsRefreshTimer !== undefined) {
-            window.clearTimeout(this.payloadStatsRefreshTimer);
-            this.payloadStatsRefreshTimer = undefined;
-        }
-        if (this.sourcesRefreshTimer !== undefined) {
-            window.clearTimeout(this.sourcesRefreshTimer);
-            this.sourcesRefreshTimer = undefined;
-        }
+        // All tracked view-scoped timers are cleared in LIFO order; one bad
+        // cleanup cannot block the others.
+        this.viewDisposables.disposeAll();
+        this.briefingPopover?.cleanup();
+        this.enginePopover?.cleanup();
         this.payloadStatsRefreshDirty = false;
         this.contentEl.empty();
+    }
+
+    /**
+     * Register the per-onOpen timer-clear closures with the view registry.
+     * Each timer field is captured by closure, so cleanup always reads the
+     * current value at disposal time. Field names cannot be compile-time
+     * checked because they are private (`keyof this`/`keyof InquiryView`
+     * both omit private members); the runtime numeric guard inside
+     * {@link clearTrackedTimer} prevents misuse if a name is typo'd.
+     */
+    private registerViewTimerCleanups(): void {
+        const self = this as unknown as Record<string, number | undefined>;
+        const track = (key: string, kind: 'timeout' | 'interval' = 'timeout'): void => {
+            this.viewDisposables.add(() => clearTrackedTimer(self, key, kind));
+        };
+        track('inquiryRecoveryPollHandle', 'interval');
+        track('updateRunningClockInterval', 'interval');
+        track('targetPersistTimer');
+        track('apiSimulationTimer');
+        track('sceneDossierShowTimer');
+        track('sceneDossierHideTimer');
+        track('payloadStatsRefreshTimer');
+        track('sourcesRefreshTimer');
     }
 
     // Shell Composition
@@ -920,11 +916,11 @@ export class InquiryView extends ItemView {
             onScopeToggle: () => this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book'),
             onApiSimulation: () => this.startApiSimulation(),
             onHelpToggle: () => this.handleGuidanceHelpClick(),
-            onArtifactEnter: () => this.showBriefingPanel(),
-            onArtifactLeave: () => this.scheduleBriefingHide(),
-            onArtifactClick: () => this.toggleBriefingPanel(),
-            onEngineEnter: () => this.showEnginePanel(),
-            onEngineLeave: () => this.scheduleEnginePanelHide(),
+            onArtifactEnter: () => this.briefingPopover.show(),
+            onArtifactLeave: () => this.briefingPopover.scheduleHide(),
+            onArtifactClick: () => this.briefingPopover.toggle(),
+            onEngineEnter: () => this.enginePopover.show(),
+            onEngineLeave: () => this.enginePopover.scheduleHide(),
             onEngineClick: () => this.openAiSettings(),
             onGlyphClick: () => {
                 if (this.isInquiryGuidanceLockout()) return;
@@ -1046,6 +1042,19 @@ export class InquiryView extends ItemView {
         this.briefingResetButton = refs.briefingResetButton;
         this.briefingPurgeButton = refs.briefingPurgeButton;
 
+        this.briefingPopover = new HoverPopoverController({
+            beforeShow: () => {
+                this.refreshBriefingPanel();
+                void this.refreshBriefingPurgeAvailability();
+            },
+            positionPanel: () => {
+                if (this.artifactButton && this.briefingPanelEl) {
+                    anchorPanelNearTrigger(this.briefingPanelEl, this.artifactButton, this.contentEl, 'right');
+                }
+            }
+        }, BRIEFING_HIDE_DELAY_MS);
+        this.briefingPopover.attach(this.briefingPanelEl);
+
         bindInquiryBriefingPanelEvents({
             registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
             briefingPanelEl: this.briefingPanelEl,
@@ -1064,8 +1073,8 @@ export class InquiryView extends ItemView {
                 event.stopPropagation();
                 void this.handleBriefingPurgeClick();
             },
-            onPointerEnter: () => this.cancelBriefingHide(),
-            onPointerLeave: () => this.scheduleBriefingHide()
+            onPointerEnter: () => this.briefingPopover.cancelHide(),
+            onPointerLeave: () => this.briefingPopover.scheduleHide()
         });
         this.refreshBriefingPanel();
         void this.refreshBriefingPurgeAvailability();
@@ -1085,42 +1094,24 @@ export class InquiryView extends ItemView {
         this.enginePanelGuardEl = refs.enginePanelGuardEl;
         this.enginePanelGuardNoteEl = refs.enginePanelGuardNoteEl;
         this.enginePanelListEl = refs.enginePanelListEl;
+
+        this.enginePopover = new HoverPopoverController({
+            beforeShow: () => this.refreshEnginePanel(),
+            positionPanel: () => {
+                if (this.engineBadgeGroup && this.enginePanelEl) {
+                    anchorPanelNearTrigger(this.enginePanelEl, this.engineBadgeGroup, this.contentEl, 'left');
+                }
+            }
+        }, BRIEFING_HIDE_DELAY_MS);
+        this.enginePopover.attach(this.enginePanelEl);
+
         bindInquiryEnginePanelEvents({
             registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
             enginePanelEl: this.enginePanelEl,
-            onPointerEnter: () => this.cancelEnginePanelHide(),
-            onPointerLeave: () => this.scheduleEnginePanelHide()
+            onPointerEnter: () => this.enginePopover.cancelHide(),
+            onPointerLeave: () => this.enginePopover.scheduleHide()
         });
         this.refreshEnginePanel();
-    }
-
-    // Engine Orchestration
-    private showEnginePanel(): void {
-        if (!this.enginePanelEl) return;
-        this.cancelEnginePanelHide();
-        this.refreshEnginePanel();
-        if (this.engineBadgeGroup) this.positionPanelNearButton(this.enginePanelEl, this.engineBadgeGroup, 'left');
-        this.enginePanelEl.classList.remove('ert-hidden');
-    }
-
-    private hideEnginePanel(): void {
-        if (!this.enginePanelEl) return;
-        this.cancelEnginePanelHide();
-        this.enginePanelEl.classList.add('ert-hidden');
-    }
-
-    private scheduleEnginePanelHide(): void {
-        this.cancelEnginePanelHide();
-        this.enginePanelHideTimer = window.setTimeout(() => {
-            this.hideEnginePanel();
-        }, BRIEFING_HIDE_DELAY_MS);
-    }
-
-    private cancelEnginePanelHide(): void {
-        if (this.enginePanelHideTimer) {
-            window.clearTimeout(this.enginePanelHideTimer);
-            this.enginePanelHideTimer = undefined;
-        }
     }
 
     /**
@@ -1202,12 +1193,12 @@ export class InquiryView extends ItemView {
             logButton,
             onSettingsClick: (event: MouseEvent) => {
                 event.stopPropagation();
-                this.hideEnginePanel();
+                this.enginePopover?.hide(true);
                 this.openAiSettings(['provider']);
             },
             onLogClick: (event: MouseEvent) => {
                 event.stopPropagation();
-                this.hideEnginePanel();
+                this.enginePopover?.hide(true);
                 void this.openInquiryErrorLog();
             }
         });
@@ -1483,66 +1474,6 @@ export class InquiryView extends ItemView {
         return selected;
     }
 
-    /** Position an HTML panel near an SVG trigger button, anchored left or right. */
-    private positionPanelNearButton(panel: HTMLElement, button: SVGElement, align: 'left' | 'right'): void {
-        const containerRect = this.contentEl.getBoundingClientRect();
-        const btnRect = (button as unknown as Element).getBoundingClientRect();
-        if (align === 'right') {
-            // Align panel's right edge with the button's right edge
-            const rightOffset = containerRect.right - btnRect.right;
-            panel.style.left = '';
-            panel.style.right = `${Math.max(0, rightOffset)}px`;
-        } else {
-            // Align panel's left edge with the button's left edge
-            const leftOffset = btnRect.left - containerRect.left;
-            panel.style.right = '';
-            panel.style.left = `${Math.max(0, leftOffset)}px`;
-        }
-    }
-
-    // Briefing Orchestration
-    private showBriefingPanel(): void {
-        if (!this.briefingPanelEl) return;
-        this.cancelBriefingHide();
-        this.refreshBriefingPanel();
-        void this.refreshBriefingPurgeAvailability();
-        if (this.artifactButton) this.positionPanelNearButton(this.briefingPanelEl, this.artifactButton, 'right');
-        this.briefingPanelEl.classList.remove('ert-hidden');
-    }
-
-    private hideBriefingPanel(force = false): void {
-        if (!this.briefingPanelEl) return;
-        if (this.briefingPinned && !force) return;
-        this.cancelBriefingHide();
-        this.briefingPanelEl.classList.add('ert-hidden');
-    }
-
-    private toggleBriefingPanel(): void {
-        if (!this.briefingPanelEl) return;
-        if (this.briefingPinned) {
-            this.briefingPinned = false;
-            this.hideBriefingPanel(true);
-            return;
-        }
-        this.briefingPinned = true;
-        this.showBriefingPanel();
-    }
-
-    private scheduleBriefingHide(): void {
-        if (this.briefingPinned) return;
-        this.cancelBriefingHide();
-        this.briefingHideTimer = window.setTimeout(() => {
-            this.hideBriefingPanel(true);
-        }, BRIEFING_HIDE_DELAY_MS);
-    }
-
-    private cancelBriefingHide(): void {
-        if (this.briefingHideTimer) {
-            window.clearTimeout(this.briefingHideTimer);
-            this.briefingHideTimer = undefined;
-        }
-    }
-
     private refreshBriefingPanel(): void {
         if (!this.briefingListEl || !this.briefingEmptyEl || !this.briefingFooterEl) return;
         this.briefingListEl.empty();
@@ -1614,8 +1545,8 @@ export class InquiryView extends ItemView {
             openButton: refs.openButton,
             onItemClick: () => {
                 this.activateSession(session);
-                this.briefingPinned = false;
-                this.hideBriefingPanel(true);
+                this.briefingPopover.unpin();
+                this.briefingPopover.hide(true);
             },
             onUpdateClick: (event: MouseEvent) => {
                 event.stopPropagation();
@@ -1771,9 +1702,10 @@ export class InquiryView extends ItemView {
             ? this.sessionStore.peekSession(this.state.activeSessionId)
             : undefined;
         const status = activeSession ? this.resolveSessionStatus(activeSession) : null;
-        this.artifactButton.classList.toggle('is-briefing-pulse', status === 'unsaved');
-        this.artifactButton.classList.toggle('is-briefing-saved', status === 'saved');
-        this.artifactButton.classList.toggle('is-briefing-error', status === 'error');
+        const flags = deriveBriefingArtifactClassFlags(status);
+        for (const [cls, on] of Object.entries(flags)) {
+            this.artifactButton.classList.toggle(cls, on);
+        }
         // Briefing manager has its own full panel on hover/click; keep this icon tooltip-free.
         this.artifactButton.removeAttribute('data-rt-tip');
         this.artifactButton.removeAttribute('data-rt-tip-placement');
@@ -5848,8 +5780,8 @@ export class InquiryView extends ItemView {
 
         this.updateBriefingFooterActionStates();
         if (lockout || running) {
-            this.hideBriefingPanel(true);
-            this.hideEnginePanel();
+            this.briefingPopover?.hide(true);
+            this.enginePopover?.hide(true);
         }
 
         this.updateGuidanceText(state);
@@ -6275,7 +6207,7 @@ export class InquiryView extends ItemView {
             const readinessUi = this.buildReadinessUiState();
             if (readinessUi.readiness.state === 'blocked') {
                 this.pendingGuardQuestion = question;
-                this.showEnginePanel();
+                this.enginePopover.show();
                 return;
             }
         }

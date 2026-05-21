@@ -62,6 +62,7 @@ import type { GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
 import { seedProEntitlement } from './settings/proEntitlementSeed';
 import { hasProFeatureAccess } from './settings/featureGate';
+import { DisposableRegistry } from './core/disposable';
 
 
 // Declare the variable that will be injected by the build process
@@ -124,6 +125,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public _inquiryRunInFlight: { sessionKey: string; question: string; startedAt: number } | null = null;
 
     private readonly eventBus = new EventTarget();
+    private readonly disposables = new DisposableRegistry();
     private metadataCacheListener: (() => void) | null = null;
     // Serialized settings persistence: a single in-flight save drain plus a
     // coalescing request flag. Concurrent saveSettings() callers never run
@@ -414,6 +416,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Initialize services and managers
         this.timelineService = new TimelineService(this.app, this);
+        this.disposables.add(this.timelineService);
         this.inquiryService = new InquiryService(this.app, this);
         this.inquiryEstimateService = new InquiryEstimateService();
         this.outputProfileStore = new OutputProfileStore(this);
@@ -1040,6 +1043,9 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     onunload() {
+        // Tear down registered services first; failures are caught per-item
+        // so one bad cleanup cannot leak the rest.
+        this.disposables.disposeAll();
         // Clean up any other resources
         this.hideBeatsStatusBar();
         // Clean up tooltip anchors appended to document.body
