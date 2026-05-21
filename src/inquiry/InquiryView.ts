@@ -77,6 +77,7 @@ import { HoverPopoverController } from './dom/hoverPopoverController';
 import { anchorPanelNearTrigger } from './dom/panelAnchoring';
 import { deriveBriefingArtifactClassFlags } from './briefing/briefingArtifactStatus';
 import { DisposableRegistry, clearTrackedTimer } from '../core/disposable';
+import { SceneDossierController } from './render/sceneDossierController';
 import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
@@ -542,10 +543,7 @@ export class InquiryView extends ItemView {
     private sceneDossierBodyDivider?: SVGLineElement;
     private sceneDossierFooter?: SVGTextElement;
     private sceneDossierSource?: SVGTextElement;
-    private sceneDossierShowTimer?: number;
-    private sceneDossierHideTimer?: number;
-    private sceneDossierActiveKey?: string;
-    private sceneDossierVisible = false;
+    private sceneDossier!: SceneDossierController;
     private previewGroup?: SVGGElement;
     private previewHero?: SVGTextElement;
     private previewMeta?: SVGTextElement;
@@ -790,6 +788,7 @@ export class InquiryView extends ItemView {
         this.viewDisposables.disposeAll();
         this.briefingPopover?.cleanup();
         this.enginePopover?.cleanup();
+        this.sceneDossier?.cleanup();
         this.payloadStatsRefreshDirty = false;
         this.contentEl.empty();
     }
@@ -811,8 +810,6 @@ export class InquiryView extends ItemView {
         track('updateRunningClockInterval', 'interval');
         track('targetPersistTimer');
         track('apiSimulationTimer');
-        track('sceneDossierShowTimer');
-        track('sceneDossierHideTimer');
         track('payloadStatsRefreshTimer');
         track('sourcesRefreshTimer');
     }
@@ -3540,6 +3537,14 @@ export class InquiryView extends ItemView {
         this.sceneDossierBodyDivider = refs.bodyDivider;
         this.sceneDossierFooter = refs.footer;
         this.sceneDossierSource = refs.source;
+
+        this.sceneDossier = new SceneDossierController(
+            {
+                onRender: (dossier, hoverKey) => this.renderSceneDossier(dossier, hoverKey),
+                onClear: () => this.clearSceneDossierVisuals()
+            },
+            { hoverDelayMs: SCENE_DOSSIER_HOVER_DELAY_MS, hideDelayMs: SCENE_DOSSIER_HIDE_DELAY_MS }
+        );
     }
 
     private renderWaveHeader(parent: SVGElement): void {
@@ -8582,7 +8587,7 @@ export class InquiryView extends ItemView {
             return;
         }
         this.setHoverText('');
-        this.queueSceneDossier(
+        this.sceneDossier.queue(
             this.buildSceneDossierHoverKey(item, label, finding),
             this.buildSceneDossierModel(item, label, hoverLabel, finding, result)
         );
@@ -8654,34 +8659,8 @@ export class InquiryView extends ItemView {
         );
     }
 
-    private queueSceneDossier(hoverKey: string, dossier: InquirySceneDossier): void {
-        if (!this.sceneDossierGroup) return;
-        this.cancelSceneDossierHide();
-        this.cancelSceneDossierShow();
-        const showImmediately = this.sceneDossierVisible || this.sceneDossierActiveKey === hoverKey;
-        if (showImmediately) {
-            this.showSceneDossier(dossier, hoverKey);
-            return;
-        }
-        this.sceneDossierShowTimer = window.setTimeout(() => {
-            this.sceneDossierShowTimer = undefined;
-            this.showSceneDossier(dossier, hoverKey);
-        }, SCENE_DOSSIER_HOVER_DELAY_MS);
-    }
-
-    private cancelSceneDossierShow(): void {
-        if (!this.sceneDossierShowTimer) return;
-        window.clearTimeout(this.sceneDossierShowTimer);
-        this.sceneDossierShowTimer = undefined;
-    }
-
-    private cancelSceneDossierHide(): void {
-        if (!this.sceneDossierHideTimer) return;
-        window.clearTimeout(this.sceneDossierHideTimer);
-        this.sceneDossierHideTimer = undefined;
-    }
-
-    private showSceneDossier(dossier: InquirySceneDossier, hoverKey: string): void {
+    /** Host hook: actually paint the dossier into SVG. Called by controller. */
+    private renderSceneDossier(dossier: InquirySceneDossier, _hoverKey: string): void {
         if (
             !this.sceneDossierGroup
             || !this.sceneDossierComposition
@@ -8703,7 +8682,6 @@ export class InquiryView extends ItemView {
         ) {
             return;
         }
-        this.cancelSceneDossierHide();
         renderInquirySceneDossier({
             refs: {
                 group: this.sceneDossierGroup,
@@ -8730,9 +8708,14 @@ export class InquiryView extends ItemView {
             computeBalancedSvgLines: this.computeBalancedSvgLines.bind(this),
             setPositionedDossierTextBlock: this.setPositionedDossierTextBlock.bind(this)
         });
-        this.sceneDossierActiveKey = hoverKey;
-        this.sceneDossierVisible = true;
         this.minimapResultPreviewActive = true;
+    }
+
+    /** Host hook: visual hide + reset the cross-cutting preview flag. */
+    private clearSceneDossierVisuals(): void {
+        this.sceneDossierGroup?.classList.remove('is-visible');
+        this.previewGroup?.classList.remove('is-dossier-muted');
+        this.minimapResultPreviewActive = false;
     }
 
     private setPositionedWrappedSvgText(
@@ -8904,30 +8887,7 @@ export class InquiryView extends ItemView {
     }
 
     private hideSceneDossier(immediate = false): void {
-        this.cancelSceneDossierShow();
-        if (!this.sceneDossierGroup) {
-            this.minimapResultPreviewActive = false;
-            return;
-        }
-        const hide = () => {
-            this.sceneDossierHideTimer = undefined;
-            this.sceneDossierGroup?.classList.remove('is-visible');
-            this.previewGroup?.classList.remove('is-dossier-muted');
-            this.sceneDossierVisible = false;
-            this.sceneDossierActiveKey = undefined;
-            this.minimapResultPreviewActive = false;
-        };
-        if (immediate) {
-            this.cancelSceneDossierHide();
-            hide();
-            return;
-        }
-        if (!this.sceneDossierVisible) {
-            this.minimapResultPreviewActive = false;
-            return;
-        }
-        this.cancelSceneDossierHide();
-        this.sceneDossierHideTimer = window.setTimeout(hide, SCENE_DOSSIER_HIDE_DELAY_MS);
+        this.sceneDossier?.hide(immediate);
     }
 
     private buildFindingMap(
