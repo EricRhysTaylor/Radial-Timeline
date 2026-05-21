@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     InquirySelectionState,
     validatePersistedInquiryLens,
@@ -6,20 +6,28 @@ import {
     type SelectionStateHost,
 } from './inquirySelectionState';
 import type { InquiryLens } from '../state';
+import type { InquiryTargetCache } from '../../types/settings';
 
 // ─────────────────────────────────────────────────────────────────────────
 //  Test fixtures
 // ─────────────────────────────────────────────────────────────────────────
 
-type StateFixture = { mode: InquiryLens };
+type StateFixture = { mode: InquiryLens; targetSceneIds: string[] };
 
-function makeState(initial: InquiryLens = 'flow'): StateFixture {
-    return { mode: initial };
+function makeState(initial: Partial<StateFixture> = {}): StateFixture {
+    return { mode: 'flow', targetSceneIds: [], ...initial };
 }
+
+type SettingsCall =
+    | { kind: 'read' }
+    | { kind: 'write'; value: unknown }
+    | { kind: 'writeCache'; value: InquiryTargetCache }
+    | { kind: 'save' };
 
 function makeSettings(initial: unknown = undefined) {
     let stored: unknown = initial;
-    const calls: Array<{ kind: 'read' | 'write' | 'save'; value?: unknown }> = [];
+    let storedCache: InquiryTargetCache | undefined;
+    const calls: SettingsCall[] = [];
     const host: SelectionSettingsHost = {
         getPersistedLastMode: () => {
             calls.push({ kind: 'read' });
@@ -29,16 +37,31 @@ function makeSettings(initial: unknown = undefined) {
             calls.push({ kind: 'write', value: mode });
             stored = mode;
         },
+        setTargetCache: (cache) => {
+            calls.push({ kind: 'writeCache', value: cache });
+            storedCache = cache;
+        },
         saveSettings: () => {
             calls.push({ kind: 'save' });
         },
     };
-    return { host, calls, get stored() { return stored; } };
+    return {
+        host,
+        calls,
+        get stored() { return stored; },
+        get storedCache(): InquiryTargetCache | undefined { return storedCache; },
+    };
 }
 
 function makeController(state: StateFixture, settings: SelectionSettingsHost): InquirySelectionState {
     const host: SelectionStateHost = { state };
     return new InquirySelectionState(host, settings);
+}
+
+// Pure-pass normalizer for tests that exercise hydrate logic. Real
+// InquiryView injects its own (`normalizeTargetSceneIds`).
+function identityNormalize(ids: unknown): string[] {
+    return Array.isArray(ids) ? ids.map(id => String(id)) : [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -75,7 +98,7 @@ describe('validatePersistedInquiryLens', () => {
 
 describe('InquirySelectionState.setActiveLens', () => {
     it('writes state.mode FIRST, settings second, save last (order is contract)', () => {
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -90,7 +113,7 @@ describe('InquirySelectionState.setActiveLens', () => {
     });
 
     it('persists the same lens that was written to state (no drift between layers)', () => {
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -105,7 +128,7 @@ describe('InquirySelectionState.setActiveLens', () => {
         // `if (mode === this.state.mode) return;` BEFORE calling into the
         // controller. The controller itself does not guard — its single
         // responsibility is to do the atomic state+settings+save triple.
-        const state = makeState('depth');
+        const state = makeState({ mode: 'depth' });
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -115,7 +138,7 @@ describe('InquirySelectionState.setActiveLens', () => {
     });
 
     it('does not read from settings during setActiveLens (write-only path)', () => {
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -131,7 +154,7 @@ describe('InquirySelectionState.setActiveLens', () => {
 
 describe('InquirySelectionState.adoptModeFromResult', () => {
     it('writes state.mode without touching settings', () => {
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -144,7 +167,7 @@ describe('InquirySelectionState.adoptModeFromResult', () => {
     it('does NOT persist to inquiryLastMode (user preference must survive session views)', () => {
         // Viewing a saved session in 'depth' must not clobber a user who
         // last chose 'flow'. Critical UX invariant.
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings('flow');
         const c = makeController(state, settings.host);
 
@@ -161,7 +184,7 @@ describe('InquirySelectionState.adoptModeFromResult', () => {
 
 describe('InquirySelectionState.applyPersistedLastModeOr', () => {
     it("adopts persisted 'flow' over the fallback", () => {
-        const state = makeState('depth');
+        const state = makeState({ mode: 'depth' });
         const settings = makeSettings('flow');
         const c = makeController(state, settings.host);
 
@@ -171,7 +194,7 @@ describe('InquirySelectionState.applyPersistedLastModeOr', () => {
     });
 
     it("adopts persisted 'depth' over the fallback", () => {
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings('depth');
         const c = makeController(state, settings.host);
 
@@ -181,7 +204,7 @@ describe('InquirySelectionState.applyPersistedLastModeOr', () => {
     });
 
     it('falls back when the persisted value is invalid (validation guard)', () => {
-        const state = makeState('depth');
+        const state = makeState({ mode: 'depth' });
         const settings = makeSettings('arbitrary-string');
         const c = makeController(state, settings.host);
 
@@ -191,7 +214,7 @@ describe('InquirySelectionState.applyPersistedLastModeOr', () => {
     });
 
     it('falls back when the persisted value is undefined', () => {
-        const state = makeState('depth');
+        const state = makeState({ mode: 'depth' });
         const settings = makeSettings(undefined);
         const c = makeController(state, settings.host);
 
@@ -201,7 +224,7 @@ describe('InquirySelectionState.applyPersistedLastModeOr', () => {
     });
 
     it('does not write back to settings (read-only path)', () => {
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings('depth');
         const c = makeController(state, settings.host);
 
@@ -216,26 +239,27 @@ describe('InquirySelectionState.applyPersistedLastModeOr', () => {
 //  Ownership boundary — owned vs not-owned
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('InquirySelectionState — ownership boundary (Slice 2a scope)', () => {
-    it('owns mode only — no method touches scope, activeBookId, targetSceneIds, etc.', () => {
+describe('InquirySelectionState — ownership boundary (Slice 2a + 2b scope)', () => {
+    it('owns no method touching scope, activeBookId, promptIds, focus, drill (still deferred)', () => {
         // Reflective check: the controller's public surface must not
-        // expose any method whose name implies it touches Slice 2b/2c
-        // fields. Slice 2a is mode-only.
-        const state = makeState('flow');
+        // expose any method whose name implies it touches Slice 2c+ fields.
+        const state = makeState();
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
         const proto = Object.getPrototypeOf(c) as Record<string, unknown>;
         const names = Object.getOwnPropertyNames(proto);
 
-        const forbidden = /(scope|activeBook|targetScene|cache|promptIds|focus|drill)/i;
+        // `activeBookId`/`activeBook` is allowed as a method PARAMETER but
+        // must not appear in any method NAME. Use a name-only regex.
+        const forbidden = /(scope|activeBook[A-Z]|promptIds|focus|drill)/i;
         const violations = names.filter(name => forbidden.test(name));
 
         expect(violations).toEqual([]);
     });
 
     it('exposes no compute/estimate/hover methods (doctrine §5–6)', () => {
-        const state = makeState('flow');
+        const state = makeState();
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -246,11 +270,11 @@ describe('InquirySelectionState — ownership boundary (Slice 2a scope)', () => 
         expect(names.filter(name => forbidden.test(name))).toEqual([]);
     });
 
-    it('public method surface is exactly: setActiveLens, adoptModeFromResult, applyPersistedLastModeOr', () => {
+    it('public method surface is exactly the documented Slice 2a + 2b set', () => {
         // Pin the surface so any new method requires an explicit test
-        // update — protects against scope creep into Slice 2b without
+        // update — protects against scope creep into Slice 2c without
         // a follow-up audit.
-        const state = makeState('flow');
+        const state = makeState();
         const settings = makeSettings();
         const c = makeController(state, settings.host);
 
@@ -259,7 +283,336 @@ describe('InquirySelectionState — ownership boundary (Slice 2a scope)', () => 
             n => n !== 'constructor' && typeof (c as unknown as Record<string, unknown>)[n] === 'function'
         );
 
-        expect(methods.sort()).toEqual(['adoptModeFromResult', 'applyPersistedLastModeOr', 'setActiveLens']);
+        // Alphabetical, since the assertion sorts. The natural grouping
+        // (mode 2a, targets 2b) is documented in the source; the test
+        // pins the lexical surface.
+        expect(methods.sort()).toEqual([
+            'adoptModeFromResult',          // 2a
+            'applyPersistedLastModeOr',     // 2a
+            'cancelPendingPersist',         // 2b
+            'cleanup',                      // 2b (Disposable)
+            'clearPersistedTargetCache',    // 2b
+            'getRememberedTargetSceneIdsForBook', // 2b
+            'hydrateRememberedTargetSceneIdsFromCache', // 2b
+            'rememberTargetSceneIdsForBook', // 2b
+            'schedulePersist',              // 2b
+            'setActiveLens',                // 2a
+            'setTargetSceneIds',            // 2b
+        ]);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Slice 2b — target selection
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('InquirySelectionState.setTargetSceneIds', () => {
+    it('writes state.targetSceneIds directly and touches nothing else', () => {
+        const state = makeState({ mode: 'flow', targetSceneIds: ['a'] });
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.setTargetSceneIds(['x', 'y']);
+
+        expect(state.targetSceneIds).toEqual(['x', 'y']);
+        expect(state.mode).toBe('flow');
+        expect(settings.calls).toEqual([]); // no Map update, no persist
+    });
+});
+
+describe('InquirySelectionState.rememberTargetSceneIdsForBook', () => {
+    it('records a per-book selection and defensive-copies the array', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        const input = ['s1', 's2'];
+
+        c.rememberTargetSceneIdsForBook('book-1', input);
+        const out = c.getRememberedTargetSceneIdsForBook('book-1');
+
+        expect(out).toEqual(['s1', 's2']);
+        // Defensive copy — mutating the input must not change the Map.
+        input.push('s3');
+        expect(c.getRememberedTargetSceneIdsForBook('book-1')).toEqual(['s1', 's2']);
+    });
+
+    it('does not write state.targetSceneIds or settings', () => {
+        const state = makeState({ targetSceneIds: ['stay'] });
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.rememberTargetSceneIdsForBook('book-1', ['a', 'b']);
+
+        expect(state.targetSceneIds).toEqual(['stay']);
+        expect(settings.calls).toEqual([]);
+    });
+});
+
+describe('InquirySelectionState.getRememberedTargetSceneIdsForBook', () => {
+    it('returns undefined for unknown books', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        expect(c.getRememberedTargetSceneIdsForBook('nope')).toBeUndefined();
+    });
+
+    it('returns undefined for an undefined bookId (no implicit Map.get())', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        expect(c.getRememberedTargetSceneIdsForBook(undefined)).toBeUndefined();
+    });
+});
+
+describe('InquirySelectionState.hydrateRememberedTargetSceneIdsFromCache', () => {
+    it('rebuilds the Map from a Record entries shape', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        // Pre-populate so we can prove hydrate is a replace, not a merge.
+        c.rememberTargetSceneIdsForBook('stale', ['old']);
+
+        c.hydrateRememberedTargetSceneIdsFromCache(
+            { 'book-1': ['a', 'b'], 'book-2': ['c'] },
+            identityNormalize
+        );
+
+        expect(c.getRememberedTargetSceneIdsForBook('book-1')).toEqual(['a', 'b']);
+        expect(c.getRememberedTargetSceneIdsForBook('book-2')).toEqual(['c']);
+        expect(c.getRememberedTargetSceneIdsForBook('stale')).toBeUndefined();
+    });
+
+    it('handles undefined entries by clearing the Map', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        c.rememberTargetSceneIdsForBook('book-1', ['x']);
+
+        c.hydrateRememberedTargetSceneIdsFromCache(undefined, identityNormalize);
+
+        expect(c.getRememberedTargetSceneIdsForBook('book-1')).toBeUndefined();
+    });
+
+    it('runs each entry through the injected normalizer', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        const normalize = vi.fn((ids: unknown) => Array.isArray(ids) ? ids.map(String).sort() : []);
+
+        c.hydrateRememberedTargetSceneIdsFromCache(
+            { 'book-1': ['b', 'a'] as unknown as string[] },
+            normalize
+        );
+
+        expect(normalize).toHaveBeenCalledWith(['b', 'a']);
+        expect(c.getRememberedTargetSceneIdsForBook('book-1')).toEqual(['a', 'b']);
+    });
+});
+
+describe('InquirySelectionState.schedulePersist', () => {
+    beforeEach(() => {
+        vi.stubGlobal('window', {
+            setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+            clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
+        });
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it('debounces by the configured window and writes cache before save (Risk #3 ordering)', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        c.rememberTargetSceneIdsForBook('book-1', ['a', 'b']);
+
+        c.schedulePersist('book-1', 300);
+
+        // No write yet during debounce window.
+        vi.advanceTimersByTime(299);
+        expect(settings.calls.filter(call => call.kind === 'writeCache')).toEqual([]);
+
+        vi.advanceTimersByTime(1);
+
+        // Cache write came first, save second.
+        const kinds = settings.calls.map(c => c.kind);
+        const writeIdx = kinds.indexOf('writeCache');
+        const saveIdx = kinds.indexOf('save');
+        expect(writeIdx).toBeGreaterThan(-1);
+        expect(saveIdx).toBeGreaterThan(writeIdx);
+    });
+
+    it('writes the canonical 2-field payload shape from the Map', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        c.rememberTargetSceneIdsForBook('book-1', ['a']);
+        c.rememberTargetSceneIdsForBook('book-2', ['b', 'c']);
+
+        c.schedulePersist('book-2', 50);
+        vi.advanceTimersByTime(60);
+
+        expect(settings.storedCache).toEqual({
+            lastBookId: 'book-2',
+            lastTargetSceneIdsByBookId: {
+                'book-1': ['a'],
+                'book-2': ['b', 'c'],
+            },
+        });
+    });
+
+    it('coalesces rapid re-arms into a single save (debounce semantics)', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.schedulePersist('a', 100);
+        vi.advanceTimersByTime(50);
+        c.schedulePersist('b', 100);
+        vi.advanceTimersByTime(50);
+        c.schedulePersist('c', 100);
+        vi.advanceTimersByTime(100);
+
+        // Exactly one writeCache and one save.
+        const writeCalls = settings.calls.filter(call => call.kind === 'writeCache');
+        const saveCalls = settings.calls.filter(call => call.kind === 'save');
+        expect(writeCalls.length).toBe(1);
+        expect(saveCalls.length).toBe(1);
+        // The latest activeBookId wins.
+        expect(settings.storedCache?.lastBookId).toBe('c');
+    });
+
+    it('accepts undefined activeBookId (e.g. saga scope) and writes it as-is', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.schedulePersist(undefined, 10);
+        vi.advanceTimersByTime(20);
+
+        expect(settings.storedCache?.lastBookId).toBeUndefined();
+    });
+});
+
+describe('InquirySelectionState.cancelPendingPersist', () => {
+    beforeEach(() => {
+        vi.stubGlobal('window', {
+            setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+            clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
+        });
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it('prevents an armed persist from firing', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.schedulePersist('a', 100);
+        c.cancelPendingPersist();
+        vi.advanceTimersByTime(500);
+
+        expect(settings.calls.filter(call => call.kind === 'writeCache')).toEqual([]);
+    });
+
+    it('is a no-op when no timer is armed', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        expect(() => c.cancelPendingPersist()).not.toThrow();
+    });
+});
+
+describe('InquirySelectionState.clearPersistedTargetCache', () => {
+    beforeEach(() => {
+        vi.stubGlobal('window', {
+            setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+            clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
+        });
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it('cancels pending persist, wipes the Map, writes empty cache, and saves (atomic)', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+        c.rememberTargetSceneIdsForBook('book-1', ['x']);
+        c.schedulePersist('book-1', 300);
+
+        c.clearPersistedTargetCache();
+
+        // No pending persist fires.
+        vi.advanceTimersByTime(500);
+        // The Map is empty.
+        expect(c.getRememberedTargetSceneIdsForBook('book-1')).toBeUndefined();
+        // Settings received exactly the empty payload.
+        expect(settings.storedCache).toEqual({
+            lastBookId: undefined,
+            lastTargetSceneIdsByBookId: {},
+        });
+        // Save was called.
+        expect(settings.calls.some(call => call.kind === 'save')).toBe(true);
+    });
+
+    it('writes cache before save (Risk #3 ordering)', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.clearPersistedTargetCache();
+
+        const kinds = settings.calls.map(call => call.kind);
+        const writeIdx = kinds.indexOf('writeCache');
+        const saveIdx = kinds.indexOf('save');
+        expect(writeIdx).toBeGreaterThan(-1);
+        expect(saveIdx).toBeGreaterThan(writeIdx);
+    });
+});
+
+describe('InquirySelectionState — Disposable cleanup', () => {
+    beforeEach(() => {
+        vi.stubGlobal('window', {
+            setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+            clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
+        });
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it('cleanup() cancels any armed persist (Disposable contract)', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.schedulePersist('a', 100);
+        c.cleanup();
+        vi.advanceTimersByTime(500);
+
+        expect(settings.calls.filter(call => call.kind === 'writeCache')).toEqual([]);
+    });
+
+    it('cleanup() is idempotent', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        expect(() => { c.cleanup(); c.cleanup(); }).not.toThrow();
     });
 });
 
@@ -271,7 +624,7 @@ describe('InquirySelectionState — round-trip integration', () => {
     it('user toggle → applyPersistedLastModeOr reads back the just-written value', () => {
         // Simulates: setActiveLens → next session opens → applyPersistedLastModeOr
         // The user's choice survives via settings.
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings('flow');
         const c = makeController(state, settings.host);
 
@@ -286,7 +639,7 @@ describe('InquirySelectionState — round-trip integration', () => {
     it('session adoption does not clobber the round-trip', () => {
         // Sequence: user toggles to 'depth' → views a 'flow' session →
         // reopens later → must still see 'depth' restored from settings.
-        const state = makeState('flow');
+        const state = makeState({ mode: 'flow' });
         const settings = makeSettings('flow');
         const c = makeController(state, settings.host);
 

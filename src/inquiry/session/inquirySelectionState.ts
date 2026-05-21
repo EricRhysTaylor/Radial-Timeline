@@ -5,27 +5,36 @@
  */
 
 import type { InquiryLens } from '../state';
+import type { InquiryTargetCache } from '../../types/settings';
+import type { Disposable } from '../../core/disposable';
 
 /**
- * Slice 2a of the InquirySessionController extraction
+ * Slices 2a + 2b of the InquirySessionController extraction
  * (see docs/engineering/audits/inquiry-session-controller-map-2026-05-21.md).
  *
- * Owns only the `mode` field of `InquiryState` and its round-trip with
- * `plugin.settings.inquiryLastMode`. Subsequent Slice 2 stages will absorb
- * `scope`, `activeBookId`, `targetSceneIds`, and the `inquiryTargetCache`
- * persistence pairing into this same class — but only behind explicit,
- * separate go-aheads. This slice is mode-only.
+ * Owns:
+ *   • `mode` field of `InquiryState` and its inquiryLastMode round-trip (2a)
+ *   • `targetSceneIds` field of `InquiryState` (2b)
+ *   • per-book Map mirror `lastTargetSceneIdsByBookId` (2b)
+ *   • debounced persistence to `plugin.settings.inquiryTargetCache` (2b)
  *
- * Explicitly NOT owned in 2a:
- *   • scope, activeBookId, targetSceneIds, inquiryTargetCache (Slice 2b/2c)
+ * Explicitly NOT owned (yet):
+ *   • activeBookId — Slice 2c. Controller reads it (callers pass it in for
+ *     persistence payloads) but never writes it.
+ *   • scope — pending architectural decision after the campaign batches.
  *   • run orchestration (Slice 4 — deferred)
  *   • subscriber/event-bus pattern (deferred indefinitely per audit Risk #8)
  *
- * Save-ordering invariant (audit + characterization tests):
- *   setActiveLens writes state.mode FIRST, then settings.inquiryLastMode,
- *   then triggers saveSettings(). Reordering would let saveSettings see a
- *   pre-mutation snapshot or skip the persist entirely on a re-entrant
- *   call. Preserved exactly.
+ * Save-ordering invariants (audit Risk #3 + characterization tests):
+ *   1. `setActiveLens` writes state.mode FIRST, then settings.inquiryLastMode,
+ *      then triggers saveSettings(). Reordering would let saveSettings see
+ *      a pre-mutation snapshot.
+ *   2. `schedulePersist` flushes the cache payload BEFORE calling
+ *      saveSettings — never the reverse. The atomic `{ lastBookId,
+ *      lastTargetSceneIdsByBookId }` payload is written as a unit.
+ *
+ * Implements {@link Disposable} because it owns a debounce timer; the host
+ * is expected to call `cleanup()` during teardown.
  */
 
 /**
@@ -39,13 +48,16 @@ export function validatePersistedInquiryLens(value: unknown): InquiryLens | unde
 }
 
 /**
- * Live, mutable host providing the state slot the controller writes to.
+ * Live, mutable host providing the state slots the controller writes to.
  * Mirrors the Slice 1 pattern — controller writes through to the shared
- * `state` object so existing read sites (`this.state.mode === 'depth'`)
- * continue working without rewiring.
+ * `state` object so existing read sites (`this.state.mode === 'depth'`,
+ * `this.state.targetSceneIds.length`) continue working without rewiring.
  */
 export interface SelectionStateHost {
-    readonly state: { mode: InquiryLens };
+    readonly state: {
+        mode: InquiryLens;
+        targetSceneIds: string[];
+    };
 }
 
 /**
@@ -59,6 +71,12 @@ export interface SelectionSettingsHost {
     /** Write the validated lens back to settings. */
     setPersistedLastMode(mode: InquiryLens): void;
     /**
+     * Commit the target-cache payload to settings. The whole 2-field
+     * object is written as a unit so a partial save cannot leave
+     * lastBookId out of sync with lastTargetSceneIdsByBookId.
+     */
+    setTargetCache(cache: InquiryTargetCache): void;
+    /**
      * Trigger a save. May return a Promise; callers void-await so the
      * controller is fire-and-forget consistent with the legacy
      * `void this.plugin.saveSettings()` shape.
@@ -66,11 +84,24 @@ export interface SelectionSettingsHost {
     saveSettings(): void | Promise<void>;
 }
 
-export class InquirySelectionState {
+/** Default debounce window for `schedulePersist`. Matches the legacy view-side timer. */
+const TARGET_PERSIST_DEBOUNCE_MS = 300;
+
+export class InquirySelectionState implements Disposable {
+    /**
+     * Per-book mirror of `targetSceneIds`. Was previously owned by
+     * InquiryView as `lastTargetSceneIdsByBookId`. Kept internal so the
+     * controller is the only writer to `inquiryTargetCache.lastTargetSceneIdsByBookId`.
+     */
+    private readonly lastTargetSceneIdsByBookId = new Map<string, string[]>();
+    private persistTimer: number | undefined;
+
     constructor(
         private readonly host: SelectionStateHost,
         private readonly settings: SelectionSettingsHost
     ) {}
+
+    // ── Mode (Slice 2a) ──────────────────────────────────────────────────
 
     /**
      * User-initiated lens change. Writes state.mode, then
@@ -104,5 +135,100 @@ export class InquirySelectionState {
     applyPersistedLastModeOr(fallback: InquiryLens): void {
         const validated = validatePersistedInquiryLens(this.settings.getPersistedLastMode());
         this.host.state.mode = validated ?? fallback;
+    }
+
+    // ── Target scene selection (Slice 2b) ────────────────────────────────
+
+    /**
+     * Direct write to `state.targetSceneIds`. Used by paths that already
+     * computed the final list (session adopt, reset, corpus resync,
+     * cache restore). Does NOT update the per-book Map and does NOT
+     * schedule persistence — callers that need those side-effects should
+     * invoke {@link rememberTargetSceneIdsForBook} and
+     * {@link schedulePersist} explicitly so the call site is auditable.
+     */
+    setTargetSceneIds(ids: string[]): void {
+        this.host.state.targetSceneIds = ids;
+    }
+
+    /** Record a per-book selection in the Map. Defensive-copies the array. */
+    rememberTargetSceneIdsForBook(bookId: string, ids: readonly string[]): void {
+        this.lastTargetSceneIdsByBookId.set(bookId, [...ids]);
+    }
+
+    /** Read the per-book selection. Returns undefined if no entry. */
+    getRememberedTargetSceneIdsForBook(bookId: string | undefined): string[] | undefined {
+        if (!bookId) return undefined;
+        return this.lastTargetSceneIdsByBookId.get(bookId);
+    }
+
+    /**
+     * Rebuild the per-book Map from a persisted-cache shape. Normalization
+     * is supplied by the caller because the rules live in InquiryView
+     * (`normalizeTargetSceneIds`); the controller stays agnostic to scene-id
+     * shape.
+     */
+    hydrateRememberedTargetSceneIdsFromCache(
+        entries: Record<string, string[]> | undefined,
+        normalize: (ids: unknown) => string[]
+    ): void {
+        this.lastTargetSceneIdsByBookId.clear();
+        if (!entries) return;
+        for (const [bookId, sceneIds] of Object.entries(entries)) {
+            this.lastTargetSceneIdsByBookId.set(bookId, normalize(sceneIds));
+        }
+    }
+
+    /**
+     * Debounced persistence to `inquiryTargetCache`. Replaces a previously
+     * armed timer so rapid mutations coalesce into one save.
+     *
+     * `activeBookId` is supplied by the caller because Slice 2b does not
+     * own that field (Slice 2c will). The order is contractual:
+     *   set cache payload → schedule saveSettings.
+     */
+    schedulePersist(activeBookId: string | undefined, debounceMs = TARGET_PERSIST_DEBOUNCE_MS): void {
+        if (this.persistTimer !== undefined) {
+            window.clearTimeout(this.persistTimer);
+        }
+        this.persistTimer = window.setTimeout(() => {
+            this.persistTimer = undefined;
+            this.settings.setTargetCache({
+                lastBookId: activeBookId,
+                lastTargetSceneIdsByBookId: Object.fromEntries(this.lastTargetSceneIdsByBookId),
+            });
+            void this.settings.saveSettings();
+        }, debounceMs);
+    }
+
+    /**
+     * Cancel any pending persist. Used before hydrating from cache so a
+     * stale persist cannot fire mid-hydrate and corrupt the just-restored
+     * state.
+     */
+    cancelPendingPersist(): void {
+        if (this.persistTimer !== undefined) {
+            window.clearTimeout(this.persistTimer);
+            this.persistTimer = undefined;
+        }
+    }
+
+    /**
+     * Atomic clear: cancels any pending persist, wipes the Map, writes
+     * an empty cache to settings, and triggers a save. Mirrors the
+     * legacy `clearPersistedTargetCache` behavior exactly.
+     */
+    clearPersistedTargetCache(): void {
+        this.cancelPendingPersist();
+        this.lastTargetSceneIdsByBookId.clear();
+        this.settings.setTargetCache({
+            lastBookId: undefined,
+            lastTargetSceneIdsByBookId: {},
+        });
+        void this.settings.saveSettings();
+    }
+
+    cleanup(): void {
+        this.cancelPendingPersist();
     }
 }

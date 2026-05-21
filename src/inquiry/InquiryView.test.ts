@@ -161,7 +161,10 @@ describe('InquiryView payload accounting', () => {
         expect(enLocale.includes('Welcome to Inquiry. {{weekday}} {{month}} {{day}}{{ordinal}}.')).toBe(true);
         expect(viewSource.includes("t('inquiry.nav.welcome'")).toBe(true);
         expect(viewSource.includes("this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');")).toBe(true);
-        expect(viewSource.includes("this.state.targetSceneIds = this.getVisibleTargetSceneIdsForBook(book.id);")).toBe(true);
+        // Slice 2b: state.targetSceneIds write is routed through the
+        // InquirySelectionState controller. The same visible-scenes
+        // lookup feeds it.
+        expect(viewSource.includes("this.selection.setTargetSceneIds(this.getVisibleTargetSceneIdsForBook(book.id));")).toBe(true);
         expect(viewSource.includes('...this.getVisibleTargetSceneIdsForBook(bookId),')).toBe(true);
     });
 
@@ -189,7 +192,10 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("this.briefingClearButton.classList.toggle('is-inert', !canClear);")).toBe(true);
         expect(viewSource.includes('this.resetInquiryToFreshBaseState({ clearPersistedTargets: true });')).toBe(true);
         expect(viewSource.includes("this.refreshUI({ reason: 'recent sessions cleared' });")).toBe(true);
-        expect(viewSource.includes('this.plugin.settings.inquiryTargetCache = {\n            lastBookId: undefined,\n            lastTargetSceneIdsByBookId: {}\n        };')).toBe(true);
+        // Slice 2b: the atomic clear payload moved into
+        // InquirySelectionState.clearPersistedTargetCache. InquiryView
+        // delegates and no longer constructs the payload inline.
+        expect(viewSource.includes('this.selection.clearPersistedTargetCache();')).toBe(true);
         expect(viewSource.includes('this.startupFreshMode = true;')).toBe(true);
         expect(cssSource.includes('.ert-inquiry-briefing-clear.is-inert')).toBe(true);
     });

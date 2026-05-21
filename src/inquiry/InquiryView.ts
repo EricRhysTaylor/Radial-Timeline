@@ -630,10 +630,10 @@ export class InquiryView extends ItemView {
     private svgDefs?: SVGDefsElement;
     private startupFreshMode = false;
     private freshModeTouchedBookIds = new Set<string>();
-    private lastTargetSceneIdsByBookId = new Map<string, string[]>();
+    // lastTargetSceneIdsByBookId + targetPersistTimer moved into
+    // InquirySelectionState (Slice 2b). See selection.* method calls.
     private corpusResolver: InquiryCorpusResolver;
     private corpus?: InquiryCorpusSnapshot;
-    private targetPersistTimer?: number;
     private runner: InquiryRunnerService;
     private sessionStore: InquirySessionStore;
     private minimapResultPreviewActive = false;
@@ -657,6 +657,7 @@ export class InquiryView extends ItemView {
             {
                 getPersistedLastMode: () => this.plugin.settings.inquiryLastMode,
                 setPersistedLastMode: (mode) => { this.plugin.settings.inquiryLastMode = mode; },
+                setTargetCache: (cache) => { this.plugin.settings.inquiryTargetCache = cache; },
                 saveSettings: () => this.plugin.saveSettings(),
             }
         );
@@ -817,6 +818,7 @@ export class InquiryView extends ItemView {
         this.briefingPopover?.cleanup();
         this.enginePopover?.cleanup();
         this.sceneDossier?.cleanup();
+        this.selection?.cleanup();
         this.payloadStatsRefreshDirty = false;
         this.contentEl.empty();
     }
@@ -836,7 +838,6 @@ export class InquiryView extends ItemView {
         };
         track('inquiryRecoveryPollHandle', 'interval');
         track('updateRunningClockInterval', 'interval');
-        track('targetPersistTimer');
         track('apiSimulationTimer');
         track('payloadStatsRefreshTimer');
         track('sourcesRefreshTimer');
@@ -2010,7 +2011,7 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return;
         this.state.scope = session.scope ?? session.result.scope;
         this.state.activeBookId = session.activeBookId ?? this.state.activeBookId;
-        this.state.targetSceneIds = this.normalizeTargetSceneIds(session.targetSceneIds ?? this.state.targetSceneIds);
+        this.selection.setTargetSceneIds(this.normalizeTargetSceneIds(session.targetSceneIds ?? this.state.targetSceneIds));
         this.applySession({
             result: session.result,
             key: session.key,
@@ -2221,38 +2222,23 @@ export class InquiryView extends ItemView {
     private loadTargetCache(options?: { adoptPersistedSelection?: boolean }): void {
         const adoptPersistedSelection = options?.adoptPersistedSelection !== false;
         const cache = this.plugin.settings.inquiryTargetCache;
-        if (cache?.lastTargetSceneIdsByBookId) {
-            this.lastTargetSceneIdsByBookId = new Map(
-                Object.entries(cache.lastTargetSceneIdsByBookId).map(([bookId, sceneIds]) => [
-                    bookId,
-                    this.normalizeTargetSceneIds(sceneIds)
-                ])
-            );
-        }
+        this.selection.hydrateRememberedTargetSceneIdsFromCache(
+            cache?.lastTargetSceneIdsByBookId,
+            (ids) => this.normalizeTargetSceneIds(ids)
+        );
         if (adoptPersistedSelection && cache?.lastBookId) {
             this.state.activeBookId = cache.lastBookId;
-            this.state.targetSceneIds = this.lastTargetSceneIdsByBookId.get(cache.lastBookId) ?? [];
+            this.selection.setTargetSceneIds(
+                this.selection.getRememberedTargetSceneIdsForBook(cache.lastBookId) ?? []
+            );
         } else if (!adoptPersistedSelection) {
-            this.state.targetSceneIds = [];
+            this.selection.setTargetSceneIds([]);
         }
-        if (this.targetPersistTimer) {
-            window.clearTimeout(this.targetPersistTimer);
-            this.targetPersistTimer = undefined;
-        }
+        this.selection.cancelPendingPersist();
     }
 
     private scheduleTargetPersist(): void {
-        if (this.targetPersistTimer) {
-            window.clearTimeout(this.targetPersistTimer);
-        }
-        this.targetPersistTimer = window.setTimeout(() => {
-            const cache = {
-                lastBookId: this.state.activeBookId,
-                lastTargetSceneIdsByBookId: Object.fromEntries(this.lastTargetSceneIdsByBookId)
-            };
-            this.plugin.settings.inquiryTargetCache = cache;
-            void this.plugin.saveSettings();
-        }, 300);
+        this.selection.schedulePersist(this.state.activeBookId);
     }
 
     private buildIconSymbols(defs: SVGDefsElement): void {
@@ -3826,15 +3812,15 @@ export class InquiryView extends ItemView {
         if (this.state.scope === 'book') {
             const nextTargetSceneIds = this.resolveTargetSceneIds(this.corpus.activeBookId, this.corpus.scenes);
             if (!this.areTargetSceneIdsEqual(this.state.targetSceneIds, nextTargetSceneIds)) {
-                this.state.targetSceneIds = nextTargetSceneIds;
+                this.selection.setTargetSceneIds(nextTargetSceneIds);
                 shouldPersist = true;
             }
             if (this.corpus.activeBookId) {
                 const shouldSyncTargetCache = !this.startupFreshMode || this.freshModeTouchedBookIds.has(this.corpus.activeBookId);
                 if (shouldSyncTargetCache) {
-                    const prior = this.lastTargetSceneIdsByBookId.get(this.corpus.activeBookId) ?? [];
+                    const prior = this.selection.getRememberedTargetSceneIdsForBook(this.corpus.activeBookId) ?? [];
                     if (!this.areTargetSceneIdsEqual(prior, nextTargetSceneIds)) {
-                        this.lastTargetSceneIdsByBookId.set(this.corpus.activeBookId, [...nextTargetSceneIds]);
+                        this.selection.rememberTargetSceneIdsForBook(this.corpus.activeBookId, nextTargetSceneIds);
                         shouldPersist = true;
                     }
                 }
@@ -4047,11 +4033,11 @@ export class InquiryView extends ItemView {
         ));
         if (this.areTargetSceneIdsEqual(this.state.targetSceneIds, next)) return false;
 
-        this.state.targetSceneIds = next;
+        this.selection.setTargetSceneIds(next);
         const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
         if (activeBookId) {
             this.freshModeTouchedBookIds.add(activeBookId);
-            this.lastTargetSceneIdsByBookId.set(activeBookId, [...next]);
+            this.selection.rememberTargetSceneIdsForBook(activeBookId, next);
         }
         this.scheduleTargetPersist();
         return true;
@@ -4589,12 +4575,12 @@ export class InquiryView extends ItemView {
         const next = isTarget
             ? existing.filter(candidate => candidate !== normalizedId)
             : [...existing, normalizedId];
-        this.state.targetSceneIds = next;
+        this.selection.setTargetSceneIds(next);
 
         const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
         if (activeBookId) {
             this.freshModeTouchedBookIds.add(activeBookId);
-            this.lastTargetSceneIdsByBookId.set(activeBookId, [...next]);
+            this.selection.rememberTargetSceneIdsForBook(activeBookId, next);
         }
 
         this.scheduleTargetPersist();
@@ -4620,12 +4606,12 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        this.state.targetSceneIds = [];
+        this.selection.setTargetSceneIds([]);
 
         const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
         if (activeBookId) {
             this.freshModeTouchedBookIds.add(activeBookId);
-            this.lastTargetSceneIdsByBookId.set(activeBookId, []);
+            this.selection.rememberTargetSceneIdsForBook(activeBookId, []);
         }
 
         this.scheduleTargetPersist();
@@ -7165,7 +7151,7 @@ export class InquiryView extends ItemView {
             this.state.activeBookId = session.activeBookId;
         }
         if (session.targetSceneIds !== undefined) {
-            this.state.targetSceneIds = this.normalizeTargetSceneIds(session.targetSceneIds);
+            this.selection.setTargetSceneIds(this.normalizeTargetSceneIds(session.targetSceneIds));
         }
         // Active-result lifecycle subset — writes 8 fields atomically.
         this.activeSession.adopt({
@@ -7204,22 +7190,13 @@ export class InquiryView extends ItemView {
     }
 
     private clearPersistedTargetCache(): void {
-        this.lastTargetSceneIdsByBookId = new Map();
-        if (this.targetPersistTimer) {
-            window.clearTimeout(this.targetPersistTimer);
-            this.targetPersistTimer = undefined;
-        }
-        this.plugin.settings.inquiryTargetCache = {
-            lastBookId: undefined,
-            lastTargetSceneIdsByBookId: {}
-        };
-        void this.plugin.saveSettings();
+        this.selection.clearPersistedTargetCache();
     }
 
     private resetInquiryToFreshBaseState(options?: { clearPersistedTargets?: boolean }): void {
         const defaults = createDefaultInquiryState();
         this.state.scope = defaults.scope;
-        this.state.targetSceneIds = [];
+        this.selection.setTargetSceneIds([]);
         this.state.activeBookId = undefined;
         this.selection.applyPersistedLastModeOr(defaults.mode);
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
@@ -8224,7 +8201,7 @@ export class InquiryView extends ItemView {
         if (!book) return;
         this.state.activeBookId = book.id;
         if (this.state.scope === 'book') {
-            this.state.targetSceneIds = this.getVisibleTargetSceneIdsForBook(book.id);
+            this.selection.setTargetSceneIds(this.getVisibleTargetSceneIdsForBook(book.id));
         }
         this.scheduleTargetPersist();
         this.refreshUI();
@@ -8558,7 +8535,7 @@ export class InquiryView extends ItemView {
         if (this.startupFreshMode && !this.freshModeTouchedBookIds.has(bookId)) {
             return [];
         }
-        return this.lastTargetSceneIdsByBookId.get(bookId) ?? [];
+        return this.selection.getRememberedTargetSceneIdsForBook(bookId) ?? [];
     }
 
     private exitStartupFreshMode(): void {

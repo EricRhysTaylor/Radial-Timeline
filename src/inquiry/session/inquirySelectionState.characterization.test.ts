@@ -93,41 +93,71 @@ describe('characterization: activeBookId mutation paths', () => {
 //  targetSceneIds — 10 direct-mutation sites
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('characterization: targetSceneIds mutation paths', () => {
-    it('applySession adopts targetSceneIds through normalizeTargetSceneIds', () => {
-        expect(INQUIRY_VIEW_SRC).toMatch(
-            /this\.state\.targetSceneIds\s*=\s*this\.normalizeTargetSceneIds\(session\.targetSceneIds\);/
+describe('characterization: targetSceneIds mutation paths (post Slice 2b)', () => {
+    // Slice 2b landed: state.targetSceneIds writes go through
+    // selection.setTargetSceneIds. The previous direct-mutation
+    // assertions failed loudly when the rewire landed; these new
+    // assertions pin the controller-routed form at each call site.
+
+    it('applySession routes session targetSceneIds through the controller', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setTargetSceneIds(this.normalizeTargetSceneIds(session.targetSceneIds));'
         );
     });
 
-    it('loadTargetCache restores targetSceneIds from per-book map', () => {
+    it('loadTargetCache restores via getRememberedTargetSceneIdsForBook + setTargetSceneIds', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.getRememberedTargetSceneIdsForBook(cache.lastBookId)'
+        );
         expect(INQUIRY_VIEW_SRC).toMatch(
-            /this\.state\.targetSceneIds\s*=\s*this\.lastTargetSceneIdsByBookId\.get\(cache\.lastBookId\)\s*\?\?\s*\[\];/
+            /this\.selection\.setTargetSceneIds\(\s*this\.selection\.getRememberedTargetSceneIdsForBook/
         );
     });
 
-    it('loadTargetCache fresh-launch branch sets targetSceneIds to empty', () => {
-        expect(INQUIRY_VIEW_SRC).toMatch(/this\.state\.targetSceneIds\s*=\s*\[\];/);
+    it('refreshCorpus resyncs via setTargetSceneIds (no direct state.targetSceneIds write)', () => {
+        expect(INQUIRY_VIEW_SRC).toContain('this.selection.setTargetSceneIds(nextTargetSceneIds);');
     });
 
-    it('refreshCorpus resyncs targetSceneIds from corpus-resolved scenes', () => {
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.targetSceneIds = nextTargetSceneIds;');
+    it('removeEmptyTargetSceneItems and toggle/clear paths use the controller', () => {
+        expect(INQUIRY_VIEW_SRC).toContain('this.selection.setTargetSceneIds(next);');
+        expect(INQUIRY_VIEW_SRC).toContain('this.selection.setTargetSceneIds([]);');
     });
 
-    it('removeEmptyTargetSceneItems filters out empty scenes', () => {
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.targetSceneIds = next;');
+    it('setFocusByIndex syncs via setTargetSceneIds + getVisibleTargetSceneIdsForBook', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setTargetSceneIds(this.getVisibleTargetSceneIdsForBook(book.id));'
+        );
     });
 
-    it('setFocusByIndex syncs targetSceneIds to per-book visible scenes', () => {
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.targetSceneIds = this.getVisibleTargetSceneIdsForBook(book.id);');
+    it('state.targetSceneIds has zero direct-mutation sites (Slice 2b boundary)', () => {
+        const mutations = INQUIRY_VIEW_SRC.match(/this\.state\.targetSceneIds\s*=(?!=)/g) ?? [];
+        expect(mutations.length).toBe(0);
+    });
+});
+
+describe('characterization: per-book selection Map (post Slice 2b)', () => {
+    it('lastTargetSceneIdsByBookId field is gone from InquiryView', () => {
+        // The Map moved into InquirySelectionState. The field must not
+        // be redeclared on the view.
+        expect(INQUIRY_VIEW_SRC).not.toMatch(/private lastTargetSceneIdsByBookId/);
     });
 
-    it('total direct-mutation count is at least 8 — pins minimum coverage', () => {
-        // The exact count is 9 (some assignments share regex shape, e.g.
-        // `= []` appears twice). Pin a floor so the count cannot regress
-        // silently. Slice 2 should rewire ALL of them through the controller.
-        const matches = INQUIRY_VIEW_SRC.match(/this\.state\.targetSceneIds\s*=/g) ?? [];
-        expect(matches.length).toBeGreaterThanOrEqual(8);
+    it('rememberTargetSceneIdsForBook covers refreshCorpus, toggle, clear, removeEmpty paths', () => {
+        const calls = INQUIRY_VIEW_SRC.match(/this\.selection\.rememberTargetSceneIdsForBook\(/g) ?? [];
+        // Four call sites: refreshCorpus, toggle, clear, removeEmpty.
+        expect(calls.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('getRememberedTargetSceneIdsForBook is used for both reads', () => {
+        // refreshCorpus pre-compare read + getVisibleTargetSceneIdsForBook read.
+        const calls = INQUIRY_VIEW_SRC.match(/this\.selection\.getRememberedTargetSceneIdsForBook\(/g) ?? [];
+        expect(calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('Map normalization is delegated via hydrateRememberedTargetSceneIdsFromCache', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.hydrateRememberedTargetSceneIdsFromCache('
+        );
     });
 });
 
@@ -135,61 +165,89 @@ describe('characterization: targetSceneIds mutation paths', () => {
 //  inquiryTargetCache — persistence atomicity (audit Risk #3)
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('characterization: inquiryTargetCache persistence', () => {
-    it('scheduleTargetPersist debounces persistence via window.setTimeout', () => {
-        // Pin the debouncing pattern so Slice 2 cannot silently switch to
-        // synchronous write (which would change save-throughput behavior).
-        expect(INQUIRY_VIEW_SRC).toMatch(
-            /private scheduleTargetPersist\(\)[\s\S]{0,200}window\.setTimeout/
-        );
-    });
+describe('characterization: inquiryTargetCache persistence (post Slice 2b)', () => {
+    // After Slice 2b, the cache shape, debounce timer, and Risk #3
+    // write-before-save ordering all live inside InquirySelectionState
+    // and are pinned by its own unit tests (see inquirySelectionState.test.ts).
+    // The characterization tests here pin the InquiryView-side wiring:
+    // every previously-inline persist responsibility now reaches the
+    // controller through a documented method.
 
-    it('scheduleTargetPersist builds the canonical cache payload shape', () => {
-        // Two-property shape: { lastBookId, lastTargetSceneIdsByBookId }.
-        // Doctrine §5 atomicity-equivalent for selection persistence.
-        expect(INQUIRY_VIEW_SRC).toContain('lastBookId: this.state.activeBookId,');
+    it('scheduleTargetPersist is a 1-line delegator to selection.schedulePersist', () => {
         expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.schedulePersist(this.state.activeBookId);'
+        );
+        // The inline window.setTimeout + cache-shape build is gone.
+        expect(INQUIRY_VIEW_SRC).not.toContain(
             'lastTargetSceneIdsByBookId: Object.fromEntries(this.lastTargetSceneIdsByBookId)'
         );
     });
 
-    it('scheduleTargetPersist writes cache then saves settings (in that order)', () => {
-        // Order matters: write must precede save so saveSettings sees the
-        // mutation. Pinning order catches a future refactor that reorders.
-        const persistFn = INQUIRY_VIEW_SRC.match(
-            /private scheduleTargetPersist\(\)[\s\S]+?\n\s{4}\}/
-        )?.[0] ?? '';
-        const writeIdx = persistFn.indexOf('this.plugin.settings.inquiryTargetCache = cache;');
-        const saveIdx = persistFn.indexOf('this.plugin.saveSettings()');
-        expect(writeIdx).toBeGreaterThan(-1);
-        expect(saveIdx).toBeGreaterThan(-1);
-        expect(saveIdx).toBeGreaterThan(writeIdx);
+    it('cache payload shape is no longer built in InquiryView', () => {
+        // The canonical { lastBookId, lastTargetSceneIdsByBookId } shape
+        // is now built inside the controller. InquiryView must not
+        // duplicate the construction.
+        expect(INQUIRY_VIEW_SRC).not.toContain('lastBookId: this.state.activeBookId,');
     });
 
-    it('clearPersistedTargetCache wipes both fields together (atomic clear)', () => {
-        expect(INQUIRY_VIEW_SRC).toMatch(
-            /this\.plugin\.settings\.inquiryTargetCache\s*=\s*\{\s*lastBookId:\s*undefined,\s*lastTargetSceneIdsByBookId:\s*\{\}\s*\};/
+    it('clearPersistedTargetCache is a 1-line delegator to selection.clearPersistedTargetCache', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.clearPersistedTargetCache();'
+        );
+        // The inline { lastBookId: undefined, lastTargetSceneIdsByBookId: {} }
+        // construction is gone.
+        expect(INQUIRY_VIEW_SRC).not.toMatch(
+            /this\.plugin\.settings\.inquiryTargetCache\s*=\s*\{\s*lastBookId:\s*undefined/
         );
     });
 
-    it('user-driven targetSceneIds mutations are followed by scheduleTargetPersist', () => {
-        // Three user-driven paths must each call scheduleTargetPersist:
-        //   setFocusByIndex  (line ~8217)
-        //   drillIntoBook    (line ~8303)
-        //   toggleTargetSceneSelection (line ~4586)
+    it('user-driven targetSceneIds mutations still schedule persistence', () => {
+        // Same caller-side expectation as before: every user-driven path
+        // calls scheduleTargetPersist (now a delegator). The count is
+        // unchanged across Slice 2b — it only moved through one extra layer.
         const persistCalls = INQUIRY_VIEW_SRC.match(/this\.scheduleTargetPersist\(\);/g) ?? [];
-        // At least three call sites; exact count may grow but must not drop.
         expect(persistCalls.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('toggleTargetSceneSelection updates lastTargetSceneIdsByBookId then persists', () => {
-        // The Map<bookId, sceneIds[]> in-memory mirror must update before
-        // scheduleTargetPersist reads it for the payload.
+    it('toggleTargetSceneSelection updates the Map then persists (controller-routed)', () => {
+        // The visible ordering is now: setTargetSceneIds → Map update
+        // (rememberTargetSceneIdsForBook) → scheduleTargetPersist. Pin
+        // this so a future refactor cannot reorder.
         const fn = INQUIRY_VIEW_SRC.match(
-            /this\.state\.targetSceneIds\s*=\s*next;[\s\S]{0,400}?this\.scheduleTargetPersist\(\)/
+            /this\.selection\.setTargetSceneIds\(next\);[\s\S]{0,500}?this\.scheduleTargetPersist\(\)/
         );
         expect(fn).toBeTruthy();
-        expect(fn?.[0]).toContain('this.lastTargetSceneIdsByBookId.set(activeBookId, [...next]);');
+        expect(fn?.[0]).toContain('this.selection.rememberTargetSceneIdsForBook(activeBookId, next);');
+    });
+
+    it('inquiryTargetCache settings access is via the controller closure (single write site)', () => {
+        // Pre-extraction: 2 direct write sites (scheduleTargetPersist,
+        // clearPersistedTargetCache). Post-Slice-2b: exactly 1, inside
+        // the constructor's setTargetCache closure feeding the controller.
+        const writes = INQUIRY_VIEW_SRC.match(
+            /this\.plugin\.settings\.inquiryTargetCache\s*=/g
+        ) ?? [];
+        expect(writes.length).toBe(1);
+    });
+
+    it('targetPersistTimer field is gone from InquiryView', () => {
+        // The debounce timer moved into the controller. The Disposable
+        // contract ensures cleanup; the viewDisposables track() call for
+        // this field was also removed.
+        expect(INQUIRY_VIEW_SRC).not.toMatch(/private targetPersistTimer/);
+        expect(INQUIRY_VIEW_SRC).not.toContain("track('targetPersistTimer')");
+    });
+
+    it('controller cleanup is wired into onClose alongside other disposables', () => {
+        const onCloseFn = INQUIRY_VIEW_SRC.match(
+            /async onClose\(\)[\s\S]+?\n\s{4}\}/
+        )?.[0] ?? '';
+        expect(onCloseFn).toContain('this.selection?.cleanup();');
+    });
+
+    it('controller construction includes setTargetCache closure', () => {
+        const ctor = INQUIRY_VIEW_SRC.match(/constructor\(leaf:[\s\S]+?\n\s{4}\}/)?.[0] ?? '';
+        expect(ctor).toContain('setTargetCache: (cache) => { this.plugin.settings.inquiryTargetCache = cache; }');
     });
 });
 
@@ -297,26 +355,35 @@ describe('characterization: mode round-trip via inquiryLastMode (post Slice 2a)'
 //  loadTargetCache — atomic activeBookId + targetSceneIds restoration
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('characterization: loadTargetCache atomicity', () => {
+describe('characterization: loadTargetCache atomicity (post Slice 2b)', () => {
     it('restores activeBookId and targetSceneIds together when adopting persisted selection', () => {
-        // These two writes must stay paired — separating them would create
-        // a momentary state where activeBookId is set but targetSceneIds is
-        // stale, triggering wrong UI selections on the first render.
+        // activeBookId write stays inline (Slice 2c will absorb it).
+        // targetSceneIds write delegates to the controller. Pin that the
+        // pairing survives — separating them would create a momentary
+        // state where activeBookId is set but targetSceneIds is stale.
         const fn = INQUIRY_VIEW_SRC.match(
-            /this\.state\.activeBookId\s*=\s*cache\.lastBookId;[\s\S]{0,200}?this\.state\.targetSceneIds\s*=\s*this\.lastTargetSceneIdsByBookId\.get/
+            /this\.state\.activeBookId\s*=\s*cache\.lastBookId;[\s\S]{0,300}?this\.selection\.setTargetSceneIds\(/
         );
         expect(fn).toBeTruthy();
     });
 
-    it('hydrates lastTargetSceneIdsByBookId via normalizeTargetSceneIds', () => {
-        // Normalization must run on every per-book scene list during
-        // hydration so downstream comparators (areTargetSceneIdsEqual)
-        // can rely on canonical shape.
-        expect(INQUIRY_VIEW_SRC).toContain('this.normalizeTargetSceneIds(sceneIds)');
+    it('hydrates the per-book Map via the controller, injecting normalizeTargetSceneIds', () => {
+        // The normalizer stays in InquiryView (its rules live there).
+        // The controller hydrates the Map via the injected callback.
+        const fn = INQUIRY_VIEW_SRC.match(
+            /this\.selection\.hydrateRememberedTargetSceneIdsFromCache\([\s\S]{0,200}?this\.normalizeTargetSceneIds/
+        );
+        expect(fn).toBeTruthy();
     });
 
     it('options.adoptPersistedSelection !== false defaults to true (preserves UX)', () => {
         expect(INQUIRY_VIEW_SRC).toContain('const adoptPersistedSelection = options?.adoptPersistedSelection !== false;');
+    });
+
+    it('loadTargetCache cancels any pending persist via the controller', () => {
+        // Pre-extraction: inline `if (this.targetPersistTimer) { clearTimeout; }`.
+        // Post-Slice-2b: delegated to selection.cancelPendingPersist().
+        expect(INQUIRY_VIEW_SRC).toContain('this.selection.cancelPendingPersist();');
     });
 });
 
@@ -325,15 +392,14 @@ describe('characterization: loadTargetCache atomicity', () => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
-    it('Slice 2b/2c fields are still directly mutated on this.state today', () => {
-        // Pending Slice 2 stages will own these. Pre-extraction, they must
-        // still appear as direct `this.state.<field> =` writes. After each
-        // sub-slice lands, the corresponding field moves into the "now
-        // controlled" check below.
+    it('Slice 2c+ fields are still directly mutated on this.state today', () => {
+        // Pending Slice 2c+ stages will own these. Pre-extraction, they
+        // must still appear as direct writes. As each sub-slice lands,
+        // the corresponding field moves into the "now controlled" check
+        // below.
         const pendingFields = [
             'scope',
-            'activeBookId',
-            'targetSceneIds',
+            'activeBookId',           // Slice 2c
             'selectedPromptIds',
             'promptFormOverrides',
             'reportPreviewOpen',
@@ -344,11 +410,11 @@ describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
         }
     });
 
-    it('Slice 1 + Slice 2a fields are NOT directly mutated in InquiryView', () => {
+    it('Slice 1 + Slice 2a + Slice 2b fields are NOT directly mutated in InquiryView', () => {
         // Doctrine check — guards against regression. These fields route
         // through their controllers (InquiryActiveSessionState or
         // InquirySelectionState). The forbidden form is the direct write;
-        // reads (`===`) are unchanged.
+        // reads (`===`, `.length`) are unchanged.
         const controlledFields = [
             // Slice 1
             'activeSessionId',
@@ -362,6 +428,8 @@ describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
             'lastError',
             // Slice 2a
             'mode',
+            // Slice 2b
+            'targetSceneIds',
         ];
         for (const field of controlledFields) {
             const pattern = new RegExp(`this\\.state\\.${field}\\s*=(?!=)`);
