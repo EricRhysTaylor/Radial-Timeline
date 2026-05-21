@@ -85,6 +85,7 @@ import {
     resolveInquirySessionStatusFromResult,
 } from './utils/inquiryResultStatus';
 import { buildBriefingPurgeAvailabilityKey } from './briefing/briefingPurgeAvailabilityKey';
+import { InquiryActiveSessionState } from './session/inquiryActiveSessionState';
 import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
@@ -457,6 +458,12 @@ export class InquiryView extends ItemView {
 
     private plugin: RadialTimelinePlugin;
     private state = createDefaultInquiryState();
+    // Slice 1 of InquirySessionController: owns the active-result lifecycle
+    // subset of `state` (activeSessionId, activeResult, activeQuestionId,
+    // activeZone, cacheStatus, corpus-fingerprint trio, lastError). Writes
+    // through to the shared `state` object so existing read sites are
+    // unchanged. See inquiry-session-controller-map-2026-05-21.md.
+    private activeSession = new InquiryActiveSessionState({ state: this.state });
 
     private rootSvg?: SVGSVGElement;
     private scopeToggleButton?: SVGGElement;
@@ -5452,7 +5459,7 @@ export class InquiryView extends ItemView {
 
     private pulseRehydrateButton(zone: InquiryZone): void {
         if (!this.artifactButton) return;
-        this.state.activeZone = zone;
+        this.activeSession.setActiveZone(zone);
         this.updateActiveZoneStyling();
         this.artifactButton.classList.add('is-rehydrate-pulse');
         if (this.rehydratePulseTimer) {
@@ -5479,7 +5486,7 @@ export class InquiryView extends ItemView {
     }
 
     private handleDuplicateRunFeedback(question: InquiryQuestion, sessionKey?: string): void {
-        this.state.activeZone = question.zone;
+        this.activeSession.setActiveZone(question.zone);
         this.updateActiveZoneStyling();
         this.pulseZonePrompt(question.zone, question.id);
         this.pulseRehydrateButton(question.zone);
@@ -6123,7 +6130,7 @@ export class InquiryView extends ItemView {
             return;
         }
         this.clearErrorStateForAction();
-        this.state.activeZone = question.zone;
+        this.activeSession.setActiveZone(question.zone);
         this.updateActiveZoneStyling();
 
         const scopeLabel = this.getScopeLabel();
@@ -6197,7 +6204,7 @@ export class InquiryView extends ItemView {
                 cacheStatus = 'missing';
             }
             if (cachedSession) {
-                this.state.cacheStatus = cacheStatus;
+                this.activeSession.setCacheStatus(cacheStatus);
                 this.handleDuplicateRunFeedback(question, cachedSession.key);
                 this.activateSession(cachedSession);
                 return;
@@ -6219,10 +6226,10 @@ export class InquiryView extends ItemView {
         const durationRange = this.estimateRunDurationRange(questionText);
         // Use midpoint of the range so the bar is optimistic — better to finish than stall.
         this.currentRunEstimatedMaxMs = ((durationRange.minSeconds + durationRange.maxSeconds) / 2) * 1000;
-        this.state.activeQuestionId = question.id;
-        this.state.activeZone = question.zone;
+        this.activeSession.setActiveQuestionId(question.id);
+        this.activeSession.setActiveZone(question.zone);
         this.lockPromptPreview(question, questionText);
-        this.state.cacheStatus = cacheStatus;
+        this.activeSession.setCacheStatus(cacheStatus);
 
         const startTime = Date.now();
         this.state.isRunning = true;
@@ -7135,8 +7142,6 @@ export class InquiryView extends ItemView {
         const resolvedZone = session.questionZone ?? this.findPromptZoneById(normalized.questionId);
         this.state.scope = session.scope ?? normalized.scope;
         this.state.mode = normalized.mode;
-        this.state.activeQuestionId = normalized.questionId;
-        this.state.activeZone = resolvedZone ?? this.state.activeZone;
         if (resolvedZone && normalized.questionId) {
             const options = this.getPromptOptions(resolvedZone);
             if (options.some(option => option.id === normalized.questionId)) {
@@ -7149,12 +7154,13 @@ export class InquiryView extends ItemView {
         if (session.targetSceneIds !== undefined) {
             this.state.targetSceneIds = this.normalizeTargetSceneIds(session.targetSceneIds);
         }
-        this.state.activeSessionId = session.key;
-        this.state.activeResult = normalized;
-        this.state.corpusFingerprint = normalized.corpusFingerprint;
-        this.state.corpusOnlyFingerprint = normalized.corpusOnlyFingerprint;
-        this.state.corpusManifestSnapshot = normalized.corpusManifestSnapshot;
-        this.state.cacheStatus = cacheStatus;
+        // Active-result lifecycle subset — writes 8 fields atomically.
+        this.activeSession.adopt({
+            sessionKey: session.key,
+            result: normalized,
+            activeZone: resolvedZone ?? this.state.activeZone,
+            cacheStatus,
+        });
         this.state.isRunning = false;
         this.hideSceneDossier(true);
         if (this.isErrorResult(normalized)) {
@@ -7168,12 +7174,7 @@ export class InquiryView extends ItemView {
 
     private clearActiveResultState(): void {
         this.cachedRunningStatusStatic = undefined;
-        this.state.activeResult = null;
-        this.state.activeSessionId = undefined;
-        this.state.corpusFingerprint = undefined;
-        this.state.corpusOnlyFingerprint = undefined;
-        this.state.corpusManifestSnapshot = undefined;
-        this.state.cacheStatus = undefined;
+        this.activeSession.clearActiveResult();
     }
 
     private clearRehydrateState(): void {
@@ -7210,10 +7211,10 @@ export class InquiryView extends ItemView {
         this.state.activeBookId = undefined;
         this.state.mode = lastMode === 'flow' || lastMode === 'depth' ? lastMode : defaults.mode;
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
-        this.state.activeQuestionId = undefined;
-        this.state.activeZone = defaults.activeZone;
+        this.activeSession.setActiveQuestionId(undefined);
+        this.activeSession.setActiveZone(defaults.activeZone);
         this.state.isRunning = false;
-        this.state.lastError = undefined;
+        this.activeSession.setLastError(undefined);
         this.state.reportPreviewOpen = defaults.reportPreviewOpen;
         this.state.promptFormOverrides = {};
         this.clearRehydrateState();
@@ -7713,8 +7714,8 @@ export class InquiryView extends ItemView {
         };
         const selectedPrompt = prompt ?? fallbackPrompt;
         this.clearActiveResultState();
-        this.state.activeQuestionId = selectedPrompt.id;
-        this.state.activeZone = selectedPrompt.zone;
+        this.activeSession.setActiveQuestionId(selectedPrompt.id);
+        this.activeSession.setActiveZone(selectedPrompt.zone);
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
         const questionText = this.resolveQuestionPromptForRun(selectedPrompt, selectionMode);
