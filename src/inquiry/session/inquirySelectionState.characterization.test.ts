@@ -197,59 +197,99 @@ describe('characterization: inquiryTargetCache persistence', () => {
 //  mode round-trip — inquiryLastMode read at startup, write on toggle
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('characterization: mode round-trip via inquiryLastMode', () => {
-    it('constructor reads inquiryLastMode at view startup', () => {
-        // src/inquiry/InquiryView.ts ~ line 648 (constructor)
-        expect(INQUIRY_VIEW_SRC).toMatch(
-            /constructor\([\s\S]+?const lastMode = this\.plugin\.settings\.inquiryLastMode;/
-        );
-    });
+describe('characterization: mode round-trip via inquiryLastMode (post Slice 2a)', () => {
+    // Slice 2a landed: the `mode` field and its inquiryLastMode round-trip
+    // are now owned by InquirySelectionState. These tests pin the new
+    // controller-routed shape and prove every previously-inline path was
+    // rewired. inquirySelectionState.test.ts covers the controller's
+    // internal contract; this group pins the *integration* points where
+    // InquiryView calls into the controller.
 
-    it('constructor validates inquiryLastMode against flow|depth before adopting', () => {
-        // The persisted value is trusted only if it matches the known lens
-        // set. Pinning this guard prevents Slice 2 from silently accepting
-        // arbitrary strings from settings.
-        expect(INQUIRY_VIEW_SRC).toMatch(/lastMode === 'flow' \|\| lastMode === 'depth'/);
-    });
-
-    it('setActiveLens writes inquiryLastMode and immediately saves', () => {
-        const fn = INQUIRY_VIEW_SRC.match(
-            /private setActiveLens\([\s\S]+?void this\.plugin\.saveSettings\(\);/
+    it('constructor hydrates mode via selection.applyPersistedLastModeOr (replaces inline read+if)', () => {
+        // No more inline `const lastMode = this.plugin.settings.inquiryLastMode` in the constructor.
+        const constructorBody = INQUIRY_VIEW_SRC.match(
+            /constructor\(leaf:[\s\S]+?\n\s{4}\}/
         )?.[0] ?? '';
-        expect(fn).toContain('this.state.mode = mode;');
-        expect(fn).toContain('this.plugin.settings.inquiryLastMode = mode;');
-        // Order: state mutation → settings write → save. Slice 2 must
-        // preserve this exact ordering or risk a save-without-mutation race.
-        const stateIdx = fn.indexOf('this.state.mode = mode;');
-        const writeIdx = fn.indexOf('this.plugin.settings.inquiryLastMode = mode;');
-        const saveIdx = fn.indexOf('this.plugin.saveSettings()');
-        expect(stateIdx).toBeLessThan(writeIdx);
-        expect(writeIdx).toBeLessThan(saveIdx);
+        expect(constructorBody).toContain('this.selection.applyPersistedLastModeOr(createDefaultInquiryState().mode);');
+        expect(constructorBody).not.toContain("lastMode === 'flow' || lastMode === 'depth'");
     });
 
-    it('resetInquiryToFreshBaseState reads inquiryLastMode to honour the user preference', () => {
-        // src/inquiry/InquiryView.ts ~ line 7208 (resetInquiryToFreshBaseState)
-        // The reset preserves the last-chosen lens rather than collapsing
-        // back to the InquiryState default. Critical for UX consistency.
+    it('controller, not InquiryView, owns the flow|depth validation guard', () => {
+        // The guard moved into validatePersistedInquiryLens. InquiryView
+        // must not retain a duplicate validator (single source of truth).
+        // resetInquiryToFreshBaseState used to contain this literal; it
+        // now delegates.
+        expect(INQUIRY_VIEW_SRC).not.toMatch(/lastMode === 'flow' \|\| lastMode === 'depth'/);
+    });
+
+    it('setActiveLens delegates the state→settings→save triple to the controller', () => {
+        const fn = INQUIRY_VIEW_SRC.match(
+            /private setActiveLens\([\s\S]+?\n\s{4}\}/
+        )?.[0] ?? '';
+        // Guard stays in the view (cheap early-return for no-op toggles).
+        expect(fn).toContain('if (!mode || mode === this.state.mode) return;');
+        // Mutation triple moved to the controller. View no longer touches
+        // state.mode or plugin.settings.inquiryLastMode directly here.
+        expect(fn).toContain('this.selection.setActiveLens(mode);');
+        expect(fn).not.toContain('this.state.mode = mode;');
+        expect(fn).not.toContain('this.plugin.settings.inquiryLastMode = mode;');
+    });
+
+    it('applySession adopts mode via selection.adoptModeFromResult (no settings persist)', () => {
+        const fn = INQUIRY_VIEW_SRC.match(
+            /private applySession\([\s\S]+?refreshUI\(\{ skipCorpus: true \}\);[\s\S]*?\n\s{4}\}/
+        )?.[0] ?? '';
+        expect(fn).toContain('this.selection.adoptModeFromResult(normalized.mode);');
+        // Critical UX invariant: session adoption must NOT clobber user's
+        // last-chosen lens preference in settings.
+        expect(fn).not.toContain('this.plugin.settings.inquiryLastMode');
+    });
+
+    it('resetInquiryToFreshBaseState delegates mode hydration to the controller', () => {
         const resetFn = INQUIRY_VIEW_SRC.match(
             /private resetInquiryToFreshBaseState\([\s\S]+?\n\s{4}\}/
         )?.[0] ?? '';
-        expect(resetFn).toContain('const lastMode = this.plugin.settings.inquiryLastMode;');
-        expect(resetFn).toContain("lastMode === 'flow' || lastMode === 'depth' ? lastMode : defaults.mode");
+        expect(resetFn).toContain('this.selection.applyPersistedLastModeOr(defaults.mode);');
+        // Old inline read removed.
+        expect(resetFn).not.toContain('const lastMode = this.plugin.settings.inquiryLastMode;');
     });
 
-    it('inquiryLastMode has exactly two read sites and exactly one write site today', () => {
+    it('inquiryLastMode access is collapsed to a single read site and a single write site (the controller closures)', () => {
+        // Pre-extraction: 2 reads (constructor + reset) + 1 write (setActiveLens) = 3 occurrences.
+        // Post-extraction: 1 read closure + 1 write closure inside the
+        // controller's settings host. View has zero direct accesses.
         const reads = INQUIRY_VIEW_SRC.match(
             /this\.plugin\.settings\.inquiryLastMode(?!\s*=)/g
         ) ?? [];
         const writes = INQUIRY_VIEW_SRC.match(
             /this\.plugin\.settings\.inquiryLastMode\s*=/g
         ) ?? [];
-        // Two reads (constructor, reset) + one write (setActiveLens). Pinning
-        // the counts ensures Slice 2 doesn't accidentally introduce a third
-        // read path that bypasses the controller.
-        expect(reads.length).toBe(2);
+        // Exactly one read closure + one write closure in the controller's
+        // settings host setup. If a future change introduces another
+        // direct access (bypassing the controller), this assertion fails.
+        expect(reads.length).toBe(1);
         expect(writes.length).toBe(1);
+    });
+
+    it('controller construction wires the three settings closures in the constructor', () => {
+        // The settings host shape is part of the boundary between
+        // InquiryView and the controller. Pin the closure surface so a
+        // future refactor cannot quietly drop or rename one of them.
+        const constructorBody = INQUIRY_VIEW_SRC.match(
+            /constructor\(leaf:[\s\S]+?\n\s{4}\}/
+        )?.[0] ?? '';
+        expect(constructorBody).toContain('new InquirySelectionState(');
+        expect(constructorBody).toContain('getPersistedLastMode: () => this.plugin.settings.inquiryLastMode');
+        expect(constructorBody).toContain('this.plugin.settings.inquiryLastMode = mode;');
+        expect(constructorBody).toContain('saveSettings: () => this.plugin.saveSettings()');
+    });
+
+    it('state.mode is no longer directly mutated in InquiryView (Slice 2a ownership)', () => {
+        // Mirrors the Slice 1 boundary check: post-extraction, no
+        // `this.state.mode = …` direct writes remain in the view. Reads
+        // (e.g. `this.state.mode === 'depth'`) are unchanged.
+        const mutations = INQUIRY_VIEW_SRC.match(/this\.state\.mode\s*=(?!=)/g) ?? [];
+        expect(mutations.length).toBe(0);
     });
 });
 
@@ -285,34 +325,32 @@ describe('characterization: loadTargetCache atomicity', () => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
-    it('selection fields are still directly mutated on this.state today', () => {
-        // Slice 2 will own: scope, mode, activeBookId, targetSceneIds,
-        // selectedPromptIds, promptFormOverrides, reportPreviewOpen.
-        //
-        // These should all still appear as `this.state.<field> =` writes
-        // PRE-extraction. After Slice 2 lands, this test should be inverted
-        // (or removed) and the controller's setter tests take its place.
-        const sliceTwoFields = [
+    it('Slice 2b/2c fields are still directly mutated on this.state today', () => {
+        // Pending Slice 2 stages will own these. Pre-extraction, they must
+        // still appear as direct `this.state.<field> =` writes. After each
+        // sub-slice lands, the corresponding field moves into the "now
+        // controlled" check below.
+        const pendingFields = [
             'scope',
-            'mode',
             'activeBookId',
             'targetSceneIds',
             'selectedPromptIds',
             'promptFormOverrides',
             'reportPreviewOpen',
         ];
-        for (const field of sliceTwoFields) {
+        for (const field of pendingFields) {
             const pattern = new RegExp(`this\\.state\\.${field}\\s*=`);
             expect(pattern.test(INQUIRY_VIEW_SRC)).toBe(true);
         }
     });
 
-    it('Slice 1 fields are NOT directly mutated outside InquiryActiveSessionState', () => {
-        // Doctrine check — guards against regression. The Slice 1 fields
-        // should already route through the controller. The two acceptable
-        // forms in InquiryView are reads (comparison) or controller calls.
-        // The forbidden form is `this.state.<sliceOne> = …` direct write.
-        const sliceOneFields = [
+    it('Slice 1 + Slice 2a fields are NOT directly mutated in InquiryView', () => {
+        // Doctrine check — guards against regression. These fields route
+        // through their controllers (InquiryActiveSessionState or
+        // InquirySelectionState). The forbidden form is the direct write;
+        // reads (`===`) are unchanged.
+        const controlledFields = [
+            // Slice 1
             'activeSessionId',
             'activeResult',
             'activeQuestionId',
@@ -322,8 +360,10 @@ describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
             'corpusOnlyFingerprint',
             'corpusManifestSnapshot',
             'lastError',
+            // Slice 2a
+            'mode',
         ];
-        for (const field of sliceOneFields) {
+        for (const field of controlledFields) {
             const pattern = new RegExp(`this\\.state\\.${field}\\s*=(?!=)`);
             expect(pattern.test(INQUIRY_VIEW_SRC)).toBe(false);
         }

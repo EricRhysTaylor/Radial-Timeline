@@ -86,6 +86,7 @@ import {
 } from './utils/inquiryResultStatus';
 import { buildBriefingPurgeAvailabilityKey } from './briefing/briefingPurgeAvailabilityKey';
 import { InquiryActiveSessionState } from './session/inquiryActiveSessionState';
+import { InquirySelectionState } from './session/inquirySelectionState';
 import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
@@ -464,6 +465,11 @@ export class InquiryView extends ItemView {
     // through to the shared `state` object so existing read sites are
     // unchanged. See inquiry-session-controller-map-2026-05-21.md.
     private activeSession = new InquiryActiveSessionState({ state: this.state });
+    // Slice 2a of InquirySessionController: owns the `mode` field and its
+    // round-trip with `plugin.settings.inquiryLastMode`. Initialized in the
+    // constructor body because the settings closures need `this.plugin`,
+    // which is assigned by the constructor body (not a field initializer).
+    private selection!: InquirySelectionState;
 
     private rootSvg?: SVGSVGElement;
     private scopeToggleButton?: SVGGElement;
@@ -643,12 +649,20 @@ export class InquiryView extends ItemView {
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
+        // Slice 2a controller — must be constructed before any mode hydration
+        // call. The settings closures capture `this.plugin` so the controller
+        // never imports RadialTimelinePlugin directly.
+        this.selection = new InquirySelectionState(
+            { state: this.state },
+            {
+                getPersistedLastMode: () => this.plugin.settings.inquiryLastMode,
+                setPersistedLastMode: (mode) => { this.plugin.settings.inquiryLastMode = mode; },
+                saveSettings: () => this.plugin.saveSettings(),
+            }
+        );
         const mappings = getActiveFrontmatterMappings(this.plugin.settings);
         this.runner = new InquiryRunnerService(this.plugin, this.app.vault, this.app.metadataCache, mappings);
-        const lastMode = this.plugin.settings.inquiryLastMode;
-        if (lastMode === 'flow' || lastMode === 'depth') {
-            this.state.mode = lastMode;
-        }
+        this.selection.applyPersistedLastModeOr(createDefaultInquiryState().mode);
         this.ensurePromptConfig();
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
@@ -5983,9 +5997,8 @@ export class InquiryView extends ItemView {
     private setActiveLens(mode: InquiryLens): void {
         if (!mode || mode === this.state.mode) return;
         // Lens is UI emphasis only; inquiry computation must always include flow + depth.
-        this.state.mode = mode;
-        this.plugin.settings.inquiryLastMode = mode;
-        void this.plugin.saveSettings();
+        // Atomic state → settings → save triple lives in the controller.
+        this.selection.setActiveLens(mode);
         this.updateModeClass();
         this.updateRings();
         if (this.isResultsState() && this.state.activeResult) {
@@ -7141,7 +7154,7 @@ export class InquiryView extends ItemView {
         const normalized = this.normalizeLegacyResult(session.result);
         const resolvedZone = session.questionZone ?? this.findPromptZoneById(normalized.questionId);
         this.state.scope = session.scope ?? normalized.scope;
-        this.state.mode = normalized.mode;
+        this.selection.adoptModeFromResult(normalized.mode);
         if (resolvedZone && normalized.questionId) {
             const options = this.getPromptOptions(resolvedZone);
             if (options.some(option => option.id === normalized.questionId)) {
@@ -7205,11 +7218,10 @@ export class InquiryView extends ItemView {
 
     private resetInquiryToFreshBaseState(options?: { clearPersistedTargets?: boolean }): void {
         const defaults = createDefaultInquiryState();
-        const lastMode = this.plugin.settings.inquiryLastMode;
         this.state.scope = defaults.scope;
         this.state.targetSceneIds = [];
         this.state.activeBookId = undefined;
-        this.state.mode = lastMode === 'flow' || lastMode === 'depth' ? lastMode : defaults.mode;
+        this.selection.applyPersistedLastModeOr(defaults.mode);
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.activeSession.setActiveQuestionId(undefined);
         this.activeSession.setActiveZone(defaults.activeZone);
