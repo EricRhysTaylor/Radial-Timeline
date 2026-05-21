@@ -30,62 +30,69 @@ const INQUIRY_VIEW_SRC = readFileSync(
 //  practice 5 distinct sites across 4 semantic paths)
 // ─────────────────────────────────────────────────────────────────────────
 
-describe('characterization: activeBookId mutation paths', () => {
-    it('path A — rehydrate-from-session keeps activeBookId on null-coalesce', () => {
-        // src/inquiry/InquiryView.ts ~ line 1998 — recovers from a stored
-        // session; the `?? this.state.activeBookId` preserves the current
-        // value when the session has none.
+describe('characterization: activeBookId mutation paths (post Slice 2c)', () => {
+    // Slice 2c landed: all 8 direct-mutation sites flow through
+    // selection.setActiveBookId — the audit's Risk #1 convergence is
+    // structurally satisfied. Each previously-inline write is pinned
+    // here in its new controller-routed form.
+
+    it('path A — rehydrate-from-session preserves the null-coalesce semantics through the controller', () => {
         expect(INQUIRY_VIEW_SRC).toContain(
-            'this.state.activeBookId = session.activeBookId ?? this.state.activeBookId;'
+            'this.selection.setActiveBookId(session.activeBookId ?? this.state.activeBookId);'
         );
     });
 
-    it('path B — loadTargetCache restores activeBookId from inquiryTargetCache.lastBookId', () => {
-        // src/inquiry/InquiryView.ts ~ line 2219
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.activeBookId = cache.lastBookId;');
+    it('path B — loadTargetCache restores via setActiveBookId(cache.lastBookId)', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setActiveBookId(cache.lastBookId);'
+        );
     });
 
-    it('path C1 — refreshCorpus syncs activeBookId from this.corpus.activeBookId', () => {
-        // src/inquiry/InquiryView.ts ~ line 3802
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.activeBookId = this.corpus.activeBookId;');
+    it('path C1 — refreshCorpus syncs via setActiveBookId(this.corpus.activeBookId)', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setActiveBookId(this.corpus.activeBookId);'
+        );
     });
 
-    it('path C2 — refreshCorpus clears activeBookId when corpus has none', () => {
-        // src/inquiry/InquiryView.ts ~ line 3807
-        expect(INQUIRY_VIEW_SRC).toMatch(/this\.state\.activeBookId\s*=\s*undefined;/);
-    });
-
-    it('path D — applySession adopts activeBookId from session payload', () => {
-        // src/inquiry/InquiryView.ts ~ line 7152
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.activeBookId = session.activeBookId;');
-    });
-
-    it('path E — resetInquiryToFreshBaseState clears activeBookId to undefined', () => {
-        // src/inquiry/InquiryView.ts ~ line 7211
-        // Two `= undefined` writes exist (refreshCorpus clear + reset); both
-        // must be rewired in Slice 2.
+    it('path C2 + E — refreshCorpus and resetInquiryToFreshBaseState both clear via setActiveBookId(undefined)', () => {
+        // Two paths clear to undefined. Both must route through the
+        // same setter — counting catches a divergence.
         const undefMatches = INQUIRY_VIEW_SRC.match(
-            /this\.state\.activeBookId\s*=\s*undefined;/g
+            /this\.selection\.setActiveBookId\(undefined\)/g
         ) ?? [];
         expect(undefMatches.length).toBe(2);
     });
 
-    it('path F — setFocusByIndex sets activeBookId from navigation book', () => {
-        // src/inquiry/InquiryView.ts ~ line 8213
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.activeBookId = book.id;');
+    it('path D — applySession adopts via setActiveBookId(session.activeBookId)', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setActiveBookId(session.activeBookId);'
+        );
     });
 
-    it('path G — drillIntoBook sets activeBookId from drill argument', () => {
-        // src/inquiry/InquiryView.ts ~ line 8302
-        expect(INQUIRY_VIEW_SRC).toContain('this.state.activeBookId = bookId;');
+    it('path F — setFocusByIndex sets via setActiveBookId(book.id)', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setActiveBookId(book.id);'
+        );
     });
 
-    it('total direct-mutation count is exactly 8 — Slice 2 must rewire each one', () => {
-        // Eight occurrences across seven semantic paths (refreshCorpus and
-        // resetInquiryToFreshBaseState both produce a `= undefined` write).
-        // Pinning the count means an added (unwired) path will fail loudly.
-        const matches = INQUIRY_VIEW_SRC.match(/this\.state\.activeBookId\s*=/g) ?? [];
-        expect(matches.length).toBe(8);
+    it('path G — drillIntoBook sets via setActiveBookId(bookId)', () => {
+        expect(INQUIRY_VIEW_SRC).toContain(
+            'this.selection.setActiveBookId(bookId);'
+        );
+    });
+
+    it('state.activeBookId has zero direct-mutation sites (Risk #1 convergence)', () => {
+        // The audit's headline Slice 2 risk. Pre-extraction count: 8.
+        // Post Slice 2c: 0. Every path must enter through one setter.
+        const mutations = INQUIRY_VIEW_SRC.match(/this\.state\.activeBookId\s*=(?!=)/g) ?? [];
+        expect(mutations.length).toBe(0);
+    });
+
+    it('total selection.setActiveBookId call count covers all 8 semantic paths', () => {
+        // Exact count: 8 controller calls replacing 8 direct mutations.
+        // Adding a new write must add a new test above OR fail this count.
+        const calls = INQUIRY_VIEW_SRC.match(/this\.selection\.setActiveBookId\(/g) ?? [];
+        expect(calls.length).toBe(8);
     });
 });
 
@@ -357,12 +364,12 @@ describe('characterization: mode round-trip via inquiryLastMode (post Slice 2a)'
 
 describe('characterization: loadTargetCache atomicity (post Slice 2b)', () => {
     it('restores activeBookId and targetSceneIds together when adopting persisted selection', () => {
-        // activeBookId write stays inline (Slice 2c will absorb it).
-        // targetSceneIds write delegates to the controller. Pin that the
-        // pairing survives — separating them would create a momentary
-        // state where activeBookId is set but targetSceneIds is stale.
+        // Post Slice 2c: BOTH writes go through the controller. The
+        // adjacency still matters — separating them would create a
+        // momentary state where activeBookId is set but targetSceneIds
+        // is stale.
         const fn = INQUIRY_VIEW_SRC.match(
-            /this\.state\.activeBookId\s*=\s*cache\.lastBookId;[\s\S]{0,300}?this\.selection\.setTargetSceneIds\(/
+            /this\.selection\.setActiveBookId\(cache\.lastBookId\);[\s\S]{0,300}?this\.selection\.setTargetSceneIds\(/
         );
         expect(fn).toBeTruthy();
     });
@@ -392,14 +399,12 @@ describe('characterization: loadTargetCache atomicity (post Slice 2b)', () => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
-    it('Slice 2c+ fields are still directly mutated on this.state today', () => {
-        // Pending Slice 2c+ stages will own these. Pre-extraction, they
-        // must still appear as direct writes. As each sub-slice lands,
-        // the corresponding field moves into the "now controlled" check
-        // below.
+    it('remaining pending fields are still directly mutated on this.state today', () => {
+        // Architectural-tier fields (scope, selectedPromptIds, etc.)
+        // remain pending the post-Slice-3 review boundary. Pre-extraction,
+        // they must still appear as direct writes.
         const pendingFields = [
             'scope',
-            'activeBookId',           // Slice 2c
             'selectedPromptIds',
             'promptFormOverrides',
             'reportPreviewOpen',
@@ -410,7 +415,7 @@ describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
         }
     });
 
-    it('Slice 1 + Slice 2a + Slice 2b fields are NOT directly mutated in InquiryView', () => {
+    it('Slices 1 + 2a + 2b + 2c fields are NOT directly mutated in InquiryView', () => {
         // Doctrine check — guards against regression. These fields route
         // through their controllers (InquiryActiveSessionState or
         // InquirySelectionState). The forbidden form is the direct write;
@@ -430,6 +435,8 @@ describe('characterization: Slice 2 ownership scope (per audit §4)', () => {
             'mode',
             // Slice 2b
             'targetSceneIds',
+            // Slice 2c
+            'activeBookId',
         ];
         for (const field of controlledFields) {
             const pattern = new RegExp(`this\\.state\\.${field}\\s*=(?!=)`);

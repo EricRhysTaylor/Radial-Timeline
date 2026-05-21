@@ -2010,7 +2010,7 @@ export class InquiryView extends ItemView {
         this.clearErrorStateForAction();
         if (this.state.isRunning) return;
         this.state.scope = session.scope ?? session.result.scope;
-        this.state.activeBookId = session.activeBookId ?? this.state.activeBookId;
+        this.selection.setActiveBookId(session.activeBookId ?? this.state.activeBookId);
         this.selection.setTargetSceneIds(this.normalizeTargetSceneIds(session.targetSceneIds ?? this.state.targetSceneIds));
         this.applySession({
             result: session.result,
@@ -2227,7 +2227,7 @@ export class InquiryView extends ItemView {
             (ids) => this.normalizeTargetSceneIds(ids)
         );
         if (adoptPersistedSelection && cache?.lastBookId) {
-            this.state.activeBookId = cache.lastBookId;
+            this.selection.setActiveBookId(cache.lastBookId);
             this.selection.setTargetSceneIds(
                 this.selection.getRememberedTargetSceneIdsForBook(cache.lastBookId) ?? []
             );
@@ -3799,12 +3799,12 @@ export class InquiryView extends ItemView {
         let shouldPersist = false;
         if (this.corpus.activeBookId) {
             if (this.state.activeBookId !== this.corpus.activeBookId) {
-                this.state.activeBookId = this.corpus.activeBookId;
+                this.selection.setActiveBookId(this.corpus.activeBookId);
                 shouldPersist = true;
             }
         } else {
             if (this.state.activeBookId) {
-                this.state.activeBookId = undefined;
+                this.selection.setActiveBookId(undefined);
                 shouldPersist = true;
             }
         }
@@ -7148,7 +7148,7 @@ export class InquiryView extends ItemView {
             }
         }
         if (session.activeBookId !== undefined) {
-            this.state.activeBookId = session.activeBookId;
+            this.selection.setActiveBookId(session.activeBookId);
         }
         if (session.targetSceneIds !== undefined) {
             this.selection.setTargetSceneIds(this.normalizeTargetSceneIds(session.targetSceneIds));
@@ -7197,7 +7197,7 @@ export class InquiryView extends ItemView {
         const defaults = createDefaultInquiryState();
         this.state.scope = defaults.scope;
         this.selection.setTargetSceneIds([]);
-        this.state.activeBookId = undefined;
+        this.selection.setActiveBookId(undefined);
         this.selection.applyPersistedLastModeOr(defaults.mode);
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.activeSession.setActiveQuestionId(undefined);
@@ -8199,7 +8199,7 @@ export class InquiryView extends ItemView {
         const books = this.getNavigationBooks();
         const book = books[index - 1];
         if (!book) return;
-        this.state.activeBookId = book.id;
+        this.selection.setActiveBookId(book.id);
         if (this.state.scope === 'book') {
             this.selection.setTargetSceneIds(this.getVisibleTargetSceneIdsForBook(book.id));
         }
@@ -8288,7 +8288,7 @@ export class InquiryView extends ItemView {
     private drillIntoBook(bookId: string): void {
         if (!bookId) return;
         const wasScope = this.state.scope;
-        this.state.activeBookId = bookId;
+        this.selection.setActiveBookId(bookId);
         this.scheduleTargetPersist();
         if (wasScope === 'saga') {
             this.handleScopeChange('book');

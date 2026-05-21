@@ -57,6 +57,7 @@ export interface SelectionStateHost {
     readonly state: {
         mode: InquiryLens;
         targetSceneIds: string[];
+        activeBookId?: string;
     };
 }
 
@@ -149,6 +150,26 @@ export class InquirySelectionState implements Disposable {
      */
     setTargetSceneIds(ids: string[]): void {
         this.host.state.targetSceneIds = ids;
+    }
+
+    /**
+     * Single mutation entry point for `state.activeBookId` (Slice 2c —
+     * the audit's Risk #1 convergence). All 4 semantic paths
+     * (session adopt, cache restore, corpus sync, user pick) route
+     * through here so a missed path fails the ownership-boundary check
+     * loudly rather than silently desyncing the UI.
+     *
+     * Accepts `string | undefined` because both setting and clearing
+     * the active book are real call paths (corpus has no resolved
+     * book, reset to fresh state, etc.).
+     */
+    setActiveBookId(id: string | undefined): void {
+        this.host.state.activeBookId = id;
+    }
+
+    /** Read-side convenience for getRememberedTargetSceneIdsForBook and persist payloads. */
+    getActiveBookId(): string | undefined {
+        return this.host.state.activeBookId;
     }
 
     /** Record a per-book selection in the Map. Defensive-copies the array. */

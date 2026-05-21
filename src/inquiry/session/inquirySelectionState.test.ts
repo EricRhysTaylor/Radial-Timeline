@@ -12,7 +12,7 @@ import type { InquiryTargetCache } from '../../types/settings';
 //  Test fixtures
 // ─────────────────────────────────────────────────────────────────────────
 
-type StateFixture = { mode: InquiryLens; targetSceneIds: string[] };
+type StateFixture = { mode: InquiryLens; targetSceneIds: string[]; activeBookId?: string };
 
 function makeState(initial: Partial<StateFixture> = {}): StateFixture {
     return { mode: 'flow', targetSceneIds: [], ...initial };
@@ -240,9 +240,10 @@ describe('InquirySelectionState.applyPersistedLastModeOr', () => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('InquirySelectionState — ownership boundary (Slice 2a + 2b scope)', () => {
-    it('owns no method touching scope, activeBookId, promptIds, focus, drill (still deferred)', () => {
+    it('owns no method touching scope, promptIds, focus, drill (still deferred)', () => {
         // Reflective check: the controller's public surface must not
-        // expose any method whose name implies it touches Slice 2c+ fields.
+        // expose any method whose name implies it touches Slice 3+ fields.
+        // (activeBookId was added in Slice 2c — no longer forbidden.)
         const state = makeState();
         const settings = makeSettings();
         const c = makeController(state, settings.host);
@@ -250,9 +251,7 @@ describe('InquirySelectionState — ownership boundary (Slice 2a + 2b scope)', (
         const proto = Object.getPrototypeOf(c) as Record<string, unknown>;
         const names = Object.getOwnPropertyNames(proto);
 
-        // `activeBookId`/`activeBook` is allowed as a method PARAMETER but
-        // must not appear in any method NAME. Use a name-only regex.
-        const forbidden = /(scope|activeBook[A-Z]|promptIds|focus|drill)/i;
+        const forbidden = /(scope|promptIds|focus|drill)/i;
         const violations = names.filter(name => forbidden.test(name));
 
         expect(violations).toEqual([]);
@@ -284,18 +283,20 @@ describe('InquirySelectionState — ownership boundary (Slice 2a + 2b scope)', (
         );
 
         // Alphabetical, since the assertion sorts. The natural grouping
-        // (mode 2a, targets 2b) is documented in the source; the test
-        // pins the lexical surface.
+        // (mode 2a, targets 2b, activeBookId 2c) is documented in the
+        // source; the test pins the lexical surface.
         expect(methods.sort()).toEqual([
             'adoptModeFromResult',          // 2a
             'applyPersistedLastModeOr',     // 2a
             'cancelPendingPersist',         // 2b
             'cleanup',                      // 2b (Disposable)
             'clearPersistedTargetCache',    // 2b
+            'getActiveBookId',              // 2c
             'getRememberedTargetSceneIdsForBook', // 2b
             'hydrateRememberedTargetSceneIdsFromCache', // 2b
             'rememberTargetSceneIdsForBook', // 2b
             'schedulePersist',              // 2b
+            'setActiveBookId',              // 2c
             'setActiveLens',                // 2a
             'setTargetSceneIds',            // 2b
         ]);
@@ -579,6 +580,72 @@ describe('InquirySelectionState.clearPersistedTargetCache', () => {
         const saveIdx = kinds.indexOf('save');
         expect(writeIdx).toBeGreaterThan(-1);
         expect(saveIdx).toBeGreaterThan(writeIdx);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Slice 2c — activeBookId convergence
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('InquirySelectionState.setActiveBookId', () => {
+    it('writes state.activeBookId and touches nothing else', () => {
+        const state = makeState({ mode: 'depth', targetSceneIds: ['x'], activeBookId: 'prior' });
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.setActiveBookId('book-1');
+
+        expect(state.activeBookId).toBe('book-1');
+        expect(state.mode).toBe('depth');             // unchanged
+        expect(state.targetSceneIds).toEqual(['x']);  // unchanged
+        expect(settings.calls).toEqual([]);            // no persist
+    });
+
+    it('accepts undefined to clear the active book (corpus/reset paths)', () => {
+        const state = makeState({ activeBookId: 'book-1' });
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.setActiveBookId(undefined);
+
+        expect(state.activeBookId).toBeUndefined();
+    });
+
+    it('is the single mutation entry point — no other method writes activeBookId', () => {
+        // Defensive: invoke every other public method that takes args we
+        // can fabricate, and verify activeBookId is not touched as a
+        // side-effect. Catches accidental cross-method coupling.
+        const state = makeState({ activeBookId: 'unchanged' });
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        c.setActiveLens('depth');
+        c.adoptModeFromResult('flow');
+        c.applyPersistedLastModeOr('flow');
+        c.setTargetSceneIds(['x']);
+        c.rememberTargetSceneIdsForBook('book-x', ['y']);
+        c.hydrateRememberedTargetSceneIdsFromCache({ 'book-y': ['z'] }, identityNormalize);
+        c.cancelPendingPersist();
+
+        expect(state.activeBookId).toBe('unchanged');
+    });
+});
+
+describe('InquirySelectionState.getActiveBookId', () => {
+    it('reflects the current state.activeBookId', () => {
+        const state = makeState({ activeBookId: 'book-7' });
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        expect(c.getActiveBookId()).toBe('book-7');
+    });
+
+    it('returns undefined when no book is active', () => {
+        const state = makeState();
+        const settings = makeSettings();
+        const c = makeController(state, settings.host);
+
+        expect(c.getActiveBookId()).toBeUndefined();
     });
 });
 
