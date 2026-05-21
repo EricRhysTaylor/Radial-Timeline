@@ -79,6 +79,13 @@ import { deriveBriefingArtifactClassFlags } from './briefing/briefingArtifactSta
 import { DisposableRegistry, clearTrackedTimer } from '../core/disposable';
 import { SceneDossierController } from './render/sceneDossierController';
 import {
+    isInquiryResultError,
+    isInquiryResultDegraded,
+    resolveInquirySessionStatus,
+    resolveInquirySessionStatusFromResult,
+} from './utils/inquiryResultStatus';
+import { buildBriefingPurgeAvailabilityKey } from './briefing/briefingPurgeAvailabilityKey';
+import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
     resolveQuestionPromptForm,
@@ -1565,17 +1572,11 @@ export class InquiryView extends ItemView {
     // Session / Briefing Helpers
 
     private resolveSessionStatus(session: InquirySession, options?: { simulated?: boolean }): InquirySessionStatus {
-        if (options?.simulated) return 'simulated';
-        if (session.status) return session.status;
-        if (this.isErrorResult(session.result)) return 'error';
-        if (session.briefPath) return 'saved';
-        return 'unsaved';
+        return resolveInquirySessionStatus(session, options);
     }
 
     private resolveSessionStatusFromResult(result: InquiryResult, options?: { simulated?: boolean }): InquirySessionStatus {
-        if (options?.simulated) return 'simulated';
-        if (this.isErrorResult(result)) return 'error';
-        return 'unsaved';
+        return resolveInquirySessionStatusFromResult(result, options);
     }
 
     private resolveSessionZoneLabel(session: InquirySession): string {
@@ -1710,15 +1711,12 @@ export class InquiryView extends ItemView {
 
 
     private getBriefingPurgeAvailabilityKey(): string {
-        const scenes = this.corpus?.scenes ?? [];
-        if (!scenes.length) return '';
-        const sceneKey = scenes.map(scene => scene.filePath || scene.displayLabel).join('\u001f');
-        return [
-            this.state.scope,
-            this.corpus?.activeBookId ?? '',
-            this.resolveInquiryActionNotesFieldLabel(),
-            sceneKey
-        ].join('::');
+        return buildBriefingPurgeAvailabilityKey({
+            scenes: this.corpus?.scenes ?? [],
+            scope: this.state.scope,
+            activeBookId: this.corpus?.activeBookId,
+            actionNotesFieldLabel: this.resolveInquiryActionNotesFieldLabel(),
+        });
     }
 
     private invalidateBriefingPurgeAvailability(): void {
@@ -5378,13 +5376,11 @@ export class InquiryView extends ItemView {
     }
 
     private isErrorResult(result: InquiryResult | null | undefined): boolean {
-        if (!result) return false;
-        if (result.aiStatus && result.aiStatus !== 'success' && result.aiStatus !== 'degraded') return true;
-        return result.findings.some(finding => finding.kind === 'error');
+        return isInquiryResultError(result);
     }
 
     private isDegradedResult(result: InquiryResult | null | undefined): boolean {
-        return !!result && (result.aiStatus === 'degraded' || result.aiReason === 'recovered_invalid_response');
+        return isInquiryResultDegraded(result);
     }
 
     private hasBindableInquiryHits(result: InquiryResult): boolean {
