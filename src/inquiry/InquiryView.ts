@@ -87,6 +87,7 @@ import {
 import { buildBriefingPurgeAvailabilityKey } from './briefing/briefingPurgeAvailabilityKey';
 import { InquiryActiveSessionState } from './session/inquiryActiveSessionState';
 import { InquirySelectionState } from './session/inquirySelectionState';
+import { InquirySettingsAccessor } from './settings/inquirySettingsAccessor';
 import {
     buildFocusedCustomPrompt,
     resolveQuestionPrompt,
@@ -470,6 +471,10 @@ export class InquiryView extends ItemView {
     // constructor body because the settings closures need `this.plugin`,
     // which is assigned by the constructor body (not a field initializer).
     private selection!: InquirySelectionState;
+    // Slice 3 of InquirySessionController: read-side facade over the
+    // `plugin.settings.inquiry*` keys. No defaulting, no normalization;
+    // callers continue applying their own `?? fallback` semantics.
+    private settingsAccessor!: InquirySettingsAccessor;
 
     private rootSvg?: SVGSVGElement;
     private scopeToggleButton?: SVGGElement;
@@ -652,6 +657,9 @@ export class InquiryView extends ItemView {
         // Slice 2a controller — must be constructed before any mode hydration
         // call. The settings closures capture `this.plugin` so the controller
         // never imports RadialTimelinePlugin directly.
+        // Slice 3: read-side facade. Constructed before the selection
+        // controller so closures here see a fully-initialized accessor.
+        this.settingsAccessor = new InquirySettingsAccessor(() => this.plugin.settings);
         this.selection = new InquirySelectionState(
             { state: this.state },
             {
@@ -1539,7 +1547,7 @@ export class InquiryView extends ItemView {
         if (session.key && priorPendingEditsEmpty !== pendingEditsEmpty) {
             this.sessionStore.updateSession(session.key, { pendingEditsEmpty });
         }
-        const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
+        const autoPopulateEnabled = this.settingsAccessor.getActionNotesAutoPopulate() ?? false;
         const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
         const pendingEditsTooltip = blocked
             ? 'Inquiry is blocked'
@@ -2221,7 +2229,7 @@ export class InquiryView extends ItemView {
 
     private loadTargetCache(options?: { adoptPersistedSelection?: boolean }): void {
         const adoptPersistedSelection = options?.adoptPersistedSelection !== false;
-        const cache = this.plugin.settings.inquiryTargetCache;
+        const cache = this.settingsAccessor.getTargetCache();
         this.selection.hydrateRememberedTargetSceneIdsFromCache(
             cache?.lastTargetSceneIdsByBookId,
             (ids) => this.normalizeTargetSceneIds(ids)
@@ -2902,14 +2910,14 @@ export class InquiryView extends ItemView {
     }
 
     private ensurePromptConfig(): void {
-        if (!this.plugin.settings.inquiryPromptConfig) {
+        if (!this.settingsAccessor.getPromptConfig()) {
             this.plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
             void this.plugin.saveSettings();
         }
     }
 
     private getPromptConfig(): InquiryPromptConfig {
-        return normalizeInquiryPromptConfig(this.plugin.settings.inquiryPromptConfig);
+        return normalizeInquiryPromptConfig(this.settingsAccessor.getPromptConfig());
     }
 
     private getQuestionTextForSlot(_zone: InquiryZone, slot: InquiryPromptSlot): string {
@@ -3788,7 +3796,7 @@ export class InquiryView extends ItemView {
     private refreshCorpus(): void {
         this.invalidateBriefingPurgeAvailability();
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, getActiveFrontmatterMappings(this.plugin.settings));
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         this.corpus = this.corpusResolver.resolve({
             scope: this.state.scope,
             activeBookId: this.state.activeBookId,
@@ -4464,7 +4472,7 @@ export class InquiryView extends ItemView {
             this.handleCorpusSceneBookGroupToggle(sceneBookId);
             return;
         }
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const currentMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
         const modes = this.getCorpusCycleModes(groupKey);
@@ -4502,7 +4510,7 @@ export class InquiryView extends ItemView {
         const entries = this.ccEntries.filter(entry => entry.className === 'scene' && entry.bookId === bookId);
         if (!entries.length) return;
 
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const classMode = this.getCorpusGroupEffectiveMode('scene', configMap);
         const currentMode = this.getSceneBookEffectiveMode(entries);
@@ -4526,7 +4534,7 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return;
         const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
         if (!entry) return;
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const groupKey = this.getCorpusGroupKey(entry.classKey, entry.scope);
         const classMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
@@ -4546,7 +4554,7 @@ export class InquiryView extends ItemView {
     private setCorpusItemInclusion(entryKey: string, mode: SceneInclusion): void {
         const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
         if (!entry) return;
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const groupKey = this.getCorpusGroupKey(entry.classKey, entry.scope);
         const classMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
@@ -4784,7 +4792,7 @@ export class InquiryView extends ItemView {
 
     private handleCorpusGlobalToggle(): void {
         if (this.state.isRunning) return;
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const groupKeys = this.getCorpusGroupKeys(sources);
         if (!groupKeys.length) return;
@@ -4935,7 +4943,7 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCcClassGroups(entriesByClass: Map<string, CorpusCcEntry[]>): CorpusCcGroup[] {
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const classScope = this.getClassScopeConfig(sources.classScope);
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const configs = (sources.classes || [])
@@ -5118,7 +5126,7 @@ export class InquiryView extends ItemView {
 
 
     private buildSagaCcEntries(corpus: InquiryCorpusSnapshot): CorpusCcEntry[] {
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const classScope = this.getClassScopeConfig(sources.classScope);
         const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
         if (!outlineConfig?.enabled) {
@@ -5172,7 +5180,7 @@ export class InquiryView extends ItemView {
     }
 
     private getOutlineFiles(): TFile[] {
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const classScope = this.getClassScopeConfig(sources.classScope);
         const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
         if (!outlineConfig?.enabled) return [];
@@ -5232,7 +5240,7 @@ export class InquiryView extends ItemView {
             mediumMin: 300,
             substantiveMin: 1000
         };
-        const raw = this.plugin.settings.inquiryCorpusThresholds || defaults;
+        const raw = this.settingsAccessor.getCorpusThresholds() || defaults;
         return {
             emptyMax: Number.isFinite(raw.emptyMax) ? raw.emptyMax : defaults.emptyMax,
             sketchyMin: Number.isFinite(raw.sketchyMin) ? raw.sketchyMin : defaults.sketchyMin,
@@ -5717,7 +5725,7 @@ export class InquiryView extends ItemView {
     }
 
     private isInquiryConfigured(): boolean {
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const hasBooks = (this.plugin.settings.books || []).some(book => (book.sourceFolder || '').trim().length > 0);
         return hasBooks && (sources.classScope?.length ?? 0) > 0;
     }
@@ -6449,7 +6457,7 @@ export class InquiryView extends ItemView {
         const providerPlan = this.buildOmnibusProviderPlan();
         const runDisabledReason = this.getOmnibusRunDisabledReason(questions, providerPlan);
 
-        const priorProgress = this.plugin.settings.inquiryOmnibusProgress;
+        const priorProgress = this.settingsAccessor.getOmnibusProgress();
         const resumeCheck = priorProgress
             ? this.checkOmnibusResumeEligibility(priorProgress, questions, providerPlan)
             : { available: false };
@@ -7014,7 +7022,7 @@ export class InquiryView extends ItemView {
     }
 
     private mergeCompletedIds(newIds: string[]): string[] {
-        const prior = this.plugin.settings.inquiryOmnibusProgress;
+        const prior = this.settingsAccessor.getOmnibusProgress();
         if (!prior) return [...newIds];
         const merged = new Set(prior.completedQuestionIds);
         newIds.forEach(id => merged.add(id));
@@ -7022,7 +7030,7 @@ export class InquiryView extends ItemView {
     }
 
     private buildCorpusSettingsFingerprint(): string {
-        const sources = this.plugin.settings.inquirySources;
+        const sources = this.settingsAccessor.getSources();
         const classes = sources?.classes ?? [];
         const parts = classes
             .filter(c => c.enabled)
@@ -7358,7 +7366,7 @@ export class InquiryView extends ItemView {
     }
 
     private shouldAutoPopulatePendingEdits(): boolean {
-        return this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
+        return this.settingsAccessor.getActionNotesAutoPopulate() ?? false;
     }
 
     private async writeInquiryPendingEdits(
@@ -7917,7 +7925,7 @@ export class InquiryView extends ItemView {
         }
     ): { entries: CorpusManifestEntry[]; resolvedRoots: string[] } {
         const activeBookId = this.getCanonicalActiveBookId();
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const entries: CorpusManifestEntry[] = [];
         const now = Date.now();
         const includeInactive = options?.includeInactive ?? false;
@@ -9104,7 +9112,7 @@ export class InquiryView extends ItemView {
     ): InquiryTimingHistoryEntry | null {
         const key = this.getInquiryTimingHistoryKey(provider, model, evidenceMode);
         if (!key) return null;
-        return this.plugin.settings.inquiryTimingHistory?.[key] ?? null;
+        return this.settingsAccessor.getTimingHistory()?.[key] ?? null;
     }
 
     /**
@@ -9159,7 +9167,7 @@ export class InquiryView extends ItemView {
         });
         if (!sampleRate) return;
 
-        const history = this.plugin.settings.inquiryTimingHistory ?? {};
+        const history = this.settingsAccessor.getTimingHistory() ?? {};
         const previous = history[key];
         const blended = blendSampleRate({
             previousAvg: previous?.avgMsPerInputToken,
