@@ -57,7 +57,16 @@ const files = [
     'modal.css',
     'briefing.css',
     'rt-ui.css',
-    // Feature CSS extracted from rt-ui.css (split program Cycle A)
+    // Feature CSS extracted from rt-ui.css — order matches original
+    // position within rt-ui.css to preserve cascade between blocks.
+    // Cycle B (settings features bundle)
+    'features/beat-system.css',
+    'features/settings-helpers.css',
+    'features/completion-preview.css',
+    'features/templates.css',
+    'features/settings-misc.css',
+    'features/ai-settings.css',
+    // Cycle A
     'features/icon-suggestions.css',
     'features/backdrop-presets.css',
     'features/apr-size-buttons.css',
