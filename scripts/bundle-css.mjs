@@ -57,6 +57,10 @@ const files = [
     'modal.css',
     'briefing.css',
     'rt-ui.css',
+    // Feature CSS extracted from rt-ui.css (split program Cycle A)
+    'features/icon-suggestions.css',
+    'features/backdrop-presets.css',
+    'features/apr-size-buttons.css',
     'inquiry.css',
     'legacy/apr-legacy.css',
     'legacy/rt-ui-legacy.css',
