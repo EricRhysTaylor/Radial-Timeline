@@ -6,7 +6,8 @@
  * Runtime Estimation Processing Modal
  */
 
-import { App, Modal, ButtonComponent, DropdownComponent, Notice, setIcon } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Notice, setIcon } from 'obsidian';
+import { ErtModal } from '../ui/ErtModal';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimator';
@@ -49,7 +50,7 @@ export interface RuntimeQueueItem {
 /**
  * Modal for runtime estimation processing
  */
-export class RuntimeProcessingModal extends Modal {
+export class RuntimeProcessingModal extends ErtModal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters, mode: RuntimeMode) => Promise<RuntimeProcessResult | void>;
     private readonly getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<number>;
@@ -109,13 +110,12 @@ export class RuntimeProcessingModal extends Modal {
     }
 
     async onOpen(): Promise<void> {
-        const { contentEl, modalEl, titleEl } = this;
+        const { titleEl } = this;
         titleEl.setText('');
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-runtime-modal-shell', ERT_CLASSES.SKIN_PRO);
-        }
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-runtime-modal');
+        this.applyShell({
+            shellClasses: ['ert-runtime-modal-shell', ERT_CLASSES.SKIN_PRO],
+            containerClasses: ['ert-runtime-modal'],
+        });
 
         // Load subplots first
         await this.loadSubplots();

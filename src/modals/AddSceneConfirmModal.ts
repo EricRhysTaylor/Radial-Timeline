@@ -1,11 +1,12 @@
-import { App, Modal, setIcon } from 'obsidian';
+import { App, setIcon } from 'obsidian';
+import { ErtModal } from '../ui/ErtModal';
 import type { SceneInsertionPlan } from '../services/SceneInsertService';
 
 function basename(path: string): string {
     return path.split('/').pop() ?? path;
 }
 
-export class AddSceneConfirmModal extends Modal {
+export class AddSceneConfirmModal extends ErtModal {
     private resolver: ((confirmed: boolean) => void) | null = null;
     private resolved = false;
 
@@ -14,14 +15,10 @@ export class AddSceneConfirmModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, modalEl } = this;
+        const { contentEl } = this;
         contentEl.empty();
         this.resolved = false;
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
+        this.applyShell({ width: 'min(660px, 90vw)' });
 
         this.scope.register([], 'Escape', () => {
             this.resolve(false);
@@ -29,7 +26,7 @@ export class AddSceneConfirmModal extends Modal {
             return false;
         });
 
-        contentEl.addClass('ert-modal-container', 'ert-drag-confirm-modal', 'ert-stack');
+        contentEl.addClass('ert-drag-confirm-modal');
         if (this.accent) {
             contentEl.style.setProperty('--ert-confirm-accent', this.accent);
         }

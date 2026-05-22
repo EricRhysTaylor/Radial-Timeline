@@ -3,13 +3,14 @@
  * First-run prompt for users with no configured book. Asks for a name,
  * registers a BookProfile, sets it active, and creates the matching folder.
  */
-import { App, ButtonComponent, Modal, Notice, TFolder, normalizePath } from 'obsidian';
+import { App, ButtonComponent, Notice, TFolder, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { BookProfile } from '../types/settings';
 import { DEFAULT_BOOK_TITLE, createBookId, getActiveBook, normalizeBookProfile } from '../utils/books';
 import { scheduleFocusAfterPaint } from '../utils/domFocus';
+import { ErtModal } from '../ui/ErtModal';
 
-class FirstBookSetupModal extends Modal {
+class FirstBookSetupModal extends ErtModal {
     private resolvePromise: (book: BookProfile | null) => void = () => undefined;
     private settled = false;
     private result: BookProfile | null = null;
@@ -25,15 +26,12 @@ class FirstBookSetupModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, modalEl } = this;
+        const { contentEl } = this;
         contentEl.empty();
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '460px';   // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        this.applyShell({ width: '460px' });
+        if (this.modalEl) {
+            this.modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container', 'ert-stack');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Setup' });

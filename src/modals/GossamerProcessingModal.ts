@@ -6,7 +6,8 @@
  * Gossamer AI Processing Modal
  * Tracks progress of Gemini momentum analysis with manuscript details and status updates
  */
-import { App, Modal, ButtonComponent, Notice } from 'obsidian';
+import { App, ButtonComponent, Notice } from 'obsidian';
+import { ErtModal } from '../ui/ErtModal';
 import type RadialTimelinePlugin from '../main';
 import { t } from '../i18n';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA } from '../types/gossamerSignals';
@@ -36,7 +37,7 @@ export interface AnalysisOptions {
 /**
  * Modal for confirming and showing progress of Gossamer AI momentum analysis
  */
-export class GossamerProcessingModal extends Modal {
+export class GossamerProcessingModal extends ErtModal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onConfirm: (options: AnalysisOptions) => Promise<void>;
 
@@ -78,17 +79,13 @@ export class GossamerProcessingModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl, modalEl } = this;
+        const { contentEl, titleEl } = this;
         titleEl.setText('');
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
+        this.applyShell({ width: '800px', containerClasses: ['ert-gossamer-processing-modal'] });
+        if (this.modalEl) {
+            this.modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            this.modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
         }
-
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-processing-modal');
 
         // Show confirmation view first
         this.showConfirmationView();

@@ -1,4 +1,5 @@
-import { Modal, App } from 'obsidian';
+import { App } from 'obsidian';
+import { ErtModal } from '../ui/ErtModal';
 import type { StructuralMoveHistoryEntry } from '../types/settings';
 
 const ICON_SHUFFLE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shuffle-icon lucide-shuffle"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></svg>`;
@@ -15,7 +16,7 @@ export interface DragConfirmCurrentMoveSummary {
     rippleRename?: boolean;
 }
 
-export class DragConfirmModal extends Modal {
+export class DragConfirmModal extends ErtModal {
     private readonly currentMove: DragConfirmCurrentMoveSummary;
     private readonly recentMoves: StructuralMoveHistoryEntry[];
     private readonly onHistoryClick?: (entry: StructuralMoveHistoryEntry) => Promise<void> | void;
@@ -48,14 +49,10 @@ export class DragConfirmModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, modalEl } = this;
+        const { contentEl } = this;
         this.closed = false;
         contentEl.empty();
-        
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
+        this.applyShell({ width: 'min(660px, 90vw)' });
 
         this.scope.register([], 'Escape', () => {
             if (this.phase === 'confirm') {
@@ -76,8 +73,8 @@ export class DragConfirmModal extends Modal {
         this.containerEl.addEventListener('mousedown', this.backdropGuard, true);
         this.containerEl.addEventListener('click', this.backdropGuard, true);
 
-        contentEl.addClass('ert-modal-container', 'ert-drag-confirm-modal', 'ert-stack');
-        
+        contentEl.addClass('ert-drag-confirm-modal');
+
         // Use the passed accent color (subplot color)
         if (this.accent) {
             contentEl.style.setProperty('--ert-confirm-accent', this.accent);
