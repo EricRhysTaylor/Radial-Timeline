@@ -11,7 +11,7 @@
 
 .ert-bug-report-header {
     cursor: grab;
-    padding-right: 32px;
+    padding-right: calc(var(--ert-gap-lg) * 2);
     position: relative;
 }
 
@@ -21,7 +21,7 @@
 
 .ert-bug-report-grip {
     position: absolute;
-    left: 8px;
+    left: var(--ert-gap-sm);
     top: 50%;
     transform: translateY(-50%);
     display: inline-flex;
@@ -32,19 +32,19 @@
 
 .ert-bug-report-header .ert-modal-title,
 .ert-bug-report-header .ert-modal-subtitle {
-    margin-left: 22px;
+    margin-left: var(--ert-gap-roomy);
 }
 
 .ert-bug-report-body {
-    gap: 8px;
-    padding: 4px 0;
+    gap: var(--ert-gap-sm);
+    padding: var(--ert-gap-xs) 0;
 }
 
 .ert-bug-report-label {
     font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
-    margin-top: 6px;
+    margin-top: var(--ert-gap-tight);
 }
 
 .ert-bug-report-textarea {
@@ -57,7 +57,7 @@
     color: var(--text-normal);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
-    padding: 6px 8px;
+    padding: var(--ert-gap-tight) var(--ert-gap-sm);
     line-height: 1.4;
 }
 
@@ -73,14 +73,14 @@
 
 .ert-bug-report-row {
     display: flex;
-    gap: 8px;
+    gap: var(--ert-gap-sm);
     flex-wrap: wrap;
     align-items: center;
 }
 
 .ert-bug-report-btn-icon {
     display: inline-flex;
-    margin-right: 6px;
+    margin-right: var(--ert-gap-tight);
     vertical-align: middle;
 }
 
@@ -91,12 +91,12 @@
 .ert-bug-report-preview {
     border: 1px dashed var(--background-modifier-border);
     border-radius: 6px;
-    padding: 8px;
+    padding: var(--ert-gap-sm);
     min-height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: var(--ert-gap-md);
 }
 
 .ert-bug-report-preview--empty {
@@ -109,14 +109,14 @@
     max-height: 140px;
     max-width: 100%;
     border-radius: 4px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--ert-shadow-soft-tight);
 }
 
 .ert-bug-report-preview-clear {
     background: transparent;
     border: 1px solid var(--background-modifier-border);
     color: var(--text-muted);
-    padding: 4px 8px;
+    padding: var(--ert-gap-xs) var(--ert-gap-sm);
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
@@ -147,7 +147,7 @@
 
 .ert-bug-report-actions {
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--ert-gap-sm);
     flex-wrap: wrap;
 }
 
