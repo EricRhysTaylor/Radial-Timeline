@@ -3,7 +3,7 @@
  *
  * Pure read of the active book's matter notes from the Obsidian metadata
  * cache, normalized for the Book Pages resolver. Shared by:
- *   - Settings → Publish preview UI (`ProFeaturePanels.ts`)
+ *   - Settings → Publish preview UI (`PublishSection.ts`)
  *   - Manuscript export pipeline (`assembleManuscript`)
  *
  * The resolver consumes summaries (already-classified notes) — this collector

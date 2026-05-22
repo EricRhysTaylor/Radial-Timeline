@@ -1630,19 +1630,19 @@ async function generateSampleTemplates(
 const SHOW_SCREENPLAY_LAYOUT_CATEGORY = false;
 const SHOW_PODCAST_LAYOUT_CATEGORY = false;
 
-export interface ProFeaturePanelsParams {
+export interface PublishSectionParams {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
 }
 
-export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeaturePanelsParams): HTMLElement {
+export function renderPublishSection({ app, plugin, containerEl }: PublishSectionParams): HTMLElement {
     const isActive = isProActive(plugin);
     const section = containerEl;
 
     const rerender = () => {
         containerEl.empty();
-        renderProFeaturePanels({ app, plugin, containerEl });
+        renderPublishSection({ app, plugin, containerEl });
     };
 
     if (ensureBundledPandocLayoutsRegistered(plugin)) {

@@ -21,7 +21,7 @@ import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderGoalsSessionsSection } from './sections/GoalsSessionsSection';
 import { renderProEntitlementPanel } from './sections/ProEntitlementPanel';
 import { getProEntitlement } from './proEntitlement';
-import { renderProFeaturePanels } from './sections/ProFeaturePanels';
+import { renderPublishSection } from './sections/PublishSection';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
 import {
@@ -923,7 +923,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.renderPublishingHero(publishingStack);
         const refreshProDependentSections = () => this.display();
         const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
-        renderProFeaturePanels({
+        renderPublishSection({
             app: this.app,
             plugin: this.plugin,
             containerEl: publishingPanels

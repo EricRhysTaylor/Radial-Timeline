@@ -21,7 +21,7 @@ import type { MatterBodyMode } from './matterMeta';
 
 /**
  * Canonical role identifier. Mirrors `VALID_MATTER_ROLES` in
- * `src/settings/sections/ProFeaturePanels.ts`.
+ * `src/settings/sections/PublishSection.ts`.
  */
 export type BookPageRole =
     | 'title-page'

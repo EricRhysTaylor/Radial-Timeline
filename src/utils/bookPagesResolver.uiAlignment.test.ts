@@ -58,7 +58,7 @@ describe('Book Pages resolver — UI ⇄ export alignment', () => {
         const exportResolved = resolveBookPages(fixtureBookMeta, fixtureNotes);
         const exportOrdered = applyBookPageOrder(exportResolved, undefined);
 
-        // UI-side call (mirrors the Book Pages preview in ProFeaturePanels.ts).
+        // UI-side call (mirrors the Book Pages preview in PublishSection.ts).
         const uiResolved = resolveBookPages(fixtureBookMeta, fixtureNotes);
         const uiOrdered = applyBookPageOrder(uiResolved, undefined);
 
