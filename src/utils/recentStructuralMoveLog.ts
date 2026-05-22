@@ -1,6 +1,6 @@
 import { normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { ensureLogsRoot, resolveAvailableLogPath, resolveLogsRoot } from '../ai/log';
+import { ensureMovesLogsRoot, resolveAvailableLogPath, resolveMovesLogsRoot } from '../ai/log';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from './fileUtils';
 import { getActiveBook, getActiveBookTitle } from './books';
 import { getActiveRecentStructuralMoves } from './recentStructuralMoves';
@@ -62,8 +62,8 @@ export async function openStructuralMoveHistoryLog(
     plugin: RadialTimelinePlugin,
     targetEntry?: StructuralMoveHistoryEntry
 ): Promise<void> {
-    const logsRoot = resolveLogsRoot();
-    const folder = await ensureLogsRoot(plugin.app.vault);
+    const logsRoot = resolveMovesLogsRoot();
+    const folder = await ensureMovesLogsRoot(plugin.app.vault);
     if (!folder) {
         throw new Error(`Unable to prepare log folder: ${logsRoot}`);
     }

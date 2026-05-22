@@ -1,5 +1,5 @@
 import { App, TAbstractFile, TFile, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
-import { resolveLogsRoot } from '../ai/log';
+import { resolveSnapshotsLogsRoot } from '../ai/log';
 
 export interface TrashFilesOptions {
     operation: string;
@@ -56,7 +56,7 @@ export function useSystemTrash(app: App): boolean {
 }
 
 function resolveArchiveLogFolder(): string {
-    return resolveLogsRoot();
+    return resolveSnapshotsLogsRoot();
 }
 
 async function ensureFolder(app: App, folderPath: string): Promise<void> {

@@ -1,31 +1,33 @@
 import { App, TFolder } from 'obsidian';
 import {
-    ensureContentLogsRoot,
-    ensureLogsRoot,
-    resolveContentLogsRoot,
-    resolveLogsRoot
+    ensureInquiryContentLogsRoot,
+    ensureInquiryLogsRoot,
+    ensurePulseContentLogsRoot,
+    resolveInquiryContentLogsRoot,
+    resolveInquiryLogsRoot,
+    resolvePulseContentLogsRoot
 } from '../../ai/log';
 
 export function resolveInquiryLogFolder(): string {
-    return resolveLogsRoot();
+    return resolveInquiryLogsRoot();
 }
 
 export function resolveInquiryContentLogFolder(): string {
-    return resolveContentLogsRoot();
+    return resolveInquiryContentLogsRoot();
 }
 
 export async function ensureInquiryLogFolder(app: App): Promise<TFolder | null> {
-    return ensureLogsRoot(app.vault);
+    return ensureInquiryLogsRoot(app.vault);
 }
 
 export async function ensureInquiryContentLogFolder(app: App): Promise<TFolder | null> {
-    return ensureContentLogsRoot(app.vault);
+    return ensureInquiryContentLogsRoot(app.vault);
 }
 
 export function resolvePulseContentLogFolder(): string {
-    return resolveContentLogsRoot();
+    return resolvePulseContentLogsRoot();
 }
 
 export async function ensurePulseContentLogFolder(app: App): Promise<TFolder | null> {
-    return ensureContentLogsRoot(app.vault);
+    return ensurePulseContentLogsRoot(app.vault);
 }

@@ -13,17 +13,18 @@ import { parsePulseAnalysisResponse } from './responseParsing';
 import { getAIClient } from '../ai/runtime/aiClient';
 import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import {
+    ensurePulseLogsRoot,
     extractTokenUsage,
     formatAiLogContent,
     formatSummaryLogContent,
     formatLogTimestamp,
-    resolveAiLogFolder,
     resolveAvailableLogPath,
+    resolvePulseLogsRoot,
     sanitizeLogPayload,
     type AiLogStatus
 } from '../ai/log';
 import { ensurePulseContentLogFolder, resolvePulseContentLogFolder } from '../inquiry/utils/logs';
-import { normalizePath, TFolder } from 'obsidian';
+import { normalizePath } from 'obsidian';
 import { t } from '../i18n';
 
 type PulseLogPayload = {
@@ -157,17 +158,12 @@ async function writePulseLog(
 
     // Summary log is always attempted for AI runs.
     try {
-        const summaryFolderPath = normalizePath(resolveAiLogFolder());
-        const existing = vault.getAbstractFileByPath(summaryFolderPath);
-        if (existing && !(existing instanceof TFolder)) {
+        const summaryFolder = await ensurePulseLogsRoot(vault);
+        if (!summaryFolder) {
             console.error('[Pulse][log] Log folder path is not a folder.');
             return;
         }
-        try {
-            await vault.createFolder(summaryFolderPath);
-        } catch {
-            // Folder may already exist.
-        }
+        const summaryFolderPath = normalizePath(resolvePulseLogsRoot());
 
         const summaryTitle = `${logType} Log — ${sceneLabel} ${readableTimestamp}`;
         const summaryBaseName = `${logType} Log — ${safeSceneLabel} ${readableTimestamp}`;

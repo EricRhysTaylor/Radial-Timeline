@@ -25,7 +25,7 @@ import { getExcludeKeyPredicate, RESERVED_OBSIDIAN_KEYS } from '../../../utils/y
 import { formatSafetyIssues } from '../../../utils/yamlSafety';
 import { openOrRevealFile } from '../../../utils/fileUtils';
 import { getAdvancedMode, shouldEnableRemoveAdvanced } from '../../../scenes/core/scenePropertyState';
-import { resolveLogsRoot } from '../../../ai/log';
+import { resolveSnapshotsLogsRoot } from '../../../ai/log';
 
 type DeletePreviewDetail = { fields: string[]; values: Record<string, unknown> };
 
@@ -169,7 +169,7 @@ async function writeDeletionSnapshot(app: App, plugin: RadialTimelinePlugin, par
 
     if (entries.length === 0) return null;
 
-    const logsRoot = resolveLogsRoot();
+    const logsRoot = resolveSnapshotsLogsRoot();
     const snapshotFolder = await ensureVaultFolder(app, logsRoot);
     if (!snapshotFolder) return null;
 

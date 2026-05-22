@@ -98,6 +98,12 @@ export type UsageCostBreakdown = {
 
 const DEFAULT_LOGS_ROOT = 'Radial Timeline/Logs';
 const CONTENT_LOGS_FOLDER_NAME = 'Content';
+const INQUIRY_LOGS_FOLDER_NAME = 'Inquiry';
+const GOSSAMER_LOGS_FOLDER_NAME = 'Gossamer';
+const GOSSAMER_ARCHIVE_FOLDER_NAME = 'Gossamer Archive';
+const PULSE_LOGS_FOLDER_NAME = 'Pulse';
+const MOVES_LOGS_FOLDER_NAME = 'Moves';
+const SNAPSHOTS_LOGS_FOLDER_NAME = 'Snapshots';
 
 function normalizePricingProvider(provider?: string | null): 'anthropic' | 'openai' | 'google' | null {
     const normalized = typeof provider === 'string' ? provider.trim().toLowerCase() : '';
@@ -504,6 +510,100 @@ export async function ensureContentLogsRoot(vault: Vault): Promise<TFolder | nul
     }
     const folder = vault.getAbstractFileByPath(folderPath);
     return folder instanceof TFolder ? folder : null;
+}
+
+async function ensureNestedFolder(vault: Vault, folderPath: string): Promise<TFolder | null> {
+    const normalized = normalizePath(folderPath);
+    const parts = normalized.split('/').filter(Boolean);
+    let current = '';
+    for (const part of parts) {
+        current = current ? `${current}/${part}` : part;
+        const existing = vault.getAbstractFileByPath(current);
+        if (existing && !(existing instanceof TFolder)) {
+            return null;
+        }
+        if (!existing) {
+            try {
+                await vault.createFolder(current);
+            } catch {
+                // Folder may already exist (race) — fall through.
+            }
+        }
+    }
+    const folder = vault.getAbstractFileByPath(normalized);
+    return folder instanceof TFolder ? folder : null;
+}
+
+export function resolveInquiryLogsRoot(): string {
+    return normalizePath(`${DEFAULT_LOGS_ROOT}/${INQUIRY_LOGS_FOLDER_NAME}`);
+}
+
+export function resolveInquiryContentLogsRoot(): string {
+    return normalizePath(`${resolveInquiryLogsRoot()}/${CONTENT_LOGS_FOLDER_NAME}`);
+}
+
+export async function ensureInquiryLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveInquiryLogsRoot());
+}
+
+export async function ensureInquiryContentLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveInquiryContentLogsRoot());
+}
+
+export function resolveGossamerLogsRoot(): string {
+    return normalizePath(`${DEFAULT_LOGS_ROOT}/${GOSSAMER_LOGS_FOLDER_NAME}`);
+}
+
+export function resolveGossamerContentLogsRoot(): string {
+    return normalizePath(`${resolveGossamerLogsRoot()}/${CONTENT_LOGS_FOLDER_NAME}`);
+}
+
+export async function ensureGossamerLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveGossamerLogsRoot());
+}
+
+export async function ensureGossamerContentLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveGossamerContentLogsRoot());
+}
+
+export function resolveGossamerArchiveRoot(): string {
+    return normalizePath(`${DEFAULT_LOGS_ROOT}/${GOSSAMER_ARCHIVE_FOLDER_NAME}`);
+}
+
+export async function ensureGossamerArchiveRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveGossamerArchiveRoot());
+}
+
+export function resolvePulseLogsRoot(): string {
+    return normalizePath(`${DEFAULT_LOGS_ROOT}/${PULSE_LOGS_FOLDER_NAME}`);
+}
+
+export function resolvePulseContentLogsRoot(): string {
+    return normalizePath(`${resolvePulseLogsRoot()}/${CONTENT_LOGS_FOLDER_NAME}`);
+}
+
+export async function ensurePulseLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolvePulseLogsRoot());
+}
+
+export async function ensurePulseContentLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolvePulseContentLogsRoot());
+}
+
+export function resolveMovesLogsRoot(): string {
+    return normalizePath(`${DEFAULT_LOGS_ROOT}/${MOVES_LOGS_FOLDER_NAME}`);
+}
+
+export async function ensureMovesLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveMovesLogsRoot());
+}
+
+export function resolveSnapshotsLogsRoot(): string {
+    return normalizePath(`${DEFAULT_LOGS_ROOT}/${SNAPSHOTS_LOGS_FOLDER_NAME}`);
+}
+
+export async function ensureSnapshotsLogsRoot(vault: Vault): Promise<TFolder | null> {
+    return ensureNestedFolder(vault, resolveSnapshotsLogsRoot());
 }
 
 export function resolveAiLogFolder(): string {

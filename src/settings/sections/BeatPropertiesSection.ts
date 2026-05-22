@@ -76,7 +76,7 @@ import {
     updateLoadedBeatTab,
 } from '../../storyBeats/workspaceState';
 import { parseDescriptionParts, splitOverviewParagraphs, KNOWN_LABELS } from '../../utils/descriptionParser';
-import { resolveLogsRoot } from '../../ai/log';
+import { resolveSnapshotsLogsRoot } from '../../ai/log';
 import type { FieldEntry, FieldEntryValue, BeatRow, BeatNoteCustomContentSummary } from './beats/types';
 import { BEAT_SYSTEM_COPY } from './beats/beatSystemCopy';
 import { dirtyState, type InnerStage } from './beats/dirtyState';
@@ -3965,7 +3965,7 @@ export function renderBeatPropertiesSection(params: {
 
             if (entries.length === 0) return null;
 
-            const logsRoot = resolveLogsRoot();
+            const logsRoot = resolveSnapshotsLogsRoot();
             const snapshotFolder = await ensureVaultFolder(logsRoot);
             if (!snapshotFolder) return null;
 

@@ -1,11 +1,13 @@
 import { App, TFile, TFolder, getFrontMatterInfo, parseYaml, stringifyYaml } from 'obsidian';
 import {
-    ensureContentLogsRoot,
-    ensureLogsRoot,
+    ensureGossamerArchiveRoot,
+    ensureGossamerContentLogsRoot,
+    ensureGossamerLogsRoot,
     formatLogTimestamp,
     resolveAvailableLogPath,
-    resolveContentLogsRoot,
-    resolveLogsRoot
+    resolveGossamerArchiveRoot,
+    resolveGossamerContentLogsRoot,
+    resolveGossamerLogsRoot
 } from '../ai/log';
 
 function sanitizeSegment(value: string | null | undefined): string {
@@ -47,19 +49,27 @@ function formatMeta(meta: Record<string, unknown> | undefined): string[] {
 }
 
 export function resolveGossamerLogFolder(): string {
-    return resolveLogsRoot();
+    return resolveGossamerLogsRoot();
 }
 
 export function resolveGossamerContentLogFolder(): string {
-    return resolveContentLogsRoot();
+    return resolveGossamerContentLogsRoot();
 }
 
 export async function ensureGossamerLogFolder(app: App): Promise<TFolder | null> {
-    return ensureLogsRoot(app.vault);
+    return ensureGossamerLogsRoot(app.vault);
 }
 
 export async function ensureGossamerContentLogFolder(app: App): Promise<TFolder | null> {
-    return ensureContentLogsRoot(app.vault);
+    return ensureGossamerContentLogsRoot(app.vault);
+}
+
+export function resolveGossamerArchiveFolder(): string {
+    return resolveGossamerArchiveRoot();
+}
+
+export async function ensureGossamerArchiveFolder(app: App): Promise<TFolder | null> {
+    return ensureGossamerArchiveRoot(app.vault);
 }
 
 export async function archiveGossamerFrontmatterFields(
@@ -92,7 +102,7 @@ export async function archiveGossamerFrontmatterFields(
 
     if (entries.length === 0) return null;
 
-    const folder = await ensureGossamerLogFolder(app);
+    const folder = await ensureGossamerArchiveFolder(app);
     if (!folder) return null;
 
     const now = new Date();
@@ -121,7 +131,7 @@ export async function archiveGossamerFrontmatterFields(
         lines.push('```');
     }
 
-    const filePath = resolveAvailableLogPath(app.vault, resolveGossamerLogFolder(), baseName);
+    const filePath = resolveAvailableLogPath(app.vault, resolveGossamerArchiveFolder(), baseName);
     await app.vault.create(filePath, lines.join('\n').trim());
     return filePath;
 }
