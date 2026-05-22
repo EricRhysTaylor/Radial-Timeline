@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const quiet = process.argv.includes('--quiet');
 
@@ -33,6 +34,56 @@ function safeRun(cmd) {
   try { return run(cmd); } catch (e) { return ''; }
 }
 
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function assertNoGitOperationInProgress() {
+  const gitDir = safeRun('git rev-parse --git-dir');
+  if (!gitDir) return;
+
+  const absoluteGitDir = path.resolve(gitDir);
+  const blockingStates = [
+    ['rebase-merge', 'rebase'],
+    ['rebase-apply', 'rebase'],
+    ['MERGE_HEAD', 'merge'],
+    ['CHERRY_PICK_HEAD', 'cherry-pick'],
+    ['REVERT_HEAD', 'revert']
+  ];
+
+  const active = blockingStates.find(([file]) => existsSync(path.join(absoluteGitDir, file)));
+  if (active) {
+    throw new Error(`Git ${active[1]} in progress. Resolve or abort it before running backup.`);
+  }
+}
+
+function assertRemoteCanFastForward(branch, phase) {
+  if (!branch || branch === 'HEAD') {
+    throw new Error('Cannot backup from detached HEAD. Check out a branch first.');
+  }
+
+  run('git fetch origin');
+
+  const remoteRef = `origin/${branch}`;
+  const remoteExists = safeRun(`git rev-parse --verify --quiet ${shellQuote(remoteRef)}`);
+  if (!remoteExists) {
+    throw new Error(`Remote tracking branch ${remoteRef} not found. Push or set upstream deliberately before backup.`);
+  }
+
+  const counts = run(`git rev-list --left-right --count ${shellQuote(`HEAD...${remoteRef}`)}`);
+  const [aheadText = '0', behindText = '0'] = counts.split(/\s+/);
+  const ahead = Number(aheadText);
+  const behind = Number(behindText);
+
+  if (behind > 0) {
+    const state = ahead > 0 ? `diverged (${ahead} ahead, ${behind} behind)` : `behind by ${behind}`;
+    throw new Error(
+      `Refusing backup ${phase}: local ${branch} is ${state} relative to ${remoteRef}. ` +
+      `Run "git pull --rebase origin ${branch}" and resolve conflicts before backup.`
+    );
+  }
+}
+
 
 try {
   // Ensure we are in a git repo
@@ -43,6 +94,9 @@ try {
   if (!quiet) {
     console.log(`[backup] backing up branch: ${branch}`);
   }
+
+  assertNoGitOperationInProgress();
+  assertRemoteCanFastForward(branch, 'before commit');
 
   // Stage all changes (including new/deleted files)
   safeRun('git add -A');
@@ -147,8 +201,10 @@ try {
   run(`git commit -m ${JSON.stringify(title)} ${body ? '-m ' + JSON.stringify(body) : ''}`);
   console.log(`[backup] Committed changes: ${title}`);
 
-  // Push to master branch
-  run(`git push origin ${branch}`);
+  assertRemoteCanFastForward(branch, 'before push');
+
+  // Push to the current branch
+  run(`git push origin ${shellQuote(branch)}`);
   console.log(`[backup] ✅ Pushed to origin/${branch} (safe backup)`);
 
   // Auto-publish GitHub wiki when wiki/ files changed
@@ -168,4 +224,3 @@ try {
   console.error('[backup] Failed:', err?.message || err);
   process.exit(1);
 }
-
