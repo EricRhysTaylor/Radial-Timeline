@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds, TFile, normalizePath } from 'obsidian';
+import { App, Notice, Setting as Settings, Modal, setIcon, setTooltip, ButtonComponent, getIconIds, TFile, normalizePath } from 'obsidian';
 import { t } from '../../i18n';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
@@ -77,16 +77,18 @@ import {
 } from '../../storyBeats/workspaceState';
 import { parseDescriptionParts, splitOverviewParagraphs, KNOWN_LABELS } from '../../utils/descriptionParser';
 import { resolveLogsRoot } from '../../ai/log';
-
-type FieldEntryValue = string | string[];
-type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
-type BeatRow = BeatDefinition;
-type BeatNoteCustomContentSummary = {
-    notesWithTemplateCustomContent: number;
-    notesWithExtraCustomContent: number;
-    templateCustomKeys: string[];
-    extraCustomKeys: string[];
-};
+import type { FieldEntry, FieldEntryValue, BeatRow, BeatNoteCustomContentSummary } from './beats/types';
+import { BEAT_SYSTEM_COPY } from './beats/beatSystemCopy';
+import { dirtyState, type InnerStage } from './beats/dirtyState';
+import {
+    extractKeysInOrder,
+    safeParseYaml,
+    mergeOrders,
+    buildYamlFromEntries,
+    buildYamlWithRequired,
+    entriesFromTemplate,
+} from './beats/yamlHelpers';
+import { SystemEditModal } from '../../modals/SystemEditModal';
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
 
@@ -111,204 +113,11 @@ const SCENE_AI_SCHEMA_KEYS = [
     'currentSceneAnalysis',
     'nextSceneAnalysis'
 ] as const;
-const BEAT_SYSTEM_COPY: Record<string, {
-    title: string;
-    description: string;
-    examples?: string;
-    sourceLink?: { label: string; href: string };
-}> = {
-    'Save The Cat': {
-        title: 'Save the Cat',
-        description: 'Emphasizes clear emotional beats and audience engagement.\n\nUse it when you want clean turning points, visible reversals, and a strong sense of audience-facing momentum from setup through finale.\n\nBest for: commercial fiction, screenplays, high-concept genre\nMomentum profile: setup -> midpoint turn -> closing payoff',
-        examples: 'Examples: The Hunger Games, The Martian, The Fault in Our Stars.',
-        sourceLink: {
-            label: "Jessica Brody's Save the Cat books",
-            href: 'https://www.jessicabrody.com/save-the-cat-for-novels/'
-        }
-    },
-    'Hero\'s Journey': {
-        title: 'Hero\'s Journey',
-        description: 'Tracks departure, transformation, ordeal, and return.\n\nUse it when you want a mythic or identity-driven arc with visible inner and outer transformation.\n\nBest for: quest stories, speculative fiction, coming-of-age, transformational journeys\nMomentum profile: departure -> trials -> ordeal -> return with change',
-        examples: 'Examples: Star Wars, The Hobbit, A Wizard of Earthsea.',
-        sourceLink: {
-            label: "Joseph Campbell and the Hero's Journey",
-            href: 'https://www.jcf.org/learn/joseph-campbell-heros-journey'
-        }
-    },
-    'Classic Dramatic Structure': {
-        title: 'Classic Dramatic Structure',
-        description: 'Emphasizes scene pressure, turning points, pivotal choices, and consequential outcomes.\n\nUse it when you want to stress-test whether each scene creates movement through conflict and change.\n\nBest for: literary fiction, drama, tightly edited scene work, revision passes\nMomentum profile: setup → complication → pressure → pivotal choice → outcome',
-        examples: 'Examples: Pride and Prejudice, Hamlet, The Godfather.',
-    },
-    'Podcast Narrative Arc': {
-        title: 'Podcast Narrative Arc',
-        description: 'Shapes spoken storytelling around hook, setup, development, and payoff.\n\nUse it when you want strong listener retention and clean verbal progression.\n\nBest for: podcasts, audio essays, monologues, narrated nonfiction\nMomentum profile: hook -> framing -> development -> payoff',
-        examples: 'Examples: narrative podcast episodes, interview-led story episodes, documentary audio segments.',
-    },
-    'YouTube Explainer Arc': {
-        title: 'YouTube Explainer Arc',
-        description: 'Organizes teaching and explanation around curiosity, clarity, and progression.\n\nUse it when you want a viewer to understand something quickly while staying engaged.\n\nBest for: explainers, educational videos, commentary, tutorials\nMomentum profile: hook -> promise -> breakdown -> takeaway',
-        examples: 'Examples: educational explainers, commentary channels, tutorial-driven storytelling.',
-    },
-    'Documentary Narrative Arc': {
-        title: 'Documentary Narrative Arc',
-        description: 'Balances chronology, context, stakes, and consequence in retold events.\n\nUse it when you need to guide the audience through real events without losing momentum.\n\nBest for: history writing, documentary structure, nonfiction storytelling, timelines\nMomentum profile: context -> buildup -> pivot -> consequence',
-        examples: 'Examples: historical documentaries, narrative history chapters, event reconstructions.',
-    },
-    'Romance Tropes Ladder': {
-        title: 'Romance Tropes Ladder',
-        description: 'Tracks attraction, tension, vulnerability, rupture, and emotional payoff.\n\nUse it when the emotional relationship arc is the main engine of reader investment.\n\nBest for: romance, romantic subplots, character chemistry passes\nMomentum profile: spark -> tension -> vulnerability -> rupture -> union/decision',
-        examples: 'Examples: enemies-to-lovers, forced proximity, slow burn.',
-    },
-    'Thriller Escalation Ladder': {
-        title: 'Thriller Escalation Ladder',
-        description: 'Builds pressure through danger, revelation, reversals, and narrowing options.\n\nUse it when you want every phase to tighten risk and reduce the protagonist\'s safe choices.\n\nBest for: thrillers, suspense, chase plots, survival narratives\nMomentum profile: threat -> pursuit -> reversal -> compression -> confrontation',
-        examples: 'Examples: The Fugitive, Gone Girl, The Silence of the Lambs.',
-    },
-    'Custom': {
-        title: 'Custom system',
-        description: 'Design your own structural framework for this manuscript. Define the beats that matter to your story — whether they follow a classic arc or track genre-specific progression.\n\nCustom systems can represent tropes, thematic turns, investigative milestones, historical phases, or any structural rhythm you want to measure.',
-        examples: 'Examples: custom novel workflows, bespoke revision systems, classroom structures.',
-    },
-    'Blank custom': {
-        title: 'Blank custom',
-        description: 'Starts empty so you can design your own structure from scratch.\n\nUse it when none of the library lenses match your process or you want a project-specific model.\n\nBest for: custom beat design, experimentation, hybrid structures, teaching your own method\nMomentum profile: author-defined',
-        examples: 'Start with at least 3 beats. Name each beat by function, not theme. Use a clear progression such as opening -> pressure -> shift. Add or reorder beats only when each one serves a distinct structural purpose.',
-    }
-};
-
-/** Edit custom system details modal (name + description). */
-class SystemEditModal extends Modal {
-    private initialName: string;
-    private initialDesc: string;
-    private onSubmit: (name: string, description: string) => Promise<boolean>;
-
-    constructor(app: App, initialName: string, initialDesc: string, onSubmit: (name: string, description: string) => Promise<boolean>) {
-        super(app);
-        this.initialName = initialName;
-        this.initialDesc = initialDesc;
-        this.onSubmit = onSubmit;
-    }
-
-    onOpen() {
-        const { contentEl, modalEl } = this;
-        contentEl.empty();
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '480px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: t('settings.beats.systemEditModal.badge') });
-        header.createDiv({ cls: 'ert-modal-title', text: t('settings.beats.systemEditModal.title') });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: t('settings.beats.systemEditModal.subtitle') });
-
-        const formStack = contentEl.createDiv({ cls: ERT_CLASSES.STACK });
-
-        // Name input
-        const nameLabel = formStack.createDiv({ cls: 'ert-field-label', text: t('settings.beats.systemEditModal.nameLabel') });
-        nameLabel.setAttribute('id', 'sys-name-label');
-        const nameInput = formStack.createEl('input', {
-            type: 'text',
-            value: this.initialName,
-            cls: 'ert-input ert-input--full'
-        });
-        nameInput.setAttr('placeholder', t('settings.beats.systemEditModal.namePlaceholder'));
-        nameInput.setAttr('aria-labelledby', 'sys-name-label');
-
-        // Description textarea
-        const descLabel = formStack.createDiv({ cls: 'ert-field-label', text: t('settings.beats.systemEditModal.descLabel') });
-        descLabel.setAttribute('id', 'sys-desc-label');
-        const descInput = formStack.createEl('textarea', {
-            cls: 'ert-input ert-input--full ert-textarea'
-        });
-        descInput.value = this.initialDesc;
-        descInput.setAttr('placeholder', t('settings.beats.systemEditModal.descPlaceholder'));
-        descInput.setAttr('rows', '4');
-        descInput.setAttr('aria-labelledby', 'sys-desc-label');
-
-        scheduleFocusAfterPaint(nameInput, { selectText: true });
-
-        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        const save = async () => {
-            const name = normalizeBeatSetNameInput(nameInput.value, '');
-            if (!name || !hasBeatReadableText(name)) {
-                new Notice(t('settings.beats.systemEditModal.nameRequiredNotice'));
-                return;
-            }
-            const shouldClose = await this.onSubmit(name, descInput.value.trim());
-            if (shouldClose) this.close();
-        };
-
-        new ButtonComponent(buttonRow).setButtonText(t('settings.beats.systemEditModal.saveText')).setCta().onClick(() => { void save(); });
-        new ButtonComponent(buttonRow).setButtonText(t('settings.beats.systemEditModal.cancelText')).onClick(() => this.close());
-
-        nameInput.addEventListener('keydown', (evt: KeyboardEvent) => { // SAFE: direct addEventListener; Modal lifecycle manages cleanup
-            if (evt.key === 'Enter') { evt.preventDefault(); void save(); }
-        });
-    }
-
-    onClose() { this.contentEl.empty(); }
-}
 
 // ── Module-level UI state (survives re-renders within the same plugin session) ──
 
-/** Inner tab selection. Shared by loaded system tabs and the library surface. */
-type InnerStage = 'preview' | 'design' | 'fields' | 'library';
 let _currentInnerStage: InnerStage = 'preview';
 const isBeatLibraryMode = (): boolean => _currentInnerStage === 'library';
-
-/**
- * Reactive dirty-state store for loaded beat sets (starter or saved).
- *
- * Why reactive? The beats UI has multiple independent render zones (Design
- * header and library panel) that must stay in sync when the dirty flag changes.
- * A centralized notify() eliminates the fragile callback-threading pattern
- * where each zone held a closure over stale DOM elements.
- *
- * Each render zone subscribes when it mounts and unsubscribes when its
- * container is emptied, so there are never stale listeners.
- */
-const dirtyState = {
-    baselineId: '' as string,
-    baselineHash: '' as string,
-    _listeners: new Set<() => void>(),
-
-    /** Capture the current snapshot as the "clean" baseline for a loaded set. */
-    setBaseline(id: string, hash: string) {
-        this.baselineId = id;
-        this.baselineHash = hash;
-        this.notify();
-    },
-
-    /** Clear baseline (switching to a fresh/unsaved system). */
-    clearBaseline() {
-        this.baselineId = '';
-        this.baselineHash = '';
-        this.notify();
-    },
-
-    /** True when a loaded set is active and its current state differs from baseline. */
-    isDirty(currentId: string, currentHash: string): boolean {
-        if (!this.baselineId) return false;
-        if (currentId !== this.baselineId) return false;
-        return currentHash !== this.baselineHash;
-    },
-
-    /** Register a listener; returns an unsubscribe function. */
-    subscribe(fn: () => void): () => void {
-        this._listeners.add(fn);
-        return () => { this._listeners.delete(fn); };
-    },
-
-    /** Notify all subscribers that dirty state may have changed. */
-    notify() {
-        this._listeners.forEach((fn: () => void) => fn());
-    }
-};
 
 /**
  * Session-local registry of custom set ids that have been explicitly saved.
@@ -6057,102 +5866,3 @@ export function renderBeatPropertiesSection(params: {
     }
 }
 
-function extractKeysInOrder(template: string): string[] {
-    const keys: string[] = [];
-    const lines = (template || '').split('\n');
-    for (const line of lines) {
-        const match = line.match(/^([A-Za-z0-9 _'-]+):/);
-        if (match) {
-            const key = match[1].trim();
-            if (key && !keys.includes(key)) keys.push(key);
-        }
-    }
-    return keys;
-}
-
-function sanitizeTemplatePlaceholdersForYamlParse(template: string): string {
-    return (template || '')
-        .split('\n')
-        .filter(line => !/^\s*{{[^{}\n]+}}\s*$/.test(line))
-        .map(line => line.replace(/{{[^{}\n]+}}/g, match => JSON.stringify(match)))
-        .join('\n');
-}
-
-function normalizeParsedTemplateScalar(value: unknown): string {
-    return String(value).replace(/^['"]({{[^{}\n]+}})['"]$/, '$1');
-}
-
-function safeParseYaml(template: string): Record<string, FieldEntryValue> {
-    try {
-        const parsed = parseYaml(sanitizeTemplatePlaceholdersForYamlParse(template));
-        if (!parsed || typeof parsed !== 'object') return {};
-        const entries: Record<string, FieldEntryValue> = {};
-        Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
-            if (Array.isArray(value)) {
-                entries[key] = value.map((v) => normalizeParsedTemplateScalar(v));
-            } else if (value === undefined || value === null) {
-                entries[key] = '';
-            } else {
-                entries[key] = normalizeParsedTemplateScalar(value);
-            }
-        });
-        return entries;
-    } catch {
-        return {};
-    }
-}
-
-function mergeOrders(primary: string[], secondary: string[]): string[] {
-    const seen = new Set<string>();
-    const result: string[] = [];
-    [...primary, ...secondary].forEach(key => {
-        if (!key || seen.has(key)) return;
-        seen.add(key);
-        result.push(key);
-    });
-    return result;
-}
-
-function buildYamlFromEntries(entries: FieldEntry[], commentMap?: Record<string, string>): string {
-    const lines: string[] = [];
-    entries.forEach(entry => {
-        const comment = commentMap?.[entry.key];
-        if (Array.isArray(entry.value)) {
-            lines.push(comment ? `${entry.key}: # ${comment}` : `${entry.key}:`);
-            entry.value.forEach((v: string) => {
-                lines.push(`  - ${v}`);
-            });
-        } else {
-            const valueStr = entry.value ?? '';
-            lines.push(comment ? `${entry.key}: ${valueStr} # ${comment}` : `${entry.key}: ${valueStr}`);
-        }
-    });
-    return lines.join('\n');
-}
-
-function buildYamlWithRequired(
-    requiredOrder: string[],
-    requiredValues: Record<string, FieldEntryValue>,
-    optionalEntries: FieldEntry[],
-    commentMap?: Record<string, string>
-): string {
-    const combined: FieldEntry[] = [
-        ...requiredOrder.map(key => ({
-            key,
-            value: requiredValues[key] ?? '',
-            required: true
-        })),
-        ...optionalEntries
-    ];
-    return buildYamlFromEntries(combined, commentMap);
-}
-
-function entriesFromTemplate(template: string, requiredOrder: string[]): FieldEntry[] {
-    const order = mergeOrders(extractKeysInOrder(template), requiredOrder);
-    const obj = safeParseYaml(template);
-    return order.map(key => ({
-        key,
-        value: obj[key] ?? '',
-        required: requiredOrder.includes(key)
-    }));
-}
