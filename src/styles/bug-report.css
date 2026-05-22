@@ -1,0 +1,156 @@
+/* Bug Report Modal — compact, draggable */
+
+.ert-bug-report-shell {
+    /* Override default modal centering so transform can move it freely. */
+    transition: none;
+}
+
+.ert-bug-report-shell.ert-bug-report-shell--dragging {
+    user-select: none;
+}
+
+.ert-bug-report-header {
+    cursor: grab;
+    padding-right: 32px;
+    position: relative;
+}
+
+.ert-bug-report-shell--dragging .ert-bug-report-header {
+    cursor: grabbing;
+}
+
+.ert-bug-report-grip {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-faint);
+    pointer-events: none;
+}
+
+.ert-bug-report-header .ert-modal-title,
+.ert-bug-report-header .ert-modal-subtitle {
+    margin-left: 22px;
+}
+
+.ert-bug-report-body {
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.ert-bug-report-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+.ert-bug-report-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: var(--font-text);
+    font-size: 13px;
+    background: var(--background-modifier-form-field);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    line-height: 1.4;
+}
+
+.ert-bug-report-textarea:focus {
+    border-color: var(--interactive-accent);
+    outline: none;
+}
+
+.ert-bug-report-textarea--mono {
+    font-family: var(--font-monospace);
+    font-size: 12px;
+}
+
+.ert-bug-report-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.ert-bug-report-btn-icon {
+    display: inline-flex;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.ert-bug-report-file {
+    display: none;
+}
+
+.ert-bug-report-preview {
+    border: 1px dashed var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 8px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.ert-bug-report-preview--empty {
+    color: var(--text-faint);
+    font-size: 12px;
+    text-align: center;
+}
+
+.ert-bug-report-preview-img {
+    max-height: 140px;
+    max-width: 100%;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.ert-bug-report-preview-clear {
+    background: transparent;
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.ert-bug-report-preview-clear:hover {
+    color: var(--text-normal);
+    border-color: var(--text-muted);
+}
+
+.ert-bug-report-status {
+    min-height: 18px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.ert-bug-report-status--success {
+    color: var(--color-green);
+}
+
+.ert-bug-report-status--error {
+    color: var(--color-red);
+}
+
+.ert-bug-report-status--info {
+    color: var(--text-muted);
+}
+
+.ert-bug-report-actions {
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ert-bug-report-secondary {
+    margin-right: auto;
+}

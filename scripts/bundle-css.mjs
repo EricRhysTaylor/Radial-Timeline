@@ -55,6 +55,7 @@ const files = [
     'chronologue-alt.css',
     'chronologue-runtime.css',
     'modal.css',
+    'bug-report.css',
     'briefing.css',
     'rt-ui.css',
     // Feature CSS extracted from rt-ui.css — order matches original

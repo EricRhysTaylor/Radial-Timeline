@@ -14,6 +14,7 @@ import {
     normalizePath
 } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { BugReportModal } from '../modals/BugReportModal';
 import { t } from '../i18n';
 import {
     INQUIRY_MAX_OUTPUT_TOKENS,
@@ -666,6 +667,9 @@ export class InquiryView extends ItemView {
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
+        this.addAction('bug', 'Report a bug', () => {
+            new BugReportModal(this.app, this.plugin, 'inquiry').open();
+        });
         // Slice 2a controller — must be constructed before any mode hydration
         // call. The settings closures capture `this.plugin` so the controller
         // never imports RadialTimelinePlugin directly.

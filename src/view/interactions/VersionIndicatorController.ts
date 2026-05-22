@@ -7,38 +7,11 @@
 import type { App } from 'obsidian';
 import { getVersionCheckService } from '../../services/VersionCheckService';
 import { CORE_ALERTS_SECTION_KEY, type RadialTimelineSettingsTabId } from '../../settings/settingsAnchors';
-
-/** GitHub issues URL for bug reports with pre-filled template */
-const BUG_REPORT_TEMPLATE = `### Bug Description
-<!-- Describe the bug clearly and concisely -->
-
-
-### Steps to Reproduce
-1. 
-2. 
-3. 
-
-### Expected Behavior
-<!-- What should have happened? -->
-
-
-### Actual Behavior
-<!-- What actually happened? -->
-
-
-### Environment
-- Obsidian version: 
-- Plugin version: 
-- Operating system: 
-
-### Additional Context
-<!-- Screenshots, error messages, or other relevant info -->
-`;
-
-const BUG_REPORT_URL = `https://github.com/EricRhysTaylor/Radial-Timeline/issues/new?labels=bug&title=${encodeURIComponent('[Bug]: ')}&body=${encodeURIComponent(BUG_REPORT_TEMPLATE)}`;
+import { BugReportModal } from '../../modals/BugReportModal';
+import type RadialTimelinePlugin from '../../main';
 
 interface VersionIndicatorView {
-    plugin: {
+    plugin: RadialTimelinePlugin & {
         app: App;
         settingsTab?: {
             setActiveTab: (tab: RadialTimelineSettingsTabId) => void;
@@ -96,12 +69,12 @@ export function setupVersionIndicatorController(view: VersionIndicatorView, svg:
             const versionService = getVersionCheckService();
             if (versionService.isUpdateAvailable()) {
                 versionService.openUpdateSettings(view.plugin.app);
-            } else {
-                window.open(BUG_REPORT_URL, '_blank');
+                return;
             }
         } catch {
-            window.open(BUG_REPORT_URL, '_blank');
+            // Fall through to bug report.
         }
+        new BugReportModal(view.plugin.app, view.plugin, 'rt').open();
     };
 
     // Prefer the unified hit area; fall back to the whole indicator group
