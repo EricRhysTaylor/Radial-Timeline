@@ -188,8 +188,10 @@ describe('InquiryView payload accounting', () => {
     it('turns clear recent sessions into a full Inquiry reset and mutes the button once empty', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
-        expect(viewSource.includes('const canClear = this.sessionStore.getSessionCount() > 0;')).toBe(true);
-        expect(viewSource.includes("this.briefingClearButton.classList.toggle('is-inert', !canClear);")).toBe(true);
+        // Session count feeds the pure-function footer-state computer, which
+        // emits clearInert. The view applies clearInert to the clear button.
+        expect(viewSource.includes('sessionCount: this.sessionStore.getSessionCount(),')).toBe(true);
+        expect(viewSource.includes("this.briefingClearButton.classList.toggle('is-inert', state.clearInert);")).toBe(true);
         expect(viewSource.includes('this.resetInquiryToFreshBaseState({ clearPersistedTargets: true });')).toBe(true);
         expect(viewSource.includes("this.refreshUI({ reason: 'recent sessions cleared' });")).toBe(true);
         // Slice 2b: the atomic clear payload moved into

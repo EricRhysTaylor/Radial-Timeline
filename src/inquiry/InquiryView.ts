@@ -85,6 +85,7 @@ import {
     resolveInquirySessionStatusFromResult,
 } from './utils/inquiryResultStatus';
 import { InquiryBriefingPurgeScanner } from './briefing/InquiryBriefingPurgeScanner';
+import { computeBriefingFooterButtonState } from './briefing/briefingFooterButtonState';
 import { InquiryActiveSessionState } from './session/inquiryActiveSessionState';
 import { InquirySelectionState } from './session/inquirySelectionState';
 import { InquirySettingsAccessor } from './settings/inquirySettingsAccessor';
@@ -1761,21 +1762,24 @@ export class InquiryView extends ItemView {
 
 
     private updateBriefingFooterActionStates(): void {
-        const lockout = this.isInquiryGuidanceLockout();
-        const running = this.state.isRunning;
-        const canClear = this.sessionStore.getSessionCount() > 0;
-        const canPurge = this.briefingPurgeScanner.isAvailable();
+        const state = computeBriefingFooterButtonState({
+            lockout: this.isInquiryGuidanceLockout(),
+            running: this.state.isRunning,
+            sessionCount: this.sessionStore.getSessionCount(),
+            hasCorpusOverrides: this.hasCorpusOverrides(),
+            purgeAvailable: this.briefingPurgeScanner.isAvailable(),
+        });
 
         if (this.briefingClearButton) {
-            this.briefingClearButton.disabled = lockout || running || !canClear;
-            this.briefingClearButton.classList.toggle('is-inert', !canClear);
+            this.briefingClearButton.disabled = state.clearDisabled;
+            this.briefingClearButton.classList.toggle('is-inert', state.clearInert);
         }
         if (this.briefingResetButton) {
-            this.briefingResetButton.disabled = lockout || running || !this.hasCorpusOverrides();
+            this.briefingResetButton.disabled = state.resetDisabled;
         }
         if (this.briefingPurgeButton) {
-            this.briefingPurgeButton.disabled = lockout || running || !canPurge;
-            this.briefingPurgeButton.classList.toggle('is-inert', !canPurge);
+            this.briefingPurgeButton.disabled = state.purgeDisabled;
+            this.briefingPurgeButton.classList.toggle('is-inert', state.purgeInert);
         }
     }
 
