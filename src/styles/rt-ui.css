@@ -3055,7 +3055,10 @@
   font-family: var(--font-monospace, ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  /* Prefer showing the canonical version prefix (e.g. "Gemini 3.5") and
+     clipping trailing variant text (e.g. "flash") over surfacing an
+     ellipsis that consumes column width while signaling nothing useful. */
+  text-overflow: clip;
   padding-right: var(--ert-select-pad-end);
 }
 
