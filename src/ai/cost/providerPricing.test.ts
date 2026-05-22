@@ -122,6 +122,7 @@ describe('providerPricing', () => {
         const gemini25Standard = resolveProviderModelPricing('google', 'gemini-2.5-pro', 200_000);
         const gemini25Long = resolveProviderModelPricing('google', 'gemini-2.5-pro', 200_001);
         const gemini31Long = resolveProviderModelPricing('google', 'gemini-3.1-pro-preview', 200_001);
+        const gemini35Flash = resolveProviderModelPricing('google', 'gemini-3.5-flash', 200_001);
 
         expect(gemini25Standard.inputPer1M).toBe(1.25);
         expect(gemini25Standard.outputPer1M).toBe(10);
@@ -132,6 +133,9 @@ describe('providerPricing', () => {
         expect(gemini31Long.inputPer1M).toBe(4);
         expect(gemini31Long.outputPer1M).toBe(18);
         expect(gemini31Long.cacheReadPer1M).toBe(0.4);
+        expect(gemini35Flash.inputPer1M).toBe(0.5);
+        expect(gemini35Flash.outputPer1M).toBe(3);
+        expect(gemini35Flash.cacheReadPer1M).toBe(0.05);
     });
 
     it('does not assume newer Anthropic versions are more expensive', () => {

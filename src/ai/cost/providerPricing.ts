@@ -166,6 +166,11 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
                 cacheReadPer1M: 0.4
             }
         },
+        'gemini-3.5-flash': {
+            inputPer1M: 0.5,
+            outputPer1M: 3.0,
+            cacheReadPer1M: 0.05
+        },
         'gemini-pro-latest': {
             inputPer1M: 2.0,
             outputPer1M: 12.0,

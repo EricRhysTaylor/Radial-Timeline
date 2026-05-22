@@ -305,6 +305,21 @@ export const BUILTIN_MODELS: ModelInfo[] = [
     },
     {
         provider: 'google',
+        id: 'gemini-3.5-flash',
+        alias: 'gemini-3.5-flash',
+        label: 'Gemini 3.5 Flash',
+        line: 'gemini-flash',
+        tier: 'FAST',
+        capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap', 'streaming'],
+        personality: { reasoning: 8, writing: 8, determinism: 8 },
+        contextWindow: 1048576,
+        maxOutput: 65536,
+        releasedAt: '2026-05-01',
+        status: 'stable',
+        constraints: { cacheVsCitationsExclusive: true }
+    },
+    {
+        provider: 'google',
         id: 'gemini-pro-latest',
         alias: 'gemini-pro-latest',
         label: 'Gemini Pro Latest',

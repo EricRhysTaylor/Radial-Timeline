@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-05-22T14:52:44.965Z",
+  "checkedAt": "2026-05-22T15:14:02.976Z",
   "mode": "report",
   "snapshotBefore": {
-    "generatedAt": "2026-05-21T14:05:05.771Z"
+    "generatedAt": "2026-05-22T14:52:44.956Z"
   },
   "snapshotAfter": {
     "generatedAt": "2026-05-22T14:52:44.956Z"
@@ -17,21 +17,11 @@
       "removed": []
     },
     "google": {
-      "added": [
-        "antigravity-preview-05-2026",
-        "gemini-3.5-flash"
-      ],
+      "added": [],
       "removed": []
     }
   },
-  "aliasChanges": [
-    {
-      "provider": "gemini",
-      "alias": "gemini-flash-latest",
-      "from": "gemini-3-flash-preview",
-      "to": "gemini-3.5-flash"
-    }
-  ],
+  "aliasChanges": [],
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [],

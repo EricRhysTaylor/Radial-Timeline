@@ -21,7 +21,7 @@ const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
     // Google's server-side meta-aliases resolve to whatever preview is currently promoted;
     // these are the static fallbacks used before the runtime resolver sees a real API response.
     'gemini-pro-latest': 'Gemini 3.1 Pro Preview',
-    'gemini-flash-latest': 'Gemini 3 Flash Preview',
+    'gemini-flash-latest': 'Gemini 3.5 Flash',
     'gemini-flash-lite-latest': 'Gemini 3.1 Flash Lite Preview',
     
     // OpenAI

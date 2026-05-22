@@ -10,7 +10,7 @@ describe('release channel curation', () => {
 
     it('hides google latest compatibility aliases from the normal picker', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'google').map(model => model.alias);
-        expect(picker).toEqual(['gemini-2.5-pro', 'gemini-3.1-pro-preview']);
+        expect(picker).toEqual(['gemini-3.5-flash', 'gemini-2.5-pro', 'gemini-3.1-pro-preview']);
         expect(picker.includes('gemini-pro-latest')).toBe(false);
     });
 

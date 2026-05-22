@@ -92,10 +92,14 @@ describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {
 });
 
 describe('BUILTIN_MODELS Google Gemini metadata', () => {
-    it('marks Gemini 2.5 Pro as the stable Google lane and 3.1 Pro Preview as preview', () => {
+    it('marks Gemini 2.5 Pro as the stable Google lane, 3.1 Pro Preview as preview, and 3.5 Flash as fast', () => {
         expect(byAlias('gemini-2.5-pro').status).toBe('stable');
         expect(byAlias('gemini-3.1-pro-preview').status).toBe('preview');
+        expect(byAlias('gemini-3.5-flash').status).toBe('stable');
+        expect(byAlias('gemini-3.5-flash').tier).toBe('FAST');
         expect(byAlias('gemini-2.5-pro').contextWindow).toBe(1048576);
         expect(byAlias('gemini-2.5-pro').maxOutput).toBe(65536);
+        expect(byAlias('gemini-3.5-flash').contextWindow).toBe(1048576);
+        expect(byAlias('gemini-3.5-flash').maxOutput).toBe(65536);
     });
 });
