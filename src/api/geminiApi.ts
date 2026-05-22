@@ -5,7 +5,7 @@
  */
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
-import { modelSupportsDisableThinking, modelSupportsRequestTemperature, modelSupportsRequestTopP } from '../ai/registry/modelRequestProfiles';
+import { modelSupportsRequestTemperature, modelSupportsRequestTopP } from '../ai/registry/modelRequestProfiles';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import type { SourceCitation, TokenCountResult } from '../ai/types';
 
@@ -193,7 +193,6 @@ export async function callGeminiApi(
   maxTokens: number | null = 4000,
   temperature?: number,
   jsonSchema?: Record<string, unknown>,  // Optional JSON schema for structured output
-  disableThinking: boolean = false,  // Disable extended thinking mode (for 2.5-pro models)
   cachedContentName?: string, // Optional: name of cached content resource (e.g. "cachedContents/...")
   topP?: number,
   citationsEnabled?: boolean,
@@ -264,10 +263,6 @@ export async function callGeminiApi(
   }
   if (typeof topP === 'number' && modelSupportsRequestTopP('google', cleanModelId)) {
     body.generationConfig.topP = topP;
-  }
-  // Disable thinking mode when explicitly requested (2.5+ thinking models).
-  if (disableThinking && modelSupportsDisableThinking('google', cleanModelId)) {
-    body.generationConfig.thinkingConfig = { mode: 'NONE' };
   }
   // Enable JSON mode if schema provided
   if (jsonSchema) {

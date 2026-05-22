@@ -118,7 +118,6 @@ describe('gemini grounding citation extraction', () => {
             1024,
             0.2,
             undefined,
-            false,
             undefined,
             undefined,
             true,
@@ -231,7 +230,6 @@ describe('gemini grounding citation extraction', () => {
                 },
                 required: ['ok']
             },
-            false,
             undefined,
             0.8,
             false,

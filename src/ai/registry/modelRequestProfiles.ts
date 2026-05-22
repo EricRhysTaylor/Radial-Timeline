@@ -8,7 +8,6 @@ export interface ModelRequestProfile {
     supportsCitations: boolean;
     supportsEvidenceDocuments: boolean;
     supportsThinkingBudget: boolean;
-    supportsDisableThinking: boolean;
     supportsReasoningEffort?: boolean;
     preferredOpenAiEndpoint?: 'responses' | 'chat_completions';
 }
@@ -22,7 +21,6 @@ const PROVIDER_DEFAULTS: Record<Exclude<AIProviderId, 'none'>, ModelRequestProfi
         supportsCitations: false,
         supportsEvidenceDocuments: false,
         supportsThinkingBudget: false,
-        supportsDisableThinking: false,
         supportsReasoningEffort: false,
         preferredOpenAiEndpoint: 'responses'
     },
@@ -34,7 +32,6 @@ const PROVIDER_DEFAULTS: Record<Exclude<AIProviderId, 'none'>, ModelRequestProfi
         supportsCitations: true,
         supportsEvidenceDocuments: true,
         supportsThinkingBudget: true,
-        supportsDisableThinking: false,
         supportsReasoningEffort: false
     },
     google: {
@@ -45,7 +42,6 @@ const PROVIDER_DEFAULTS: Record<Exclude<AIProviderId, 'none'>, ModelRequestProfi
         supportsCitations: true,
         supportsEvidenceDocuments: false,
         supportsThinkingBudget: false,
-        supportsDisableThinking: true,
         supportsReasoningEffort: false
     },
     ollama: {
@@ -56,7 +52,6 @@ const PROVIDER_DEFAULTS: Record<Exclude<AIProviderId, 'none'>, ModelRequestProfi
         supportsCitations: false,
         supportsEvidenceDocuments: false,
         supportsThinkingBudget: false,
-        supportsDisableThinking: false,
         supportsReasoningEffort: false
     }
 };
@@ -89,7 +84,7 @@ export function getModelRequestProfile(
         ? REQUEST_PROFILE_OVERRIDES[provider]?.[normalized]
         : undefined;
     const familyOverride: Partial<ModelRequestProfile> = provider === 'google' && isGoogleManagedSamplingModel(normalized)
-        ? { supportsTemperature: false, supportsTopP: false, supportsDisableThinking: true }
+        ? { supportsTemperature: false, supportsTopP: false }
         : {};
     return {
         ...base,
@@ -117,11 +112,4 @@ export function modelSupportsThinkingBudget(
     modelId?: string
 ): boolean {
     return getModelRequestProfile(provider, modelId).supportsThinkingBudget === true;
-}
-
-export function modelSupportsDisableThinking(
-    provider: Exclude<AIProviderId, 'none'>,
-    modelId?: string
-): boolean {
-    return getModelRequestProfile(provider, modelId).supportsDisableThinking === true;
 }

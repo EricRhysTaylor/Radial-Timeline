@@ -1698,7 +1698,29 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceChars: evidence.length
         });
         const maxChars = Math.max(1200, maxChunkTokens * 4);
-        const sections = evidence.split(/\n\n(?=##\s)/g).filter(Boolean);
+
+        // Cascade through splitting strategies until we get multiple sections,
+        // then fall back to character-bounded hard-chop. The chunker must
+        // produce >= 2 chunks when the multi-pass fallback calls it — even
+        // if the evidence has no `## `-heading structure or paragraph breaks
+        // for it to lean on.
+        let sections: string[] = [evidence];
+        for (const splitter of [/\n\n(?=##\s)/g, /\n{2,}/g]) {
+            if (sections.length > 1) break;
+            const candidate = evidence.split(splitter).filter(Boolean);
+            if (candidate.length > 1) sections = candidate;
+        }
+        if (sections.length <= 1) {
+            // Last resort: hard-chop by character count so multi-pass can
+            // proceed when the evidence is one giant unbroken blob. The
+            // resulting chunks are uglier than heading/paragraph splits but
+            // ship the run instead of failing preflight.
+            const sliceSize = Math.max(1200, Math.floor(maxChars * 0.9));
+            sections = [];
+            for (let i = 0; i < evidence.length; i += sliceSize) {
+                sections.push(evidence.slice(i, i + sliceSize));
+            }
+        }
         if (!sections.length) return null;
 
         const chunks: string[] = [];

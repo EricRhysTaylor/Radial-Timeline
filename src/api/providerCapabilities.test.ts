@@ -62,7 +62,6 @@ describe('sanitizeDispatchParams', () => {
             expect(typeof profile.supportsCitations, model.id).toBe('boolean');
             expect(typeof profile.supportsEvidenceDocuments, model.id).toBe('boolean');
             expect(typeof profile.supportsThinkingBudget, model.id).toBe('boolean');
-            expect(typeof profile.supportsDisableThinking, model.id).toBe('boolean');
         }
     });
 
@@ -71,7 +70,6 @@ describe('sanitizeDispatchParams', () => {
 
         expect(profile.supportsTemperature).toBe(false);
         expect(profile.supportsTopP).toBe(false);
-        expect(profile.supportsDisableThinking).toBe(true);
     });
 
     it('strips Gemini managed-sampling controls using the shared request profile', () => {
@@ -80,13 +78,11 @@ describe('sanitizeDispatchParams', () => {
             userPrompt: 'Return JSON.',
             maxOutputTokens: 2048,
             temperature: 0.2,
-            topP: 0.9,
-            disableThinking: true
+            topP: 0.9
         });
 
         expect(result.params.temperature).toBeUndefined();
         expect(result.params.topP).toBeUndefined();
-        expect(result.params.disableThinking).toBe(true);
         expect(result.notes).toContain('Stripped temperature for google/gemini-2.5-pro: model does not support temperature');
         expect(result.notes).toContain('Stripped topP for google/gemini-2.5-pro: model does not support topP');
     });

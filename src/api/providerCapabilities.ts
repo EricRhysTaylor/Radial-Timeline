@@ -1,7 +1,6 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import type { OpenAiResponseFormat } from './openaiApi';
 import {
-    modelSupportsDisableThinking,
     modelSupportsRequestTemperature,
     modelSupportsRequestTopP,
     modelSupportsThinkingBudget
@@ -17,7 +16,6 @@ export interface ProviderCallArgs {
     top_p?: number;
     responseFormat?: OpenAiResponseFormat;
     jsonSchema?: Record<string, unknown>;
-    disableThinking?: boolean;
     thinkingBudgetTokens?: number;
     citationsEnabled?: boolean;
     evidenceDocuments?: { title: string; content: string }[];
@@ -28,7 +26,6 @@ type ProviderCapabilities = {
     supportsTopP: boolean;
     supportsResponseFormat: boolean;
     supportsJsonSchema: boolean;
-    supportsThinkingConfig: boolean;
     supportsExtendedThinking: boolean;
     supportsCitations: boolean;
     supportsCorpusReuse: boolean;
@@ -42,7 +39,6 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsTopP: true,
         supportsResponseFormat: true,
         supportsJsonSchema: false,
-        supportsThinkingConfig: false,
         supportsExtendedThinking: false,
         supportsCitations: false,
         supportsCorpusReuse: true,
@@ -54,7 +50,6 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsTopP: true,
         supportsResponseFormat: false,
         supportsJsonSchema: true,
-        supportsThinkingConfig: false,
         supportsExtendedThinking: true,
         supportsCitations: true,
         supportsCorpusReuse: true,
@@ -66,7 +61,6 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsTopP: true,
         supportsResponseFormat: false,
         supportsJsonSchema: true,
-        supportsThinkingConfig: true,
         supportsExtendedThinking: false,
         supportsCitations: false,
         supportsCorpusReuse: true,
@@ -78,7 +72,6 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsTopP: true,
         supportsResponseFormat: true,
         supportsJsonSchema: false,
-        supportsThinkingConfig: false,
         supportsExtendedThinking: false,
         supportsCitations: false,
         supportsCorpusReuse: false,
@@ -140,8 +133,6 @@ export function sanitizeProviderArgs(
         modelSupportsRequestTopP(provider, normalizedModelId);
     const thinkingBudgetAllowed = capabilities.supportsExtendedThinking &&
         modelSupportsThinkingBudget(provider, normalizedModelId);
-    const disableThinkingAllowed = capabilities.supportsThinkingConfig &&
-        modelSupportsDisableThinking(provider, normalizedModelId);
     const supportsCitationControl = capabilities.supportsCitations || provider === 'google';
 
     const sanitized: ProviderCallArgs = {
@@ -165,9 +156,6 @@ export function sanitizeProviderArgs(
     }
     if (capabilities.supportsJsonSchema && args.jsonSchema) {
         sanitized.jsonSchema = args.jsonSchema;
-    }
-    if (disableThinkingAllowed && args.disableThinking !== undefined) {
-        sanitized.disableThinking = args.disableThinking;
     }
     if (thinkingBudgetAllowed && typeof args.thinkingBudgetTokens === 'number') {
         sanitized.thinkingBudgetTokens = args.thinkingBudgetTokens;
@@ -201,7 +189,6 @@ export interface ProviderDispatchParams {
     citationsEnabled?: boolean;
     evidenceDocuments?: { title: string; content: string }[];
     bypassProviderReuse?: boolean;
-    disableThinking?: boolean;
 }
 
 export interface SanitizeDispatchResult {
@@ -268,15 +255,6 @@ export function sanitizeDispatchParams(
     )) {
         notes.push(`Stripped thinkingBudgetTokens for ${modelLabel}: unsupported by model/provider`);
         sanitized.thinkingBudgetTokens = undefined;
-    }
-
-    // --- disableThinking (Google thinkingConfig only) ---
-    if (sanitized.disableThinking !== undefined && (
-        !capabilities.supportsThinkingConfig
-        || !modelSupportsDisableThinking(provider, params.modelId)
-    )) {
-        notes.push(`Stripped disableThinking for ${modelLabel}: unsupported by model/provider`);
-        sanitized.disableThinking = undefined;
     }
 
     // --- citationsEnabled ---

@@ -1092,8 +1092,7 @@ export class AIClient {
                 thinkingBudgetTokens: sanitized.thinkingBudgetTokens,
                 citationsEnabled: sanitized.citationsEnabled,
                 bypassProviderReuse: sanitized.bypassProviderReuse,
-                evidenceDocuments: sanitized.evidenceDocuments,
-                disableThinking: sanitized.disableThinking
+                evidenceDocuments: sanitized.evidenceDocuments
             });
         } else {
             result = await provider.generateText({
@@ -1107,8 +1106,7 @@ export class AIClient {
                 thinkingBudgetTokens: sanitized.thinkingBudgetTokens,
                 citationsEnabled: sanitized.citationsEnabled,
                 bypassProviderReuse: sanitized.bypassProviderReuse,
-                evidenceDocuments: sanitized.evidenceDocuments,
-                disableThinking: sanitized.disableThinking
+                evidenceDocuments: sanitized.evidenceDocuments
             });
         }
 

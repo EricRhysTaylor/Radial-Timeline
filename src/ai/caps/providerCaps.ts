@@ -40,14 +40,20 @@ export const PROVIDER_CAPS: Record<Exclude<AIProviderId, 'none'>, ProviderCapsDe
         }
     },
     google: {
+        // Tier output caps rescaled 2026-05-22 because Gemini 2.5+/3.x have
+        // thinking enabled by default and thinking tokens count against
+        // maxOutputTokens. The prior table (8k/16k/32k/49k) starved
+        // tier-1 Inquiry — thinking burned most of the 8k cap and the
+        // visible JSON response was truncated. New caps leave room for
+        // ~4-6k of thinking PLUS the structured output across all tiers.
         providerMaxOutputTokens: 65536,
         defaultInputTokens: 1048576,
         defaultOutputTokens: 12000,
         tiers: {
-            1: { maxOutputTokens: 8192, requestPerMinute: 30, retryAttempts: 1, safeUtilization: 0.7 },
-            2: { maxOutputTokens: 16384, requestPerMinute: 60, retryAttempts: 2, safeUtilization: 0.8 },
-            3: { maxOutputTokens: 32768, requestPerMinute: 100, retryAttempts: 2, safeUtilization: 0.85 },
-            4: { maxOutputTokens: 49152, requestPerMinute: 160, retryAttempts: 3, safeUtilization: 0.9 }
+            1: { maxOutputTokens: 16384, requestPerMinute: 30, retryAttempts: 1, safeUtilization: 0.7 },
+            2: { maxOutputTokens: 24576, requestPerMinute: 60, retryAttempts: 2, safeUtilization: 0.8 },
+            3: { maxOutputTokens: 40960, requestPerMinute: 100, retryAttempts: 2, safeUtilization: 0.85 },
+            4: { maxOutputTokens: 57344, requestPerMinute: 160, retryAttempts: 3, safeUtilization: 0.9 }
         }
     },
     ollama: {

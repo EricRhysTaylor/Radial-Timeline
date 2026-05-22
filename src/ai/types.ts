@@ -271,8 +271,6 @@ export interface GenerateTextRequest {
     evidenceDocuments?: EvidenceDocument[];
     /** Skip provider-level prompt/context reuse when the adapter supports it. */
     bypassProviderReuse?: boolean;
-    /** Disable extended thinking for models that support it (Google thinkingConfig). */
-    disableThinking?: boolean;
 }
 
 export interface GenerateJsonRequest extends GenerateTextRequest {
