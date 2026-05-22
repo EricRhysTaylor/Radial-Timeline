@@ -1,5 +1,6 @@
-import { App, ButtonComponent, Modal, setIcon } from 'obsidian';
+import { App, ButtonComponent, setIcon } from 'obsidian';
 import { ERT_CLASSES } from '../ui/classes';
+import { ErtModal } from '../ui/ErtModal';
 
 export interface ErtConfirmOptions {
     title: string;
@@ -9,7 +10,7 @@ export interface ErtConfirmOptions {
     badge?: { text: string; icon?: string };
 }
 
-class ErtConfirmModal extends Modal {
+class ErtConfirmModal extends ErtModal {
     private resolved = false;
 
     constructor(
@@ -21,17 +22,10 @@ class ErtConfirmModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, modalEl } = this;
-        contentEl.empty();
+        this.contentEl.empty();
+        this.applyShell({ width: 'min(480px, 92vw)' });
 
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = 'min(480px, 92vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
-
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
 
         if (this.options.badge) {
             const badge = header.createSpan({ cls: ERT_CLASSES.BADGE_PILL });
@@ -45,7 +39,7 @@ class ErtConfirmModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: this.options.title });
         header.createDiv({ cls: 'ert-modal-subtitle', text: this.options.message });
 
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const actions = this.mountActions();
 
         const cancelButton = new ButtonComponent(actions)
             .setButtonText(this.options.cancelText ?? 'Cancel')
