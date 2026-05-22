@@ -84,7 +84,7 @@ import {
     resolveInquirySessionStatus,
     resolveInquirySessionStatusFromResult,
 } from './utils/inquiryResultStatus';
-import { buildBriefingPurgeAvailabilityKey } from './briefing/briefingPurgeAvailabilityKey';
+import { InquiryBriefingPurgeScanner } from './briefing/InquiryBriefingPurgeScanner';
 import { InquiryActiveSessionState } from './session/inquiryActiveSessionState';
 import { InquirySelectionState } from './session/inquirySelectionState';
 import { InquirySettingsAccessor } from './settings/inquirySettingsAccessor';
@@ -496,10 +496,14 @@ export class InquiryView extends ItemView {
     // View-scoped disposables — re-instantiated on each onOpen so the same
     // view instance can be reopened after onClose without leaking.
     private viewDisposables = new DisposableRegistry();
-    private briefingPurgeAvailabilityKey = '';
-    private briefingPurgeAvailable = false;
-    private briefingPurgeScanPending = false;
-    private briefingPurgeScanToken = 0;
+    private readonly briefingPurgeScanner = new InquiryBriefingPurgeScanner({
+        getScenes: () => this.corpus?.scenes ?? [],
+        getScope: () => this.state.scope,
+        getActiveBookId: () => this.corpus?.activeBookId,
+        resolveActionNotesFieldLabel: () => this.resolveInquiryActionNotesFieldLabel(),
+        scanForActionItems: (scenes) => this.scanForInquiryActionItems(scenes),
+        onStateChange: () => this.updateBriefingFooterActionStates(),
+    });
     private engineBadgeGroup?: SVGGElement;
     private enginePanelEl?: HTMLDivElement;
     private enginePanelAllLabelEl?: HTMLDivElement;
@@ -1095,7 +1099,7 @@ export class InquiryView extends ItemView {
         this.briefingPopover = new HoverPopoverController({
             beforeShow: () => {
                 this.refreshBriefingPanel();
-                void this.refreshBriefingPurgeAvailability();
+                void this.briefingPurgeScanner.refresh();
             },
             positionPanel: () => {
                 if (this.artifactButton && this.briefingPanelEl) {
@@ -1127,7 +1131,7 @@ export class InquiryView extends ItemView {
             onPointerLeave: () => this.briefingPopover.scheduleHide()
         });
         this.refreshBriefingPanel();
-        void this.refreshBriefingPurgeAvailability();
+        void this.briefingPurgeScanner.refresh();
     }
 
     private buildEnginePanel(): void {
@@ -1756,27 +1760,11 @@ export class InquiryView extends ItemView {
     }
 
 
-    private getBriefingPurgeAvailabilityKey(): string {
-        return buildBriefingPurgeAvailabilityKey({
-            scenes: this.corpus?.scenes ?? [],
-            scope: this.state.scope,
-            activeBookId: this.corpus?.activeBookId,
-            actionNotesFieldLabel: this.resolveInquiryActionNotesFieldLabel(),
-        });
-    }
-
-    private invalidateBriefingPurgeAvailability(): void {
-        this.briefingPurgeAvailabilityKey = '';
-        this.briefingPurgeAvailable = false;
-        this.briefingPurgeScanPending = false;
-        this.briefingPurgeScanToken++;
-    }
-
     private updateBriefingFooterActionStates(): void {
         const lockout = this.isInquiryGuidanceLockout();
         const running = this.state.isRunning;
         const canClear = this.sessionStore.getSessionCount() > 0;
-        const canPurge = this.briefingPurgeAvailable;
+        const canPurge = this.briefingPurgeScanner.isAvailable();
 
         if (this.briefingClearButton) {
             this.briefingClearButton.disabled = lockout || running || !canClear;
@@ -1789,36 +1777,6 @@ export class InquiryView extends ItemView {
             this.briefingPurgeButton.disabled = lockout || running || !canPurge;
             this.briefingPurgeButton.classList.toggle('is-inert', !canPurge);
         }
-    }
-
-    private async refreshBriefingPurgeAvailability(): Promise<void> {
-        const scanKey = this.getBriefingPurgeAvailabilityKey();
-        if (!scanKey) {
-            this.briefingPurgeAvailabilityKey = '';
-            this.briefingPurgeAvailable = false;
-            this.briefingPurgeScanPending = false;
-            this.updateBriefingFooterActionStates();
-            return;
-        }
-        if (this.briefingPurgeAvailabilityKey === scanKey && !this.briefingPurgeScanPending) {
-            this.updateBriefingFooterActionStates();
-            return;
-        }
-
-        this.briefingPurgeAvailabilityKey = scanKey;
-        this.briefingPurgeAvailable = false;
-        this.briefingPurgeScanPending = true;
-        const scanToken = ++this.briefingPurgeScanToken;
-        this.updateBriefingFooterActionStates();
-
-        const affectedScenes = await this.scanForInquiryActionItems(this.corpus?.scenes ?? []);
-        if (scanToken !== this.briefingPurgeScanToken || this.briefingPurgeAvailabilityKey !== scanKey) {
-            return;
-        }
-
-        this.briefingPurgeScanPending = false;
-        this.briefingPurgeAvailable = affectedScenes.length > 0;
-        this.updateBriefingFooterActionStates();
     }
 
     private async handleBriefingPendingEditsClick(session: InquirySession): Promise<void> {
@@ -1875,10 +1833,7 @@ export class InquiryView extends ItemView {
         const scopeBookLabel = this.getActiveBookTitleForMessages() || this.getActiveBookLabel();
         const scopeLabel = this.state.scope === 'saga' ? 'saga' : `book "${scopeBookLabel}"`;
         const affectedScenes = await this.scanForInquiryActionItems(scenes);
-        this.briefingPurgeAvailabilityKey = this.getBriefingPurgeAvailabilityKey();
-        this.briefingPurgeAvailable = affectedScenes.length > 0;
-        this.briefingPurgeScanPending = false;
-        this.updateBriefingFooterActionStates();
+        this.briefingPurgeScanner.markFromExternalScan(affectedScenes.length);
         if (!affectedScenes.length) {
             this.notifyInteraction(t('inquiry.interaction.noActionItemsToPurge'));
             return;
@@ -1897,9 +1852,9 @@ export class InquiryView extends ItemView {
                         statuses: ['saved', 'unsaved']
                     })
                     : 0;
-                this.invalidateBriefingPurgeAvailability();
+                this.briefingPurgeScanner.invalidate();
                 this.refreshBriefingPanel();
-                void this.refreshBriefingPurgeAvailability();
+                void this.briefingPurgeScanner.refresh();
                 if (result.purgedCount > 0) {
                     const rearmSuffix = rearmedSessions > 0
                         ? ` Re-armed ${rearmedSessions} session${rearmedSessions !== 1 ? 's' : ''} for fresh writeback.`
@@ -3810,7 +3765,7 @@ export class InquiryView extends ItemView {
     }
 
     private refreshCorpus(): void {
-        this.invalidateBriefingPurgeAvailability();
+        this.briefingPurgeScanner.invalidate();
         // Controller resolves the snapshot, writes through to `this.corpus`,
         // and returns it. The local binding lets the reconcile chain below
         // read the just-resolved snapshot without re-asserting non-null on
@@ -7440,9 +7395,9 @@ export class InquiryView extends ItemView {
         if (applied && session.key) {
             session.pendingEditsApplied = true;
             this.sessionStore.updateSession(session.key, { pendingEditsApplied: true });
-            this.invalidateBriefingPurgeAvailability();
+            this.briefingPurgeScanner.invalidate();
             this.refreshBriefingPanel();
-            void this.refreshBriefingPurgeAvailability();
+            void this.briefingPurgeScanner.refresh();
             if (options?.notify) {
                 this.notifyInteraction(formatPendingEditsSuccessMessage(pendingPlan.targetLabels));
             }
