@@ -1,11 +1,11 @@
 {
-  "checkedAt": "2026-05-22T04:11:27.456Z",
+  "checkedAt": "2026-05-22T14:52:44.965Z",
   "mode": "report",
   "snapshotBefore": {
     "generatedAt": "2026-05-21T14:05:05.771Z"
   },
   "snapshotAfter": {
-    "generatedAt": "2026-05-21T14:05:05.771Z"
+    "generatedAt": "2026-05-22T14:52:44.956Z"
   },
   "changes": {
     "openai": {
@@ -17,11 +17,21 @@
       "removed": []
     },
     "google": {
-      "added": [],
+      "added": [
+        "antigravity-preview-05-2026",
+        "gemini-3.5-flash"
+      ],
       "removed": []
     }
   },
-  "aliasChanges": [],
+  "aliasChanges": [
+    {
+      "provider": "gemini",
+      "alias": "gemini-flash-latest",
+      "from": "gemini-3-flash-preview",
+      "to": "gemini-3.5-flash"
+    }
+  ],
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [],
