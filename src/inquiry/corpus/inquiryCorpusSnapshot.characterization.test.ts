@@ -71,9 +71,9 @@ describe('characterization: refreshCorpus six-step shape (post Slice 1)', () => 
         return fn;
     }
 
-    it('step 1 → invalidateBriefingPurgeAvailability runs before controller.refresh (audit Risk #8)', () => {
+    it('step 1 → briefingPurgeScanner.invalidate runs before controller.refresh (audit Risk #8)', () => {
         const fn = extractRefreshCorpus();
-        const invalidateIdx = fn.indexOf('this.invalidateBriefingPurgeAvailability()');
+        const invalidateIdx = fn.indexOf('this.briefingPurgeScanner.invalidate()');
         const refreshIdx = fn.indexOf('this.corpusSnapshot.refresh(');
         expect(invalidateIdx).toBeGreaterThan(-1);
         expect(refreshIdx).toBeGreaterThan(-1);
