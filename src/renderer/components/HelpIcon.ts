@@ -57,10 +57,13 @@ export function renderHelpIcon(): string {
             <!-- Text: positioned above icon center -->
             <text class="rt-help-text" x="0" y="${STATUS_TEXT_ABOVE_ICON}" text-anchor="middle" dominant-baseline="baseline">GET HELP</text>
 
-            <!-- Icon: centered at origin -->
-            <g transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
-                     fill="none" stroke="currentColor" stroke-width="1" 
+            <!-- Icon: centered at origin. pointer-events="none" so the rect
+                 hitarea is the sole click target — without this, the cursor
+                 flickers between pointer (on stroke) and default (between
+                 strokes) as it moves across the icon. -->
+            <g transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})" pointer-events="none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="1"
                      stroke-linecap="round" stroke-linejoin="round">
                     ${LIFE_BUOY_ICON}
                 </svg>
