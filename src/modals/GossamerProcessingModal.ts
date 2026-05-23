@@ -380,16 +380,11 @@ export class GossamerProcessingModal extends ErtModal {
             ? `${minutes}:${seconds.toString().padStart(2, '0')}`
             : `${seconds}s`;
 
-        const estimateSeconds = Math.round(this.estimatedProcessingMs / 1000);
-        let message = t('gossamer.processingModal.timerElapsed', { time: timeStr });
-        if (Number.isFinite(estimateSeconds)) {
-            message += elapsed > estimateSeconds
-                ? t('gossamer.processingModal.timerLongerThanExpected', { seconds: estimateSeconds })
-                : t('gossamer.processingModal.timerEstimate', { seconds: estimateSeconds });
-        } else {
-            message += t('gossamer.processingModal.timerTypical');
-        }
-
+        // Show elapsed time only. The previous "running longer than
+        // expected (est. ~Ns)" framing read as anxious/lame UX — the
+        // progress bar already conveys "still working." Skip the
+        // estimate-comparison commentary entirely.
+        const message = t('gossamer.processingModal.timerElapsed', { time: timeStr });
         this.apiStatusEl.setText(message);
     }
 

@@ -63,12 +63,13 @@ const OPENAI_GPT_5_5_OVERRIDE: Partial<ModelRequestProfile> = {
     preferredOpenAiEndpoint: 'responses'
 };
 
-// Claude Opus 4.7 deprecated the `temperature` request parameter
-// (extended-thinking model with provider-managed sampling). Anthropic
-// returns a 400 if temperature is sent. topP remains supported per
-// current Anthropic docs.
+// Claude Opus 4.7 deprecated both `temperature` AND `top_p` request
+// parameters (extended-thinking model with provider-managed sampling).
+// Anthropic returns 400 "`X` is deprecated for this model" if either
+// is sent. Verified live via smoke probe (2026-05-23).
 const ANTHROPIC_OPUS_4_7_OVERRIDE: Partial<ModelRequestProfile> = {
     supportsTemperature: false,
+    supportsTopP: false,
 };
 
 const REQUEST_PROFILE_OVERRIDES: Partial<Record<Exclude<AIProviderId, 'none'>, Record<string, Partial<ModelRequestProfile>>>> = {

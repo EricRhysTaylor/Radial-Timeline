@@ -77,19 +77,41 @@ interface ProbeResult {
  */
 async function smokeAnthropic(model: string, key: string): Promise<ProbeResult> {
     const profile = getModelRequestProfile('anthropic', model);
-    const sentParams: string[] = ['model', 'max_tokens', 'system', 'messages'];
+    // Mirror anthropicApi.ts: when a JSON schema is requested (Gossamer /
+    // Inquiry), we force tool_use and disable thinking. The smoke MUST
+    // include the tool_use path because Opus 4.7+ wraps its tool input
+    // in a $PARAMETER_NAME envelope when the tool description is sparse —
+    // discovered live on 2026-05-23. Pin the request shape to what
+    // production actually sends so future onboarding catches similar
+    // tool_use regressions.
+    const sentParams: string[] = ['model', 'max_tokens', 'system', 'messages', 'tools', 'tool_choice'];
     const omittedParams: string[] = [];
 
     const body: Record<string, unknown> = {
         model,
         max_tokens: 1024,
-        system: 'You are a precise narrative analyst. Return a single JSON object exactly matching the schema.',
+        system: 'You are a precise narrative analyst.',
         messages: [
-            { role: 'user', content: 'Return the JSON object {"ok": true} and nothing else.' },
+            { role: 'user', content: 'Record the structured response with ok set to true.' },
         ],
+        // Mirror anthropicApi.ts forceStructuredTool path verbatim — the
+        // verbose description prevents $PARAMETER_NAME envelope wrapping.
+        tools: [{
+            name: 'record_structured_response',
+            description: 'Submit the final structured response by populating the tool input directly. The "input" object you provide IS the response — it must have the schema\'s top-level keys (e.g. "ok") at its root. Do NOT wrap the response in any envelope, placeholder, or container key such as "$PARAMETER_NAME", "result", "response", or "data". The input you submit will be parsed verbatim against the schema.',
+            input_schema: {
+                type: 'object',
+                properties: { ok: { type: 'boolean' } },
+                required: ['ok'],
+                additionalProperties: false,
+            },
+        }],
+        tool_choice: { type: 'tool', name: 'record_structured_response' },
     };
 
-    const thinkingEnabled = profile.supportsThinkingBudget;
+    // Force-tool path disables thinking in production (see anthropicApi.ts
+    // §thinkingEnabled gate), so the smoke also disables thinking here.
+    const thinkingEnabled = false;
     if (profile.supportsTemperature && !thinkingEnabled) {
         body.temperature = 0.2;
         sentParams.push('temperature');
@@ -132,7 +154,42 @@ async function smokeAnthropic(model: string, key: string): Promise<ProbeResult> 
         },
         body: JSON.stringify(body),
     });
-    return { status: res.status, body: await res.text(), sentParams, omittedParams };
+    const text = await res.text();
+
+    // Anthropic-specific response-shape check: if the response succeeded
+    // but the model wrapped its tool input in a $PARAMETER_NAME envelope
+    // (or similar placeholder), surface that as a soft-failure so the
+    // tool description can be tightened. Discovered live on 2026-05-23
+    // with Opus 4.7 + Gossamer schema.
+    if (res.status >= 200 && res.status < 300) {
+        try {
+            const parsed = JSON.parse(text) as { content?: Array<{ type?: string; input?: Record<string, unknown>; name?: string }> };
+            const toolBlock = parsed.content?.find(b => b.type === 'tool_use');
+            const input = toolBlock?.input ?? {};
+            const keys = Object.keys(input);
+            const envelopeKeys = ['$PARAMETER_NAME', '$INPUT', 'parameters', 'response', 'result', 'data'];
+            const wrapped = keys.length === 1 && envelopeKeys.includes(keys[0]);
+            if (wrapped) {
+                // Synthesize a 422-ish soft failure so the caller treats
+                // this as a real bug, not a pass.
+                return {
+                    status: 422,
+                    body: JSON.stringify({
+                        error: {
+                            message: `Tool input wrapped in envelope key "${keys[0]}" instead of populating schema directly. The model is wrapping the response — tighten the tool description.`,
+                            wrappedKeys: keys,
+                            actualInput: input,
+                        },
+                    }),
+                    sentParams,
+                    omittedParams,
+                };
+            }
+        } catch {
+            // Response wasn't JSON we could parse — let the normal pass/fail flow handle it.
+        }
+    }
+    return { status: res.status, body: text, sentParams, omittedParams };
 }
 
 /**

@@ -296,9 +296,16 @@ function buildAnthropicMessageRequestBody(
   const hasJsonSchema = !!input.jsonSchema && Object.keys(input.jsonSchema).length > 0;
   const forceStructuredTool = hasJsonSchema && !input.citationsEnabled;
   if (forceStructuredTool) {
+    // The tool description must be aggressively explicit because Opus 4.7+
+    // observed (2026-05-23 Gossamer failure) wrapping its tool input in a
+    // $PARAMETER_NAME envelope key instead of populating the schema
+    // directly. The verbose description below tells the model that the
+    // tool input IS the schema root, not a value nested inside an
+    // envelope. Older Claude models tolerated the sparser description but
+    // the new model needs the explicit instruction.
     requestBody.tools = [{
       name: 'record_structured_response',
-      description: 'Return the final structured response via this tool input.',
+      description: 'Submit the final structured response by populating the tool input directly. The "input" object you provide IS the response — it must have the schema\'s top-level keys (e.g. "beats", "overallAssessment") at its root. Do NOT wrap the response in any envelope, placeholder, or container key such as "$PARAMETER_NAME", "result", "response", or "data". The input you submit will be parsed verbatim against the schema.',
       input_schema: input.jsonSchema as Record<string, unknown>
     }];
     requestBody.tool_choice = {

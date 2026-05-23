@@ -93,7 +93,9 @@ describe('anthropic token counting', () => {
 
         expect(body.tools).toEqual([{
             name: 'record_structured_response',
-            description: 'Return the final structured response via this tool input.',
+            // Verbose description prevents Opus 4.7+ from wrapping the tool
+            // input in a $PARAMETER_NAME envelope (smoke-discovered 2026-05-23).
+            description: expect.stringContaining('Do NOT wrap the response in any envelope') as unknown as string,
             input_schema: {
                 type: 'object',
                 properties: {
