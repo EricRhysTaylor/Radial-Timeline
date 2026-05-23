@@ -953,14 +953,20 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         const placementMatch = rawTitle.match(/^(\d+(?:\.\d+)?)/);
         const placement = placementMatch ? placementMatch[1] : undefined;
         const beatName = rawTitle.replace(/^\d+(?:\.\d+)?\s+/, '');
-        const synopsis = typeof fm?.Synopsis === 'string' ? fm.Synopsis.trim() : '';
+        // Read Beat Purpose (canonical key, migrated from Description). Mirrors
+        // GossamerScoreModal.ts:711 — Purpose → Description → description.
+        const purpose =
+          (typeof fm?.Purpose === 'string' && fm.Purpose.trim()) ||
+          (typeof fm?.Description === 'string' && fm.Description.trim()) ||
+          (typeof fm?.description === 'string' && fm.description.trim()) ||
+          '';
 
         return {
           beatName,
           beatNumber: index + 1,
           idealRange: rangeValue,
           placement,
-          description: synopsis.length > 0 ? synopsis : undefined
+          description: purpose.length > 0 ? purpose : undefined
           // Note: idealRange, previous scores, and previous justifications are intentionally NOT
           // sent to the AI to avoid anchoring bias. idealRange is used downstream (after response)
           // for range validation. Historical scores remain in metadata for user reference.

@@ -19,7 +19,7 @@ export interface UnifiedBeatInfo {
   beatNumber: number;
   idealRange: string; // e.g., "0-20" — used downstream for range validation; NOT sent to AI (anchoring)
   placement?: string; // Structural placement token from beat-note title prefix, e.g. "1.01", "4.01"
-  description?: string; // Beat Synopsis from frontmatter — tells the AI what this beat is in the story
+  description?: string; // Beat Purpose from frontmatter — tells the AI what this beat is in the story
   // Note: previousScore, previousJustification, and idealRange are intentionally NOT sent to the AI
   // to avoid anchoring bias. Each analysis is fresh based on manuscript content only.
 }
