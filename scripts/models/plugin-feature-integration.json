@@ -182,7 +182,7 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "complete",
-      "implementationNotes": "Provider-counted token estimation runs through estimateInputTokens, which dispatches to each provider's HTTP countTokens endpoint when one exists (Anthropic /v1/messages/count_tokens, Google models/{id}:countTokens) and falls through to a chars/4 heuristic otherwise. OpenAI has no free pre-flight count endpoint and shipping a local tokenizer (~2 MB bundle) was deemed not worth the cost-estimate accuracy gain. Heuristic fallback is explicit on every failure path (missing key, network error, malformed response). aiClient threads the resulting method through prepared estimates, and Inquiry forecast/snapshot/log surfaces consume it without provider-specific logic in the view layer.",
+      "implementationNotes": "Provider-counted token estimation runs through estimateInputTokens, which dispatches to each provider's HTTP countTokens endpoint when one exists (Anthropic /v1/messages/count_tokens, Google models/{id}:countTokens). On any failure for Anthropic/Google (missing key, network error, malformed response) the function THROWS — no silent chars/4 fallback. The aiClient caller catches the throw, surfaces 'Token count unavailable' as a warning, and propagates method='unavailable' so downstream UI shows 'unavailable' rather than fabricating a number. This change (2026-05-23) closes a doctrine violation where the heuristic was substituted for failed provider counts. OpenAI/Ollama have no provider count endpoint at all and return chars/4 as the canonical RT corpus count — that is NOT a fallback, it is the legitimate corpus metric for those providers per doctrine §1.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
         "src/api/geminiApi.ts",
@@ -212,7 +212,7 @@
           ]
         },
         {
-          "label": "Canonical runtime estimation dispatches to provider HTTP tokenizers with explicit heuristic fallback",
+          "label": "Canonical runtime estimation dispatches to provider HTTP tokenizers and throws on failure (no silent fallback)",
           "sourceFiles": [
             "src/ai/tokens/inputTokenEstimate.ts",
             "src/ai/runtime/aiClient.ts"
@@ -221,7 +221,8 @@
             "countAnthropicTokens",
             "countGeminiTokens",
             "result\\.source === 'provider_count'",
-            "return fallback\\(",
+            "throw new Error\\('Anthropic API key unavailable",
+            "tokenCountAttemptWarnings",
             "tokenEstimateMethod:\\s*estimate\\.tokenEstimateMethod"
           ]
         },

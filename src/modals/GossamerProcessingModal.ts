@@ -495,9 +495,9 @@ export class GossamerProcessingModal extends ErtModal {
             this.statusTextEl.setText(`${message}${elapsedSuffix}`);
         }
 
-        if (this.subtitleEl) {
-            this.subtitleEl.setText(success ? t('gossamer.processingModal.analysisComplete') : t('gossamer.processingModal.analysisFailed'));
-        }
+        // Modal subtitle stays as the original setup description for the
+        // whole run — the run status is surfaced by statusTextEl below.
+        // Mirroring it on the subtitle was redundant.
 
         // Complete the progress bar and pause animation
         if (this.progressSimulator) {

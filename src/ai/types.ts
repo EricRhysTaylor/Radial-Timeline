@@ -355,7 +355,7 @@ export interface AIRunRequest {
     bypassProviderReuse?: boolean;
 }
 
-export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count' | 'google_count';
+export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count' | 'google_count' | 'unavailable';
 export type TokenCountSource = 'provider_count' | 'estimate';
 export type RTCorpusEstimateMethod =
     | 'rt_chars_heuristic'

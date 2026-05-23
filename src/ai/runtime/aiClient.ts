@@ -27,6 +27,7 @@ import type {
     AIRunAdvancedContext,
     AiSettingsV1,
     Capability,
+    InputTokenEstimateMethod,
     ModelPolicy,
     ModelInfo,
     AccessTier,
@@ -558,22 +559,42 @@ export class AIClient {
         });
         const effectiveInputCeiling = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
 
-        const countedEstimate = Number.isFinite(request.tokenEstimateInput)
-            ? {
+        // Per RT doctrine (`code-doctrine.md` §2, `inquiry-critical-path-rules.md`
+        // §8): when the provider count call fails for Anthropic/Google, the
+        // UI must show "unavailable" — never substitute the chars/4
+        // heuristic as if it were a provider count. estimateInputTokens
+        // throws on failure; we catch here and propagate sentinel values
+        // (`inputTokens: 0`, `method: 'unavailable'`) plus the error message
+        // as a warning.
+        const tokenCountAttemptWarnings: string[] = [];
+        let countedEstimate: { inputTokens: number; method: InputTokenEstimateMethod };
+        if (Number.isFinite(request.tokenEstimateInput)) {
+            countedEstimate = {
                 inputTokens: heuristicEstimate,
-                method: 'heuristic_chars' as const
+                method: 'heuristic_chars'
+            };
+        } else {
+            try {
+                countedEstimate = await estimateInputTokens({
+                    plugin: this.plugin,
+                    provider,
+                    modelId: initialSelection.model.id,
+                    systemPrompt,
+                    userPrompt,
+                    evidenceDocuments,
+                    citationsEnabled: caps.citationsEnabled,
+                    jsonSchema: request.responseSchema,
+                    safeInputBudget: effectiveInputCeiling
+                });
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                tokenCountAttemptWarnings.push(`Token count unavailable: ${message}`);
+                countedEstimate = {
+                    inputTokens: 0,
+                    method: 'unavailable'
+                };
             }
-            : await estimateInputTokens({
-                plugin: this.plugin,
-                provider,
-                modelId: initialSelection.model.id,
-                systemPrompt,
-                userPrompt,
-                evidenceDocuments,
-                citationsEnabled: caps.citationsEnabled,
-                jsonSchema: request.responseSchema,
-                safeInputBudget: effectiveInputCeiling
-            });
+        }
         let tokenEstimateInput = countedEstimate.inputTokens;
         let tokenEstimateMethod = countedEstimate.method;
         const tokenEstimateUncertainty = estimateUncertaintyTokens(tokenEstimateMethod, effectiveInputCeiling);
@@ -601,7 +622,7 @@ export class AIClient {
                 provider,
                 model: initialSelection.model,
                 modelSelectionReason: initialSelection.reason,
-                warnings: [...initialSelection.warnings],
+                warnings: [...initialSelection.warnings, ...tokenCountAttemptWarnings],
                 requiredCapabilities,
                 roleTemplateName: roleTemplate.name,
                 featureModeInstructions,
