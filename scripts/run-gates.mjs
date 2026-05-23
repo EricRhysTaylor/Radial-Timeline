@@ -40,6 +40,11 @@ const steps = [
         command: 'node scripts/validate-pricing.mjs',
     },
     {
+        id: 'model-coverage',
+        label: 'Model coverage',
+        command: 'node scripts/check-model-coverage.mjs --quiet',
+    },
+    {
         id: 'css-duplicates-pre',
         label: 'CSS duplicates',
         command: 'node check-css-duplicates.mjs --quiet',
