@@ -29,8 +29,11 @@ Location: `docs/engineering/standards/`
 - **[inquiry-critical-path-rules.md](standards/inquiry-critical-path-rules.md)**
   Rules governing Inquiry, Gossamer, AI Strategy, and AI execution paths.
 
+- **[model-promotion.md](standards/model-promotion.md)**
+  Policy for *when* a new AI model is allowed to enter the catalog: replacement over accretion, deliberate quarterly promotions, no reflex additions. Read this before considering any model addition.
+
 - **[ai-model-curation.md](standards/ai-model-curation.md)**
-  Required process for adding or promoting API models, including request profiles, pricing, cache behavior, and payload tests.
+  Required *how* for adding or promoting API models once promotion is approved: request profiles, pricing, registry entry, contract-test verification.
 
 - **[refactor-playbook.md](standards/refactor-playbook.md)**
   Step-by-step rules for performing structural refactors safely.
