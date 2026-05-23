@@ -39,7 +39,13 @@ describe('mergeCuratedWithSnapshot', () => {
     });
 
     it('computes availability by provider+id match', () => {
-        const curated = BUILTIN_MODELS.filter(model => model.provider === 'openai').slice(0, 2);
+        // Build a 2-entry curated set spanning providers so we can assert
+        // both the "visible" and "not_visible" branches in a single run,
+        // independent of how many models any one provider currently has.
+        const curated = [
+            BUILTIN_MODELS.find(m => m.provider === 'openai')!,
+            BUILTIN_MODELS.find(m => m.provider === 'anthropic')!,
+        ];
         const snapshot: ProviderSnapshotPayload = {
             generatedAt: new Date().toISOString(),
             summary: { openai: 1, anthropic: 0, google: 0 },

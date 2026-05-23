@@ -4,7 +4,7 @@ import { BUILTIN_MODELS } from '../registry/builtinModels';
 
 describe('computeCaps', () => {
     it('increases output cap for higher access tiers', () => {
-        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-sonnet-4.6');
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.7');
         expect(model).toBeDefined();
         const tier1 = computeCaps({
             provider: 'anthropic',
@@ -35,7 +35,7 @@ describe('computeCaps', () => {
     });
 
     it('uses deeper reasoning defaults for inquiry when requested', () => {
-        const model = BUILTIN_MODELS.find(entry => entry.alias === 'gpt-5.2-latest');
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'gpt-5.5');
         expect(model).toBeDefined();
         const standard = computeCaps({
             provider: 'openai',
@@ -55,7 +55,7 @@ describe('computeCaps', () => {
     });
 
     it('uses expanded OpenAI GPT-5.4 output ceilings', () => {
-        const model = BUILTIN_MODELS.find(entry => entry.alias === 'gpt-5.4-pro');
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'gpt-5.5');
         expect(model).toBeDefined();
         const tier1 = computeCaps({
             provider: 'openai',

@@ -2,43 +2,43 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_MODELS } from './builtinModels';
 import { getPickerModelsForProvider, selectLatestModelByReleaseChannel } from './releaseChannels';
 
+/*
+ * Release-channel curation against the minimum-viable catalog
+ * (2026-05-22). The picker / latest-channel mechanics still exist so
+ * the catalog can be re-expanded — these tests pin that the mechanics
+ * work against the current shrunk catalog without forcing specific
+ * multi-model orderings that no longer apply.
+ */
+
 describe('release channel curation', () => {
-    it('returns OpenAI picker models in stable/rollback order (pro is hidden from the picker)', () => {
+    it('returns the single curated OpenAI picker entry', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'openai').map(model => model.alias);
-        expect(picker).toEqual(['gpt-5.5', 'gpt-5.4']);
+        expect(picker).toEqual(['gpt-5.5']);
     });
 
-    it('hides google latest compatibility aliases from the normal picker', () => {
+    it('returns both curated Google picker entries (depth + speed)', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'google').map(model => model.alias);
-        expect(picker).toEqual(['gemini-3.5-flash', 'gemini-2.5-pro', 'gemini-3.1-pro-preview']);
-        expect(picker.includes('gemini-pro-latest')).toBe(false);
+        // Order is not pinned — only that both lanes appear.
+        expect(picker).toHaveLength(2);
+        expect(picker).toContain('gemini-3.1-pro-preview');
+        expect(picker).toContain('gemini-3.5-flash');
     });
 
-    it('keeps Anthropic picker order stable-first while still exposing Opus 4.7', () => {
+    it('returns the single curated Anthropic picker entry', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'anthropic').map(model => model.alias);
-        expect(picker).toEqual(['claude-sonnet-4.6', 'claude-opus-4.7', 'claude-opus-4.6', 'claude-sonnet-4.5']);
+        expect(picker).toEqual(['claude-opus-4.7']);
     });
 
-    it('hides OpenAI snapshot models from the normal picker', () => {
-        const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'openai').map(model => model.alias);
-        expect(picker.includes('gpt-5.5-2026-04-23')).toBe(false);
-        expect(picker.includes('gpt-5.4-2026-03-05')).toBe(false);
-        expect(picker.includes('gpt-5.4-pro-2026-03-05')).toBe(false);
-    });
-
-    it('selects latest OpenAI models by release channel', () => {
+    it('selectLatestModelByReleaseChannel returns the only stable OpenAI model', () => {
         const stable = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'stable');
-        const pro = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'pro');
-        const rollback = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'rollback');
+        // With one stable model, latest-stable resolves to that model.
+        // Resolution is by status === 'stable' even without an explicit
+        // rollout block.
         expect(stable?.alias).toBe('gpt-5.5');
-        expect(pro?.alias).toBe('gpt-5.4-pro');
-        expect(rollback?.alias).toBe('gpt-5.4');
     });
 
-    it('selects latest Anthropic models by release channel', () => {
+    it('selectLatestModelByReleaseChannel returns the only stable Anthropic model', () => {
         const stable = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'anthropic', 'stable');
-        const pro = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'anthropic', 'pro');
-        expect(stable?.alias).toBe('claude-sonnet-4.6');
-        expect(pro?.alias).toBe('claude-opus-4.7');
+        expect(stable?.alias).toBe('claude-opus-4.7');
     });
 });

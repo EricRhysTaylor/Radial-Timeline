@@ -7,58 +7,30 @@ function byAlias(alias: string) {
     return model!;
 }
 
-describe('BUILTIN_MODELS OpenAI GPT-5 metadata', () => {
-    it('uses expanded context/output limits for GPT-5.4 and GPT-5.5 variants', () => {
-        const aliases = [
-            'gpt-5.5',
-            'gpt-5.5-2026-04-23',
-            'gpt-5.4',
-            'gpt-5.4-pro',
-            'gpt-5.4-2026-03-05',
-            'gpt-5.4-pro-2026-03-05'
-        ];
-        aliases.forEach(alias => {
-            const model = byAlias(alias);
-            expect(model.contextWindow).toBe(1050000);
-            expect(model.maxOutput).toBe(128000);
-        });
-    });
+/*
+ * Catalog-shape tests for the minimum-viable model catalog (2026-05-22).
+ *
+ * Each surviving model is pinned by:
+ *  - identity (alias / id present in BUILTIN_MODELS)
+ *  - context window + maxOutput (the values the runtime depends on)
+ *  - declared status (stable / preview / legacy)
+ *  - any provider-specific constraints (request profile, lane)
+ *
+ * Add a similar block for every new model promoted under the deliberate
+ * quarterly process in docs/engineering/standards/model-promotion.md.
+ */
 
-    it('marks OpenAI release channels for stable/pro/rollback/snapshot', () => {
-        expect(byAlias('gpt-5.5').rollout?.channel).toBe('stable');
-        expect(byAlias('gpt-5.5').rollout?.supersedes).toBe('gpt-5.4');
-        expect(byAlias('gpt-5.5').rollout?.fallbackModelId).toBe('gpt-5.4');
-        expect(byAlias('gpt-5.4').rollout?.channel).toBe('rollback');
-        expect(byAlias('gpt-5.4').rollout?.supersedes).toBe('gpt-5.3');
-        expect(byAlias('gpt-5.4-pro').rollout?.channel).toBe('pro');
-        expect(byAlias('gpt-5.4-pro').rollout?.supersedes).toBe('gpt-5.3');
-        expect(byAlias('gpt-5.3').rollout?.channel).toBe('rollback');
-        expect(byAlias('gpt-5.5-2026-04-23').rollout?.channel).toBe('snapshot');
-        expect(byAlias('gpt-5.5-2026-04-23').rollout?.hiddenFromPicker).toBe(true);
-        expect(byAlias('gpt-5.5-2026-04-23').rollout?.supersedes).toBe('gpt-5.5');
-        expect(byAlias('gpt-5.4-2026-03-05').rollout?.channel).toBe('snapshot');
-        expect(byAlias('gpt-5.4-2026-03-05').rollout?.hiddenFromPicker).toBe(true);
-        expect(byAlias('gpt-5.4-2026-03-05').rollout?.supersedes).toBe('gpt-5.4');
-        expect(byAlias('gpt-5.4-pro-2026-03-05').rollout?.channel).toBe('snapshot');
-        expect(byAlias('gpt-5.4-pro-2026-03-05').rollout?.hiddenFromPicker).toBe(true);
-        expect(byAlias('gpt-5.4-pro-2026-03-05').rollout?.supersedes).toBe('gpt-5.4-pro');
-    });
-
-    it('keeps structured output capability off the OpenAI pro lane', () => {
-        expect(byAlias('gpt-5.5').capabilities).toContain('jsonStrict');
-        expect(byAlias('gpt-5.4').capabilities).toContain('jsonStrict');
-        expect(byAlias('gpt-5.4-pro').capabilities).not.toContain('jsonStrict');
-        expect(byAlias('gpt-5.4-pro-2026-03-05').capabilities).not.toContain('jsonStrict');
-    });
-
-    it('does not curate GPT-5.5 Pro', () => {
-        expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro')).toBe(false);
-        expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro-2026-04-23')).toBe(false);
+describe('BUILTIN_MODELS — OpenAI GPT-5.5', () => {
+    it('exposes a 1.05M context / 128k output window', () => {
+        const model = byAlias('gpt-5.5');
+        expect(model.id).toBe('gpt-5.5');
+        expect(model.contextWindow).toBe(1050000);
+        expect(model.maxOutput).toBe(128000);
+        expect(model.status).toBe('stable');
     });
 
     it('captures GPT-5.5 request-shape constraints in the model contract', () => {
         const model = byAlias('gpt-5.5');
-
         expect(model.constraints).toMatchObject({
             supportsTemperature: false,
             supportsTopP: false,
@@ -66,40 +38,65 @@ describe('BUILTIN_MODELS OpenAI GPT-5 metadata', () => {
             preferredOpenAiEndpoint: 'responses'
         });
     });
-});
 
-describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {
-    it('uses 1M context windows for Claude 4.6 variants', () => {
-        const aliases = [
-            'claude-opus-4.7',
-            'claude-opus-4.6',
-            'claude-sonnet-4.6'
-        ];
-        aliases.forEach(alias => {
-            const model = byAlias(alias);
-            expect(model.contextWindow).toBe(1000000);
-            expect(model.maxOutput).toBe(16000);
-        });
-    });
-
-    it('keeps Sonnet as the Anthropic stable lane and Opus 4.7 as the pro lane', () => {
-        expect(byAlias('claude-sonnet-4.6').rollout?.channel).toBe('stable');
-        expect(byAlias('claude-sonnet-4.6').rollout?.lane).toBe('default');
-        expect(byAlias('claude-opus-4.7').rollout?.channel).toBe('pro');
-        expect(byAlias('claude-opus-4.7').rollout?.supersedes).toBe('claude-opus-4-6');
-        expect(byAlias('claude-opus-4.7').rollout?.fallbackModelId).toBe('claude-opus-4-6');
+    it('declares the structured-output capability', () => {
+        expect(byAlias('gpt-5.5').capabilities).toContain('jsonStrict');
     });
 });
 
-describe('BUILTIN_MODELS Google Gemini metadata', () => {
-    it('marks Gemini 2.5 Pro as the stable Google lane, 3.1 Pro Preview as preview, and 3.5 Flash as fast', () => {
-        expect(byAlias('gemini-2.5-pro').status).toBe('stable');
-        expect(byAlias('gemini-3.1-pro-preview').status).toBe('preview');
-        expect(byAlias('gemini-3.5-flash').status).toBe('stable');
-        expect(byAlias('gemini-3.5-flash').tier).toBe('FAST');
-        expect(byAlias('gemini-2.5-pro').contextWindow).toBe(1048576);
-        expect(byAlias('gemini-2.5-pro').maxOutput).toBe(65536);
-        expect(byAlias('gemini-3.5-flash').contextWindow).toBe(1048576);
-        expect(byAlias('gemini-3.5-flash').maxOutput).toBe(65536);
+describe('BUILTIN_MODELS — Anthropic Claude Opus 4.7', () => {
+    it('exposes a 1M context / 16k output window', () => {
+        const model = byAlias('claude-opus-4.7');
+        expect(model.id).toBe('claude-opus-4-7');
+        expect(model.contextWindow).toBe(1000000);
+        expect(model.maxOutput).toBe(16000);
+        expect(model.status).toBe('stable');
+        expect(model.tier).toBe('DEEP');
+    });
+});
+
+describe('BUILTIN_MODELS — Google Gemini', () => {
+    it('declares Gemini 3.1 Pro Preview as the preview/depth lane', () => {
+        const model = byAlias('gemini-3.1-pro-preview');
+        expect(model.status).toBe('preview');
+        expect(model.tier).toBe('DEEP');
+        expect(model.contextWindow).toBe(1048576);
+        expect(model.maxOutput).toBe(65536);
+        expect(model.constraints?.cacheVsCitationsExclusive).toBe(true);
+    });
+
+    it('declares Gemini 3.5 Flash as the stable/speed lane', () => {
+        const model = byAlias('gemini-3.5-flash');
+        expect(model.status).toBe('stable');
+        expect(model.tier).toBe('FAST');
+        expect(model.contextWindow).toBe(1048576);
+        expect(model.maxOutput).toBe(65536);
+        expect(model.constraints?.cacheVsCitationsExclusive).toBe(true);
+    });
+});
+
+describe('BUILTIN_MODELS — catalog policy invariants', () => {
+    it('keeps the catalog small enough to be deliberately curated (one top model per provider, plus Google fast/deep split)', () => {
+        const cloud = BUILTIN_MODELS.filter(m => m.provider !== 'none' && m.provider !== 'ollama');
+        // Anthropic 1 + OpenAI 1 + Google 2 = 4 cloud models.
+        // If this assertion fails because a model was added, confirm the
+        // addition followed the promotion process documented in
+        // docs/engineering/standards/model-promotion.md before updating
+        // this expectation.
+        expect(cloud.length).toBeLessThanOrEqual(5);
+    });
+
+    it('does not curate experimental "*-pro" OpenAI lanes here (they would come via remote drift if needed)', () => {
+        expect(BUILTIN_MODELS.some(entry => entry.alias === 'gpt-5.5-pro')).toBe(false);
+    });
+
+    it('every cloud model carries a contextWindow and maxOutput', () => {
+        for (const model of BUILTIN_MODELS) {
+            if (model.provider === 'none') continue;
+            expect(typeof model.contextWindow, model.id).toBe('number');
+            expect(model.contextWindow, model.id).toBeGreaterThan(0);
+            expect(typeof model.maxOutput, model.id).toBe('number');
+            expect(model.maxOutput, model.id).toBeGreaterThan(0);
+        }
     });
 });

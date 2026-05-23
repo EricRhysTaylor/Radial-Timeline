@@ -6,7 +6,7 @@ const SAMPLE_PAYLOAD = {
     models: [
         {
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             inputPer1M: 3.0,
             outputPer1M: 15.0,
             cacheWrite5mPer1M: 3.75,
@@ -33,7 +33,7 @@ describe('loadRemotePricing', () => {
             fetchedAt: new Date().toISOString(),
             table: {
                 anthropic: {
-                    'claude-sonnet-4-6': { inputPer1M: 3, outputPer1M: 15 }
+                    'claude-opus-4-7': { inputPer1M: 3, outputPer1M: 15 }
                 }
             }
         });
@@ -47,7 +47,7 @@ describe('loadRemotePricing', () => {
         });
 
         expect(result.source).toBe('cache');
-        expect(result.table?.anthropic?.['claude-sonnet-4-6']?.inputPer1M).toBe(3);
+        expect(result.table?.anthropic?.['claude-opus-4-7']?.inputPer1M).toBe(3);
     });
 
     it('falls back to cache when remote fetch fails', async () => {
@@ -55,7 +55,7 @@ describe('loadRemotePricing', () => {
             fetchedAt: '2000-01-01T00:00:00.000Z',
             table: {
                 openai: {
-                    'gpt-5.4': { inputPer1M: 3, outputPer1M: 10 }
+                    'gpt-5.5': { inputPer1M: 3, outputPer1M: 10 }
                 }
             }
         });
@@ -101,7 +101,7 @@ describe('loadRemotePricing', () => {
         });
 
         expect(result.source).toBe('remote');
-        expect(result.table?.anthropic?.['claude-sonnet-4-6']?.inputPer1M).toBe(3);
+        expect(result.table?.anthropic?.['claude-opus-4-7']?.inputPer1M).toBe(3);
         expect(written.length).toBeGreaterThan(0);
     });
 
@@ -137,8 +137,8 @@ describe('loadRemotePricing', () => {
                 status: 200,
                 json: async () => ({
                     models: [
-                        { provider: 'openai', modelId: 'gpt-5.4' },
-                        { provider: 'openai', modelId: 'gpt-5.4', inputPer1M: 3, outputPer1M: 10 }
+                        { provider: 'openai', modelId: 'gpt-5.5' },
+                        { provider: 'openai', modelId: 'gpt-5.5', inputPer1M: 3, outputPer1M: 10 }
                     ]
                 })
             })
@@ -146,7 +146,7 @@ describe('loadRemotePricing', () => {
 
         expect(result.source).toBe('remote');
         // Only the valid entry should be present
-        expect(Object.keys(result.table?.openai ?? {})).toEqual(['gpt-5.4']);
+        expect(Object.keys(result.table?.openai ?? {})).toEqual(['gpt-5.5']);
     });
 
     it('returns builtin when remote returns empty models', async () => {

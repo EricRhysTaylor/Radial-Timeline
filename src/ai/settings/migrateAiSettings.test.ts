@@ -16,12 +16,12 @@ describe('migrateAiSettings', () => {
         const result = migrateAiSettings({
             ...base,
             defaultAiProvider: 'gemini',
-            geminiModelId: 'gemini-pro-latest'
+            geminiModelId: 'gemini-3.1-pro-preview'
         });
 
         expect(result.aiSettings.provider).toBe('google');
         expect(result.aiSettings.modelPolicy.type).toBe('pinned');
-        expect((result.aiSettings.modelPolicy as any).pinnedAlias).toBe('gemini-pro-latest');
+        expect((result.aiSettings.modelPolicy as any).pinnedAlias).toBe('gemini-3.1-pro-preview');
         expect((result.aiSettings.credentials as any).googleApiKey).toBeUndefined();
         expect(result.aiSettings.credentials?.googleSecretId).toBeTruthy();
         expect(result.changed).toBe(true);
@@ -45,7 +45,7 @@ describe('migrateAiSettings', () => {
             aiSettings: {
                 schemaVersion: 1,
                 provider: 'anthropic',
-                modelPolicy: { type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' },
+                modelPolicy: { type: 'pinned', pinnedAlias: 'claude-opus-4.7' },
                 roleTemplateId: 'commercial_genre',
                 roleTemplates: [
                     { id: 'commercial_genre', name: 'Commercial', prompt: 'Prompt', isBuiltIn: true }
@@ -68,11 +68,11 @@ describe('migrateAiSettings', () => {
                 connections: {}
             },
             defaultAiProvider: 'gemini',
-            geminiModelId: 'gemini-pro-latest'
+            geminiModelId: 'gemini-3.1-pro-preview'
         } as any);
 
         expect(result.aiSettings.provider).toBe('anthropic');
-        expect(result.aiSettings.modelPolicy).toEqual({ type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' });
+        expect(result.aiSettings.modelPolicy).toEqual({ type: 'pinned', pinnedAlias: 'claude-opus-4.7' });
     });
 
     it('migrates legacy local settings into canonical localLlm', () => {

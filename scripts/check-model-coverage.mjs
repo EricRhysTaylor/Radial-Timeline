@@ -45,15 +45,16 @@ const CURATED_MODELS_PATH = path.join(ROOT, 'src/data/aiModels.ts');
 // added — drift here means we're keeping pricing data alive for a
 // model we've already retired from the runtime registry.
 const PRICING_DANGLING_ALLOWLIST = new Set([
-    // Anthropic dated snapshot retained for cost-history continuity even
-    // though the alias has been promoted out of BUILTIN_MODELS.
-    'claude-opus-4-1-20250805',
+    // (empty after the 2026-05-22 minimum-viable-catalog trim)
 ]);
 
 // BUILTIN_MODELS entries that intentionally don't need a pricing row.
-// "chat-latest" aliases resolve to dated snapshots at request time
-// (handled by remotePricing.ts), so the alias itself doesn't carry
-// pricing data here.
+// "chat-latest" / "*-latest" aliases resolve to dated snapshots at
+// request time (handled by remotePricing.ts), so the alias itself
+// doesn't carry pricing data here. The list is forward-defensive —
+// most of these aren't currently in BUILTIN_MODELS but would pass the
+// gate if re-added later via the deliberate promotion process in
+// docs/engineering/standards/model-promotion.md.
 const BUILTIN_NO_PRICING_ALLOWLIST = new Set([
     'gpt-5.5-chat-latest',
     'gpt-5.4-chat-latest',
@@ -63,13 +64,6 @@ const BUILTIN_NO_PRICING_ALLOWLIST = new Set([
     'gpt-5-chat-latest',
     'gemini-pro-latest',
     'gemini-flash-latest',
-    // TODO(2026-05-22): gpt-5.3 is the canonical rollback lane (six
-    // models declare fallbackModelId: 'gpt-5.3'), but it has no pricing
-    // entry. Cost computation on the rollback lane is broken. Remove
-    // this allowlist entry once pricing data is added to
-    // src/ai/cost/providerPricing.ts. This gap was surfaced by the
-    // first run of this gate.
-    'gpt-5.3',
 ]);
 
 const args = process.argv.slice(2);

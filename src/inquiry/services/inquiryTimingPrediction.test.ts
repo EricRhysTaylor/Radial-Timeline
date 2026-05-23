@@ -27,8 +27,8 @@ describe('normalizeEvidenceModeKey', () => {
 
 describe('computeTimingHistoryKey', () => {
     it('joins provider, model, and mode with double-colon separators', () => {
-        expect(computeTimingHistoryKey('Anthropic', 'claude-sonnet-4-6', 'full'))
-            .toBe('anthropic::claude-sonnet-4-6::full');
+        expect(computeTimingHistoryKey('Anthropic', 'claude-opus-4-7', 'full'))
+            .toBe('anthropic::claude-opus-4-7::full');
     });
 
     it('lowercases provider and model so case differences do not split history', () => {
@@ -37,8 +37,8 @@ describe('computeTimingHistoryKey', () => {
     });
 
     it('returns null when provider is missing', () => {
-        expect(computeTimingHistoryKey('', 'gpt-5.4', 'full')).toBeNull();
-        expect(computeTimingHistoryKey(undefined, 'gpt-5.4', 'full')).toBeNull();
+        expect(computeTimingHistoryKey('', 'gpt-5.5', 'full')).toBeNull();
+        expect(computeTimingHistoryKey(undefined, 'gpt-5.5', 'full')).toBeNull();
     });
 
     it('returns null when model is missing', () => {

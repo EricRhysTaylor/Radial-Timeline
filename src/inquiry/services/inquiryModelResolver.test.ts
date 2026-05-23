@@ -23,8 +23,8 @@ describe('resolveInquiryEngine', () => {
 
         expect(resolved.provider).toBe('anthropic');
         expect(resolved.blocked).toBeUndefined();
-        expect(resolved.modelId).toBe('claude-sonnet-4-6');
-        expect(resolved.modelAlias).toBe('claude-sonnet-4.6');
+        expect(resolved.modelId).toBe('claude-opus-4-7');
+        expect(resolved.modelAlias).toBe('claude-opus-4.7');
     });
 
     it('resolves pinned Anthropic Opus 4.7 when explicitly selected', () => {
@@ -58,7 +58,7 @@ describe('resolveInquiryEngine', () => {
                     provider: 'none'
                 },
                 defaultAiProvider: 'openai',
-                openaiModelId: 'gpt-5.4'
+                openaiModelId: 'gpt-5.5'
             }
         } as any;
 

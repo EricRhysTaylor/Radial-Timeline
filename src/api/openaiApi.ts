@@ -88,10 +88,11 @@ interface OpenAiAnnotationRecord {
     [key: string]: unknown;
 }
 
-const OPENAI_BACKGROUND_RESPONSE_MODEL_IDS = new Set<string>([
-    'gpt-5.4-pro',
-    'gpt-5.4-pro-2026-03-05'
-]);
+// Models that require the OpenAI background-poll Responses transport.
+// Currently empty — gpt-5.4-pro was the only entry and was removed in the
+// minimum-viable-catalog trim (2026-05-22). Re-populate when a future
+// model needs background-poll handling.
+const OPENAI_BACKGROUND_RESPONSE_MODEL_IDS = new Set<string>([]);
 const OPENAI_BACKGROUND_POLL_INTERVAL_MS = 2000;
 const OPENAI_BACKGROUND_MAX_POLLS = 180;
 

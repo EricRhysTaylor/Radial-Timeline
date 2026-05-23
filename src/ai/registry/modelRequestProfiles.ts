@@ -65,8 +65,7 @@ const OPENAI_GPT_5_5_OVERRIDE: Partial<ModelRequestProfile> = {
 
 const REQUEST_PROFILE_OVERRIDES: Partial<Record<Exclude<AIProviderId, 'none'>, Record<string, Partial<ModelRequestProfile>>>> = {
     openai: {
-        'gpt-5.5': OPENAI_GPT_5_5_OVERRIDE,
-        'gpt-5.5-2026-04-23': OPENAI_GPT_5_5_OVERRIDE
+        'gpt-5.5': OPENAI_GPT_5_5_OVERRIDE
     }
 };
 

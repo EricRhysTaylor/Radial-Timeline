@@ -13,7 +13,7 @@ import {
 
 export const AI_SETTINGS_SCHEMA_VERSION = 1;
 export const DEFAULT_CANONICAL_PROVIDER: Exclude<AIProviderId, 'none'> = 'openai';
-export const DEFAULT_CANONICAL_MODEL_ALIAS = 'gpt-5.4';
+export const DEFAULT_CANONICAL_MODEL_ALIAS = 'gpt-5.5';
 export const DEFAULT_CREDENTIAL_SECRET_IDS = {
     openaiSecretId: 'rt.openai.api-key',
     anthropicSecretId: 'rt.anthropic.api-key',

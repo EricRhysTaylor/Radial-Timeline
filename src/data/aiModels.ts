@@ -7,51 +7,43 @@ export interface CuratedModel {
     link?: string;
 }
 
+/*
+ * User-facing model picker entries.
+ *
+ * Policy (2026-05-22): one top model per provider, plus a Google
+ * fast/deep split where the speed/depth tradeoff is a quality dimension.
+ * The picker UX (provider dropdown → model dropdown) stays in place
+ * even with a single picker entry per provider, so the catalog can be
+ * re-expanded later without UI surgery.
+ *
+ * See docs/engineering/standards/model-promotion.md for the promotion
+ * policy when a new model is being evaluated for replacement.
+ */
 export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     openai: [
         {
             id: 'gpt-5.5',
             label: 'GPT-5.5',
-            guidance: "→ GPT-5.5 (1,050,000 context). Current OpenAI flagship for complex reasoning and coding; RT uses the Responses API path with prompt caching support. [FYI](https://platform.openai.com/docs/models)",
-        },
-        {
-            id: 'gpt-5.4',
-            label: 'GPT-5.4',
-            guidance: "→ GPT-5.4 (1,050,000 context). Prior OpenAI stable lane retained as the rollback option. [FYI](https://platform.openai.com/docs/models)",
+            guidance: "→ GPT-5.5 (1,050,000 context). Current OpenAI flagship for complex reasoning. RT uses the Responses API path with prompt caching. [FYI](https://platform.openai.com/docs/models)",
         },
     ],
     anthropic: [
         {
             id: 'claude-opus-4-7',
             label: 'Claude Opus 4.7',
-            guidance: "Claude Opus 4.7 is the explicit Anthropic pro lane in RT. It stays selectable without replacing Sonnet Auto, and it uses the same document-citation and prompt-caching path RT already uses for Anthropic. [FYI](https://docs.anthropic.com/en/docs/build-with-claude/citations)",
-        },
-        {
-            id: 'claude-opus-4-6',
-            label: 'Claude Opus 4.6',
-            guidance: "Claude Opus 4.6 with direct manuscript citation flow in RT Inquiry (document blocks + citations). [FYI](https://platform.claude.com/docs/en/build-with-claude/citations)",
-        },
-        {
-            id: 'claude-sonnet-4-6',
-            label: 'Claude Sonnet 4.6',
-            guidance: "Claude Sonnet 4.6 with the same RT manuscript-citation workflow used by Inquiry. [FYI](https://platform.claude.com/docs/en/build-with-claude/citations)",
+            guidance: "Claude Opus 4.7 (1,000,000 context). RT's Anthropic lane — uses the document-citation and prompt-caching path RT relies on. [FYI](https://docs.anthropic.com/en/docs/build-with-claude/citations)",
         },
     ],
     google: [
         {
             id: 'gemini-3.1-pro-preview',
             label: 'Google 3.1 Pro Preview',
-            guidance: "→ Google 3.1 Pro Preview (1,048,576 context). Current lead Google lane — supersedes the deprecated Gemini 3 Pro Preview. Preview status: no GA release yet. Supports Search grounding; cached content and grounded citations are mutually exclusive per Google's API. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+            guidance: "→ Google 3.1 Pro Preview (1,048,576 context). Depth lane for Google — best for narrative reasoning. Preview status: no GA release yet. Supports Search grounding; cached content and grounded citations are mutually exclusive per Google's API. [FYI](https://ai.google.dev/gemini-api/docs/models)",
         },
         {
             id: 'gemini-3.5-flash',
             label: 'Google 3.5 Flash',
-            guidance: "Google 3.5 Flash (1,048,576 context). Current fast Google lane from the provider snapshot; use when lower latency/cost matters more than Pro-depth reasoning. RT maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/gemini-api/docs/models)",
-        },
-        {
-            id: 'gemini-2.5-pro',
-            label: 'Google 2.5 Pro',
-            guidance: "Google 2.5 Pro (1,048,576 context). Stable Google lane; use when you need GA guarantees. RT maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/)",
+            guidance: "Google 3.5 Flash (1,048,576 context). Speed lane for Google — best for structured extraction at lower latency. Different reasoning style than Pro, not just faster. [FYI](https://ai.google.dev/gemini-api/docs/models)",
         },
     ],
 };

@@ -46,7 +46,7 @@ describe('GoogleProvider', () => {
 
         const provider = new GoogleProvider({ settings: {} } as never);
         const result = await provider.generateText({
-            modelId: 'gemini-2.5-pro',
+            modelId: 'gemini-3.1-pro-preview',
             systemPrompt: 'You are precise.',
             userPrompt: `Stable prefix ${'x'.repeat(140000)}${CACHE_BREAK_DELIMITER}Volatile question`,
             citationsEnabled: false

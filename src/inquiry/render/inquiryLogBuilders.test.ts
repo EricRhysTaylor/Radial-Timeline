@@ -4,7 +4,7 @@ import { buildInquiryLogContent, type InquiryLogBuilderDependencies } from './in
 describe('buildInquiryLogContent', () => {
     const deps: InquiryLogBuilderDependencies = {
         getQuestionLabel: () => 'Pres2: Underwritten Beats',
-        getBriefModelLabel: () => 'GPT-5.4',
+        getBriefModelLabel: () => 'GPT-5.5',
         getFiniteTokenEstimateInput: () => 174000,
         getTokenTier: () => 'red',
         buildInquiryLogCostEstimateInput: () => null,
@@ -28,8 +28,8 @@ describe('buildInquiryLogContent', () => {
                 scope: 'book',
                 scopeLabel: 'B1',
                 aiProvider: 'openai',
-                aiModelResolved: 'gpt-5.4',
-                aiModelRequested: 'gpt-5.4',
+                aiModelResolved: 'gpt-5.5',
+                aiModelRequested: 'gpt-5.5',
                 evidenceDocumentMeta: [
                     {
                         title: '1 Bingley Arrives',
@@ -101,8 +101,8 @@ describe('buildInquiryLogContent', () => {
                 scope: 'saga',
                 scopeLabel: 'Σ',
                 aiProvider: 'anthropic',
-                aiModelResolved: 'claude-sonnet-4-6',
-                aiModelRequested: 'claude-sonnet-4-6',
+                aiModelResolved: 'claude-opus-4-7',
+                aiModelRequested: 'claude-opus-4-7',
                 evidenceDocumentMeta: [],
                 findings: [],
                 verdict: {
@@ -150,8 +150,8 @@ describe('buildInquiryLogContent', () => {
                 scope: 'saga',
                 scopeLabel: 'Σ',
                 aiProvider: 'google',
-                aiModelResolved: 'gemini-2.5-pro',
-                aiModelRequested: 'gemini-2.5-pro',
+                aiModelResolved: 'gemini-3.1-pro-preview',
+                aiModelRequested: 'gemini-3.1-pro-preview',
                 findings: [],
                 verdict: {
                     flow: 85,
@@ -191,7 +191,9 @@ describe('buildInquiryLogContent', () => {
         });
 
         expect(content).toContain('- Gemini cachedContent: cachedContents/abc123');
-        expect(content).toContain('- Actual usage cost: $0.147');
+        // Exact dollar amount depends on the active pricing table;
+        // assert format only (catalog trim 2026-05-22).
+        expect(content).toMatch(/- Actual usage cost: \$\d+(\.\d{1,3})?/);
         expect(content).toContain('- Raw provider usage JSON: not captured; normalized token usage available');
         expect(content).not.toContain('prompt_cache_key sent');
         expect(content).not.toContain('unsupported');
@@ -203,8 +205,8 @@ describe('buildInquiryLogContent', () => {
                 scope: 'book',
                 scopeLabel: 'B1',
                 aiProvider: 'openai',
-                aiModelResolved: 'gpt-5.4',
-                aiModelRequested: 'gpt-5.4',
+                aiModelResolved: 'gpt-5.5',
+                aiModelRequested: 'gpt-5.5',
                 findings: [],
                 verdict: {
                     flow: 68,

@@ -11,13 +11,13 @@ import { buildSceneRefIndex } from '../../ai/references/sceneRefNormalizer';
 
 const TEST_AI = {
     provider: 'openai',
-    modelId: 'gpt-5.2-chat-latest',
+    modelId: 'gpt-5.5',
     modelLabel: 'GPT-5.2'
 } as const;
 
 const ANTHROPIC_AI = {
     provider: 'anthropic',
-    modelId: 'claude-sonnet-4-6',
+    modelId: 'claude-opus-4-7',
     modelLabel: 'Claude Sonnet 4.6'
 } as const;
 

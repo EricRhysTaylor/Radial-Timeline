@@ -53,13 +53,13 @@ describe('openai responses normalization', () => {
             }
         };
 
-        const normalized = normalizeOpenAiResponsesResponseData(raw, 'gpt-5.4-pro', 'hello world') as Record<string, unknown>;
+        const normalized = normalizeOpenAiResponsesResponseData(raw, 'gpt-5.5', 'hello world') as Record<string, unknown>;
         const usage = normalized.usage as Record<string, unknown>;
         const choices = normalized.choices as Record<string, unknown>[];
         const firstChoice = choices[0];
         const message = firstChoice.message as Record<string, unknown>;
 
-        expect(normalized.model).toBe('gpt-5.4-pro');
+        expect(normalized.model).toBe('gpt-5.5');
         expect(usage.prompt_tokens).toBe(12);
         expect(usage.completion_tokens).toBe(8);
         expect(usage.total_tokens).toBe(20);
@@ -213,65 +213,12 @@ describe('openai responses normalization', () => {
         expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
     });
 
-    it('uses background mode and polls retrieve for the OpenAI pro lane', async () => {
-        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
-        mockedRequestUrl.mockReset();
-        mockedRequestUrl
-            .mockResolvedValueOnce({
-                status: 200,
-                text: '',
-                json: {
-                    id: 'resp_bg_123',
-                    status: 'queued'
-                }
-            } as never)
-            .mockResolvedValueOnce({
-                status: 200,
-                text: '',
-                json: {
-                    id: 'resp_bg_123',
-                    status: 'completed',
-                    output_text: 'Deep solve complete.'
-                }
-            } as never);
-
-        const response = await callOpenAiResponsesApi(
-            'test-key',
-            'gpt-5.4-pro',
-            'You are precise.',
-            'Solve deeply.',
-            2048
-        );
-
-        expect(response.success).toBe(true);
-        expect(response.content).toBe('Deep solve complete.');
-        expect(response.adapterNotes).toContain('OpenAI Responses background mode enabled for pro lane.');
-        expect(response.requestPayload).toEqual({
-            model: 'gpt-5.4-pro',
-            input: [
-                {
-                    role: 'system',
-                    content: [{ type: 'input_text', text: 'You are precise.' }]
-                },
-                {
-                    role: 'user',
-                    content: [{ type: 'input_text', text: 'Solve deeply.' }]
-                }
-            ],
-            max_output_tokens: 2048,
-            background: true,
-            store: true
-        });
-        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
-        expect(mockedRequestUrl.mock.calls[0]?.[0]).toMatchObject({
-            url: 'https://api.openai.com/v1/responses',
-            method: 'POST'
-        });
-        expect(mockedRequestUrl.mock.calls[1]?.[0]).toMatchObject({
-            url: 'https://api.openai.com/v1/responses/resp_bg_123',
-            method: 'GET'
-        });
-    });
+    // Background-mode test removed in the 2026-05-22 catalog trim: the
+    // gpt-5.4-pro family was the only model in
+    // OPENAI_BACKGROUND_RESPONSE_MODEL_IDS, and the set is now empty. The
+    // background-poll plumbing in callOpenAiResponsesApi is intact; when
+    // a future model is added to that set, re-add a test row here
+    // exercising the queue→retrieve flow.
 
     it('fails hard when OpenAI rejects structured text.format instead of retrying without it', async () => {
         const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
@@ -288,7 +235,7 @@ describe('openai responses normalization', () => {
 
         const response = await callOpenAiResponsesApi(
             'test-key',
-            'gpt-5.4',
+            'gpt-5.5',
             'You are precise.',
             'Return JSON.',
             512,

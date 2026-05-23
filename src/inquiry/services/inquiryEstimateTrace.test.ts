@@ -63,7 +63,7 @@ describe('buildInquiryEstimateTrace', () => {
             },
             ai: {
                 provider: 'anthropic',
-                modelId: 'claude-sonnet-4-6',
+                modelId: 'claude-opus-4-7',
                 modelLabel: 'Claude Sonnet 4.6'
             }
         };

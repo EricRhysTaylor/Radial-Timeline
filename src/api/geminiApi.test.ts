@@ -170,7 +170,7 @@ describe('gemini grounding citation extraction', () => {
             json: { totalTokens: 7 }
         } as never);
 
-        await countGeminiTokens('test-key', 'gemini-2.5-pro', null, 'hi');
+        await countGeminiTokens('test-key', 'gemini-3.1-pro-preview', null, 'hi');
 
         const request = mockedRequestUrl.mock.calls[0]?.[0] as { body?: string };
         const parsed = JSON.parse(request.body ?? '{}');
@@ -197,7 +197,7 @@ describe('gemini grounding citation extraction', () => {
         } as never);
 
         await expect(
-            countGeminiTokens('test-key', 'gemini-2.5-pro', null, 'hi')
+            countGeminiTokens('test-key', 'gemini-3.1-pro-preview', null, 'hi')
         ).rejects.toThrow(/Invalid token count response/);
     });
 

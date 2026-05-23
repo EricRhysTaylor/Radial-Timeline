@@ -20,19 +20,12 @@ describe('sanitizeDispatchParams', () => {
         expect(result.notes).toContain('Stripped topP for openai/gpt-5.5: model does not support topP');
     });
 
-    it('keeps OpenAI GPT-5.4 sampling controls unchanged', () => {
-        const result = sanitizeDispatchParams('openai', {
-            modelId: 'gpt-5.4',
-            userPrompt: 'Return JSON.',
-            maxOutputTokens: 2048,
-            temperature: 0.2,
-            topP: 0.9
-        });
-
-        expect(result.params.temperature).toBe(0.2);
-        expect(result.params.topP).toBe(0.9);
-        expect(result.notes).toEqual([]);
-    });
+    // Note: with the minimum-viable catalog (2026-05-22), GPT-5.5 is the
+    // only OpenAI model and it does NOT support temperature/topP. There
+    // is currently no curated OpenAI model that keeps sampling controls
+    // unchanged; that test was retired with gpt-5.4. If a future curated
+    // OpenAI model supports temperature, re-add an "OpenAI sampling
+    // preserved" test row using that model.
 
     it('centralizes GPT-5.5 request profile metadata for provider adapters', () => {
         expect(getModelRequestProfile('openai', 'gpt-5.5')).toMatchObject({
@@ -66,7 +59,7 @@ describe('sanitizeDispatchParams', () => {
     });
 
     it('treats Gemini thinking models as managed-sampling models', () => {
-        const profile = getModelRequestProfile('google', 'gemini-2.5-pro');
+        const profile = getModelRequestProfile('google', 'gemini-3.1-pro-preview');
 
         expect(profile.supportsTemperature).toBe(false);
         expect(profile.supportsTopP).toBe(false);
@@ -74,7 +67,7 @@ describe('sanitizeDispatchParams', () => {
 
     it('strips Gemini managed-sampling controls using the shared request profile', () => {
         const result = sanitizeDispatchParams('google', {
-            modelId: 'gemini-2.5-pro',
+            modelId: 'gemini-3.1-pro-preview',
             userPrompt: 'Return JSON.',
             maxOutputTokens: 2048,
             temperature: 0.2,
@@ -83,7 +76,7 @@ describe('sanitizeDispatchParams', () => {
 
         expect(result.params.temperature).toBeUndefined();
         expect(result.params.topP).toBeUndefined();
-        expect(result.notes).toContain('Stripped temperature for google/gemini-2.5-pro: model does not support temperature');
-        expect(result.notes).toContain('Stripped topP for google/gemini-2.5-pro: model does not support topP');
+        expect(result.notes).toContain('Stripped temperature for google/gemini-3.1-pro-preview: model does not support temperature');
+        expect(result.notes).toContain('Stripped topP for google/gemini-3.1-pro-preview: model does not support topP');
     });
 });

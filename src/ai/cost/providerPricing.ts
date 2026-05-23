@@ -46,43 +46,7 @@ export interface ResolvedProviderModelPricing {
 
 export const BUILTIN_PRICING: ProviderPricingTable = {
     anthropic: {
-        'claude-opus-4-1-20250805': {
-            inputPer1M: 15.0,
-            outputPer1M: 75.0,
-            cacheWrite5mPer1M: 18.75,
-            cacheWrite1hPer1M: 30.0,
-            cacheReadPer1M: 1.5
-        },
         'claude-opus-4-7': {
-            inputPer1M: 5.0,
-            outputPer1M: 25.0,
-            cacheWrite5mPer1M: 6.25,
-            cacheWrite1hPer1M: 10.0,
-            cacheReadPer1M: 0.5
-        },
-        'claude-sonnet-4-6': {
-            inputPer1M: 3.0,
-            outputPer1M: 15.0,
-            cacheWrite5mPer1M: 3.75,
-            cacheWrite1hPer1M: 6.0,
-            cacheReadPer1M: 0.3
-        },
-        'claude-sonnet-4-5-20250929': {
-            inputPer1M: 3.0,
-            outputPer1M: 15.0,
-            cacheWrite5mPer1M: 3.75,
-            cacheWrite1hPer1M: 6.0,
-            cacheReadPer1M: 0.3,
-            longContext: {
-                thresholdInputTokens: 200_000,
-                inputPer1M: 6.0,
-                outputPer1M: 22.5,
-                cacheWrite5mPer1M: 7.5,
-                cacheWrite1hPer1M: 12.0,
-                cacheReadPer1M: 0.6
-            }
-        },
-        'claude-opus-4-6': {
             inputPer1M: 5.0,
             outputPer1M: 25.0,
             cacheWrite5mPer1M: 6.25,
@@ -100,57 +64,6 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
                 inputPer1M: 10.0,
                 outputPer1M: 45.0,
                 cacheReadPer1M: 1.0
-            }
-        },
-        'gpt-5.5-2026-04-23': {
-            inputPer1M: 5.0,
-            outputPer1M: 30.0,
-            cacheReadPer1M: 0.5,
-            longContext: {
-                thresholdInputTokens: 272_000,
-                inputPer1M: 10.0,
-                outputPer1M: 45.0,
-                cacheReadPer1M: 1.0
-            }
-        },
-        'gpt-5.4': {
-            inputPer1M: 2.5,
-            outputPer1M: 15.0,
-            cacheReadPer1M: 0.25,
-            longContext: {
-                thresholdInputTokens: 272_000,
-                inputPer1M: 5.0,
-                outputPer1M: 22.5,
-                cacheReadPer1M: 0.5
-            }
-        },
-        'gpt-5.4-2026-03-05': {
-            inputPer1M: 2.5,
-            outputPer1M: 15.0,
-            cacheReadPer1M: 0.25,
-            longContext: {
-                thresholdInputTokens: 272_000,
-                inputPer1M: 5.0,
-                outputPer1M: 22.5,
-                cacheReadPer1M: 0.5
-            }
-        },
-        'gpt-5.4-pro': {
-            inputPer1M: 30.0,
-            outputPer1M: 180.0,
-            longContext: {
-                thresholdInputTokens: 272_000,
-                inputPer1M: 60.0,
-                outputPer1M: 270.0
-            }
-        },
-        'gpt-5.4-pro-2026-03-05': {
-            inputPer1M: 30.0,
-            outputPer1M: 180.0,
-            longContext: {
-                thresholdInputTokens: 272_000,
-                inputPer1M: 60.0,
-                outputPer1M: 270.0
             }
         }
     },
@@ -170,28 +83,6 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
             inputPer1M: 0.5,
             outputPer1M: 3.0,
             cacheReadPer1M: 0.05
-        },
-        'gemini-pro-latest': {
-            inputPer1M: 2.0,
-            outputPer1M: 12.0,
-            cacheReadPer1M: 0.2,
-            longContext: {
-                thresholdInputTokens: 200_000,
-                inputPer1M: 4.0,
-                outputPer1M: 18.0,
-                cacheReadPer1M: 0.4
-            }
-        },
-        'gemini-2.5-pro': {
-            inputPer1M: 1.25,
-            outputPer1M: 10.0,
-            cacheReadPer1M: 0.125,
-            longContext: {
-                thresholdInputTokens: 200_000,
-                inputPer1M: 2.5,
-                outputPer1M: 15.0,
-                cacheReadPer1M: 0.25
-            }
         }
     }
 };

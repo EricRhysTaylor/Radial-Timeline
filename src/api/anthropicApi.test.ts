@@ -31,14 +31,14 @@ describe('anthropic token counting', () => {
 
         const result = await countAnthropicTokens(
             'test-key',
-            'claude-sonnet-4-6',
+            'claude-opus-4-7',
             'System rules',
             'User prompt body'
         );
 
         expect(result).toEqual({
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             inputTokens: 4321,
             source: 'provider_count'
         });
@@ -52,7 +52,7 @@ describe('anthropic token counting', () => {
 
         expect(request.url).toBe('https://api.anthropic.com/v1/messages/count_tokens');
         expect(request.headers?.['anthropic-version']).toBe('2023-06-01');
-        expect(body.model).toBe('claude-sonnet-4-6');
+        expect(body.model).toBe('claude-opus-4-7');
         expect(body.system).toEqual([{ type: 'text', text: 'System rules' }]);
         expect(body.messages?.[0]?.role).toBe('user');
         expect(body.messages?.[0]?.content?.[0]).toEqual({ type: 'text', text: 'User prompt body' });
@@ -69,7 +69,7 @@ describe('anthropic token counting', () => {
 
         await countAnthropicTokens(
             'test-key',
-            'claude-sonnet-4-6',
+            'claude-opus-4-7',
             'System rules',
             'Return {"answer":"ACK"}.',
             false,
@@ -120,7 +120,7 @@ describe('anthropic token counting', () => {
 
         await countAnthropicTokens(
             'test-key',
-            'claude-sonnet-4-6',
+            'claude-opus-4-7',
             'System rules',
             'Return JSON per the schema in the prompt.',
             true,
@@ -152,7 +152,7 @@ describe('anthropic token counting', () => {
     it('rejects token count responses that omit input_tokens', () => {
         expect(normalizeAnthropicTokenCountResponse({
             total_tokens: 987
-        }, 'claude-opus-4-6')).toBeNull();
+        }, 'claude-opus-4-7')).toBeNull();
     });
 });
 

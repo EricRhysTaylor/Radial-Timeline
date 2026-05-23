@@ -1,11 +1,22 @@
 import type { Capability, ModelInfo } from '../types';
 
 const DEEP_CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
-const DEEP_NON_SCHEMA_CAPS: Capability[] = ['longContext', 'reasoningStrong', 'highOutputCap'];
-const BALANCED_CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
 const FAST_CAPS: Capability[] = ['jsonStrict', 'streaming'];
 const LOCAL_CAPS: Capability[] = ['jsonStrict'];
 
+/*
+ * Minimum-viable model catalog (2026-05-22).
+ *
+ * Policy: one top model per provider, plus a Google fast/deep split where
+ * the speed/depth tradeoff is genuinely a quality dimension (not cost).
+ * Picker UX infrastructure stays intact so models can be re-added later
+ * via the deliberate quarterly promotion process in
+ * docs/engineering/standards/model-promotion.md.
+ *
+ * Adding a model is a replacement, not an accretion. Run
+ * `npm run gates` after any change to keep the catalog contract test
+ * and the model coverage gate happy.
+ */
 export const BUILTIN_MODELS: ModelInfo[] = [
     {
         provider: 'anthropic',
@@ -21,68 +32,11 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         releasedAt: '2026-04-16',
         status: 'stable',
         rollout: {
-            channel: 'pro',
-            status: 'stable',
-            supersedes: 'claude-opus-4-6',
-            fallbackModelId: 'claude-opus-4-6',
-            lane: 'pro'
-        }
-    },
-    {
-        provider: 'anthropic',
-        id: 'claude-opus-4-6',
-        alias: 'claude-opus-4.6',
-        label: 'Claude Opus 4.6',
-        line: 'claude-opus',
-        tier: 'DEEP',
-        capabilities: [...DEEP_CAPS],
-        personality: { reasoning: 10, writing: 10, determinism: 9 },
-        contextWindow: 1000000,
-        maxOutput: 16000,
-        releasedAt: '2026-02-04',
-        status: 'stable'
-    },
-    {
-        provider: 'anthropic',
-        id: 'claude-sonnet-4-6',
-        alias: 'claude-sonnet-4.6',
-        label: 'Claude Sonnet 4.6',
-        line: 'claude-sonnet',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap'],
-        personality: { reasoning: 9, writing: 9, determinism: 9 },
-        contextWindow: 1000000,
-        maxOutput: 16000,
-        releasedAt: '2026-02-17',
-        status: 'stable',
-        rollout: {
             channel: 'stable',
             status: 'stable',
-            supersedes: 'claude-sonnet-4-5-20250929',
-            fallbackModelId: 'claude-sonnet-4-5-20250929',
             lane: 'default'
         }
     },
-    {
-        provider: 'anthropic',
-        id: 'claude-sonnet-4-5-20250929',
-        alias: 'claude-sonnet-4.5',
-        label: 'Claude Sonnet 4.5',
-        line: 'claude-sonnet',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap'],
-        personality: { reasoning: 9, writing: 9, determinism: 9 },
-        contextWindow: 200000,
-        maxOutput: 16000,
-        releasedAt: '2025-09-29',
-        status: 'legacy'
-    },
-    // OpenAI release channels:
-    // stable   = default latest engine
-    // pro      = explicit higher compute option
-    // rollback = prior stable fallback
-    // snapshot = dated provider snapshot
-    // legacy   = compatibility alias
     {
         provider: 'openai',
         id: 'gpt-5.5',
@@ -90,7 +44,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         label: 'GPT-5.5',
         line: 'gpt-5',
         tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
+        capabilities: [...DEEP_CAPS, 'toolCalling', 'functionCalling'],
         personality: { reasoning: 10, writing: 9, determinism: 9 },
         contextWindow: 1050000,
         maxOutput: 128000,
@@ -99,8 +53,6 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         rollout: {
             channel: 'stable',
             status: 'stable',
-            supersedes: 'gpt-5.4',
-            fallbackModelId: 'gpt-5.4',
             lane: 'default'
         },
         constraints: {
@@ -109,185 +61,6 @@ export const BUILTIN_MODELS: ModelInfo[] = [
             supportsReasoningEffort: true,
             preferredOpenAiEndpoint: 'responses'
         }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.5-2026-04-23',
-        alias: 'gpt-5.5-2026-04-23',
-        label: 'GPT-5.5 (2026-04-23)',
-        line: 'gpt-5',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 10, writing: 9, determinism: 9 },
-        contextWindow: 1050000,
-        maxOutput: 128000,
-        releasedAt: '2026-04-23',
-        status: 'legacy',
-        rollout: {
-            channel: 'snapshot',
-            hiddenFromPicker: true,
-            status: 'provisional',
-            supersedes: 'gpt-5.5',
-            fallbackModelId: 'gpt-5.4',
-            lane: 'default',
-            datedVariantOf: 'gpt-5.5'
-        },
-        constraints: {
-            supportsTemperature: false,
-            supportsTopP: false,
-            supportsReasoningEffort: true,
-            preferredOpenAiEndpoint: 'responses'
-        }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.4',
-        alias: 'gpt-5.4',
-        label: 'GPT-5.4',
-        line: 'gpt-5',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 9, writing: 9, determinism: 9 },
-        contextWindow: 1050000,
-        maxOutput: 128000,
-        releasedAt: '2026-03-05',
-        status: 'stable',
-        rollout: {
-            channel: 'rollback',
-            status: 'stable',
-            supersedes: 'gpt-5.3',
-            fallbackModelId: 'gpt-5.3',
-            lane: 'default'
-        }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.4-pro',
-        alias: 'gpt-5.4-pro',
-        label: 'GPT-5.4 Pro',
-        line: 'gpt-5-pro',
-        tier: 'DEEP',
-        capabilities: [...DEEP_NON_SCHEMA_CAPS, 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 10, writing: 9, determinism: 9 },
-        contextWindow: 1050000,
-        maxOutput: 128000,
-        releasedAt: '2026-03-05',
-        status: 'stable',
-        rollout: {
-            channel: 'pro',
-            hiddenFromPicker: true,
-            status: 'stable',
-            supersedes: 'gpt-5.3',
-            fallbackModelId: 'gpt-5.3',
-            lane: 'pro'
-        }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.4-2026-03-05',
-        alias: 'gpt-5.4-2026-03-05',
-        label: 'GPT-5.4 (2026-03-05)',
-        line: 'gpt-5',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 9, writing: 9, determinism: 9 },
-        contextWindow: 1050000,
-        maxOutput: 128000,
-        releasedAt: '2026-03-05',
-        status: 'legacy',
-        rollout: {
-            channel: 'snapshot',
-            hiddenFromPicker: true,
-            status: 'provisional',
-            supersedes: 'gpt-5.4',
-            fallbackModelId: 'gpt-5.3',
-            lane: 'default',
-            datedVariantOf: 'gpt-5.4'
-        }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.4-pro-2026-03-05',
-        alias: 'gpt-5.4-pro-2026-03-05',
-        label: 'GPT-5.4 Pro (2026-03-05)',
-        line: 'gpt-5-pro',
-        tier: 'DEEP',
-        capabilities: [...DEEP_NON_SCHEMA_CAPS, 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 10, writing: 9, determinism: 9 },
-        contextWindow: 1050000,
-        maxOutput: 128000,
-        releasedAt: '2026-03-05',
-        status: 'legacy',
-        rollout: {
-            channel: 'snapshot',
-            hiddenFromPicker: true,
-            status: 'provisional',
-            supersedes: 'gpt-5.4-pro',
-            fallbackModelId: 'gpt-5.3',
-            lane: 'pro',
-            datedVariantOf: 'gpt-5.4-pro'
-        }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.3',
-        alias: 'gpt-5.3',
-        label: 'GPT-5.3',
-        line: 'gpt-5',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 9, writing: 8, determinism: 9 },
-        contextWindow: 400000,
-        maxOutput: 16000,
-        status: 'stable',
-        rollout: {
-            channel: 'rollback',
-            status: 'stable',
-            supersedes: 'gpt-5.2-chat-latest',
-            fallbackModelId: 'gpt-5.3',
-            lane: 'default'
-        }
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.2-chat-latest',
-        alias: 'gpt-5.2-latest',
-        label: 'GPT-5.2',
-        line: 'gpt-5',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 9, writing: 8, determinism: 9 },
-        contextWindow: 400000,
-        maxOutput: 16000,
-        status: 'stable'
-    },
-    {
-        provider: 'openai',
-        id: 'gpt-5.1-chat-latest',
-        alias: 'gpt-5.1-latest',
-        label: 'GPT-5.1',
-        line: 'gpt-5',
-        tier: 'BALANCED',
-        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
-        personality: { reasoning: 8, writing: 8, determinism: 9 },
-        contextWindow: 200000,
-        maxOutput: 16000,
-        status: 'stable'
-    },
-    {
-        provider: 'google',
-        id: 'gemini-2.5-pro',
-        alias: 'gemini-2.5-pro',
-        label: 'Gemini 2.5 Pro',
-        line: 'gemini-pro',
-        tier: 'DEEP',
-        capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap', 'streaming'],
-        personality: { reasoning: 9, writing: 8, determinism: 8 },
-        contextWindow: 1048576,
-        maxOutput: 65536,
-        releasedAt: '2025-06-01',
-        status: 'stable',
-        constraints: { cacheVsCitationsExclusive: true }
     },
     {
         provider: 'google',
@@ -316,20 +89,6 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         maxOutput: 65536,
         releasedAt: '2026-05-01',
         status: 'stable',
-        constraints: { cacheVsCitationsExclusive: true }
-    },
-    {
-        provider: 'google',
-        id: 'gemini-pro-latest',
-        alias: 'gemini-pro-latest',
-        label: 'Gemini Pro Latest',
-        line: 'gemini-pro',
-        tier: 'DEEP',
-        capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap', 'streaming'],
-        personality: { reasoning: 9, writing: 8, determinism: 8 },
-        contextWindow: 1048576,
-        maxOutput: 65536,
-        status: 'legacy',
         constraints: { cacheVsCitationsExclusive: true }
     },
     {

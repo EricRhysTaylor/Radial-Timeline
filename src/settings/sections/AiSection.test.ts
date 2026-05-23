@@ -81,16 +81,17 @@ describe('AI settings models table', () => {
         expect(source.includes('Latest Inquiry run completed at')).toBe(false);
     });
 
-    it('keeps all latest-alias preview labels aligned with the selected alias until a concrete ID is resolved', () => {
+    it('the catalog has no "*-latest" alias entries after the 2026-05-22 trim', () => {
+        // The latest-alias display fallback in modelResolver.ts still
+        // handles "*-latest" strings if a provider returns one, but no
+        // BUILTIN_MODELS entry currently carries that shape. When a
+        // future model is promoted via the deliberate promotion process
+        // (see docs/engineering/standards/model-promotion.md), update
+        // this assertion to enumerate the latest aliases it adds.
         const latestAliases = BUILTIN_MODELS
             .filter(model => model.id.includes('latest') || model.alias.includes('latest'))
-            .map(model => model.alias)
-            .sort();
-        expect(latestAliases).toEqual([
-            'gemini-pro-latest',
-            'gpt-5.1-latest',
-            'gpt-5.2-latest'
-        ]);
+            .map(model => model.alias);
+        expect(latestAliases).toEqual([]);
     });
 
     it('does not carry forward legacy reasoning-depth comparator copy', () => {
@@ -149,8 +150,8 @@ describe('AI settings models table', () => {
         expect(source.includes('getPickerModelsForProvider')).toBe(true);
         expect(source.includes("selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'stable')")).toBe(true);
         expect(source.includes('formatOpenAiInternalPinnedLabel')).toBe(true);
-        expect(source.includes("addOption('gpt-5.4-2026-03-05'")).toBe(false);
-        expect(source.includes("addOption('gpt-5.4-pro-2026-03-05'")).toBe(false);
+        expect(source.includes("addOption('gpt-5.5'")).toBe(false);
+        expect(source.includes("addOption('gpt-5.5'")).toBe(false);
     });
 
     it('renders cloud transparency sections while hiding them for the Local provider path', () => {

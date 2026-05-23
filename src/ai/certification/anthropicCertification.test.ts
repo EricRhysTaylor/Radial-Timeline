@@ -32,8 +32,8 @@ type CertificationReport = {
     cases: CertificationCaseResult[];
 };
 
-const PINNED_ANTHROPIC_POLICY = { type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' } as const;
-const MODEL_ID = 'claude-sonnet-4-6';
+const PINNED_ANTHROPIC_POLICY = { type: 'pinned', pinnedAlias: 'claude-opus-4.7' } as const;
+const MODEL_ID = 'claude-opus-4-7';
 const UNIQUE_CODE = 'AURORA-LATTICE';
 const REPORT_JSON_PATH = resolve(process.cwd(), 'docs', 'audits', 'anthropic-certification.json');
 const REPORT_MD_PATH = resolve(process.cwd(), 'docs', 'audits', 'anthropic-certification.md');

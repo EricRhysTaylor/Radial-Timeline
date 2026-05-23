@@ -34,7 +34,7 @@ describe('estimateInputTokens', () => {
         getCredential.mockResolvedValue('test-key');
         countAnthropicTokens.mockResolvedValue({
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             inputTokens: 43210,
             source: 'provider_count'
         });
@@ -42,7 +42,7 @@ describe('estimateInputTokens', () => {
         const result = await estimateInputTokens({
             plugin: {} as never,
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             systemPrompt: 'system',
             userPrompt: 'user',
             safeInputBudget: 100000
@@ -55,7 +55,7 @@ describe('estimateInputTokens', () => {
         });
         expect(countAnthropicTokens).toHaveBeenCalledWith(
             'test-key',
-            'claude-sonnet-4-6',
+            'claude-opus-4-7',
             'system',
             'user',
             undefined,
@@ -72,7 +72,7 @@ describe('estimateInputTokens', () => {
         const result = await estimateInputTokens({
             plugin: {} as never,
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             systemPrompt: 'system',
             userPrompt: 'user prompt',
             evidenceDocuments: [{ title: 'Scene 1', content: 'Evidence text' }],
@@ -89,7 +89,7 @@ describe('estimateInputTokens', () => {
         const result = await estimateInputTokens({
             plugin: {} as never,
             provider: 'openai',
-            modelId: 'gpt-5.4',
+            modelId: 'gpt-5.5',
             systemPrompt: 'system',
             userPrompt: 'user prompt'
         });

@@ -61,7 +61,7 @@ describe('buildCanonicalExecutionEstimate', () => {
         const result = await buildCanonicalExecutionEstimate({
             plugin: {} as never,
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             questionText: 'Analyze this manuscript.',
             scope: 'book',
             scopeLabel: 'Book 1',
@@ -137,7 +137,7 @@ describe('buildCanonicalGossamerExecutionEstimate', () => {
         const result = await buildCanonicalGossamerExecutionEstimate({
             plugin: {} as never,
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             promptText: 'Analyze beat momentum.'
         });
 
@@ -160,7 +160,7 @@ describe('buildCanonicalGossamerExecutionEstimate', () => {
         await expect(buildCanonicalGossamerExecutionEstimate({
             plugin: {} as never,
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
+            modelId: 'claude-opus-4-7',
             promptText: 'Analyze beat momentum.'
         })).rejects.toThrow('preview unavailable');
     });

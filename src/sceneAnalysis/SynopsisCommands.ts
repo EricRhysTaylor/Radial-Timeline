@@ -48,7 +48,7 @@ function isSummaryStale(scene: SceneData, plugin: RadialTimelinePlugin): boolean
 function getCurrentModelId(plugin: RadialTimelinePlugin): string {
     return resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
         feature: 'SummaryRefresh'
-    })?.model.id || 'gpt-5.4';
+    })?.model.id || 'gpt-5.5';
 }
 
 function setCaseInsensitiveField(frontmatter: Record<string, unknown>, key: string, value: string): void {

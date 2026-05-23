@@ -273,7 +273,7 @@ describe('buildInquiryEstimateSnapshot', () => {
             runner: { estimateExecutionPassCountFromPrompt: () => 1 } as never,
             engine: {
                 provider: 'anthropic',
-                modelId: 'claude-sonnet-4-6',
+                modelId: 'claude-opus-4-7',
                 modelLabel: 'Claude Sonnet 4.6',
                 contextWindow: 200_000,
                 blocked: false
@@ -346,7 +346,7 @@ describe('buildInquiryEstimateSnapshot', () => {
             runner: { estimateExecutionPassCountFromPrompt: () => 2 } as never,
             engine: {
                 provider: 'anthropic',
-                modelId: 'claude-sonnet-4-6',
+                modelId: 'claude-opus-4-7',
                 modelLabel: 'Claude Sonnet',
                 contextWindow: 200000
             } as never,

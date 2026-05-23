@@ -33,7 +33,7 @@ describe('computeInquiryAdvisoryContext', () => {
         // citations off everywhere, that nudge would mislead. The advisor
         // should suppress the sources_preferred branch and fall through to
         // other reason codes (or return null).
-        const currentModel = getModel('gpt-5.1-chat-latest');
+        const currentModel = getModel('gpt-5.5');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
@@ -51,7 +51,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns null when the current engine already has sources and fits in one pass', () => {
-        const currentModel = getModel('claude-sonnet-4-6');
+        const currentModel = getModel('claude-opus-4-7');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
@@ -87,7 +87,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns precision recommendation for deep analysis questions when another engine is stronger', () => {
-        const openAiStrong = getModel('gpt-5.2-chat-latest');
+        const openAiStrong = getModel('gpt-5.5');
         const currentModel: ModelInfo = {
             ...openAiStrong,
             id: 'gpt-5.2-precision-lite-test',
@@ -115,7 +115,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('does not suggest a single-pass switch for only a minor pass-count gain', () => {
-        const currentModel = getModel('claude-sonnet-4-5-20250929');
+        const currentModel = getModel('claude-opus-4-7');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
@@ -131,7 +131,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns null when no meaningful advisory advantage exists', () => {
-        const currentModel = getModel('claude-sonnet-4-6');
+        const currentModel = getModel('claude-opus-4-7');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
@@ -146,38 +146,12 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).toBeNull();
     });
 
-    it('keeps createdAt stable when advisory identity does not change', () => {
-        // Need a scenario that fires a still-active reason code. gpt-5.1
-        // (200k context) forced multi-pass on a 300k-token corpus while
-        // Anthropic Sonnet 4.6 (1M context) handles it in one pass — that
-        // triggers single_pass_preferred consistently across re-runs.
-        const currentModel = getModel('gpt-5.1-chat-latest');
-        const first = computeInquiryAdvisoryContext({
-            scope: 'book',
-            scopeLabel: 'B1',
-            resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
-            currentModel,
-            models: BUILTIN_MODELS,
-            estimatedInputTokens: 600000,
-            corpusFingerprint: 'fp-4',
-            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
-        });
-
-        expect(first).not.toBeNull();
-
-        const second = computeInquiryAdvisoryContext({
-            scope: 'book',
-            scopeLabel: 'B1',
-            resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
-            currentModel,
-            models: BUILTIN_MODELS,
-            estimatedInputTokens: 600000,
-            corpusFingerprint: 'fp-4',
-            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
-            previousContext: first,
-        });
-
-        expect(second).not.toBeNull();
-        expect(second?.createdAt).toBe(first?.createdAt);
-    });
+    // "keeps createdAt stable" test removed in the 2026-05-22 catalog
+    // trim: it depended on a small-context model (gpt-5.1, 200k window)
+    // being forced to multi-pass while a 1M-context Anthropic model
+    // handled the same corpus in one pass. With the trimmed catalog,
+    // every cloud model has a >= 1M context window, so the trigger
+    // condition (context-size disparity) no longer occurs. The
+    // createdAt-stability mechanic itself is still exercised by the
+    // session reload tests in InquirySessionStore.reload.test.ts.
 });
