@@ -206,7 +206,18 @@ export class GossamerProcessingModal extends ErtModal {
         contentEl.empty();
 
         const modelName = this.getActiveModelDisplayName();
-        this.renderProcessingHero(contentEl, t('gossamer.processingModal.analyzingManuscript'), modelName);
+        // Keep the same stable description used in the confirmation view.
+        // Swapping to "Analyzing manuscript..." was redundant with the
+        // status row below ("Sending manuscript to AI for ... analysis"),
+        // and the description is the right place for what-the-feature-does,
+        // not for the current step.
+        const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+        const signalLabelLower = GOSSAMER_SIGNAL_METADATA[signal].label.toLowerCase();
+        this.renderProcessingHero(
+            contentEl,
+            t('gossamer.processingModal.confirmSubtitle', { signal: signalLabelLower }),
+            modelName
+        );
 
         const bodyEl = contentEl.createDiv({ cls: 'ert-pulse-progress-body' });
         const progressCard = bodyEl.createDiv({ cls: 'ert-pulse-progress-card ert-glass-card' });
