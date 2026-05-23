@@ -7,6 +7,7 @@
 import { App, Platform } from 'obsidian';
 
 export const BUG_REPORT_REPO = 'EricRhysTaylor/Radial-Timeline';
+export const BUG_REPORT_EMAIL = 'ericrhystaylor@gmail.com';
 
 export type BugReportSource = 'rt' | 'inquiry';
 
@@ -203,4 +204,50 @@ export function buildIssueUrl(payload: BugReportPayload): string {
         labels: 'bug',
     });
     return `https://github.com/${BUG_REPORT_REPO}/issues/new?${params.toString()}`;
+}
+
+/**
+ * Build a plain-text body for the mailto: fallback. Mail clients render
+ * plain text directly, so no markdown headings — labels only.
+ */
+function formatEmailBody(payload: BugReportPayload): string {
+    const lines: string[] = [];
+    lines.push('Description');
+    lines.push(payload.description.trim() || '(none provided)');
+    lines.push('');
+    if (payload.errorText.trim()) {
+        lines.push('Error / Log');
+        lines.push(payload.errorText.trim());
+        lines.push('');
+    }
+    lines.push('Screenshot');
+    if (payload.hasScreenshot) {
+        lines.push('A screenshot is on your clipboard — paste it into this message before sending.');
+    } else {
+        lines.push('(none)');
+    }
+    lines.push('');
+    lines.push('Environment');
+    lines.push(`- Plugin version: ${payload.env.pluginVersion}`);
+    lines.push(`- Obsidian version: ${payload.env.obsidianVersion}`);
+    lines.push(`- Platform: ${payload.env.platform}`);
+    lines.push(`- Reported from: ${payload.env.source === 'rt' ? 'Radial Timeline view' : 'Inquiry view'}`);
+    return lines.join('\n');
+}
+
+/**
+ * Build a mailto: URL for users who don't have (or don't want) a GitHub account.
+ * Opens the OS default mail client with subject and body prefilled.
+ * Mail clients can't accept attachments through mailto, so the screenshot
+ * still rides via clipboard like the GitHub path.
+ */
+export function buildMailtoUrl(payload: BugReportPayload, recipient = BUG_REPORT_EMAIL): string {
+    const title = payload.description.trim().split('\n')[0].slice(0, 80) || 'Bug report';
+    const params = new URLSearchParams({
+        subject: `[Radial Timeline Bug] ${title}`,
+        body: formatEmailBody(payload),
+    });
+    // URLSearchParams encodes spaces as '+'; mailto expects '%20' for query values.
+    const query = params.toString().replace(/\+/g, '%20');
+    return `mailto:${recipient}?${query}`;
 }

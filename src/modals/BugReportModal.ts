@@ -8,8 +8,8 @@ import { App, ButtonComponent, Notice, Platform, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { ErtModal } from '../ui/ErtModal';
 import {
-    BUG_REPORT_REPO,
     buildIssueUrl,
+    buildMailtoUrl,
     captureScreenshot,
     copyImageToClipboard,
     gatherEnv,
@@ -84,7 +84,7 @@ export class BugReportModal extends ErtModal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Report a bug' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'The more specific, the easier it is to track down. Mention what you were doing right before, anything that looked off, and steps to reproduce if you can.',
+            text: 'The more specific, the easier it is to track down. Mention what you were doing right before, anything that looked off, and steps to reproduce.',
         });
     }
 
@@ -153,12 +153,11 @@ export class BugReportModal extends ErtModal {
     protected mountActions(): HTMLElement {
         const actions = this.contentEl.createDiv({ cls: 'ert-modal-actions ert-bug-report-actions' });
 
-        const formBtn = new ButtonComponent(actions)
-            .setButtonText('Open empty GitHub form')
-            .onClick(() => {
-                window.open(`https://github.com/${BUG_REPORT_REPO}/issues/new?labels=bug`, '_blank');
-            });
-        formBtn.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'ert-bug-report-secondary');
+        const emailBtn = new ButtonComponent(actions)
+            .setButtonText('Email instead')
+            .setTooltip('Open your default mail app with the report prefilled — no GitHub account needed.')
+            .onClick(() => void this.handleSend('email'));
+        emailBtn.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'ert-bug-report-secondary');
 
         const cancelBtn = new ButtonComponent(actions)
             .setButtonText('Close')
@@ -167,7 +166,7 @@ export class BugReportModal extends ErtModal {
 
         const send = new ButtonComponent(actions)
             .setButtonText('Send to GitHub')
-            .onClick(() => void this.handleSend());
+            .onClick(() => void this.handleSend('github'));
         send.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
         this.sendButton = send;
         this.updateSendEnabled();
@@ -255,7 +254,7 @@ export class BugReportModal extends ErtModal {
         }
     };
 
-    private async handleSend(): Promise<void> {
+    private async handleSend(transport: 'github' | 'email'): Promise<void> {
         const description = this.descriptionEl?.value ?? '';
         const errorText = this.errorEl?.value ?? '';
         if (!description.trim()) {
@@ -269,24 +268,27 @@ export class BugReportModal extends ErtModal {
         }
 
         const env = gatherEnv(this.app, this.plugin.manifest.version, this.source);
-        const url = buildIssueUrl({
+        const payload = {
             description,
             errorText,
             env,
             hasScreenshot: !!this.screenshotBlob && clipboardOk,
-        });
+        };
+
+        const url = transport === 'email' ? buildMailtoUrl(payload) : buildIssueUrl(payload);
+        const destLabel = transport === 'email' ? 'Email' : 'GitHub';
         window.open(url, '_blank');
 
         if (this.screenshotBlob) {
             if (clipboardOk) {
-                new Notice('GitHub opened. Paste your screenshot in the body with ⌘V / Ctrl+V.');
-                this.setStatus('Sent. Screenshot is on your clipboard — paste it into the GitHub form.', 'success');
+                new Notice(`${destLabel} opened. Paste your screenshot with ⌘V / Ctrl+V.`);
+                this.setStatus(`Sent. Screenshot is on your clipboard — paste it into the ${destLabel.toLowerCase()} window.`, 'success');
             } else {
-                new Notice('GitHub opened. Drag the image from this modal into the form.');
-                this.setStatus('Sent. Clipboard write failed — drag the preview image into GitHub.', 'info');
+                new Notice(`${destLabel} opened. Drag the image from this modal into the window.`);
+                this.setStatus(`Sent. Clipboard write failed — drag the preview image into ${destLabel.toLowerCase()}.`, 'info');
             }
         } else {
-            new Notice('GitHub issue form opened.');
+            new Notice(`${destLabel} opened with your report prefilled.`);
             this.setStatus('Sent.', 'success');
         }
     }
