@@ -7,7 +7,7 @@
 import { App, Platform } from 'obsidian';
 
 export const BUG_REPORT_REPO = 'EricRhysTaylor/Radial-Timeline';
-export const BUG_REPORT_EMAIL = 'ericrhystaylor@gmail.com';
+export const BUG_REPORT_EMAIL = 'bug@radialtimeline.com';
 
 export type BugReportSource = 'rt' | 'inquiry';
 
