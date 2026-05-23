@@ -137,7 +137,10 @@ type AnthropicMessageRequestBody = {
   max_tokens?: number;
   temperature?: number;
   top_p?: number;
-  thinking?: { type: 'enabled'; budget_tokens: number };
+  thinking?:
+    | { type: 'enabled'; budget_tokens: number }
+    | { type: 'adaptive' };
+  output_config?: { effort: 'low' | 'medium' | 'high' };
   tools?: AnthropicToolDefinition[];
   tool_choice?: AnthropicToolChoice;
 };
@@ -330,13 +333,42 @@ function buildAnthropicMessageRequestBody(
   if (!thinkingEnabled && typeof input.temperature === 'number') {
     requestBody.temperature = input.temperature;
   }
-  if (typeof input.topP === 'number') {
+  // Anthropic extended-thinking models require top_p >= 0.95 OR unset. We omit
+  // entirely when thinking is enabled (verified via smoke against Opus 4.7 on
+  // 2026-05-23 — provider returned: "top_p must be greater than or equal to
+  // 0.95 or unset when thinking is enabled").
+  if (typeof input.topP === 'number' && !thinkingEnabled) {
     requestBody.top_p = input.topP;
   }
   if (thinkingEnabled) {
-    requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudget };
+    // Anthropic changed the thinking-request shape in Opus 4.7+:
+    //   legacy: { type: 'enabled', budget_tokens: N }
+    //   modern: { type: 'adaptive' } + output_config.effort
+    // Verified via smoke probe against Opus 4.7 on 2026-05-23 — provider
+    // returns 400: "thinking.type.enabled is not supported for this model.
+    // Use thinking.type.adaptive and output_config.effort to control
+    // thinking behavior." Older Claude models still want the legacy shape.
+    if (modelSupportsAdaptiveThinking(input.modelId)) {
+      requestBody.thinking = { type: 'adaptive' };
+      requestBody.output_config = { effort: mapBudgetToEffort(thinkingBudget) };
+    } else {
+      requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudget };
+    }
   }
   return requestBody;
+}
+
+/** Whether the model accepts thinking.type='adaptive' (Opus 4.7+ family). */
+function modelSupportsAdaptiveThinking(modelId: string | undefined): boolean {
+  if (!modelId) return false;
+  return /claude-opus-4-[7-9]\b|claude-opus-[5-9]/i.test(modelId);
+}
+
+/** Map a budget-token target to the closest adaptive effort level. */
+function mapBudgetToEffort(budgetTokens: number): 'low' | 'medium' | 'high' {
+  if (budgetTokens <= 1024) return 'low';
+  if (budgetTokens <= 4096) return 'medium';
+  return 'high';
 }
 
 function buildAnthropicBetaHeader(input: { thinkingEnabled: boolean }): string {

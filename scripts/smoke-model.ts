@@ -89,21 +89,36 @@ async function smokeAnthropic(model: string, key: string): Promise<ProbeResult> 
         ],
     };
 
-    if (profile.supportsTemperature) {
+    const thinkingEnabled = profile.supportsThinkingBudget;
+    if (profile.supportsTemperature && !thinkingEnabled) {
         body.temperature = 0.2;
         sentParams.push('temperature');
     } else {
-        omittedParams.push('temperature');
+        omittedParams.push('temperature' + (thinkingEnabled ? ' (thinking enabled)' : ''));
     }
-    if (profile.supportsTopP) {
+    // Anthropic extended-thinking models require top_p >= 0.95 OR unset.
+    // Mirror anthropicApi.ts: when thinking is enabled, omit top_p entirely.
+    if (profile.supportsTopP && !thinkingEnabled) {
         body.top_p = 0.9;
         sentParams.push('top_p');
     } else {
-        omittedParams.push('top_p');
+        omittedParams.push('top_p' + (thinkingEnabled ? ' (thinking enabled)' : ''));
     }
-    if (profile.supportsThinkingBudget) {
-        body.thinking = { type: 'enabled', budget_tokens: 4096 };
-        sentParams.push('thinking.budget_tokens');
+    // Anthropic thinking API shape changed in Opus 4.7+: the legacy
+    // {type:'enabled', budget_tokens:N} shape is rejected. New shape is
+    // {type:'adaptive'} + output_config.effort. Smoke detects which the
+    // model accepts by trying adaptive first (matching latest Anthropic
+    // models); older models still want the legacy shape.
+    if (thinkingEnabled) {
+        const useAdaptive = /opus-4-[7-9]|opus-[5-9]/i.test(model);
+        if (useAdaptive) {
+            body.thinking = { type: 'adaptive' };
+            body.output_config = { effort: 'medium' };
+            sentParams.push('thinking.adaptive', 'output_config.effort');
+        } else {
+            body.thinking = { type: 'enabled', budget_tokens: 4096 };
+            sentParams.push('thinking.budget_tokens');
+        }
     } else {
         omittedParams.push('thinking.budget_tokens');
     }
