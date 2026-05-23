@@ -38,26 +38,33 @@ export function gatherEnv(app: App, pluginVersion: string, source: BugReportSour
     };
 }
 
-/**
- * Capture a single frame of the Obsidian window using the browser screen-capture API.
- * Returns a PNG Blob. Resolves to null if the user cancels the picker or capture is unavailable.
- */
-export async function captureScreenshot(): Promise<Blob | null> {
-    const mediaDevices = navigator.mediaDevices as MediaDevices & {
-        getDisplayMedia?: (constraints?: MediaStreamConstraints) => Promise<MediaStream>;
+interface ElectronDesktopSource {
+    id: string;
+    name: string;
+}
+
+interface ElectronModule {
+    desktopCapturer?: {
+        getSources: (opts: { types: string[] }) => Promise<ElectronDesktopSource[]>;
     };
-    if (typeof mediaDevices?.getDisplayMedia !== 'function') {
-        return null;
-    }
-    let stream: MediaStream | null = null;
+    remote?: {
+        desktopCapturer?: {
+            getSources: (opts: { types: string[] }) => Promise<ElectronDesktopSource[]>;
+        };
+    };
+}
+
+function getElectronModule(): ElectronModule | null {
     try {
-        stream = await mediaDevices.getDisplayMedia({
-            video: { displaySurface: 'window' } as MediaTrackConstraints,
-            audio: false,
-        });
+        const req = (window as unknown as { require?: (id: string) => unknown }).require;
+        if (typeof req !== 'function') return null;
+        return req('electron') as ElectronModule;
     } catch {
         return null;
     }
+}
+
+async function streamToBlob(stream: MediaStream): Promise<Blob | null> {
     try {
         const track = stream.getVideoTracks()[0];
         if (!track) return null;
@@ -75,11 +82,71 @@ export async function captureScreenshot(): Promise<Blob | null> {
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
         ctx.drawImage(video, 0, 0, width, height);
-        const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-        return blob;
+        return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     } finally {
-        stream?.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((t) => t.stop());
     }
+}
+
+export type CaptureFailure = 'unavailable' | 'cancelled' | 'error';
+
+export interface CaptureResult {
+    blob: Blob | null;
+    failure?: CaptureFailure;
+}
+
+/**
+ * Capture a single frame of the Obsidian window.
+ *
+ * Strategy:
+ * 1. Prefer Electron's `desktopCapturer` (works in Obsidian without session config).
+ * 2. Fall back to `navigator.mediaDevices.getDisplayMedia` (browser path).
+ */
+export async function captureScreenshot(): Promise<CaptureResult> {
+    const electron = getElectronModule();
+    const desktopCapturer = electron?.desktopCapturer ?? electron?.remote?.desktopCapturer;
+    if (desktopCapturer) {
+        try {
+            const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });
+            const obsidian = sources.find((s) => /obsidian/i.test(s.name)) ?? sources[0];
+            if (!obsidian) return { blob: null, failure: 'unavailable' };
+            // Electron chromeMediaSource constraint — non-standard, but supported in Electron's getUserMedia.
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    mandatory: {
+                        chromeMediaSource: 'desktop',
+                        chromeMediaSourceId: obsidian.id,
+                        maxWidth: 4096,
+                        maxHeight: 4096,
+                    },
+                } as unknown as MediaTrackConstraints,
+            });
+            const blob = await streamToBlob(stream);
+            return { blob, failure: blob ? undefined : 'error' };
+        } catch {
+            // Fall through to getDisplayMedia.
+        }
+    }
+
+    const mediaDevices = navigator.mediaDevices as MediaDevices & {
+        getDisplayMedia?: (constraints?: MediaStreamConstraints) => Promise<MediaStream>;
+    };
+    if (typeof mediaDevices?.getDisplayMedia !== 'function') {
+        return { blob: null, failure: 'unavailable' };
+    }
+    let stream: MediaStream;
+    try {
+        stream = await mediaDevices.getDisplayMedia({
+            video: { displaySurface: 'window' } as MediaTrackConstraints,
+            audio: false,
+        });
+    } catch (err) {
+        const name = (err as { name?: string })?.name;
+        return { blob: null, failure: name === 'NotAllowedError' ? 'cancelled' : 'unavailable' };
+    }
+    const blob = await streamToBlob(stream);
+    return { blob, failure: blob ? undefined : 'error' };
 }
 
 /**

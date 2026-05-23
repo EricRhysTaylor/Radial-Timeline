@@ -27,6 +27,7 @@ export class BugReportModal extends ErtModal {
     private previewEl?: HTMLDivElement;
     private statusEl?: HTMLDivElement;
     private sendButton?: ButtonComponent;
+    private dragbarEl?: HTMLDivElement;
     private screenshotBlob: Blob | null = null;
     private screenshotPreviewUrl: string | null = null;
     private dragOffset: { x: number; y: number } = { x: 0, y: 0 };
@@ -47,13 +48,19 @@ export class BugReportModal extends ErtModal {
             containerClasses: ['ert-bug-report'],
         });
 
-        this.mountDraggableHeader();
+        this.mountDragbar();
+        this.mountHeaderText();
         this.mountBody();
         this.mountActions();
+
+        document.addEventListener('paste', this.handlePaste);
     }
 
     onClose(): void {
+        document.removeEventListener('paste', this.handlePaste);
         this.teardownDrag();
+        this.dragbarEl?.remove();
+        this.dragbarEl = undefined;
         if (this.screenshotPreviewUrl) {
             URL.revokeObjectURL(this.screenshotPreviewUrl);
             this.screenshotPreviewUrl = null;
@@ -62,16 +69,23 @@ export class BugReportModal extends ErtModal {
         this.contentEl.empty();
     }
 
-    private mountDraggableHeader(): void {
+    private mountDragbar(): void {
+        // Full-width drag strip on the outer modal shell (above the dark body).
+        const bar = this.modalEl.createDiv({ cls: 'ert-bug-report-dragbar' });
+        const grip = bar.createSpan({ cls: 'ert-bug-report-dragbar-grip' });
+        setIcon(grip, 'grip-horizontal');
+        bar.addEventListener('mousedown', this.handleHeaderMouseDown);
+        this.modalEl.prepend(bar);
+        this.dragbarEl = bar;
+    }
+
+    private mountHeaderText(): void {
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header ert-bug-report-header' });
-        const grip = header.createSpan({ cls: 'ert-bug-report-grip' });
-        setIcon(grip, 'grip-vertical');
         header.createDiv({ cls: 'ert-modal-title', text: 'Report a bug' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Drag the title bar to move. Your report opens on GitHub.',
+            text: 'The more specific, the easier it is to track down. Mention what you were doing right before, anything that looked off, and steps to reproduce if you can.',
         });
-        header.addEventListener('mousedown', this.handleHeaderMouseDown);
     }
 
     private mountBody(): void {
@@ -131,9 +145,7 @@ export class BugReportModal extends ErtModal {
 
         this.previewEl = body.createDiv({ cls: 'ert-bug-report-preview' });
         this.previewEl.toggleClass('ert-bug-report-preview--empty', true);
-        this.previewEl.setText('No screenshot attached. Capture, attach, or paste an image (⌘V) anywhere in this modal.');
-
-        this.contentEl.addEventListener('paste', this.handlePaste);
+        this.previewEl.setText('No screenshot attached. Capture, attach, or paste an image with ⌘V (no focus needed).');
 
         this.statusEl = body.createDiv({ cls: 'ert-bug-report-status' });
     }
@@ -171,13 +183,18 @@ export class BugReportModal extends ErtModal {
     }
 
     private async handleCapture(): Promise<void> {
-        this.setStatus('Choose the Obsidian window from the picker…', 'info');
-        const blob = await captureScreenshot();
-        if (!blob) {
-            this.setStatus('Capture cancelled or unavailable. You can attach an image instead.', 'error');
+        this.setStatus('Capturing the Obsidian window…', 'info');
+        const result = await captureScreenshot();
+        if (!result.blob) {
+            const message = result.failure === 'cancelled'
+                ? 'Capture cancelled.'
+                : result.failure === 'unavailable'
+                    ? 'Window capture is not available in this build of Obsidian. Take a screenshot with your OS (⌘⇧4 / Win+Shift+S) and paste it here with ⌘V.'
+                    : 'Capture failed. Take a screenshot with your OS shortcut and paste it here with ⌘V instead.';
+            this.setStatus(message, 'error');
             return;
         }
-        await this.setScreenshot(blob);
+        await this.setScreenshot(result.blob);
         this.setStatus('Screenshot ready.', 'success');
     }
 

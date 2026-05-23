@@ -3,36 +3,53 @@
 .ert-bug-report-shell {
     /* Override default modal centering so transform can move it freely. */
     transition: none;
+    /* Make room for the dragbar that sits at the top of the shell. */
+    padding-top: 22px;
+    position: relative;
 }
 
 .ert-bug-report-shell.ert-bug-report-shell--dragging {
     user-select: none;
 }
 
-.ert-bug-report-header {
+/* Full-width drag strip on the outer modal shell (the "glassy" top edge). */
+.ert-bug-report-dragbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: grab;
-    padding-right: calc(var(--ert-gap-lg) * 2);
-    position: relative;
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+    background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
 }
 
-.ert-bug-report-shell--dragging .ert-bug-report-header {
+.ert-bug-report-shell--dragging .ert-bug-report-dragbar {
     cursor: grabbing;
 }
 
-.ert-bug-report-grip {
-    position: absolute;
-    left: var(--ert-gap-sm);
-    top: 50%;
-    transform: translateY(-50%);
+.ert-bug-report-dragbar-grip {
     display: inline-flex;
     align-items: center;
     color: var(--text-faint);
+    opacity: 0.7;
     pointer-events: none;
 }
 
-.ert-bug-report-header .ert-modal-title,
-.ert-bug-report-header .ert-modal-subtitle {
-    margin-left: var(--ert-gap-roomy);
+.ert-bug-report-dragbar:hover .ert-bug-report-dragbar-grip {
+    opacity: 1;
+    color: var(--text-muted);
+}
+
+.ert-bug-report-header {
+    position: relative;
 }
 
 .ert-bug-report-body {
