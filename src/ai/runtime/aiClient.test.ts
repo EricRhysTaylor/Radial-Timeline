@@ -179,3 +179,45 @@ describe('AI client role-template bypass', () => {
         expect(code).toContain('resolveActiveRoleTemplate(this.plugin, aiSettings)');
     });
 });
+
+/**
+ * Runtime structured-output normalization (regression guard added 2026-05-24).
+ *
+ * Gossamer has a feature-level unwrap for Opus 4.7's valid-but-wrapped
+ * responses, but AIClient validates required schema keys before returning
+ * control to feature code. This pins the shared runtime fix: normalize an
+ * accepted single-key envelope before the malformed-JSON rejection path, then
+ * return the normalized content so downstream feature validators see the
+ * canonical object.
+ */
+describe('AI client structured-output normalization', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
+    const code = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('uses normalized validator content on initial and retry success paths', () => {
+        expect(code).toContain('validation.normalizedRaw');
+        expect(code).toContain('retryValidation.normalizedRaw');
+        expect(code).toContain('execution.content = validation.normalizedRaw');
+        expect(code).toContain('const acceptedRetryContent = retryValidation.normalizedRaw ?? retry.content');
+    });
+
+    it('records normalization warnings in the returned run notes', () => {
+        expect(code).toContain('validation.normalizationWarnings');
+        expect(code).toContain('retryValidation.normalizationWarnings');
+        expect(code).toContain('warnings.push(...validationNotes)');
+        expect(code).toContain('...retryValidationNotes');
+    });
+
+    it('normalizes after validation succeeds and before building the final result', () => {
+        const validationIndex = code.indexOf('const validation = validateJsonResponse');
+        const rejectedIndex = code.indexOf("aiStatus: 'rejected'", validationIndex);
+        const normalizedIndex = code.indexOf('execution.content = validation.normalizedRaw', validationIndex);
+        const resultIndex = code.indexOf('const result = withRunValidation', normalizedIndex);
+        expect(validationIndex).toBeGreaterThan(-1);
+        expect(rejectedIndex).toBeGreaterThan(-1);
+        expect(normalizedIndex).toBeGreaterThan(rejectedIndex);
+        expect(resultIndex).toBeGreaterThan(normalizedIndex);
+    });
+});

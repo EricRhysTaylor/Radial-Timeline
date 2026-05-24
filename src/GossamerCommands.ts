@@ -1091,6 +1091,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     });
     const returnedAt = new Date();
     modal.setAiAdvancedContext(result.advancedContext ?? null);
+    const providerNormalizationWarnings = result.sanitizationNotes ?? [];
 
     if (result.aiStatus !== 'success' || !result.content) {
       modal.apiCallError(result.error || t('gossamer.notices.aiResponseError'));
@@ -1117,7 +1118,10 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         parsedOutput: null,
         submittedAt,
         returnedAt,
-        schemaWarnings: result.error ? [`Error: ${result.error}`] : undefined
+        schemaWarnings: [
+          ...providerNormalizationWarnings,
+          ...(result.error ? [`Error: ${result.error}`] : [])
+        ]
       });
       if (failureLog) modal.addErrorLogLink(failureLog);
 
@@ -1185,7 +1189,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         parsedOutput: null,
         submittedAt,
         returnedAt,
-        schemaWarnings: [`JSON parse error: ${detail}`]
+        schemaWarnings: [...providerNormalizationWarnings, `JSON parse error: ${detail}`]
       });
       modal.apiCallError(t('gossamer.notices.validationFailed', { count: 1 }));
       modal.addError(`JSON parse error: ${detail}`);
@@ -1229,7 +1233,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         parsedOutput: responseForValidation,
         submittedAt,
         returnedAt,
-        schemaWarnings: [...envelopeWarnings, ...failureDetails]
+        schemaWarnings: [...providerNormalizationWarnings, ...envelopeWarnings, ...failureDetails]
       });
       modal.apiCallError(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
       for (const detail of failureDetails) modal.addError(detail);
@@ -1400,6 +1404,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       derivedLines.push(`| ${beat.beatName} | ${beat.signal} | ${beat.score} | ${beat.idealRange} | ${status} |`);
     }
 
+    const schemaWarnings = [...providerNormalizationWarnings, ...envelopeWarnings];
+
     await writeGossamerLog(plugin, {
       status: 'success',
       provider: result.provider === 'none' ? 'openai' : result.provider,
@@ -1419,7 +1425,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       // Envelope warnings are not failures — they record that the response
       // arrived wrapped and we recovered it. Surfacing them in the log gives
       // us the audit trail for tracking how often each provider/model wraps.
-      schemaWarnings: envelopeWarnings.length > 0 ? envelopeWarnings : undefined
+      schemaWarnings: schemaWarnings.length > 0 ? schemaWarnings : undefined
     });
 
     const successMessage = t('gossamer.notices.successUpdated', { count: updateCount, signal: signalMeta.label.toLowerCase() });

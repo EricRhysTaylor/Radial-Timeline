@@ -369,8 +369,7 @@ export function detectChanges(
         ChangeType.TIME,
         ChangeType.TARGET_DATES,
         ChangeType.SCENE_VISUAL,
-        ChangeType.SYNOPSIS,          // DOM update for synopsis text
-        ChangeType.GOSSAMER
+        ChangeType.SYNOPSIS          // DOM update for synopsis text
     ];
     const canUseSelectiveUpdate = hasChanges && 
         Array.from(changeTypes).every(type => selectiveChangeTypes.includes(type));

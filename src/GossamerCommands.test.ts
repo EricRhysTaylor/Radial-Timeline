@@ -130,3 +130,32 @@ describe('Gossamer AI response-integrity discipline', () => {
         expect(source).not.toMatch(/:\s*\(typeof[^)]+\?\s*[^:]+:\s*0\s*\)/);
     });
 });
+
+/**
+ * Runtime-normalization audit trail (regression guard added 2026-05-24).
+ *
+ * AIClient can now normalize Opus 4.7's single-key structured-output envelope
+ * before Gossamer sees the response. Gossamer still needs to carry those
+ * runtime notes into its content log, otherwise a recovered run looks clean
+ * and we lose the evidence needed to track provider/model behavior.
+ */
+describe('Gossamer runtime-normalization audit trail', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/GossamerCommands.ts'), 'utf8');
+    const source = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('collects AIClient sanitization notes as provider normalization warnings', () => {
+        expect(source).toContain('const providerNormalizationWarnings = result.sanitizationNotes ?? []');
+    });
+
+    it('logs runtime normalization warnings on success and validation failure paths', () => {
+        expect(source).toContain('const schemaWarnings = [...providerNormalizationWarnings, ...envelopeWarnings]');
+        expect(source).toContain('schemaWarnings: [...providerNormalizationWarnings, ...envelopeWarnings, ...failureDetails]');
+    });
+
+    it('logs runtime normalization warnings on transport and parse failure paths', () => {
+        expect(source).toContain('...providerNormalizationWarnings');
+        expect(source).toContain('schemaWarnings: [...providerNormalizationWarnings, `JSON parse error: ${detail}`]');
+    });
+});

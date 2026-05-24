@@ -1025,6 +1025,7 @@ export class AIClient {
 
         if (request.returnType === 'json') {
             const validation = validateJsonResponse(execution.content, request.responseSchema, provider);
+            const validationNotes = validation.normalizationWarnings ?? [];
             if (!validation.ok) {
                 if (caps.retryPolicy.retryMalformedJson && caps.retryPolicy.maxAttempts > 0) {
                     // Mirror the original dispatch so the retry sees the same corpus
@@ -1052,9 +1053,11 @@ export class AIClient {
                     if (retry.aiStatus === 'success' && retry.content) {
                         recordResolvedAlias(retry.aiModelRequested, retry.aiModelResolved);
                         const retryValidation = validateJsonResponse(retry.content, request.responseSchema, provider);
+                        const retryValidationNotes = retryValidation.normalizationWarnings ?? [];
                         if (retryValidation.ok) {
+                            const acceptedRetryContent = retryValidation.normalizedRaw ?? retry.content;
                             const result = withRunValidation(request, estimate, withRunTiming({
-                                content: retry.content,
+                                content: acceptedRetryContent,
                                 responseData: retry.responseData,
                                 provider,
                                 modelRequested: retry.aiModelRequested,
@@ -1062,12 +1065,15 @@ export class AIClient {
                                 modelAlias: modelSelection.model.alias,
                                 aiStatus: retry.aiStatus,
                                 aiReason: retry.aiReason,
-                                warnings: [...warnings, 'Initial JSON parse failed; retry succeeded.'],
+                                warnings: [...warnings, 'Initial JSON parse failed; retry succeeded.', ...retryValidationNotes],
                                 reason: modelSelection.reason,
                                 requestPayload: retry.requestPayload,
                                 aiTransportLane: retry.aiTransportLane,
                                 retryCount: (retry.retryCount ?? 0) + 1,
-                                sanitizationNotes: retry.sanitizationNotes,
+                                sanitizationNotes: [
+                                    ...(retry.sanitizationNotes ?? []),
+                                    ...retryValidationNotes
+                                ],
                                 diagnostics: retry.diagnostics,
                                 advancedContext,
                                 citations: retry.citations
@@ -1106,6 +1112,17 @@ export class AIClient {
                     bypassInMemoryCache,
                     bypassProviderReuse
                 });
+            }
+
+            if (validation.normalizedRaw) {
+                execution.content = validation.normalizedRaw;
+            }
+            if (validationNotes.length) {
+                execution.sanitizationNotes = [
+                    ...(execution.sanitizationNotes ?? []),
+                    ...validationNotes
+                ];
+                warnings.push(...validationNotes);
             }
         }
 

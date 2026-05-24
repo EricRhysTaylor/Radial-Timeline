@@ -1,9 +1,12 @@
 import { MalformedJsonError } from '../errors';
+import { unwrapStructuredEnvelope } from '../structuredResponseUnwrap';
 
 export interface JsonValidationResult<T = unknown> {
     ok: boolean;
     parsed?: T;
     error?: Error;
+    normalizedRaw?: string;
+    normalizationWarnings?: string[];
 }
 
 function getRequired(schema?: Record<string, unknown>): string[] {
@@ -59,12 +62,28 @@ export function validateJsonResponse<T = unknown>(
 
     const requiredKeys = getRequired(schema);
     if (requiredKeys.length && parsed && typeof parsed === 'object') {
+        const unwrapWarnings: string[] = [];
+        const unwrap = unwrapStructuredEnvelope(parsed, requiredKeys, {
+            onUnwrap: key => {
+                unwrapWarnings.push(`Unwrapped structured response envelope key "${key}" before JSON schema validation`);
+            }
+        });
+        parsed = unwrap.value;
+
         const record = parsed as Record<string, unknown>;
         const missing = requiredKeys.filter(key => !(key in record));
         if (missing.length) {
             return {
                 ok: false,
                 error: new MalformedJsonError(`JSON missing required keys: ${missing.join(', ')}`, { provider })
+            };
+        }
+        if (unwrap.unwrappedKey) {
+            return {
+                ok: true,
+                parsed: parsed as T,
+                normalizedRaw: JSON.stringify(parsed),
+                normalizationWarnings: unwrapWarnings
             };
         }
     }

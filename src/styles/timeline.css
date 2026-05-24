@@ -245,13 +245,16 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
   fill: var(--text-normal);
+  stroke: none;
+  paint-order: fill;
   transition: fill 0.2s ease;
 }
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
   fill: var(--text-on-accent);
-  font-size: 14px;
-  font-weight: 300;
+  stroke: none;
+  font-size: 12px;
+  font-weight: normal;
 }
 
 .rt-mode-option .rt-mode-number-label {

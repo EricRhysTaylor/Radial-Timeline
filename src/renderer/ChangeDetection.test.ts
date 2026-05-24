@@ -96,6 +96,26 @@ describe('detectChanges', () => {
     expect(result.updateStrategy).toBe('selective');
   });
 
+  it('forces a full render when Gossamer run data changes so the run list refreshes', () => {
+    const prev = makeSnapshot({
+      currentMode: 'gossamer',
+      gossamerRunExists: true,
+      gossamerRunHash: 'run-1'
+    });
+    const current = makeSnapshot({
+      currentMode: 'gossamer',
+      gossamerRunExists: true,
+      gossamerRunHash: 'run-2',
+      timestamp: 2
+    });
+
+    const result = detectChanges(prev, current);
+
+    expect(result.changeTypes.has(ChangeType.GOSSAMER)).toBe(true);
+    expect(result.canUseSelectiveUpdate).toBe(false);
+    expect(result.updateStrategy).toBe('full');
+  });
+
   it('forces a full render when the active novel PDF layout changes', () => {
     const prev = makeSnapshot({
       activeNovelPandocLayoutId: 'bundled-fiction-signature-literary'

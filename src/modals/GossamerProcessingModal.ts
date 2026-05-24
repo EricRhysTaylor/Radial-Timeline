@@ -6,7 +6,7 @@
  * Gossamer AI Processing Modal
  * Tracks progress of Gemini momentum analysis with manuscript details and status updates
  */
-import { App, ButtonComponent, Notice, TFile } from 'obsidian';
+import { App, ButtonComponent, Notice, TFile, setIcon } from 'obsidian';
 import { ErtModal } from '../ui/ErtModal';
 import type RadialTimelinePlugin from '../main';
 import { t } from '../i18n';
@@ -58,6 +58,8 @@ export class GossamerProcessingModal extends ErtModal {
     private closeButtonEl?: ButtonComponent;
     private aiAdvancedPreEl?: HTMLElement;
     private aiAdvancedContext: AIRunAdvancedContext | null = null;
+    private errorMessageEl?: HTMLElement;
+    private errorMessages: string[] = [];
 
     // Processing state
     private manuscriptInfo?: ManuscriptInfo;
@@ -66,7 +68,7 @@ export class GossamerProcessingModal extends ErtModal {
     private lastElapsedSeconds?: string;
     private timerInterval?: number;
     private progressSimulator?: SimulatedProgress;
-    private estimatedProcessingMs: number = 45000; // Fallback estimate (45s typical)
+    private estimatedProcessingMs: number = 60000;
 
     constructor(
         app: App,
@@ -332,7 +334,8 @@ export class GossamerProcessingModal extends ErtModal {
             // Each analysis is fresh based on manuscript content only.
         }
 
-        // Precompute estimated processing time for smoother progress animation
+        // Seed the API phase from the last observed normal runtime when
+        // available; otherwise use the one-minute default baseline.
         this.estimatedProcessingMs = this.estimateProcessingMs(info);
 
         // Update the beat system info in confirmation view if it exists
@@ -370,7 +373,7 @@ export class GossamerProcessingModal extends ErtModal {
             }, 1000);
         }
 
-        // Animate progress bar to indicate activity (pulse between 10% and 90%)
+        // Animate progress bar to indicate activity.
         if (this.progressBarEl) {
             this.progressBarEl.addClass('ert-gossamer-progress-active');
         }
@@ -412,8 +415,8 @@ export class GossamerProcessingModal extends ErtModal {
         const elapsedMs = this.apiCallStartTime ? Date.now() - this.apiCallStartTime : undefined;
         this.lastElapsedSeconds = elapsedMs !== undefined ? (elapsedMs / 1000).toFixed(1) : undefined;
 
-        // Persist elapsed per-signal so the next run can seed a realistic ETA
-        // instead of falling back to the size-based heuristic.
+        // Persist elapsed per-signal so the next run can use the observed
+        // normal runtime as its progress baseline.
         if (elapsedMs !== undefined && elapsedMs > 0) {
             void this.persistLastRunDuration(elapsedMs);
         }
@@ -479,15 +482,9 @@ export class GossamerProcessingModal extends ErtModal {
     public addError(message: string): void {
         if (!this.errorListEl) return;
 
-        // Show error section
-        if (this.errorListEl.hasClass('ert-hidden')) {
-            this.errorListEl.removeClass('ert-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-header' });
-            header.setText(t('gossamer.processingModal.errorsHeader'));
-        }
-
-        const errorItem = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-item' });
-        errorItem.setText(message);
+        this.ensureErrorSummary();
+        this.errorMessages.push(message.trim());
+        this.renderErrorParagraph();
     }
 
     /**
@@ -499,13 +496,7 @@ export class GossamerProcessingModal extends ErtModal {
     public addErrorLogLink(file: TFile): void {
         if (!this.errorListEl) return;
 
-        // Make sure the section is visible — addErrorLogLink may be called
-        // immediately after addError, but we don't depend on that ordering.
-        if (this.errorListEl.hasClass('ert-hidden')) {
-            this.errorListEl.removeClass('ert-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-header' });
-            header.setText(t('gossamer.processingModal.errorsHeader'));
-        }
+        this.ensureErrorSummary();
 
         const linkRow = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-log-link' });
         linkRow.createSpan({ text: t('gossamer.processingModal.errorLogLinkLabel') });
@@ -518,6 +509,29 @@ export class GossamerProcessingModal extends ErtModal {
             evt.preventDefault();
             void this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
         });
+    }
+
+    private ensureErrorSummary(): void {
+        if (!this.errorListEl) return;
+        if (this.errorListEl.hasClass('ert-hidden')) {
+            this.errorListEl.removeClass('ert-hidden');
+        }
+        if (this.errorMessageEl) return;
+
+        const summary = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-summary' });
+        const icon = summary.createDiv({ cls: 'ert-gossamer-proc-error-icon' });
+        setIcon(icon, 'alert-triangle');
+        this.errorMessageEl = summary.createEl('p', { cls: 'ert-gossamer-proc-error-copy' });
+        this.renderErrorParagraph();
+    }
+
+    private renderErrorParagraph(): void {
+        if (!this.errorMessageEl) return;
+        const text = this.errorMessages
+            .map((message) => message.replace(/\s+/g, ' ').trim())
+            .filter(Boolean)
+            .join(' ');
+        this.errorMessageEl.setText(text || t('gossamer.processingModal.errorsHeader'));
     }
 
     /**
@@ -585,9 +599,10 @@ export class GossamerProcessingModal extends ErtModal {
         const simulator = this.getProgressSimulator();
         simulator.start({
             durationMs,
-            startPercent: 8,
-            maxPercent: 93,
-            jitter: 0.9
+            startPercent: 0,
+            maxPercent: 100,
+            jitter: 0,
+            completeOnDuration: true
         });
     }
 
@@ -611,36 +626,18 @@ export class GossamerProcessingModal extends ErtModal {
     }
 
     /**
-     * Estimate processing duration. Prefers the last observed duration for the
-     * active signal (persisted across runs); falls back to a manuscript-size
-     * heuristic when no prior sample exists.
+     * Gossamer AI requests use the last successful runtime for the active
+     * signal as the next progress baseline. The one-minute value is only the
+     * cold-start default when no observed runtime exists yet.
      */
-    private estimateProcessingMs(info?: ManuscriptInfo): number {
+    private estimateProcessingMs(_info?: ManuscriptInfo): number {
         const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
-        const persisted = this.plugin.settings.gossamerLastRunMsBySignal?.[signal];
-        if (typeof persisted === 'number' && Number.isFinite(persisted) && persisted > 0) {
-            return this.clamp(persisted, 5000, 300000);
+        const observed = this.plugin.settings.gossamerLastRunMsBySignal?.[signal];
+        if (typeof observed === 'number' && Number.isFinite(observed) && observed > 0) {
+            return Math.min(300000, Math.max(5000, observed));
         }
 
-        if (!info) return this.estimatedProcessingMs || 45000;
-
-        const tokens = info.estimatedTokens ?? Math.round(info.totalWords * 1.35);
-        const tokenSeconds = tokens / 4000; // Calibrated to ~40s for 139k tokens
-        const sceneSeconds = Math.min(8, info.totalScenes * 0.08);
-        const beatSeconds = Math.min(4, info.beatCount * 0.1);
-        const iterativeSeconds = 0; // No longer used - previous scores not sent to avoid anchoring bias
-
-        const totalSeconds = this.clamp(
-            tokenSeconds + sceneSeconds + beatSeconds + iterativeSeconds,
-            18,
-            95
-        );
-
-        return totalSeconds * 1000;
-    }
-
-    private clamp(value: number, min: number, max: number): number {
-        return Math.min(max, Math.max(min, value));
+        return 60000;
     }
 }
 

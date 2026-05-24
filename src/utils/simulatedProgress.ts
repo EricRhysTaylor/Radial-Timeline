@@ -3,6 +3,7 @@ export interface SimulatedProgressConfig {
     startPercent?: number;
     maxPercent?: number;
     jitter?: number;
+    completeOnDuration?: boolean;
 }
 
 /**
@@ -14,7 +15,7 @@ export class SimulatedProgress {
     private timeoutId: number | null = null;
     private startTime = 0;
     private resolved = false;
-    private config: Required<SimulatedProgressConfig> | null = null;
+    private config: (Required<SimulatedProgressConfig> & { completeOnDuration: boolean }) | null = null;
     private readonly onUpdate: (percent: number) => void;
 
     constructor(onUpdate: (percent: number) => void) {
@@ -28,7 +29,8 @@ export class SimulatedProgress {
             durationMs: Math.max(1000, config.durationMs),
             startPercent: config.startPercent ?? 6,
             maxPercent: config.maxPercent ?? 92,
-            jitter: config.jitter ?? 0.6
+            jitter: config.jitter ?? 0.6,
+            completeOnDuration: config.completeOnDuration ?? false
         };
         this.resolved = false;
         this.startTime = performance.now();
@@ -83,6 +85,11 @@ export class SimulatedProgress {
         );
 
         this.onUpdate(percent);
+
+        if (this.config.completeOnDuration && t >= 1) {
+            this.timeoutId = null;
+            return;
+        }
 
         // Keep scheduling until externally resolved (complete/fail/stop). Past
         // the estimate the bar still oscillates at the cap so the user can see

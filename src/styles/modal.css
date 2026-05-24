@@ -864,16 +864,33 @@
   align-items: center;
 }
 
-.ert-gossamer-proc-error-header {
-  font-weight: 600;
-  color: var(--text-error);
-  margin-bottom: 8px;
+.ert-gossamer-processing-modal .ert-pulse-progress-bar {
+  transition: width 0.12s linear;
 }
 
-.ert-gossamer-proc-error-item {
-  font-size: 0.85rem;
+.ert-gossamer-proc-error-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ert-gap-sm);
   color: var(--text-error);
-  margin-bottom: 4px;
+}
+
+.ert-gossamer-proc-error-icon {
+  flex: 0 0 auto;
+  color: var(--text-error);
+  line-height: 1;
+}
+
+.ert-gossamer-proc-error-icon svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.ert-gossamer-proc-error-copy {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-error);
 }
 
 .ert-gossamer-proc-error-log-link {
