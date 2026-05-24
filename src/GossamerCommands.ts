@@ -22,7 +22,8 @@ import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } fr
 import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
-import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
+import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
+import { validateGossamerResponse } from './ai/gossamer/responseValidation';
 import { getAIClient } from './ai/runtime/aiClient';
 import {
   extractTokenUsage,
@@ -1147,30 +1148,72 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       };
     }
 
-    interface LegacyAiBeat {
-      beatName: string;
-      signal?: string;
-      score?: number;
-      momentumScore?: number;
-      justification: string;
+    // Parse JSON, then prove the response actually corresponds to the beat
+    // list we submitted before any score reaches a beat note. Index-only
+    // matching + silent score/signal fallbacks (the prior shape) made the
+    // failure mode "wrong score written to the wrong beat" indistinguishable
+    // from a healthy run.
+    let parsedResponse: unknown;
+    try {
+      parsedResponse = JSON.parse(result.content);
+    } catch (parseError) {
+      const detail = parseError instanceof Error ? parseError.message : String(parseError);
+      const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
+      await writeGossamerLog(plugin, {
+        status: 'error',
+        provider: providerForLog,
+        beatSystemLabel: beatSystemDisplayName,
+        signal: selectedSignal,
+        modelRequested: result.modelRequested,
+        modelResolved: result.modelResolved,
+        prompt,
+        manuscriptText: evidenceDocument.text,
+        requestPayload: result.requestPayload ?? null,
+        responseData: result.responseData,
+        assistantContent: result.content,
+        parsedOutput: null,
+        submittedAt,
+        returnedAt,
+        schemaWarnings: [`JSON parse error: ${detail}`]
+      });
+      modal.apiCallError(t('gossamer.notices.validationFailed', { count: 1 }));
+      modal.addError(`JSON parse error: ${detail}`);
+      modal.completeProcessing(false, 'Validation failed');
+      throw new Error(t('gossamer.notices.validationFailed', { count: 1 }));
     }
-    interface LegacyAiResponse {
-      beats: LegacyAiBeat[];
-      overallAssessment: AiAnalysisResponse['overallAssessment'];
+
+    const validation = validateGossamerResponse(parsedResponse, beats, selectedSignal);
+    if (!validation.ok) {
+      const failureDetails = validation.failures.map(f => `[${f.code}@${f.index}] ${f.detail}`);
+      const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
+      await writeGossamerLog(plugin, {
+        status: 'error',
+        provider: providerForLog,
+        beatSystemLabel: beatSystemDisplayName,
+        signal: selectedSignal,
+        modelRequested: result.modelRequested,
+        modelResolved: result.modelResolved,
+        prompt,
+        manuscriptText: evidenceDocument.text,
+        requestPayload: result.requestPayload ?? null,
+        responseData: result.responseData,
+        assistantContent: result.content,
+        parsedOutput: parsedResponse,
+        submittedAt,
+        returnedAt,
+        schemaWarnings: failureDetails
+      });
+      modal.apiCallError(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
+      for (const detail of failureDetails) modal.addError(detail);
+      modal.completeProcessing(false, 'Validation failed');
+      throw new Error(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
     }
-    const rawAnalysis: AiAnalysisResponse = (() => {
-      const parsed = JSON.parse(result.content) as LegacyAiResponse;
-      const normalizedBeats: AiBeatAnalysis[] = parsed.beats.map((b) => ({
-        beatName: b.beatName,
-        signal: coerceGossamerSignal(b.signal ?? selectedSignal),
-        score: typeof b.score === 'number' ? b.score : (typeof b.momentumScore === 'number' ? b.momentumScore : 0),
-        justification: b.justification
-      }));
-      return {
-        beats: normalizedBeats,
-        overallAssessment: parsed.overallAssessment
-      };
-    })();
+
+    const overall = (parsedResponse as { overallAssessment?: AiAnalysisResponse['overallAssessment'] }).overallAssessment;
+    const rawAnalysis: AiAnalysisResponse = {
+      beats: validation.beats,
+      overallAssessment: overall ?? { summary: '', strengths: [], improvements: [] }
+    };
 
     // Import range utilities for computing isWithinRange
     const { parseRange, isScoreInRange } = await import('./utils/rangeValidation');

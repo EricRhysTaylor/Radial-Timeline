@@ -84,3 +84,45 @@ describe('Gossamer canonical YAML key discipline', () => {
         expect(descriptionReadsInline).toBe(0);
     });
 });
+
+/**
+ * AI response-integrity discipline (regression guard added 2026-05-23).
+ *
+ * The original parse path silently substituted score=0 for missing scores and
+ * coerced wrong-signal rows to the requested signal. With index-only matching
+ * downstream, that meant a reordered or malformed response could write the
+ * wrong score to the wrong beat with zero indication anything was wrong. This
+ * guard pins the rule: GossamerCommands must validate every AI response
+ * through validateGossamerResponse before any frontmatter write.
+ */
+describe('Gossamer AI response-integrity discipline', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/GossamerCommands.ts'), 'utf8');
+    const source = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('validates every AI response via validateGossamerResponse before writing scores', () => {
+        expect(rawSource).toContain('validateGossamerResponse');
+        expect(rawSource).toContain("from './ai/gossamer/responseValidation'");
+    });
+
+    it('never silently coerces the AI signal back to the requested signal (lost wrong-signal failures)', () => {
+        // The old parse path: `signal: coerceGossamerSignal(b.signal ?? selectedSignal)`.
+        // coerceGossamerSignal at the parse site of an AI response is always a
+        // fake fallback — the validator must reject wrong signals, not absorb
+        // them. (coerceGossamerSignal is still legitimate for normalizing
+        // legacy stored fm.GossamerSignal<N> reads — that's a different path.)
+        expect(source).not.toMatch(/coerceGossamerSignal\([^)]*\.signal\b/);
+        expect(source).not.toMatch(/coerceGossamerSignal\([^)]*selectedSignal\)/);
+    });
+
+    it('never fabricates a score of 0 for a missing AI score', () => {
+        // The old fallback ladder: `score: typeof b.score === 'number' ? b.score : (typeof b.momentumScore === 'number' ? b.momentumScore : 0)`
+        // A missing score must be a validation failure, never a silently-written 0
+        // (which is semantically "static / no momentum" — indistinguishable from
+        // a real low score).
+        expect(source).not.toMatch(/momentumScore\s*:\s*\d+/);
+        expect(source).not.toMatch(/b\.momentumScore/);
+        expect(source).not.toMatch(/:\s*\(typeof[^)]+\?\s*[^:]+:\s*0\s*\)/);
+    });
+});

@@ -1248,6 +1248,7 @@ export interface TranslationKeys {
             prepareFailed: string;
             retryGemini: string;
             unmatchedBeats: string;
+            validationFailed: string;
         };
         service: {
             updatedBeatScoresPlural: string;
@@ -3414,6 +3415,7 @@ export const en: TranslationKeys = {
             prepareFailed: 'Failed to prepare Gossamer analysis: {{error}}',
             retryGemini: 'Retry or check Gemini API configuration.',
             unmatchedBeats: 'Could not match {{count}} beat(s): {{list}}',
+            validationFailed: 'AI response did not match submitted beats ({{count}} issue(s)) — no scores were written. See the Gossamer log for details.',
         },
         service: {
             updatedBeatScoresPlural: 'Updated {{count}} beat scores ({{stage}} stage).',
