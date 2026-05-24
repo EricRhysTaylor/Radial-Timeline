@@ -191,9 +191,12 @@ describe('InquiryView keeps thin delegating wrappers (behaviour unchanged)', () 
     it('chunk-2 wrappers delegate while keeping guard / citations / lookup / now in the view', () => {
         expect(src.includes('return resolveActualUsageCostForResultPure(result);')).toBe(true);
         expect(src.includes('return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());')).toBe(true);
+        expect(src.includes('const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();')).toBe(true);
+        expect(src.includes('return buildEngineRecentRunSnapshotPure(persistedCacheSession.result, this.areInquiryProviderCitationsEnabled());')).toBe(true);
         expect(src.includes('return buildEngineCacheWindowSnapshotFromSessionPure(session, Date.now());')).toBe(true);
         // Guard + session lookup remain in InquiryView.
-        expect(src.includes('if (!result || this.isErrorResult(result)) return undefined;')).toBe(true);
+        expect(src.includes('if (result && !this.isErrorResult(result)) {')).toBe(true);
+        expect(src.includes('if (!persistedCacheSession || this.isErrorResult(persistedCacheSession.result)) return undefined;')).toBe(true);
         expect(src.includes('this.sessionStore.getLatestActiveCacheSessionForEngine(')).toBe(true);
         // Original inline shaper bodies must be gone from InquiryView.
         expect(src.includes('const sourcesVM = buildInquirySourcesViewModel(\n            result.citations,')).toBe(false);

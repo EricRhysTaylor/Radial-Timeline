@@ -3645,8 +3645,12 @@ export class InquiryView extends ItemView {
      */
     private buildEngineRecentRunSnapshot(): EngineRecentRunSnapshot | undefined {
         const result = this.state.activeResult;
-        if (!result || this.isErrorResult(result)) return undefined;
-        return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());
+        if (result && !this.isErrorResult(result)) {
+            return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());
+        }
+        const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();
+        if (!persistedCacheSession || this.isErrorResult(persistedCacheSession.result)) return undefined;
+        return buildEngineRecentRunSnapshotPure(persistedCacheSession.result, this.areInquiryProviderCitationsEnabled());
     }
 
     private getActualUsageCostForResult(result: InquiryResult): number | undefined {
@@ -10635,7 +10639,7 @@ export class InquiryView extends ItemView {
             this.getPreviewOutlinesValue(),
             this.getPreviewModelValue(),
             this.getPreviewTokensValue(),
-            this.getPreviewCostValue(),
+            this.getPreviewCostValue(zone, questionId),
             this.getPreviewHistoryValue(zone, questionId)
         ];
     }
@@ -10683,16 +10687,62 @@ export class InquiryView extends ItemView {
         return `Full request · ~${requestLabel} (Corpus ~${this.formatTokenEstimate(context.corpus.estimatedTokens)})`;
     }
 
-    private getPreviewCostValue(): string {
+    private getLatestPreviewQuestionActualCost(zone?: InquiryZone, questionId?: string): number | null {
+        const effectiveZone = zone ?? this.previewLast?.zone ?? this.state.activeZone ?? 'setup';
+        const activeQuestion = questionId
+            ? this.getPromptOptions(effectiveZone).find(prompt => prompt.id === questionId)
+            : this.getActivePrompt(effectiveZone);
+        if (!activeQuestion) return null;
+        const engine = this.getResolvedEngine();
+        if (engine.blocked || !engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') {
+            return null;
+        }
+        const targetSceneIds = this.getActiveTargetSceneIds();
+        const selectionMode = this.getSelectionMode(targetSceneIds);
+        const effectiveOverride = this.getEffectivePromptOverride(activeQuestion.id);
+        const questionPromptForm = this.resolveQuestionPromptFormForRun(activeQuestion, selectionMode, effectiveOverride);
+        const questionText = this.resolveQuestionPromptForRun(activeQuestion, selectionMode, effectiveOverride);
+        const baseKey = this.sessionStore.buildBaseKey({
+            questionId: activeQuestion.id,
+            questionPromptForm,
+            questionSignature: this.buildQuestionSignature(questionText),
+            scope: this.state.scope,
+            scopeKey: this.getScopeKey(),
+            targetSceneIds
+        });
+        const normalizedProvider = engine.provider.trim().toLowerCase();
+        const normalizedModelId = engine.modelId.trim();
+        const sessions = this.sessionStore.getRecentSessions(this.sessionStore.getSessionCount());
+        for (const session of sessions) {
+            if (session.baseKey !== baseKey) continue;
+            if (this.isErrorResult(session.result)) continue;
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
+            if (sessionProvider !== normalizedProvider) continue;
+            const resolvedModel = (session.result.aiModelResolved || '').trim();
+            const requestedModel = (session.result.aiModelRequested || '').trim();
+            if (resolvedModel !== normalizedModelId && requestedModel !== normalizedModelId) continue;
+            const actualCost = this.getActualUsageCostForResult(session.result);
+            if (typeof actualCost === 'number' && Number.isFinite(actualCost) && actualCost >= 0) {
+                return actualCost;
+            }
+        }
+        return null;
+    }
+
+    private getPreviewCostValue(zone?: InquiryZone, questionId?: string): string {
         const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         const engine = this.getResolvedEngine();
         if (engine.blocked || !snapshot) {
             return 'Cost · Estimating…';
         }
         try {
+            const previewQuestionActualCost = this.getLatestPreviewQuestionActualCost(zone, questionId);
+            if (previewQuestionActualCost !== null) {
+                return `Prior cost · ${formatExactUsdCost(previewQuestionActualCost)}`;
+            }
             const sameCorpusActualCost = this.getLatestSameCorpusActualCostForResolvedEngine();
             if (sameCorpusActualCost !== null) {
-                return `Cost · Est ${formatExactUsdCost(sameCorpusActualCost)}`;
+                return `Recent cost · ${formatExactUsdCost(sameCorpusActualCost)}`;
             }
             const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(
                 engine.provider,
@@ -10727,11 +10777,11 @@ export class InquiryView extends ItemView {
                 : '—';
             const corpusWasRun = snapshot.corpus.corpusFingerprint === this.state.corpusFingerprint;
             if (nextRunCanReuseCache) {
-                return `Cost · ${cachedLabel} cached`;
+                return `Cached est · ${cachedLabel}`;
             }
             return corpusWasRun
-                ? `Cost · ${freshLabel} / ${cachedLabel} cached`
-                : `Cost · ${freshLabel}`;
+                ? `Fresh est · ${freshLabel} / ${cachedLabel} cached`
+                : `Fresh est · ${freshLabel}`;
         } catch {
             return 'Cost · Estimate unavailable';
         }

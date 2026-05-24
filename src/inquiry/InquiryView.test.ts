@@ -167,6 +167,18 @@ describe('InquiryView payload accounting', () => {
         expect(fn).toContain('staleIds.add(prompt.id);');
     });
 
+    it('recovers cache countdown proof from persisted active cache sessions after a cold open', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const fn = viewSource.match(/private buildEngineRecentRunSnapshot\(\): EngineRecentRunSnapshot \| undefined[\s\S]+?\n    private getActualUsageCostForResult/)?.[0] ?? '';
+        expect(fn).toContain('const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();');
+        expect(fn).toContain('return buildEngineRecentRunSnapshotPure(persistedCacheSession.result, this.areInquiryProviderCitationsEnabled());');
+        const activeIndex = fn.indexOf('return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());');
+        const persistedIndex = fn.indexOf('const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();');
+        expect(activeIndex).toBeGreaterThan(-1);
+        expect(persistedIndex).toBeGreaterThan(-1);
+        expect(activeIndex).toBeLessThan(persistedIndex);
+    });
+
     it('uses a dated welcome label and suppresses persisted target focus until the user acts', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
@@ -380,14 +392,23 @@ describe('InquiryView payload accounting', () => {
 
     it('uses same-material same-engine run cost for the preview cost pill before learned-output estimates', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private getLatestPreviewQuestionActualCost(zone?: InquiryZone, questionId?: string): number | null')).toBe(true);
         expect(viewSource.includes('private getLatestSameCorpusActualCostForResolvedEngine(): number | null')).toBe(true);
+        expect(viewSource.includes('this.getPreviewCostValue(zone, questionId)')).toBe(true);
         expect(viewSource.includes('const currentReuseFingerprint = currentContext.cacheReuseFingerprint.trim();')).toBe(true);
         expect(viewSource.includes("const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();")).toBe(true);
-        expect(viewSource.includes('return `Cost · Est ${formatExactUsdCost(sameCorpusActualCost)}`;')).toBe(true);
+        expect(viewSource.includes('return `Prior cost · ${formatExactUsdCost(previewQuestionActualCost)}`;')).toBe(true);
+        expect(viewSource.includes('return `Recent cost · ${formatExactUsdCost(sameCorpusActualCost)}`;')).toBe(true);
+        expect(viewSource.includes('return `Cached est · ${cachedLabel}`;')).toBe(true);
+        expect(viewSource.includes('`Fresh est · ${freshLabel} / ${cachedLabel} cached`')).toBe(true);
+        expect(viewSource.includes('`Fresh est · ${freshLabel}`;')).toBe(true);
+        const questionCostIndex = viewSource.indexOf('const previewQuestionActualCost = this.getLatestPreviewQuestionActualCost(zone, questionId);');
         const sessionCostIndex = viewSource.indexOf('const sameCorpusActualCost = this.getLatestSameCorpusActualCostForResolvedEngine();');
         const outputProfileIndex = viewSource.indexOf('const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(');
+        expect(questionCostIndex).toBeGreaterThan(-1);
         expect(sessionCostIndex).toBeGreaterThan(-1);
         expect(outputProfileIndex).toBeGreaterThan(-1);
+        expect(questionCostIndex).toBeLessThan(sessionCostIndex);
         expect(sessionCostIndex).toBeLessThan(outputProfileIndex);
         expect(viewSource.includes('Cost · Run once for exact cost')).toBe(false);
     });
@@ -457,7 +478,7 @@ describe('InquiryView payload accounting', () => {
         // Unrelated assertions from the original guardian — kept since they
         // still apply to the cached-cost label path.
         expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
-        expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
+        expect(viewSource.includes("return `Cached est · ${cachedLabel}`;")).toBe(true);
     });
 
     it('formats Inquiry engine cache TTL labels from canonical settings instead of hard-coding Gemini to 24h', () => {
