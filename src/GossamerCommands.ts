@@ -24,6 +24,7 @@ import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
 import { validateGossamerResponse } from './ai/gossamer/responseValidation';
+import { unwrapStructuredEnvelope } from './ai/structuredResponseUnwrap';
 import { getAIClient } from './ai/runtime/aiClient';
 import {
   extractTokenUsage,
@@ -1188,7 +1189,23 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       throw new Error(t('gossamer.notices.validationFailed', { count: 1 }));
     }
 
-    const validation = validateGossamerResponse(parsedResponse, beats, selectedSignal);
+    // Defensive envelope unwrap: Opus 4.7's tool_use occasionally returns a
+    // semantically correct response wrapped in a single-key envelope (observed
+    // keys: "$PARAMETER_NAME", "input"). The unwrap is narrow and auditable —
+    // see src/ai/structuredResponseUnwrap.ts for the exact gating conditions.
+    // The validator still runs on the unwrapped value; this only repairs the
+    // shape, never the content.
+    const envelopeWarnings: string[] = [];
+    const unwrap = unwrapStructuredEnvelope(parsedResponse, ['beats', 'overallAssessment'], {
+      onUnwrap: (key) => {
+        const note = `Unwrapped Anthropic tool envelope key "${key}" before validation`;
+        envelopeWarnings.push(note);
+        console.warn(`[Gossamer] ${note}`);
+      }
+    });
+    const responseForValidation = unwrap.value;
+
+    const validation = validateGossamerResponse(responseForValidation, beats, selectedSignal);
     if (!validation.ok) {
       const failureDetails = validation.failures.map(f => `[${f.code}@${f.index}] ${f.detail}`);
       const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
@@ -1204,10 +1221,10 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         requestPayload: result.requestPayload ?? null,
         responseData: result.responseData,
         assistantContent: result.content,
-        parsedOutput: parsedResponse,
+        parsedOutput: responseForValidation,
         submittedAt,
         returnedAt,
-        schemaWarnings: failureDetails
+        schemaWarnings: [...envelopeWarnings, ...failureDetails]
       });
       modal.apiCallError(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
       for (const detail of failureDetails) modal.addError(detail);
@@ -1216,7 +1233,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       throw new Error(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
     }
 
-    const overall = (parsedResponse as { overallAssessment?: AiAnalysisResponse['overallAssessment'] }).overallAssessment;
+    const overall = (responseForValidation as { overallAssessment?: AiAnalysisResponse['overallAssessment'] }).overallAssessment;
     const rawAnalysis: AiAnalysisResponse = {
       beats: validation.beats,
       overallAssessment: overall ?? { summary: '', strengths: [], improvements: [] }
@@ -1393,7 +1410,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       parsedOutput: analysis,
       submittedAt,
       returnedAt,
-      derivedSummary: derivedLines.join('\n')
+      derivedSummary: derivedLines.join('\n'),
+      // Envelope warnings are not failures — they record that the response
+      // arrived wrapped and we recovered it. Surfacing them in the log gives
+      // us the audit trail for tracking how often each provider/model wraps.
+      schemaWarnings: envelopeWarnings.length > 0 ? envelopeWarnings : undefined
     });
 
     const successMessage = t('gossamer.notices.successUpdated', { count: updateCount, signal: signalMeta.label.toLowerCase() });
