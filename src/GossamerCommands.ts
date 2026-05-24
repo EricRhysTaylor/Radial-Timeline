@@ -1027,7 +1027,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       returnType: 'json',
       responseSchema: schema as unknown as Record<string, unknown>,
       overrides: {
-        temperature: 0.7,
+        // 0.3 stabilizes score histories run-to-run (less random drift between
+        // re-scores of an unchanged manuscript) while keeping justifications
+        // natural. Was 0.7 — too noisy for a scoring task where the user
+        // compares Gossamer<N> values across runs.
+        temperature: 0.3,
         maxOutputMode: 'high',
         reasoningDepth: 'deep',
         jsonStrict: true
