@@ -1195,6 +1195,7 @@ export interface TranslationKeys {
             timerTypical: string;
             apiFailed: string;
             errorsHeader: string;
+            errorLogLinkLabel: string;
             analysisComplete: string;
             analysisFailed: string;
             rateLimitWithRetry: string;
@@ -3362,6 +3363,7 @@ export const en: TranslationKeys = {
             timerTypical: ' · typically 30–90 seconds',
             apiFailed: '✗ API call failed',
             errorsHeader: 'Errors encountered:',
+            errorLogLinkLabel: 'Run log: ',
             analysisComplete: 'Analysis complete',
             analysisFailed: 'Analysis failed',
             rateLimitWithRetry: 'Rate limit reached. Please try again in {{seconds}} seconds.',

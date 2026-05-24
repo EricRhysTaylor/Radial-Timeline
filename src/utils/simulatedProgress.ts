@@ -58,7 +58,10 @@ export class SimulatedProgress {
     }
 
     private tick = (): void => {
-        if (!this.config) return;
+        if (!this.config || this.resolved) {
+            this.timeoutId = null;
+            return;
+        }
 
         const now = performance.now();
         const elapsed = now - this.startTime;
@@ -69,7 +72,10 @@ export class SimulatedProgress {
         const base = this.config.startPercent +
             (this.config.maxPercent - this.config.startPercent) * t;
 
-        // Small oscillation keeps the bar feeling alive while waiting.
+        // Small oscillation keeps the bar feeling alive while waiting — including
+        // after the estimate has been exceeded. The bar holds at maxPercent and
+        // oscillates via jitter rather than freezing; the real progress is
+        // unknown until the API responds.
         const jitter = this.config.jitter * Math.sin(elapsed / 900);
         const percent = Math.max(
             this.config.startPercent,
@@ -78,10 +84,9 @@ export class SimulatedProgress {
 
         this.onUpdate(percent);
 
-        if (t < 1 && !this.resolved) {
-            this.timeoutId = window.setTimeout(this.tick, 16);
-        } else {
-            this.timeoutId = null;
-        }
+        // Keep scheduling until externally resolved (complete/fail/stop). Past
+        // the estimate the bar still oscillates at the cap so the user can see
+        // we're still waiting rather than concluding the modal has frozen.
+        this.timeoutId = window.setTimeout(this.tick, 16);
     };
 }

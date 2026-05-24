@@ -876,6 +876,23 @@
   margin-bottom: 4px;
 }
 
+.ert-gossamer-proc-error-log-link {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.ert-gossamer-proc-error-log-link-target {
+  color: var(--text-accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.ert-gossamer-proc-error-log-link-target:hover {
+  color: var(--text-accent-hover, var(--text-accent));
+}
+
 .ert-gossamer-proc-beat-system-info {
   font-weight: 600;
   color: var(--text-normal);

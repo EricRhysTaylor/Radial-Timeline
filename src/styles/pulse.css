@@ -1536,6 +1536,7 @@
   max-height: 200px;
   overflow-y: auto;
   border-left: 3px solid var(--text-error);
+  padding: var(--ert-pad-md, 12px) var(--ert-pad-md, 12px) var(--ert-pad-md, 12px) var(--ert-pad-lg, 16px);
 }
 
 .ert-pulse-error-list.ert-hidden {

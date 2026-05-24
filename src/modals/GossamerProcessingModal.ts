@@ -6,7 +6,7 @@
  * Gossamer AI Processing Modal
  * Tracks progress of Gemini momentum analysis with manuscript details and status updates
  */
-import { App, ButtonComponent, Notice } from 'obsidian';
+import { App, ButtonComponent, Notice, TFile } from 'obsidian';
 import { ErtModal } from '../ui/ErtModal';
 import type RadialTimelinePlugin from '../main';
 import { t } from '../i18n';
@@ -488,6 +488,36 @@ export class GossamerProcessingModal extends ErtModal {
 
         const errorItem = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-item' });
         errorItem.setText(message);
+    }
+
+    /**
+     * Append a clickable link to the run's log file inside the error zone so
+     * the user can open it with one click, copy the full payload, and send it
+     * along with a bug report. Only shown when an error has already been
+     * reported (the section is otherwise hidden).
+     */
+    public addErrorLogLink(file: TFile): void {
+        if (!this.errorListEl) return;
+
+        // Make sure the section is visible — addErrorLogLink may be called
+        // immediately after addError, but we don't depend on that ordering.
+        if (this.errorListEl.hasClass('ert-hidden')) {
+            this.errorListEl.removeClass('ert-hidden');
+            const header = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-header' });
+            header.setText(t('gossamer.processingModal.errorsHeader'));
+        }
+
+        const linkRow = this.errorListEl.createDiv({ cls: 'ert-gossamer-proc-error-log-link' });
+        linkRow.createSpan({ text: t('gossamer.processingModal.errorLogLinkLabel') });
+        const link = linkRow.createEl('a', {
+            cls: 'ert-gossamer-proc-error-log-link-target',
+            text: file.path,
+            href: '#'
+        });
+        link.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            void this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
+        });
     }
 
     /**

@@ -1089,14 +1089,14 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     if (result.aiStatus !== 'success' || !result.content) {
       modal.apiCallError(result.error || t('gossamer.notices.aiResponseError'));
       modal.completeProcessing(false, 'API call failed');
-      
+
       // Check for rate limit
       if (result.error?.toLowerCase().includes('rate limit')) {
         modal.showRateLimitWarning();
       }
       const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
-      
-      await writeGossamerLog(plugin, {
+
+      const failureLog = await writeGossamerLog(plugin, {
         status: 'error',
         provider: providerForLog,
         beatSystemLabel: beatSystemDisplayName,
@@ -1113,7 +1113,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         returnedAt,
         schemaWarnings: result.error ? [`Error: ${result.error}`] : undefined
       });
-      
+      if (failureLog) modal.addErrorLogLink(failureLog);
+
       throw new Error(result.error || t('gossamer.notices.aiResponseError'));
     }
 
@@ -1163,7 +1164,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     } catch (parseError) {
       const detail = parseError instanceof Error ? parseError.message : String(parseError);
       const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
-      await writeGossamerLog(plugin, {
+      const failureLog = await writeGossamerLog(plugin, {
         status: 'error',
         provider: providerForLog,
         beatSystemLabel: beatSystemDisplayName,
@@ -1182,6 +1183,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       });
       modal.apiCallError(t('gossamer.notices.validationFailed', { count: 1 }));
       modal.addError(`JSON parse error: ${detail}`);
+      if (failureLog) modal.addErrorLogLink(failureLog);
       modal.completeProcessing(false, 'Validation failed');
       throw new Error(t('gossamer.notices.validationFailed', { count: 1 }));
     }
@@ -1190,7 +1192,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     if (!validation.ok) {
       const failureDetails = validation.failures.map(f => `[${f.code}@${f.index}] ${f.detail}`);
       const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
-      await writeGossamerLog(plugin, {
+      const failureLog = await writeGossamerLog(plugin, {
         status: 'error',
         provider: providerForLog,
         beatSystemLabel: beatSystemDisplayName,
@@ -1209,6 +1211,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       });
       modal.apiCallError(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
       for (const detail of failureDetails) modal.addError(detail);
+      if (failureLog) modal.addErrorLogLink(failureLog);
       modal.completeProcessing(false, 'Validation failed');
       throw new Error(t('gossamer.notices.validationFailed', { count: validation.failures.length }));
     }
