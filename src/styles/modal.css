@@ -879,7 +879,6 @@
 .ert-gossamer-proc-error-log-link {
   font-size: 0.85rem;
   color: var(--text-muted);
-  margin-top: 4px;
   word-break: break-all;
 }
 
