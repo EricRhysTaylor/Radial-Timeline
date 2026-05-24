@@ -857,6 +857,20 @@ export class AIClient {
         };
         setLastRunAdvanced(this.plugin, request.feature, advancedContext);
 
+        // Pre-dispatch availability gate. The provider snapshot is the
+        // authoritative source for "is this model exposed to your account at
+        // your access tier." Dispatching a known-not_visible model wastes the
+        // user's API budget on a guaranteed 404/400; abort with a clear
+        // message that names the model + provider so the user can either
+        // upgrade the tier or pick a visible model. The advancedContext above
+        // already carries the not_visible status into logs/UI.
+        if (availabilityStatus === 'not_visible') {
+            throw new Error(
+                `Model "${modelSelection.model.label}" (${modelSelection.model.alias}) is not visible to your ${provider} account at the current access tier. ` +
+                `Update model selection or access tier in Settings → AI before running.`
+            );
+        }
+
         const providerCallStartedAt = new Date();
         const execution = await this.execute(providerClient, {
             modelId: modelSelection.model.id,

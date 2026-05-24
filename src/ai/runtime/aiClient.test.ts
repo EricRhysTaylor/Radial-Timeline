@@ -99,3 +99,34 @@ describe('AI client privacy-flag wiring', () => {
         }
     });
 });
+
+/**
+ * Pre-dispatch availability gate (regression guard added 2026-05-23).
+ *
+ * The provider snapshot reports whether a model is exposed to the user's
+ * account at their access tier. Previously, availabilityStatus was recorded
+ * on advancedContext but the run dispatched anyway — burning the user's
+ * API quota on a guaranteed 404/400. This guard pins that the not_visible
+ * status hard-fails before this.execute() is called.
+ */
+describe('AI client model-availability gate', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
+    const code = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('throws before dispatch when availabilityStatus is not_visible', () => {
+        expect(code).toMatch(/if\s*\(\s*availabilityStatus\s*===\s*['"]not_visible['"]\s*\)\s*\{[\s\S]*?throw new Error/);
+    });
+
+    it('only throws after advancedContext is set so the UI/logs see the not_visible status', () => {
+        const setLastIndex = code.indexOf('setLastRunAdvanced(this.plugin, request.feature, advancedContext)');
+        const gateIndex = code.search(/if\s*\(\s*availabilityStatus\s*===\s*['"]not_visible['"]\s*\)/);
+        const executeIndex = code.indexOf('this.execute(providerClient');
+        expect(setLastIndex).toBeGreaterThan(-1);
+        expect(gateIndex).toBeGreaterThan(-1);
+        expect(executeIndex).toBeGreaterThan(-1);
+        expect(gateIndex).toBeGreaterThan(setLastIndex);
+        expect(gateIndex).toBeLessThan(executeIndex);
+    });
+});
