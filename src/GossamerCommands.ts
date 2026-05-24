@@ -46,7 +46,7 @@ import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 import { logCountingForensics } from './ai/diagnostics/countingForensics';
 import { toBeatModelMatchKey } from './utils/beatsInputNormalize';
-import { getActiveFrontmatterMappings } from './utils/frontmatter';
+import { getActiveFrontmatterMappings, asBeatFrontmatter, readBeatPurpose } from './utils/frontmatter';
 
 interface ResolvedGossamerEvidence {
   document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
@@ -943,30 +943,26 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         return aNum - bNum;
       })
       .map((beat, index) => {
-        // Get cache for this beat note to read frontmatter fields
+        // Get cache for this beat note to read frontmatter fields. asBeatFrontmatter
+        // narrows the untyped Obsidian cache to BeatFrontmatter so `fm.Synopsis`
+        // (a legacy *Backdrop* key, never valid on a Beat) is a compile-time error.
         const file = plugin.app.vault.getAbstractFileByPath(beat.path || '');
         const cache = file ? plugin.app.metadataCache.getFileCache(file as any) : null;
-        const fm = cache?.frontmatter;
+        const fm = asBeatFrontmatter(cache?.frontmatter);
 
         const rangeValue = (typeof fm?.Range === 'string' ? fm.Range : '0-100');
         const rawTitle = beat.title || 'Unknown Beat';
         const placementMatch = rawTitle.match(/^(\d+(?:\.\d+)?)/);
         const placement = placementMatch ? placementMatch[1] : undefined;
         const beatName = rawTitle.replace(/^\d+(?:\.\d+)?\s+/, '');
-        // Read Beat Purpose (canonical key, migrated from Description). Mirrors
-        // GossamerScoreModal.ts:711 — Purpose → Description → description.
-        const purpose =
-          (typeof fm?.Purpose === 'string' && fm.Purpose.trim()) ||
-          (typeof fm?.Description === 'string' && fm.Description.trim()) ||
-          (typeof fm?.description === 'string' && fm.description.trim()) ||
-          '';
+        const purpose = readBeatPurpose(fm);
 
         return {
           beatName,
           beatNumber: index + 1,
           idealRange: rangeValue,
           placement,
-          description: purpose.length > 0 ? purpose : undefined
+          description: purpose
           // Note: idealRange, previous scores, and previous justifications are intentionally NOT
           // sent to the AI to avoid anchoring bias. idealRange is used downstream (after response)
           // for range validation. Historical scores remain in metadata for user reference.

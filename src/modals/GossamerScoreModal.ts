@@ -16,7 +16,7 @@ import { buildGossamerEvidenceDocument } from '../gossamer/evidence/buildGossame
 import { ensureManuscriptOutputFolder, resolveManuscriptOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename } from '../utils/exportFormats';
 import { getPlotSystem } from '../utils/beatsSystems';
-import { getActiveFrontmatterMappings } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, asBeatFrontmatter, readBeatPurpose } from '../utils/frontmatter';
 import {
   resolveSelectedBeatModelFromSettings
 } from '../utils/beatSystemState';
@@ -693,7 +693,11 @@ export class GossamerScoreModal extends Modal {
       if (!file) continue;
 
       const cache = this.plugin.app.metadataCache.getFileCache(file as any);
-      const fm = cache?.frontmatter;
+      const fm = asBeatFrontmatter(cache?.frontmatter);
+      // rawFm is retained for the dynamic Gossamer<N> / Score<N> sweep below —
+      // those keys are accessed by computed name (`Gossamer${i}`), not by literal,
+      // so the BeatFrontmatter type guard doesn't apply to them.
+      const rawFm = cache?.frontmatter;
 
       const entry: BeatScoreEntry = {
         beatTitle: beat.title,
@@ -704,23 +708,19 @@ export class GossamerScoreModal extends Modal {
       };
 
       if (fm) {
-        // Get Range field directly from metadata cache
         if (typeof fm.Range === 'string') {
           entry.range = fm.Range;
         }
-        if (typeof fm.Purpose === 'string') {
-          entry.description = fm.Purpose;
-        } else if (typeof fm.Description === 'string') {
-          entry.description = fm.Description;
-        } else if (typeof fm.description === 'string') {
-          entry.description = fm.description;
+        const purpose = readBeatPurpose(fm);
+        if (purpose !== undefined) {
+          entry.description = purpose;
         }
 
         const scores: ScoreHistoryItem[] = [];
         let hasAnyScores = false;
         for (let i = 1; i <= 30; i++) {
           const key = `Gossamer${i}`;
-          const value = fm[key];
+          const value = rawFm?.[key];
           let numeric: number | undefined;
           if (typeof value === 'number') {
             numeric = value;
@@ -732,7 +732,7 @@ export class GossamerScoreModal extends Modal {
           if (numeric !== undefined) {
             // Only include slots whose signal matches the active signal.
             // Missing signal field = momentum (legacy runs).
-            const rawSignal = fm[`GossamerSignal${i}`];
+            const rawSignal = rawFm?.[`GossamerSignal${i}`];
             const slotSignal = typeof rawSignal === 'string' && rawSignal.trim().length > 0
               ? rawSignal.trim().toLowerCase()
               : 'momentum';
@@ -740,14 +740,14 @@ export class GossamerScoreModal extends Modal {
 
             hasAnyScores = true;
             const justificationKey = `Gossamer${i} Justification`;
-            const justificationValue = fm[justificationKey];
+            const justificationValue = rawFm?.[justificationKey];
             scores.push({ index: i, value: numeric });
             if (typeof justificationValue === 'string' && justificationValue.trim().length > 0) {
               scores[scores.length - 1].justification = justificationValue;
             }
           } else {
             const orphanJustKey = `Gossamer${i} Justification`;
-            if (typeof fm[orphanJustKey] === 'string') {
+            if (typeof rawFm?.[orphanJustKey] === 'string') {
               // Remove orphaned justification entries (handled during cleanup)
             }
           }

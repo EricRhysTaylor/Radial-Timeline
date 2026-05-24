@@ -17,7 +17,7 @@ import {
 import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from '../utils/beatsInputNormalize';
 import { cloneBeatLibraryItem, getBeatLibraryItemBySource, getBuiltinBeatLibraryItems, getSavedBeatLibraryItems, getStarterBeatLibraryItems } from './libraryState';
 import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
-import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys, asBeatFrontmatter, readBeatPurpose } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 
 /** Maps legacy manuscript Beat Model values to their current canonical names. */
@@ -288,7 +288,9 @@ function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSetting
                 name: title,
                 act,
                 id,
-                purpose: typeof frontmatter.Purpose === 'string' ? frontmatter.Purpose.trim() || undefined : undefined,
+                // Purpose reads must go through readBeatPurpose so legacy
+                // Description/description in un-migrated vaults still surfaces.
+                purpose: readBeatPurpose(asBeatFrontmatter(frontmatter)),
                 range: typeof frontmatter.Range === 'string' ? frontmatter.Range.trim() || undefined : undefined,
             });
         }

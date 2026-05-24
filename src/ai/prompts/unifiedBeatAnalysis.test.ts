@@ -47,4 +47,51 @@ describe('buildUnifiedBeatAnalysisPromptParts', () => {
         expect(prompt).not.toContain('40-60');
         expect(prompt).not.toContain('idealRange');
     });
+
+    // REGRESSION GUARD (2026-05-23): the multi-signal refactor wired fm.Synopsis
+    // (a nonexistent beat field) as the description source, so every beat shipped
+    // as a bare label for a month. Tests below pin the contract that descriptions,
+    // when provided, MUST render into the prompt — and a sibling source-grep test
+    // in GossamerCommands.test.ts pins that GossamerCommands populates them via
+    // the canonical readBeatPurpose helper.
+    it('renders the beat description after an em-dash when provided', () => {
+        const beats = [
+            {
+                beatName: 'Opening Image',
+                beatNumber: 1,
+                idealRange: '0-10',
+                placement: '0.01',
+                description: 'Trisan grinds through Academy training despite his failing hip.'
+            }
+        ];
+        const { transformText } = buildUnifiedBeatAnalysisPromptParts('Scene body', beats, 'Save The Cat');
+        expect(transformText).toContain('— Trisan grinds through Academy training despite his failing hip.');
+    });
+
+    it('omits the em-dash when description is missing entirely', () => {
+        const beats = [
+            { beatName: 'Opening Image', beatNumber: 1, idealRange: '0-10', placement: '0.01' }
+        ];
+        const { transformText } = buildUnifiedBeatAnalysisPromptParts('Scene body', beats, 'Save The Cat');
+        expect(transformText).toContain('[0.01] Opening Image');
+        expect(transformText).not.toContain('—');
+    });
+
+    it('omits the em-dash when description is a whitespace-only string', () => {
+        const beats = [
+            { beatName: 'Opening Image', beatNumber: 1, idealRange: '0-10', placement: '0.01', description: '   ' }
+        ];
+        const { transformText } = buildUnifiedBeatAnalysisPromptParts('Scene body', beats, 'Save The Cat');
+        expect(transformText).not.toContain('—');
+    });
+
+    it('multiple beats each carry their own description', () => {
+        const beats = [
+            { beatName: 'Opening', beatNumber: 1, idealRange: '0-10', placement: '0.01', description: 'World establishes.' },
+            { beatName: 'Catalyst', beatNumber: 2, idealRange: '10-20', placement: '10.01', description: 'Inciting event.' }
+        ];
+        const { transformText } = buildUnifiedBeatAnalysisPromptParts('Scene body', beats, 'Save The Cat');
+        expect(transformText).toContain('— World establishes.');
+        expect(transformText).toContain('— Inciting event.');
+    });
 });

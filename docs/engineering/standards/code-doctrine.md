@@ -203,6 +203,33 @@ We intentionally avoid:
 
 Correct software is simpler than defensive software.
 
+### Canonical YAML Keys Go Through Helpers, Never String Literals
+
+Note types that have undergone field renames (Beat: `Description → Purpose`; Backdrop: `Synopsis → Context`) must be read through the canonical helpers in [`src/utils/frontmatter.ts`](../../../src/utils/frontmatter.ts) — `readBeatPurpose`, `readBackdropContext`. The legacy-key fallback ladder lives once in those helpers; never inline it.
+
+```
+// Allowed
+const fm = asBeatFrontmatter(cache?.frontmatter);
+const purpose = readBeatPurpose(fm);
+
+// Not allowed — three drift surfaces in one read
+const purpose = fm?.Purpose ?? fm?.Description ?? fm?.description;
+
+// Forbidden — Beats never had a Synopsis field; this is the 2026-04-21 regression
+const purpose = fm?.Synopsis;
+```
+
+Why this is a separate rule and not just "use helpers": Obsidian's `metadataCache.getFileCache().frontmatter` is typed `any`, so the typo-class bug (`fm.Synopsis` on a beat note) typechecks identically to the correct read. The 2026-04-21 multi-signal Gossamer refactor lost a month of beat-Purpose data this way — every Gossamer run shipped bare beat labels to the AI because nothing in the type system or test suite knew which YAML keys are valid on which note type.
+
+Enforcement layers:
+
+1. **Helpers** in `frontmatter.ts` are the single source of truth for the canonical/legacy key lists (`BEAT_PURPOSE_KEYS`, `BACKDROP_CONTEXT_KEYS`).
+2. **Typed views** (`BeatFrontmatter`, `BackdropFrontmatter`) plus narrowing functions (`asBeatFrontmatter`, `asBackdropFrontmatter`) make `fm.Synopsis` a compile-time error on beat-typed fm.
+3. **Source-grep tests** (`GossamerCommands.test.ts → Gossamer canonical YAML key discipline`) fail at CI if a call site re-inlines the fallback ladder or references a wrong-note-type key.
+4. **Contract tests** (`unifiedBeatAnalysis.test.ts → renders the beat description after an em-dash when provided`) prove the prompt actually carries the field, so silent data-loss can't ship.
+
+When you migrate another field, add it to the registry in `frontmatter.ts`, write a helper, add the source-grep test for the consuming module, and add the doctrine entry here.
+
 ### Logging Is Allowed, Behavioral Fallbacks Are Not
 
 Diagnostic logging is encouraged.

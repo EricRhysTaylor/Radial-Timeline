@@ -45,3 +45,42 @@ describe('Gossamer AI evidence mode wiring', () => {
         expect(source).not.toContain('resolveSafeGossamerInputLimit');
     });
 });
+
+/**
+ * Canonical YAML key discipline (regression guard added 2026-05-23).
+ *
+ * The multi-signal refactor on 2026-04-21 wired `fm.Synopsis` — a key that
+ * never existed on beat notes — as the source of the beat description. Every
+ * Gossamer run for a month shipped bare beat labels. This source-grep test
+ * pins the rule: GossamerCommands must populate beat purpose via the canonical
+ * helper (readBeatPurpose), never via a raw fm.{Synopsis,Purpose,...} literal.
+ *
+ * If you find yourself wanting to silence this test, the actual answer is
+ * almost certainly to extend src/utils/frontmatter.ts BEAT_PURPOSE_KEYS or
+ * add a new helper there, not to inline a key access here.
+ */
+describe('Gossamer canonical YAML key discipline', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/GossamerCommands.ts'), 'utf8');
+    // Strip comments before grepping so docstring mentions of forbidden patterns
+    // don't trip these tests. Order matters: block comments first, then line.
+    const source = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('reads beat purpose through the canonical readBeatPurpose helper', () => {
+        expect(rawSource).toContain('readBeatPurpose');
+        expect(rawSource).toContain("from './utils/frontmatter'");
+    });
+
+    it('never references fm.Synopsis or frontmatter.Synopsis on beats in executable code', () => {
+        expect(source).not.toMatch(/\bfm\??\.Synopsis\b/);
+        expect(source).not.toMatch(/\bfrontmatter\??\.Synopsis\b/);
+    });
+
+    it('never inlines the Purpose→Description→description fallback ladder (use the helper)', () => {
+        const purposeReadsInline = source.match(/\bfm\??\.Purpose\b/g)?.length ?? 0;
+        const descriptionReadsInline = source.match(/\bfm\??\.Description\b/g)?.length ?? 0;
+        expect(purposeReadsInline).toBe(0);
+        expect(descriptionReadsInline).toBe(0);
+    });
+});

@@ -254,3 +254,101 @@ export function extractSummary(frontmatter: Record<string, unknown>): string {
   if (raw === null || raw === undefined) return '';
   return String(raw).trim();
 }
+
+/* ----------------------------------------------------------------------- *
+ * Canonical key registry for note types that have undergone field renames.
+ *
+ * Source of truth for which YAML keys are valid for each note type. Call
+ * sites must read these fields through the helpers below — never reach for
+ * a string literal like `fm.Synopsis` on a beat note (Beats never had a
+ * Synopsis field; Synopsis is the *legacy* Backdrop key migrated to
+ * Context). The first entry of each list is the canonical key that current
+ * migrations write; remaining entries are legacy keys we still read so
+ * un-migrated vaults keep working.
+ *
+ * Migrations that produced these lists live in
+ *   src/utils/yamlBackfill.ts
+ *     - runBeatDescriptionToPurposeMigration:  Description -> Purpose
+ *     - runBackdropSynopsisToContextMigration: Synopsis    -> Context
+ * ----------------------------------------------------------------------- */
+
+export const BEAT_PURPOSE_KEYS = ['Purpose', 'Description', 'description'] as const;
+export const BACKDROP_CONTEXT_KEYS = ['Context', 'Synopsis'] as const;
+
+/**
+ * Typed view of the YAML frontmatter on a Beat note. Lists only the fields
+ * code reads directly from raw `fm`. Notably does NOT include `Synopsis`
+ * (Beats never had that field; reaching for `fm.Synopsis` on a beat is a
+ * bug). For dynamically-named keys (Gossamer1..30 etc.) use index access
+ * with explicit narrowing — those are accessed by computed key, not by
+ * literal, so the type guard doesn't apply.
+ */
+export interface BeatFrontmatter {
+  Purpose?: string;
+  Description?: string;
+  description?: string;
+  Range?: string;
+  Act?: number | string;
+  ID?: string;
+  'Beat Model'?: string;
+  Chapter?: string;
+  'Suggest Placement'?: string;
+  Class?: string;
+}
+
+/**
+ * Typed view of the YAML frontmatter on a Backdrop note. Does NOT include
+ * a `Description` field — Backdrops use `Context` (canonical) with
+ * `Synopsis` as the legacy key.
+ */
+export interface BackdropFrontmatter {
+  Context?: string;
+  Synopsis?: string;
+  Class?: string;
+}
+
+/**
+ * Narrow the untyped frontmatter blob from Obsidian's metadataCache to the
+ * BeatFrontmatter shape. The cast is documentation of intent — it does not
+ * validate. Its real value is making `fm.Synopsis` on a beat-typed fm a
+ * compile-time error.
+ */
+export function asBeatFrontmatter(fm: unknown): BeatFrontmatter | null {
+  if (!fm || typeof fm !== 'object') return null;
+  return fm as BeatFrontmatter;
+}
+
+export function asBackdropFrontmatter(fm: unknown): BackdropFrontmatter | null {
+  if (!fm || typeof fm !== 'object') return null;
+  return fm as BackdropFrontmatter;
+}
+
+/**
+ * Canonical extraction of the Beat purpose text. Reads `Purpose` first,
+ * then falls back through the legacy keys for un-migrated vaults. Returns
+ * undefined when no key holds a non-empty string — never an empty string,
+ * never a fabricated default.
+ */
+export function readBeatPurpose(fm: BeatFrontmatter | null | undefined): string | undefined {
+  return readFirstNonEmptyString(fm as Record<string, unknown> | null | undefined, BEAT_PURPOSE_KEYS);
+}
+
+/** Canonical extraction of the Backdrop context text. Same semantics as readBeatPurpose. */
+export function readBackdropContext(fm: BackdropFrontmatter | null | undefined): string | undefined {
+  return readFirstNonEmptyString(fm as Record<string, unknown> | null | undefined, BACKDROP_CONTEXT_KEYS);
+}
+
+function readFirstNonEmptyString(
+  fm: Record<string, unknown> | null | undefined,
+  keys: readonly string[]
+): string | undefined {
+  if (!fm) return undefined;
+  for (const key of keys) {
+    const value = fm[key];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) return trimmed;
+    }
+  }
+  return undefined;
+}
