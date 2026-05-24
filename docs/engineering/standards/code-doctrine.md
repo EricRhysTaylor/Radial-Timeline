@@ -230,6 +230,36 @@ Enforcement layers:
 
 When you migrate another field, add it to the registry in `frontmatter.ts`, write a helper, add the source-grep test for the consuming module, and add the doctrine entry here.
 
+### Source-Grep Regression Guards
+
+A source-grep regression guard is a unit test that reads the source of another module as a string and asserts that specific patterns are present or absent. They complement — never replace — unit tests of behavior. They catch a class of regressions that behavior tests reliably miss: wiring removed, an order swapped, a forbidden literal re-introduced by a future contributor who didn't read the original rationale.
+
+**Use them for:**
+
+- **Cross-file architectural invariants** — "Gossamer must read beat purpose via `readBeatPurpose`, never via raw `fm.Purpose`."
+- **Privacy and security gates** — "AIClient must never hard-code `allowRemoteRegistry: true`."
+- **Wiring-order positional checks** — "the model-availability gate must sit between `setLastRunAdvanced` and `this.execute(...)`." Behavior tests would pass either way; positional tests fail loudly if the gate is moved.
+- **Forbidden-call bans** — "the AI parse path must not call `coerceGossamerSignal(b.signal ...)` (that was the wrong-signal-eraser)."
+- **Banned string/field access** — "no `fm.Synopsis` literal in executable code on beat-handling sites."
+
+**Do not use them as a substitute for normal unit tests.** A behavior test that exercises the validator and asserts what it returns is always preferable when the behavior is testable. Source-grep tests are for the *meta-rule* — the contract that the right behavior test is wired up to the right call site — not for the behavior itself.
+
+**Standard recipe.** Strip comments before grepping so docstring mentions of the forbidden pattern (which are often the most useful place to explain *why* it's forbidden) don't trip the test:
+
+```typescript
+const rawSource = readFileSync(resolve(process.cwd(), 'src/path/to/module.ts'), 'utf8');
+const code = rawSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')            // block comments
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');         // line comments (preserves `http://` etc.)
+
+it('reads X via helper, never via literal', () => {
+    expect(code).toContain('readBeatPurpose');
+    expect(code).not.toMatch(/\bfm\??\.Synopsis\b/);
+});
+```
+
+When a source-grep test fires, the fix is almost always to use the canonical helper / re-wire the gate / re-add the guard — *not* to silence the test. Treat it as a structural assertion, not a stylistic preference.
+
 ### Logging Is Allowed, Behavioral Fallbacks Are Not
 
 Diagnostic logging is encouraged.
