@@ -55,3 +55,47 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes("(provider === 'openai' && advancedContext.reuseState !== 'idle')")).toBe(true);
     });
 });
+
+/**
+ * Privacy-flag wiring (regression guard added 2026-05-23).
+ *
+ * The aiSettings.privacy block is the user's authoritative consent for outbound
+ * model-data calls. AIClient previously hard-coded allowRemoteRegistry: true
+ * and provider-snapshot enabled: true in every loader constructor, making the
+ * settings UI toggles decorative. These source-grep tests pin the rule that
+ * every loader must read its consent flag from settings — not from a literal.
+ */
+describe('AI client privacy-flag wiring', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
+    // Strip comments before grepping so docstring mentions of the forbidden
+    // patterns (e.g. explaining what was previously hard-coded) don't fire.
+    const code = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('reads allowRemoteRegistry from privacy settings on every registry build', () => {
+        expect(code).toContain('isRemoteRegistryAllowed()');
+        expect(code).toContain('allowRemoteRegistry: this.isRemoteRegistryAllowed()');
+        expect(code).toContain('getAiSettings(this.plugin.settings).privacy.allowRemoteRegistry');
+    });
+
+    it('reads allowProviderSnapshot from privacy settings on every snapshot fetch', () => {
+        expect(code).toContain('isProviderSnapshotAllowed()');
+        expect(code).toContain('enabled: this.isProviderSnapshotAllowed()');
+        expect(code).toContain('getAiSettings(this.plugin.settings).privacy.allowProviderSnapshot');
+    });
+
+    it('never hard-codes allowRemoteRegistry: true in executable code', () => {
+        expect(code).not.toMatch(/allowRemoteRegistry:\s*true\b/);
+    });
+
+    it('never hard-codes enabled: true on the provider-snapshot loader', () => {
+        // Constrain the search to the loadProviderSnapshot call so legitimate
+        // enabled:true elsewhere (e.g. unrelated boolean fields) doesn't trip.
+        const loaderBlockMatch = code.match(/loadProviderSnapshot\(\{[\s\S]*?\}\)/);
+        expect(loaderBlockMatch).not.toBeNull();
+        if (loaderBlockMatch) {
+            expect(loaderBlockMatch[0]).not.toMatch(/enabled:\s*true\b/);
+        }
+    });
+});

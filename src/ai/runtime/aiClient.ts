@@ -316,9 +316,27 @@ export class AIClient {
 
     constructor(private plugin: RadialTimelinePlugin) {
         this.providers = buildProviders(plugin);
-        this.registry = new ModelRegistry({
+        this.registry = this.buildRegistry();
+    }
+
+    /**
+     * The privacy block in aiSettings is the user's authoritative consent for
+     * outbound model-data calls. Reading it on every loader construction —
+     * rather than caching at constructor time — means a settings toggle takes
+     * effect on the next operation without requiring a plugin reload.
+     */
+    private isRemoteRegistryAllowed(): boolean {
+        return !!getAiSettings(this.plugin.settings).privacy.allowRemoteRegistry;
+    }
+
+    private isProviderSnapshotAllowed(): boolean {
+        return !!getAiSettings(this.plugin.settings).privacy.allowProviderSnapshot;
+    }
+
+    private buildRegistry(): ModelRegistry {
+        return new ModelRegistry({
             remoteRegistryUrl: DEFAULT_REMOTE_REGISTRY_URL,
-            allowRemoteRegistry: true,
+            allowRemoteRegistry: this.isRemoteRegistryAllowed(),
             readCache: async () => this.plugin.settings.aiRegistryCacheJson ?? null,
             writeCache: async (content: string) => {
                 this.plugin.settings.aiRegistryCacheJson = content;
@@ -328,15 +346,7 @@ export class AIClient {
     }
 
     async refreshRegistry(forceRemote?: boolean): Promise<RegistryRefreshResult> {
-        this.registry = new ModelRegistry({
-            remoteRegistryUrl: DEFAULT_REMOTE_REGISTRY_URL,
-            allowRemoteRegistry: true,
-            readCache: async () => this.plugin.settings.aiRegistryCacheJson ?? null,
-            writeCache: async (content: string) => {
-                this.plugin.settings.aiRegistryCacheJson = content;
-                await this.plugin.saveSettings();
-            }
-        });
+        this.registry = this.buildRegistry();
         const result = await this.registry.refresh();
         this.registryReady = true;
         return result;
@@ -344,7 +354,7 @@ export class AIClient {
 
     async refreshProviderSnapshot(forceRemote?: boolean): Promise<ProviderSnapshotLoadResult> {
         this.providerSnapshot = await loadProviderSnapshot({
-            enabled: true,
+            enabled: this.isProviderSnapshotAllowed(),
             forceRemote,
             url: DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL,
             readCache: async () => this.plugin.settings.aiProviderSnapshotCacheJson ?? null,
