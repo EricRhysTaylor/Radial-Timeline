@@ -27,3 +27,22 @@ export function resolveActiveRoleTemplate(
         prompt: 'You are an editorial analysis assistant.'
     };
 }
+
+/**
+ * Feature-named neutral scoring template. Used when AIRunRequest.bypassRoleTemplate
+ * is true so technical scoring (Gossamer, etc.) is not biased by the user's
+ * normal writing-assist persona. Surfaces in logs as e.g. "Gossamer Neutral
+ * Scoring" so the audit trail shows the bypass plainly.
+ */
+export function buildNeutralRoleTemplate(feature: string): ActiveRoleTemplate {
+    const featureLabel = feature.trim() || 'AI';
+    return {
+        id: `neutral:${featureLabel.toLowerCase()}`,
+        name: `${featureLabel} Neutral Scoring`,
+        prompt:
+            `You are performing the ${featureLabel} task. ` +
+            `Score or analyze using only the provided manuscript/inputs and the explicit task rubric. ` +
+            `Do not optimize for genre, style, commercial appeal, or any external editorial preference. ` +
+            `Output exactly the structured schema requested — no commentary, no editorial framing.`
+    };
+}

@@ -158,3 +158,24 @@ describe('AI client local LLM capability floor', () => {
         expect(code).toContain('Switch to a cloud provider');
     });
 });
+
+/**
+ * Role-template bypass (regression guard added 2026-05-23).
+ *
+ * Technical scoring features should not inherit the user's active role
+ * template (e.g. "literary fiction editor") because that persona biases a
+ * structural scoring pass. The bypassRoleTemplate flag lets a feature opt
+ * out and use a feature-named neutral scoring role instead.
+ */
+describe('AI client role-template bypass', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
+    const code = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it('swaps in a neutral role template when bypassRoleTemplate is set', () => {
+        expect(code).toContain('request.bypassRoleTemplate');
+        expect(code).toContain('buildNeutralRoleTemplate(request.feature)');
+        expect(code).toContain('resolveActiveRoleTemplate(this.plugin, aiSettings)');
+    });
+});

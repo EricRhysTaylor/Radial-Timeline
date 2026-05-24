@@ -1027,6 +1027,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       userInput: prompt,
       returnType: 'json',
       responseSchema: schema as unknown as Record<string, unknown>,
+      // Bypass the user's active role template so a "literary fiction editor" or
+      // "commercial genre editor" persona cannot bias a structural scoring pass.
+      // aiClient swaps in a neutral "Gossamer Neutral Scoring" role; logs still
+      // record the bypass plainly via the role template name.
+      bypassRoleTemplate: true,
       overrides: {
         // 0.3 stabilizes score histories run-to-run (less random drift between
         // re-scores of an unchanged manuscript) while keeping justifications

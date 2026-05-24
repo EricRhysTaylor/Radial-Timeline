@@ -353,6 +353,13 @@ export interface AIRunRequest {
     bypassInMemoryCache?: boolean;
     /** Skip provider-level prompt/context reuse for this run. */
     bypassProviderReuse?: boolean;
+    /**
+     * Skip the user's active role template (e.g. "commercial genre editor")
+     * and use a feature-named neutral scoring role instead. Set true for
+     * technical scoring features where the user's normal writing-assist
+     * persona would bias the output (Gossamer is the motivating case).
+     */
+    bypassRoleTemplate?: boolean;
 }
 
 export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count' | 'google_count' | 'unavailable';

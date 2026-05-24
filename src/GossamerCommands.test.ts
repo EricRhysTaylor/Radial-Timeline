@@ -83,6 +83,10 @@ describe('Gossamer canonical YAML key discipline', () => {
         expect(purposeReadsInline).toBe(0);
         expect(descriptionReadsInline).toBe(0);
     });
+
+    it('opts out of the user role template so scoring is not persona-biased', () => {
+        expect(source).toMatch(/bypassRoleTemplate:\s*true/);
+    });
 });
 
 /**

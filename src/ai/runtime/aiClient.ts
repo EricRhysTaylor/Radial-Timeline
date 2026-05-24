@@ -12,7 +12,7 @@ import { loadRemotePricing, type RemotePricingLoadResult } from '../cost/remoteP
 import { mergeRemotePricing } from '../cost/providerPricing';
 import { cacheResolvedModel } from '../../utils/modelResolver';
 import { selectModel } from '../router/selectModel';
-import { resolveActiveRoleTemplate } from '../roleTemplate';
+import { resolveActiveRoleTemplate, buildNeutralRoleTemplate } from '../roleTemplate';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
 import { getLocalLlmClient } from '../localLlm/client';
@@ -514,7 +514,15 @@ export class AIClient {
                 systemPrompt: request.systemPrompt,
                 userPrompt: request.promptText || ''
             };
-        const roleTemplate = resolveActiveRoleTemplate(this.plugin, aiSettings);
+        // Technical scoring features (Gossamer, etc.) opt out of the user's
+        // active role template so a "commercial genre editor" or
+        // "literary fiction reviewer" persona cannot bias the scoring pass.
+        // The feature-named neutral template still gives the model a clean,
+        // explicit task framing and surfaces in logs as e.g. "Gossamer
+        // Neutral Scoring" — not "Default" — so the audit trail is honest.
+        const roleTemplate = request.bypassRoleTemplate
+            ? buildNeutralRoleTemplate(request.feature)
+            : resolveActiveRoleTemplate(this.plugin, aiSettings);
         const featureModeInstructions = (
             request.featureModeInstructions
             || compiledPrompt.systemPrompt
