@@ -774,6 +774,39 @@ Return JSON only with:
 }`;
 }
 
+/**
+ * JSON schema for the TimelineAuditAI per-scene response. Exported so the
+ * strict-schema test in src/ai/prompts/strictSchemas.test.ts can assert
+ * OpenAI structured-output compatibility (additionalProperties: false +
+ * required covers every property key). The previous inline definition
+ * had only 2 of 7 fields in required and no additionalProperties, which
+ * would silently break OpenAI strict mode.
+ */
+export function getTimelineAuditAiResponseSchema(): Record<string, unknown> {
+    return {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+            rationale: { type: 'string' },
+            evidenceQuotes: { type: 'array', items: { type: 'string' } },
+            issueType: { type: 'string' },
+            evidenceTier: { type: 'string' },
+            writtenTimelinePosition: { type: 'string' },
+            suggestedWhen: { type: 'string' },
+            confidence: { type: 'string' }
+        },
+        required: [
+            'rationale',
+            'evidenceQuotes',
+            'issueType',
+            'evidenceTier',
+            'writtenTimelinePosition',
+            'suggestedWhen',
+            'confidence'
+        ]
+    };
+}
+
 export function parseAuditAiResponse(content: string): TimelineAuditAiResponse | null {
     try {
         let json = content.trim();
@@ -826,19 +859,7 @@ async function runAiInference(
                 featureModeInstructions: 'Audit fiction-scene chronology conservatively. Prefer uncertainty over overclaiming.',
                 userInput: buildAiPrompt(input, previous, next),
                 returnType: 'json',
-                responseSchema: {
-                    type: 'object',
-                    properties: {
-                        rationale: { type: 'string' },
-                        evidenceQuotes: { type: 'array', items: { type: 'string' } },
-                        issueType: { type: 'string' },
-                        evidenceTier: { type: 'string' },
-                        writtenTimelinePosition: { type: 'string' },
-                        suggestedWhen: { type: 'string' },
-                        confidence: { type: 'string' }
-                    },
-                    required: ['rationale', 'evidenceQuotes']
-                },
+                responseSchema: getTimelineAuditAiResponseSchema(),
                 overrides: {
                     temperature: 0.2,
                     jsonStrict: true,

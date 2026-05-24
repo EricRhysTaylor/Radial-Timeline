@@ -30,6 +30,25 @@ interface SceneToProcess {
 
 
 /**
+ * JSON schema for the RuntimeAI per-scene response. Exported so the strict-
+ * schema test in src/ai/prompts/strictSchemas.test.ts can assert OpenAI
+ * structured-output compatibility (additionalProperties: false +
+ * required covers every property key). Inline anonymous schemas are
+ * easy to drift; reaching for this factory is the canonical entry point.
+ */
+export function getRuntimeAiResponseSchema(): Record<string, unknown> {
+    return {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+            runtimeSeconds: { type: 'number' },
+            reasoning: { type: 'string' }
+        },
+        required: ['runtimeSeconds', 'reasoning']
+    };
+}
+
+/**
  * Check if a scene's status matches the filters
  */
 function matchesStatusFilter(scene: TimelineItem, filters: RuntimeStatusFilters): boolean {
@@ -353,14 +372,7 @@ Return JSON only: {"runtimeSeconds": number, "reasoning": "brief explanation"}`;
 
     try {
         const aiClient = getAIClient(plugin);
-        const schema = {
-            type: 'object',
-            properties: {
-                runtimeSeconds: { type: 'number' },
-                reasoning: { type: 'string' }
-            },
-            required: ['runtimeSeconds']
-        } as const;
+        const schema = getRuntimeAiResponseSchema();
 
         const run = await aiClient.run({
             feature: 'RuntimeAI',
