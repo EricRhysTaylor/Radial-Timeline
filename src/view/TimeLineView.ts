@@ -1350,7 +1350,14 @@ export class RadialTimelineView extends ItemView {
                 this.writingSessionRingPulseTimeout = undefined;
             }, 300);
         }
-        timelineRoot.appendChild(imported);
+        const gossamerLayer = this.currentMode === 'gossamer'
+            ? timelineRoot.querySelector('.rt-gossamer-layer')
+            : null;
+        if (gossamerLayer) {
+            timelineRoot.insertBefore(imported, gossamerLayer);
+        } else {
+            timelineRoot.appendChild(imported);
+        }
         this.writingSessionRingRenderKey = renderKey;
     }
 
