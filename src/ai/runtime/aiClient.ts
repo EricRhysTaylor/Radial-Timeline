@@ -558,6 +558,26 @@ export class AIClient {
                 outputTokensNeeded: 0
             });
 
+        // Capability floor for local LLMs. Cloud providers run capability
+        // filtering inside selectModel; the Ollama path skips that filter
+        // because models come from a live backend probe, not the registry.
+        // Without this check, a feature that requires longContext /
+        // reasoningStrong / highOutputCap could dispatch to a local model
+        // declaring only ['jsonStrict'] and produce garbage results. The
+        // local-model capability list at src/ai/localLlm/settings.ts:48 is
+        // the authoritative declaration of what the local backend can be
+        // trusted with; respect it rather than silently overrunning.
+        if (provider === 'ollama' && requiredCapabilities.length > 0) {
+            const localCaps = new Set(initialSelection.model.capabilities ?? []);
+            const missing = requiredCapabilities.filter(cap => !localCaps.has(cap));
+            if (missing.length > 0) {
+                throw new Error(
+                    `Local model "${initialSelection.model.label}" lacks required capabilit${missing.length === 1 ? 'y' : 'ies'}: ${missing.join(', ')}. ` +
+                    `Switch to a cloud provider for this feature, or run a local model that declares these capabilities.`
+                );
+            }
+        }
+
         const overrides = mergeOverrides(aiSettings.overrides, request);
         const caps = computeCaps({
             provider,

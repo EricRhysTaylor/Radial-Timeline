@@ -130,3 +130,31 @@ describe('AI client model-availability gate', () => {
         expect(gateIndex).toBeLessThan(executeIndex);
     });
 });
+
+/**
+ * Local-LLM capability floor (regression guard added 2026-05-23).
+ *
+ * Cloud providers go through selectModel's capability filter; the Ollama
+ * path bypassed it by resolving from live backend probes. That meant a
+ * feature requiring longContext / reasoningStrong / highOutputCap could
+ * dispatch to a local model declaring only ['jsonStrict'] and silently
+ * produce degraded results. This guard pins the post-selection capability
+ * check that throws when the local model lacks any required capability.
+ */
+describe('AI client local LLM capability floor', () => {
+    const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
+    const code = rawSource
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    it("checks requiredCapabilities against the local model's declared capabilities", () => {
+        expect(code).toMatch(/if\s*\(\s*provider\s*===\s*['"]ollama['"]\s*&&\s*requiredCapabilities\.length\s*>\s*0\s*\)/);
+        expect(code).toContain('initialSelection.model.capabilities');
+        expect(code).toContain('requiredCapabilities.filter');
+    });
+
+    it('throws with a remediation message when a required capability is missing', () => {
+        expect(code).toMatch(/Local model[\s\S]{0,80}lacks required capabilit/);
+        expect(code).toContain('Switch to a cloud provider');
+    });
+});
