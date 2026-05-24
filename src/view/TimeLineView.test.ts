@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync } from 'fs'; // SAFE: test-only source guard reads TimeLineView for layer-order regression coverage.
+import { resolve } from 'path'; // SAFE: test-only source guard resolves a repo-local file path.
 
 describe('RadialTimelineView layer ordering', () => {
     it('keeps the writing-session ring behind Gossamer score text in Gossamer mode', () => {
