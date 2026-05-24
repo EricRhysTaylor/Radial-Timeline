@@ -677,9 +677,10 @@ export function renderCompletionEstimatePreview(params: {
                     } catch { }
                 }
 
-                const monthFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', year: '2-digit' });
+                const monthFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short' });
+                const shortYear = String(monthStart.getFullYear()).slice(-2);
                 months.push({
-                    month: monthFormatter.format(monthStart),
+                    month: `${monthFormatter.format(monthStart)} '${shortYear}`,
                     monthStart,
                     monthEnd,
                     added: scenesThisMonth,

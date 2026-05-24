@@ -92,6 +92,13 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         icon: 'folder-plus',
         title: 'New Radial Timeline Folder',
         description: 'A new Radial Timeline folder has been created in your Obsidian vault to organize files under the updated structure, including AI API logs, Inquiry Briefs, Social APR exports and campaigns, and other related assets.',
+    },
+    {
+        id: 'logs-folder-structure-v1',
+        severity: 'info',
+        icon: 'folder-tree',
+        title: 'Log folders reorganized',
+        description: 'Logs now live under Radial Timeline/Logs with dedicated folders for Inquiry, Gossamer, Pulse, Moves, Snapshots, and Gossamer Archive. Full AI content logs are stored inside Content subfolders for the matching feature.',
     }
 ];
 

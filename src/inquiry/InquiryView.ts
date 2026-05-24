@@ -221,6 +221,7 @@ import {
 } from '../ai/tokens/inputTokenEstimate';
 import {
     estimateCorpusCost,
+    formatExactUsdCost,
     formatApproxUsdCost
 } from '../ai/cost/estimateCorpusCost';
 import { resolveInquirySourceRoots } from './utils/sourceRoots';
@@ -3060,18 +3061,19 @@ export class InquiryView extends ItemView {
                 }
                 const priorByBase = this.sessionStore.getLatestByBaseKey(baseKey);
                 if (priorByBase && !this.isErrorResult(priorByBase.result)) {
+                    // Briefing history is not cache validity. Once a briefing
+                    // exists for the same question/scope/target/form, keep the
+                    // muted prior-run affordance visible until the author
+                    // explicitly purges briefing history.
+                    priorIds.add(prompt.id);
+
                     const priorCorpusOnly = priorByBase.result.corpusOnlyFingerprint;
                     const currentCorpusOnly = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${prompt.id}|${fingerprintSource}`);
-                    if (!priorCorpusOnly) {
+                    if (!priorCorpusOnly || priorCorpusOnly === currentCorpusOnly) {
                         continue;
                     }
-                    // Prior corpusOnly matches current → corpus unchanged; the prior run is
-                    // still useful provenance, but it is not rehydratable for the selected model.
-                    if (priorCorpusOnly === currentCorpusOnly) {
-                        priorIds.add(prompt.id);
-                        continue;
-                    }
-                    // True staleness — build diagnosis so UI can explain why.
+                    // Corpus drift is still tracked for hover copy / briefing
+                    // stale badges, but it must not erase history visibility.
                     const diagnosis = this.diagnoseSessionStaleness(priorByBase);
                     if (diagnosis) {
                         staleIds.add(prompt.id);
@@ -3649,6 +3651,38 @@ export class InquiryView extends ItemView {
 
     private getActualUsageCostForResult(result: InquiryResult): number | undefined {
         return resolveActualUsageCostForResultPure(result);
+    }
+
+    private getLatestSameCorpusActualCostForResolvedEngine(): number | null {
+        const engine = this.getResolvedEngine();
+        if (engine.blocked || !engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') {
+            return null;
+        }
+        const currentContext = this.getCurrentCorpusContext();
+        const currentReuseFingerprint = currentContext.cacheReuseFingerprint.trim();
+        if (!currentReuseFingerprint) return null;
+        const normalizedProvider = engine.provider.trim().toLowerCase();
+        const normalizedModelId = engine.modelId.trim();
+        const currentScopeKey = this.getScopeKey();
+        const sessions = this.sessionStore.getRecentSessions(this.sessionStore.getSessionCount());
+        for (const session of sessions) {
+            const sessionScope = session.scope ?? session.result.scope;
+            if (sessionScope !== this.state.scope) continue;
+            if (this.state.scope === 'book' && this.getSessionScopeKey(session) !== currentScopeKey) continue;
+            if (this.isErrorResult(session.result)) continue;
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
+            if (sessionProvider !== normalizedProvider) continue;
+            const resolvedModel = (session.result.aiModelResolved || '').trim();
+            const requestedModel = (session.result.aiModelRequested || '').trim();
+            if (resolvedModel !== normalizedModelId && requestedModel !== normalizedModelId) continue;
+            const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();
+            if (sessionReuseFingerprint !== currentReuseFingerprint) continue;
+            const actualCost = this.getActualUsageCostForResult(session.result);
+            if (typeof actualCost === 'number' && Number.isFinite(actualCost) && actualCost >= 0) {
+                return actualCost;
+            }
+        }
+        return null;
     }
 
     /**
@@ -6214,7 +6248,9 @@ export class InquiryView extends ItemView {
         this.currentRunElapsedMs = 0;
         const durationRange = this.estimateRunDurationRange(questionText);
         // Use midpoint of the range so the bar is optimistic — better to finish than stall.
-        this.currentRunEstimatedMaxMs = ((durationRange.minSeconds + durationRange.maxSeconds) / 2) * 1000;
+        this.currentRunEstimatedMaxMs = durationRange
+            ? ((durationRange.minSeconds + durationRange.maxSeconds) / 2) * 1000
+            : 0;
         this.activeSession.setActiveQuestionId(question.id);
         this.activeSession.setActiveZone(question.zone);
         this.lockPromptPreview(question, questionText);
@@ -9108,18 +9144,14 @@ export class InquiryView extends ItemView {
     }
 
     /**
-     * Record one (durationMs, fresh-input-tokens) sample for the current
+     * Record one (durationMs, provider-input-tokens) sample for the current
      * (provider, model, evidenceMode) bucket.
      *
-     * Three rules baked in to prevent the contamination that produced the
-     * "ROUGH ETA 4-6 SECONDS" lie on a 301k-token cold run:
-     *   1. Cache-heavy runs (cache_read share above CACHE_POISON_THRESHOLD)
-     *      are SKIPPED entirely — the model barely worked, the rate would
-     *      teach future fresh runs that they will also fly. See
-     *      computeSampleRate in inquiryTimingPrediction.ts.
-     *   2. Tokens used in the rate denominator are the fresh portion
-     *      (raw input + cache_creation), not the pre-run estimate.
-     *   3. Bucket key includes evidence mode, so summary-mode samples
+     * Two rules keep the history honest:
+     *   1. Tokens used in the rate denominator come from actual provider
+     *      usage, including cache reads. We do not learn from pre-run
+     *      estimates.
+     *   2. Bucket key includes evidence mode, so summary-mode samples
      *      cannot poison full-corpus rates.
      */
     private async recordInquiryTimingSample(result: InquiryResult, trace: InquiryRunTrace | null | undefined): Promise<void> {
@@ -9140,7 +9172,6 @@ export class InquiryView extends ItemView {
 
         const sampleRate = computeSampleRate({
             usage: usage ?? undefined,
-            fallbackEstimate: result.tokenEstimateInput,
             durationMs
         });
         if (!sampleRate) return;
@@ -9157,7 +9188,7 @@ export class InquiryView extends ItemView {
             samples: blended.samples,
             avgMsPerInputToken: blended.avgMsPerInputToken,
             lastDurationMs: durationMs!,
-            lastInputTokens: sampleRate.freshInputTokens,
+            lastInputTokens: sampleRate.inputTokens,
             updatedAt: new Date().toISOString()
         };
         this.plugin.settings.inquiryTimingHistory = history;
@@ -9205,7 +9236,7 @@ export class InquiryView extends ItemView {
     }
 
 
-    private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
+    private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } | null {
         const readinessUi = this.buildReadinessUiState();
         const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
 
@@ -9219,6 +9250,10 @@ export class InquiryView extends ItemView {
         );
         if (timingEstimate) {
             return timingEstimate;
+        }
+
+        if (estimatedTokens <= 0) {
+            return null;
         }
 
         // Cold-start fallback: optimistic rate (~3000 tokens/sec input throughput).
@@ -9247,7 +9282,9 @@ export class InquiryView extends ItemView {
     private buildRunningStatusNote(questionText: string): string {
         if (!this.cachedRunningStatusStatic || this.cachedRunningStatusQuestion !== questionText) {
             const estimate = this.estimateRunDurationRange(questionText);
-            const estimateLabel = formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+            const estimateLabel = estimate
+                ? formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds)
+                : 'unavailable';
             const evidenceMode = this.describeRunEvidenceMode();
             this.cachedRunningStatusStatic = t('inquiry.runner.running', { evidenceMode, estimateLabel });
             this.cachedRunningStatusQuestion = questionText;
@@ -9536,7 +9573,9 @@ export class InquiryView extends ItemView {
 
     private async promptCancelInquiryRun(questionText: string): Promise<boolean> {
         const estimate = this.estimateRunDurationRange(questionText);
-        const estimateLabel = formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+        const estimateLabel = estimate
+            ? formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds)
+            : 'unavailable';
         return await new Promise<boolean>(resolve => {
             const modal = new InquiryCancelRunModal(
                 this.app,
@@ -10651,13 +10690,17 @@ export class InquiryView extends ItemView {
             return 'Cost · Estimating…';
         }
         try {
+            const sameCorpusActualCost = this.getLatestSameCorpusActualCostForResolvedEngine();
+            if (sameCorpusActualCost !== null) {
+                return `Cost · Est ${formatExactUsdCost(sameCorpusActualCost)}`;
+            }
             const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(
                 engine.provider,
                 engine.modelId,
                 snapshot.estimate.estimatedInputTokens
             );
             if (learnedOutputTokens === null) {
-                return 'Cost · Run once for exact cost';
+                return 'Cost · Estimate pending';
             }
             const cacheSession = this.getLatestCacheSessionForResolvedEngine();
             const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt

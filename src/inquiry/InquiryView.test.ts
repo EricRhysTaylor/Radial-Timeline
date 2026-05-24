@@ -154,6 +154,19 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('if (this.startupFreshMode) {\n            return undefined;\n        }')).toBe(true);
     });
 
+    it('keeps prior briefing markers visible even when corpus drift makes the run stale', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const fn = viewSource.match(/private computePromptCacheStates\(\):[\s\S]+?\n    private updateZonePrompts\(\): void/)?.[0] ?? '';
+        expect(fn).toContain('Briefing history is not cache validity.');
+        const priorIndex = fn.indexOf('priorIds.add(prompt.id);');
+        const staleIndex = fn.indexOf('const diagnosis = this.diagnoseSessionStaleness(priorByBase);');
+        expect(priorIndex).toBeGreaterThan(-1);
+        expect(staleIndex).toBeGreaterThan(-1);
+        expect(priorIndex).toBeLessThan(staleIndex);
+        expect(fn).toContain('Corpus drift is still tracked for hover copy / briefing');
+        expect(fn).toContain('staleIds.add(prompt.id);');
+    });
+
     it('uses a dated welcome label and suppresses persisted target focus until the user acts', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const enLocale = readFileSync(resolve(process.cwd(), 'src/i18n/locales/en.ts'), 'utf8');
@@ -214,6 +227,16 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('const activeBookId = this.getCanonicalActiveBookId();')).toBe(true);
         expect(viewSource.includes('activeBookId,\n            targetSceneIds,')).toBe(true);
         expect(viewSource.includes('const activeBookId = this.getCanonicalActiveBookId();\n        if (!this.payloadStats')).toBe(true);
+    });
+
+    it('does not substitute corpus tokens for unavailable provider request estimates', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const snapshotSource = readFileSync(resolve(process.cwd(), 'src/inquiry/services/inquiryEstimateSnapshot.ts'), 'utf8');
+        expect(snapshotSource.includes('const estimatedInputTokens = trace.tokenEstimate.inputTokens;')).toBe(true);
+        expect(snapshotSource.includes('corpusFallbackTokens')).toBe(false);
+        expect(viewSource.includes('const requestMatches = sameScope\n            && snapshot.estimate.estimatedInputTokens > 0')).toBe(true);
+        expect(viewSource.includes('requestTokenFallback')).toBe(false);
+        expect(viewSource.includes("estimateLabel = estimate\n                ? formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds)\n                : 'unavailable'")).toBe(true);
     });
 
     it('keeps context reuse HUD tied to the current engine instead of hydrated result state', () => {
@@ -355,6 +378,20 @@ describe('InquiryView payload accounting', () => {
         expect(statusSource.includes('actualCostUSD: resolveActualUsageCostForResult(result)')).toBe(true);
     });
 
+    it('uses same-material same-engine run cost for the preview cost pill before learned-output estimates', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private getLatestSameCorpusActualCostForResolvedEngine(): number | null')).toBe(true);
+        expect(viewSource.includes('const currentReuseFingerprint = currentContext.cacheReuseFingerprint.trim();')).toBe(true);
+        expect(viewSource.includes("const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();")).toBe(true);
+        expect(viewSource.includes('return `Cost · Est ${formatExactUsdCost(sameCorpusActualCost)}`;')).toBe(true);
+        const sessionCostIndex = viewSource.indexOf('const sameCorpusActualCost = this.getLatestSameCorpusActualCostForResolvedEngine();');
+        const outputProfileIndex = viewSource.indexOf('const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(');
+        expect(sessionCostIndex).toBeGreaterThan(-1);
+        expect(outputProfileIndex).toBeGreaterThan(-1);
+        expect(sessionCostIndex).toBeLessThan(outputProfileIndex);
+        expect(viewSource.includes('Cost · Run once for exact cost')).toBe(false);
+    });
+
     it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes("this.plugin.settingsTab.setActiveTab('ai');\n            }\n            const uniqueTargets")).toBe(true);
@@ -398,11 +435,15 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("this.sessionStore.updateSession(session.key, { pendingEditsApplied: false });")).toBe(true);
     });
 
-    it('routes timing prediction through inquiryTimingPrediction (cache-poison guard, mode-keyed history, blended prediction)', () => {
+    it('routes timing prediction through inquiryTimingPrediction (provider usage, mode-keyed history, blended prediction)', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const timingSource = readFileSync(resolve(process.cwd(), 'src/inquiry/services/inquiryTimingPrediction.ts'), 'utf8');
         // Pure module is imported and used — no more inline EWMA math in InquiryView.
         expect(viewSource.includes("from './services/inquiryTimingPrediction'")).toBe(true);
         expect(viewSource.includes('computeSampleRate({')).toBe(true);
+        expect(viewSource.includes('fallbackEstimate: result.tokenEstimateInput')).toBe(false);
+        expect(timingSource.includes('fallbackEstimate')).toBe(false);
+        expect(timingSource.includes('CACHE_POISON_THRESHOLD')).toBe(false);
         expect(viewSource.includes('blendSampleRate({')).toBe(true);
         expect(viewSource.includes('predictTimingFromEntry(entry, estimatedInputTokens)')).toBe(true);
         // Mode is part of the history key.

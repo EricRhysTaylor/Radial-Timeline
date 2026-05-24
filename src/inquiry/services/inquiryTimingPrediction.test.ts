@@ -5,7 +5,6 @@ import {
     computeTimingHistoryKey,
     normalizeEvidenceModeKey,
     predictTimingFromEntry,
-    CACHE_POISON_THRESHOLD,
     EWMA_NEW_WEIGHT,
     PREDICT_FLOOR_MS
 } from './inquiryTimingPrediction';
@@ -56,74 +55,64 @@ describe('computeTimingHistoryKey', () => {
 describe('computeSampleRate', () => {
     it('returns null when duration is missing or non-positive', () => {
         const usage = { inputTokens: 10_000 };
-        expect(computeSampleRate({ usage, fallbackEstimate: 10_000, durationMs: 0 })).toBeNull();
-        expect(computeSampleRate({ usage, fallbackEstimate: 10_000, durationMs: -1 })).toBeNull();
-        expect(computeSampleRate({ usage, fallbackEstimate: 10_000, durationMs: undefined })).toBeNull();
+        expect(computeSampleRate({ usage, durationMs: 0 })).toBeNull();
+        expect(computeSampleRate({ usage, durationMs: -1 })).toBeNull();
+        expect(computeSampleRate({ usage, durationMs: undefined })).toBeNull();
     });
 
-    it('uses provider fresh tokens (input + cache_creation) when usage is present', () => {
+    it('uses provider input tokens including cache creation when usage is present', () => {
         const result = computeSampleRate({
             usage: { inputTokens: 50, cacheCreationInputTokens: 99_950, cacheReadInputTokens: 0 },
-            fallbackEstimate: 999_999, // ignored when usage is usable
             durationMs: 10_000
         });
-        expect(result?.source).toBe('provider_fresh');
-        expect(result?.freshInputTokens).toBe(100_000);
+        expect(result?.source).toBe('provider_usage');
+        expect(result?.inputTokens).toBe(100_000);
         expect(result?.msPerInputToken).toBe(10_000 / 100_000);
     });
 
-    it('SKIPS cache-poisoned samples (cache_read share above threshold) — the bug that produced the 4-6s ETA', () => {
-        // Mirrors the screenshot scenario: 90% cache reuse on second run.
+    it('records cache-heavy samples because observed wall time still reflects corpus reasoning', () => {
         const result = computeSampleRate({
-            usage: { inputTokens: 1_000, cacheReadInputTokens: 95_000, cacheCreationInputTokens: 0 },
-            fallbackEstimate: 100_000,
-            durationMs: 6_000
+            usage: { inputTokens: 23, cacheReadInputTokens: 135_634, cacheCreationInputTokens: 0 },
+            durationMs: 42_795
+        });
+        expect(result?.source).toBe('provider_usage');
+        expect(result?.inputTokens).toBe(135_657);
+        expect(result?.msPerInputToken).toBeCloseTo(42_795 / 135_657, 8);
+    });
+
+    it('includes cache_read tokens in the denominator instead of treating them as zero work', () => {
+        const result = computeSampleRate({
+            usage: { inputTokens: 60, cacheReadInputTokens: 40, cacheCreationInputTokens: 0 },
+            durationMs: 1_000
+        });
+        expect(result).not.toBeNull();
+        expect(result?.source).toBe('provider_usage');
+        expect(result?.inputTokens).toBe(100);
+    });
+
+    it('returns null when provider usage exists but every input field is zero', () => {
+        const result = computeSampleRate({
+            usage: { inputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+            durationMs: 25_000
         });
         expect(result).toBeNull();
     });
 
-    it('does NOT skip when cache_read share is below the poison threshold', () => {
-        // Just under 50% cache_read — borderline but acceptable.
-        const result = computeSampleRate({
-            usage: { inputTokens: 60, cacheReadInputTokens: 40, cacheCreationInputTokens: 0 },
-            fallbackEstimate: 100,
-            durationMs: 1_000
-        });
-        expect(result).not.toBeNull();
-        expect(result?.source).toBe('provider_fresh');
-        // Threshold is 0.5; 40/(60+40) = 0.4 → below
-        expect(CACHE_POISON_THRESHOLD).toBe(0.5);
-    });
-
-    it('falls back to estimate when provider usage exists but every input field is zero', () => {
-        const result = computeSampleRate({
-            usage: { inputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
-            fallbackEstimate: 50_000,
-            durationMs: 25_000
-        });
-        expect(result?.source).toBe('fallback_estimate');
-        expect(result?.freshInputTokens).toBe(50_000);
-        expect(result?.msPerInputToken).toBe(25_000 / 50_000);
-    });
-
-    it('falls back to estimate when no provider usage is supplied at all', () => {
+    it('returns null when no provider usage is supplied at all', () => {
         const result = computeSampleRate({
             usage: undefined,
-            fallbackEstimate: 50_000,
             durationMs: 25_000
         });
-        expect(result?.source).toBe('fallback_estimate');
+        expect(result).toBeNull();
     });
 
-    it('returns null when neither provider usage nor fallback estimate yields fresh tokens', () => {
+    it('returns null when provider usage yields no input tokens', () => {
         expect(computeSampleRate({
             usage: undefined,
-            fallbackEstimate: 0,
             durationMs: 10_000
         })).toBeNull();
         expect(computeSampleRate({
-            usage: undefined,
-            fallbackEstimate: undefined,
+            usage: { inputTokens: 0 },
             durationMs: 10_000
         })).toBeNull();
     });
@@ -132,11 +121,10 @@ describe('computeSampleRate', () => {
         // 100% cache_creation, no cache_read → all fresh, full duration goes to fresh tokens.
         const result = computeSampleRate({
             usage: { inputTokens: 0, cacheCreationInputTokens: 100_000, cacheReadInputTokens: 0 },
-            fallbackEstimate: 100_000,
             durationMs: 60_000
         });
-        expect(result?.source).toBe('provider_fresh');
-        expect(result?.freshInputTokens).toBe(100_000);
+        expect(result?.source).toBe('provider_usage');
+        expect(result?.inputTokens).toBe(100_000);
         expect(result?.msPerInputToken).toBe(60_000 / 100_000);
     });
 });
@@ -209,7 +197,7 @@ describe('predictTimingFromEntry', () => {
     });
 
     it('does NOT let the last sample fully dominate when it disagrees with the avg', () => {
-        // Avg says 0.20 ms/token (slow). Latest sample says 0.01 ms/token (fast — possibly cache-poisoned in prior code).
+        // Avg says 0.20 ms/token (slow). Latest sample says 0.01 ms/token (fast).
         // Old preferLatestSample=true would have predicted 0.01 * tokens. New blend uses average too.
         const fastLastEntry = {
             samples: 5,

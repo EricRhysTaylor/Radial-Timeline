@@ -60,8 +60,7 @@ import {
     buildLocalLlmServerKey,
     getLocalLlmSettings,
     LOCAL_LLM_BACKEND_LABELS,
-    normalizeLocalLlmServerBaseUrl,
-    resolveLocalLlmModelInfo
+    normalizeLocalLlmServerBaseUrl
 } from '../../ai/localLlm/settings';
 import { inferLocalLlmCapability } from '../../ai/localLlm/capabilityInference';
 import type { LocalLlmCapabilityAssessment, LocalLlmFeatureSupport } from '../../ai/localLlm/capabilityInference';
@@ -1642,13 +1641,7 @@ export function renderAiSection(params: {
             }));
         });
 
-        const localModel = resolveLocalLlmModelInfo(ensureCanonicalAiSettings());
-        return cloudModels.concat({
-            provider: 'ollama',
-            modelId: localModel.id,
-            providerLabel: PROVIDER_DISPLAY_LABELS.ollama,
-            modelLabel: localModel.label
-        });
+        return cloudModels;
     };
 
     const createCostTableCell = (rowEl: HTMLElement, text: string, extraCls?: string): HTMLDivElement => {
@@ -1902,15 +1895,6 @@ export function renderAiSection(params: {
             });
             if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
                 throw new Error(`Canonical execution estimate unavailable for ${model.modelLabel}.`);
-            }
-            if (model.provider === 'ollama') {
-                const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
-                return {
-                    model,
-                    freshText: 'Local compute',
-                    cachedText: 'Local compute',
-                    passesText: passLabel
-                };
             }
             const learnedOutput = plugin.getOutputProfileStore().predictExpectedOutput(
                 model.provider,

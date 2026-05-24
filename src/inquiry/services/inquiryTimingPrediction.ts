@@ -7,14 +7,11 @@
 /**
  * Pure helpers for the Inquiry duration estimator.
  *
- * Three rules baked in to prevent the cross-run contamination bugs that
- * produced the "ROUGH ETA 4-6 SECONDS" lie on a 301k-token cold run:
+ * Three rules baked in to keep timing history grounded in observed runs:
  *
- *   1. Cache-heavy samples never get recorded as a "ms per input token"
- *      rate. The provider barely worked on the cached prefix; using it
- *      would teach the predictor that future fresh runs are also fast.
- *      computeSampleRate() returns null when the run was cache-poisoned
- *      and the caller skips the write entirely.
+ *   1. Timing samples use provider-reported input tokens only. Cache-read
+ *      tokens still count because observed Gemini runs spend roughly the same
+ *      wall-clock time thinking over cached corpus context.
  *
  *   2. History is keyed by (provider, model, evidenceMode). A summary-mode
  *      run with a 6k payload no longer overwrites the rate for a 300k
@@ -28,9 +25,6 @@
 import type { TokenUsage } from '../../ai/usage/providerUsage';
 
 // ── Tunables ───────────────────────────────────────────────────────────
-
-/** Skip rate recording when cache_read >= this fraction of total billed input. */
-export const CACHE_POISON_THRESHOLD = 0.5;
 
 /** EWMA blend weight on every new sample (0.25 = old, 0.75 = new). */
 export const EWMA_NEW_WEIGHT = 0.75;
@@ -82,41 +76,32 @@ export function computeTimingHistoryKey(
 export interface ComputeSampleRateInput {
     /** Provider's actual usage report from the response. May be null/undefined. */
     usage: Pick<TokenUsage, 'inputTokens' | 'cacheReadInputTokens' | 'cacheCreationInputTokens'> | undefined | null;
-    /** Pre-run estimate of total input tokens. Used as a fallback when usage is unavailable. */
-    fallbackEstimate: number | undefined | null;
     /** Round-trip duration of the actual API call in ms. */
     durationMs: number | undefined | null;
 }
 
 export interface SampleRateResult {
-    /** ms per fresh (non-cached) input token. */
+    /** ms per provider-reported input token, including cache reads. */
     msPerInputToken: number;
-    /** Fresh input tokens used in the rate denominator — for diagnostics. */
-    freshInputTokens: number;
-    /** Source of the token count: provider usage when fresh, otherwise fallback estimate. */
-    source: 'provider_fresh' | 'fallback_estimate';
+    /** Input tokens used in the rate denominator — for diagnostics. */
+    inputTokens: number;
+    /** Source of the token count. */
+    source: 'provider_usage';
 }
 
 /**
- * Compute a per-token rate for a completed run, or return null when the
- * sample would poison the rolling rate.
+ * Compute a per-token rate for a completed run, or return null when real
+ * provider usage is unavailable.
  *
  * Skip conditions:
  *   - Duration missing or non-positive.
- *   - Provider reported a cache_read share above CACHE_POISON_THRESHOLD —
- *     the model barely worked on the cached prefix, and the resulting
- *     rate would massively underestimate fresh-run latency. The caller's
- *     fallback path (using the pre-run token estimate) would be similarly
- *     wrong because it does not know about the cache, so we skip entirely.
- *   - Neither provider usage nor fallback estimate yields a positive
- *     fresh-token count.
+ *   - Provider usage missing.
+ *   - Provider usage yields no positive input token count.
  *
- * Use of cache_creation: priming a 1h cache pays the full input cost AND
- * the model fully reads the data, so cache_creation tokens count as
- * "fresh work" for timing purposes. The Anthropic provider returns
- * `input_tokens` excluding both cache_read and cache_creation, so the
- * "fresh tokens that actually moved through the model" sum is
- * input_tokens + cache_creation.
+ * Cache-read and cache-creation tokens are included. Provider caching changes
+ * billing and transport, but observed Inquiry wall time is dominated by the
+ * model's reasoning over the supplied corpus, so excluding cache-heavy runs
+ * makes the ETA less accurate for the next run.
  */
 export function computeSampleRate(input: ComputeSampleRateInput): SampleRateResult | null {
     const durationMs = input.durationMs;
@@ -129,33 +114,17 @@ export function computeSampleRate(input: ComputeSampleRateInput): SampleRateResu
         const cacheRead = Number.isFinite(usage.cacheReadInputTokens) ? Math.max(0, usage.cacheReadInputTokens ?? 0) : 0;
         const cacheCreation = Number.isFinite(usage.cacheCreationInputTokens) ? Math.max(0, usage.cacheCreationInputTokens ?? 0) : 0;
         const rawInput = Number.isFinite(usage.inputTokens) ? Math.max(0, usage.inputTokens ?? 0) : 0;
-        const totalBilled = rawInput + cacheRead + cacheCreation;
-
-        if (totalBilled > 0 && cacheRead / totalBilled >= CACHE_POISON_THRESHOLD) {
-            return null;
-        }
-
-        const freshTokens = rawInput + cacheCreation;
-        if (freshTokens > 0) {
+        const providerInputTokens = rawInput + cacheRead + cacheCreation;
+        if (providerInputTokens > 0) {
             return {
-                msPerInputToken: durationMs / freshTokens,
-                freshInputTokens: freshTokens,
-                source: 'provider_fresh'
+                msPerInputToken: durationMs / providerInputTokens,
+                inputTokens: providerInputTokens,
+                source: 'provider_usage'
             };
         }
-        // Provider reported usage but every input field was zero — fall through
-        // to the estimate-based fallback rather than emitting a NaN rate.
     }
 
-    const fallback = input.fallbackEstimate;
-    if (typeof fallback !== 'number' || !Number.isFinite(fallback) || fallback <= 0) {
-        return null;
-    }
-    return {
-        msPerInputToken: durationMs / fallback,
-        freshInputTokens: fallback,
-        source: 'fallback_estimate'
-    };
+    return null;
 }
 
 // ── Sample blending (EWMA) ────────────────────────────────────────────

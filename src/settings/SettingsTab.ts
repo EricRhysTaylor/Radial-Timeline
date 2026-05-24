@@ -1057,8 +1057,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         this.renderCoreQuickLinks(quickLinksRow, [
             { label: 'Sessions', target: goalsSessionsSection },
-            { label: 'Story beats', target: beatsStorySection },
-            { label: 'Scene properties', target: scenePropertiesSection },
+            { label: 'Beats', target: beatsStorySection },
+            { label: 'Properties', target: scenePropertiesSection },
             { label: 'Chronology', target: chronologueSection },
             { label: 'Backdrop', target: backdropSection },
             { label: 'Colors', target: colorsWorkingPatternSection },

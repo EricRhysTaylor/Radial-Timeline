@@ -174,8 +174,10 @@ describe('AI settings models table', () => {
         expect(source.includes("t('settings.ai.localLlm.statusTitle')")).toBe(true);
         expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
         expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
-        expect(source.includes("freshText: 'Local compute'")).toBe(true);
-        expect(source.includes("cachedText: 'Local compute'")).toBe(true);
+        expect(source.includes('return cloudModels;')).toBe(true);
+        expect(source.includes('return cloudModels.concat')).toBe(false);
+        expect(source.includes("freshText: 'Local compute'")).toBe(false);
+        expect(source.includes("cachedText: 'Local compute'")).toBe(false);
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);

@@ -22,6 +22,14 @@ describe('AI settings tab vocabulary', () => {
 });
 
 describe('settings section navigation anchors', () => {
+    it('uses concise Core quick-link labels', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
+        expect(source.includes("{ label: 'Beats', target: beatsStorySection }")).toBe(true);
+        expect(source.includes("{ label: 'Properties', target: scenePropertiesSection }")).toBe(true);
+        expect(source.includes("{ label: 'Story beats', target: beatsStorySection }")).toBe(false);
+        expect(source.includes("{ label: 'Scene properties', target: scenePropertiesSection }")).toBe(false);
+    });
+
     it('anchors timeline Settings Alert clicks to Core alerts instead of the remembered tab', () => {
         const settingsSource = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
         const controllerSource = readFileSync(resolve(process.cwd(), 'src/view/interactions/VersionIndicatorController.ts'), 'utf8');
