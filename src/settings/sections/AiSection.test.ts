@@ -183,7 +183,9 @@ describe('AI settings models table', () => {
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
         expect(source.includes('Expected Passes')).toBe(true);
-        expect(source.includes('Estimated provider input')).toBe(true);
+        // 'Estimated provider input' moved into the pure panel view-model.
+        const panelEstimateSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiPanelEstimate.ts'), 'utf8');
+        expect(panelEstimateSource.includes('Estimated provider input')).toBe(true);
         expect(source.includes("largeHandlingSection.toggleClass('ert-settings-hidden', isOllama);")).toBe(true);
     });
 
@@ -194,29 +196,42 @@ describe('AI settings models table', () => {
 
     it('renders structured Inquiry and Gossamer request composition strings', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("title: 'Corpus'")).toBe(true);
-        expect(source.includes("title: 'Transform'")).toBe(true);
-        expect(source.includes("title: 'Prompt'")).toBe(true);
-        expect(source.includes("title: 'Output'")).toBe(true);
-        expect(source.includes("title: 'Processing'")).toBe(true);
-        // 'Scenes (' literal moved into aiSettingsPreview.ts (buildScenesCapacityLine).
+        const panelSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiPanelEstimate.ts'), 'utf8');
+        // Section titles now live in the pure view-model builder.
+        expect(panelSource.includes("title: 'Corpus'")).toBe(true);
+        expect(panelSource.includes("title: 'Transform'")).toBe(true);
+        expect(panelSource.includes("title: 'Prompt'")).toBe(true);
+        expect(panelSource.includes("title: 'Output'")).toBe(true);
+        expect(panelSource.includes("title: 'Processing'")).toBe(true);
+        // Row labels live in the pure module.
+        expect(panelSource.includes('Editorial analysis instructions')).toBe(true);
+        expect(panelSource.includes('Strict JSON structure')).toBe(true);
+        expect(panelSource.includes('AI role template (author-defined)')).toBe(true);
+        expect(panelSource.includes('Beat overlay (ordered sequence)')).toBe(true);
+        expect(panelSource.includes('Beat scoring instructions')).toBe(true);
+        expect(panelSource.includes('Per-beat scores')).toBe(true);
+        // 'Scenes (' literal moved into aiSettingsPreview.ts (legacy formatter).
         const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
         expect(previewSource.includes('Scenes (')).toBe(true);
-        expect(source.includes('Editorial analysis instructions')).toBe(true);
-        expect(source.includes('Strict JSON structure')).toBe(true);
-        expect(source.includes('AI role template (author-defined)')).toBe(true);
-        expect(source.includes('outputContractTokens')).toBe(true);
-        expect(source.includes('totalEstimatedTokens')).toBe(true);
-        expect(source.includes('providerExecutionTokens')).toBe(true);
-        expect(source.includes('buildInquiryCapacitySections')).toBe(true);
-        expect(source.includes('resolveActiveRoleTemplate')).toBe(true);
-        expect(source.includes('buildOutputRulesText')).toBe(true);
-        expect(source.includes('Cleaned manuscript ·')).toBe(true);
+        // AiSection.ts now wires the typed view-model through the renderer
+        // and uses the typed providerCount estimate (not raw ExecutionTokens).
+        expect(source.includes('buildPanelViewModel')).toBe(true);
+        expect(source.includes('renderPanelViewModelHeader')).toBe(true);
+        expect(source.includes('renderPanelViewModelSections')).toBe(true);
+        expect(source.includes('providerCount: forecasts.inquiry.providerCount')).toBe(true);
+        expect(source.includes('providerCount: forecasts.gossamer.providerCount')).toBe(true);
+        // Legacy false-zero / em-dash / duplicate-header behaviors are gone.
+        expect(source.includes('buildInquiryCapacitySections')).toBe(false);
+        expect(source.includes('buildGossamerCapacitySections')).toBe(false);
+        expect(source.includes('Cleaned manuscript ·')).toBe(false);
+        // Legacy local closure `formatExpectedPasses(...)` is gone (passes
+        // disclosure now flows through the typed view-model). The pure
+        // helper `formatExpectedPassesLabel` is allowed and intentionally
+        // imported from aiPanelEstimate.
+        expect(source.includes('formatExpectedPasses(')).toBe(false);
+        expect(source.includes('formatExpectedPassesLabel')).toBe(true);
+        // Other legacy negatives we still want to enforce.
         expect(source.includes('Multi-pass (if required)')).toBe(false);
-        expect(source.includes('Beat overlay (ordered sequence)')).toBe(true);
-        expect(source.includes('Beat scoring instructions')).toBe(true);
-        expect(source.includes('Per-beat scores')).toBe(true);
-        expect(source.includes('Citation wrappers + provider overhead')).toBe(true);
         expect(source.includes('Fixed result fields')).toBe(false);
         expect(source.includes('Strict JSON shape')).toBe(false);
         expect(source.includes('Full manuscript (Scene bodies)')).toBe(false);
@@ -227,6 +242,8 @@ describe('AI settings models table', () => {
         expect(source.includes('document blocks')).toBe(false);
         expect(source.includes('buildDisplayCorpusEstimateFromManifestEntries(currentCorpus.manifestEntries)')).toBe(false);
         expect(source.includes('sceneCount: currentCorpus?.corpus.sceneCount ?? 0')).toBe(true);
+        expect(source.includes('resolveActiveRoleTemplate')).toBe(true);
+        expect(source.includes('buildOutputRulesText')).toBe(true);
     });
 
     it('renders provider key status states without saved-not-tested phrasing', () => {

@@ -88,6 +88,17 @@ import {
     resolvePreviewSignals
 } from './aiSettingsPreview';
 import type { PreviewPill } from './aiSettingsPreview';
+import {
+    buildPanelViewModel,
+    formatExpectedPassesLabel,
+    formatPanelHeadlineTokens,
+    formatProviderInputSummary,
+    formatTokenRowText,
+    formatTotalRowText,
+    type FeatureForecastInput,
+    type PanelTokenEstimate,
+    type PanelViewModel
+} from './aiPanelEstimate';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean; extraCls?: string };
@@ -128,10 +139,6 @@ export function renderAiSection(params: {
     );
     const getActiveTemplateName = (): string => getResolvedRoleTemplate().name;
     const getActiveTemplatePrompt = (): string => getResolvedRoleTemplate().prompt.trim();
-    const sumTokenParts = (...parts: Array<number | null | undefined>): number | null => {
-        if (parts.some(part => part === null || part === undefined || !Number.isFinite(part))) return null;
-        return parts.reduce<number>((sum, part) => sum + (part ?? 0), 0);
-    };
     const splitLeadSentence = (text: string): { lead: string; remainder: string } => {
         const trimmed = text.trim();
         if (!trimmed) return { lead: '', remainder: '' };
@@ -140,15 +147,6 @@ export function renderAiSection(params: {
         const lead = trimmed.slice(0, punctuationIndex + 1).trim();
         const remainder = trimmed.slice(punctuationIndex + 1).trim();
         return { lead, remainder };
-    };
-    const computePromptEnvelopeRemainder = (
-        providerExecutionTokens: number | undefined,
-        ...visibleParts: Array<number | null | undefined>
-    ): number | null => {
-        if (!Number.isFinite(providerExecutionTokens ?? NaN)) return null;
-        const visibleTotal = sumTokenParts(...visibleParts);
-        if (visibleTotal === null) return null;
-        return Math.max(0, (providerExecutionTokens ?? 0) - visibleTotal);
     };
 
     const aiHero = containerEl.createDiv({
@@ -607,99 +605,64 @@ export function renderAiSection(params: {
             });
         });
     };
-    // Pure preview/cost formatters live in ./aiSettingsPreview.
-    const buildInquiryCapacitySections = (counts?: {
-        sceneCount: number;
-        outlineCount: number;
-        referenceCount: number;
-        breakdown: RTCorpusTokenBreakdown;
-        promptBreakdown?: PromptRequestBreakdown;
-        providerExecutionTokens?: number;
-        expectedPassCount?: number;
-        provider?: AIProviderId;
-        modelId?: string;
-    }): Array<{ title: string; items: CapacityItem[] }> => {
-        const sceneCount = counts?.sceneCount ?? null;
-        const outlineCount = counts?.outlineCount ?? null;
-        const referenceCount = counts?.referenceCount ?? null;
-        const scenesTokens = counts?.breakdown.scenesTokens ?? null;
-        const outlineTokens = counts?.breakdown.outlineTokens ?? null;
-        const referenceTokens = counts?.breakdown.referenceTokens ?? null;
-        const corpusTokens = counts
-            ? counts.breakdown.scenesTokens + counts.breakdown.outlineTokens + counts.breakdown.referenceTokens
-            : null;
-        const visibleTokens = sumTokenParts(
-            corpusTokens,
-            counts?.promptBreakdown?.requestTokens,
-            counts?.promptBreakdown?.roleTemplateTokens,
-            counts?.promptBreakdown?.instructionTokens,
-            counts?.promptBreakdown?.outputContractTokens,
-            counts?.promptBreakdown?.transformTokens
-        );
-        const totalTokens = counts?.providerExecutionTokens ?? visibleTokens;
-        return [
-            {
-                title: 'Corpus',
-                items: [
-                    buildScenesCapacityLine(sceneCount, scenesTokens),
-                    buildOutlineCapacityLine(outlineCount, outlineTokens),
-                    buildReferenceCapacityLine(referenceCount, referenceTokens)
-                ]
-            },
-            {
-                title: 'Prompt',
-                items: [
-                    buildTokenCapacityLine('Zone question', counts?.promptBreakdown?.requestTokens ?? null),
-                    buildTokenCapacityLine('AI role template (author-defined)', counts?.promptBreakdown?.roleTemplateTokens ?? null),
-                    buildTokenCapacityLine('Editorial analysis instructions', counts?.promptBreakdown?.instructionTokens ?? null)
-                ]
-            },
-            {
-                title: 'Output',
-                items: [
-                    'Scene-linked findings',
-                    buildTokenCapacityLine('Strict JSON structure', counts?.promptBreakdown?.outputContractTokens ?? null)
-                ]
-            },
-            {
-                title: 'Processing',
-                items: (() => {
-                    const passCount = Math.max(1, counts?.expectedPassCount ?? 1);
-                    const overheadTokens = (totalTokens && visibleTokens && totalTokens > visibleTokens)
-                        ? totalTokens - visibleTokens
-                        : null;
-                    // Citation wrappers are only emitted by Anthropic Inquiry runs
-                    // when citations are enabled and the active model does not have
-                    // the cache-vs-citations exclusive constraint. OpenAI / Google /
-                    // Ollama never wrap evidence in citation wrappers.
-                    const activeModel = (counts?.provider && counts?.modelId)
-                        ? BUILTIN_MODELS.find(m => m.provider === counts.provider && m.id === counts.modelId)
-                        : undefined;
-                    const citationsOn = activeModel
-                        ? resolveCitationsEnabled(
-                            activeModel.provider,
-                            'inquiry',
-                            ensureCanonicalAiSettings().citationsEnabled !== false
-                        )
-                        : false;
-                    const exclusive = activeModel?.constraints?.cacheVsCitationsExclusive === true;
-                    const usesCitationWrappers = counts?.provider === 'anthropic'
-                        && citationsOn
-                        && !exclusive;
-                    const overheadLabel = usesCitationWrappers
-                        ? 'Citation wrappers + provider overhead'
-                        : 'Provider overhead';
-                    const overheadText = buildTokenCapacityLine(overheadLabel, overheadTokens);
-                    return [
-                        `Execution: ${passCount} ${passCount === 1 ? 'pass' : 'passes'}`,
-                        usesCitationWrappers
-                            ? { text: overheadText, extraCls: 'ert-ai-capacity-item--citation-active' }
-                            : overheadText,
-                        { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
-                    ];
-                })()
-            }
-        ];
+    /**
+     * Render the panel's sections list from a typed view-model. The
+     * view-model owns all label/visibility decisions (overhead row
+     * presence, "Outline — none" wording, total-vs-headline alignment) so
+     * this function is a thin DOM serializer.
+     */
+    const renderPanelViewModelSections = (
+        container: HTMLElement,
+        viewModel: PanelViewModel
+    ): void => {
+        container.empty();
+        viewModel.sections.forEach(section => {
+            const sectionEl = container.createDiv({ cls: 'ert-ai-capacity-block' });
+            sectionEl.createDiv({ cls: 'ert-ai-capacity-block-title', text: section.title });
+            const listEl = sectionEl.createEl('ul', { cls: 'ert-ai-capacity-list' });
+            section.items.forEach(item => {
+                if (item.kind === 'total_row') {
+                    listEl.createEl('li', { cls: 'ert-ai-capacity-divider' });
+                    listEl.createEl('li', {
+                        cls: 'ert-ai-capacity-item',
+                        text: formatTotalRowText(item.estimate)
+                    });
+                    return;
+                }
+                if (item.kind === 'plain_text') {
+                    listEl.createEl('li', { cls: 'ert-ai-capacity-item', text: item.text });
+                    return;
+                }
+                // token_row
+                listEl.createEl('li', { cls: 'ert-ai-capacity-item', text: formatTokenRowText(item.row) });
+            });
+        });
+    };
+    /**
+     * Render the panel header (token figure + provenance disclosure +
+     * expected passes + provider input summary) from a view-model. Handles
+     * the unavailable-source case by hiding the unit pill and showing
+     * "Unavailable" instead of a misleading ~0k figure.
+     */
+    const renderPanelViewModelHeader = (params: {
+        tokenEl: HTMLElement;
+        expectedEl: HTMLElement;
+        providerInputEl: HTMLElement;
+        viewModel: PanelViewModel;
+    }): void => {
+        const { tokenEl, expectedEl, providerInputEl, viewModel } = params;
+        const headlineFmt = formatPanelHeadlineTokens(viewModel.header.headline);
+        tokenEl.empty();
+        tokenEl.createSpan({ cls: 'ert-ai-token-value', text: headlineFmt.numericText });
+        if (headlineFmt.unitText) {
+            tokenEl.createSpan({ cls: 'ert-ai-token-unit', text: headlineFmt.unitText });
+        }
+        expectedEl.setText(formatExpectedPassesLabel(viewModel.header.expectedPasses));
+        providerInputEl.setText(formatProviderInputSummary(viewModel.header.providerInputSummary));
+        if (viewModel.header.headlineDisclosure) {
+            setTooltip(tokenEl, viewModel.header.headlineDisclosure);
+            setTooltip(providerInputEl, viewModel.header.headlineDisclosure);
+        }
     };
     const toBreakdown = (sceneChars: number, outlineChars: number, referenceChars: number): RTCorpusTokenBreakdown => ({
         scenesTokens: sceneChars > 0 ? Math.ceil(sceneChars / 4) : 0,
@@ -759,65 +722,6 @@ export function renderAiSection(params: {
             breakdown
         };
     };
-    const buildGossamerCapacitySections = (
-        sceneCount: number,
-        breakdown?: RTCorpusTokenBreakdown,
-        promptBreakdown?: PromptRequestBreakdown,
-        providerExecutionTokens?: number
-    ): Array<{ title: string; items: CapacityItem[] }> => {
-        const corpusTokens = breakdown
-            ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
-            : null;
-        const visibleTokens = sumTokenParts(
-            corpusTokens,
-            promptBreakdown?.requestTokens,
-            promptBreakdown?.roleTemplateTokens,
-            promptBreakdown?.instructionTokens,
-            promptBreakdown?.outputContractTokens,
-            promptBreakdown?.transformTokens
-        );
-        const totalTokens = providerExecutionTokens ?? visibleTokens;
-        return [
-            {
-                title: 'Corpus',
-                items: [
-                    buildScenesCapacityLine(sceneCount, breakdown?.scenesTokens ?? null),
-                    'Outline — N/A',
-                    'References — N/A'
-                ]
-            },
-            {
-                title: 'Transform',
-                items: [buildTokenCapacityLine('Beat overlay (ordered sequence)', promptBreakdown?.transformTokens ?? null)]
-            },
-            {
-                title: 'Prompt',
-                items: [
-                    buildTokenCapacityLine('Beat scoring request', promptBreakdown?.requestTokens ?? null),
-                    buildTokenCapacityLine('AI role template (author-defined)', promptBreakdown?.roleTemplateTokens ?? null),
-                    buildTokenCapacityLine('Beat scoring instructions', promptBreakdown?.instructionTokens ?? null)
-                ]
-            },
-            {
-                title: 'Output',
-                items: [
-                    'Per-beat scores',
-                    buildTokenCapacityLine('Strict JSON structure', promptBreakdown?.outputContractTokens ?? null)
-                ]
-            },
-            {
-                title: 'Processing',
-                items: [
-                    'Single-pass',
-                    buildTokenCapacityLine('Prompt envelope + provider wrappers', null),
-                    {
-                        text: `Total ${formatCorpusBreakdownToken(totalTokens)}`,
-                        dividerBefore: true
-                    }
-                ]
-            }
-        ];
-    };
 
     const capacityInquiry = createCapacityCell('Inquiry');
     capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
@@ -834,7 +738,10 @@ export function renderAiSection(params: {
         text: 'Calculating...'
     });
     const capacityInquirySections = capacityInquiry.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
-    renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
+    renderPanelViewModelSections(capacityInquirySections, buildPanelViewModel({
+        feature: 'inquiry',
+        forecast: { kind: 'pending', reason: 'Calculating…' }
+    }));
 
     const capacityGossamer = createCapacityCell('Gossamer');
     capacityGossamer.labelEl.addClass('ert-ai-capacity-label--forecast');
@@ -851,7 +758,10 @@ export function renderAiSection(params: {
         text: 'Calculating...'
     });
     const capacityGossamerSections = capacityGossamer.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
-    renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
+    renderPanelViewModelSections(capacityGossamerSections, buildPanelViewModel({
+        feature: 'gossamer',
+        forecast: { kind: 'pending', reason: 'Calculating…' }
+    }));
     // ── Details link → modal ──
     const detailsBtn = aiSettingsGroup.createDiv({ cls: 'ert-ai-details-link' });
     detailsBtn.createSpan({ text: 'How analysis passes work \u2192' });
@@ -1588,8 +1498,14 @@ export function renderAiSection(params: {
     type FeatureForecast = {
         available: boolean;
         corpusTokens: number;
-        providerExecutionTokens: number;
-        totalEstimatedTokens: number;
+        /**
+         * Typed provider-count estimate carrying source provenance. When the
+         * provider count succeeds, source is 'provider_count'; when it fails
+         * (e.g. Gemini countTokens throws), source is 'unavailable' — NOT a
+         * misleading 0. The panel view-model uses this to render honest
+         * labels instead of conflating failure with zero tokens.
+         */
+        providerCount: PanelTokenEstimate;
         sceneCount: number;
         outlineCount: number;
         referenceCount: number;
@@ -2085,19 +2001,19 @@ export function renderAiSection(params: {
             transformTokens: gossamerTransformTokens
         };
 
+        const inquiryProviderCount = methodToPanelEstimate(
+            inquiryExecutionEstimate?.method,
+            inquiryExecutionEstimate?.estimatedTokens
+        );
+        const gossamerProviderCount = methodToPanelEstimate(
+            gossamerEstimate.providerExecutionEstimate.method,
+            gossamerProviderTokens
+        );
         return {
             inquiry: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
-                providerExecutionTokens: inquiryExecutionEstimate?.estimatedTokens ?? inquiryCorpusTokens,
-                totalEstimatedTokens: sumTokenParts(
-                    inquiryCorpusTokens,
-                    inquiryPromptBreakdown.requestTokens,
-                    inquiryPromptBreakdown.roleTemplateTokens,
-                    inquiryPromptBreakdown.instructionTokens,
-                    inquiryPromptBreakdown.outputContractTokens,
-                    inquiryPromptBreakdown.transformTokens
-                ) ?? inquiryCorpusTokens,
+                providerCount: inquiryProviderCount,
                 sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
                 outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
                 referenceCount: currentCorpus?.corpus.referenceCount ?? 0,
@@ -2112,15 +2028,7 @@ export function renderAiSection(params: {
             gossamer: {
                 available: true,
                 corpusTokens: gossamerCorpusTokens,
-                providerExecutionTokens: gossamerProviderTokens,
-                totalEstimatedTokens: sumTokenParts(
-                    gossamerCorpusTokens,
-                    gossamerPromptBreakdown.requestTokens,
-                    gossamerPromptBreakdown.roleTemplateTokens,
-                    gossamerPromptBreakdown.instructionTokens,
-                    gossamerPromptBreakdown.outputContractTokens,
-                    gossamerPromptBreakdown.transformTokens
-                ) ?? gossamerCorpusTokens,
+                providerCount: gossamerProviderCount,
                 sceneCount: gossamerDisplayCorpus.sceneCount,
                 outlineCount: gossamerDisplayCorpus.outlineCount,
                 referenceCount: gossamerDisplayCorpus.referenceCount,
@@ -2129,6 +2037,45 @@ export function renderAiSection(params: {
             },
         };
     };
+
+    /**
+     * Map the InputTokenEstimateMethod returned by the runner/forecast to a
+     * PanelTokenEstimate. Provider counts (anthropic_count, google_count) are
+     * authoritative; chars/4 heuristics are local_estimate; 'unavailable' is
+     * surfaced as unavailable so the panel never paints failure as 0.
+     */
+    const methodToPanelEstimate = (
+        method: import('../../ai/tokens/inputTokenEstimate').TokenEstimateMethod | undefined,
+        tokens: number | undefined
+    ): PanelTokenEstimate => {
+        if (typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0) {
+            return { source: 'unavailable' };
+        }
+        if (method === 'anthropic_count' || method === 'google_count') {
+            return tokens > 0 ? { source: 'provider_count', tokens } : { source: 'unavailable' };
+        }
+        if (method === 'heuristic_chars') {
+            return tokens > 0 ? { source: 'local_estimate', tokens } : { source: 'unavailable' };
+        }
+        // 'unavailable' or undefined → unavailable. We do NOT fall back to
+        // the raw number even if it's > 0, because at this point we have no
+        // provenance for it.
+        return { source: 'unavailable' };
+    };
+
+    /**
+     * Convert promptBreakdown's nullable fields into the non-null shape the
+     * pure builder expects. Null entries (formatter convention for "not
+     * counted") become 0 — that's safe because the builder only sums
+     * positive token values when computing local estimates.
+     */
+    const toBuilderPromptBreakdown = (b: PromptRequestBreakdown) => ({
+        requestTokens: b.requestTokens ?? 0,
+        roleTemplateTokens: b.roleTemplateTokens ?? 0,
+        instructionTokens: b.instructionTokens ?? 0,
+        outputContractTokens: b.outputContractTokens ?? 0,
+        transformTokens: b.transformTokens ?? 0
+    });
 
     const refreshRoutingUi = async (): Promise<void> => {
         const aiSettings = ensureCanonicalAiSettings();
@@ -2261,10 +2208,16 @@ export function renderAiSection(params: {
 
         capacityInquiryToken.setText('Calculating...');
         capacityInquiryExpected.setText('Calculating...');
-        renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
+        renderPanelViewModelSections(capacityInquirySections, buildPanelViewModel({
+            feature: 'inquiry',
+            forecast: { kind: 'pending', reason: 'Calculating…' }
+        }));
         capacityGossamerToken.setText('Calculating...');
         capacityGossamerExpected.setText('Calculating...');
-        renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
+        renderPanelViewModelSections(capacityGossamerSections, buildPanelViewModel({
+            feature: 'gossamer',
+            forecast: { kind: 'pending', reason: 'Calculating…' }
+        }));
         void refreshCostComparisonTable();
 
         if (isOllama) {
@@ -2302,17 +2255,6 @@ export function renderAiSection(params: {
             const latestResolution = resolveDisplayModelForLatestAlias(registryModels, estimate.model);
             const displayModel = latestResolution.displayModel;
             const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
-            const formatExpectedPasses = (providerExecutionTokens: number): string => {
-                if (providerExecutionTokens <= 0 || safeBudgetTokens <= 0) return 'Expected structured passes · n/a';
-                const passes = providerExecutionTokens <= safeBudgetTokens
-                    ? 1
-                    : Math.max(2, Math.ceil(providerExecutionTokens / safeBudgetTokens));
-                return `Expected structured passes · ${passes}`;
-            };
-            const formatProviderInput = (providerExecutionTokens: number): string => {
-                if (providerExecutionTokens <= 0) return 'Estimated provider input · unavailable';
-                return `Estimated provider input · ${formatCorpusBreakdownToken(providerExecutionTokens)}`;
-            };
             const previewState: ResolvedPreviewRenderState = {
                 provider,
                 modelId: latestResolution.resolvedModelId ?? '',
@@ -2347,40 +2289,59 @@ export function renderAiSection(params: {
                 provider,
                 modelId: estimate.model.id
             });
-            if (forecasts.inquiry.available) {
-                setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.providerExecutionTokens), 'tokens');
-                capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
-                capacityInquiryProvider.setText(`Cleaned manuscript · ${formatCorpusBreakdownToken(forecasts.inquiry.corpusTokens)}`);
-                renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
-                    sceneCount: forecasts.inquiry.sceneCount,
-                    outlineCount: forecasts.inquiry.outlineCount,
-                    referenceCount: forecasts.inquiry.referenceCount,
-                    breakdown: forecasts.inquiry.breakdown,
-                    promptBreakdown: forecasts.inquiry.promptBreakdown,
-                    providerExecutionTokens: forecasts.inquiry.providerExecutionTokens,
-                    expectedPassCount: forecasts.inquiry.expectedPassCount,
-                    provider,
-                    modelId: estimate.model.id
-                }));
-            } else {
-                capacityInquiryToken.setText('Unavailable');
-                capacityInquiryExpected.setText('Open Inquiry View');
-                capacityInquiryProvider.setText('Inquiry corpus context is not loaded.');
-                renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
-            }
+            const inquiryForecastInput: FeatureForecastInput = forecasts.inquiry.available
+                ? {
+                      kind: 'available',
+                      providerCount: forecasts.inquiry.providerCount,
+                      corpusBreakdown: forecasts.inquiry.breakdown,
+                      promptBreakdown: toBuilderPromptBreakdown(forecasts.inquiry.promptBreakdown),
+                      sceneCount: forecasts.inquiry.sceneCount,
+                      outlineCount: forecasts.inquiry.outlineCount,
+                      referenceCount: forecasts.inquiry.referenceCount,
+                      safeInputBudget: safeBudgetTokens,
+                      providerKnownPassCount: forecasts.inquiry.providerCount.source === 'provider_count'
+                          ? forecasts.inquiry.expectedPassCount
+                          : undefined
+                  }
+                : { kind: 'pending', reason: 'Open Inquiry View — corpus context is not loaded.' };
+            const inquiryViewModel = buildPanelViewModel({
+                feature: 'inquiry',
+                provider,
+                modelId: estimate.model.id,
+                forecast: inquiryForecastInput
+            });
+            renderPanelViewModelHeader({
+                tokenEl: capacityInquiryToken,
+                expectedEl: capacityInquiryExpected,
+                providerInputEl: capacityInquiryProvider,
+                viewModel: inquiryViewModel
+            });
+            renderPanelViewModelSections(capacityInquirySections, inquiryViewModel);
 
-            setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.providerExecutionTokens), 'tokens');
-            capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
-            capacityGossamerProvider.setText(formatProviderInput(forecasts.gossamer.providerExecutionTokens));
-            renderCapacitySections(
-                capacityGossamerSections,
-                buildGossamerCapacitySections(
-                    forecasts.gossamer.sceneCount,
-                    forecasts.gossamer.breakdown,
-                    forecasts.gossamer.promptBreakdown,
-                    forecasts.gossamer.providerExecutionTokens
-                )
-            );
+            const gossamerForecastInput: FeatureForecastInput = {
+                kind: 'available',
+                providerCount: forecasts.gossamer.providerCount,
+                corpusBreakdown: forecasts.gossamer.breakdown,
+                promptBreakdown: toBuilderPromptBreakdown(forecasts.gossamer.promptBreakdown),
+                sceneCount: forecasts.gossamer.sceneCount,
+                outlineCount: forecasts.gossamer.outlineCount,
+                referenceCount: forecasts.gossamer.referenceCount,
+                safeInputBudget: safeBudgetTokens
+                // No providerKnownPassCount — Gossamer is always single-pass.
+            };
+            const gossamerViewModel = buildPanelViewModel({
+                feature: 'gossamer',
+                provider,
+                modelId: estimate.model.id,
+                forecast: gossamerForecastInput
+            });
+            renderPanelViewModelHeader({
+                tokenEl: capacityGossamerToken,
+                expectedEl: capacityGossamerExpected,
+                providerInputEl: capacityGossamerProvider,
+                viewModel: gossamerViewModel
+            });
+            renderPanelViewModelSections(capacityGossamerSections, gossamerViewModel);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             renderResolvedPreview({
