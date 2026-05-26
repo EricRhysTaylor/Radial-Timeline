@@ -351,6 +351,7 @@ import type {
 } from './types/inquiryViewTypes';
 import {
     appendInquiryNotesToPendingEdits,
+    isInquiryLine,
     normalizeInquiryLinkLine,
     validatePendingEditsValue,
     purgeInquiryNotesFromPendingEdits,
@@ -368,7 +369,9 @@ import {
     formatAuthorFacingErrorHero,
     formatBriefLabel,
     formatElapsedRunClock,
+    formatInquiryBriefId,
     formatInquiryBriefLink,
+    formatInquiryBriefShortDate,
     formatInquiryBriefTimestamp,
     formatInquiryId,
     formatRunDurationEstimate,
@@ -1698,7 +1701,8 @@ export class InquiryView extends ItemView {
         notesByMaterial: Map<string, string[]>
     ): boolean {
         if (!notesByMaterial.size) return false;
-        const briefLink = formatInquiryBriefLink(this.formatInquiryBriefTitle(session.result));
+        const briefId = this.formatInquiryBriefId(session.result);
+        const briefIdNeedle = `[[${briefId}`;
         const targetField = this.resolveInquiryActionNotesFieldLabel();
         for (const path of notesByMaterial.keys()) {
             const file = this.app.vault.getAbstractFileByPath(path);
@@ -1709,7 +1713,7 @@ export class InquiryView extends ItemView {
             if (!validated.ok) continue;
             const hasMarker = validated.lines
                 .map(line => normalizeInquiryLinkLine(line))
-                .some(line => line.includes(briefLink));
+                .some(line => line.includes(briefIdNeedle));
             if (hasMarker) return true;
         }
         return false;
@@ -1726,8 +1730,9 @@ export class InquiryView extends ItemView {
         if (this.isErrorResult(normalized) || normalized.scope !== 'book' || !this.corpus) {
             return { notesByMaterial: new Map(), targetLabels: [] };
         }
-        const briefTitle = this.formatInquiryBriefTitle(normalized);
-        const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, activeBookId);
+        const briefId = this.formatInquiryBriefId(normalized);
+        const briefAlias = this.formatInquiryBriefShortDate(normalized);
+        const notesByMaterial = this.buildInquiryActionNotes(normalized, briefId, briefAlias, activeBookId);
         const sceneLabelsByPath = new Map<string, string>();
         (this.corpus.scenes ?? []).forEach(scene => {
             if (scene.filePath && scene.displayLabel) {
@@ -1889,8 +1894,6 @@ export class InquiryView extends ItemView {
         scenes: InquirySceneItem[]
     ): Promise<InquiryPurgePreviewItem[]> {
         const targetField = this.resolveInquiryActionNotesFieldLabel();
-        const inquiryLinkToken = '[[Inquiry Brief —';
-        const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
         const results: InquiryPurgePreviewItem[] = [];
 
         for (const scene of scenes) {
@@ -7408,7 +7411,7 @@ export class InquiryView extends ItemView {
 
         const pendingPlan = this.buildInquiryPendingEditsPlan(normalized, session.activeBookId);
         const notesByMaterial = pendingPlan.notesByMaterial;
-        const briefTitle = this.formatInquiryBriefTitle(normalized);
+        const briefId = this.formatInquiryBriefId(normalized);
         if (!notesByMaterial.size) {
             session.pendingEditsEmpty = true;
             if (session.key) {
@@ -7430,7 +7433,7 @@ export class InquiryView extends ItemView {
             const file = this.app.vault.getAbstractFileByPath(path);
             if (!file || !(file instanceof TFile)) continue;
             try {
-                const outcome = await this.appendInquiryNotesToFrontmatter(file, targetField, briefTitle, notes);
+                const outcome = await this.appendInquiryNotesToFrontmatter(file, targetField, briefId, notes);
                 if (outcome === 'written') wroteAny = true;
                 if (outcome === 'duplicate') duplicateAny = true;
                 if (outcome === 'refused') refusedAny = true;
@@ -7458,7 +7461,8 @@ export class InquiryView extends ItemView {
 
     private buildInquiryActionNotes(
         result: InquiryResult,
-        briefTitle: string,
+        briefId: string,
+        briefAlias: string,
         activeBookId?: string
     ): Map<string, string[]> {
         const notesByPath = new Map<string, Set<string>>();
@@ -7493,7 +7497,7 @@ export class InquiryView extends ItemView {
             if (!this.isFindingHit(finding)) return;
             const targetLabel = resolveFindingChipLabel(finding, result, items)
                 ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
-            const note = this.formatInquiryActionNote(finding, briefTitle, targetLabel, referenceLabels);
+            const note = this.formatInquiryActionNote(finding, briefId, briefAlias, targetLabel, referenceLabels);
             if (!note) return; // Skip findings that didn't produce an actionable suggestion.
             const refId = finding.refId?.trim();
             const filePath = refId
@@ -7576,7 +7580,7 @@ export class InquiryView extends ItemView {
     private async appendInquiryNotesToFrontmatter(
         file: TFile,
         fieldKey: string,
-        briefTitle: string,
+        briefId: string,
         notes: string[]
     ): Promise<InquiryWritebackOutcome> {
         if (!notes.length) return 'skipped';
@@ -7589,7 +7593,7 @@ export class InquiryView extends ItemView {
 
         await this.app.fileManager.processFrontMatter(file, (fm) => {
             const frontmatter = fm as Record<string, unknown>;
-            const nextState = appendInquiryNotesToPendingEdits(frontmatter[fieldKey], briefTitle, notes, INQUIRY_NOTES_MAX);
+            const nextState = appendInquiryNotesToPendingEdits(frontmatter[fieldKey], briefId, notes, INQUIRY_NOTES_MAX);
             if (!nextState.ok) {
                 outcome = 'refused';
                 return;
@@ -10997,12 +11001,15 @@ export class InquiryView extends ItemView {
         }
 
         const briefTitle = this.formatInquiryBriefTitle(result);
-        const baseName = briefTitle;
+        const briefId = this.formatInquiryBriefId(result);
+        const baseName = briefId;
         const filePath = this.getAvailableArtifactPath(folder.path, baseName);
         const sessionLogPath = options.logPath
             ?? (options.sessionKey ? this.sessionStore.peekSession(options.sessionKey)?.logPath : undefined);
         const brief = this.buildInquiryBriefModel(result, sessionLogPath, options.rawResponse);
-        const content = renderInquiryBrief(brief);
+        const renderedBody = renderInquiryBrief(brief);
+        const aliasYaml = JSON.stringify(briefTitle);
+        const content = `---\ntitle: ${aliasYaml}\naliases:\n  - ${aliasYaml}\n---\n\n${renderedBody}`;
 
         try {
             const file = await this.app.vault.create(filePath, content);
@@ -11413,6 +11420,16 @@ export class InquiryView extends ItemView {
         return formatInquiryBriefTitlePure(result, timestampSource, zoneLabel, lensLabel, questionPrefix);
     }
 
+    private formatInquiryBriefId(result: InquiryResult): string {
+        const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
+        return formatInquiryBriefId(timestampSource);
+    }
+
+    private formatInquiryBriefShortDate(result: InquiryResult): string {
+        const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
+        return formatInquiryBriefShortDate(timestampSource);
+    }
+
     private resolveInquiryBriefZoneLabel(result: InquiryResult): string {
         return resolveInquiryBriefZoneLabelPure(result, (qid) => this.findPromptZoneById(qid));
     }
@@ -11505,15 +11522,16 @@ export class InquiryView extends ItemView {
 
     private formatInquiryActionNote(
         finding: InquiryFinding,
-        briefTitle: string,
+        briefId: string,
+        briefAlias: string,
         targetLabel: string | undefined,
         referenceLabels: ReadonlyMap<string, string>
     ): string | null {
         const actionText = this.getInquiryActionText(finding, referenceLabels);
         if (!actionText) return null;
-        const briefLink = formatInquiryBriefLink(briefTitle);
-        const prefix = targetLabel?.trim() ? `${targetLabel.trim()} — ` : '';
-        return `${briefLink} — ${prefix}${actionText}`;
+        const briefLink = formatInquiryBriefLink(briefId, briefAlias);
+        const prefix = targetLabel?.trim() ? `${targetLabel.trim()} ` : '';
+        return `${briefLink} ${prefix}${actionText}`;
     }
 
     private buildInquiryPendingAction(

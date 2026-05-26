@@ -182,10 +182,29 @@ export const getPendingInquiryActions = (result: InquiryResult): string[] => {
 export const normalizeInquiryHeadline = (headline: string): string =>
     stripInquiryReferenceArtifacts(headline || 'Finding') || 'Finding';
 
-export const formatInquiryBriefLink = (briefTitle: string, alias = 'Briefing'): string => {
-    if (!alias) return `[[${briefTitle}]]`;
-    return `[[${briefTitle}|${alias}]]`;
+export const formatInquiryBriefLink = (briefId: string, alias?: string | null): string => {
+    if (!alias) return `[[${briefId}]]`;
+    return `[[${briefId}|${alias}]]`;
 };
+
+const INQUIRY_BRIEF_SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export const formatInquiryBriefId = (date: Date): string => {
+    if (!Number.isFinite(date.getTime())) return 'IB-unknown';
+    const yy = String(date.getFullYear() % 100).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `IB-${yy}${mm}${dd}-${hh}${min}`;
+};
+
+export const formatInquiryBriefShortDate = (date: Date): string => {
+    if (!Number.isFinite(date.getTime())) return 'Unknown';
+    return `${INQUIRY_BRIEF_SHORT_MONTHS[date.getMonth()]} ${date.getDate()}`;
+};
+
+export const INQUIRY_BRIEF_ID_PATTERN = /^IB-\d{6}-\d{4}$/;
 
 export const formatManifestClassLabel = (value: string): string => {
     if (!value) return 'Class';

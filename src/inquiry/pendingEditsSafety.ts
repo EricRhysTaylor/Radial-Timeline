@@ -1,4 +1,5 @@
 export const INQUIRY_BRIEF_LINK_TOKEN = '[[Inquiry Brief —';
+export const INQUIRY_BRIEF_ID_TOKEN_RE = /\[\[IB-\d{6}-\d{4}/;
 
 export interface PendingEditsValidationResult {
     ok: boolean;
@@ -18,17 +19,20 @@ export interface PendingEditsMutationResult {
 export function normalizeInquiryLinkLine(line: string): string {
     if (!line) return line;
     return line
-        .replace(/^\\?"(\[\[[^\]]+\]\])"\\?(\s+—\s+)/, '$1$2')
+        .replace(/^\\?"(\[\[[^\]]+\]\])"\\?(\s+—?\s*)/, '$1$2')
         .replace(/^\\?"(\[\[[^\]]+\]\])"\\?$/, '$1');
 }
 
 export function isInquiryLine(line: string): boolean {
-    return line.includes(INQUIRY_BRIEF_LINK_TOKEN);
+    return line.includes(INQUIRY_BRIEF_LINK_TOKEN) || INQUIRY_BRIEF_ID_TOKEN_RE.test(line);
 }
+
+const INQUIRY_MARKER_REGEX =
+    /^(\[\[(?:IB-\d{6}-\d{4}(?:-[A-Za-z0-9]+)?|Inquiry Brief — [^\]|]+)(?:\|[^\]]+)?\]\])(?:\s+(?:—\s+)?.+)?$/;
 
 function extractInquiryMarker(line: string): string | null {
     const normalized = normalizeInquiryLinkLine(line).trim();
-    const match = normalized.match(/^(\[\[Inquiry Brief — [^\]]+\]\])(?:\s+—\s+.+)?$/);
+    const match = normalized.match(INQUIRY_MARKER_REGEX);
     return match?.[1] ?? null;
 }
 
@@ -98,7 +102,7 @@ export function validatePendingEditsValue(rawValue: unknown): PendingEditsValida
 
 export function appendInquiryNotesToPendingEdits(
     rawValue: unknown,
-    briefTitle: string,
+    briefMarker: string,
     notes: string[],
     maxInquiryLines: number
 ): PendingEditsMutationResult {
@@ -111,7 +115,7 @@ export function appendInquiryNotesToPendingEdits(
         return { ok: false, reason: validated.reason };
     }
 
-    const briefLinkNeedle = `[[${briefTitle}`;
+    const briefLinkNeedle = `[[${briefMarker}`;
     const normalizedLines = validated.lines.map(line => normalizeInquiryLinkLine(line));
     const normalizedExisting = normalizedLines.some((line, index) => line !== validated.lines[index]);
     const inquiryIndices = normalizedLines.reduce<number[]>((acc, line, index) => {
