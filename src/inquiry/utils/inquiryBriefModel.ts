@@ -241,6 +241,29 @@ export function getOrderedFindings(result: InquiryResult, mode: InquiryLens): In
 }
 
 /**
+ * Scene-order index for a finding, used to sort brief sections by
+ * manuscript order. Matches refId case-insensitively against item
+ * displayLabel/id/sceneId/filePaths; falls back to S-number parsing
+ * via `getSceneNoteSortOrder`; unresolved → MAX_SAFE_INTEGER so
+ * scene-less findings sink to the end.
+ */
+export function getFindingSceneOrder(
+    finding: InquiryFinding,
+    items: InquiryCorpusItem[]
+): number {
+    const refId = finding.refId?.trim().toLowerCase();
+    if (!refId) return Number.MAX_SAFE_INTEGER;
+    const idx = items.findIndex(item => {
+        if (item.displayLabel.toLowerCase() === refId) return true;
+        if (item.id.toLowerCase() === refId) return true;
+        if (item.sceneId && item.sceneId.toLowerCase() === refId) return true;
+        return item.filePaths?.some(path => path.toLowerCase() === refId) ?? false;
+    });
+    if (idx >= 0) return idx;
+    return getSceneNoteSortOrder(finding.refId?.trim() ?? '');
+}
+
+/**
  * Brief-text normalizer: replaces inline reference tokens with their
  * resolved labels. Thin pure wrapper over `replaceInquiryReferenceTokens`.
  */
@@ -347,7 +370,7 @@ export function buildBriefPendingActions(
     items: InquiryCorpusItem[],
     referenceLabels: ReadonlyMap<string, string>
 ): Array<{ targetLabel?: string; text: string }> {
-    const actions: Array<{ targetLabel?: string; text: string }> = [];
+    const actions: Array<{ targetLabel?: string; text: string; order: number }> = [];
     const seen = new Set<string>();
     result.findings.forEach(finding => {
         if (!isFindingHit(finding)) return;
@@ -356,9 +379,10 @@ export function buildBriefPendingActions(
         const key = `${action.targetLabel ?? ''}::${action.text}`;
         if (seen.has(key)) return;
         seen.add(key);
-        actions.push(action);
+        actions.push({ ...action, order: getFindingSceneOrder(finding, items) });
     });
-    return actions;
+    actions.sort((a, b) => a.order - b.order);
+    return actions.map(({ targetLabel, text }) => ({ targetLabel, text }));
 }
 
 /**
@@ -550,7 +574,12 @@ export function buildInquiryBriefModel(
     );
 
     const orderedFindings = getOrderedFindings(result, result.mode);
-    const findings = orderedFindings
+    const sceneSortedFindings = orderedFindings.slice().sort((a, b) => {
+        const roleDelta = (getFindingRole(a) === 'target' ? 0 : 1) - (getFindingRole(b) === 'target' ? 0 : 1);
+        if (roleDelta !== 0) return roleDelta;
+        return getFindingSceneOrder(a, items) - getFindingSceneOrder(b, items);
+    });
+    const findings = sceneSortedFindings
         .filter(finding => isFindingHit(finding))
         .map(finding => {
             const sagaContext = result.scope === 'saga'
