@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-05-24T18:07:23.967Z",
-  "snapshotGeneratedAt": "2026-05-24T15:08:38.572Z",
+  "checkedAt": "2026-05-26T15:11:33.995Z",
+  "snapshotGeneratedAt": "2026-05-26T15:11:33.987Z",
   "tokenLimits": {
     "gemini-pro-latest": 65536,
     "gemini-flash-latest": 65536
