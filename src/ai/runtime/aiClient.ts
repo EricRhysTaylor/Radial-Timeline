@@ -627,6 +627,12 @@ export class AIClient {
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 tokenCountAttemptWarnings.push(`Token count unavailable: ${message}`);
+                // Surface the actual provider error so the failure mode is
+                // diagnosable. Per RT doctrine we do NOT substitute a heuristic
+                // — the count stays unavailable — but the dev/user needs to
+                // know *why* it's unavailable. Silently swallowing the error
+                // is what made this bug invisible across multiple Gemini runs.
+                console.warn(`[AI estimate] ${provider} countTokens failed for model "${initialSelection.model.id}": ${message}`);
                 countedEstimate = {
                     inputTokens: 0,
                     method: 'unavailable'
@@ -973,6 +979,9 @@ export class AIClient {
                     advancedContext.cachedStableTokens = cachedStableTokens;
                 }
                 advancedContext.cacheStatus = execution.cacheStatus;
+                if (typeof execution.cacheExpiresAt === 'number') {
+                    advancedContext.cacheExpiresAt = execution.cacheExpiresAt;
+                }
                 setLastRunAdvanced(this.plugin, request.feature, advancedContext);
             } else if (execution.cacheStatus === 'created' || optimisticWarm || advancedContext.reuseState !== 'idle') {
                 // Cache was attempted or predicted but did not hit.
@@ -982,6 +991,9 @@ export class AIClient {
                     advancedContext.cachedStableTokens = undefined;
                 }
                 advancedContext.cacheStatus = execution.cacheStatus;
+                if (typeof execution.cacheExpiresAt === 'number') {
+                    advancedContext.cacheExpiresAt = execution.cacheExpiresAt;
+                }
                 setLastRunAdvanced(this.plugin, request.feature, advancedContext);
             }
         }

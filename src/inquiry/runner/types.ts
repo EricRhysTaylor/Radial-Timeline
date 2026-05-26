@@ -158,6 +158,11 @@ export interface InquiryRunTrace {
     failureStage?: InquiryFailureStage;
     cacheReuseState?: 'idle' | 'eligible' | 'warm';
     cacheStatus?: 'hit' | 'created';
+    /**
+     * Provider-bound cache resource expiry (ms since epoch). For Gemini, this
+     * is bound to the original creation time and does NOT extend on hits.
+     */
+    cacheExpiresAt?: number;
     cachedStableRatio?: number;
     cachedStableTokens?: number;
     tokenUsageKnown?: boolean;

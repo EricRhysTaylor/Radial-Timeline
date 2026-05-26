@@ -98,10 +98,18 @@ export interface SampleRateResult {
  *   - Provider usage missing.
  *   - Provider usage yields no positive input token count.
  *
- * Cache-read and cache-creation tokens are included. Provider caching changes
- * billing and transport, but observed Inquiry wall time is dominated by the
- * model's reasoning over the supplied corpus, so excluding cache-heavy runs
- * makes the ETA less accurate for the next run.
+ * Denominator convention: `usage.inputTokens` is the provider-reported total
+ * prompt size, already including any cache-read / cache-creation tokens. This
+ * matches the contract enforced by `extractTokenUsage` for every supported
+ * provider (Anthropic: pre-summed from raw+cacheRead+cacheCreation;
+ * OpenAI: `prompt_tokens`; Gemini: `promptTokenCount`). Cached tokens still
+ * count because observed Inquiry wall time is dominated by the model's
+ * reasoning over the supplied corpus.
+ *
+ * If `inputTokens` is missing or zero but cache fields are present, fall back
+ * to summing the cache components — mirrors `computeCachePillState` in
+ * inquiryEngineRenderer.ts so this helper is robust against incomplete usage
+ * shapes (legacy tests, partial provider responses).
  */
 export function computeSampleRate(input: ComputeSampleRateInput): SampleRateResult | null {
     const durationMs = input.durationMs;
@@ -111,10 +119,13 @@ export function computeSampleRate(input: ComputeSampleRateInput): SampleRateResu
 
     const usage = input.usage;
     if (usage) {
+        const reportedInput = Number.isFinite(usage.inputTokens) ? Math.max(0, usage.inputTokens ?? 0) : 0;
         const cacheRead = Number.isFinite(usage.cacheReadInputTokens) ? Math.max(0, usage.cacheReadInputTokens ?? 0) : 0;
         const cacheCreation = Number.isFinite(usage.cacheCreationInputTokens) ? Math.max(0, usage.cacheCreationInputTokens ?? 0) : 0;
-        const rawInput = Number.isFinite(usage.inputTokens) ? Math.max(0, usage.inputTokens ?? 0) : 0;
-        const providerInputTokens = rawInput + cacheRead + cacheCreation;
+        const cacheSum = cacheRead + cacheCreation;
+        const providerInputTokens = reportedInput >= cacheSum
+            ? reportedInput
+            : reportedInput + cacheSum;
         if (providerInputTokens > 0) {
             return {
                 msPerInputToken: durationMs / providerInputTokens,

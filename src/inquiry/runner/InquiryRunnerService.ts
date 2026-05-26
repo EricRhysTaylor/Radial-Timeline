@@ -153,6 +153,7 @@ type ProviderResult = {
     failureStage?: InquiryFailureStage;
     cacheReuseState?: 'idle' | 'eligible' | 'warm';
     cacheStatus?: 'hit' | 'created';
+    cacheExpiresAt?: number;
     cachedStableRatio?: number;
     cachedStableTokens?: number;
     tokenUsageKnown?: boolean;
@@ -1474,6 +1475,7 @@ export class InquiryRunnerService implements InquiryRunner {
             failureStage,
             cacheReuseState: run.advancedContext?.reuseState,
             cacheStatus: run.advancedContext?.cacheStatus,
+            cacheExpiresAt: run.advancedContext?.cacheExpiresAt,
             cachedStableRatio: run.advancedContext?.cachedStableRatio,
             cachedStableTokens: run.advancedContext?.cachedStableTokens,
             tokenUsageKnown: usageKnown,
@@ -3095,6 +3097,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 : 'one_pass');
         trace.cacheReuseState = response.cacheReuseState;
         trace.cacheStatus = response.cacheStatus;
+        trace.cacheExpiresAt = response.cacheExpiresAt;
         trace.cachedStableRatio = response.cachedStableRatio;
         trace.cachedStableTokens = response.cachedStableTokens;
 

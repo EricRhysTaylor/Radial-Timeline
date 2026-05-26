@@ -296,6 +296,13 @@ export interface ProviderExecutionResult {
     cacheUsed?: boolean;
     /** Whether the cache was a hit (reuse) or freshly created. */
     cacheStatus?: 'hit' | 'created';
+    /**
+     * Provider-bound expiry timestamp (ms since epoch) for the cache resource
+     * actually used by this call. For Gemini, this is the original cache
+     * creation time + TTL — does NOT extend on hits. Use this instead of
+     * `Date.now() + ttl` to keep the displayed countdown honest across reuse.
+     */
+    cacheExpiresAt?: number;
     /** OpenAI-only transport truth for runtime/log alignment. */
     aiTransportLane?: 'chat_completions' | 'responses';
     /** Normalized source attribution (direct manuscript citations or tool/grounded attribution). */
@@ -455,6 +462,12 @@ export interface AIRunAdvancedContext {
     totalInputTokens?: number;
     /** Whether the Gemini cache was a hit (reuse) or freshly created. */
     cacheStatus?: 'hit' | 'created';
+    /**
+     * Absolute expiry timestamp (ms since epoch) for the actual provider cache
+     * resource — bound to creation time, NOT extended on hit. Surfaced so the
+     * UI countdown reflects the real resource lifetime.
+     */
+    cacheExpiresAt?: number;
     /** OpenAI-only transport truth for runtime/log alignment. */
     openAiTransportLane?: 'chat_completions' | 'responses';
     featureModeInstructions: string;

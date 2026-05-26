@@ -60,9 +60,11 @@ describe('computeSampleRate', () => {
         expect(computeSampleRate({ usage, durationMs: undefined })).toBeNull();
     });
 
-    it('uses provider input tokens including cache creation when usage is present', () => {
+    it('uses provider-reported input total when inputTokens is the canonical total', () => {
+        // Real Anthropic/OpenAI/Gemini extract: inputTokens already includes
+        // cached portions. Don't double-count.
         const result = computeSampleRate({
-            usage: { inputTokens: 50, cacheCreationInputTokens: 99_950, cacheReadInputTokens: 0 },
+            usage: { inputTokens: 100_000, cacheCreationInputTokens: 99_950, cacheReadInputTokens: 0 },
             durationMs: 10_000
         });
         expect(result?.source).toBe('provider_usage');
@@ -71,8 +73,10 @@ describe('computeSampleRate', () => {
     });
 
     it('records cache-heavy samples because observed wall time still reflects corpus reasoning', () => {
+        // Real Gemini cache-hit shape: promptTokenCount=135_657 (total),
+        // cachedContentTokenCount=135_634 (subset of that total).
         const result = computeSampleRate({
-            usage: { inputTokens: 23, cacheReadInputTokens: 135_634, cacheCreationInputTokens: 0 },
+            usage: { inputTokens: 135_657, cacheReadInputTokens: 135_634, cacheCreationInputTokens: 0 },
             durationMs: 42_795
         });
         expect(result?.source).toBe('provider_usage');
@@ -80,9 +84,10 @@ describe('computeSampleRate', () => {
         expect(result?.msPerInputToken).toBeCloseTo(42_795 / 135_657, 8);
     });
 
-    it('includes cache_read tokens in the denominator instead of treating them as zero work', () => {
+    it('reconstructs the total when inputTokens is missing/zero but cache fields are present', () => {
+        // Defensive path: a legacy or partial usage payload with only cache fields.
         const result = computeSampleRate({
-            usage: { inputTokens: 60, cacheReadInputTokens: 40, cacheCreationInputTokens: 0 },
+            usage: { inputTokens: 0, cacheReadInputTokens: 40, cacheCreationInputTokens: 60 },
             durationMs: 1_000
         });
         expect(result).not.toBeNull();
@@ -118,9 +123,10 @@ describe('computeSampleRate', () => {
     });
 
     it('counts cache_creation as fresh work — priming a cache costs full input price and is processed', () => {
-        // 100% cache_creation, no cache_read → all fresh, full duration goes to fresh tokens.
+        // Anthropic cache-create shape: inputTokens (helper-aggregated) = 100_000,
+        // cacheCreationInputTokens = 100_000 (the create payload portion).
         const result = computeSampleRate({
-            usage: { inputTokens: 0, cacheCreationInputTokens: 100_000, cacheReadInputTokens: 0 },
+            usage: { inputTokens: 100_000, cacheCreationInputTokens: 100_000, cacheReadInputTokens: 0 },
             durationMs: 60_000
         });
         expect(result?.source).toBe('provider_usage');

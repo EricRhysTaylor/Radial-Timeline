@@ -246,7 +246,11 @@ describe('InquiryView payload accounting', () => {
         const snapshotSource = readFileSync(resolve(process.cwd(), 'src/inquiry/services/inquiryEstimateSnapshot.ts'), 'utf8');
         expect(snapshotSource.includes('const estimatedInputTokens = trace.tokenEstimate.inputTokens;')).toBe(true);
         expect(snapshotSource.includes('corpusFallbackTokens')).toBe(false);
-        expect(viewSource.includes('const requestMatches = sameScope\n            && snapshot.estimate.estimatedInputTokens > 0')).toBe(true);
+        // requestMatches still requires the provider count to have produced a
+        // positive number — no silent fallback to corpus/heuristic. The
+        // expression is split across snapshotFresh + the positivity check so
+        // the UI can surface "unavailable" honestly when the count fails.
+        expect(viewSource.includes('const requestMatches = snapshotFresh && snapshot.estimate.estimatedInputTokens > 0')).toBe(true);
         expect(viewSource.includes('requestTokenFallback')).toBe(false);
         expect(viewSource.includes("estimateLabel = estimate\n                ? formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds)\n                : 'unavailable'")).toBe(true);
     });

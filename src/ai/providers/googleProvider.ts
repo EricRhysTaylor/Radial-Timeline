@@ -75,6 +75,7 @@ export class GoogleProvider implements AIProvider {
         let userPrompt = req.userPrompt;
         let cachedContentName: string | undefined;
         let cacheStatus: ProviderExecutionResult['cacheStatus'];
+        let cacheExpiresAt: number | undefined;
         if (!req.citationsEnabled && !req.bypassProviderReuse) {
             const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
             if (delimIndex > 0) {
@@ -92,6 +93,7 @@ export class GoogleProvider implements AIProvider {
                         if (cache) {
                             cachedContentName = cache.cacheName;
                             cacheStatus = cache.status;
+                            cacheExpiresAt = cache.expiresAt;
                             userPrompt = volatileText;
                         }
                     } catch (error) {
@@ -127,7 +129,8 @@ export class GoogleProvider implements AIProvider {
             aiModelResolved: req.modelId,
             error: result.error,
             citations: result.citations,
-            ...cacheResult
+            ...cacheResult,
+            ...(cacheExpiresAt !== undefined ? { cacheExpiresAt } : {})
         };
     }
 
@@ -138,6 +141,7 @@ export class GoogleProvider implements AIProvider {
         let userPrompt = req.userPrompt;
         let cachedContentName: string | undefined;
         let cacheStatus: ProviderExecutionResult['cacheStatus'];
+        let cacheExpiresAt: number | undefined;
         if (!req.citationsEnabled && !req.bypassProviderReuse) {
             const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
             if (delimIndex > 0) {
@@ -155,6 +159,7 @@ export class GoogleProvider implements AIProvider {
                         if (cache) {
                             cachedContentName = cache.cacheName;
                             cacheStatus = cache.status;
+                            cacheExpiresAt = cache.expiresAt;
                             userPrompt = volatileText;
                         }
                     } catch (error) {
@@ -190,7 +195,8 @@ export class GoogleProvider implements AIProvider {
             aiModelResolved: req.modelId,
             error: result.error,
             citations: result.citations,
-            ...cacheResult
+            ...cacheResult,
+            ...(cacheExpiresAt !== undefined ? { cacheExpiresAt } : {})
         };
     }
 }

@@ -21,6 +21,12 @@ interface GeminiCacheEntry {
 export interface GeminiCacheResult {
     cacheName: string;
     status: 'hit' | 'created';
+    /**
+     * Absolute expiry timestamp (ms since epoch) bound to the cache resource's
+     * actual creation — does NOT extend on hits. Callers should surface this
+     * to the UI so the countdown reflects the real resource lifetime.
+     */
+    expiresAt: number;
 }
 
 /** In-memory store: content fingerprint → cache resource */
@@ -106,15 +112,15 @@ export async function getOrCreateGeminiCache(
 
     const fp = hashCacheKey(modelId, systemPrompt ?? '', stableContent);
     const hit = cacheStore.get(fp);
-    if (hit && isEntryValid(hit)) return { cacheName: hit.cacheName, status: 'hit' };
+    if (hit && isEntryValid(hit)) {
+        return { cacheName: hit.cacheName, status: 'hit', expiresAt: hit.expiresAt };
+    }
     cacheStore.delete(fp);      // expired or missing
 
     const cacheName = await createGeminiCache(
         apiKey, modelId, stableContent, ttlSeconds, systemPrompt
     );
-    cacheStore.set(fp, {
-        cacheName,
-        expiresAt: Date.now() + (ttlSeconds * 1000),
-    });
-    return { cacheName, status: 'created' };
+    const expiresAt = Date.now() + (ttlSeconds * 1000);
+    cacheStore.set(fp, { cacheName, expiresAt });
+    return { cacheName, status: 'created', expiresAt };
 }

@@ -1215,7 +1215,8 @@ export class InquiryView extends ItemView {
             corpusSummary: buildInquiryEngineCorpusSummary(
                 currentCorpus.corpus,
                 currentCorpus.requestTokens,
-                this.formatApproxCorpusTokens.bind(this)
+                this.formatApproxCorpusTokens.bind(this),
+                currentCorpus.requestEstimateMethod
             ),
             passPlan: this.getCurrentPassPlan(readinessUi),
             readinessCause: readinessUi.readiness.cause,
@@ -1325,10 +1326,13 @@ export class InquiryView extends ItemView {
         tier: TokenTier;
     } {
         const currentCorpus = this.getCurrentCorpusContext();
+        const fallbackText = currentCorpus.requestEstimateMethod === 'unavailable'
+            ? 'Full Request: unavailable'
+            : 'Full Request: Estimating…';
         return {
             text: currentCorpus.requestTokens > 0
                 ? `Full Request: ~${this.formatTokenEstimate(currentCorpus.requestTokens)}`
-                : 'Full Request: Estimating…',
+                : fallbackText,
             inputTokens: currentCorpus.requestTokens,
             tier: this.getTokenTier(currentCorpus.requestTokens)
         };
@@ -1352,12 +1356,15 @@ export class InquiryView extends ItemView {
             && snapshot.corpus.corpusOnlyFingerprint === manifest.corpusOnlyFingerprint;
         // Request envelope tokens / pass count / ceilings depend on every dimension
         // that affects bytes-on-the-wire — model AND citations toggle. Reuse only
-        // when the full state matches.
-        const requestMatches = sameScope
-            && snapshot.estimate.estimatedInputTokens > 0
+        // when the full state matches. `snapshotFresh` distinguishes "snapshot is
+        // for this exact state" from "the provider count succeeded" — when the
+        // count fails the method is 'unavailable' and the UI should surface that
+        // honestly rather than masquerade as in-flight estimation.
+        const snapshotFresh = sameScope
             && snapshot.resolvedEngine.modelId === this.getResolvedEngine().modelId
             && snapshot.corpus.corpusFingerprint === manifest.fingerprint
             && snapshot.citationsEnabled === currentCitationsEnabled;
+        const requestMatches = snapshotFresh && snapshot.estimate.estimatedInputTokens > 0;
         this._currentCorpusContext = {
             scope: this.state.scope,
             activeBookId: this.getCanonicalActiveBookId(),
@@ -1368,7 +1375,7 @@ export class InquiryView extends ItemView {
                 ? snapshot.corpus.estimate
                 : buildPendingCorpusEstimateFromManifestEntries(manifest.entries),
             requestTokens: requestMatches ? snapshot.estimate.estimatedInputTokens : 0,
-            requestEstimateMethod: requestMatches ? snapshot.estimate.estimationMethod : undefined,
+            requestEstimateMethod: snapshotFresh ? snapshot.estimate.estimationMethod : undefined,
             expectedPassCount: requestMatches ? snapshot.estimate.expectedPassCount : 1,
             safeInputBudget: requestMatches ? snapshot.estimate.effectiveInputCeiling : 0,
             manifestEntries: manifest.entries.map(entry => ({ ...entry }))
@@ -9400,6 +9407,12 @@ export class InquiryView extends ItemView {
             }
         } else if (provider === 'google') {
             if (!trace?.cacheStatus && trace?.cacheReuseState !== 'warm') return null;
+            // Gemini cache TTL is fixed at creation and does NOT extend on hits.
+            // Use the provider-reported expiry so the countdown reflects the
+            // actual resource lifetime instead of resetting on every reuse.
+            if (typeof trace?.cacheExpiresAt === 'number' && trace.cacheExpiresAt > Date.now()) {
+                return trace.cacheExpiresAt;
+            }
         } else if (provider === 'openai') {
             if (trace?.cacheReuseState !== 'eligible' && trace?.cacheReuseState !== 'warm') return null;
         }
@@ -10683,7 +10696,11 @@ export class InquiryView extends ItemView {
 
     private getPreviewTokensValue(): string {
         const context = this.getCurrentCorpusContext();
-        if (context.requestTokens <= 0) return 'Full request · Estimating…';
+        if (context.requestTokens <= 0) {
+            return context.requestEstimateMethod === 'unavailable'
+                ? 'Full request · unavailable'
+                : 'Full request · Estimating…';
+        }
         const requestLabel = this.formatTokenEstimate(context.requestTokens);
         if (context.corpus.estimatedTokens <= 0) {
             return `Full request · ~${requestLabel}`;
