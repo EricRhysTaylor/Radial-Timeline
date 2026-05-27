@@ -1740,9 +1740,21 @@ export function renderAiSection(params: {
             )
             : false;
         const citationsSuffix = citationsOn ? ' (includes citation wrappers)' : '';
+        // Three states for the Full Request label:
+        //   1. requestTokens > 0 → provider/local count succeeded; show it.
+        //   2. method === 'unavailable' → snapshot completed but the
+        //      provider count call failed (e.g. Gemini countTokens threw).
+        //      Show "unavailable" honestly — NOT "Estimating..." which
+        //      misleadingly implies in-flight work. Per the no-fallback
+        //      doctrine we do not silently substitute the corpus chars/4
+        //      number here as if it were the request total.
+        //   3. method is undefined → snapshot truly still building.
+        //      "Estimating..." is the honest label.
         const requestText = currentCorpus.requestTokens > 0
             ? `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}${citationsSuffix}`
-            : `Full Request: Estimating...${citationsSuffix}`;
+            : currentCorpus.requestEstimateMethod === 'unavailable'
+                ? `Full Request: unavailable — provider token count failed${citationsSuffix}`
+                : `Full Request: Estimating...${citationsSuffix}`;
         const corpusText = currentCorpus.corpus.estimatedTokens > 0
             ? `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`
             : 'Corpus: Estimating...';

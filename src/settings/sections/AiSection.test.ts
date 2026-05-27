@@ -287,6 +287,12 @@ describe('AI settings models table', () => {
         expect(source.includes('const corpusText = currentCorpus.corpus.estimatedTokens > 0')).toBe(true);
         expect(source.includes("'Corpus: Estimating...'")).toBe(true);
         expect(source.includes('sizeText: requestText')).toBe(true);
+        // Distinct "unavailable" branch protects against the stall bug
+        // where provider count failure (e.g. Gemini countTokens throws)
+        // left the Cost Estimate header on "Estimating..." forever. We
+        // surface failure honestly instead.
+        expect(source.includes("currentCorpus.requestEstimateMethod === 'unavailable'")).toBe(true);
+        expect(source.includes("`Full Request: unavailable — provider token count failed${citationsSuffix}`")).toBe(true);
     });
 
     it('renders OpenAI quota failures as quota exceeded in the preview card', () => {
