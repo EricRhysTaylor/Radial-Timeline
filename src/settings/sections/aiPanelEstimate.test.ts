@@ -57,7 +57,11 @@ describe('aiPanelEstimate — invariants', () => {
         expect(vm.header.headlineDisclosure).toContain('Provider count unavailable');
     });
 
-    it('total in Processing section is never less than the sum of visible parts', () => {
+    it('when total is known, it is at least the visible local sum (overhead absorbs any positive delta)', () => {
+        // Phrased as a non-negative-overhead invariant, not "Total === headline
+        // literally forever." A future "Visible parts" row alongside Total is
+        // still compatible — the constraint is just: known total ≥ visible sum,
+        // and the delta surfaces as the Provider overhead row in the same source.
         const vm = buildPanelViewModel(buildInput({ providerCount: { source: 'unavailable' } }));
         const processing = vm.sections.find(s => s.title === 'Processing');
         expect(processing).toBeDefined();
@@ -233,12 +237,19 @@ describe('aiPanelEstimate — cosmetic cleanups', () => {
         }
     });
 
-    it('Total row always reflects the headline (no false-zero contradicting visible parts)', () => {
+    it('Total row carries the same source as the headline (no false-zero contradicting visible parts)', () => {
+        // Header and footer never disagree on provenance. This is the
+        // shared-source invariant — it does NOT forbid a future separate
+        // "Visible parts" row, only mixing provenance between header and
+        // Total. The shared-source guarantee is what prevents the original
+        // bug (provider count of 0 + visible local parts producing a
+        // contradictory ~0k total).
         const vm = buildPanelViewModel(buildInput({ providerCount: { source: 'unavailable' } }));
         const processing = vm.sections.find(s => s.title === 'Processing')!;
         const totalItem = processing.items.find(item => item.kind === 'total_row');
         expect(totalItem?.kind).toBe('total_row');
         if (totalItem?.kind === 'total_row') {
+            expect(totalItem.estimate.source).toBe(vm.header.headline.source);
             expect(formatTotalRowText(totalItem.estimate)).not.toContain('0k');
         }
     });

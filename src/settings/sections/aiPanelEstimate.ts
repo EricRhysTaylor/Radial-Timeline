@@ -288,6 +288,25 @@ function buildOutputSection(
     };
 }
 
+/**
+ * Build the Processing section: execution-passes line, optional overhead
+ * row, and the Total row.
+ *
+ * Invariants (not "Total === headline" as a literal eternal constraint):
+ *   1. The Total row carries the same `source` as the headline — header and
+ *      footer never disagree on provenance.
+ *   2. When the headline is known, the headline tokens are at least the
+ *      visible local sum. The non-negative difference, if any, surfaces as
+ *      the Provider overhead row in the same source.
+ *   3. When the headline is `unavailable`, the Total row formats as
+ *      "Total · unavailable" — never as `~0k`.
+ *
+ * This does NOT preclude a future "Visible parts" row alongside Total once
+ * provider-measured wrappers/overhead become genuinely available per
+ * provider. At that point the view-model can grow a `visibleSumEstimate`
+ * field and render both rows; the overhead row already represents the
+ * delta when it is known, so the structure is forward-compatible.
+ */
 function buildProcessingSection(
     input: Extract<FeatureForecastInput, { kind: 'available' }>,
     headline: PanelTokenEstimate,
@@ -298,7 +317,9 @@ function buildProcessingSection(
         ? `Execution: ${passes.passes} ${passes.passes === 1 ? 'pass' : 'passes'}`
         : 'Execution: unavailable';
     const items: PanelSectionItem[] = [{ kind: 'plain_text', text: passesText }];
-    // Overhead row only when known and positive. No em-dash placeholders.
+    // Overhead row only when the headline is known AND the headline exceeds
+    // the visible local sum (i.e. provider wrappers/overhead are genuinely
+    // measurable on this run). No em-dash placeholders.
     if (headline.source !== 'unavailable') {
         const overhead = headline.tokens - visibleSum;
         if (overhead > 0 && Number.isFinite(overhead)) {
