@@ -19,6 +19,7 @@ import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
 import { t } from './i18n';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
+import { tokenEstimateFromMethod } from './ai/estimates';
 import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
@@ -1004,7 +1005,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,
       totalWords: evidenceDocument.totalWords,
-      estimatedTokens: corpusEstimatedTokens,
+      estimatedTokens: tokenEstimateFromMethod('heuristic_chars', corpusEstimatedTokens),
       beatCount: beats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
       evidenceMode: evidenceModeLabel,
@@ -1512,7 +1513,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,
       totalWords: evidenceDocument.totalWords,
-      estimatedTokens: corpusEstimatedTokens,
+      estimatedTokens: tokenEstimateFromMethod('heuristic_chars', corpusEstimatedTokens),
       beatCount: plotBeats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
       evidenceMode: evidenceModeLabel,

@@ -19,11 +19,12 @@ import { describeTokenEstimateMethod } from '../ai/tokens/inputTokenEstimate';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import { getActiveBookTitle } from '../utils/books';
+import { formatTokenShorthand, type TokenEstimate } from '../ai/estimates';
 
 export interface ManuscriptInfo {
     totalScenes: number;
     totalWords: number;
-    estimatedTokens: number;
+    estimatedTokens: TokenEstimate;
     beatCount: number;
     beatSystem: string; // Beat system name (e.g., "Save The Cat", "Custom")
     evidenceMode?: string;
@@ -326,7 +327,7 @@ export class GossamerProcessingModal extends ErtModal {
 
             createStat(t('gossamer.processingModal.statScenes'), info.totalScenes.toLocaleString());
             createStat(t('gossamer.processingModal.statWords'), info.totalWords.toLocaleString());
-            createStat(t('gossamer.processingModal.statCorpusTokens'), `~${info.estimatedTokens.toLocaleString()}`);
+            createStat(t('gossamer.processingModal.statCorpusTokens'), formatTokenShorthand(info.estimatedTokens));
             createStat(t('gossamer.processingModal.statBeats'), info.beatCount.toString());
             createStat(t('gossamer.processingModal.statEvidence'), info.evidenceMode || t('gossamer.processingModal.evidenceDefault'));
 
