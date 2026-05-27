@@ -224,6 +224,7 @@ import {
     formatExactUsdCost,
     formatApproxUsdCost
 } from '../ai/cost/estimateCorpusCost';
+import { tokenEstimateFromMethod } from '../ai/estimates';
 import { resolveInquirySourceRoots } from './utils/sourceRoots';
 import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
 import { applyInquiryCorpusCcSlotViewModel, buildInquiryCorpusCcSlotViewModel } from './corpus/inquiryCorpusStripSlotRenderer';
@@ -10765,10 +10766,25 @@ export class InquiryView extends ItemView {
             if (sameCorpusActualCost !== null) {
                 return `Recent cost · ${formatExactUsdCost(sameCorpusActualCost)}`;
             }
+            // Refuse to compute a cost estimate when the input token count
+            // is unavailable. Without this guard the pricing math runs
+            // against `estimatedInputTokens === 0` (Gemini countTokens
+            // failure path) and renders a fabricated near-zero cost as if
+            // it were real. Per RT no-fallback doctrine: render an honest
+            // "Cost · unavailable" instead.
+            const inputEstimate = tokenEstimateFromMethod(
+                snapshot.estimate.estimationMethod,
+                snapshot.estimate.estimatedInputTokens
+            );
+            if (inputEstimate.source === 'unavailable' || inputEstimate.source === 'pending') {
+                return inputEstimate.source === 'pending'
+                    ? 'Cost · Estimating…'
+                    : 'Cost · unavailable (provider token count failed)';
+            }
             const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(
                 engine.provider,
                 engine.modelId,
-                snapshot.estimate.estimatedInputTokens
+                inputEstimate.tokens
             );
             if (learnedOutputTokens === null) {
                 return 'Cost · Estimate pending';
@@ -10782,7 +10798,7 @@ export class InquiryView extends ItemView {
             const cost = estimateCorpusCost(
                 engine.provider,
                 engine.modelId,
-                snapshot.estimate.estimatedInputTokens,
+                inputEstimate.tokens,
                 Math.min(learnedOutputTokens, snapshot.estimate.maxOutputTokens),
                 snapshot.estimate.expectedPassCount,
                 // Inquiry on Anthropic always primes a 1h cache; pass the
@@ -10796,13 +10812,17 @@ export class InquiryView extends ItemView {
             const cachedLabel = typeof cost.cachedCostUSD === 'number'
                 ? formatApproxUsdCost(cost.cachedCostUSD)
                 : '—';
+            // Disclosure suffix when the underlying input was a local
+            // heuristic (not the authoritative provider count). Keeps the
+            // user from mistaking the estimate for an exact figure.
+            const provenanceSuffix = inputEstimate.source === 'local_estimate' ? ' (local input)' : '';
             const corpusWasRun = snapshot.corpus.corpusFingerprint === this.state.corpusFingerprint;
             if (nextRunCanReuseCache) {
-                return `Cached est · ${cachedLabel}`;
+                return `Cached est · ${cachedLabel}${provenanceSuffix}`;
             }
-            return corpusWasRun
+            return (corpusWasRun
                 ? `Fresh est · ${freshLabel} / ${cachedLabel} cached`
-                : `Fresh est · ${freshLabel}`;
+                : `Fresh est · ${freshLabel}`) + provenanceSuffix;
         } catch {
             return 'Cost · Estimate unavailable';
         }

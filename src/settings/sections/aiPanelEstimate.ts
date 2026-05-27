@@ -21,33 +21,30 @@
  */
 
 import type { AIProviderId } from '../../ai/types';
+import {
+    type TokenEstimate,
+    TOKEN_ESTIMATE_DISCLOSURE,
+    TOKEN_ESTIMATE_SOURCE_LABEL,
+    pickBestTokenEstimate,
+    formatTokenShorthand,
+    formatTokenHeadline
+} from '../../ai/estimates';
 
 // ── Types ───────────────────────────────────────────────────────────
 
 /**
- * Discriminated estimate. Forces every consumer to check `source` before
- * trusting the number. `tokens` is non-negative when present.
+ * The panel view-model consumes the canonical `TokenEstimate` contract
+ * from `src/ai/estimates/`. `PanelTokenEstimate` is kept as a re-export
+ * alias for back-compat with existing call sites; new code should use
+ * `TokenEstimate` directly.
  */
-export type PanelTokenEstimate =
-    | { source: 'provider_count'; tokens: number }
-    | { source: 'local_estimate'; tokens: number }
-    | { source: 'prior_run'; tokens: number }
-    | { source: 'unavailable' };
+export type PanelTokenEstimate = TokenEstimate;
 
-/** Source provenance label as it appears in the UI. */
-export const ESTIMATE_SOURCE_LABEL: Record<Exclude<PanelTokenEstimate['source'], 'unavailable'>, string> = {
-    provider_count: 'Provider count',
-    local_estimate: 'Local estimate',
-    prior_run: 'Prior run'
-};
+/** @deprecated Use TOKEN_ESTIMATE_SOURCE_LABEL from `src/ai/estimates`. */
+export const ESTIMATE_SOURCE_LABEL = TOKEN_ESTIMATE_SOURCE_LABEL;
 
-/** Human-readable disclosure shown when the source is not the authoritative provider count. */
-export const ESTIMATE_PROVENANCE_DISCLOSURE: Record<PanelTokenEstimate['source'], string | null> = {
-    provider_count: null,
-    local_estimate: 'Provider count unavailable. Showing local estimate.',
-    prior_run: 'Estimate derived from a prior same-corpus/model run.',
-    unavailable: 'Token count unavailable. The provider rejected or did not respond to the count request.'
-};
+/** @deprecated Use TOKEN_ESTIMATE_DISCLOSURE from `src/ai/estimates`. */
+export const ESTIMATE_PROVENANCE_DISCLOSURE = TOKEN_ESTIMATE_DISCLOSURE;
 
 export interface PanelRowItem {
     label: string;
@@ -159,25 +156,12 @@ export function sumLocalEstimateTokens(...parts: number[]): number {
 }
 
 /**
- * Pick the best available estimate from a precedence list:
- *   provider_count > prior_run > local_estimate > unavailable.
- *
- * `tokens === 0` is treated as "actually zero" only when the source is
- * provider_count or prior_run (both are authoritative observations). For
- * local_estimate, a zero is treated as "no signal" and we fall back to
- * the next source.
+ * @deprecated Use `pickBestTokenEstimate` from `src/ai/estimates`. Kept
+ * as a thin wrapper so legacy call sites compile during the migration
+ * sweep.
  */
 export function pickBestEstimate(...candidates: Array<PanelTokenEstimate | null | undefined>): PanelTokenEstimate {
-    const order: PanelTokenEstimate['source'][] = ['provider_count', 'prior_run', 'local_estimate'];
-    for (const source of order) {
-        for (const candidate of candidates) {
-            if (!candidate) continue;
-            if (candidate.source !== source) continue;
-            if (candidate.source === 'local_estimate' && candidate.tokens <= 0) continue;
-            return candidate;
-        }
-    }
-    return { source: 'unavailable' };
+    return pickBestTokenEstimate(...candidates);
 }
 
 function makeRow(label: string, tokens: number, source: 'provider_count' | 'local_estimate', leadCount?: number): PanelRowItem {
@@ -320,7 +304,7 @@ function buildProcessingSection(
     // Overhead row only when the headline is known AND the headline exceeds
     // the visible local sum (i.e. provider wrappers/overhead are genuinely
     // measurable on this run). No em-dash placeholders.
-    if (headline.source !== 'unavailable') {
+    if (headline.source !== 'unavailable' && headline.source !== 'pending') {
         const overhead = headline.tokens - visibleSum;
         if (overhead > 0 && Number.isFinite(overhead)) {
             items.push({
@@ -341,7 +325,7 @@ function computePassesFromHeadline(
     if (typeof providerKnownPassCount === 'number' && providerKnownPassCount > 0) {
         return { kind: 'known', passes: providerKnownPassCount, source: 'provider_count' };
     }
-    if (headline.source === 'unavailable') return { kind: 'unavailable' };
+    if (headline.source === 'unavailable' || headline.source === 'pending') return { kind: 'unavailable' };
     if (!safeInputBudget || safeInputBudget <= 0) return { kind: 'unavailable' };
     if (headline.tokens <= 0) return { kind: 'unavailable' };
     const passes = headline.tokens <= safeInputBudget
@@ -389,7 +373,7 @@ export function buildPanelViewModel(input: BuildPanelInput): PanelViewModel {
     sections.push(buildProcessingSection(fc, headline, localTotal));
 
     const expectedPasses = computePassesFromHeadline(headline, fc.safeInputBudget, fc.providerKnownPassCount);
-    const providerInputSummary: ProviderInputSummary = headline.source === 'unavailable'
+    const providerInputSummary: ProviderInputSummary = (headline.source === 'unavailable' || headline.source === 'pending')
         ? { kind: 'unavailable' }
         : { kind: 'known', tokens: headline.tokens, source: headline.source };
 
@@ -407,22 +391,19 @@ export function buildPanelViewModel(input: BuildPanelInput): PanelViewModel {
 // ── Render helpers (string-level, still pure) ───────────────────────
 
 /**
- * Token shorthand: `'—'` for unavailable, else `~Nk` (one-decimal,
- * trailing `.0` stripped). Mirrors the legacy `formatCorpusBreakdownToken`
- * formatter for visual continuity with the rest of AI settings.
+ * @deprecated Use `formatTokenShorthand` from `src/ai/estimates`. Thin
+ * wrapper for back-compat during migration.
  */
 export function formatPanelTokenShorthand(estimate: PanelTokenEstimate): string {
-    if (estimate.source === 'unavailable') return '—';
-    const tokens = estimate.tokens;
-    if (!Number.isFinite(tokens) || tokens <= 0) return '—';
-    return `~${(Math.round(tokens / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`;
+    return formatTokenShorthand(estimate);
 }
 
+/**
+ * @deprecated Use `formatTokenHeadline` from `src/ai/estimates`. Thin
+ * wrapper for back-compat during migration.
+ */
 export function formatPanelHeadlineTokens(estimate: PanelTokenEstimate): { numericText: string; unitText: string | null } {
-    if (estimate.source === 'unavailable') {
-        return { numericText: 'Unavailable', unitText: null };
-    }
-    return { numericText: formatPanelTokenShorthand(estimate), unitText: 'tokens' };
+    return formatTokenHeadline(estimate);
 }
 
 export function formatExpectedPassesLabel(label: ExpectedPassesLabel): string {

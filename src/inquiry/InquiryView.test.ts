@@ -403,9 +403,12 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();")).toBe(true);
         expect(viewSource.includes('return `Prior cost · ${formatExactUsdCost(previewQuestionActualCost)}`;')).toBe(true);
         expect(viewSource.includes('return `Recent cost · ${formatExactUsdCost(sameCorpusActualCost)}`;')).toBe(true);
-        expect(viewSource.includes('return `Cached est · ${cachedLabel}`;')).toBe(true);
+        // Estimate strings now carry a `${provenanceSuffix}` so the user
+        // can distinguish provider-count-backed estimates from local
+        // heuristic ones. See src/ai/estimates contract.
+        expect(viewSource.includes('return `Cached est · ${cachedLabel}${provenanceSuffix}`;')).toBe(true);
         expect(viewSource.includes('`Fresh est · ${freshLabel} / ${cachedLabel} cached`')).toBe(true);
-        expect(viewSource.includes('`Fresh est · ${freshLabel}`;')).toBe(true);
+        expect(viewSource.includes('`Fresh est · ${freshLabel}`')).toBe(true);
         const questionCostIndex = viewSource.indexOf('const previewQuestionActualCost = this.getLatestPreviewQuestionActualCost(zone, questionId);');
         const sessionCostIndex = viewSource.indexOf('const sameCorpusActualCost = this.getLatestSameCorpusActualCostForResolvedEngine();');
         const outputProfileIndex = viewSource.indexOf('const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(');
@@ -415,6 +418,25 @@ describe('InquiryView payload accounting', () => {
         expect(questionCostIndex).toBeLessThan(sessionCostIndex);
         expect(sessionCostIndex).toBeLessThan(outputProfileIndex);
         expect(viewSource.includes('Cost · Run once for exact cost')).toBe(false);
+    });
+
+    it('preview cost path routes through the canonical TokenEstimate contract (no fabricated near-zero cost)', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const typesSrc = readFileSync(resolve(process.cwd(), 'src/inquiry/types.ts'), 'utf8');
+        // Pin: getPreviewCostValue refuses to compute when the input
+        // estimate is unavailable. Without this guard, the pricing math
+        // runs against `estimatedInputTokens === 0` and fabricates a
+        // near-zero cost that looks authoritative.
+        expect(viewSource.includes('const inputEstimate = tokenEstimateFromMethod(')).toBe(true);
+        expect(viewSource.includes("'Cost · unavailable (provider token count failed)'")).toBe(true);
+        expect(viewSource.includes("from '../ai/estimates'")).toBe(true);
+        // Pin: estimate strings disclose source provenance via
+        // `${provenanceSuffix}` so local-heuristic-backed costs are not
+        // confused with provider-count-backed ones.
+        expect(viewSource.includes("const provenanceSuffix = inputEstimate.source === 'local_estimate' ? ' (local input)' : '';")).toBe(true);
+        // Pin: the raw transport field is documented as unsafe for
+        // direct UI gating — future code must read provenance first.
+        expect(typesSrc.includes('Raw transport field — DO NOT gate UI labels on')).toBe(true);
     });
 
     it('forces the AI settings tab after Obsidian opens the plugin settings pane', () => {
@@ -480,9 +502,10 @@ describe('InquiryView payload accounting', () => {
         // The HUD still refreshes after a sample is recorded.
         expect(viewSource.includes('this.refreshEstimateDisplays();')).toBe(true);
         // Unrelated assertions from the original guardian — kept since they
-        // still apply to the cached-cost label path.
+        // still apply to the cached-cost label path. Estimate strings now
+        // carry the canonical provenance suffix.
         expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
-        expect(viewSource.includes("return `Cached est · ${cachedLabel}`;")).toBe(true);
+        expect(viewSource.includes("return `Cached est · ${cachedLabel}${provenanceSuffix}`;")).toBe(true);
     });
 
     it('formats Inquiry engine cache TTL labels from canonical settings instead of hard-coding Gemini to 24h', () => {

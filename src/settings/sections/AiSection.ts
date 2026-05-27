@@ -99,6 +99,7 @@ import {
     type PanelTokenEstimate,
     type PanelViewModel
 } from './aiPanelEstimate';
+import { tokenEstimateFromMethod } from '../../ai/estimates';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean; extraCls?: string };
@@ -1824,14 +1825,34 @@ export function renderAiSection(params: {
             if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
                 throw new Error(`Canonical execution estimate unavailable for ${model.modelLabel}.`);
             }
+            const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
+            // Convert the runner's raw method+tokens into the typed
+            // estimate. provider-count failure (e.g. Gemini countTokens
+            // throws) becomes { source: 'unavailable' } — NOT a 0-token
+            // count that would round to a fake "$0.01" via the pricing
+            // math. This is the cross-surface contract from
+            // src/ai/estimates.
+            const inputEstimate = tokenEstimateFromMethod(
+                executionEstimate.method,
+                executionEstimate.estimatedTokens
+            );
+            if (inputEstimate.source === 'unavailable' || inputEstimate.source === 'pending') {
+                // Refuse to compute cost from an unknown input. The user
+                // sees "Unavailable" instead of a fabricated dollar value.
+                return {
+                    model,
+                    freshText: 'Unavailable',
+                    cachedText: 'Unavailable',
+                    passesText: passLabel
+                };
+            }
             const learnedOutput = plugin.getOutputProfileStore().predictExpectedOutput(
                 model.provider,
                 model.modelId,
-                executionEstimate.estimatedTokens
+                inputEstimate.tokens
             );
             const latestOutput = learnedOutput !== null ? learnedOutput : getLatestOutputSampleForModel(model);
             if (latestOutput === null) {
-                const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
                 return {
                     model,
                     freshText: 'Output sample needed',
@@ -1844,7 +1865,7 @@ export function renderAiSection(params: {
             const cost = estimateCorpusCost(
                 model.provider,
                 model.modelId,
-                executionEstimate.estimatedTokens,
+                inputEstimate.tokens,
                 Math.min(latestOutput, executionEstimate.maxOutputTokens),
                 executionEstimate.expectedPassCount,
                 // Anthropic Inquiry runs always request 1h cache (per
@@ -1856,7 +1877,7 @@ export function renderAiSection(params: {
                     cacheReuseRatio
                 }
             );
-            const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
+            const finalPassLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
             const promoLabel = cost.promo?.label;
             const cacheWindowLabel = getProviderCacheWindowLabel(model.provider);
             const cachedSuffix = activeCacheReuseRatio !== null && cacheWindowLabel && typeof cost.cachedCostUSD === 'number' ? ` (${cacheWindowLabel})` : '';
@@ -1866,13 +1887,18 @@ export function renderAiSection(params: {
             // about what's baked in.
             const freshSuffix = model.provider === 'anthropic' && cacheWindowLabel ? ` (${cacheWindowLabel})` : '';
             const storageFootnote = model.provider === 'google' ? '**' : '';
+            // Disclosure suffix when the input estimate came from a local
+            // chars/4 heuristic instead of the authoritative provider
+            // count. Keeps the user from mistaking "$1.24" for an exact
+            // provider number when the count was a heuristic.
+            const inputProvenanceSuffix = inputEstimate.source === 'local_estimate' ? ' (local input)' : '';
             return {
                 model,
-                freshText: `${formatUsdCost(cost.freshCostUSD)}${freshSuffix}`,
+                freshText: `${formatUsdCost(cost.freshCostUSD)}${freshSuffix}${inputProvenanceSuffix}`,
                 cachedText: activeCacheReuseRatio !== null && typeof cost.cachedCostUSD === 'number'
-                    ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}${storageFootnote}`
+                    ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}${storageFootnote}${inputProvenanceSuffix}`
                     : 'No active cache',
-                passesText: passLabel,
+                passesText: finalPassLabel,
                 promoLabel
             };
         }));
@@ -2051,28 +2077,15 @@ export function renderAiSection(params: {
     };
 
     /**
-     * Map the InputTokenEstimateMethod returned by the runner/forecast to a
-     * PanelTokenEstimate. Provider counts (anthropic_count, google_count) are
-     * authoritative; chars/4 heuristics are local_estimate; 'unavailable' is
-     * surfaced as unavailable so the panel never paints failure as 0.
+     * Map the InputTokenEstimateMethod to a PanelTokenEstimate. Delegates
+     * to the canonical `tokenEstimateFromMethod` in `src/ai/estimates` so
+     * every surface (panel, cost table, inquiry HUD) uses the same shape.
      */
     const methodToPanelEstimate = (
         method: import('../../ai/tokens/inputTokenEstimate').TokenEstimateMethod | undefined,
         tokens: number | undefined
     ): PanelTokenEstimate => {
-        if (typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0) {
-            return { source: 'unavailable' };
-        }
-        if (method === 'anthropic_count' || method === 'google_count') {
-            return tokens > 0 ? { source: 'provider_count', tokens } : { source: 'unavailable' };
-        }
-        if (method === 'heuristic_chars') {
-            return tokens > 0 ? { source: 'local_estimate', tokens } : { source: 'unavailable' };
-        }
-        // 'unavailable' or undefined → unavailable. We do NOT fall back to
-        // the raw number even if it's > 0, because at this point we have no
-        // provenance for it.
-        return { source: 'unavailable' };
+        return tokenEstimateFromMethod(method, tokens);
     };
 
     /**

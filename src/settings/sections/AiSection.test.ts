@@ -295,6 +295,28 @@ describe('AI settings models table', () => {
         expect(source.includes("`Full Request: unavailable — provider token count failed${citationsSuffix}`")).toBe(true);
     });
 
+    it('cost comparison rows route through the canonical TokenEstimate contract (no false-zero cost fabrication)', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        // Pin: cost rows convert raw method+tokens to a typed TokenEstimate
+        // BEFORE doing any cost math. This prevents the original bug
+        // (Gemini countTokens fails → tokens = 0 → cost rounds to fake
+        // "$0.01" via the pricing math).
+        expect(source.includes("tokenEstimateFromMethod(\n                executionEstimate.method")).toBe(true);
+        // Pin: when the input estimate is unavailable/pending, the row
+        // refuses to compute and renders "Unavailable" instead of a fake
+        // dollar value.
+        expect(source.includes("if (inputEstimate.source === 'unavailable' || inputEstimate.source === 'pending')")).toBe(true);
+        // Pin: the cost label discloses when the input came from a local
+        // chars/4 heuristic rather than the authoritative provider count.
+        expect(source.includes("inputProvenanceSuffix")).toBe(true);
+        // Pin: the canonical contract is imported from src/ai/estimates,
+        // not re-implemented per surface.
+        expect(source.includes("from '../../ai/estimates'")).toBe(true);
+        // Pin: the local methodToPanelEstimate wrapper now delegates to
+        // the shared converter (no per-surface mapping divergence).
+        expect(source.includes('return tokenEstimateFromMethod(method, tokens);')).toBe(true);
+    });
+
     it('renders OpenAI quota failures as quota exceeded in the preview card', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         // formatPreviewReasonLabel quota branch moved into aiSettingsPreview.ts.

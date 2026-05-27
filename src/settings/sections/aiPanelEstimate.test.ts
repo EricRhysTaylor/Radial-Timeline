@@ -158,23 +158,27 @@ describe('aiPanelEstimate — invariants', () => {
 
 // ── Source-precedence helpers ──────────────────────────────────────
 
-describe('aiPanelEstimate — pickBestEstimate', () => {
-    it('prefers provider_count over local_estimate and prior_run', () => {
+describe('aiPanelEstimate — pickBestEstimate (delegates to shared pickBestTokenEstimate)', () => {
+    it('prefers prior_run over provider_count and local_estimate', () => {
+        // Real prior-run usage beats a pre-flight provider count — the
+        // prior run actually saw what the model processed, while the
+        // count is just a pre-flight estimate. See doctrine in
+        // src/ai/estimates/tokenEstimate.ts.
         const result = pickBestEstimate(
             { source: 'local_estimate', tokens: 100 },
             { source: 'provider_count', tokens: 200 },
             { source: 'prior_run', tokens: 300 }
         );
-        expect(result).toEqual({ source: 'provider_count', tokens: 200 });
+        expect(result).toEqual({ source: 'prior_run', tokens: 300 });
     });
 
-    it('falls back from provider_count → prior_run → local_estimate', () => {
+    it('falls back from prior_run → provider_count → local_estimate', () => {
         const result = pickBestEstimate(
             null,
-            { source: 'prior_run', tokens: 50 },
+            { source: 'provider_count', tokens: 50 },
             { source: 'local_estimate', tokens: 100 }
         );
-        expect(result).toEqual({ source: 'prior_run', tokens: 50 });
+        expect(result).toEqual({ source: 'provider_count', tokens: 50 });
     });
 
     it('treats local_estimate with zero tokens as no-signal (skips it)', () => {

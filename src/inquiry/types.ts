@@ -53,7 +53,21 @@ export type InquiryCurrentCorpusContext = {
     corpusFingerprint: string;
     cacheReuseFingerprint: string;
     corpus: RTCorpusTokenEstimate;
+    /**
+     * @internal Raw transport field — DO NOT gate UI labels on
+     * `requestTokens > 0` directly. Always pair with `requestEstimateMethod`
+     * (or convert via `tokenEstimateFromMethod` in `src/ai/estimates/`)
+     * so that a `0` from a failed provider count cannot be confused with
+     * "actually zero." UI surfaces must surface provenance to the user.
+     * See doctrine in `src/ai/estimates/tokenEstimate.ts`.
+     */
     requestTokens: number;
+    /**
+     * The provenance-bearing companion to `requestTokens`. When this is
+     * `'unavailable'` the count call failed; when `undefined` the snapshot
+     * is still building. UIs MUST inspect this before reading
+     * `requestTokens`.
+     */
     requestEstimateMethod?: TokenEstimateMethod;
     expectedPassCount: number;
     safeInputBudget: number;
