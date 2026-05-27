@@ -1,6 +1,7 @@
 import { setIcon, Setting, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
+import type { WritingSessionTargetMode } from '../../types/settings';
 import { ERT_CLASSES } from '../../ui/classes';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -29,6 +30,7 @@ function buildProfileFromLegacy(plugin: RadialTimelinePlugin): RuntimeRateProfil
             recordingWpm: undefined,
             editingWpm: undefined,
             dailyMinutes: undefined,
+            dailyWords: undefined,
         },
     };
 }
@@ -123,7 +125,9 @@ function formatRangeLabel(stats: WritingRangeStats): string {
 }
 
 function goalDayTarget(stats: WritingRangeStats, weeklyGoalDays: number): number | undefined {
-    if (!stats.dailyTargetMinutes) return undefined;
+    if (stats.targetMode === 'time' && !stats.dailyTargetMinutes) return undefined;
+    if (stats.targetMode === 'words' && !stats.dailyTargetWords) return undefined;
+    if (stats.targetMode === 'both' && !stats.dailyTargetMinutes && !stats.dailyTargetWords) return undefined;
     if (stats.days <= 1) return 1;
     if (stats.days === 7) return weeklyGoalDays;
     return Math.min(stats.days, Math.ceil((stats.days / 7) * weeklyGoalDays));
@@ -285,6 +289,22 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
         });
 
     new Setting(body)
+        .setName(t('settings.goalsSessions.targetMode.name'))
+        .setDesc(t('settings.goalsSessions.targetMode.desc'))
+        .addDropdown(dropdown => {
+            const current = plugin.getWritingSessionService().getSettings().defaults.targetMode ?? 'time';
+            dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
+            dropdown
+                .addOption('time', t('settings.goalsSessions.targetMode.time'))
+                .addOption('words', t('settings.goalsSessions.targetMode.words'))
+                .addOption('both', t('settings.goalsSessions.targetMode.both'))
+                .setValue(current)
+                .onChange(async (value) => {
+                    await plugin.getWritingSessionService().setDefaultTargetMode(value as WritingSessionTargetMode);
+                });
+        });
+
+    new Setting(body)
         .setName(t('settings.goalsSessions.dailyMinutes.name'))
         .setDesc(t('settings.goalsSessions.dailyMinutes.desc'))
         .addText((text: TextComponent) => {
@@ -296,6 +316,22 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
                 onSave: (value) => {
                     const profile = ensureDefaultRuntimeProfile(plugin);
                     profile.sessionPlanning = { ...profile.sessionPlanning, dailyMinutes: value };
+                },
+            });
+        });
+
+    new Setting(body)
+        .setName(t('settings.goalsSessions.dailyWords.name'))
+        .setDesc(t('settings.goalsSessions.dailyWords.desc'))
+        .addText((text: TextComponent) => {
+            wireNumberInput({
+                plugin,
+                text,
+                currentValue: session.dailyWords,
+                max: 50000,
+                onSave: (value) => {
+                    const profile = ensureDefaultRuntimeProfile(plugin);
+                    profile.sessionPlanning = { ...profile.sessionPlanning, dailyWords: value };
                 },
             });
         });

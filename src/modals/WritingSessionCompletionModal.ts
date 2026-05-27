@@ -7,6 +7,11 @@ export interface WritingSessionCompletionResult extends WritingSessionCompletion
     elapsedMinutes: number;
 }
 
+export interface WritingSessionCompletionWordStats {
+    typedWords?: number;
+    netWordDelta?: number;
+}
+
 function minutesFromElapsed(elapsedMs: number): number {
     return Math.max(1, Math.round(Math.max(0, elapsedMs) / 60000));
 }
@@ -26,6 +31,7 @@ export class WritingSessionCompletionModal extends Modal {
         private active: ActiveWritingSession,
         private elapsedMs: number,
         private sceneSuggestions: WritingSessionSceneSuggestion[],
+        private wordStats: WritingSessionCompletionWordStats,
         private onSubmit: (result: WritingSessionCompletionResult) => Promise<void>
     ) {
         super(app);
@@ -71,7 +77,12 @@ export class WritingSessionCompletionModal extends Modal {
 
         const form = contentEl.createDiv({ cls: 'ert-stack' });
         let minutes = minutesFromElapsed(this.elapsedMs);
-        let wordsAdded: number | undefined;
+        const typedWords = Math.max(0, Math.round(this.wordStats.typedWords ?? this.active.typedWords ?? 0));
+        const hasTypedWords = typedWords > 0;
+        const netWordDelta = Number.isFinite(this.wordStats.netWordDelta)
+            ? Math.round(this.wordStats.netWordDelta ?? 0)
+            : undefined;
+        let wordsAdded: number | undefined = hasTypedWords ? typedWords : undefined;
         let scenesCompleted: number | undefined;
         let pagesEdited: number | undefined;
         let note = '';
@@ -105,11 +116,29 @@ export class WritingSessionCompletionModal extends Modal {
             }
         );
 
+        const wordSummary = form.createDiv({ cls: 'ert-writing-session-word-summary' });
+        new Setting(wordSummary)
+            .setName('Typed during session')
+            .setDesc('Additive live count from keyboard typing only. Paste, cut, deletion, and undo do not subtract from this meter.')
+            .addText(text => {
+                text.inputEl.addClass('ert-input--sm');
+                text.setValue(hasTypedWords ? String(typedWords) : '0');
+                text.setDisabled(true);
+            });
+        new Setting(wordSummary)
+            .setName('Net manuscript change')
+            .setDesc('Snapshot difference for the open scene notes captured at session start. This can be negative after cuts or revision.')
+            .addText(text => {
+                text.inputEl.addClass('ert-input--sm');
+                text.setValue(netWordDelta === undefined ? 'Unavailable' : `${netWordDelta > 0 ? '+' : ''}${netWordDelta}`);
+                text.setDisabled(true);
+            });
+
         wireNumber(
             new Setting(form)
-                .setName('Words added')
-                .setDesc('Optional. Used for drafting totals and future goal stats.'),
-            '',
+                .setName('Words to save')
+                .setDesc('Defaults to typed words when available. Edit this if the session record should use a different drafting count.'),
+            wordsAdded === undefined ? '' : String(wordsAdded),
             value => { wordsAdded = parseOptionalInteger(value); }
         );
 
@@ -162,6 +191,8 @@ export class WritingSessionCompletionModal extends Modal {
                 elapsedMinutes,
                 elapsedMs: elapsedMinutes * 60000,
                 wordsAdded,
+                typedWords: hasTypedWords ? typedWords : undefined,
+                netWordDelta,
                 scenesCompleted,
                 scenePaths: [...selectedScenePaths],
                 pagesEdited,

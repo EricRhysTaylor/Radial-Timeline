@@ -47,7 +47,8 @@ import type {
     StructuralMoveHistoryEntry,
     WritingSessionMode,
     WritingSessionStage,
-    WritingSessionStagePreference
+    WritingSessionStagePreference,
+    WritingSessionTargetMode
 } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
 import { GOSSAMER_SIGNAL_METADATA, GOSSAMER_SIGNAL_TYPES, type GossamerSignalType } from '../types/gossamerSignals';
@@ -539,9 +540,34 @@ export class RadialTimelineView extends ItemView {
         return stage;
     }
 
-    private formatIdleWritingSessionMeta(goalMinutes: number, mode: WritingSessionMode, stage: WritingSessionStagePreference): string {
+    private formatWritingSessionTargetMode(mode: WritingSessionTargetMode): string {
+        if (mode === 'words') return 'word target';
+        if (mode === 'both') return 'word + time target';
+        return 'time target';
+    }
+
+    private sessionUsesWordRing(active: ActiveWritingSession): boolean {
+        return (active.targetMode === 'words' || active.targetMode === 'both') && Boolean(active.goalWords);
+    }
+
+    private formatWordCount(value: number): string {
+        return `${value} ${value === 1 ? 'word' : 'words'}`;
+    }
+
+    private formatIdleWritingSessionMeta(
+        goalMinutes: number,
+        goalWords: number,
+        targetMode: WritingSessionTargetMode,
+        mode: WritingSessionMode,
+        stage: WritingSessionStagePreference
+    ): string {
+        const target = targetMode === 'time'
+            ? `${goalMinutes} min target`
+            : targetMode === 'words'
+                ? `${goalWords} word target`
+                : `${goalWords} words + ${goalMinutes} min`;
         return [
-            `${goalMinutes} min target`,
+            target,
             this.formatWritingSessionMode(mode),
             this.formatWritingSessionStage(stage),
         ].join(' · ');
@@ -579,6 +605,15 @@ export class RadialTimelineView extends ItemView {
     }
 
     private getSessionStatusDisplay(active: ActiveWritingSession, elapsedMs: number): SessionStatusDisplay {
+        if (this.sessionUsesWordRing(active)) {
+            const typedWords = Math.max(0, Math.round(active.typedWords || 0));
+            const goalWords = Math.max(1, Math.round(active.goalWords || 1));
+            const detail = `${typedWords}/${goalWords} words typed · ${this.formatSessionClockHms(elapsedMs)} elapsed`;
+            if (active.pausedAt) {
+                return { headline: 'Paused', detail, tone: 'paused' };
+            }
+            return { headline: String(typedWords), detail, tone: 'running' };
+        }
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
         const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs);
         const remainingMs = goalMs ? Math.max(0, goalMs - countdownElapsedMs) : undefined;
@@ -610,6 +645,10 @@ export class RadialTimelineView extends ItemView {
     }
 
     private getActiveSessionProgressStep(active: ActiveWritingSession, elapsedMs: number): number {
+        if (this.sessionUsesWordRing(active)) {
+            const targetWords = Math.max(1, Math.round(active.goalWords || 1));
+            return this.getSessionProgressStep(Math.max(0, Math.round(active.typedWords || 0)) / targetWords);
+        }
         const targetMinutes = active.goalMinutes ?? this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
         const targetMs = Math.max(1, targetMinutes) * 60000;
         const progressElapsedMs = active.goalMinutes
@@ -628,6 +667,37 @@ export class RadialTimelineView extends ItemView {
         const service = this.plugin.getWritingSessionService();
         const dailyProgress = service.getDailySessionProgress();
         const defaultGoalMinutes = this.getDefaultSessionGoalMinutes();
+        const defaultGoalWords = this.getDefaultSessionGoalWords();
+        if (dailyProgress.targetMode === 'words' || dailyProgress.targetMode === 'both') {
+            if (!dailyProgress.dailyTargetWords) {
+                return {
+                    label: String(defaultGoalWords),
+                    detail: `Start writing session, ${this.formatWordCount(defaultGoalWords)} target`,
+                    state: 'idle',
+                };
+            }
+            if (dailyProgress.remainingWords && dailyProgress.remainingWords > 0) {
+                return {
+                    label: String(dailyProgress.remainingWords),
+                    detail: `Start writing session, ${this.formatWordCount(dailyProgress.remainingWords)} left today`,
+                    state: 'idle',
+                };
+            }
+            if (dailyProgress.sessionsCompleted > 0) {
+                return {
+                    label: '',
+                    detail: `Daily word goal complete, ${this.formatWordCount(dailyProgress.wordsLogged)} logged today`,
+                    state: 'idle',
+                    renderIcon: true,
+                    goalMet: true,
+                };
+            }
+            return {
+                label: String(dailyProgress.dailyTargetWords),
+                detail: `Start writing session, ${this.formatWordCount(dailyProgress.dailyTargetWords)} target`,
+                state: 'idle',
+            };
+        }
         if (!dailyProgress.dailyTargetMinutes) {
             return {
                 label: String(defaultGoalMinutes),
@@ -722,6 +792,19 @@ export class RadialTimelineView extends ItemView {
             return;
         }
         const elapsedMs = service.getActiveElapsedMs();
+        if (this.sessionUsesWordRing(active)) {
+            const goalWords = Math.max(1, Math.round(active.goalWords || 1));
+            const typedWords = Math.max(0, Math.round(active.typedWords || 0));
+            const elapsedProgress = Math.min(1, Math.max(0, typedWords / goalWords));
+            iconEl.empty();
+            iconEl.appendChild(buildTabTimerDiscSvg({
+                progress: elapsedProgress,
+                direction: 'clockwise',
+                paused: Boolean(active.pausedAt),
+            }));
+            this.tabTimerIconActive = true;
+            return;
+        }
         const countdown = Boolean(active.goalMinutes);
         const targetMinutes = active.goalMinutes ?? service.getDefaultGoalMinutes() ?? 120;
         const targetMs = Math.max(1, targetMinutes) * 60000;
@@ -737,6 +820,9 @@ export class RadialTimelineView extends ItemView {
     }
 
     private getSessionTitlePulseKey(active: ActiveWritingSession, elapsedMs: number): string {
+        if (this.sessionUsesWordRing(active)) {
+            return `typed-words-${Math.max(0, Math.round(active.typedWords || 0))}`;
+        }
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
         if (goalMs) {
             const remainingMs = Math.max(0, goalMs - this.getCountdownSegmentElapsedMs(active, elapsedMs));
@@ -855,6 +941,10 @@ export class RadialTimelineView extends ItemView {
         return this.plugin.getWritingSessionService().getDefaultGoalMinutes() ?? 120;
     }
 
+    private getDefaultSessionGoalWords(): number {
+        return this.plugin.getWritingSessionService().getDefaultGoalWords() ?? 1000;
+    }
+
     private getSessionGoalMinutesForToday(): number {
         const service = this.plugin.getWritingSessionService();
         const dailyProgress = service.getDailySessionProgress();
@@ -863,19 +953,46 @@ export class RadialTimelineView extends ItemView {
             : this.getDefaultSessionGoalMinutes();
     }
 
+    private getSessionGoalWordsForToday(): number {
+        const service = this.plugin.getWritingSessionService();
+        const dailyProgress = service.getDailySessionProgress();
+        return dailyProgress.remainingWords && dailyProgress.remainingWords > 0
+            ? dailyProgress.remainingWords
+            : this.getDefaultSessionGoalWords();
+    }
+
     private formatDailySessionProgress(): string {
         const dailyProgress = this.plugin.getWritingSessionService().getDailySessionProgress();
-        if (!dailyProgress.dailyTargetMinutes) {
-            return dailyProgress.minutesLogged > 0 ? `${dailyProgress.minutesLogged}m logged` : '';
+        const parts: string[] = [];
+        const usesTime = dailyProgress.targetMode === 'time' || dailyProgress.targetMode === 'both';
+        const usesWords = dailyProgress.targetMode === 'words' || dailyProgress.targetMode === 'both';
+        if (usesTime || dailyProgress.minutesLogged > 0) {
+            if (!dailyProgress.dailyTargetMinutes) {
+                if (dailyProgress.minutesLogged > 0) parts.push(`${dailyProgress.minutesLogged}m logged`);
+            } else if (dailyProgress.sessionsCompleted > 0 || dailyProgress.minutesLogged > 0) {
+                if (dailyProgress.remainingMinutes && dailyProgress.remainingMinutes > 0) {
+                    parts.push(`${dailyProgress.minutesLogged}m logged · ${dailyProgress.remainingMinutes}m left`);
+                } else if (dailyProgress.overGoalMinutes > 0) {
+                    parts.push(`${dailyProgress.minutesLogged}m logged · ${dailyProgress.overGoalMinutes}m over`);
+                } else {
+                    parts.push(`${dailyProgress.minutesLogged}m logged · time met`);
+                }
+            }
         }
-        if (dailyProgress.sessionsCompleted === 0 && dailyProgress.minutesLogged === 0) return '';
-        if (dailyProgress.remainingMinutes && dailyProgress.remainingMinutes > 0) {
-            return `${dailyProgress.minutesLogged}m logged · ${dailyProgress.remainingMinutes}m left`;
+        if (usesWords || dailyProgress.wordsLogged > 0) {
+            if (!dailyProgress.dailyTargetWords) {
+                if (dailyProgress.wordsLogged > 0) parts.push(`${dailyProgress.wordsLogged}w logged`);
+            } else if (dailyProgress.sessionsCompleted > 0 || dailyProgress.wordsLogged > 0) {
+                if (dailyProgress.remainingWords && dailyProgress.remainingWords > 0) {
+                    parts.push(`${dailyProgress.wordsLogged}w logged · ${dailyProgress.remainingWords}w left`);
+                } else if (dailyProgress.overGoalWords > 0) {
+                    parts.push(`${dailyProgress.wordsLogged}w logged · ${dailyProgress.overGoalWords}w over`);
+                } else {
+                    parts.push(`${dailyProgress.wordsLogged}w logged · words met`);
+                }
+            }
         }
-        if (dailyProgress.overGoalMinutes > 0) {
-            return `${dailyProgress.minutesLogged}m logged · ${dailyProgress.overGoalMinutes}m over`;
-        }
-        return `${dailyProgress.minutesLogged}m logged · goal met`;
+        return parts.join(' · ');
     }
 
     private createSessionButton(parent: HTMLElement, label: string, className: string, onClick: () => void | Promise<void>): HTMLButtonElement {
@@ -966,7 +1083,8 @@ export class RadialTimelineView extends ItemView {
 
     private renderIdleWritingSessionPanel(panel: HTMLElement): void {
         const service = this.plugin.getWritingSessionService();
-        const sessionGoal = this.getSessionGoalMinutesForToday();
+        const sessionGoalMinutes = this.getSessionGoalMinutesForToday();
+        const sessionGoalWords = this.getSessionGoalWordsForToday();
         const intro = panel.createDiv({ cls: 'ert-timeline-session-panel__idle-card' });
         const introIcon = intro.createDiv({ cls: 'ert-timeline-session-panel__idle-icon' });
         setIcon(introIcon, 'play');
@@ -974,13 +1092,14 @@ export class RadialTimelineView extends ItemView {
         const sessionSettings = service.getSettings();
         const defaultMode = sessionSettings.defaults.defaultMode;
         const defaultStage = this.resolveWritingSessionStageSelection(defaultMode, sessionSettings.defaults.defaultStage ?? 'auto');
+        const defaultTargetMode = service.getDefaultTargetMode();
         introText.createDiv({
             cls: 'ert-timeline-session-panel__idle-title',
             text: service.getDailySessionProgress().sessionsCompleted > 0 ? 'Resume today' : 'Ready to write',
         });
         const idleMeta = introText.createDiv({
             cls: 'ert-timeline-session-panel__idle-meta',
-            text: this.formatIdleWritingSessionMeta(sessionGoal, defaultMode, defaultStage),
+            text: this.formatIdleWritingSessionMeta(sessionGoalMinutes, sessionGoalWords, defaultTargetMode, defaultMode, defaultStage),
         });
         const dailyMetaText = this.formatDailySessionProgress();
         if (dailyMetaText) {
@@ -1007,13 +1126,10 @@ export class RadialTimelineView extends ItemView {
         modeSelect.value = defaultMode;
         this.isolateSessionPanelControl(modeSelect);
         let stageSelect: HTMLSelectElement;
-        const updateIdleMeta = () => {
-            idleMeta.setText(this.formatIdleWritingSessionMeta(
-                sessionGoal,
-                (modeSelect.value as WritingSessionMode) || 'drafting',
-                (stageSelect.value as WritingSessionStagePreference) || 'auto',
-            ));
-        };
+        let targetModeSelect: HTMLSelectElement;
+        let goalInput: HTMLInputElement;
+        let wordGoalInput: HTMLInputElement;
+        let updateIdleMeta = () => undefined;
         this.registerDomEvent(modeSelect, 'change', () => {
             const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
             if (mode === 'drafting') {
@@ -1055,7 +1171,22 @@ export class RadialTimelineView extends ItemView {
         });
 
         const sprintSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
-        this.createSessionSectionTitle(sprintSection, 'timer', 'Timer');
+        this.createSessionSectionTitle(sprintSection, 'target', 'Target');
+
+        const targetModeRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
+        targetModeRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Type' });
+        targetModeSelect = targetModeRow.createEl('select', { cls: 'ert-input ert-input--md ert-timeline-session-panel__select' });
+        const targetModeOptions: Array<{ value: WritingSessionTargetMode; label: string }> = [
+            { value: 'time', label: 'Time' },
+            { value: 'words', label: 'Words' },
+            { value: 'both', label: 'Words + time' },
+        ];
+        targetModeOptions.forEach(option => {
+            const opt = targetModeSelect.createEl('option', { text: option.label });
+            opt.value = option.value;
+        });
+        targetModeSelect.value = defaultTargetMode;
+        this.isolateSessionPanelControl(targetModeSelect);
 
         const countdownRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row ert-timeline-session-panel__row--toggle' });
         const countdownLabel = countdownRow.createEl('label', { cls: 'ert-timeline-session-panel__toggle-label' });
@@ -1067,15 +1198,15 @@ export class RadialTimelineView extends ItemView {
         this.writingSessionCountdownToggle = countdownToggle;
 
         const goalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
-        goalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Goal' });
+        goalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Minutes' });
         const goalControls = goalRow.createDiv({ cls: 'ert-timeline-session-panel__goal-controls' });
         const quickRow = goalControls.createDiv({ cls: 'ert-timeline-session-panel__quick ert-timeline-session-panel__quick--inline' });
-        const goalInput = goalControls.createEl('input', { cls: 'ert-input ert-input--xs ert-timeline-session-panel__number' });
+        goalInput = goalControls.createEl('input', { cls: 'ert-input ert-input--xs ert-timeline-session-panel__number' });
         goalInput.type = 'number';
         goalInput.min = '1';
         goalInput.max = '600';
         goalInput.step = '1';
-        goalInput.value = String(sessionGoal);
+        goalInput.value = String(sessionGoalMinutes);
         this.isolateSessionPanelControl(goalInput);
         this.writingSessionGoalInput = goalInput;
 
@@ -1090,18 +1221,71 @@ export class RadialTimelineView extends ItemView {
             this.isolateSessionPanelControl(presetButton);
         });
 
+        const wordGoalRow = sprintSection.createDiv({ cls: 'ert-timeline-session-panel__row' });
+        wordGoalRow.createDiv({ cls: 'ert-timeline-session-panel__label', text: 'Words' });
+        const wordGoalControls = wordGoalRow.createDiv({ cls: 'ert-timeline-session-panel__goal-controls' });
+        wordGoalInput = wordGoalControls.createEl('input', { cls: 'ert-input ert-input--sm ert-timeline-session-panel__number' });
+        wordGoalInput.type = 'number';
+        wordGoalInput.min = '1';
+        wordGoalInput.max = '50000';
+        wordGoalInput.step = '50';
+        wordGoalInput.value = String(sessionGoalWords);
+        this.isolateSessionPanelControl(wordGoalInput);
+
+        const syncTargetControls = () => {
+            const targetMode = (targetModeSelect.value as WritingSessionTargetMode) || 'time';
+            const usesTime = targetMode !== 'words';
+            const usesWords = targetMode !== 'time';
+            countdownRow.classList.toggle('ert-hidden', !usesTime);
+            goalRow.classList.toggle('ert-hidden', !usesTime);
+            wordGoalRow.classList.toggle('ert-hidden', !usesWords);
+            goalControls.classList.toggle('is-countdown-disabled', usesTime && !countdownToggle.checked);
+            updateIdleMeta();
+        };
+
+        updateIdleMeta = () => {
+            const parsedMinutes = Number(goalInput.value);
+            const parsedWords = Number(wordGoalInput.value);
+            idleMeta.setText(this.formatIdleWritingSessionMeta(
+                Number.isFinite(parsedMinutes) && parsedMinutes > 0 ? Math.round(parsedMinutes) : sessionGoalMinutes,
+                Number.isFinite(parsedWords) && parsedWords > 0 ? Math.round(parsedWords) : sessionGoalWords,
+                (targetModeSelect.value as WritingSessionTargetMode) || 'time',
+                (modeSelect.value as WritingSessionMode) || 'drafting',
+                (stageSelect.value as WritingSessionStagePreference) || 'auto',
+            ));
+        };
+
+        this.registerDomEvent(targetModeSelect, 'change', () => {
+            syncTargetControls();
+            void service.setDefaultTargetMode((targetModeSelect.value as WritingSessionTargetMode) || 'time').catch(error => {
+                new Notice(error instanceof Error ? error.message : 'Could not save writing session target.');
+            });
+        });
+        this.registerDomEvent(goalInput, 'change', updateIdleMeta);
+        this.registerDomEvent(wordGoalInput, 'change', updateIdleMeta);
+
         const startSession = async () => {
             const mode = (modeSelect.value as WritingSessionMode) || 'drafting';
             const stage = (stageSelect.value as WritingSessionStagePreference) || 'auto';
+            const targetMode = (targetModeSelect.value as WritingSessionTargetMode) || 'time';
             const parsedGoal = Number(goalInput.value);
-            const goalMinutes = countdownToggle.checked && Number.isFinite(parsedGoal) && parsedGoal > 0
+            const parsedWordGoal = Number(wordGoalInput.value);
+            const goalMinutes = targetMode !== 'words' && countdownToggle.checked && Number.isFinite(parsedGoal) && parsedGoal > 0
                 ? parsedGoal
+                : undefined;
+            const goalWords = targetMode !== 'time' && Number.isFinite(parsedWordGoal) && parsedWordGoal > 0
+                ? parsedWordGoal
                 : undefined;
             try {
                 await service.setDefaultMode(mode);
                 await service.setDefaultStage(stage);
-                const session = await service.start({ mode, stage, goalMinutes });
-                new Notice(`Started ${this.formatWritingSessionMode(session.mode)} session${session.goalMinutes ? ` for ${session.goalMinutes} min` : ''}.`);
+                await service.setDefaultTargetMode(targetMode);
+                const session = await service.start({ mode, stage, targetMode, goalMinutes, goalWords });
+                const targets = [
+                    session.goalWords ? this.formatWordCount(session.goalWords) : undefined,
+                    session.goalMinutes ? `${session.goalMinutes} min` : undefined,
+                ].filter(Boolean).join(' + ');
+                new Notice(`Started ${this.formatWritingSessionMode(session.mode)} session${targets ? ` for ${targets}` : ''}.`);
                 this.refreshWritingSessionControl();
             } catch (error) {
                 new Notice(error instanceof Error ? error.message : 'Could not start writing session.');
@@ -1111,9 +1295,16 @@ export class RadialTimelineView extends ItemView {
         this.createSessionIconButton(goalControls, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', startSession);
 
         countdownToggle.onchange = () => {
-            goalControls.classList.toggle('is-countdown-disabled', !countdownToggle.checked);
+            syncTargetControls();
         };
+        syncTargetControls();
         this.registerDomEvent(goalInput, 'keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            event.stopPropagation();
+            void startSession();
+        });
+        this.registerDomEvent(wordGoalInput, 'keydown', (event: KeyboardEvent) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
             event.stopPropagation();
@@ -1131,7 +1322,7 @@ export class RadialTimelineView extends ItemView {
         const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
         const clockText = statusDisplay.tone === 'complete'
             ? this.formatCompletedSessionSummary(active, elapsedMs)
-            : this.formatSessionClockHms(remainingMs ?? elapsedMs);
+            : this.getActiveWritingSessionPanelClockText(active, elapsedMs);
         panel.dataset.sessionRenderKey = this.getActiveWritingSessionPanelRenderKey(active, elapsedMs);
 
         const clock = panel.createDiv({ cls: `ert-timeline-session-panel__clock is-${statusDisplay.tone}` });
@@ -1141,8 +1332,11 @@ export class RadialTimelineView extends ItemView {
             const meta = panel.createDiv({ cls: 'ert-timeline-session-panel__meta' });
             meta.setText([
                 this.formatWritingSessionMode(active.mode),
+                this.formatWritingSessionTargetMode(active.targetMode ?? 'time'),
                 active.stage,
                 active.bookTitle,
+                this.sessionUsesWordRing(active) ? this.formatSessionClockHms(elapsedMs) : undefined,
+                this.sessionUsesWordRing(active) && active.goalMinutes ? `${active.goalMinutes} min timer` : undefined,
             ].filter(Boolean).join(' · '));
         }
 
@@ -1177,7 +1371,11 @@ export class RadialTimelineView extends ItemView {
         }
         this.createSessionIconButton(actions, 'save', 'Save', `ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action${statusDisplay.tone === 'complete' ? ' is-save-ready' : ''}`, async () => {
             const sceneSuggestions = await service.collectTouchedSceneSuggestions(active).catch(() => []);
-            new WritingSessionCompletionModal(this.app, active, service.getActiveElapsedMs(), sceneSuggestions, async (completion) => {
+            const netWordDelta = await service.getActiveNetWordDelta(active).catch(() => undefined);
+            new WritingSessionCompletionModal(this.app, active, service.getActiveElapsedMs(), sceneSuggestions, {
+                typedWords: active.typedWords,
+                netWordDelta,
+            }, async (completion) => {
                 try {
                     const record = await service.stop(completion);
                     new Notice(`Saved ${this.formatWritingSessionMode(record.mode)} session (${this.formatSessionClock(record.elapsedMs)}).`);
@@ -1204,6 +1402,8 @@ export class RadialTimelineView extends ItemView {
             active.id,
             active.pausedAt ? 'paused' : 'running',
             statusDisplay.tone,
+            active.targetMode ?? 'time',
+            active.goalWords ?? 0,
             active.goalMinutes ? 'countdown' : 'elapsed',
             active.countdownSegmentStartElapsedMs ?? 0,
             active.mode,
@@ -1213,6 +1413,11 @@ export class RadialTimelineView extends ItemView {
     }
 
     private getActiveWritingSessionPanelClockText(active: ActiveWritingSession, elapsedMs: number): string {
+        if (this.sessionUsesWordRing(active)) {
+            const typedWords = Math.max(0, Math.round(active.typedWords || 0));
+            const goalWords = Math.max(1, Math.round(active.goalWords || 1));
+            return `${typedWords} / ${goalWords} words`;
+        }
         const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
         const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs);
         const remainingMs = goalMs ? Math.max(0, goalMs - countdownElapsedMs) : undefined;
@@ -1275,11 +1480,15 @@ export class RadialTimelineView extends ItemView {
     private getSessionRingRenderKey(active: ActiveWritingSession, elapsedMs: number, targetMinutes: number): string {
         const targetMs = Math.max(1, targetMinutes) * 60000;
         const clampedElapsedMs = Math.min(targetMs, Math.max(0, elapsedMs));
-        const timeKey = `elapsed-second-${Math.floor(clampedElapsedMs / 1000)}`;
+        const timeKey = this.sessionUsesWordRing(active)
+            ? `typed-words-${Math.min(Math.round(active.goalWords || 0), Math.max(0, Math.round(active.typedWords || 0)))}`
+            : `elapsed-second-${Math.floor(clampedElapsedMs / 1000)}`;
         return [
             active.id,
             timeKey,
             active.pausedAt ? 'paused' : 'running',
+            active.targetMode ?? 'time',
+            active.goalWords ?? 0,
             active.goalMinutes ? 'countdown' : 'elapsed',
             active.countdownSegmentStartElapsedMs ?? 0,
             targetMinutes,
@@ -1302,6 +1511,7 @@ export class RadialTimelineView extends ItemView {
         const service = this.plugin.getWritingSessionService();
         const active = service.getActiveSession();
         const elapsedMs = active ? service.getActiveElapsedMs() : 0;
+        const usesWordRing = active ? this.sessionUsesWordRing(active) : false;
         const targetMinutes = active?.goalMinutes ?? service.getDefaultGoalMinutes() ?? 120;
         const timerElapsedMs = active?.goalMinutes
             ? this.getCountdownSegmentElapsedMs(active, elapsedMs)
@@ -1320,16 +1530,26 @@ export class RadialTimelineView extends ItemView {
         if (this.writingSessionRingRenderKey === renderKey && hasRenderedRing && !options.pulseColor) return;
         svg.querySelectorAll('.ert-timeline-session-ring-layer, .ert-timeline-session-ring').forEach(el => el.remove());
         const ringElapsedMs = this.getSessionRingElapsedMs(timerElapsedMs, targetMinutes);
-        const state = buildSessionTimerRingState({
+        const commonStateParams = {
             progressRadius: lineInnerRadius + SESSION_TIMER_RING_PROGRESS_RADIUS_OFFSET_ANCHOR,
             progressRingWidth: SESSION_TIMER_RING_PROGRESS_WIDTH_ANCHOR,
             ringGap: SESSION_TIMER_RING_GAP,
             sessionRingWidth: SESSION_TIMER_RING_WIDTH,
-            elapsedMs: ringElapsedMs,
-            targetMinutes,
-            countdown: Boolean(active?.goalMinutes),
             paused: !!active?.pausedAt,
-        });
+        };
+        const state = usesWordRing
+            ? buildSessionTimerRingState({
+                ...commonStateParams,
+                progressValue: Math.max(0, Math.round(active?.typedWords || 0)),
+                targetValue: Math.max(1, Math.round(active?.goalWords || 1)),
+                countdown: false,
+            })
+            : buildSessionTimerRingState({
+                ...commonStateParams,
+                elapsedMs: ringElapsedMs,
+                targetMinutes,
+                countdown: Boolean(active?.goalMinutes),
+            });
         const ringSvg = renderSessionTimerRingLayer(state);
         if (!ringSvg.trim()) return;
 

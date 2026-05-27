@@ -398,7 +398,9 @@ export interface TranslationKeys {
         goalsSessions: {
             header: { name: string; desc: string; };
             draftingWpm: { name: string; desc: string; };
+            targetMode: { name: string; desc: string; time: string; words: string; both: string; };
             dailyMinutes: { name: string; desc: string; };
+            dailyWords: { name: string; desc: string; };
             weeklyGoalDays: { name: string; desc: string; };
         };
         inquiry: {
@@ -2218,9 +2220,20 @@ export const en: TranslationKeys = {
                 name: 'Average drafting pace',
                 desc: 'Optional words per minute for new drafting. Used for writing-time estimates and completion planning.',
             },
+            targetMode: {
+                name: 'Daily target type',
+                desc: 'Choose whether the session control and writing stats treat the daily target as time, typed words, or both.',
+                time: 'Time',
+                words: 'Words',
+                both: 'Words + time',
+            },
             dailyMinutes: {
-                name: 'Daily session target',
+                name: 'Daily time target',
                 desc: 'Optional minutes you want to write each day. Used by the title-bar timer, count ring, daily goal stats, and planning estimates.',
+            },
+            dailyWords: {
+                name: 'Daily word target',
+                desc: 'Optional words you want to type each day. Word-mode sessions use this for the live count ring and daily goal stats.',
             },
             weeklyGoalDays: {
                 name: 'Weekly writing goal',

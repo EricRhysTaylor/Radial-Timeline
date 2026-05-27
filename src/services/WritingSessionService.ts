@@ -7,6 +7,7 @@ import type {
     WritingSessionRecord,
     WritingSessionStage,
     WritingSessionStagePreference,
+    WritingSessionTargetMode,
     WritingSessionsSettings
 } from '../types/settings';
 import { STAGE_ORDER } from '../utils/constants';
@@ -14,6 +15,7 @@ import { getActiveBook } from '../utils/books';
 import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 import { normalizeStatus } from '../utils/text';
+import { countWords, extractBodyText } from '../utils/manuscript';
 
 const MAX_SESSION_RECORDS = 500;
 
@@ -23,7 +25,7 @@ const MAX_SESSION_RECORDS = 500;
  * onto settings and the portable vault export so the author's data stays
  * forward-readable even after they stop using this plugin.
  */
-export const WRITING_SESSIONS_SCHEMA_VERSION = 2;
+export const WRITING_SESSIONS_SCHEMA_VERSION = 3;
 
 /**
  * If a running session goes this long without a heartbeat it is assumed the
@@ -49,6 +51,8 @@ type Stage = typeof STAGE_ORDER[number];
 export interface WritingSessionCompletionInput {
     elapsedMs?: number;
     wordsAdded?: number;
+    typedWords?: number;
+    netWordDelta?: number;
     scenesCompleted?: number;
     scenePaths?: string[];
     pagesEdited?: number;
@@ -59,6 +63,8 @@ export interface WritingSessionStartOptions {
     mode?: WritingSessionMode;
     stage?: WritingSessionStagePreference;
     goalMinutes?: number;
+    goalWords?: number;
+    targetMode?: WritingSessionTargetMode;
 }
 
 export interface WritingSessionSceneSuggestion {
@@ -94,18 +100,25 @@ export interface DailyWritingStats {
 
 export interface DailyWritingSessionProgress {
     date: string;
+    targetMode: WritingSessionTargetMode;
     dailyTargetMinutes?: number;
+    dailyTargetWords?: number;
     minutesLogged: number;
+    wordsLogged: number;
     sessionsCompleted: number;
     remainingMinutes?: number;
+    remainingWords?: number;
     overGoalMinutes: number;
+    overGoalWords: number;
 }
 
 export interface WritingRangeStats {
     startDate: string;
     endDate: string;
     days: number;
+    targetMode: WritingSessionTargetMode;
     dailyTargetMinutes?: number;
+    dailyTargetWords?: number;
     minutesLogged: number;
     sessionsCompleted: number;
     wordsDrafted: number;
@@ -210,6 +223,10 @@ function coerceStagePreference(stage: WritingSessionStagePreference | undefined)
     return STAGE_ORDER.find(candidate => candidate === stage) ?? 'auto';
 }
 
+function coerceTargetMode(mode: WritingSessionTargetMode | undefined): WritingSessionTargetMode {
+    return mode === 'words' || mode === 'both' ? mode : 'time';
+}
+
 function formatSceneStatus(status: TimelineItem['status']): string | undefined {
     if (Array.isArray(status)) return status.filter(Boolean).join(', ') || undefined;
     return status?.toString().trim() || undefined;
@@ -270,18 +287,29 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
         : [];
     const defaultMode = coerceMode(settings?.defaults?.defaultMode);
     const defaultStage = coerceStagePreference(settings?.defaults?.defaultStage);
+    const targetMode = coerceTargetMode(settings?.defaults?.targetMode);
     const weeklyGoalDays = coerceWeeklyGoalDays(settings?.defaults?.weeklyGoalDays);
     const writingStatsOpen = settings?.defaults?.writingStatsOpen === true;
     const active = settings?.active;
     return {
         schemaVersion: WRITING_SESSIONS_SCHEMA_VERSION,
-        defaults: { defaultMode, defaultStage, weeklyGoalDays, writingStatsOpen },
+        defaults: { defaultMode, defaultStage, targetMode, weeklyGoalDays, writingStatsOpen },
         ...(active ? {
             active: {
                 ...active,
                 mode: coerceMode(active.mode),
                 stage: coerceStage(active.stage),
                 stagePreference: coerceStagePreference(active.stagePreference),
+                targetMode: coerceTargetMode(active.targetMode),
+                goalMinutes: positiveMinutes(active.goalMinutes),
+                goalWords: positiveInteger(active.goalWords),
+                typedWords: Math.max(0, Math.round(active.typedWords || 0)),
+                wordSnapshot: active.wordSnapshot && Number.isFinite(active.wordSnapshot.startedWords) && Array.isArray(active.wordSnapshot.paths)
+                    ? {
+                        startedWords: Math.max(0, Math.round(active.wordSnapshot.startedWords || 0)),
+                        paths: uniquePaths(active.wordSnapshot.paths),
+                    }
+                    : undefined,
                 countdownSegmentStartElapsedMs: Number.isFinite(active.countdownSegmentStartElapsedMs)
                     ? Math.max(0, Math.round(active.countdownSegmentStartElapsedMs ?? 0))
                     : undefined,
@@ -292,6 +320,9 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
             mode: coerceMode(record.mode),
             stage: coerceStage(record.stage),
             stagePreference: coerceStagePreference(record.stagePreference),
+            wordsAdded: positiveInteger(record.wordsAdded),
+            typedWords: positiveInteger(record.typedWords),
+            netWordDelta: Number.isFinite(record.netWordDelta) ? Math.round(record.netWordDelta ?? 0) : undefined,
             scenePaths: uniquePaths(record.scenePaths ?? []),
         })),
     };
@@ -361,31 +392,50 @@ export function buildDailyWritingStats(params: {
 export function buildDailyWritingSessionProgress(params: {
     date: string;
     sessions: WritingSessionRecord[];
+    targetMode?: WritingSessionTargetMode;
     dailyTargetMinutes?: number;
+    dailyTargetWords?: number;
 }): DailyWritingSessionProgress {
     let minutesLogged = 0;
+    let wordsLogged = 0;
     let sessionsCompleted = 0;
     params.sessions.forEach(session => {
         if (dateKey(session.endedAt) !== params.date) return;
         sessionsCompleted += 1;
         minutesLogged += Math.round(Math.max(0, session.elapsedMs || 0) / 60000);
+        if (coerceMode(session.mode) === 'drafting') {
+            wordsLogged += positiveInteger(session.wordsAdded) ?? 0;
+        }
     });
 
+    const targetMode = coerceTargetMode(params.targetMode);
     const dailyTargetMinutes = positiveMinutes(params.dailyTargetMinutes);
+    const dailyTargetWords = positiveInteger(params.dailyTargetWords);
     const remainingMinutes = dailyTargetMinutes
         ? Math.max(0, dailyTargetMinutes - minutesLogged)
+        : undefined;
+    const remainingWords = dailyTargetWords
+        ? Math.max(0, dailyTargetWords - wordsLogged)
         : undefined;
     const overGoalMinutes = dailyTargetMinutes
         ? Math.max(0, minutesLogged - dailyTargetMinutes)
         : 0;
+    const overGoalWords = dailyTargetWords
+        ? Math.max(0, wordsLogged - dailyTargetWords)
+        : 0;
 
     return {
         date: params.date,
+        targetMode,
         dailyTargetMinutes,
+        dailyTargetWords,
         minutesLogged,
+        wordsLogged,
         sessionsCompleted,
         remainingMinutes,
+        remainingWords,
         overGoalMinutes,
+        overGoalWords,
     };
 }
 
@@ -394,7 +444,9 @@ export function buildWritingRangeStats(params: {
     days: number;
     sessions: WritingSessionRecord[];
     scenes: TimelineItem[];
+    targetMode?: WritingSessionTargetMode;
     dailyTargetMinutes?: number;
+    dailyTargetWords?: number;
 }): WritingRangeStats {
     const safeDays = Math.max(1, Math.round(params.days));
     const { startDate, dates } = dateRangeSet(params.endDate, safeDays);
@@ -430,17 +482,31 @@ export function buildWritingRangeStats(params: {
         else revisionScenesCompleted += 1;
     });
 
+    const targetMode = coerceTargetMode(params.targetMode);
     const dailyTargetMinutes = positiveMinutes(params.dailyTargetMinutes);
+    const dailyTargetWords = positiveInteger(params.dailyTargetWords);
     const daysWithSessions = [...minutesByDate.values()].filter(minutes => minutes > 0).length;
-    const daysGoalMet = dailyTargetMinutes
-        ? [...minutesByDate.values()].filter(minutes => minutes >= dailyTargetMinutes).length
-        : 0;
+    const wordsByDate = new Map<string, number>();
+    params.sessions.forEach(session => {
+        const sessionDate = dateKey(session.endedAt);
+        if (!dates.has(sessionDate) || coerceMode(session.mode) !== 'drafting') return;
+        wordsByDate.set(sessionDate, (wordsByDate.get(sessionDate) ?? 0) + (positiveInteger(session.wordsAdded) ?? 0));
+    });
+    const daysGoalMet = [...dates].filter(date => {
+        const minuteMet = dailyTargetMinutes ? (minutesByDate.get(date) ?? 0) >= dailyTargetMinutes : true;
+        const wordMet = dailyTargetWords ? (wordsByDate.get(date) ?? 0) >= dailyTargetWords : true;
+        if (targetMode === 'time') return dailyTargetMinutes ? minuteMet : false;
+        if (targetMode === 'words') return dailyTargetWords ? wordMet : false;
+        return Boolean(dailyTargetMinutes || dailyTargetWords) && minuteMet && wordMet;
+    }).length;
 
     return {
         startDate,
         endDate: params.endDate,
         days: safeDays,
+        targetMode,
         dailyTargetMinutes,
+        dailyTargetWords,
         minutesLogged,
         sessionsCompleted,
         wordsDrafted,
@@ -511,6 +577,12 @@ export class WritingSessionService {
         await this.plugin.saveSettings();
     }
 
+    registerTypedWords(count: number): void {
+        const active = this.getActiveSession();
+        if (!active || active.pausedAt || count <= 0) return;
+        active.typedWords = Math.max(0, Math.round(active.typedWords || 0)) + Math.round(count);
+    }
+
     getActiveSession(): ActiveWritingSession | undefined {
         return this.getSettings().active;
     }
@@ -524,6 +596,14 @@ export class WritingSessionService {
         return positiveMinutes(getRuntimeSettings(this.plugin.settings).sessionPlanning?.dailyMinutes);
     }
 
+    getDefaultGoalWords(): number | undefined {
+        return positiveInteger(getRuntimeSettings(this.plugin.settings).sessionPlanning?.dailyWords);
+    }
+
+    getDefaultTargetMode(): WritingSessionTargetMode {
+        return coerceTargetMode(this.getSettings().defaults.targetMode);
+    }
+
     async setDefaultMode(mode: WritingSessionMode): Promise<void> {
         const settings = this.getSettings();
         settings.defaults.defaultMode = coerceMode(mode);
@@ -533,6 +613,12 @@ export class WritingSessionService {
     async setDefaultStage(stage: WritingSessionStagePreference): Promise<void> {
         const settings = this.getSettings();
         settings.defaults.defaultStage = coerceStagePreference(stage);
+        await this.plugin.saveSettings();
+    }
+
+    async setDefaultTargetMode(mode: WritingSessionTargetMode): Promise<void> {
+        const settings = this.getSettings();
+        settings.defaults.targetMode = coerceTargetMode(mode);
         await this.plugin.saveSettings();
     }
 
@@ -557,6 +643,42 @@ export class WritingSessionService {
         const file = this.plugin.app?.vault?.getAbstractFileByPath?.(path) as { stat?: { mtime?: number } } | null | undefined;
         const mtime = file?.stat?.mtime;
         return Number.isFinite(mtime) ? mtime : undefined;
+    }
+
+    private async readSceneWordCount(path: string): Promise<number> {
+        const vault = this.plugin.app?.vault;
+        const file = vault?.getAbstractFileByPath?.(path);
+        if (!(file instanceof TFile)) return 0;
+        try {
+            return countWords(extractBodyText(await vault.read(file)));
+        } catch {
+            return 0;
+        }
+    }
+
+    private async captureOpenSceneWordSnapshot(): Promise<ActiveWritingSession['wordSnapshot'] | undefined> {
+        const getSceneData = this.plugin.getSceneData;
+        if (typeof getSceneData !== 'function') return undefined;
+        const scenes: TimelineItem[] = await getSceneData.call(this.plugin).catch(() => []);
+        const scenePaths = new Set(scenes
+            .filter(scene => Boolean(scene.path) && this.isSceneInActiveBook(scene))
+            .map(scene => scene.path as string));
+        const paths = uniquePaths(this.getOpenScenePaths().filter(path => scenePaths.has(path)));
+        if (paths.length === 0) return undefined;
+        let startedWords = 0;
+        for (const path of paths) {
+            startedWords += await this.readSceneWordCount(path);
+        }
+        return { startedWords, paths };
+    }
+
+    async getActiveNetWordDelta(active: ActiveWritingSession | undefined = this.getActiveSession()): Promise<number | undefined> {
+        if (!active?.wordSnapshot?.paths.length) return undefined;
+        let currentWords = 0;
+        for (const path of active.wordSnapshot.paths) {
+            currentWords += await this.readSceneWordCount(path);
+        }
+        return currentWords - active.wordSnapshot.startedWords;
     }
 
     private isSceneInActiveBook(scene: TimelineItem): boolean {
@@ -607,6 +729,9 @@ export class WritingSessionService {
         const startedAt = nowIso();
         const stagePreference = coerceStagePreference(startOptions.stage ?? settings.defaults.defaultStage);
         const stage = await this.resolveSessionStage(stagePreference);
+        const targetMode = coerceTargetMode(startOptions.targetMode ?? settings.defaults.targetMode);
+        const goalMinutes = positiveMinutes(startOptions.goalMinutes);
+        const goalWords = positiveInteger(startOptions.goalWords);
         const active: ActiveWritingSession = {
             id: generateSessionId(),
             bookId: book?.id,
@@ -618,8 +743,12 @@ export class WritingSessionService {
             lastResumedAt: startedAt,
             lastSeenAt: startedAt,
             elapsedMsBeforePause: 0,
-            goalMinutes: positiveMinutes(startOptions.goalMinutes),
-            countdownSegmentStartElapsedMs: positiveMinutes(startOptions.goalMinutes) ? 0 : undefined,
+            targetMode,
+            goalMinutes,
+            goalWords,
+            typedWords: 0,
+            wordSnapshot: await this.captureOpenSceneWordSnapshot(),
+            countdownSegmentStartElapsedMs: goalMinutes ? 0 : undefined,
         };
         settings.active = active;
         this.lastHeartbeatPersistMs = Date.now();
@@ -685,6 +814,8 @@ export class WritingSessionService {
             endedAt: endedAt.toISOString(),
             elapsedMs: Math.max(0, Math.round(completion.elapsedMs ?? activeElapsedMs(active, endedAt))),
             wordsAdded: positiveInteger(completion.wordsAdded),
+            typedWords: positiveInteger(completion.typedWords ?? active.typedWords),
+            netWordDelta: Number.isFinite(completion.netWordDelta) ? Math.round(completion.netWordDelta ?? 0) : undefined,
             scenesCompleted: positiveInteger(completion.scenesCompleted),
             scenePaths: uniquePaths(completion.scenePaths ?? []),
             pagesEdited: positiveInteger(completion.pagesEdited),
@@ -807,7 +938,9 @@ export class WritingSessionService {
         return buildDailyWritingSessionProgress({
             date,
             sessions: this.getSettings().records,
+            targetMode: this.getDefaultTargetMode(),
             dailyTargetMinutes: this.getDefaultGoalMinutes(),
+            dailyTargetWords: this.getDefaultGoalWords(),
         });
     }
 
@@ -818,7 +951,9 @@ export class WritingSessionService {
             days,
             sessions: this.getSettings().records,
             scenes,
+            targetMode: this.getDefaultTargetMode(),
             dailyTargetMinutes: this.getDefaultGoalMinutes(),
+            dailyTargetWords: this.getDefaultGoalWords(),
         });
     }
 }

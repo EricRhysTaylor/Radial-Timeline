@@ -298,16 +298,19 @@ export interface RuntimeRateProfile {
         recordingWpm?: number;
         editingWpm?: number;
         dailyMinutes?: number;
+        dailyWords?: number;
     };
 }
 
 export type WritingSessionMode = 'drafting' | 'revising' | 'editing' | 'planning';
 export type WritingSessionStage = 'Zero' | 'Author' | 'House' | 'Press' | 'Mixed';
 export type WritingSessionStagePreference = WritingSessionStage | 'auto';
+export type WritingSessionTargetMode = 'time' | 'words' | 'both';
 
 export interface WritingSessionDefaults {
     defaultMode: WritingSessionMode;
     defaultStage?: WritingSessionStagePreference;
+    targetMode?: WritingSessionTargetMode;
     weeklyGoalDays?: number;
     writingStatsOpen?: boolean;
 }
@@ -337,6 +340,13 @@ export interface ActiveWritingSession {
      * this point instead of counting the dead time.
      */
     lastSeenAt?: string;
+    targetMode?: WritingSessionTargetMode;
+    goalWords?: number;
+    typedWords?: number;
+    wordSnapshot?: {
+        startedWords: number;
+        paths: string[];
+    };
 }
 
 export interface WritingSessionRecord {
@@ -350,6 +360,8 @@ export interface WritingSessionRecord {
     endedAt: string;
     elapsedMs: number;
     wordsAdded?: number;
+    typedWords?: number;
+    netWordDelta?: number;
     scenesCompleted?: number;
     scenePaths?: string[];
     pagesEdited?: number;

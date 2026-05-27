@@ -226,6 +226,41 @@ describe('WritingSessionService pure helpers', () => {
         expect(stats.overGoalMinutes).toBe(4);
     });
 
+    it('tracks daily word targets from drafting session records', () => {
+        const sessions: WritingSessionRecord[] = [
+            {
+                id: 'session-1',
+                mode: 'drafting',
+                startedAt: '2026-05-12T16:00:00.000Z',
+                endedAt: '2026-05-12T16:30:00.000Z',
+                elapsedMs: 30 * 60 * 1000,
+                wordsAdded: 800,
+                source: 'timer',
+            },
+            {
+                id: 'session-2',
+                mode: 'editing',
+                startedAt: '2026-05-12T17:00:00.000Z',
+                endedAt: '2026-05-12T17:30:00.000Z',
+                elapsedMs: 30 * 60 * 1000,
+                wordsAdded: 500,
+                source: 'timer',
+            },
+        ];
+
+        const stats = buildDailyWritingSessionProgress({
+            date: '2026-05-12',
+            sessions,
+            targetMode: 'words',
+            dailyTargetWords: 1000,
+        });
+
+        expect(stats.targetMode).toBe('words');
+        expect(stats.wordsLogged).toBe(800);
+        expect(stats.remainingWords).toBe(200);
+        expect(stats.overGoalWords).toBe(0);
+    });
+
     it('normalizes missing or malformed writing session settings', () => {
         const normalized = normalizeWritingSessionsSettings({
             defaults: { defaultMode: 'drafting' },
@@ -240,6 +275,7 @@ describe('WritingSessionService pure helpers', () => {
         });
 
         expect(normalized.defaults.defaultMode).toBe('drafting');
+        expect(normalized.defaults.targetMode).toBe('time');
         expect(normalized.defaults.weeklyGoalDays).toBe(7);
         expect(normalized.defaults.writingStatsOpen).toBe(false);
         expect(normalized.records).toEqual([]);
@@ -404,6 +440,43 @@ describe('WritingSessionService pure helpers', () => {
         expect(plugin.settings.writingSessions.defaults.weeklyGoalDays).toBe(5);
     });
 
+    it('starts word target sessions and only increments typed words additively', async () => {
+        const plugin = {
+            settings: {
+                writingSessions: {
+                    defaults: { defaultMode: 'drafting', targetMode: 'words' },
+                    records: [],
+                },
+                runtimeRateProfiles: [{
+                    id: 'default',
+                    label: 'Default',
+                    contentType: 'novel',
+                    dialogueWpm: 160,
+                    actionWpm: 100,
+                    narrationWpm: 150,
+                    beatSeconds: 2,
+                    pauseSeconds: 3,
+                    longPauseSeconds: 5,
+                    momentSeconds: 4,
+                    silenceSeconds: 5,
+                    sessionPlanning: { dailyWords: 750 },
+                }],
+                defaultRuntimeProfileId: 'default',
+            },
+            saveSettings: async () => undefined,
+        };
+        const service = new WritingSessionService(plugin as any);
+
+        expect(service.getDefaultGoalWords()).toBe(750);
+        const session = await service.start({ mode: 'drafting', targetMode: 'words', goalWords: 500 });
+        service.registerTypedWords(3);
+        service.registerTypedWords(-2);
+
+        expect(session.targetMode).toBe('words');
+        expect(session.goalWords).toBe(500);
+        expect(plugin.settings.writingSessions.active?.typedWords).toBe(3);
+    });
+
     it('saves completion details from the stop confirmation modal', async () => {
         const plugin = {
             settings: {
@@ -422,6 +495,8 @@ describe('WritingSessionService pure helpers', () => {
         const record = await service.stop({
             elapsedMs: 42 * 60000,
             wordsAdded: 1234,
+            typedWords: 1300,
+            netWordDelta: -66,
             scenesCompleted: 2,
             pagesEdited: 4,
             note: 'Worked on the opening.',
@@ -430,6 +505,8 @@ describe('WritingSessionService pure helpers', () => {
 
         expect(record.elapsedMs).toBe(42 * 60000);
         expect(record.wordsAdded).toBe(1234);
+        expect(record.typedWords).toBe(1300);
+        expect(record.netWordDelta).toBe(-66);
         expect(record.scenesCompleted).toBe(2);
         expect(record.pagesEdited).toBe(4);
         expect(record.note).toBe('Worked on the opening.');

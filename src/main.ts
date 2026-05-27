@@ -5,6 +5,7 @@
  */
 
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, addIcon } from "obsidian";
+import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { TimelineService } from './services/TimelineService';
 import { SceneDataService } from './services/SceneDataService';
 import { escapeRegExp } from './utils/regex';
@@ -88,6 +89,23 @@ function detectPlaintextCredentialPattern(serialized: string): string | null {
         }
     }
     return null;
+}
+
+const WORD_START_PATTERN = /[\p{L}\p{N}]/u;
+
+function isWordCharacter(value: string): boolean {
+    return WORD_START_PATTERN.test(value);
+}
+
+function countTypedWordStarts(previousChar: string, inserted: string): number {
+    let count = 0;
+    let previousIsWord = isWordCharacter(previousChar);
+    for (const char of inserted) {
+        const currentIsWord = isWordCharacter(char);
+        if (currentIsWord && !previousIsWord) count += 1;
+        previousIsWord = currentIsWord;
+    }
+    return count;
 }
 
 
@@ -217,6 +235,24 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         this.settings.gossamerRunFilter = next;
         return true;
+    }
+
+    private handleWritingSessionEditorUpdate(update: ViewUpdate): void {
+        if (!this.writingSessionService?.getActiveSession()) return;
+        let typedWords = 0;
+        for (const transaction of update.transactions) {
+            if (!transaction.docChanged) continue;
+            if (!transaction.isUserEvent('input.type') && !transaction.isUserEvent('input.type.compose')) continue;
+            transaction.changes.iterChanges((fromA, _toA, _fromB, _toB, inserted) => {
+                const insertedText = inserted.toString();
+                if (!insertedText.trim()) return;
+                const previousChar = fromA > 0 ? transaction.startState.doc.sliceString(fromA - 1, fromA) : '';
+                typedWords += countTypedWordStarts(previousChar, insertedText);
+            }, true);
+        }
+        if (typedWords > 0) {
+            this.writingSessionService.registerTypedWords(typedWords);
+        }
     }
 
     public async saveGossamerRunFilterState(): Promise<void> {
@@ -440,6 +476,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Normalize session settings once and reconcile any session abandoned
         // by a previous crash/quit before the UI starts ticking.
         await this.writingSessionService.hydrate();
+        this.registerEditorExtension(EditorView.updateListener.of((update) => this.handleWritingSessionEditorUpdate(update)));
         this.publishingValidationService = new PublishingValidationService(this);
         this.timelineAuditAiService = new TimelineAuditAiService(this);
         

@@ -34,6 +34,7 @@ export interface RuntimeSettings {
         recordingWpm?: number;
         editingWpm?: number;
         dailyMinutes?: number;
+        dailyWords?: number;
     };
 }
 
@@ -345,4 +346,3 @@ export function formatRuntimeValue(totalSeconds: number): string {
     
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
-

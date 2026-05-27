@@ -41,6 +41,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             recordingWpm: undefined,
             editingWpm: undefined,
             dailyMinutes: undefined,
+            dailyWords: undefined,
         },
     });
 

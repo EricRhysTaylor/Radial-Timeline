@@ -18,13 +18,16 @@ export function buildSessionTimerRingState(params: {
     progressRingWidth: number;
     ringGap: number;
     sessionRingWidth: number;
-    elapsedMs: number;
-    targetMinutes: number;
+    elapsedMs?: number;
+    targetMinutes?: number;
+    progressValue?: number;
+    targetValue?: number;
     countdown?: boolean;
     paused?: boolean;
 }): SessionTimerRingState | null {
-    const targetMs = Math.max(1, params.targetMinutes) * 60000;
-    const elapsedProgress = clamp(params.elapsedMs / targetMs, 0, 1);
+    const elapsedProgress = params.targetValue !== undefined
+        ? clamp((params.progressValue ?? 0) / Math.max(1, params.targetValue), 0, 1)
+        : clamp((params.elapsedMs ?? 0) / (Math.max(1, params.targetMinutes ?? 1) * 60000), 0, 1);
     const progress = params.countdown ? 1 - elapsedProgress : elapsedProgress;
     const radius = params.progressRadius + (params.progressRingWidth / 2) + params.ringGap + (params.sessionRingWidth / 2);
     return {

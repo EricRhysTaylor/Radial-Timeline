@@ -73,6 +73,21 @@ describe('SessionTimerRing', () => {
         expect(path).toContain(' 0 1 0 0 -724');
     });
 
+    it('can drive the ring from typed word progress instead of elapsed time', () => {
+        const state = buildSessionTimerRingState({
+            progressRadius: 700,
+            progressRingWidth: 8,
+            ringGap: 2,
+            sessionRingWidth: 3,
+            progressValue: 250,
+            targetValue: 1000,
+        });
+
+        expect(state?.progress).toBe(0.25);
+        expect(state?.colorProgress).toBe(0.25);
+        expect(state?.direction).toBe('clockwise');
+    });
+
     it('starts countdown sessions as a full stage-colored ring', () => {
         const state = buildSessionTimerRingState({
             progressRadius: 700,
