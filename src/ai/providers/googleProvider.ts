@@ -21,20 +21,53 @@ export class GoogleProvider implements AIProvider {
         return CAPS.includes(capability);
     }
 
+    /**
+     * Derive the Gemini cache provenance for this call.
+     *
+     * Key distinction (the doctrine): Gemini's `cachedContentTokenCount`
+     * is a BILLING fact, not a provenance fact. Whenever `cachedContent: …`
+     * is supplied, Gemini reports `cachedContentTokenCount > 0` — even
+     * when the resource was created in THIS very call. So response usage
+     * alone cannot distinguish:
+     *   - "this call reused a prior cache" (true hit), vs
+     *   - "this call created the cache and was billed at the cached
+     *     rate for the prefix" (creation + armed for next call).
+     *
+     * The cache manager is the only source that knows which happened —
+     * it tells us via `clientCacheStatus`:
+     *   - `'hit'`   → an existing in-memory entry was still valid; reuse.
+     *   - `'created'` → no valid entry; we just primed a new resource.
+     *
+     * Trust `clientCacheStatus` first. Only fall back to response-only
+     * derivation in the unreachable case where a `cachedContentName` was
+     * supplied without a status (defensive — current call sites always
+     * set both together).
+     */
     private deriveCacheResult(
         responseData: unknown,
         cachedContentName: string | undefined,
         clientCacheStatus: ProviderExecutionResult['cacheStatus']
     ): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
-        const usage = extractTokenUsage('google', responseData);
-        const cacheRead = usage?.cacheReadInputTokens ?? 0;
-        if (cacheRead > 0) {
+        if (!cachedContentName) return {};
+        if (clientCacheStatus === 'hit') {
+            // True reuse: a prior valid resource was found and reused.
+            // `cacheUsed: true` marks the run as warm downstream.
             return { cacheUsed: true, cacheStatus: 'hit' };
         }
-        if (cachedContentName) {
-            return { cacheUsed: false, cacheStatus: clientCacheStatus ?? 'created' };
+        if (clientCacheStatus === 'created') {
+            // Cache was primed for this call. The prefix was billed at
+            // the cached rate, but no prior resource was reused — this
+            // is NOT a hit. `cacheUsed: false` keeps reuseState at
+            // 'eligible' (cache armed for next run) rather than 'warm'
+            // (which would imply reuse already happened).
+            return { cacheUsed: false, cacheStatus: 'created' };
         }
-        return {};
+        // Unreachable defensive: cachedContentName was set but no
+        // status. Treat as creation (the safer claim — does not
+        // fabricate reuse).
+        const usage = extractTokenUsage('google', responseData);
+        void (usage?.cacheReadInputTokens); // intentionally unused — we no longer infer hit from usage
+        return { cacheUsed: false, cacheStatus: 'created' };
     }
 
     private buildCacheSetupFailure(

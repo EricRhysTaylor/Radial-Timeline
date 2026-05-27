@@ -12,6 +12,13 @@ export type EngineRecentRunSnapshot = {
     tokenUsage?: TokenUsage;
     /** Usage-based provider cost once the run returns token usage. */
     actualCostUSD?: number;
+    /**
+     * Cache provenance from the cache manager (NOT inferred from
+     * response usage). Required for Gemini, where the response payload
+     * cannot distinguish create-vs-reuse. `'hit'` means a prior resource
+     * was reused; `'created'` means a new resource was armed this run.
+     */
+    cacheStatus?: 'hit' | 'created';
 };
 
 export type EngineCacheWindowSnapshot = {
@@ -158,36 +165,73 @@ type ActualCostPillState = {
 };
 
 /**
- * Compute the cache pill from the most recent run's token usage.
+ * Compute the cache pill from the most recent run's token usage AND the
+ * cache-manager-derived cacheStatus.
  *
- * DOCTRINE: Truth beats optimism. This reports ONLY what the provider's
- * response payload proves. No claim is derived from cacheWindowExpiresAt,
- * reuseState, eligibility, prompt_cache_key, or fingerprint stability.
+ * DOCTRINE: Truth beats optimism. The two facts the pill represents are:
+ *   - "Was a prior cache resource REUSED on this run?" (true hit)
+ *   - "Was a new cache resource CREATED/armed on this run?" (eligible
+ *     for next run, NOT reuse)
  *
- * Rules (payload only):
- *   - No usage / no input yet → no pill
- *   - cache_read > 0 → confirmed reuse (green), with reuse percentage
- *   - cache_creation > 0 → confirmed creation (Anthropic only ever reports
- *     this field; OpenAI/Gemini never do, so they can never reach this branch)
- *   - otherwise → "No cache reuse" (neutral). cached_tokens === 0 means the
- *     provider reused nothing this call. We do NOT infer "primed"/"armed"
- *     for OpenAI/Gemini — the payload gives no cache-write signal, so any
- *     positive claim there would be a fabrication.
+ * For Anthropic, response usage alone distinguishes these:
+ *   cache_creation > 0 → created; cache_read > 0 → reused.
+ * For Gemini, `cachedContentTokenCount > 0` on EVERY call that supplies
+ * cachedContent — including the call that created the resource. So
+ * response usage alone cannot tell create from reuse. We need
+ * `cacheStatus` from the cache manager (carried through
+ * AIRunAdvancedContext + InquiryRunTrace).
+ *
+ * Rules:
+ *   - No usage AND no cacheStatus → no pill (idle / no info)
+ *   - cacheStatus === 'hit' → confirmed reuse, sized by usage cache_read
+ *   - cacheStatus === 'created' → cache armed (not reused), neutral pill
+ *   - cacheStatus undefined + payload-only signals:
+ *       * cache_read > 0 → confirmed reuse (Anthropic / OpenAI;
+ *         Gemini never reaches this branch because its cacheStatus is
+ *         always set when cachedContent was supplied)
+ *       * cache_creation > 0 → confirmed creation (Anthropic only)
+ *       * otherwise → "No cache reuse" (neutral)
  *
  * Pure: no DOM access, fully testable.
  */
-export function computeCachePillState(usage: TokenUsage | undefined): CachePillState | null {
-    if (!usage) return null;
-    const cacheRead = usage.cacheReadInputTokens ?? 0;
-    const cacheCreation = usage.cacheCreationInputTokens ?? 0;
-    const reportedInput = usage.inputTokens ?? 0;
-    // Provider usage shapes differ:
-    // - OpenAI/Gemini report inputTokens as total prompt input, including cached tokens.
-    // - Some cache-aware paths can report only fresh/raw input plus separate cache fields.
-    // Use the provider total when it already covers cached tokens; otherwise reconstruct it.
+export function computeCachePillState(
+    usage: TokenUsage | undefined,
+    cacheStatus?: 'hit' | 'created'
+): CachePillState | null {
+    const cacheRead = usage?.cacheReadInputTokens ?? 0;
+    const cacheCreation = usage?.cacheCreationInputTokens ?? 0;
+    const reportedInput = usage?.inputTokens ?? 0;
     const totalInput = reportedInput >= (cacheRead + cacheCreation)
         ? reportedInput
         : reportedInput + cacheRead + cacheCreation;
+
+    // cacheStatus is the authoritative source when present — overrides
+    // payload heuristics. This is required for Gemini, where the response
+    // payload cannot distinguish create-vs-reuse.
+    if (cacheStatus === 'hit') {
+        const reusePct = totalInput > 0 && cacheRead > 0
+            ? Math.round((cacheRead / totalInput) * 100)
+            : 0;
+        return {
+            label: cacheRead > 0 ? `Cache reused · ${reusePct}%` : 'Cache reused',
+            state: 'confirmed',
+            tooltip: cacheRead > 0
+                ? `Cache manager reused a prior resource. Provider payload reported ${cacheRead.toLocaleString()} cached input tokens (${reusePct}% of input).`
+                : 'Cache manager reused a prior resource for this run.'
+        };
+    }
+    if (cacheStatus === 'created') {
+        return {
+            label: 'Cache armed',
+            state: 'primed',
+            tooltip: 'A new cache resource was created and armed by this run. The next run on the same prefix can reuse it. This run did NOT reuse a prior cache.'
+        };
+    }
+
+    // No cacheStatus carried — fall back to payload-only derivation. This
+    // path applies to providers that don't surface a clientCacheStatus
+    // (or to runs that bypassed the cache manager). Same rules as before.
+    if (!usage) return null;
     if (cacheRead > 0) {
         const reusePct = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) : 0;
         return {
@@ -335,7 +379,7 @@ function renderEnginePostRunPills(
 ): void {
     const pillRow = container.createDiv({ cls: 'ert-inquiry-engine-pill-row' });
 
-    const cachePill = computeCachePillState(args.recentRun?.tokenUsage);
+    const cachePill = computeCachePillState(args.recentRun?.tokenUsage, args.recentRun?.cacheStatus);
     if (cachePill) {
         const el = pillRow.createSpan({
             cls: `ert-inquiry-engine-pill ert-inquiry-engine-pill--cache is-${cachePill.state}`,

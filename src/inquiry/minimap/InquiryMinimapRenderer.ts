@@ -931,8 +931,21 @@ export class InquiryMinimapRenderer {
         if (!this.minimapTokenCapCachedOverlay || !this.minimapLayout) return;
         const reuseState = advanced?.reuseState ?? 'idle';
 
-        // Idle — no cache status known. Hide completely.
-        if (reuseState === 'idle') {
+        // DOCTRINE (the overlay is a REUSE claim, not an "armed" claim):
+        //   - 'idle'     → no cache attempted. Hide.
+        //   - 'eligible' → cache exists (armed for next run) but THIS run
+        //                  did not reuse it. Hide. A green bar would imply
+        //                  reuse that did not happen.
+        //   - 'warm'     → a prior cache resource was reused on THIS run.
+        //                  Render the overlay sized to the proven coverage.
+        //
+        // This matters for Gemini specifically: a freshly-created cache
+        // run reports `cachedContentTokenCount > 0` (the new resource is
+        // billed at the cached rate), and the session persists a cached-
+        // stable ratio for next run's certificate. But for the CURRENT
+        // run, no reuse happened — reuseState is 'eligible', not 'warm',
+        // and the overlay must stay hidden. See googleProvider.deriveCacheResult.
+        if (reuseState !== 'warm') {
             this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
             this.minimapTokenCapCachedOverlay.classList.remove('is-stub');
             this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
@@ -949,12 +962,6 @@ export class InquiryMinimapRenderer {
             && Number.isFinite(cachedTokens)
             && cachedTokens > 0;
 
-        // DOCTRINE: the cached overlay is a positive cache claim. It renders
-        // ONLY from a payload-proven metric (cachedStableRatio/Tokens are set
-        // post-run solely from real provider cache tokens — OpenAI cached_tokens
-        // > 0, Anthropic cache_read/creation). An 'eligible' (attempted but
-        // unproven) reuse state shows NOTHING — a stub would imply a cache
-        // that the provider payload has not confirmed exists.
         if (!hasRealCacheMetric) {
             this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
             this.minimapTokenCapCachedOverlay.classList.remove('is-stub');
@@ -1080,14 +1087,28 @@ export class InquiryMinimapRenderer {
             'is-pressure-over-budget',
             false
         );
+        // Visual disclosure: when the pressure number came from the
+        // deterministic local chars/4 fallback (provider count
+        // unavailable), tag the backbone group so CSS can apply a
+        // subdued or dashed treatment. The tooltip discloses the source
+        // in words; this class lets the visual reinforce it.
+        this.minimapBackboneGroup.classList.toggle(
+            'is-pressure-local-estimate',
+            readinessUi.estimateInputTokensSource === 'local_estimate'
+        );
 
         const inputLabel = formatTokenEstimate(readinessUi.estimateInputTokens);
         const safeLabel = readinessUi.safeInputBudget > 0 ? formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
         const corpusLabel = corpusTokens > 0 ? formatTokenEstimate(corpusTokens) : null;
         const passCount = Math.max(1, Math.floor(passPlan.displayPassCount || 1));
         const passLabel = passCount === 1 ? '1 pass' : `${passCount} passes`;
+        const sourceDisclosure = readinessUi.estimateInputTokensSource === 'local_estimate'
+            ? ' (local estimate — provider count unavailable)'
+            : readinessUi.estimateInputTokensSource === 'unavailable'
+                ? ' (unavailable)'
+                : '';
         const tooltipLines = [
-            `Full request: ~${inputLabel} / ~${safeLabel} per-pass budget`,
+            `Full request: ~${inputLabel} / ~${safeLabel} per-pass budget${sourceDisclosure}`,
             corpusLabel && corpusLabel !== inputLabel
                 ? `Corpus only: ~${corpusLabel} manuscript`
                 : `Corpus only: ~${inputLabel} manuscript`,

@@ -79,7 +79,20 @@ export type InquiryCurrentCorpusContext = {
 export type InquiryReadinessUiState = {
     pending: boolean;
     readiness: InquiryReadinessResult;
+    /**
+     * Token count used for pressure / minimap / advisory math. When the
+     * provider count succeeded this is the provider number. When it
+     * failed (e.g. Gemini countTokens unavailable), this falls back to
+     * the deterministic local corpus chars/4 so the pressure bar never
+     * disappears. The companion `estimateInputTokensSource` discloses
+     * which.
+     */
     estimateInputTokens: number;
+    /**
+     * Provenance of `estimateInputTokens`. Consumers must inspect this
+     * before treating the number as authoritative provider truth.
+     */
+    estimateInputTokensSource: 'provider_count' | 'local_estimate' | 'unavailable';
     expectedPassCount: number;
     estimateMethod: TokenEstimateMethod;
     estimateUncertaintyTokens: number;

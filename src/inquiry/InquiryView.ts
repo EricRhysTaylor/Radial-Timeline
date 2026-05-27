@@ -3656,12 +3656,25 @@ export class InquiryView extends ItemView {
      */
     private buildEngineRecentRunSnapshot(): EngineRecentRunSnapshot | undefined {
         const result = this.state.activeResult;
-        if (result && !this.isErrorResult(result)) {
-            return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());
-        }
+        // The session store carries `providerCacheStatus` from the run
+        // trace — that's the cache-manager-derived create/hit signal,
+        // not a payload heuristic. The pill needs it (esp. for Gemini)
+        // to label create vs reuse honestly.
         const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();
+        const cacheStatus = persistedCacheSession?.providerCacheStatus;
+        if (result && !this.isErrorResult(result)) {
+            return buildEngineRecentRunSnapshotPure(
+                result,
+                this.areInquiryProviderCitationsEnabled(),
+                cacheStatus
+            );
+        }
         if (!persistedCacheSession || this.isErrorResult(persistedCacheSession.result)) return undefined;
-        return buildEngineRecentRunSnapshotPure(persistedCacheSession.result, this.areInquiryProviderCitationsEnabled());
+        return buildEngineRecentRunSnapshotPure(
+            persistedCacheSession.result,
+            this.areInquiryProviderCitationsEnabled(),
+            cacheStatus
+        );
     }
 
     private getActualUsageCostForResult(result: InquiryResult): number | undefined {

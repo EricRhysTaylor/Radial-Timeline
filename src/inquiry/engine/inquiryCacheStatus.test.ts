@@ -190,9 +190,12 @@ describe('InquiryView keeps thin delegating wrappers (behaviour unchanged)', () 
 
     it('chunk-2 wrappers delegate while keeping guard / citations / lookup / now in the view', () => {
         expect(src.includes('return resolveActualUsageCostForResultPure(result);')).toBe(true);
-        expect(src.includes('return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());')).toBe(true);
-        expect(src.includes('const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();')).toBe(true);
-        expect(src.includes('return buildEngineRecentRunSnapshotPure(persistedCacheSession.result, this.areInquiryProviderCitationsEnabled());')).toBe(true);
+        // The wrapper now plumbs `cacheStatus` (from session.providerCacheStatus)
+        // through to the pure builder so the cache pill can distinguish
+        // create-vs-reuse for Gemini.
+        expect(src.includes('const cacheStatus = persistedCacheSession?.providerCacheStatus;')).toBe(true);
+        expect(src.includes('buildEngineRecentRunSnapshotPure(\n                result,\n                this.areInquiryProviderCitationsEnabled(),\n                cacheStatus\n            )')).toBe(true);
+        expect(src.includes('buildEngineRecentRunSnapshotPure(\n            persistedCacheSession.result,\n            this.areInquiryProviderCitationsEnabled(),\n            cacheStatus\n        )')).toBe(true);
         expect(src.includes('return buildEngineCacheWindowSnapshotFromSessionPure(session, Date.now());')).toBe(true);
         // Guard + session lookup remain in InquiryView.
         expect(src.includes('if (result && !this.isErrorResult(result)) {')).toBe(true);

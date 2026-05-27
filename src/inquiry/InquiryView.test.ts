@@ -171,12 +171,20 @@ describe('InquiryView payload accounting', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         const fn = viewSource.match(/private buildEngineRecentRunSnapshot\(\): EngineRecentRunSnapshot \| undefined[\s\S]+?\n    private getActualUsageCostForResult/)?.[0] ?? '';
         expect(fn).toContain('const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();');
-        expect(fn).toContain('return buildEngineRecentRunSnapshotPure(persistedCacheSession.result, this.areInquiryProviderCitationsEnabled());');
-        const activeIndex = fn.indexOf('return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());');
-        const persistedIndex = fn.indexOf('const persistedCacheSession = this.getLatestCacheSessionForResolvedEngine();');
-        expect(activeIndex).toBeGreaterThan(-1);
-        expect(persistedIndex).toBeGreaterThan(-1);
-        expect(activeIndex).toBeLessThan(persistedIndex);
+        // The persisted-fallback branch still calls the pure helper, now
+        // passing `cacheStatus` from session.providerCacheStatus.
+        expect(fn).toContain('persistedCacheSession.result');
+        expect(fn).toContain('buildEngineRecentRunSnapshotPure');
+        expect(fn).toContain('cacheStatus');
+        // Active-result branch runs before the persisted-fallback lookup
+        // used to resolve cacheStatus. We now compute cacheStatus from
+        // the same session lookup at the top so both branches can pass
+        // it through.
+        const cacheStatusLookupIndex = fn.indexOf('const cacheStatus = persistedCacheSession?.providerCacheStatus;');
+        const activeBranchIndex = fn.indexOf('if (result && !this.isErrorResult(result))');
+        expect(cacheStatusLookupIndex).toBeGreaterThan(-1);
+        expect(activeBranchIndex).toBeGreaterThan(-1);
+        expect(cacheStatusLookupIndex).toBeLessThan(activeBranchIndex);
     });
 
     it('uses a dated welcome label and suppresses persisted target focus until the user acts', () => {
@@ -385,7 +393,11 @@ describe('InquiryView payload accounting', () => {
         // inquiryCacheStatus module; InquiryView delegates. Behaviour
         // (cost flows into the recent-run snapshot) is unchanged — the
         // pure module's own tests characterize actualCostUSD output.
-        expect(viewSource.includes('return buildEngineRecentRunSnapshotPure(result, this.areInquiryProviderCitationsEnabled());')).toBe(true);
+        // The wrapper now also threads cacheStatus through (3-arg call)
+        // so the cache pill can tell create-vs-reuse for Gemini.
+        expect(viewSource.includes('buildEngineRecentRunSnapshotPure(')).toBe(true);
+        expect(viewSource.includes('this.areInquiryProviderCitationsEnabled()')).toBe(true);
+        expect(viewSource.includes('cacheStatus')).toBe(true);
         expect(viewSource.includes('return resolveActualUsageCostForResultPure(result);')).toBe(true);
         // The pricing call now lives in the pure module, not InquiryView.
         expect(viewSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(false);

@@ -243,6 +243,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
                 estimateUncertaintyTokens: 0
             }),
             estimateInputTokens: 0,
+            estimateInputTokensSource: 'unavailable',
             expectedPassCount: 1,
             estimateMethod: 'heuristic_chars',
             estimateUncertaintyTokens: 0,
@@ -271,6 +272,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
                 estimateUncertaintyTokens: 0
             }),
             estimateInputTokens: 0,
+            estimateInputTokensSource: 'unavailable',
             expectedPassCount: 1,
             estimateMethod: 'heuristic_chars',
             estimateUncertaintyTokens: 0,
@@ -287,12 +289,40 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
         };
     }
 
-    const estimateInputTokens = snapshot.estimate.estimatedInputTokens;
+    const providerEstimateInputTokens = snapshot.estimate.estimatedInputTokens;
     const expectedPassCount = Math.max(1, Math.floor(snapshot.estimate.expectedPassCount));
     const estimateMethod: TokenEstimateMethod = snapshot.estimate.estimationMethod;
     const safeInputBudget = Math.max(0, Math.floor(snapshot.estimate.effectiveInputCeiling));
     const outputBudget = snapshot.estimate.maxOutputTokens;
     const estimateUncertaintyBudget = Math.max(0, Math.floor(snapshot.estimate.uncertaintyTokens));
+
+    // Pressure-bar source: when the provider count succeeded, the
+    // headline number IS the provider count. When it failed (e.g.
+    // Gemini countTokens unavailable → method='unavailable',
+    // providerEstimateInputTokens=0), the user still deserves to see
+    // the request pressure for the local-known corpus sum (deterministic
+    // chars/4). Without this fallback the minimap pressure bar has width
+    // 0 and disappears entirely — which is the bug.
+    //
+    // Per RT doctrine: this is a labeled local estimate, NOT silently
+    // promoted to provider truth. We expose `estimateInputTokensSource`
+    // so downstream surfaces (minimap, log) can disclose the source.
+    const localCorpusTokens = Math.max(0, Math.floor(snapshot.corpus.estimate.estimatedTokens));
+    const providerCountAvailable = estimateMethod === 'anthropic_count'
+        || estimateMethod === 'google_count'
+        || estimateMethod === 'heuristic_chars';
+    const usingLocalEstimateFallback = !providerCountAvailable
+        && providerEstimateInputTokens <= 0
+        && localCorpusTokens > 0;
+    const estimateInputTokens = usingLocalEstimateFallback
+        ? localCorpusTokens
+        : providerEstimateInputTokens;
+    const estimateInputTokensSource: 'provider_count' | 'local_estimate' | 'unavailable' =
+        providerCountAvailable && providerEstimateInputTokens > 0
+            ? 'provider_count'
+            : usingLocalEstimateFallback
+                ? 'local_estimate'
+                : 'unavailable';
 
     // Model lookup — for metadata only, not for recomputing budgets.
     const model = BUILTIN_MODELS.find(m => m.id === resolvedEngine.modelId);
@@ -326,6 +356,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
         pending: false,
         readiness,
         estimateInputTokens,
+        estimateInputTokensSource,
         expectedPassCount,
         estimateMethod,
         estimateUncertaintyTokens: estimateUncertaintyBudget,

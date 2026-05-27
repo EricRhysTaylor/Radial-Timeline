@@ -3628,7 +3628,26 @@ export function renderAiSection(params: {
     });
 
     const summaryRefreshGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
-    summaryRefreshGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.summaryRefreshTitle') });
+    const summaryRefreshHeading = summaryRefreshGroup.createDiv({ cls: 'ert-config-group-heading' });
+    summaryRefreshHeading.createSpan({ cls: 'ert-config-group-title', text: t('settings.ai.config.summaryRefreshTitle') });
+    const summaryRefreshOpenButton = summaryRefreshHeading.createEl('button', {
+        cls: 'ert-config-group-modal-link',
+        attr: {
+            type: 'button',
+            'aria-label': 'Open Summary refresh modal'
+        }
+    });
+    setIcon(summaryRefreshOpenButton, 'panel-top-open');
+    setTooltip(summaryRefreshOpenButton, 'Open Summary refresh modal');
+    plugin.registerDomEvent(summaryRefreshOpenButton, 'click', (evt: MouseEvent) => {
+        evt.preventDefault();
+        const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
+        if (!commandManager?.executeCommandById) {
+            new Notice('Summary refresh command is not available.');
+            return;
+        }
+        commandManager.executeCommandById('radial-timeline:refresh-scene-synopses-ai');
+    });
 
     aiConfigCreateRow(summaryRefreshGroup, {
         title: t('settings.ai.config.targetSummaryName'),

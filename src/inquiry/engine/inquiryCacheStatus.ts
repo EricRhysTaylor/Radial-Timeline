@@ -101,7 +101,14 @@ export function resolveActualUsageCostForResult(result: InquiryResult): number |
  */
 export function buildEngineRecentRunSnapshot(
     result: InquiryResult,
-    citationsRequested: boolean
+    citationsRequested: boolean,
+    /**
+     * Cache provenance from the cache manager (carried via
+     * `session.providerCacheStatus`). Required so the cache pill can
+     * distinguish create-vs-reuse for Gemini, whose response payload
+     * cannot make that distinction on its own.
+     */
+    cacheStatus?: 'hit' | 'created'
 ): EngineRecentRunSnapshot {
     const sourcesVM = buildInquirySourcesViewModel(
         result.citations,
@@ -112,7 +119,8 @@ export function buildEngineRecentRunSnapshot(
         citationsRequested,
         citationCount: sourcesVM.totalCount,
         tokenUsage: result.tokenUsage,
-        actualCostUSD: resolveActualUsageCostForResult(result)
+        actualCostUSD: resolveActualUsageCostForResult(result),
+        cacheStatus
     };
 }
 

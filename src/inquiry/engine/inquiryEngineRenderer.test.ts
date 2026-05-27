@@ -85,16 +85,66 @@ describe('computeCachePillState', () => {
         expect(pill?.tooltip.toLowerCase()).not.toContain('should reuse');
     });
 
-    it('computeCachePillState takes ONLY usage — no window/now params can fabricate a positive state', () => {
-        // Signature is payload-only by design: there is no cacheWindow/now
-        // argument an unproven armed window could be passed through.
-        expect(computeCachePillState.length).toBe(1);
+    it('computeCachePillState takes usage + cacheStatus — NO window/now params that could fabricate a positive state', () => {
+        // Signature accepts the cache-manager-derived `cacheStatus` (a
+        // factual create/hit signal from the manager, NOT a heuristic),
+        // plus the usage payload. It does NOT accept `cacheWindowExpiresAt`
+        // or `now` — those would let an unproven armed window paint a
+        // positive cache claim. The two-arg shape is the doctrine.
+        expect(computeCachePillState.length).toBe(2);
     });
 
     it('a confirmed cache read is the only thing that turns the pill green', () => {
         const pill = computeCachePillState({ inputTokens: 2_000, cacheReadInputTokens: 8_000 });
         expect(pill?.state).toBe('confirmed');
         expect(pill?.label).toBe('Cache reused · 80%');
+    });
+
+    // Source-grep guard: cacheStatus from the cache manager must
+    // override payload-only inference. This is the Gemini fix —
+    // future code cannot regress to inferring 'hit' from
+    // cachedContentTokenCount > 0 alone.
+    it('source: cache pill uses cacheStatus as authoritative override', () => {
+        const src = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryEngineRenderer.ts'), 'utf8');
+        // The signature accepts cacheStatus.
+        expect(src.includes("cacheStatus?: 'hit' | 'created'")).toBe(true);
+        // The cacheStatus branches run BEFORE the payload-only fallback.
+        const hitBranchIndex = src.indexOf("if (cacheStatus === 'hit')");
+        const createdBranchIndex = src.indexOf("if (cacheStatus === 'created')");
+        const payloadFallbackIndex = src.indexOf('// No cacheStatus carried');
+        expect(hitBranchIndex).toBeGreaterThan(-1);
+        expect(createdBranchIndex).toBeGreaterThan(-1);
+        expect(payloadFallbackIndex).toBeGreaterThan(-1);
+        expect(hitBranchIndex).toBeLessThan(payloadFallbackIndex);
+        expect(createdBranchIndex).toBeLessThan(payloadFallbackIndex);
+    });
+
+    it('source: googleProvider.deriveCacheResult trusts clientCacheStatus over response heuristic', () => {
+        const src = readFileSync(resolve(process.cwd(), 'src/ai/providers/googleProvider.ts'), 'utf8');
+        // Pin: clientCacheStatus === 'created' returns cacheUsed: false.
+        // This is the fix for the "Cache reused · 100%" false claim on
+        // first-run Gemini.
+        expect(src.includes("if (clientCacheStatus === 'created')")).toBe(true);
+        expect(src.includes('return { cacheUsed: false, cacheStatus: \'created\' };')).toBe(true);
+        // Pin: clientCacheStatus === 'hit' returns cacheUsed: true.
+        expect(src.includes("if (clientCacheStatus === 'hit')")).toBe(true);
+        expect(src.includes('return { cacheUsed: true, cacheStatus: \'hit\' };')).toBe(true);
+    });
+
+    it('source: minimap cached overlay only renders on warm (not eligible)', () => {
+        const src = readFileSync(resolve(process.cwd(), 'src/inquiry/minimap/InquiryMinimapRenderer.ts'), 'utf8');
+        // Pin: the overlay hides whenever state is not 'warm'. A green
+        // bar on an 'eligible' run would imply reuse that did not happen.
+        expect(src.includes("if (reuseState !== 'warm')")).toBe(true);
+    });
+
+    it('source: readiness builder uses local-estimate fallback when provider count unavailable', () => {
+        const src = readFileSync(resolve(process.cwd(), 'src/inquiry/services/inquiryReadinessBuilder.ts'), 'utf8');
+        // Pin: the readiness pressure number falls back to deterministic
+        // local corpus chars/4 when the provider count fails — so the
+        // minimap pressure bar never has width 0 with known scenes.
+        expect(src.includes('usingLocalEstimateFallback')).toBe(true);
+        expect(src.includes("estimateInputTokensSource: 'provider_count' | 'local_estimate' | 'unavailable'")).toBe(true);
     });
 });
 
