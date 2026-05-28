@@ -69,6 +69,15 @@ export type InquiryCurrentCorpusContext = {
      * `requestTokens`.
      */
     requestEstimateMethod?: TokenEstimateMethod;
+    /**
+     * When `requestEstimateMethod === 'unavailable'`, the actual provider
+     * error message (e.g. "Gemini countTokens failed for
+     * 'gemini-3.5-flash' — NOT_FOUND (HTTP 404): Model not found"). UI
+     * tooltips should show this so the user understands *why* the count
+     * failed without needing to open the dev console (which Obsidian
+     * plugins are not supposed to write to anyway).
+     */
+    requestEstimateFailureMessage?: string;
     expectedPassCount: number;
     safeInputBudget: number;
     manifestEntries: CorpusManifestEntry[];

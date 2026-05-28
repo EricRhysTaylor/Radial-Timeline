@@ -19,6 +19,7 @@ import {
     formatInquiryId,
     formatPendingEditsSuccessMessage,
     formatRunDurationEstimate,
+    formatTokenCountFailureReason,
     formatPendingEditsTargetsTooltip,
     formatSessionOverrides,
     formatSessionProviderModel,
@@ -651,6 +652,38 @@ describe('inquiryViewText', () => {
         it('returns null when no match and ref is not a scope-prefixed ordinal', () => {
             expect(resolveFindingChipLabel(finding('totally-unknown'), result('book'), []))
                 .toBeNull();
+        });
+    });
+
+    describe('formatTokenCountFailureReason', () => {
+        it('extracts the canonical "STATUS (HTTP nnn): message" segment', () => {
+            const msg = 'google countTokens failed for model "gemini-3.5-flash": '
+                + 'Gemini countTokens failed for "gemini-3.5-flash" — NOT_FOUND (HTTP 404): Model not found.';
+            expect(formatTokenCountFailureReason(msg)).toBe('NOT_FOUND (HTTP 404): Model not found');
+        });
+
+        it('falls back to HTTP-only when no status name is present', () => {
+            const msg = 'Some prefix — HTTP 503: Service unavailable.';
+            expect(formatTokenCountFailureReason(msg)).toBe('HTTP 503: Service unavailable');
+        });
+
+        it('falls back to the tail after the last colon when no HTTP segment exists', () => {
+            const msg = 'google countTokens failed for model "gemini-x": API key invalid';
+            expect(formatTokenCountFailureReason(msg)).toBe('API key invalid');
+        });
+
+        it('returns empty string for null/undefined/empty input', () => {
+            expect(formatTokenCountFailureReason(undefined)).toBe('');
+            expect(formatTokenCountFailureReason(null)).toBe('');
+            expect(formatTokenCountFailureReason('')).toBe('');
+        });
+
+        it('truncates very long messages with an ellipsis to fit chip width', () => {
+            const longTail = 'x'.repeat(200);
+            const msg = `prefix: ${longTail}`;
+            const result = formatTokenCountFailureReason(msg);
+            expect(result.length).toBeLessThanOrEqual(90);
+            expect(result.endsWith('…')).toBe(true);
         });
     });
 });

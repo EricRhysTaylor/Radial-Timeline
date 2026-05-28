@@ -1410,7 +1410,6 @@
 
 .ert-timeline-session-panel__number {
   box-sizing: border-box;
-  min-width: 0;
   max-width: 100%;
   flex: 0 0 auto;
   font-family: 'Radial Timeline JetBrains Mono', var(--font-monospace);
@@ -1420,7 +1419,6 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'zero' 0, 'tnum' 1;
   line-height: normal;
-  width: var(--ert-input-width-xs, 6ch);
 }
 
 .ert-timeline-session-panel__select {

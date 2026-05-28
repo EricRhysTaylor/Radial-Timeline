@@ -461,13 +461,20 @@ export async function countGeminiTokens(
 
   if (resp.status >= 400) {
     const err = resp.json as GeminiErrorResponse;
-    throw new Error(err?.error?.message ?? `Gemini token count error (${resp.status})`);
+    // Always include status + status name + model so the dev console
+    // diagnostic is actionable. Without status, "Model not found" looks
+    // identical to "Quota exceeded" — both just say their message.
+    const providerMessage = err?.error?.message ?? resp.text ?? 'no error message in response';
+    const providerStatus = err?.error?.status ?? `HTTP ${resp.status}`;
+    throw new Error(
+      `Gemini countTokens failed for "${cleanModelId}" — ${providerStatus} (HTTP ${resp.status}): ${providerMessage}`
+    );
   }
 
   const data = resp.json as { totalTokens?: number };
   const totalTokens = typeof data?.totalTokens === 'number' ? data.totalTokens : NaN;
   if (!Number.isFinite(totalTokens)) {
-    throw new Error('Invalid token count response from Gemini.');
+    throw new Error(`Invalid token count response from Gemini for "${cleanModelId}" — response had no numeric totalTokens field.`);
   }
   return {
     provider: 'google',

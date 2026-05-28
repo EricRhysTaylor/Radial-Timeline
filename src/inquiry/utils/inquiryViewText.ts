@@ -564,6 +564,43 @@ export const extractSpendCapResetDate = (detail?: string | null): string | null 
     return match[2] ? `${match[1]} ${match[2]} UTC` : match[1];
 };
 
+/**
+ * Distill a provider countTokens failure message into a short reason
+ * suitable for an inline chip (e.g. "HTTP 404: Model not found").
+ *
+ * Input shape from `aiClient.ts` `tokenCountAttemptWarnings`:
+ *   `google countTokens failed for model "gemini-3.5-flash": Gemini
+ *    countTokens failed for "gemini-3.5-flash" — NOT_FOUND (HTTP 404):
+ *    Model not found.`
+ *
+ * Strategy:
+ *   - Prefer the canonical "<STATUS_NAME> (HTTP nnn): <message>" segment
+ *     when present (added by `countGeminiTokens` after our diagnostic
+ *     improvement).
+ *   - Otherwise, strip the noisy prefix and truncate to ~60 chars.
+ *   - Empty when no usable message exists — caller falls back to a
+ *     generic "provider token count failed" label.
+ */
+export const formatTokenCountFailureReason = (message: string | undefined | null): string => {
+    if (!message || typeof message !== 'string') return '';
+    const canonical = message.match(/([A-Z_]+\s*\(HTTP\s*\d+\)[^.]*)/);
+    if (canonical) {
+        const reason = canonical[1].trim().replace(/\s+/g, ' ');
+        return reason.length > 90 ? `${reason.slice(0, 87)}…` : reason;
+    }
+    const httpOnly = message.match(/HTTP\s*\d+[^.]*/);
+    if (httpOnly) {
+        const reason = httpOnly[0].trim().replace(/\s+/g, ' ');
+        return reason.length > 90 ? `${reason.slice(0, 87)}…` : reason;
+    }
+    // Fall back to the tail of the message (after the last colon), which
+    // typically holds the actual provider explanation.
+    const tail = message.includes(':') ? message.slice(message.lastIndexOf(':') + 1).trim() : message;
+    if (!tail) return '';
+    const cleaned = tail.replace(/\s+/g, ' ');
+    return cleaned.length > 90 ? `${cleaned.slice(0, 87)}…` : cleaned;
+};
+
 export const formatRunDurationEstimate = (minSeconds: number, maxSeconds: number): string => {
     const min = Math.max(1, Math.round(minSeconds));
     const max = Math.max(min, Math.round(maxSeconds));

@@ -1232,17 +1232,6 @@ export class RadialTimelineView extends ItemView {
         wordGoalInput.value = String(sessionGoalWords);
         this.isolateSessionPanelControl(wordGoalInput);
 
-        const syncTargetControls = () => {
-            const targetMode = (targetModeSelect.value as WritingSessionTargetMode) || 'time';
-            const usesTime = targetMode !== 'words';
-            const usesWords = targetMode !== 'time';
-            countdownRow.classList.toggle('ert-hidden', !usesTime);
-            goalRow.classList.toggle('ert-hidden', !usesTime);
-            wordGoalRow.classList.toggle('ert-hidden', !usesWords);
-            goalControls.classList.toggle('is-countdown-disabled', usesTime && !countdownToggle.checked);
-            updateIdleMeta();
-        };
-
         updateIdleMeta = () => {
             const parsedMinutes = Number(goalInput.value);
             const parsedWords = Number(wordGoalInput.value);
@@ -1292,7 +1281,22 @@ export class RadialTimelineView extends ItemView {
             }
         };
 
-        this.createSessionIconButton(goalControls, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', startSession);
+        const startButton = this.createSessionIconButton(goalControls, 'play', 'Start writing session', 'ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action', startSession);
+
+        const syncTargetControls = () => {
+            const targetMode = (targetModeSelect.value as WritingSessionTargetMode) || 'time';
+            const usesTime = targetMode !== 'words';
+            const usesWords = targetMode !== 'time';
+            countdownRow.classList.toggle('ert-hidden', !usesTime);
+            goalRow.classList.toggle('ert-hidden', !usesTime);
+            wordGoalRow.classList.toggle('ert-hidden', !usesWords);
+            goalControls.classList.toggle('is-countdown-disabled', usesTime && !countdownToggle.checked);
+            const startButtonHost = usesWords ? wordGoalControls : goalControls;
+            if (startButton.parentElement !== startButtonHost) {
+                startButtonHost.appendChild(startButton);
+            }
+            updateIdleMeta();
+        };
 
         countdownToggle.onchange = () => {
             syncTargetControls();

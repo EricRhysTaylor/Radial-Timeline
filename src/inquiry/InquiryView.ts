@@ -376,6 +376,7 @@ import {
     formatInquiryBriefTimestamp,
     formatInquiryId,
     formatRunDurationEstimate,
+    formatTokenCountFailureReason,
     formatPendingEditsSuccessMessage,
     formatPendingEditsTargetsTooltip,
     formatSessionOverrides,
@@ -1377,6 +1378,7 @@ export class InquiryView extends ItemView {
                 : buildPendingCorpusEstimateFromManifestEntries(manifest.entries),
             requestTokens: requestMatches ? snapshot.estimate.estimatedInputTokens : 0,
             requestEstimateMethod: snapshotFresh ? snapshot.estimate.estimationMethod : undefined,
+            requestEstimateFailureMessage: snapshotFresh ? snapshot.estimate.tokenCountFailureMessage : undefined,
             expectedPassCount: requestMatches ? snapshot.estimate.expectedPassCount : 1,
             safeInputBudget: requestMatches ? snapshot.estimate.effectiveInputCeiling : 0,
             manifestEntries: manifest.entries.map(entry => ({ ...entry }))
@@ -10711,9 +10713,17 @@ export class InquiryView extends ItemView {
     private getPreviewTokensValue(): string {
         const context = this.getCurrentCorpusContext();
         if (context.requestTokens <= 0) {
-            return context.requestEstimateMethod === 'unavailable'
-                ? 'Full request · unavailable'
-                : 'Full request · Estimating…';
+            if (context.requestEstimateMethod === 'unavailable') {
+                // Embed the actual provider error inline so the user
+                // can see *why* without opening dev tools (which
+                // Obsidian plugins shouldn't write to anyway). Truncate
+                // for chip width.
+                const reason = formatTokenCountFailureReason(context.requestEstimateFailureMessage);
+                return reason
+                    ? `Full request · unavailable (${reason})`
+                    : 'Full request · unavailable';
+            }
+            return 'Full request · Estimating…';
         }
         const requestLabel = this.formatTokenEstimate(context.requestTokens);
         if (context.corpus.estimatedTokens <= 0) {
@@ -10790,8 +10800,13 @@ export class InquiryView extends ItemView {
                 snapshot.estimate.estimatedInputTokens
             );
             if (inputEstimate.source === 'unavailable' || inputEstimate.source === 'pending') {
-                return inputEstimate.source === 'pending'
-                    ? 'Cost · Estimating…'
+                if (inputEstimate.source === 'pending') return 'Cost · Estimating…';
+                // Embed the actual provider error inline (same approach
+                // as the Full-request pill above) so the user has the
+                // signal they need to debug without opening dev tools.
+                const reason = formatTokenCountFailureReason(snapshot.estimate.tokenCountFailureMessage);
+                return reason
+                    ? `Cost · unavailable (${reason})`
                     : 'Cost · unavailable (provider token count failed)';
             }
             const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(

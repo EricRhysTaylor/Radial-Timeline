@@ -2909,7 +2909,8 @@ export class InquiryRunnerService implements InquiryRunner {
             input.questionText,
             instructionPrompt,
             cacheableUserInput,
-            input.corpus.cacheReuseFingerprint
+            input.corpus.cacheReuseFingerprint,
+            notes
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2968,7 +2969,8 @@ export class InquiryRunnerService implements InquiryRunner {
             input.questions.map(question => question.questionText).join('\n'),
             instructionPrompt,
             cacheableUserInput,
-            input.corpus.cacheReuseFingerprint
+            input.corpus.cacheReuseFingerprint,
+            notes
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2994,7 +2996,15 @@ export class InquiryRunnerService implements InquiryRunner {
         userQuestion?: string,
         instructionPrompt?: string,
         cacheableUserInput?: string,
-        providerReuseKey?: string
+        providerReuseKey?: string,
+        /**
+         * Optional `notes` sink — when provided, any structured warnings
+         * from the upstream `prepareRunEstimate` call (e.g. the actual
+         * provider error message when countTokens fails) are pushed into
+         * this list so they flow into the trace's notes channel and
+         * surface in the Inquiry Log.
+         */
+        notesSink?: string[]
     ): Promise<InquiryRunTrace['tokenEstimate']> {
         const evidenceChars = evidenceBlocks.reduce((sum, block) => (
             sum + block.label.length + block.content.length + 6
@@ -3021,6 +3031,18 @@ export class InquiryRunnerService implements InquiryRunner {
         });
         if (!prepared) {
             throw new Error(t('inquiry.runner.tokenEstimateUnavailable'));
+        }
+        // Forward any structured warnings (e.g. provider countTokens
+        // error) into the trace's notes channel. This is the canonical
+        // diagnostic surface — it appears in the Inquiry Log and feeds
+        // the unavailable-pill tooltip — and replaces the prior
+        // (rule-violating) `console.warn` path.
+        if (notesSink && Array.isArray(prepared.warnings)) {
+            for (const w of prepared.warnings) {
+                if (typeof w === 'string' && w && !notesSink.includes(w)) {
+                    notesSink.push(w);
+                }
+            }
         }
         const tokenEstimate: InquiryRunTrace['tokenEstimate'] = {
             inputTokens: prepared.tokenEstimateInput,

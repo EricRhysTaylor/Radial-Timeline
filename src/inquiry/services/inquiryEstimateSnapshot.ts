@@ -88,6 +88,14 @@ export interface InquiryEstimateSnapshot {
         readonly expectedPassCount: number;
         readonly estimationMethod: TokenEstimateMethod;
         readonly uncertaintyTokens: number;
+        /**
+         * The most recent provider countTokens failure message, when
+         * `estimationMethod === 'unavailable'`. Surfaced from the trace
+         * notes so UI surfaces (the unavailable-pill tooltip, the
+         * Inquiry Log) can show *why* the count is unavailable instead
+         * of just *that* it is. Empty when the count succeeded.
+         */
+        readonly tokenCountFailureMessage?: string;
     };
 }
 
@@ -251,6 +259,12 @@ export async function buildInquiryEstimateSnapshot(
         estimatedInputTokens,
         safeInputTokens: effectiveInputCeiling
     });
+    // Extract the most recent countTokens failure message from the
+    // trace's notes (populated by buildTokenEstimate's notesSink) so UI
+    // surfaces can show *why* the count is unavailable, not just *that*.
+    const tokenCountFailureMessage = estimationMethod === 'unavailable'
+        ? (trace.notes || []).filter(note => /countTokens failed/i.test(note)).pop()
+        : undefined;
 
     const snapshot: InquiryEstimateSnapshot = {
         version: ESTIMATE_SNAPSHOT_VERSION,
@@ -290,6 +304,7 @@ export async function buildInquiryEstimateSnapshot(
             expectedPassCount,
             estimationMethod,
             uncertaintyTokens,
+            tokenCountFailureMessage,
         },
     };
 

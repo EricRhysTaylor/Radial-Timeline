@@ -626,13 +626,15 @@ export class AIClient {
                 });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
-                tokenCountAttemptWarnings.push(`Token count unavailable: ${message}`);
-                // Surface the actual provider error so the failure mode is
-                // diagnosable. Per RT doctrine we do NOT substitute a heuristic
-                // — the count stays unavailable — but the dev/user needs to
-                // know *why* it's unavailable. Silently swallowing the error
-                // is what made this bug invisible across multiple Gemini runs.
-                console.warn(`[AI estimate] ${provider} countTokens failed for model "${initialSelection.model.id}": ${message}`);
+                // Surface via the structured `warnings` channel only.
+                // Obsidian plugins are not supposed to write to the
+                // browser console (per project rule), so the diagnostic
+                // flows: estimate.warnings → trace.notes → Inquiry Log,
+                // and also into the unavailable-pill tooltip via the
+                // session's persisted estimate-failure message.
+                tokenCountAttemptWarnings.push(
+                    `${provider} countTokens failed for model "${initialSelection.model.id}": ${message}`
+                );
                 countedEstimate = {
                     inputTokens: 0,
                     method: 'unavailable'
