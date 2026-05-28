@@ -1340,13 +1340,22 @@ export function renderAiSection(params: {
             };
         }
 
-        // DOCTRINE: success tone + a TTL countdown are only honest once the
-        // provider payload PROVED reuse. 'warm' is set in aiClient.ts solely
-        // when execution.cacheUsed is true (OpenAI: cached_tokens > 0). A
-        // future cacheWindowExpiresAt timestamp on an 'eligible' (attempted,
-        // unproven) session is optimism, not proof — it must NOT render
-        // "Cache ready … • Xh remaining". Such sessions fall through to the
-        // neutral "completed" default below.
+        // DOCTRINE (updated): there are now TWO honest proof states, not one.
+        //
+        //   1. WARM REUSE — `cacheReuseState === 'warm'`. A prior cache
+        //      resource was reused on the last run. Provider payload
+        //      confirmed it (cacheUsed=true from the cache manager). Show
+        //      "Warm cache confirmed … • Xm remaining" + observed ratio.
+        //
+        //   2. ARMED — `providerCacheStatus === 'created'` with a live
+        //      TTL window. The cache manager confirms a new resource
+        //      was created and is ready for the NEXT run. This is not
+        //      reuse; it's "primed." Honest to show a countdown because
+        //      the manager (not optimism) proves the resource exists.
+        //
+        //   3. ELIGIBLE without created/hit status, or no TTL — falls
+        //      through to the neutral "completed" default. A countdown
+        //      here would still be optimism.
         if (
             cacheSession?.cacheReuseState === 'warm'
             && cacheSession.cacheWindowExpiresAt
@@ -1370,6 +1379,34 @@ export function renderAiSection(params: {
                 extraPills: [...extraPills, ...observedCachePills],
                 cacheRatio,
                 cacheLabel
+            };
+        }
+
+        // ARMED state — cache was created this run, ready for next.
+        // Matches the AI Engine popover's "Cache armed" + "Cache: 12m left"
+        // pills so the two surfaces tell the same story.
+        if (
+            cacheSession?.providerCacheStatus === 'created'
+            && cacheSession.cacheWindowExpiresAt
+            && cacheSession.cacheWindowExpiresAt > Date.now()
+            && cacheRemainingLabel
+        ) {
+            return {
+                tone: 'success',
+                comparatorLabel: null,
+                comparatorValue: null,
+                statusIcon: 'shield-check',
+                statusText: hasCurrentCorpusMatch
+                    ? `Cache armed for next run on current corpus • ${cacheRemainingLabel}`
+                    : `Cache armed on last Inquiry corpus • ${cacheRemainingLabel}`,
+                // Add an explicit "Cache armed" pill so the chip row
+                // matches the popover. The merge logic recognizes
+                // CACHE_ARMED_PILL_TEXT as the base — but for the
+                // armed state we want a distinct, louder label.
+                extraPills: [
+                    ...extraPills,
+                    { text: 'Cache armed', extraCls: 'ert-ai-pill--active' }
+                ]
             };
         }
 

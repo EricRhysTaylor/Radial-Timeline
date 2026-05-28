@@ -20,4 +20,24 @@ describe('AI settings cache preview signals', () => {
         const previewSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/aiSettingsPreview.ts'), 'utf8');
         expect(previewSource.includes('Observed cache hit ·')).toBe(true);
     });
+
+    it('renders a distinct "Cache armed" branch when the cache was created (not reused) — matches the AI Engine popover', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        // Pin: the armed branch sits between warm-confirmed and the
+        // default "completed" state. Triggered by providerCacheStatus
+        // === 'created' (cache-manager truth, NOT inferred from payload
+        // alone) with a still-open TTL.
+        expect(source.includes("cacheSession?.providerCacheStatus === 'created'")).toBe(true);
+        // Pin: the status text uses "Cache armed" wording (matches the
+        // AI Engine popover) and includes the remaining-time label.
+        expect(source.includes('Cache armed for next run on current corpus')).toBe(true);
+        expect(source.includes('Cache armed on last Inquiry corpus')).toBe(true);
+        // Pin: explicit "Cache armed" pill is appended so the chip row
+        // mirrors the popover's chip.
+        expect(source.includes("text: 'Cache armed'")).toBe(true);
+        // Doctrine: the armed branch is NOT a fabrication — it's
+        // gated on providerCacheStatus from the cache manager, not on
+        // cacheWindowExpiresAt alone.
+        expect(/Cache armed[\s\S]+?providerCacheStatus === 'created'|providerCacheStatus === 'created'[\s\S]+?Cache armed/.test(source)).toBe(true);
+    });
 });
