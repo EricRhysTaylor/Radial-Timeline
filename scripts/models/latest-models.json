@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-05-26T15:11:33.987Z",
+  "generatedAt": "2026-05-28T15:09:34.130Z",
   "summary": {
     "openai": 120,
     "anthropic": 9,
-    "google": 52
+    "google": 54
   },
   "models": [
     {
@@ -2459,6 +2459,31 @@
     },
     {
       "provider": "google",
+      "id": "gemini-3-pro-image",
+      "raw": {
+        "name": "models/gemini-3-pro-image",
+        "version": "3.0",
+        "displayName": "Nano Banana Pro",
+        "description": "Gemini 3 Pro Image",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 32768,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 1,
+        "thinking": true
+      },
+      "label": "Nano Banana Pro",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 32768
+    },
+    {
+      "provider": "google",
       "id": "gemini-3-pro-image-preview",
       "raw": {
         "name": "models/gemini-3-pro-image-preview",
@@ -2506,6 +2531,31 @@
       },
       "label": "Gemini 3 Pro Preview",
       "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-image",
+      "raw": {
+        "name": "models/gemini-3.1-flash-image",
+        "version": "3.0",
+        "displayName": "Nano Banana 2",
+        "description": "Gemini 3.1 Flash Image.",
+        "inputTokenLimit": 65536,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 1,
+        "thinking": true
+      },
+      "label": "Nano Banana 2",
+      "inputTokenLimit": 65536,
       "outputTokenLimit": 65536
     },
     {

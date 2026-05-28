@@ -56,6 +56,8 @@ export interface TimelineSnapshot {
     targetDate: string | undefined;
     stageTargetDatesHash: string;
     chronologueDurationCap: string | undefined;
+    chronologueCalendarDefault: string;
+    chronologueLastCalendarView: string;
     discontinuityThreshold: string | undefined;
     showBackdropRing: boolean;
     microBackdropHash: string;
@@ -234,6 +236,8 @@ export function createSnapshot(
         targetDate: settings.targetCompletionDate,
         stageTargetDatesHash,
         chronologueDurationCap: settings.chronologueDurationCapSelection,
+        chronologueCalendarDefault: settings.chronologueCalendarDefault ?? 'earth',
+        chronologueLastCalendarView: settings.chronologueLastCalendarView ?? 'earth',
         discontinuityThreshold: settings.discontinuityThreshold,
         showBackdropRing: settings.showBackdropRing ?? true,
         microBackdropHash,
@@ -311,6 +315,8 @@ export function detectChanges(
     if (prev.sortByWhen !== current.sortByWhen || 
         prev.aiEnabled !== current.aiEnabled ||
         prev.chronologueDurationCap !== current.chronologueDurationCap ||
+        prev.chronologueCalendarDefault !== current.chronologueCalendarDefault ||
+        prev.chronologueLastCalendarView !== current.chronologueLastCalendarView ||
         prev.discontinuityThreshold !== current.discontinuityThreshold ||
         prev.showBackdropRing !== current.showBackdropRing ||
         prev.microBackdropHash !== current.microBackdropHash ||

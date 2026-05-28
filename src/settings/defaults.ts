@@ -116,6 +116,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',
+    chronologueCalendarDefault: 'earth',
+    chronologueLastCalendarView: 'earth',
     readabilityScale: 'normal',
     shouldRestoreTimelineOnLoad: false,
     beatSelectionMigrationComplete: false,

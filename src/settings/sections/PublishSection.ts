@@ -478,7 +478,7 @@ class StarterPublishingSetupModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: AUTO_CONFIGURE_BUTTON });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Configure your publishing environment, Book Details, optional inline LaTeX examples, and PDF styles in one step.'
+            text: 'Detects Pandoc and LaTeX, installs bundled templates/fonts into your vault, and creates starter publishing notes. External apps are not downloaded.'
         });
 
         const createdBlock = contentEl.createDiv({ cls: 'ert-template-pack-created ert-stack--tight' });
@@ -488,9 +488,10 @@ class StarterPublishingSetupModal extends Modal {
         createdHeading.createSpan({ text: 'What this setup creates' });
         const createdList = createdBlock.createEl('ol', { cls: 'ert-template-pack-list ert-template-pack-list--ordered' });
         const items = [
+            'Pandoc and LaTeX detection',
+            'Bundled templates and vault-local fonts',
             'Book Details note',
             'Inline LaTeX front/back matter examples',
-            'Core PDF layout files',
         ];
         items.forEach(item => {
             const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
@@ -2517,11 +2518,35 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     });
                     const installBtn = row.createEl('button', {
                         cls: 'ert-layout-font-install ert-link-accent',
-                        text: 'Install',
+                        text: fontDiag.state === 'missing-bundled' ? 'Install bundled fonts' : 'How to install',
                     });
                     installBtn.type = 'button';
-                    installBtn.addEventListener('click', (ev) => {
+                    installBtn.addEventListener('click', async (ev) => {
                         ev.preventDefault();
+                        if (fontDiag.state === 'missing-bundled') {
+                            installBtn.disabled = true;
+                            installBtn.setText('Installing...');
+                            try {
+                                const refresh = await ensureBundledLayoutInstalledForExport(plugin, layout);
+                                if (ensureBundledPandocLayoutsRegistered(plugin)) {
+                                    await plugin.saveSettings();
+                                }
+                                if (refresh.failed) {
+                                    new Notice(`Could not install bundled font files for ${fontDiag.primaryFontName}.`);
+                                } else {
+                                    new Notice(`Installed bundled font files for ${fontDiag.primaryFontName} into ${getConfiguredPandocFolder(plugin)}/fonts.`);
+                                }
+                                renderLayoutRows();
+                                refreshPublishingStatusCard();
+                                refreshInstallAllButtonState();
+                            } catch (error) {
+                                new Notice(error instanceof Error ? error.message : `Could not install bundled font files for ${fontDiag.primaryFontName}.`);
+                            } finally {
+                                installBtn.disabled = false;
+                                installBtn.setText('Install bundled fonts');
+                            }
+                            return;
+                        }
                         const hint = fontDiag.installHint;
                         const fragment = document.createDocumentFragment();
                         const wrapper = fragment.createDiv();
@@ -2550,21 +2575,33 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     btn.setButtonText('Install');
                     btn.setTooltip('Install bundled layout');
                     btn.onClick(async () => {
-                        const result = await installBundledPandocLayouts(plugin, [layout.id]);
-                        await ensureBundledLayoutInstalledForExport(plugin, layout);
-                        // Mirror Install all + Auto-configure: keep the registry
-                        // in sync with on-disk templates so the publishing
-                        // status strip advances PDF Style on the next render.
-                        if (ensureBundledPandocLayoutsRegistered(plugin)) {
-                            await plugin.saveSettings();
+                        btn.setDisabled(true);
+                        btn.setButtonText('Installing...');
+                        try {
+                            const result = await installBundledPandocLayouts(plugin, [layout.id]);
+                            const refresh = await ensureBundledLayoutInstalledForExport(plugin, layout);
+                            // Mirror Install all + Auto-configure: keep the registry
+                            // in sync with on-disk templates so the publishing
+                            // status strip advances PDF Style on the next render.
+                            if (ensureBundledPandocLayoutsRegistered(plugin)) {
+                                await plugin.saveSettings();
+                            }
+                            if (result.failed.length > 0 || refresh.failed) {
+                                new Notice(`Failed to install bundled layout: ${getLayoutDisplayName(layout)}`);
+                            } else if (result.installed.length > 0) {
+                                new Notice(`Installed bundled layout and required fonts: ${getLayoutDisplayName(layout)}`);
+                            } else {
+                                new Notice(`Bundled layout and required fonts are already installed: ${getLayoutDisplayName(layout)}`);
+                            }
+                            renderLayoutRows();
+                            refreshPublishingStatusCard();
+                            refreshInstallAllButtonState();
+                        } catch (error) {
+                            new Notice(error instanceof Error ? error.message : `Failed to install bundled layout: ${getLayoutDisplayName(layout)}`);
+                        } finally {
+                            btn.setDisabled(false);
+                            btn.setButtonText('Install');
                         }
-                        if (result.installed.length > 0) {
-                            new Notice(`Installed bundled layout: ${getLayoutDisplayName(layout)}`);
-                        } else if (result.failed.length > 0) {
-                            new Notice(`Failed to install bundled layout: ${getLayoutDisplayName(layout)}`);
-                        }
-                        renderLayoutRows();
-                        refreshPublishingStatusCard();
                     });
                 });
             }
@@ -2908,33 +2945,40 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         installAllButtonEl.addClass('ert-layout-install-all-button');
         refreshInstallAllButtonState();
         button.onClick(async () => {
-            const bundledLayouts = getVisibleBundledLayouts();
-            const bundledIds = bundledLayouts.map(layout => layout.id);
-            const result = await installBundledPandocLayouts(plugin, bundledIds);
-            const refreshResults = await Promise.all(bundledLayouts.map(layout => ensureBundledLayoutInstalledForExport(plugin, layout)));
-            // Re-register bundled layouts in plugin.settings.pandocLayouts so the
-            // PDF Style stage of the publishing status strip sees them as
-            // present. Without this, users who had no entries (or had trashed
-            // entries) install templates on disk but the validator still
-            // reports zero novel layouts and the stage stays Below.
-            // Auto-configure ('runAutoConfigurePublishing') already does this
-            // via ensurePublishingEnvironment; mirror that behaviour here.
-            if (ensureBundledPandocLayoutsRegistered(plugin)) {
-                await plugin.saveSettings();
+            button.setDisabled(true);
+            button.setButtonText('Installing...');
+            try {
+                const bundledLayouts = getVisibleBundledLayouts();
+                const bundledIds = bundledLayouts.map(layout => layout.id);
+                const result = await installBundledPandocLayouts(plugin, bundledIds);
+                const refreshResults = await Promise.all(bundledLayouts.map(layout => ensureBundledLayoutInstalledForExport(plugin, layout)));
+                // Re-register bundled layouts in plugin.settings.pandocLayouts so the
+                // PDF Style stage of the publishing status strip sees them as
+                // present. Without this, users who had no entries (or had trashed
+                // entries) install templates on disk but the validator still
+                // reports zero novel layouts and the stage stays Below.
+                // Auto-configure ('runAutoConfigurePublishing') already does this
+                // via ensurePublishingEnvironment; mirror that behaviour here.
+                if (ensureBundledPandocLayoutsRegistered(plugin)) {
+                    await plugin.saveSettings();
+                }
+                const refreshFailures = refreshResults.filter(item => item.failed).length;
+                if (refreshFailures > 0 || result.failed.length > 0) {
+                    new Notice('Some bundled layouts or required fonts failed to install.');
+                } else if (result.installed.length > 0) {
+                    new Notice(`Installed ${result.installed.length} bundled layout template(s) and required fonts in ${getConfiguredPandocFolder(plugin)}/.`);
+                } else {
+                    new Notice('Bundled layouts and required fonts are installed and refreshed.');
+                }
+                renderLayoutRows();
+                refreshPublishingStatusCard();
+                refreshInstallAllButtonState();
+            } catch (error) {
+                new Notice(error instanceof Error ? error.message : 'Could not install bundled layouts and fonts.');
+            } finally {
+                button.setDisabled(false);
+                refreshInstallAllButtonState();
             }
-            const refreshFailures = refreshResults.filter(item => item.failed).length;
-            if (refreshFailures > 0) {
-                new Notice('Some bundled layouts failed to refresh.');
-            } else if (result.installed.length > 0) {
-                new Notice(`Installed ${result.installed.length} bundled layout template(s) and required fonts in ${getConfiguredPandocFolder(plugin)}/.`);
-            } else if (result.failed.length > 0) {
-                new Notice('Some bundled layouts failed to install.');
-            } else {
-                new Notice('Bundled layouts and required fonts are installed and refreshed.');
-            }
-            renderLayoutRows();
-            refreshPublishingStatusCard();
-            refreshInstallAllButtonState();
         });
     });
 
@@ -2969,7 +3013,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
             const blockingIssues = envResult.issues.filter(i => i.startsWith('Pandoc not found'));
             if (blockingIssues.length > 0) {
                 // Pandoc missing — cannot proceed with full setup
-                new Notice(blockingIssues[0]);
+                new Notice(`${blockingIssues[0]}. Radial Timeline can install bundled templates/fonts into your vault, but Pandoc itself must be installed on your computer first.`);
                 revealSystemConfig();
                 return;
             }

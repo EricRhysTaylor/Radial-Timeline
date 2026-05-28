@@ -206,6 +206,24 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         svg.appendChild(altButton);
     }
 
+    const persistChronologueCalendarView = (calendarView: 'earth' | 'planetary') => {
+        const settings = view.plugin.settings;
+        if (!settings || settings.chronologueLastCalendarView === calendarView) return;
+        settings.chronologueLastCalendarView = calendarView;
+        const saveSettings = view.plugin.saveSettings;
+        if (typeof saveSettings === 'function') {
+            void saveSettings.call(view.plugin);
+        }
+    };
+
+    const shouldStartInPlanetaryCalendar = (): boolean => {
+        if (!shouldShowAlt) return false;
+        const settings = view.plugin.settings;
+        const configuredDefault = settings?.chronologueCalendarDefault ?? 'earth';
+        if (configuredDefault === 'planetary') return true;
+        return configuredDefault === 'remember' && settings?.chronologueLastCalendarView === 'planetary';
+    };
+
     // Check if any scene has runtime data
     const checkHasRuntimeData = (): boolean => {
         const allScenes = (view as any).sceneData || (view as any).scenes || [];
@@ -255,6 +273,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         globalAlienModeActive = false;
         if (altButton) updateAltButtonState(altButton, false);
         updateDateLabelsForAlienMode(false);
+        persistChronologueCalendarView('earth');
         
         // Clear selected scenes and elapsed time arc (same as shift mode)
         selectedScenes = [];
@@ -305,6 +324,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         // Visual Updates
         const modeAttr = alienModeActive ? 'alien' : 'active';
         svg.setAttribute('data-shift-mode', modeAttr);
+        persistChronologueCalendarView(alienModeActive ? 'planetary' : 'earth');
         
         // Update date labels for alien mode
         if (alienModeActive) {
@@ -349,6 +369,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             
             // Restore Earth labels
             updateDateLabelsForAlienMode(false);
+            persistChronologueCalendarView('earth');
 
             selectedScenes = [];
             rebuildSelectedPathsSet(); // Rebuild Set after clearing
@@ -621,6 +642,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         updateAltButtonState(altButton, true);
         svg.setAttribute('data-shift-mode', 'alien');
         updateDateLabelsForAlienMode(true);
+        persistChronologueCalendarView('planetary');
     };
 
     const toggleRuntimeMode = () => {
@@ -1011,6 +1033,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         shiftModeActive = true;
         updateShiftButtonState(shiftButton, true);
         svg.setAttribute('data-shift-mode', 'active');
+    } else if (shouldStartInPlanetaryCalendar()) {
+        toggleAlienMode();
     }
 }
 

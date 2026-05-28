@@ -1,6 +1,7 @@
 import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
+import type { ChronologueCalendarDefault } from '../../types/settings';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { IMPACT_FULL } from '../SettingImpact';
@@ -75,6 +76,23 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
+    new Settings(stackEl)
+        .setName('Default calendar view')
+        .setDesc('Choose what Chronologue shows first. Earth remains the source date; Planetary displays the active valid planetary profile immediately when Chronologue opens.')
+        .addDropdown(dropdown => {
+            dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+            dropdown
+                .addOption('earth', 'Earth')
+                .addOption('planetary', 'Planetary')
+                .addOption('remember', 'Remember last')
+                .setValue(plugin.settings.chronologueCalendarDefault ?? 'earth')
+                .onChange(async (value) => {
+                    plugin.settings.chronologueCalendarDefault = value as ChronologueCalendarDefault;
+                    await plugin.saveSettings();
+                    plugin.onSettingChanged(IMPACT_FULL);
+                });
+        });
+
     // 1. Chronologue duration arc cap
     const baseDurationDesc = 'Scenes with durations at or above the selected value fill the entire segment. All other durations below this are proportionally scaled.';
 
@@ -127,10 +145,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             await plugin.saveSettings();
             plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change (duration arcs)
         });
-        // Set fixed width for dropdown (override CSS with important)
-        dropdown.selectEl.style.setProperty('width', '250px', 'important');
-        dropdown.selectEl.style.setProperty('min-width', '250px', 'important');
-        dropdown.selectEl.style.setProperty('max-width', '250px', 'important');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         plugin.registerDomEvent(dropdown.selectEl, 'focus', () => { void loadDurationOptions(true); });
     });
 

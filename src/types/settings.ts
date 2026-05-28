@@ -279,6 +279,8 @@ export interface BeatWorkspaceState {
 export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
 export type ReadabilityScale = 'normal' | 'large';
 export type RuntimeContentType = 'novel' | 'screenplay' | 'audiobook';
+export type ChronologueCalendarDefault = 'earth' | 'planetary' | 'remember';
+export type ChronologueCalendarView = 'earth' | 'planetary';
 export type PovMarkerLabel = '0' | '1' | '2' | '3';
 
 export interface RuntimeRateProfile {
@@ -884,6 +886,8 @@ export interface RadialTimelineSettings {
     showFullTripletAnalysis?: boolean;
     sortByWhenDate?: boolean;
     chronologueDurationCapSelection?: string;
+    chronologueCalendarDefault?: ChronologueCalendarDefault;
+    chronologueLastCalendarView?: ChronologueCalendarView;
     discontinuityThreshold?: string;
     shouldRestoreTimelineOnLoad?: boolean;
     /** @deprecated Legacy global beat-system selector. Migrated into per-book beatWorkspace and not used at runtime. */
