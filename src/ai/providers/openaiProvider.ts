@@ -18,13 +18,47 @@ export class OpenAIProvider implements AIProvider {
         return CAPS.includes(capability);
     }
 
-    private deriveCacheResult(responseData: unknown): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
+    /**
+     * Derive OpenAI cache provenance.
+     *
+     * Unlike Anthropic (which reports both `cache_read_input_tokens` and
+     * `cache_creation_input_tokens` in the response) or Gemini (where the
+     * cache manager tracks create-vs-hit explicitly), OpenAI prompt
+     * caching is implicit:
+     *   - Response shows `cached_tokens > 0` → confirmed reuse this call.
+     *   - Response shows `cached_tokens === 0` → either (a) no prior
+     *     cache existed (so this call PRIMED the prefix for next time)
+     *     or (b) caching wasn't attempted at all.
+     *
+     * We disambiguate (a) vs (b) using `promptCacheKeySupplied`: if the
+     * caller passed a `prompt_cache_key` and the run succeeded with no
+     * cached tokens, this run armed the cache for the next call.
+     *
+     * OpenAI auto-caches prefixes ≥ ~1024 tokens, and Inquiry runs are
+     * always far above that threshold, so the 'created' claim is
+     * reliable enough to surface in the UI alongside the cache-window
+     * countdown the Settings preview already shows.
+     */
+    private deriveCacheResult(
+        responseData: unknown,
+        promptCacheKeySupplied: boolean,
+        runSucceeded: boolean
+    ): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
         const usage = extractTokenUsage('openai', responseData);
         const cacheRead = usage?.cacheReadInputTokens ?? 0;
         if (cacheRead > 0) {
             return {
                 cacheUsed: true,
                 cacheStatus: 'hit'
+            };
+        }
+        if (promptCacheKeySupplied && runSucceeded) {
+            // Run primed the cache for next call. Not a hit (cacheUsed=false
+            // keeps reuseState='eligible' downstream rather than 'warm') but
+            // explicitly armed.
+            return {
+                cacheUsed: false,
+                cacheStatus: 'created'
             };
         }
         return {};
@@ -36,6 +70,9 @@ export class OpenAIProvider implements AIProvider {
         const promptCacheRetention = req.bypassProviderReuse
             ? undefined
             : aiSettings.cacheWindows?.openaiRetention;
+        const promptCacheKeySupplied = !req.bypassProviderReuse
+            && typeof req.promptCacheKey === 'string'
+            && req.promptCacheKey.length > 0;
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -48,7 +85,7 @@ export class OpenAIProvider implements AIProvider {
             promptCacheRetention,
             req.promptCacheKey
         );
-        const cacheResult = this.deriveCacheResult(result.responseData);
+        const cacheResult = this.deriveCacheResult(result.responseData, promptCacheKeySupplied, result.success);
         return result.success
             ? {
                 success: true,
@@ -88,6 +125,9 @@ export class OpenAIProvider implements AIProvider {
         const promptCacheRetention = req.bypassProviderReuse
             ? undefined
             : aiSettings.cacheWindows?.openaiRetention;
+        const promptCacheKeySupplied = !req.bypassProviderReuse
+            && typeof req.promptCacheKey === 'string'
+            && req.promptCacheKey.length > 0;
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -106,7 +146,7 @@ export class OpenAIProvider implements AIProvider {
             promptCacheRetention,
             req.promptCacheKey
         );
-        const cacheResult = this.deriveCacheResult(result.responseData);
+        const cacheResult = this.deriveCacheResult(result.responseData, promptCacheKeySupplied, result.success);
         return result.success
             ? {
                 success: true,

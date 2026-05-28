@@ -99,6 +99,86 @@ describe('Cache provenance cross-surface: Anthropic (payload distinguishes)', ()
     });
 });
 
+describe('Cache provenance cross-surface: OpenAI (implicit caching)', () => {
+    // OpenAI's response payload cannot distinguish create vs reuse on
+    // its own — the API auto-caches prefixes and only reports cached_tokens
+    // on subsequent reads. The provider's deriveCacheResult uses
+    // promptCacheKeySupplied to infer 'created'. These cases confirm the
+    // cache pill consumes that provenance correctly.
+
+    it('OpenAI first call with cacheStatus="created" shows "Cache armed", not "No cache reuse"', () => {
+        const usage: TokenUsage = { inputTokens: 5_000, outputTokens: 200, totalTokens: 5_200 };
+        const pill = computeCachePillState(usage, 'created');
+        expect(pill?.label).toBe('Cache armed');
+        expect(pill?.state).toBe('primed');
+    });
+
+    it('OpenAI later call with cacheStatus="hit" + cached_tokens shows reuse percentage', () => {
+        const usage: TokenUsage = {
+            inputTokens: 5_000,
+            outputTokens: 200,
+            totalTokens: 5_200,
+            cacheReadInputTokens: 4_500
+        };
+        const pill = computeCachePillState(usage, 'hit');
+        expect(pill?.label).toBe('Cache reused · 90%');
+        expect(pill?.state).toBe('confirmed');
+    });
+
+    it('OpenAI without a cache key → no cacheStatus → "No cache reuse" via payload fallback', () => {
+        const usage: TokenUsage = { inputTokens: 5_000, outputTokens: 200, totalTokens: 5_200 };
+        const pill = computeCachePillState(usage);
+        expect(pill?.label).toBe('No cache reuse');
+        expect(pill?.state).toBe('none');
+    });
+});
+
+describe('Cache provenance cross-surface: Anthropic (payload distinguishes)', () => {
+    // Anthropic's response payload distinguishes create from reuse via
+    // cache_creation_input_tokens / cache_read_input_tokens — so the
+    // pill works correctly with payload alone (no cacheStatus needed).
+    // These cases pin that the new cacheStatus override is COMPATIBLE
+    // with Anthropic's existing payload-driven path.
+
+    it('Anthropic first call (cache_creation > 0, payload-only) → "Cache created"', () => {
+        const usage: TokenUsage = {
+            inputTokens: 142_000,
+            outputTokens: 500,
+            totalTokens: 142_500,
+            cacheCreationInputTokens: 140_000
+        };
+        const pill = computeCachePillState(usage);
+        expect(pill?.label).toBe('Cache created');
+        expect(pill?.state).toBe('primed');
+    });
+
+    it('Anthropic first call with cacheStatus="created" supplied → "Cache armed" (manager wins)', () => {
+        // When the cache manager supplies 'created', it overrides the
+        // payload-derived "Cache created" wording with the unified
+        // "Cache armed" copy used across all providers.
+        const usage: TokenUsage = {
+            inputTokens: 142_000,
+            outputTokens: 500,
+            totalTokens: 142_500,
+            cacheCreationInputTokens: 140_000
+        };
+        const pill = computeCachePillState(usage, 'created');
+        expect(pill?.label).toBe('Cache armed');
+    });
+
+    it('Anthropic reuse call (cache_read > 0, payload-only) → reuse percentage', () => {
+        const usage: TokenUsage = {
+            inputTokens: 142_000,
+            outputTokens: 500,
+            totalTokens: 142_500,
+            cacheReadInputTokens: 140_000
+        };
+        const pill = computeCachePillState(usage);
+        expect(pill?.label).toBe('Cache reused · 99%');
+        expect(pill?.state).toBe('confirmed');
+    });
+});
+
 describe('Cache provenance cross-surface: no cache attempted', () => {
     it('No usage, no cacheStatus → no pill', () => {
         expect(computeCachePillState(undefined)).toBeNull();
