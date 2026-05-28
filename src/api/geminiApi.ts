@@ -444,12 +444,34 @@ export async function countGeminiTokens(
   const cleanModelId = modelId.startsWith('models/') ? modelId.slice(7) : modelId;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cleanModelId)}:countTokens?key=${encodeURIComponent(apiKey)}`;
 
-  const body: Record<string, unknown> = {
-    contents: [{ role: 'user', parts: [{ text: userPrompt }] }]
-  };
-  if (systemPrompt && systemPrompt.length > 0) {
-    body.systemInstruction = { parts: [{ text: systemPrompt }] };
-  }
+  // The countTokens endpoint accepts two body shapes (per Google's
+  // v1beta reference) and ONLY two:
+  //   1. `{ contents: [...] }`               — counts message contents only.
+  //   2. `{ generateContentRequest: { ... } }` — counts the full request
+  //      (contents + systemInstruction + tools + ...).
+  //
+  // A top-level `systemInstruction` field — what we used to send
+  // alongside `contents` — is an unknown field on this endpoint and
+  // Google rejects the whole request with HTTP 400 INVALID_ARGUMENT
+  // ("Invalid JSON payload received. Unknown name 'systemInstruction'…").
+  // This silently broke Gemini countTokens for every Inquiry run with
+  // a non-empty system prompt (i.e. almost every run).
+  //
+  // When the caller supplies a system prompt, wrap in
+  // `generateContentRequest` so the system tokens are counted accurately.
+  // When there's no system prompt, the simple `contents`-only form is
+  // shorter and equivalent.
+  const body: Record<string, unknown> = systemPrompt && systemPrompt.length > 0
+    ? {
+        generateContentRequest: {
+          model: `models/${cleanModelId}`,
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] }
+        }
+      }
+    : {
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }]
+      };
 
   const resp = await requestUrl({
     url,

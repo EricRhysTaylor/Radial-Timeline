@@ -376,7 +376,7 @@ import {
     formatInquiryBriefTimestamp,
     formatInquiryId,
     formatRunDurationEstimate,
-    formatTokenCountFailureReason,
+    formatTokenCountFailureReason,  // used by getEngineFailureGuidance to surface countTokens failures in the AI Engine popover
     formatPendingEditsSuccessMessage,
     formatPendingEditsTargetsTooltip,
     formatSessionOverrides,
@@ -1301,14 +1301,30 @@ export class InquiryView extends ItemView {
     }
 
     private getEngineFailureGuidance(): EngineFailureGuidance | null {
+        // Last-run error takes precedence — a real failure on the most
+        // recent run is the loudest thing to surface in the popover.
         const result = this.state.activeResult;
-        if (!result) return null;
-        if (!this.isErrorResult(result)) return null;
-        const hero = formatAuthorFacingErrorHero(result);
-        const detail = result.aiErrorDetail ? `\n${result.aiErrorDetail}` : '';
-        return {
-            message: `${hero}${detail}\nOpen Inquiry Log for detailed error report.`
-        };
+        if (result && this.isErrorResult(result)) {
+            const hero = formatAuthorFacingErrorHero(result);
+            const detail = result.aiErrorDetail ? `\n${result.aiErrorDetail}` : '';
+            return {
+                message: `${hero}${detail}\nOpen Inquiry Log for detailed error report.`
+            };
+        }
+        // No active error — but if the most recent pre-flight token
+        // count failed, surface that here too. Without this, the pills
+        // say "unavailable" with no indication of *why* and the user
+        // has no path to diagnose. The popover is the canonical error
+        // surface (red), matching the months-long pattern.
+        const corpus = this.getCurrentCorpusContext();
+        if (corpus.requestEstimateMethod === 'unavailable' && corpus.requestEstimateFailureMessage) {
+            const reason = formatTokenCountFailureReason(corpus.requestEstimateFailureMessage)
+                || 'provider token count failed';
+            return {
+                message: `Provider token count unavailable — ${reason}.\nThe Inquiry can still run; pre-flight estimate and cost are unavailable until the provider count succeeds.`
+            };
+        }
+        return null;
     }
 
     private getEngineContextQuestion(): string | null {
@@ -10713,17 +10729,12 @@ export class InquiryView extends ItemView {
     private getPreviewTokensValue(): string {
         const context = this.getCurrentCorpusContext();
         if (context.requestTokens <= 0) {
-            if (context.requestEstimateMethod === 'unavailable') {
-                // Embed the actual provider error inline so the user
-                // can see *why* without opening dev tools (which
-                // Obsidian plugins shouldn't write to anyway). Truncate
-                // for chip width.
-                const reason = formatTokenCountFailureReason(context.requestEstimateFailureMessage);
-                return reason
-                    ? `Full request · unavailable (${reason})`
-                    : 'Full request · unavailable';
-            }
-            return 'Full request · Estimating…';
+            // Keep this pill clean — failure detail goes to the AI
+            // Engine popover (the canonical error surface), NOT here.
+            // See `getEngineFailureGuidance`.
+            return context.requestEstimateMethod === 'unavailable'
+                ? 'Full request · unavailable'
+                : 'Full request · Estimating…';
         }
         const requestLabel = this.formatTokenEstimate(context.requestTokens);
         if (context.corpus.estimatedTokens <= 0) {
@@ -10800,14 +10811,12 @@ export class InquiryView extends ItemView {
                 snapshot.estimate.estimatedInputTokens
             );
             if (inputEstimate.source === 'unavailable' || inputEstimate.source === 'pending') {
-                if (inputEstimate.source === 'pending') return 'Cost · Estimating…';
-                // Embed the actual provider error inline (same approach
-                // as the Full-request pill above) so the user has the
-                // signal they need to debug without opening dev tools.
-                const reason = formatTokenCountFailureReason(snapshot.estimate.tokenCountFailureMessage);
-                return reason
-                    ? `Cost · unavailable (${reason})`
-                    : 'Cost · unavailable (provider token count failed)';
+                // Keep this pill clean — failure detail goes to the AI
+                // Engine popover (the canonical error surface), NOT here.
+                // See `getEngineFailureGuidance`.
+                return inputEstimate.source === 'pending'
+                    ? 'Cost · Estimating…'
+                    : 'Cost · unavailable';
             }
             const learnedOutputTokens = this.plugin.getOutputProfileStore().predictExpectedOutput(
                 engine.provider,

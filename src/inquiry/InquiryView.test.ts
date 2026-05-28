@@ -440,7 +440,11 @@ describe('InquiryView payload accounting', () => {
         // runs against `estimatedInputTokens === 0` and fabricates a
         // near-zero cost that looks authoritative.
         expect(viewSource.includes('const inputEstimate = tokenEstimateFromMethod(')).toBe(true);
-        expect(viewSource.includes("'Cost · unavailable (provider token count failed)'")).toBe(true);
+        // Pill text stays clean; failure detail is surfaced via the AI
+        // Engine popover (getEngineFailureGuidance), not the pill.
+        expect(viewSource.includes("'Cost · unavailable'")).toBe(true);
+        // The engine guidance surfaces the actual provider error.
+        expect(viewSource.includes('requestEstimateFailureMessage')).toBe(true);
         expect(viewSource.includes("from '../ai/estimates'")).toBe(true);
         // Pin: estimate strings disclose source provenance via
         // `${provenanceSuffix}` so local-heuristic-backed costs are not
