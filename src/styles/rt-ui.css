@@ -8044,7 +8044,7 @@
 
 .ert-ui.ert-scope--settings .ert-matter-preview-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: var(--ert-gap-xs);
   min-width: 0;
@@ -8073,14 +8073,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   color: var(--text-muted);
   cursor: grab;
 }
 
+.ert-ui.ert-scope--settings .ert-matter-preview-handle--placeholder {
+  cursor: default;
+  opacity: 0;
+}
+
 .ert-ui.ert-scope--settings .ert-matter-preview-row:active .ert-matter-preview-handle {
   cursor: grabbing;
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  min-width: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-link {
@@ -8114,6 +8127,7 @@
   flex-wrap: wrap;
   gap: var(--ert-gap-tight);
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-badge {
@@ -8173,8 +8187,14 @@
    rows; on live rows it follows the handle. Compact, no layout shift. */
 .ert-ui.ert-scope--settings .ert-matter-preview-enable {
   flex: 0 0 auto;
-  margin: 0 var(--ert-gap-xs) 0 0;
+  margin: 0;
   cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-enable-spacer {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-empty-line {
@@ -8867,8 +8887,12 @@
   }
 
   .ert-ui.ert-scope--settings .ert-matter-preview-row {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .ert-ui.ert-scope--settings .ert-matter-preview-main {
     grid-template-columns: 1fr;
-    gap: var(--ert-gap-xs);
+    align-items: start;
   }
 
   .ert-ui.ert-scope--settings .ert-matter-preview-badges {

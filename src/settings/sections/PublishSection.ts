@@ -4119,8 +4119,9 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                         void setNoteEnabled(notePath, false);
                     });
 
+                    const main = row.createDiv({ cls: 'ert-matter-preview-main' });
                     const item = previewByPath.get(page.path);
-                    const titleLink = row.createEl('a', {
+                    const titleLink = main.createEl('a', {
                         cls: 'ert-matter-preview-link',
                         text: page.title,
                         attr: { href: '#', title: page.path }
@@ -4135,7 +4136,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     // the body-mode badge (LATEX / PLAIN) and the role badge.
                     // BookMeta-sourced rows still get an explicit BOOKMETA pill
                     // because that source is the meaningful distinction.
-                    const badges = row.createDiv({ cls: 'ert-matter-preview-badges' });
+                    const badges = main.createDiv({ cls: 'ert-matter-preview-badges' });
                     const modeTone = page.bodyMode === 'latex' ? 'latex' : 'plain';
                     badges.createSpan({
                         cls: `ert-matter-preview-badge ert-matter-preview-badge--${modeTone}`,
@@ -4169,8 +4170,10 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     // NOTE · <BodyMode> badges already identify it.
                 } else {
                     // BookMeta-generated row.
-                    row.createSpan({ cls: 'ert-matter-preview-link', text: page.title });
-                    const badges = row.createDiv({ cls: 'ert-matter-preview-badges' });
+                    row.createSpan({ cls: 'ert-matter-preview-enable-spacer', attr: { 'aria-hidden': 'true' } });
+                    const main = row.createDiv({ cls: 'ert-matter-preview-main' });
+                    main.createSpan({ cls: 'ert-matter-preview-link', text: page.title });
+                    const badges = main.createDiv({ cls: 'ert-matter-preview-badges' });
                     badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--source', text: 'BOOKMETA' });
                     badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--state', text: 'GENERATED' });
                     if (page.role) {
@@ -4245,6 +4248,10 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                 });
                 for (const note of disabledNotes) {
                     const drow = list.createDiv({ cls: 'ert-matter-preview-row is-disabled' });
+                    drow.createDiv({
+                        cls: 'ert-matter-preview-handle ert-matter-preview-handle--placeholder',
+                        attr: { 'aria-hidden': 'true' },
+                    });
                     const dToggle = drow.createEl('input', {
                         cls: 'ert-matter-preview-enable',
                         attr: { type: 'checkbox', title: 'Disabled — check to include this page in export again' },
@@ -4254,7 +4261,8 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     plugin.registerDomEvent(dToggle, 'change', () => {
                         void setNoteEnabled(dNotePath, true);
                     });
-                    const dLink = drow.createEl('a', {
+                    const dMain = drow.createDiv({ cls: 'ert-matter-preview-main' });
+                    const dLink = dMain.createEl('a', {
                         cls: 'ert-matter-preview-link',
                         text: note.title || note.path,
                         attr: { href: '#', title: note.path },
@@ -4263,7 +4271,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                         evt.preventDefault();
                         void plugin.app.workspace.openLinkText(note.path, '', false);
                     });
-                    const dBadges = drow.createDiv({ cls: 'ert-matter-preview-badges' });
+                    const dBadges = dMain.createDiv({ cls: 'ert-matter-preview-badges' });
                     const dTone = note.bodyMode === 'latex' ? 'latex' : 'plain';
                     dBadges.createSpan({
                         cls: `ert-matter-preview-badge ert-matter-preview-badge--${dTone}`,
