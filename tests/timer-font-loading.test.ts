@@ -43,6 +43,7 @@ describe('writing session timer font loading', () => {
         const ringCompleteProgressIndex = indicatorsCss.indexOf('.radial-timeline-container .ert-timeline-session-ring.is-progress-100 .ert-timeline-session-ring__arc');
         const ringPausedIndex = indicatorsCss.indexOf('.radial-timeline-container .ert-timeline-session-ring.is-paused .ert-timeline-session-ring__arc');
         const clockBlock = readRuleBlock(timelineCss, '.ert-timeline-session-panel__clock {');
+        const sessionButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon {');
         const titleButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon:not(.is-icon-only)');
         const iconOnlyButtonBlock = readRuleBlock(timelineCss, '.ert-timeline-session.clickable-icon.is-icon-only');
         const titleCountBlock = readRuleBlock(timelineCss, '.ert-timeline-session__label {');
@@ -91,6 +92,8 @@ describe('writing session timer font loading', () => {
         expect(timelineCss).toContain('height: 24px');
         expect(timelineCss).toContain('min-height: 24px');
         expect(timelineCss).toContain('max-height: 24px');
+        expect(sessionButtonBlock).toContain('cursor: pointer');
+        expect(timelineCss).toContain('.ert-timeline-session.clickable-icon .ert-timeline-session__label');
         expect(titleButtonBlock).toContain('min-width: calc(4.5ch + 2.7rem)');
         expect(iconOnlyButtonBlock).toContain('width: 24px');
         expect(timelineCss).toContain('.ert-timeline-session.clickable-icon.is-goal-met');

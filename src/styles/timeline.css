@@ -1054,6 +1054,7 @@
   line-height: 1;
   border-radius: var(--radius-m);
   background: transparent;
+  cursor: pointer;
 }
 
 .ert-timeline-session.clickable-icon.is-icon-only {
@@ -1066,6 +1067,7 @@
 
 .ert-timeline-session.clickable-icon .ert-timeline-session__icon,
 .ert-timeline-session.clickable-icon .ert-timeline-session__label > .svg-icon {
+  cursor: pointer;
   width: var(--size-4-4);
   height: var(--size-4-4);
   display: block;
@@ -1214,6 +1216,7 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'zero' 0, 'tnum' 1;
   text-align: center;
+  cursor: pointer;
 }
 
 .ert-timeline-session.clickable-icon:not(.is-icon-only) {

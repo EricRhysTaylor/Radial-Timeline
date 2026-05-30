@@ -20,21 +20,23 @@ describe('writing session completion modal', () => {
         const wordsGridBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-grid--words');
         const scenesListBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-scenes__list');
         const compactSettingBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-compact-setting.setting-item');
+        const compactInfoBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-compact-setting .setting-item-info {');
         const compactControlBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-compact-setting .setting-item-control');
         const noteSettingBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-note.setting-item');
         const dateInputBlock = readRuleBlock(css, '.ert-ui input[type="date"].ert-writing-session-date-input');
 
         expect(modalBlock).toContain('width: 680px');
         expect(sectionBlock).toContain('display: flex');
-        expect(gridBlock).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+        expect(gridBlock).toContain('grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto');
         expect(gridBlock).toContain('align-items: start');
         expect(wordsGridBlock).toContain('border-top: 1px solid var(--background-modifier-border)');
         expect(scenesListBlock).toContain('overflow-y: auto');
         expect(scenesListBlock).toContain('max-height: min(28vh, 220px)');
         expect(compactSettingBlock).toContain('border-top: none');
-        expect(compactSettingBlock).toContain('align-items: start');
-        expect(compactSettingBlock).toContain('align-self: start');
+        expect(compactSettingBlock).toContain('display: contents');
+        expect(compactInfoBlock).toContain('align-self: start');
         expect(compactControlBlock).toContain('align-self: start');
+        expect(compactControlBlock).toContain('justify-self: end');
         expect(noteSettingBlock).toContain('border-top: 1px solid var(--background-modifier-border)');
         expect(dateInputBlock).toContain('width: 13.5ch');
         expect(source).toContain('private formatHeaderMeta()');

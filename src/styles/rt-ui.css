@@ -4308,7 +4308,7 @@
 
 .ert-ui .ert-writing-session-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
   gap: var(--ert-gap-md);
   align-items: start;
 }
@@ -4321,11 +4321,7 @@
 .ert-ui .ert-writing-session-compact-setting.setting-item {
   border-top: none;
   padding-top: 0;
-  align-items: start;
-  align-self: start;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--ert-gap-md);
+  display: contents;
 }
 
 .ert-ui.ert-modal--writing-session .ert-writing-session-compact-setting.setting-item,
@@ -4354,9 +4350,14 @@
   min-width: 0;
 }
 
+.ert-ui .ert-writing-session-compact-setting .setting-item-info {
+  align-self: start;
+}
+
 .ert-ui .ert-writing-session-compact-setting .setting-item-control {
   min-width: 0;
   align-self: start;
+  justify-self: end;
   display: flex;
   align-items: flex-start;
 }
@@ -4404,7 +4405,7 @@
 
 @media (max-width: 620px) {
   .ert-ui .ert-writing-session-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 
