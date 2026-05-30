@@ -1,10 +1,13 @@
-import { Menu, Notice, TFile, type App } from 'obsidian';
+import { getFrontMatterInfo, parseYaml, Menu, Notice, TFile, type App } from 'obsidian';
 import { normalizeStatus } from '../../utils/text';
 import { applySceneInsertionPlan, planSceneInsertion } from '../../services/SceneInsertService';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { openOrRevealFile } from '../../utils/fileUtils';
-import type { RadialTimelineSettings, TimelineItem } from '../../types';
+import type { PandocLayoutTemplate, RadialTimelineSettings, TimelineItem } from '../../types';
 import { AddSceneConfirmModal } from '../../modals/AddSceneConfirmModal';
+import { buildChapterContainerSummaries, resolveChapterLayoutSummary, SetChapterModal } from '../../modals/SetChapterModal';
+import { getActiveBook } from '../../utils/books';
+import { readSharedChapterTitle, SHARED_CHAPTER_FIELD_KEY } from '../../utils/timelineChapters';
 
 type SceneContextMenuView = {
     plugin: {
@@ -31,6 +34,8 @@ type PublishStageOption = {
 };
 
 const SCENE_CONTEXT_SELECTOR = '.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]';
+const CHAPTER_INSERT_BEFORE_KEYS = ['Synopsis'];
+const CHAPTER_INSERT_AFTER_KEYS = ['Duration', 'When', 'Act', 'Class'];
 
 const STATUS_OPTIONS: TimelineStatusOption[] = [
     { label: 'Todo', value: 'Todo', normalized: 'Todo', icon: 'circle' },
@@ -56,6 +61,15 @@ function normalizeScalar(value: unknown): string {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.length > 0 ? normalizeScalar(value[0]) : '';
     return String(value).trim();
+}
+
+function normalizeFrontmatterKey(key: string): string {
+    return key.toLowerCase().replace(/[\s_-]/g, '');
+}
+
+function findChapterFrontmatterKey(frontmatter?: Record<string, unknown>): string | undefined {
+    if (!frontmatter) return undefined;
+    return Object.keys(frontmatter).find(key => normalizeFrontmatterKey(key) === 'chapter');
 }
 
 function getEncodedScenePath(group: Element): string | null {
@@ -102,6 +116,133 @@ async function updateSceneFrontmatter(
     }
 }
 
+function getFrontmatterLineKey(line: string): string | undefined {
+    const match = line.match(/^([^:#\n][^:\n]*):/);
+    return match?.[1]?.trim();
+}
+
+function formatYamlString(value: string): string {
+    return JSON.stringify(value);
+}
+
+function insertChapterFieldInYaml(yaml: string, title: string): string {
+    const newline = yaml.includes('\r\n') ? '\r\n' : '\n';
+    const lines = yaml.length > 0 ? yaml.split(/\r?\n/) : [];
+    const chapterLine = `${SHARED_CHAPTER_FIELD_KEY}: ${formatYamlString(title)}`;
+
+    const beforeIndex = lines.findIndex(line => {
+        const key = getFrontmatterLineKey(line);
+        return key ? CHAPTER_INSERT_BEFORE_KEYS.some(candidate => normalizeFrontmatterKey(candidate) === normalizeFrontmatterKey(key)) : false;
+    });
+
+    if (beforeIndex >= 0) {
+        lines.splice(beforeIndex, 0, chapterLine);
+        return lines.join(newline);
+    }
+
+    for (const afterKey of CHAPTER_INSERT_AFTER_KEYS) {
+        const afterIndex = lines.findIndex(line => {
+            const key = getFrontmatterLineKey(line);
+            return key ? normalizeFrontmatterKey(key) === normalizeFrontmatterKey(afterKey) : false;
+        });
+        if (afterIndex >= 0) {
+            lines.splice(afterIndex + 1, 0, chapterLine);
+            return lines.join(newline);
+        }
+    }
+
+    return [...lines, chapterLine].join(newline);
+}
+
+async function insertMissingChapterFrontmatter(
+    view: SceneContextMenuView,
+    file: TFile,
+    title: string
+): Promise<boolean> {
+    let changed = false;
+
+    await view.plugin.app.vault.process(file, (content) => {
+        const info = getFrontMatterInfo(content) as {
+            exists?: boolean;
+            frontmatter?: string;
+            position?: { end?: { offset?: number } };
+        };
+        if (!info.exists || typeof info.frontmatter !== 'string') return content;
+
+        const parsed = parseYaml(info.frontmatter);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return content;
+
+        const frontmatter = parsed as Record<string, unknown>;
+        if (findChapterFrontmatterKey(frontmatter)) return content;
+
+        const updatedYaml = insertChapterFieldInYaml(info.frontmatter, title);
+        const endOffset = info.position?.end?.offset;
+        if (typeof endOffset !== 'number' || endOffset < 0 || endOffset > content.length) return content;
+
+        const body = content.slice(endOffset);
+        const newline = content.includes('\r\n') ? '\r\n' : '\n';
+        const updatedContent = `---${newline}${updatedYaml.endsWith(newline) ? updatedYaml : `${updatedYaml}${newline}`}---${body.startsWith(newline) || body.length === 0 ? '' : newline}${body}`;
+        const verifiedInfo = getFrontMatterInfo(updatedContent) as { frontmatter?: string };
+        const verified = verifiedInfo.frontmatter ? parseYaml(verifiedInfo.frontmatter) : null;
+        if (!verified || typeof verified !== 'object' || Array.isArray(verified)) {
+            throw new Error('Chapter frontmatter insert could not be verified.');
+        }
+        if (readSharedChapterTitle(verified as Record<string, unknown>) !== title) {
+            throw new Error('Chapter frontmatter insert wrote an unexpected value.');
+        }
+
+        changed = true;
+        return updatedContent;
+    });
+
+    return changed;
+}
+
+async function writeChapterMarker(
+    view: SceneContextMenuView,
+    file: TFile,
+    title: string,
+    successMessage: string
+): Promise<void> {
+    const cache = view.plugin.app.metadataCache.getFileCache(file);
+    const existingChapterKey = findChapterFrontmatterKey(cache?.frontmatter as Record<string, unknown> | undefined);
+
+    if (!existingChapterKey) {
+        const inserted = await insertMissingChapterFrontmatter(view, file, title);
+        if (inserted) {
+            refreshTimelineView(view, file);
+            new Notice(successMessage);
+            return;
+        }
+    }
+
+    await updateSceneFrontmatter(
+        view,
+        file,
+        (fm) => {
+            const key = findChapterFrontmatterKey(fm) ?? SHARED_CHAPTER_FIELD_KEY;
+            fm[key] = title;
+        },
+        successMessage
+    );
+}
+
+async function clearChapterMarker(
+    view: SceneContextMenuView,
+    file: TFile,
+    successMessage: string
+): Promise<void> {
+    await updateSceneFrontmatter(
+        view,
+        file,
+        (fm) => {
+            const key = findChapterFrontmatterKey(fm) ?? SHARED_CHAPTER_FIELD_KEY;
+            delete fm[key];
+        },
+        successMessage
+    );
+}
+
 function menuTitle(label: string, active: boolean): string {
     return active ? `${label}  ✓` : label;
 }
@@ -141,6 +282,21 @@ function resolveSubplotColorFromGroup(view: SceneContextMenuView, group: Element
     return fillAttr && !fillAttr.startsWith('url(') ? fillAttr : undefined;
 }
 
+function resolveActiveNovelLayout(settings: RadialTimelineSettings): PandocLayoutTemplate | undefined {
+    const layouts = settings.pandocLayouts ?? [];
+    const activeBook = getActiveBook(settings);
+    const candidateIds = [
+        activeBook?.lastUsedPandocLayoutByPreset?.novel,
+        settings.lastUsedPandocLayoutByPreset?.novel,
+    ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+
+    for (const id of candidateIds) {
+        const layout = layouts.find(candidate => candidate.id === id);
+        if (layout) return layout;
+    }
+    return undefined;
+}
+
 async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, file: TFile): Promise<void> {
     if (typeof view.plugin.getSceneData !== 'function') {
         new Notice('Could not add scene because timeline scene data is unavailable.', 5000);
@@ -178,6 +334,38 @@ async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, f
     }
 }
 
+async function setChapterAtScene(view: SceneContextMenuView, file: TFile, currentChapterTitle: string | undefined): Promise<void> {
+    if (typeof view.plugin.getSceneData !== 'function') {
+        new Notice('Could not set chapter because timeline scene data is unavailable.', 5000);
+        return;
+    }
+
+    try {
+        const scenes = await view.plugin.getSceneData();
+        const result = await new SetChapterModal(
+            view.plugin.app,
+            file.basename,
+            currentChapterTitle,
+            buildChapterContainerSummaries(scenes),
+            resolveChapterLayoutSummary(resolveActiveNovelLayout(view.plugin.settings))
+        ).waitForResult();
+        if (!result) return;
+
+        if (result.clear) {
+            await clearChapterMarker(view, file, `Cleared chapter marker from ${file.basename}.`);
+            return;
+        }
+
+        const title = result.title?.trim();
+        if (title) {
+            await writeChapterMarker(view, file, title, `Set chapter marker on ${file.basename}.`);
+        }
+    } catch (error) {
+        console.error('[SceneContextMenu] Failed to set chapter:', error);
+        new Notice(`Could not set chapter for ${file.basename}. Review the console for details.`, 7000);
+    }
+}
+
 function showSceneContextMenu(view: SceneContextMenuView, group: Element, event: MouseEvent): void {
     const file = getSceneFile(view, group);
     if (!file) {
@@ -189,6 +377,7 @@ function showSceneContextMenu(view: SceneContextMenuView, group: Element, event:
     const frontmatter = (cache?.frontmatter ?? {}) as Record<string, unknown>;
     const currentStatus = normalizeStatus(frontmatter.Status);
     const currentStage = normalizeScalar(frontmatter['Publish Stage']) || 'Zero';
+    const currentChapterTitle = readSharedChapterTitle(frontmatter);
     const pulseFlag = normalizeScalar(frontmatter['Pulse Update']);
     const pulseAlreadyFlagged = /^(yes|true|1)$/i.test(pulseFlag);
 
@@ -201,6 +390,13 @@ function showSceneContextMenu(view: SceneContextMenuView, group: Element, event:
             item.setTitle('Add scene');
             item.onClick(() => {
                 void addSceneAfterAnchor(view, group, file);
+            });
+        });
+        menu.addItem(item => {
+            item.setIcon('book-marked');
+            item.setTitle(currentChapterTitle ? `Set chapter… (${currentChapterTitle})` : 'Set chapter…');
+            item.onClick(() => {
+                void setChapterAtScene(view, file, currentChapterTitle);
             });
         });
         menu.addSeparator();

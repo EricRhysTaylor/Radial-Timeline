@@ -2590,3 +2590,71 @@
 .ert-ui .ert-scope--modal .ert-glass-card {
   box-shadow: none;
 }
+
+.ert-set-chapter-modal__layout-note {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.4;
+}
+
+.ert-set-chapter-modal__layout-icon,
+.ert-set-chapter-modal__chapter-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--interactive-accent);
+  flex: 0 0 auto;
+}
+
+.ert-set-chapter-modal__list-section {
+  display: grid;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-set-chapter-modal__list-title {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ert-set-chapter-modal__list {
+  display: grid;
+  gap: var(--ert-gap-xs);
+  max-height: min(320px, 42vh);
+  overflow: auto;
+}
+
+.ert-set-chapter-modal__chapter-row {
+  display: flex;
+  gap: var(--ert-gap-sm);
+  align-items: center;
+  padding: var(--ert-pad-xs) var(--ert-pad-cozy);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-control-radius);
+  background: var(--background-secondary);
+}
+
+.ert-set-chapter-modal__chapter-body {
+  min-width: 0;
+}
+
+.ert-set-chapter-modal__chapter-name {
+  color: var(--text-normal);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ert-set-chapter-modal__chapter-range,
+.ert-set-chapter-modal__empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
