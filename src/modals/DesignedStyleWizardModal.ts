@@ -788,9 +788,9 @@ export class DesignedStyleWizardModal extends Modal {
         const panel = this.activePanel;
         if (!panel) return;
         panel.empty();
-        // Per-category Reset affordance lives at the top-left of the panel,
-        // with prev/next chevrons on the right. Click reset → restore that
-        // category's slice of the spec from the open-time snapshot.
+        // Per-category actions live at the top-right of the panel. Reset
+        // restores this category's slice of the spec from the open-time
+        // snapshot; prev/next walk through the category list.
         this.renderResetBar(panel);
         // Editorial framing for the controls below — explains the
         // typographic intent so authors understand the publishing trade-offs
@@ -834,21 +834,23 @@ export class DesignedStyleWizardModal extends Modal {
      * Render the per-category control bar at the top of the active panel.
      *
      * Layout (flex space-between):
-     *   left  → reset button (restores this category from the open-time snapshot)
-     *   right → prev / next chevrons (walk through WIZARD_CATEGORIES sequentially,
-     *           disabled at the first/last entry)
+     *   left  → optional panel title (Page injects this)
+     *   right → reset + prev / next chevrons (walk through WIZARD_CATEGORIES
+     *           sequentially, disabled at the first/last entry)
      *
      * The chevrons mirror the dropdown's selection — clicking them invokes
      * the same `activateCategory` path the dropdown uses, so the dropdown,
      * icon, and panel all stay in sync.
      *
      * Returns the bar element so callers can mutate it (e.g. inject a
-     * left-side title alongside the reset button — Page does this).
+     * left-side title — Page does this).
      */
     private renderResetBar(parent: HTMLElement): HTMLElement {
         const bar = parent.createDiv({ cls: 'ert-style-wizard__reset-bar' });
 
-        const resetBtn = bar.createEl('button', {
+        const nav = bar.createDiv({ cls: 'ert-style-wizard__category-nav' });
+
+        const resetBtn = nav.createEl('button', {
             cls: `${ERT_CLASSES.ICON_BTN} ert-style-wizard__reset-btn`,
         });
         resetBtn.type = 'button';
@@ -857,10 +859,6 @@ export class DesignedStyleWizardModal extends Modal {
         try { setIcon(resetBtn, 'rotate-ccw'); } catch { /* test env */ }
         resetBtn.addEventListener('click', () => this.resetActiveCategory());
 
-        // Right-side cluster: prev/next chevrons. Wrapped in a flex group so
-        // any future panel-injected title still sits between reset and nav
-        // (space-between won't divide three children evenly).
-        const nav = bar.createDiv({ cls: 'ert-style-wizard__category-nav' });
         const activeIndex = WIZARD_CATEGORIES.findIndex(c => c.value === this.activeCategory);
         const prevCategory = activeIndex > 0 ? WIZARD_CATEGORIES[activeIndex - 1] : null;
         const nextCategory = activeIndex >= 0 && activeIndex < WIZARD_CATEGORIES.length - 1

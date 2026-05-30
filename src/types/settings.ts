@@ -360,6 +360,11 @@ export interface WritingSessionRecord {
     stagePreference?: WritingSessionStagePreference;
     startedAt: string;
     endedAt: string;
+    /**
+     * Local writing day credited by stats. Defaults to the session start day
+     * for recovered/stale sessions while `endedAt` remains the actual save time.
+     */
+    sessionDate?: string;
     elapsedMs: number;
     wordsAdded?: number;
     typedWords?: number;

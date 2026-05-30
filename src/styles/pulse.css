@@ -2889,19 +2889,17 @@ body > .tooltip {
    (rt-ui.css), so every modal — not just this one — gets breathing room
    between description and content. No wizard override needed. */
 
-/* Per-category Reset bar — flex row at the top of each panel. Reset hugs
-   the left edge; the prev/next chevron cluster hugs the right. A panel-
-   injected title (Page does this) sits between them. */
+/* Per-category action bar. Panel-injected titles (Page does this) stay on
+   the left; reset + prev/next controls share the right-side cluster. */
 .ert-style-wizard__reset-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--ert-gap-sm);
   padding: 0;
   margin-bottom: var(--ert-gap-xs);
 }
 
-/* Right-side category navigation: previous + next chevrons. Pinned to the
-   right of the reset bar, opposite the reset button. */
 .ert-style-wizard__category-nav {
   display: flex;
   align-items: center;
@@ -3121,7 +3119,7 @@ body > .tooltip {
  * the pictogram column. */
 .ert-style-wizard__preview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: var(--ert-gap-md);
   align-items: start;
 }
@@ -3138,11 +3136,16 @@ body > .tooltip {
 
 .ert-style-wizard__preview-visual {
   min-width: 0;
+  justify-self: end;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1040px) {
   .ert-style-wizard__preview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ert-style-wizard__preview-visual {
+    justify-self: start;
   }
 }
 
@@ -3995,4 +3998,3 @@ body > .tooltip {
   font-weight: 600;
   color: var(--text-normal);
 }
-

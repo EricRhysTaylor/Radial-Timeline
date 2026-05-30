@@ -364,6 +364,45 @@ describe('WritingSessionService pure helpers', () => {
         }
     });
 
+    it('auto-pauses a running session at the local day boundary', async () => {
+        vi.useFakeTimers();
+        try {
+            const startedAt = new Date(2026, 4, 20, 23, 50, 0);
+            const afterMidnight = new Date(2026, 4, 21, 0, 10, 0);
+            const midnight = new Date(2026, 4, 21, 0, 0, 0);
+            vi.setSystemTime(afterMidnight);
+            const plugin = {
+                settings: {
+                    writingSessions: {
+                        defaults: { defaultMode: 'drafting' },
+                        active: {
+                            id: 'active-session',
+                            mode: 'drafting',
+                            stage: 'Zero',
+                            stagePreference: 'Zero',
+                            startedAt: startedAt.toISOString(),
+                            lastResumedAt: startedAt.toISOString(),
+                            lastSeenAt: new Date(2026, 4, 21, 0, 9, 30).toISOString(),
+                            elapsedMsBeforePause: 0,
+                            goalMinutes: 60,
+                        },
+                        records: [],
+                    },
+                },
+                saveSettings: vi.fn(async () => undefined),
+            };
+            const service = new WritingSessionService(plugin as any);
+
+            await service.markActiveSessionSeen();
+
+            expect(plugin.settings.writingSessions.active?.pausedAt).toBe(midnight.toISOString());
+            expect(plugin.settings.writingSessions.active?.elapsedMsBeforePause).toBe(10 * 60000);
+            expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('resolves the automatic session stage from working scenes', async () => {
         const plugin = {
             app: { workspace: { getActiveFile: () => undefined, getLeavesOfType: () => [] } },
@@ -497,6 +536,7 @@ describe('WritingSessionService pure helpers', () => {
             wordsAdded: 1234,
             typedWords: 1300,
             netWordDelta: -66,
+            sessionDate: '2026-05-12',
             scenesCompleted: 2,
             pagesEdited: 4,
             note: 'Worked on the opening.',
@@ -507,12 +547,53 @@ describe('WritingSessionService pure helpers', () => {
         expect(record.wordsAdded).toBe(1234);
         expect(record.typedWords).toBe(1300);
         expect(record.netWordDelta).toBe(-66);
+        expect(record.sessionDate).toBe('2026-05-12');
         expect(record.scenesCompleted).toBe(2);
         expect(record.pagesEdited).toBe(4);
         expect(record.note).toBe('Worked on the opening.');
         expect(record.scenePaths).toEqual(['Book/Scene 1.md', 'Book/Scene 2.md']);
         expect(plugin.settings.writingSessions.active).toBeUndefined();
         expect(plugin.settings.writingSessions.records).toHaveLength(1);
+    });
+
+    it('credits recovered sessions to their selected session date instead of save date', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-15T17:00:00.000Z'));
+            const plugin = {
+                settings: {
+                    writingSessions: {
+                        defaults: { defaultMode: 'drafting' },
+                        active: {
+                            id: 'recovered-session',
+                            mode: 'drafting',
+                            stage: 'Zero',
+                            stagePreference: 'Zero',
+                            startedAt: '2026-05-12T16:00:00.000Z',
+                            lastResumedAt: '2026-05-12T16:00:00.000Z',
+                            pausedAt: '2026-05-12T16:30:00.000Z',
+                            elapsedMsBeforePause: 30 * 60000,
+                            typedWords: 500,
+                        },
+                        records: [],
+                    },
+                },
+                saveSettings: vi.fn(async () => undefined),
+            };
+            const service = new WritingSessionService(plugin as any);
+
+            const record = await service.stop({
+                sessionDate: '2026-05-12',
+                wordsAdded: 500,
+            });
+
+            expect(record.endedAt).toBe('2026-05-15T17:00:00.000Z');
+            expect(record.sessionDate).toBe('2026-05-12');
+            expect(service.getDailySessionProgress('2026-05-12').minutesLogged).toBe(30);
+            expect(service.getDailySessionProgress('2026-05-15').minutesLogged).toBe(0);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('suggests touched scenes from active, open, working, and modified files', async () => {

@@ -25,7 +25,7 @@ const MAX_SESSION_RECORDS = 500;
  * onto settings and the portable vault export so the author's data stays
  * forward-readable even after they stop using this plugin.
  */
-export const WRITING_SESSIONS_SCHEMA_VERSION = 3;
+export const WRITING_SESSIONS_SCHEMA_VERSION = 4;
 
 /**
  * If a running session goes this long without a heartbeat it is assumed the
@@ -50,6 +50,7 @@ type Stage = typeof STAGE_ORDER[number];
 
 export interface WritingSessionCompletionInput {
     elapsedMs?: number;
+    sessionDate?: string;
     wordsAdded?: number;
     typedWords?: number;
     netWordDelta?: number;
@@ -202,6 +203,18 @@ function dateKey(value: string | undefined): string {
     return raw.slice(0, 10);
 }
 
+function isDateKey(value: string | undefined): value is string {
+    return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function coerceSessionDate(value: string | undefined, fallbackIso: string): string {
+    return isDateKey(value) ? value : dateKey(fallbackIso);
+}
+
+function recordDateKey(record: WritingSessionRecord): string {
+    return coerceSessionDate(record.sessionDate, record.endedAt);
+}
+
 function generateSessionId(): string {
     return `wrs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -264,6 +277,32 @@ function isActiveSessionStale(session: ActiveWritingSession, at = new Date()): b
     return at.getTime() - seenAt > ACTIVE_SESSION_STALE_MS;
 }
 
+function nextLocalMidnightMs(value: string | undefined): number {
+    const date = value ? new Date(value) : undefined;
+    if (!date || Number.isNaN(date.getTime())) return NaN;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
+}
+
+function activeSessionCutoffMs(session: ActiveWritingSession, at = new Date()): number {
+    const atMs = at.getTime();
+    const cutoffs = [atMs];
+    const seenAt = session.lastSeenAt ? Date.parse(session.lastSeenAt) : NaN;
+    if (isActiveSessionStale(session, at) && Number.isFinite(seenAt)) {
+        cutoffs.push(seenAt);
+    }
+    const dayBoundary = nextLocalMidnightMs(session.lastResumedAt);
+    if (Number.isFinite(dayBoundary) && atMs > dayBoundary) {
+        cutoffs.push(dayBoundary);
+    }
+    return Math.min(...cutoffs);
+}
+
+function hasCrossedActiveSessionDayBoundary(session: ActiveWritingSession, at = new Date()): boolean {
+    if (session.pausedAt) return false;
+    const dayBoundary = nextLocalMidnightMs(session.lastResumedAt);
+    return Number.isFinite(dayBoundary) && at.getTime() > dayBoundary;
+}
+
 function activeElapsedMs(session: ActiveWritingSession, at = new Date()): number {
     const elapsedBeforePause = Math.max(0, session.elapsedMsBeforePause || 0);
     if (session.pausedAt) return elapsedBeforePause;
@@ -272,10 +311,7 @@ function activeElapsedMs(session: ActiveWritingSession, at = new Date()): number
     // Abandoned session: stop counting at the last heartbeat, not `at`, so a
     // forgotten timer left running across an app quit doesn't report hours of
     // phantom writing time.
-    const seenAt = session.lastSeenAt ? Date.parse(session.lastSeenAt) : NaN;
-    const cutoff = isActiveSessionStale(session, at) && Number.isFinite(seenAt)
-        ? seenAt
-        : at.getTime();
+    const cutoff = activeSessionCutoffMs(session, at);
     return elapsedBeforePause + Math.max(0, cutoff - resumedAt);
 }
 
@@ -320,6 +356,7 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
             mode: coerceMode(record.mode),
             stage: coerceStage(record.stage),
             stagePreference: coerceStagePreference(record.stagePreference),
+            sessionDate: isDateKey(record.sessionDate) ? record.sessionDate : undefined,
             wordsAdded: positiveInteger(record.wordsAdded),
             typedWords: positiveInteger(record.typedWords),
             netWordDelta: Number.isFinite(record.netWordDelta) ? Math.round(record.netWordDelta ?? 0) : undefined,
@@ -359,7 +396,7 @@ export function buildDailyWritingStats(params: {
     let minutesLogged = 0;
     let wordsDrafted = 0;
 
-    const sessionsForDate = sessions.filter(session => dateKey(session.endedAt) === date);
+    const sessionsForDate = sessions.filter(session => recordDateKey(session) === date);
     sessionsForDate.forEach(session => {
         const mode = coerceMode(session.mode);
         const minutes = Math.round(Math.max(0, session.elapsedMs || 0) / 60000);
@@ -400,7 +437,7 @@ export function buildDailyWritingSessionProgress(params: {
     let wordsLogged = 0;
     let sessionsCompleted = 0;
     params.sessions.forEach(session => {
-        if (dateKey(session.endedAt) !== params.date) return;
+        if (recordDateKey(session) !== params.date) return;
         sessionsCompleted += 1;
         minutesLogged += Math.round(Math.max(0, session.elapsedMs || 0) / 60000);
         if (coerceMode(session.mode) === 'drafting') {
@@ -458,7 +495,7 @@ export function buildWritingRangeStats(params: {
     let sessionsCompleted = 0;
 
     params.sessions.forEach(session => {
-        const sessionDate = dateKey(session.endedAt);
+        const sessionDate = recordDateKey(session);
         if (!dates.has(sessionDate)) return;
         const mode = coerceMode(session.mode);
         const minutes = Math.round(Math.max(0, session.elapsedMs || 0) / 60000);
@@ -488,7 +525,7 @@ export function buildWritingRangeStats(params: {
     const daysWithSessions = [...minutesByDate.values()].filter(minutes => minutes > 0).length;
     const wordsByDate = new Map<string, number>();
     params.sessions.forEach(session => {
-        const sessionDate = dateKey(session.endedAt);
+        const sessionDate = recordDateKey(session);
         if (!dates.has(sessionDate) || coerceMode(session.mode) !== 'drafting') return;
         wordsByDate.set(sessionDate, (wordsByDate.get(sessionDate) ?? 0) + (positiveInteger(session.wordsAdded) ?? 0));
     });
@@ -555,9 +592,11 @@ export class WritingSessionService {
     private async reconcileActiveSession(): Promise<void> {
         const settings = this.getSettings();
         const active = settings.active;
-        if (!active || active.pausedAt || !isActiveSessionStale(active)) return;
+        if (!active || active.pausedAt) return;
+        if (!isActiveSessionStale(active) && !hasCrossedActiveSessionDayBoundary(active)) return;
+        const cutoffMs = activeSessionCutoffMs(active);
         active.elapsedMsBeforePause = activeElapsedMs(active);
-        active.pausedAt = active.lastSeenAt ?? nowIso();
+        active.pausedAt = new Date(cutoffMs).toISOString();
         await this.plugin.saveSettings();
     }
 
@@ -570,6 +609,14 @@ export class WritingSessionService {
         const settings = this.getSettings();
         const active = settings.active;
         if (!active || active.pausedAt) return;
+        if (hasCrossedActiveSessionDayBoundary(active)) {
+            const now = new Date();
+            const cutoffMs = activeSessionCutoffMs(active, now);
+            active.elapsedMsBeforePause = activeElapsedMs(active, now);
+            active.pausedAt = new Date(cutoffMs).toISOString();
+            await this.plugin.saveSettings();
+            return;
+        }
         active.lastSeenAt = nowIso();
         const now = Date.now();
         if (now - this.lastHeartbeatPersistMs < HEARTBEAT_PERSIST_MS) return;
@@ -812,6 +859,7 @@ export class WritingSessionService {
             stagePreference: active.stagePreference,
             startedAt: active.startedAt,
             endedAt: endedAt.toISOString(),
+            sessionDate: coerceSessionDate(completion.sessionDate, active.startedAt),
             elapsedMs: Math.max(0, Math.round(completion.elapsedMs ?? activeElapsedMs(active, endedAt))),
             wordsAdded: positiveInteger(completion.wordsAdded),
             typedWords: positiveInteger(completion.typedWords ?? active.typedWords),

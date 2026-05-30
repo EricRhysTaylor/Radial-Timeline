@@ -1,0 +1,38 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+describe('writing session completion modal', () => {
+    const readRuleBlock = (css: string, selector: string): string => {
+        const start = css.indexOf(selector);
+        if (start === -1) return '';
+        const open = css.indexOf('{', start);
+        const close = css.indexOf('}', open);
+        return open === -1 || close === -1 ? '' : css.slice(open + 1, close);
+    };
+
+    it('uses a wider, shorter completion layout without the pages edited field', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/modals/WritingSessionCompletionModal.ts'), 'utf8');
+        const css = readFileSync(resolve(process.cwd(), 'src/styles/rt-ui.css'), 'utf8');
+        const modalBlock = readRuleBlock(css, '.ert-ui.ert-modal--writing-session.modal');
+        const gridBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-grid');
+        const scenesListBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-scenes__list');
+        const compactSettingBlock = readRuleBlock(css, '.ert-ui :is(.ert-writing-session-compact-setting, .ert-writing-session-note).setting-item');
+
+        expect(modalBlock).toContain('width: 680px');
+        expect(gridBlock).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+        expect(scenesListBlock).toContain('overflow-y: auto');
+        expect(scenesListBlock).toContain('max-height: min(28vh, 220px)');
+        expect(compactSettingBlock).toContain('border-top: none');
+        expect(source).toContain("cls: 'ert-writing-session-grid ert-writing-session-grid--words'");
+        expect(source).toContain("cls: 'ert-writing-session-grid ert-writing-session-grid--work'");
+        expect(source).toContain("cls: 'ert-writing-session-grid ert-writing-session-grid--session'");
+        expect(source).toContain(".setName('Session date')");
+        expect(source).toContain("text.inputEl.type = 'date'");
+        expect(source).toContain('sessionDateFromStartedAt(this.active.startedAt)');
+        expect(source).toContain("cls: 'ert-writing-session-scenes__list'");
+        expect(source).toContain("noteSetting.settingEl.addClass('ert-writing-session-note')");
+        expect(source).not.toContain(".setName('Pages edited')");
+        expect(source).not.toContain('pagesEdited,');
+    });
+});

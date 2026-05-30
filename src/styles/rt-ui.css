@@ -4292,8 +4292,43 @@
 
 .ert-ui.ert-modal--writing-session.modal,
 .ert-ui .ert-modal--writing-session.modal {
-  width: 460px;
-  max-width: 92vw;
+  width: 680px;
+  max-width: 94vw;
+}
+
+.ert-ui .ert-writing-session-form {
+  --ert-group-gap: var(--ert-gap-md);
+}
+
+.ert-ui .ert-writing-session-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui :is(.ert-writing-session-compact-setting, .ert-writing-session-note).setting-item {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ert-ui .ert-writing-session-compact-setting.setting-item {
+  align-items: flex-start;
+}
+
+.ert-ui .ert-writing-session-compact-setting .setting-item-info,
+.ert-ui .ert-writing-session-note .setting-item-info {
+  min-width: 0;
+}
+
+.ert-ui .ert-writing-session-compact-setting .setting-item-name,
+.ert-ui .ert-writing-session-note .setting-item-name {
+  font-size: var(--font-ui-small);
+}
+
+.ert-ui .ert-writing-session-compact-setting .setting-item-description,
+.ert-ui .ert-writing-session-note .setting-item-description {
+  font-size: var(--font-ui-smaller);
+  line-height: 1.25;
 }
 
 .ert-ui .ert-writing-session-scenes {
@@ -4303,12 +4338,33 @@
   background: var(--ert-panel-bg);
 }
 
+.ert-ui .ert-writing-session-scenes__list {
+  max-height: min(28vh, 220px);
+  overflow-y: auto;
+  padding-right: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-writing-session-scenes__list .setting-item:first-child {
+  border-top: none;
+}
+
+.ert-ui .ert-writing-session-scenes__list .setting-item {
+  margin-bottom: 0;
+}
+
 .ert-ui .ert-writing-session-scenes__title {
   color: var(--ert-text-muted);
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  margin-bottom: var(--ert-gap-sm);
+}
+
+@media (max-width: 620px) {
+  .ert-ui .ert-writing-session-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ert-ui .ert-modal-container {
