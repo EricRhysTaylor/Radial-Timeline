@@ -389,7 +389,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     const { modalEl, contentEl } = modal;
                     modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
                     modalEl.classList.add(ERT_CLASSES.ROOT, ERT_CLASSES.SKIN_PRO);
-                    contentEl.addClass('ert-modal-container');
+                    contentEl.addClass('ert-modal-container', 'ert-stack');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createDiv({ cls: 'ert-modal-title', text: t('settings.runtime.profile.renameTitle') });
@@ -398,7 +398,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     const inputEl = inputContainer.createEl('input', {
                         type: 'text',
                         value: selectedProfile.label || '',
-                        cls: 'ert-input--lg'
+                        cls: 'ert-input ert-input--full'
                     });
 
                     window.setTimeout(() => {

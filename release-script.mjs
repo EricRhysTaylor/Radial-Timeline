@@ -419,7 +419,8 @@ async function performBuildAndUpload(version, isDraft = false) {
         console.warn('⚠️  Could not commit synced notes or move tag. Proceeding anyway.');
     }
 
-    // 3. Verify (build + checks)
+    // 3. Release preflight + verify
+    runCommand("npm run release:prep", "Running release preflight");
     runCommand("npm run verify", "Verifying release (build + checks)");
 
     // 4. Build release-only assets with beta commands removed.

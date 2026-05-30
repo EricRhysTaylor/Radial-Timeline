@@ -60,6 +60,11 @@ const steps = [
         command: 'node code-quality-check.mjs --all',
     },
     {
+        id: 'obsidian-review',
+        label: 'Obsidian review',
+        command: 'npm run review:obsidian',
+    },
+    {
         id: 'css-drift',
         label: 'CSS drift',
         command: 'npm run css-drift -- --maintenance',

@@ -1,5 +1,6 @@
 import type { AIProviderId } from '../types';
 import type { ProviderModelPricing, ProviderPricingTable, PromoPricing } from './providerPricing';
+import { requestJson } from '../../utils/requestUrlJson';
 
 export interface RemotePricingCache {
     fetchedAt: string;
@@ -138,12 +139,7 @@ function isCacheFresh(cache: RemotePricingCache, ttlMs: number): boolean {
 }
 
 async function defaultFetch(url: string): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
-    const response = await fetch(url);
-    return {
-        ok: response.ok,
-        status: response.status,
-        json: async () => response.json()
-    };
+    return requestJson(url);
 }
 
 export async function loadRemotePricing(options: RemotePricingOptions): Promise<RemotePricingLoadResult> {

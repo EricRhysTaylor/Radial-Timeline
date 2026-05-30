@@ -305,7 +305,7 @@ function resolvePandocBinary(options: PandocOptions): string {
     // Recover from settings values incorrectly normalized as vault paths
     // (e.g. "/opt/homebrew/bin/pandoc" stored as "opt/homebrew/bin/pandoc").
     if (
-        process.platform !== 'win32'
+        getCurrentPlatform() !== 'win'
         && configured.includes('/')
         && !configured.startsWith('/')
         && !configured.startsWith('./')
@@ -450,7 +450,7 @@ function parseFcListFamilies(output: string): string[] {
 }
 
 function loadFontCatalogFromFcList(): string[] | null {
-    const candidates = process.platform === 'darwin'
+    const candidates = getCurrentPlatform() === 'mac'
         ? ['fc-list', '/opt/homebrew/bin/fc-list', '/usr/local/bin/fc-list', '/usr/bin/fc-list']
         : ['fc-list', '/usr/bin/fc-list', '/usr/local/bin/fc-list'];
 
@@ -815,7 +815,7 @@ function templateNeedsUnicodeEngine(templatePath?: string): boolean {
 }
 
 function getEngineCandidatePaths(engine: PdfEngine): string[] {
-    if (process.platform === 'win32') {
+    if (getCurrentPlatform() === 'win') {
         const userProfile = process.env.USERPROFILE || 'C:\\Users\\Public';
         const localAppData = process.env.LOCALAPPDATA || `${userProfile}\\AppData\\Local`;
         const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
@@ -901,8 +901,8 @@ export async function runPandocOnContent(
 
     await new Promise<void>((resolve, reject) => {
         const env = { ...process.env };
-        const pathSeparator = process.platform === 'win32' ? ';' : ':';
-        const extraPaths = process.platform === 'win32'
+        const pathSeparator = getCurrentPlatform() === 'win' ? ';' : ':';
+        const extraPaths = getCurrentPlatform() === 'win'
             ? ['C:\\Program Files\\MiKTeX\\miktex\\bin\\x64', 'C:\\Program Files\\texlive\\2024\\bin\\win32']
             : ['/Library/TeX/texbin', '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
         env.PATH = [env.PATH, ...extraPaths].filter(Boolean).join(pathSeparator);

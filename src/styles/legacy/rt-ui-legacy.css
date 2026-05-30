@@ -401,11 +401,13 @@
 }
 
 /* Book card: single-row Setting with bordered card look */
-.ert-book-card.setting-item {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
-  column-gap: var(--ert-gap-md);
+  column-gap: var(--ert-gap-sm);
+  row-gap: var(--ert-gap-sm);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m, 8px);
   padding: var(--ert-pad-xs) var(--ert-pad-sm);
@@ -417,16 +419,16 @@
 }
 
 /* Override generic .is-inactive muting — book cards must stay interactive */
-.ert-book-card.setting-item.is-inactive {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item.is-inactive {
   opacity: 1;
   pointer-events: auto;
 }
 
-.ert-book-card.setting-item.is-active {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item.is-active {
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
 }
 
-.ert-book-card.setting-item.ert-book-card--link-broken {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item.ert-book-card--link-broken {
   border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--text-error) 6%, var(--background-primary));
 }
@@ -436,17 +438,36 @@
   display: flex;
   align-items: center;
   gap: var(--ert-gap-sm);
-}
-
-.ert-book-card .setting-item-info {
   min-width: 0;
 }
 
-.ert-book-card .setting-item-control {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item > .setting-item-info {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item > .setting-item-control {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  justify-content: stretch;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item > .setting-item-control input[type="text"] {
+  width: 100%;
   min-width: 0;
 }
 
 .ert-book-card__drag {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -463,6 +484,24 @@
 
 .ert-book-card__meta {
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ert-book-card .setting-item-name {
+  min-width: 0;
+}
+
+.ert-book-card .setting-item-description {
+  min-width: 0;
+}
+
+.ert-book-card .ert-book-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ert-book-card__status {

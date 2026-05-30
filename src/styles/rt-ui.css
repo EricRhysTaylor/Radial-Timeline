@@ -335,6 +335,8 @@
   max-width: 100%;
   flex: 0 0 auto;
   --ert-control-width: fit-content;
+  text-align: left;
+  text-align-last: left;
 }
 
 .ert-ui :is(input, select).ert-input {
@@ -351,7 +353,7 @@
 }
 
 .ert-ui select.ert-input {
-  padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
+  padding: var(--ert-control-pad-y) var(--ert-select-pad-end) var(--ert-control-pad-y) var(--ert-control-pad-x);
 }
 
 .ert-ui :is(input, select).ert-input[readonly],

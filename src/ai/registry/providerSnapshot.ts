@@ -1,5 +1,6 @@
 import type { CanonicalModelRecord, ProviderSnapshotPayload } from '../types';
 import { redactSensitiveValue } from '../credentials/redactSensitive';
+import { requestJson } from '../../utils/requestUrlJson';
 
 export interface ProviderSnapshotCache {
     fetchedAt: string;
@@ -87,12 +88,7 @@ function isCacheFresh(cache: ProviderSnapshotCache, ttlMs: number): boolean {
 }
 
 async function defaultFetch(url: string): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
-    const response = await fetch(url);
-    return {
-        ok: response.ok,
-        status: response.status,
-        json: async () => response.json()
-    };
+    return requestJson(url);
 }
 
 export async function loadProviderSnapshot(options: ProviderSnapshotOptions): Promise<ProviderSnapshotLoadResult> {

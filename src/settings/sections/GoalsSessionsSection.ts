@@ -6,6 +6,7 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { WritingRangeStats } from '../../services/WritingSessionService';
+import { fitSelectToSelectedLabel } from '../selectSizing';
 
 interface GoalsSessionsSectionParams {
     plugin: RadialTimelinePlugin;
@@ -114,6 +115,35 @@ function formatShortDate(date: string): string {
     return `${months[month - 1] ?? yearRaw} ${day}`;
 }
 
+function parseLocalDateKey(date: string): Date {
+    const [yearRaw, monthRaw, dayRaw] = date.split('-');
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return new Date();
+    }
+    return new Date(year, month - 1, day);
+}
+
+function localDateKey(date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function daysInCurrentYearToDate(endDate = localDateKey()): number {
+    const end = parseLocalDateKey(endDate);
+    const start = new Date(end.getFullYear(), 0, 1);
+    return Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1);
+}
+
+function isYearToDateRange(stats: WritingRangeStats): boolean {
+    const end = parseLocalDateKey(stats.endDate);
+    return stats.startDate === `${end.getFullYear()}-01-01`;
+}
+
 function formatRangeDate(stats: WritingRangeStats): string {
     if (stats.days === 1) return formatShortDate(stats.endDate);
     return `${formatShortDate(stats.startDate)}–${formatShortDate(stats.endDate)}`;
@@ -121,6 +151,7 @@ function formatRangeDate(stats: WritingRangeStats): string {
 
 function formatRangeLabel(stats: WritingRangeStats): string {
     if (stats.days === 1) return 'Today';
+    if (isYearToDateRange(stats)) return 'Year';
     return `${stats.days} days`;
 }
 
@@ -247,6 +278,7 @@ function renderWritingStatsPanel(plugin: RadialTimelinePlugin, containerEl: HTML
                 service.getRangeStats(1),
                 service.getRangeStats(7),
                 service.getRangeStats(30),
+                service.getRangeStats(daysInCurrentYearToDate()),
             ]);
             renderStatsBody(plugin, body, stats);
         } catch (error) {
@@ -293,7 +325,7 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
         .setDesc(t('settings.goalsSessions.targetMode.desc'))
         .addDropdown(dropdown => {
             const current = plugin.getWritingSessionService().getSettings().defaults.targetMode ?? 'time';
-            dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
+            dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected');
             dropdown
                 .addOption('time', t('settings.goalsSessions.targetMode.time'))
                 .addOption('words', t('settings.goalsSessions.targetMode.words'))
@@ -301,7 +333,9 @@ export function renderGoalsSessionsSection({ plugin, containerEl }: GoalsSession
                 .setValue(current)
                 .onChange(async (value) => {
                     await plugin.getWritingSessionService().setDefaultTargetMode(value as WritingSessionTargetMode);
+                    fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 112, maxPx: 220, extraPx: 18 });
                 });
+            fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 112, maxPx: 220, extraPx: 18 });
         });
 
     new Setting(body)

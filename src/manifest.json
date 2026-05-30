@@ -6,5 +6,5 @@
 	"description": "Radial Timeline maps your manuscript across four modes — Progress, Narrative, Chronologue, and Gossamer — plus the Inquiry View for higher-level story analysis. Visualize scenes, subplots, structure, chronology, and story shape in one connected workspace.",
 	"author": "Eric Rhys Taylor",
 	"authorUrl": "https://github.com/EricRhysTaylor",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

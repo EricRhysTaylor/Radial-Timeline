@@ -1,4 +1,5 @@
 import type { ModelInfo } from '../types';
+import { requestJson } from '../../utils/requestUrlJson';
 
 export interface RemoteRegistryCache {
     fetchedAt: string;
@@ -59,12 +60,7 @@ function isCacheFresh(cache: RemoteRegistryCache, ttlMs: number): boolean {
 }
 
 async function defaultFetch(url: string): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
-    const response = await fetch(url);
-    return {
-        ok: response.ok,
-        status: response.status,
-        json: async () => response.json()
-    };
+    return requestJson(url);
 }
 
 function parseRemotePayload(payload: unknown): ModelInfo[] {

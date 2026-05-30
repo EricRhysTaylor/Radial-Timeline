@@ -6,7 +6,7 @@
  * Pro Feature Panels
  */
 
-import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent, TextComponent } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent, TextComponent, Platform } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -94,7 +94,7 @@ function fileExistsSync(absPath: string): boolean {
  * Linux: Standard package-manager locations, TeX Live
  */
 function getKnownPandocPaths(): string[] {
-    const isWin = process.platform === 'win32';
+    const isWin = Platform.isWin;
     if (isWin) {
         const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\Default\\AppData\\Local';
         const appData = process.env.APPDATA || 'C:\\Users\\Default\\AppData\\Roaming';
@@ -118,7 +118,7 @@ function getKnownPandocPaths(): string[] {
 }
 
 function getKnownLatexPaths(): { engine: string; paths: string[] }[] {
-    const isWin = process.platform === 'win32';
+    const isWin = Platform.isWin;
     if (isWin) {
         const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\Default\\AppData\\Local';
         // MiKTeX and TeX Live common install locations on Windows
@@ -153,7 +153,7 @@ function getKnownLatexPaths(): { engine: string; paths: string[] }[] {
  * Includes common binary directories for the current platform.
  */
 function getEnrichedPath(): string {
-    const isWin = process.platform === 'win32';
+    const isWin = Platform.isWin;
     const sep = isWin ? ';' : ':';
     const existing = process.env.PATH || '';
 
@@ -214,7 +214,7 @@ async function scanSystemPaths(): Promise<ScanResult> {
     // ── Phase 2: Fallback `which`/`where` with enriched PATH ────────────────
     if (!result.pandocPath || !result.latexPath) {
         const env = { ...process.env, PATH: getEnrichedPath() };
-        const whichCmd = process.platform === 'win32' ? 'where' : 'which';
+        const whichCmd = Platform.isWin ? 'where' : 'which';
 
         if (!result.pandocPath) {
             await new Promise<void>((resolve) => {

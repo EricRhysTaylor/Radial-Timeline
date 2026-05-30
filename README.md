@@ -106,6 +106,39 @@ Ongoing series on the [Radial Timeline YouTube channel](https://www.youtube.com/
 
 ---
 
+## Desktop & Platform Support
+
+Radial Timeline is a **desktop-only** Obsidian plugin.
+
+- Supported target: Obsidian Desktop
+- Not intended for: Obsidian Mobile
+- Some publishing and file-reveal workflows depend on desktop filesystem and native shell access
+
+---
+
+## Privacy & Security
+
+- No telemetry or analytics SDKs are shipped with the plugin.
+- API keys use Obsidian secret storage when available.
+- AI is optional and can be disabled with the **AI Off** toggle.
+- Vault content should only leave the vault when you explicitly use enabled external features.
+
+See [Privacy & Security](docs/privacy-and-security.md) for the detailed posture.
+
+---
+
+## External Services & Network Access
+
+Radial Timeline may contact external services only in specific optional workflows:
+
+- AI provider requests when you actively use enabled AI features
+- Optional provider/model/pricing metadata refreshes governed by AI privacy settings
+- Optional version/update checks
+
+Upcoming **Social Connections** for the website launch is planned as an explicit integration surface and should remain opt-in, documented, and separately controllable.
+
+---
+
 ## Known Conflicts
 
 *   **Plugin Conflicts**: If you experience visual glitches or strange behavior (such as the timeline overlapping with other UI elements), it may be due to a conflict with another plugin. Try disabling other plugins to isolate the issue. Please see [known plugin conflicts](https://github.com/EricRhysTaylor/Radial-Timeline/issues?q=label%3A%22Plugin+Conflict%22).

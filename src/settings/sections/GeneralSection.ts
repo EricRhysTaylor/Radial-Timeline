@@ -404,7 +404,7 @@ export function renderGeneralSection(params: {
 
             // ── Single-row book card (Setting row) ───────────────────
             const row = new ObsidianSetting(booksPanel);
-            row.settingEl.addClass('ert-book-card', isActive ? 'is-active' : 'is-inactive');
+            row.settingEl.addClass('ert-row', 'ert-book-card', isActive ? 'is-active' : 'is-inactive');
             if (hasBrokenFolderLink) {
                 row.settingEl.addClass('ert-book-card--link-broken');
             }
@@ -614,7 +614,7 @@ export function renderGeneralSection(params: {
 
             row.addText(text => {
                 text.setPlaceholder('Source folder').setValue(book.sourceFolder || '');
-                text.inputEl.addClass('ert-input--xl');
+                text.inputEl.addClass('ert-input--full');
 
                 const inputEl = text.inputEl;
                 let blurCommitTimer: number | null = null;

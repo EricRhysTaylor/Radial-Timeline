@@ -2666,11 +2666,6 @@ Sarah stood at the window, watching the world wake up.`;
     private getOpenFolderButtonLabel(): string {
         if (Platform?.isMacOS) return 'Reveal in Finder';
         if (Platform?.isWin) return 'Open in Explorer';
-        if (Platform?.isLinux) return 'Open folder';
-
-        const fallback = typeof process !== 'undefined' ? process.platform : '';
-        if (fallback === 'darwin') return 'Reveal in Finder';
-        if (fallback === 'win32') return 'Open in Explorer';
         return 'Open folder';
     }
 
