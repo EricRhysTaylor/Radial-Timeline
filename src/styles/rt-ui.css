@@ -4300,6 +4300,12 @@
   --ert-group-gap: var(--ert-gap-md);
 }
 
+.ert-ui .ert-writing-session-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-md);
+}
+
 .ert-ui .ert-writing-session-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4313,10 +4319,17 @@
 
 .ert-ui .ert-writing-session-compact-setting.setting-item {
   align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ert-gap-md);
 }
 
 .ert-ui .ert-writing-session-compact-setting .setting-item-info,
 .ert-ui .ert-writing-session-note .setting-item-info {
+  min-width: 0;
+}
+
+.ert-ui .ert-writing-session-compact-setting .setting-item-control {
   min-width: 0;
 }
 

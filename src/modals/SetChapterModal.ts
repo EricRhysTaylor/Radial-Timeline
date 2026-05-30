@@ -1,7 +1,6 @@
 import { App, ButtonComponent, Notice, Setting, TextComponent, setIcon } from 'obsidian';
 import { ErtModal } from '../ui/ErtModal';
-import type { PandocLayoutTemplate, TimelineItem } from '../types';
-import { getManuscriptLayoutExportBehavior } from '../utils/manuscriptLayoutExport';
+import type { TimelineItem } from '../types';
 import { buildTimelineChapterResolverItems, readSharedChapterTitle } from '../utils/timelineChapters';
 
 export interface ChapterContainerSummary {
@@ -11,11 +10,6 @@ export interface ChapterContainerSummary {
     sceneCount: number;
     markerPath?: string;
     isUnchaptered?: boolean;
-}
-
-export interface ChapterLayoutSummary {
-    layoutName?: string;
-    chapterMarkersSuppressed: boolean;
 }
 
 export interface SetChapterResult {
@@ -63,14 +57,6 @@ export function buildChapterContainerSummaries(scenes: TimelineItem[]): ChapterC
     return summaries;
 }
 
-export function resolveChapterLayoutSummary(layout: PandocLayoutTemplate | undefined): ChapterLayoutSummary {
-    if (!layout) return { chapterMarkersSuppressed: false };
-    return {
-        layoutName: layout.name,
-        chapterMarkersSuppressed: getManuscriptLayoutExportBehavior(layout).suppressChapterMarkers,
-    };
-}
-
 export class SetChapterModal extends ErtModal {
     private resolver: ((result: SetChapterResult | null) => void) | null = null;
     private resolved = false;
@@ -79,8 +65,7 @@ export class SetChapterModal extends ErtModal {
         app: App,
         private readonly targetSceneTitle: string,
         private readonly currentChapterTitle: string | undefined,
-        private readonly chapters: ChapterContainerSummary[],
-        private readonly layoutSummary: ChapterLayoutSummary
+        private readonly chapters: ChapterContainerSummary[]
     ) {
         super(app);
     }
@@ -102,9 +87,8 @@ export class SetChapterModal extends ErtModal {
         });
 
         this.mountHeader({
-            badge: { text: 'Chapter' },
+            badge: { text: `Chapter · starts at ${this.targetSceneTitle}` },
             title: 'Set chapter marker',
-            subtitle: 'Uses the scene note Chapter field for Narrative chapter markers and PDF chapter pages.',
         });
 
         const form = contentEl.createDiv({ cls: 'ert-stack' });
@@ -123,7 +107,7 @@ export class SetChapterModal extends ErtModal {
             .setName('Chapter title')
             .setDesc(`Chapter starts at ${this.targetSceneTitle} and contains the following scenes until the next chapter marker.`)
             .addText((text: TextComponent) => {
-                text.inputEl.addClass('ert-input', 'ert-input--full');
+                text.inputEl.addClass('ert-input', 'ert-input--lg');
                 text.setPlaceholder('Chapter title');
                 text.setValue(nextTitle);
                 text.onChange(value => { nextTitle = value; });
@@ -133,17 +117,6 @@ export class SetChapterModal extends ErtModal {
                     saveChapter();
                 });
             });
-
-        const layoutNote = form.createDiv({ cls: 'ert-set-chapter-modal__layout-note' });
-        const layoutIcon = layoutNote.createSpan({ cls: 'ert-set-chapter-modal__layout-icon' });
-        setIcon(layoutIcon, this.layoutSummary.chapterMarkersSuppressed ? 'eye-off' : 'book-open');
-        layoutNote.createSpan({
-            text: this.layoutSummary.layoutName
-                ? this.layoutSummary.chapterMarkersSuppressed
-                    ? `${this.layoutSummary.layoutName} currently suppresses chapter pages in PDF export.`
-                    : `${this.layoutSummary.layoutName} will use Chapter markers for PDF chapter structure.`
-                : 'No PDF layout selected. The Chapter field is still saved for timeline markers and future exports.',
-        });
 
         const listSection = form.createDiv({ cls: 'ert-set-chapter-modal__list-section' });
         listSection.createDiv({ cls: 'ert-set-chapter-modal__list-title', text: 'Current chapter containers' });

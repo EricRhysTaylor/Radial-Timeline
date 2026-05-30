@@ -3,10 +3,9 @@ import { normalizeStatus } from '../../utils/text';
 import { applySceneInsertionPlan, planSceneInsertion } from '../../services/SceneInsertService';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { openOrRevealFile } from '../../utils/fileUtils';
-import type { PandocLayoutTemplate, RadialTimelineSettings, TimelineItem } from '../../types';
+import type { RadialTimelineSettings, TimelineItem } from '../../types';
 import { AddSceneConfirmModal } from '../../modals/AddSceneConfirmModal';
-import { buildChapterContainerSummaries, resolveChapterLayoutSummary, SetChapterModal } from '../../modals/SetChapterModal';
-import { getActiveBook } from '../../utils/books';
+import { buildChapterContainerSummaries, SetChapterModal } from '../../modals/SetChapterModal';
 import { readSharedChapterTitle, SHARED_CHAPTER_FIELD_KEY } from '../../utils/timelineChapters';
 
 type SceneContextMenuView = {
@@ -282,21 +281,6 @@ function resolveSubplotColorFromGroup(view: SceneContextMenuView, group: Element
     return fillAttr && !fillAttr.startsWith('url(') ? fillAttr : undefined;
 }
 
-function resolveActiveNovelLayout(settings: RadialTimelineSettings): PandocLayoutTemplate | undefined {
-    const layouts = settings.pandocLayouts ?? [];
-    const activeBook = getActiveBook(settings);
-    const candidateIds = [
-        activeBook?.lastUsedPandocLayoutByPreset?.novel,
-        settings.lastUsedPandocLayoutByPreset?.novel,
-    ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
-
-    for (const id of candidateIds) {
-        const layout = layouts.find(candidate => candidate.id === id);
-        if (layout) return layout;
-    }
-    return undefined;
-}
-
 async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, file: TFile): Promise<void> {
     if (typeof view.plugin.getSceneData !== 'function') {
         new Notice('Could not add scene because timeline scene data is unavailable.', 5000);
@@ -346,8 +330,7 @@ async function setChapterAtScene(view: SceneContextMenuView, file: TFile, curren
             view.plugin.app,
             file.basename,
             currentChapterTitle,
-            buildChapterContainerSummaries(scenes),
-            resolveChapterLayoutSummary(resolveActiveNovelLayout(view.plugin.settings))
+            buildChapterContainerSummaries(scenes)
         ).waitForResult();
         if (!result) return;
 

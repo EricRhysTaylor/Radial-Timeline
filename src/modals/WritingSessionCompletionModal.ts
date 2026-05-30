@@ -60,6 +60,12 @@ export class WritingSessionCompletionModal extends Modal {
         return 'planning';
     }
 
+    private formatHeaderMeta(): string {
+        const mode = this.formatMode();
+        const modeLabel = mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '';
+        return [modeLabel, this.active.stage, this.active.bookTitle].filter(Boolean).join(' · ') || 'Session';
+    }
+
     private formatSceneSuggestionDetail(suggestion: WritingSessionSceneSuggestion): string {
         const reasonLabel = suggestion.reason === 'active'
             ? 'active tab'
@@ -84,11 +90,11 @@ export class WritingSessionCompletionModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Session' });
+        header.createSpan({ cls: 'ert-modal-badge', text: this.formatHeaderMeta() });
         header.createDiv({ cls: 'ert-modal-title', text: 'Save writing session' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: [this.formatMode(), this.active.stage, this.active.bookTitle].filter(Boolean).join(' · ') || 'Writing session',
+            text: 'Review word counts, confirm touched scenes, choose the writing day, then save this session record.',
         });
 
         const form = contentEl.createDiv({ cls: 'ert-writing-session-form ert-stack' });
@@ -127,7 +133,8 @@ export class WritingSessionCompletionModal extends Modal {
             });
         };
 
-        const wordSummary = form.createDiv({ cls: 'ert-writing-session-grid ert-writing-session-grid--words' });
+        const wordsSection = form.createDiv({ cls: 'ert-writing-session-section ert-writing-session-section--words' });
+        const wordSummary = wordsSection.createDiv({ cls: 'ert-writing-session-grid ert-writing-session-grid--words' });
         const typedWordsSetting = new Setting(wordSummary)
             .setName('Typed during session')
             .setDesc('Additive live count from keyboard typing only. Paste, cut, deletion, and undo do not subtract from this meter.')
@@ -146,7 +153,7 @@ export class WritingSessionCompletionModal extends Modal {
             'ert-writing-session-compact-setting'
         );
 
-        const workSummary = form.createDiv({ cls: 'ert-writing-session-grid ert-writing-session-grid--work' });
+        const workSummary = wordsSection.createDiv({ cls: 'ert-writing-session-grid ert-writing-session-grid--work' });
         const netWordSetting = new Setting(workSummary)
             .setName('Net manuscript change')
             .setDesc('Snapshot difference for the open scene notes captured at session start. This can be negative after cuts or revision.')
@@ -189,7 +196,7 @@ export class WritingSessionCompletionModal extends Modal {
             .setDesc('Writing day credited in stats. Defaults to the day this session started.')
             .addText((text: TextComponent) => {
                 text.inputEl.type = 'date';
-                text.inputEl.addClass('ert-input--sm');
+                text.inputEl.addClass('ert-input--md');
                 text.setValue(sessionDate);
                 text.onChange(value => {
                     if (isDateKey(value)) sessionDate = value;

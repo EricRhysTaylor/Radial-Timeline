@@ -2591,16 +2591,6 @@
   box-shadow: none;
 }
 
-.ert-set-chapter-modal__layout-note {
-  display: flex;
-  align-items: center;
-  gap: var(--ert-gap-sm);
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  line-height: 1.4;
-}
-
-.ert-set-chapter-modal__layout-icon,
 .ert-set-chapter-modal__chapter-icon {
   width: 18px;
   height: 18px;
