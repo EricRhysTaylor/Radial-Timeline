@@ -105,7 +105,7 @@ export class SetChapterModal extends ErtModal {
 
         new Setting(form)
             .setName('Chapter title')
-            .setDesc(`Chapter starts at ${this.targetSceneTitle} and contains the following scenes until the next chapter marker.`)
+            .setDesc('This scene becomes the chapter start marker.')
             .addText((text: TextComponent) => {
                 text.inputEl.addClass('ert-input', 'ert-input--lg');
                 text.setPlaceholder('Chapter title');

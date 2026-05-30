@@ -87,7 +87,7 @@ The title bar also includes the compact count/session button used for Sessions.
 *   Use the settings icon in that panel to jump straight to **Settings → Core → Sessions**.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/ui-count-popover.png" alt="Radial Timeline writing session and count popover" style="width: 600px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/panel-session-start.png" alt="Radial Timeline writing session and count popover" style="width: 600px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Writing Session panel — timer, daily goal context, and session controls</div>
 </div>
 

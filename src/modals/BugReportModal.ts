@@ -153,8 +153,15 @@ export class BugReportModal extends ErtModal {
     protected mountActions(): HTMLElement {
         const actions = this.contentEl.createDiv({ cls: 'ert-modal-actions ert-bug-report-actions' });
 
+        const send = new ButtonComponent(actions)
+            .setButtonText('Post on GitHub')
+            .onClick(() => void this.handleSend('github'));
+        send.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
+        this.sendButton = send;
+        this.updateSendEnabled();
+
         const emailBtn = new ButtonComponent(actions)
-            .setButtonText('Email instead')
+            .setButtonText('Email Client')
             .setTooltip('Open your default mail app with the report prefilled — no GitHub account needed.')
             .onClick(() => void this.handleSend('email'));
         emailBtn.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'ert-bug-report-secondary');
@@ -163,13 +170,6 @@ export class BugReportModal extends ErtModal {
             .setButtonText('Close')
             .onClick(() => this.close());
         cancelBtn.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
-
-        const send = new ButtonComponent(actions)
-            .setButtonText('Send to GitHub')
-            .onClick(() => void this.handleSend('github'));
-        send.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
-        this.sendButton = send;
-        this.updateSendEnabled();
 
         return actions;
     }

@@ -20,7 +20,7 @@ This release adds workflow enhancements and improved UI, with session tracking, 
 
 **Timeline session controls**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/ui-count-popover.png" alt="Timeline writing session and count popover" width="600">
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-session-start.png" alt="Timeline writing session and count popover" width="600">
 
 **Right-click Add Scene**
 

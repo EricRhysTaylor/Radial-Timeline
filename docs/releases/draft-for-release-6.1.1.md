@@ -1,8 +1,8 @@
 ## Radial Timeline 6.1.1
 
-Thank you to **Fioretin** for taking the time to send thoughtful feedback in [GitHub Discussions #11](https://github.com/EricRhysTaylor/Radial-Timeline/discussions/11). This release includes several improvements shaped by that kind of direct user reporting.
+Thank you to **Fioretin** for the thoughtful feedback in [GitHub Discussions #11](https://github.com/EricRhysTaylor/Radial-Timeline/discussions/11). It helped sharpen this release.
 
-This release focuses on AI reliability, Inquiry and Gossamer polish, faster timeline editing, and cleaner support workflows.
+This release adds a built-in bug report path, chapter marker editing from the timeline, stronger writing-session word tracking, and safer AI execution.
 
 ### New Features
 
@@ -18,24 +18,6 @@ This release focuses on AI reliability, Inquiry and Gossamer polish, faster time
    - Added typed-word counting and session word targets.
    - Cleaned up the session save modal.
    - Added restart-after-completion flow for the session timer.
-
-### Visual Highlights
-
-**Bug report workflow**
-
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-report-bug.png" alt="Bug report workflow" width="600">
-
-**Chapter right-click menu**
-
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/menu-rightclick-chapter.png" alt="Chapter right-click menu" width="282">
-
-**Set chapter marker**
-
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/modal-set-chapter.png" alt="Set chapter marker modal" width="600">
-
-**Writing session control**
-
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/ui-count-popover.png" alt="Writing session control popover" width="600">
 
 ### Improvements
 
@@ -53,3 +35,21 @@ This release focuses on AI reliability, Inquiry and Gossamer polish, faster time
 - Fixed Gossamer scoring cases where the wrong prompt shape, missing Beat Purpose, or malformed AI responses could produce bad run data.
 - Fixed Inquiry cache and estimate edge cases that could leave stale, missing, or misleading status in the view.
 - Fixed timeline/session UI regressions, including tab count animation direction and Gossamer score text overlap.
+
+### Visual Highlights
+
+**Bug report workflow**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-report-bug.png" alt="Bug report workflow" width="600">
+
+**Chapter right-click menu**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/menu-rightclick-chapter.png" alt="Chapter right-click menu" width="282">
+
+**Set chapter marker**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/modal-set-chapter.png" alt="Set chapter marker modal" width="600">
+
+**Writing session control**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-session-start.png" alt="Writing session control popover" width="600">
