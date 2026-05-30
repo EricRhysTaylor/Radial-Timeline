@@ -14,7 +14,7 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 *   **Publishing markers**: Optional outer-ring placards can show chapter starts and part boundaries from your active novel PDF layout.
 *   **Story Beats**: Displays story beats (like Save the Cat) along the timeline, helping you pace your narrative structure.
 *   **Interactive Reordering**: You can drag scenes on the outer ring to reorder them. See [Reorder Scenes](How-to#reorder-scenes) for details.
-*   **Scene right-click menu**: Add a scene after the current one, change Status, change Publish Stage, or flag it for Pulse — see below.
+*   **Scene right-click menu**: Add a scene after the current one, set a chapter marker, change Status, change Publish Stage, or flag it for Pulse — see below.
 *   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [Settings → Advanced → Configuration](Settings-Advanced#configuration).
 
 ## Scene Right-Click Menu
@@ -22,11 +22,13 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 Right-click any scene on the timeline to open a context menu that lets you add a scene or update scene frontmatter without opening the note. The current value in each group is marked with a checkmark.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/ui-rt-rightclick-menu.png" alt="Narrative scene right-click context menu" style="width: 420px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Scene right-click menu — Add scene, Status, Publish Stage, and Pulse actions</div>
+  <img src="images/menu-rightclick-chapter.png" alt="Narrative scene right-click context menu" style="width: 282px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Scene right-click menu — Add scene, chapter markers, Status, Publish Stage, and Pulse actions</div>
 </div>
 
 **Add scene** — inserts a new scene after the selected one, using that scene as the anchor for placement and context.
+
+**Set chapter** — adds, edits, or clears the `Chapter:` marker on the selected scene. The modal previews current chapter containers so you can see how the marker affects the manuscript structure.
 
 **Status** — set `Status` to **Todo**, **Working**, or **Complete**. When you mark a scene **Complete**, the `Due` date is automatically set to today, keeping the [Progress Mode](Progress-Mode) completion estimate and pace tracker accurate.
 

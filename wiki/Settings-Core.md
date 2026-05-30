@@ -52,9 +52,11 @@ Sessions is a Core workflow for writing accountability and basic planning.
 
 *   **Average drafting pace**: Optional words-per-minute estimate for new drafting. Used for writing-time estimates and completion planning.
 *   **Daily session target**: Optional minutes you realistically want to write each day. Used to estimate session counts and calendar time.
+*   **Daily word target**: Optional typed-word target for writing sessions.
+*   **Session goal mode**: Choose whether the session control and writing stats track time, typed words, or both.
 *   **Writing stats**: A collapsible local stats panel summarizes today, the last 7 days, and the last 30 days from timer records and scene completion dates.
 *   **Timeline count/session button**: The compact title-bar button opens the writing-session popover. Start an open-ended session or a countdown sprint, then pause, resume, stop, or discard it there.
-*   **Session ring**: While a session is active, a thin timer ring appears just outside the rainbow progress ring. It fills toward the selected countdown goal, or toward the daily session target for open-ended sessions.
+*   **Session ring**: While a session is active, a thin timer ring appears just outside the rainbow progress ring. It fills toward the active time or word target.
 *   **Save session details**: Saving a timer session opens a confirmation modal for minutes, words added, scenes completed, pages edited, and an optional note.
 
 Runtime and export tools may read these values, but Sessions owns the writing/session estimate settings.

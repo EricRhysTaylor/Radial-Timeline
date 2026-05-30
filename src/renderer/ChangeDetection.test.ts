@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { ChangeType, detectChanges, type TimelineSnapshot } from './ChangeDetection';
+import { describe, expect, it, vi } from 'vitest';
+import { ChangeType, createSnapshot, detectChanges, type TimelineSnapshot } from './ChangeDetection';
+
+vi.mock('../services/VersionCheckService', () => ({
+  getVersionCheckService: () => ({ isUpdateAvailable: () => false })
+}));
 
 function makeSnapshot(overrides: Partial<TimelineSnapshot> = {}): TimelineSnapshot {
   return {
@@ -94,6 +98,34 @@ describe('detectChanges', () => {
     expect(result.changeTypes.has(ChangeType.SCENE_VISUAL)).toBe(true);
     expect(result.canUseSelectiveUpdate).toBe(true);
     expect(result.updateStrategy).toBe('selective');
+  });
+
+  it('forces a full render when a scene Chapter marker changes', () => {
+    const base = createSnapshot(
+      [{ path: 'scene.md', title: 'Scene', rawFrontmatter: {} } as never],
+      new Set(),
+      false,
+      new Set(),
+      'narrative',
+      {} as never,
+      null
+    );
+    const withChapter = createSnapshot(
+      [{ path: 'scene.md', title: 'Scene', rawFrontmatter: { Chapter: 'Arrival' } } as never],
+      new Set(),
+      false,
+      new Set(),
+      'narrative',
+      {} as never,
+      null
+    );
+
+    const result = detectChanges(base, withChapter);
+
+    expect(base.sceneHash).not.toBe(withChapter.sceneHash);
+    expect(result.changeTypes.has(ChangeType.SCENE_DATA)).toBe(true);
+    expect(result.canUseSelectiveUpdate).toBe(false);
+    expect(result.updateStrategy).toBe('full');
   });
 
   it('forces a full render when Gossamer run data changes so the run list refreshes', () => {

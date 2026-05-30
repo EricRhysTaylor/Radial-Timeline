@@ -73,6 +73,10 @@ The tab title bar includes a book selector. Choose an individual Book Manager pr
 
 See [Narrative Mode](Narrative-Mode#book-and-saga-scope) for Saga behavior and limits.
 
+## Bug Reports
+
+The title bar bug icon opens the built-in bug report workflow. You can describe the issue, capture or attach a screenshot, paste an image from the clipboard, and send the report to GitHub. If you do not have a GitHub account, use the email fallback from the same modal.
+
 ## Writing Session Control
 
 The title bar also includes the compact count/session button used for Sessions.

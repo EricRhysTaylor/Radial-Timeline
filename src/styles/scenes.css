@@ -44,10 +44,6 @@
   user-select: none;
 }
 
-.radial-timeline-container .ert-chapter-marker--combined .ert-chapter-marker-label {
-  font-size: 8px;
-}
-
 .radial-timeline-container .ert-chapter-marker:hover .ert-chapter-marker-badge,
 .radial-timeline-container .ert-chapter-marker:focus-within .ert-chapter-marker-badge {
   stroke-width: 1.4px;

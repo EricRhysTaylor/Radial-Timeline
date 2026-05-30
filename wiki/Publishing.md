@@ -142,6 +142,8 @@ Key behaviors:
 
 You do **not** need `Chapter:` on every scene. Only on the scene where a chapter begins.
 
+You can add or clear chapter markers from the scene right-click menu in Narrative mode, or edit the `Chapter:` field directly in the scene note.
+
 ---
 
 ## Parts — Derived from Acts

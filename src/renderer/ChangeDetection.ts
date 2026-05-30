@@ -10,6 +10,7 @@ import { getVersionCheckService } from '../services/VersionCheckService';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
 import { DEFAULT_BOOK_TITLE, getActiveBook, getActiveBookTitle } from '../utils/books';
 import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
+import { readSharedChapterTitle } from '../utils/timelineChapters';
 
 /**
  * Types of changes that can trigger renders
@@ -132,6 +133,7 @@ export function createSnapshot(
                 s.Purpose || '',
                 s.Context || '',
                 s.Description || '', // legacy fallback
+                readSharedChapterTitle(s.rawFrontmatter) || s.Chapter || '',
                 stringifyPovForHash(s.pov),
                 // Range field (rendered in Gossamer mode)
                 s.Range || '',
