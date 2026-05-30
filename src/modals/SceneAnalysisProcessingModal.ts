@@ -8,7 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice, setIcon, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { resolveContentLogsRoot } from '../ai/log';
+import { resolvePulseContentLogsRoot } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../utils/synopsisLimits';
@@ -1530,7 +1530,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.plugin.settings.logApiInteractions && this.taskType !== 'synopsis') {
             const logNoteEl = createDiv({ cls: 'ert-pulse-summary-tip' });
             const noteText = this.logAttempts > 0
-                ? t('sceneAnalysis.processingModal.completion.logsSaved', { path: resolveContentLogsRoot() })
+                ? t('sceneAnalysis.processingModal.completion.logsSaved', { path: resolvePulseContentLogsRoot() })
                 : t('sceneAnalysis.processingModal.completion.logsNoRequest');
             logNoteEl.setText(noteText);
             // Place the note inside the progress card, between the queue and the AI Prompt expander.

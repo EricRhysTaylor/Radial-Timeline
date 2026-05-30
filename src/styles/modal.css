@@ -310,6 +310,39 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.ert-planetary-direction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-2xs);
+  padding: var(--ert-gap-2xs);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.ert-planetary-direction-button {
+  min-height: var(--ert-control-height);
+  padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+}
+
+.ert-planetary-direction-button:hover,
+.ert-planetary-direction-button.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.ert-planetary-modal-inputs .setting-item-control {
+  flex-wrap: wrap;
+  gap: var(--ert-gap-sm);
+}
+
 /* Match date and time inputs to the same theme style */
 .ert-planetary-modal input[type="date"],
 .ert-planetary-modal input[type="time"] {

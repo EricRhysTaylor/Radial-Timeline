@@ -661,6 +661,19 @@ export interface TranslationKeys {
         modal: {
             title: string;
             activeProfile: string;
+            converterDesc: string;
+            directionLabel: string;
+            directionDesc: string;
+            earthToPlanet: string;
+            planetToEarth: string;
+            planetFallback: string;
+            earthDatetimeLabel: string;
+            earthDatetimeDesc: string;
+            planetDateLabel: string;
+            planetDateDesc: string;
+            planetTimeLabel: string;
+            planetTimeDesc: string;
+            monthFallback: string;
             datetimeLabel: string;
             datetimeDesc: string;
             now: string;
@@ -668,6 +681,7 @@ export interface TranslationKeys {
             noProfile: string;
             disabled: string;
             invalid: string;
+            invalidPlanet: string;
         };
         synopsis: { prefix: string; };
         tooltip: { altHint: string; };
@@ -2840,6 +2854,19 @@ export const en: TranslationKeys = {
         modal: {
             title: 'Planetary time converter',
             activeProfile: 'Active profile',
+            converterDesc: 'Convert between Earth time and the active planetary calendar.',
+            directionLabel: 'Conversion',
+            directionDesc: 'Choose which calendar date you know.',
+            earthToPlanet: 'Earth → {{planet}}',
+            planetToEarth: '{{planet}} → Earth',
+            planetFallback: 'Planet',
+            earthDatetimeLabel: 'Earth date & time',
+            earthDatetimeDesc: 'Select an Earth date and time to convert.',
+            planetDateLabel: '{{planet}} date',
+            planetDateDesc: 'Enter a local year, month, and day from this planetary calendar.',
+            planetTimeLabel: 'Local time',
+            planetTimeDesc: 'Use HH:MM. Hours may go above 23 when the local day is longer than Earth.',
+            monthFallback: 'Month',
             datetimeLabel: 'Earth date & time',
             datetimeDesc: 'Select a local date and time to convert.',
             now: 'Now',
@@ -2847,6 +2874,7 @@ export const en: TranslationKeys = {
             noProfile: 'Select an active planetary profile in Settings first.',
             disabled: 'Enable planetary conversions in settings to use this tool.',
             invalid: 'Enter a valid ISO datetime.',
+            invalidPlanet: 'Enter a valid planetary date and local time.',
         },
         synopsis: { prefix: 'Local: ' },
         tooltip: { altHint: 'Hold Alt/Option to show local time.' },

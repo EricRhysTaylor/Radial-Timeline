@@ -7,13 +7,50 @@
 /* ── Mini-tabs (Story beats tab bar) ─────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-mini-tabs {
   display: flex;
-  gap: 0;
+  gap: var(--ert-gap-2xs);
   align-items: flex-end;
   border-bottom: 0;
   /* Overlap the panel top border by 1px so active tab merges seamlessly */
   margin-bottom: -1px;
   position: relative;
   z-index: 2;
+  /* Keep "+ Add system" pinned at the right while loaded tabs scroll */
+  min-width: 0;
+}
+
+/* Horizontally-scrollable container for loaded beat-system tabs. The
+   "+ Add system" button is a sibling outside this scroller so it stays
+   visible no matter how many tabs are loaded. */
+.ert-ui.ert-scope--settings .ert-mini-tabs-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--background-modifier-border) transparent;
+  /* Fade content at both edges so off-screen tabs read as "more this way" */
+  mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
+}
+
+.ert-ui.ert-scope--settings .ert-mini-tabs-scroll > button.ert-mini-tab {
+  flex: 0 0 auto;
+  scroll-snap-align: end;
+}
+
+/* Scrollbar styling for webkit so it doesn't dominate the tab row. */
+.ert-ui.ert-scope--settings .ert-mini-tabs-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.ert-ui.ert-scope--settings .ert-mini-tabs-scroll::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 2px;
+}
+.ert-ui.ert-scope--settings .ert-mini-tabs-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Base tab — inactive state: sits "behind" the panel */

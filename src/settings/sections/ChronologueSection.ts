@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import type { ChronologueCalendarDefault } from '../../types/settings';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
+import { getActivePlanetaryProfile } from '../../utils/planetaryTime';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { IMPACT_FULL } from '../SettingImpact';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -66,6 +67,7 @@ async function collectDurationCapOptions(
 export function renderChronologueSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
+    const activePlanetaryLabel = getActivePlanetaryProfile(plugin.settings)?.label?.trim() || 'Planetary';
 
     const chronoHeading = new Settings(containerEl)
         .setName('Chronologue mode discontinuity & duration')
@@ -83,7 +85,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             dropdown.selectEl.addClass('ert-input', 'ert-input--md');
             dropdown
                 .addOption('earth', 'Earth')
-                .addOption('planetary', 'Planetary')
+                .addOption('planetary', activePlanetaryLabel)
                 .addOption('remember', 'Remember last')
                 .setValue(plugin.settings.chronologueCalendarDefault ?? 'earth')
                 .onChange(async (value) => {

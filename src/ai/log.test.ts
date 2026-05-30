@@ -1,12 +1,42 @@
 import { describe, expect, it } from 'vitest';
+import { TFile, TFolder, normalizePath } from 'obsidian';
+import type RadialTimelinePlugin from '../main';
 import {
     buildUsageCostBreakdown,
+    countContentLogFiles,
     formatActualUsageCost,
     formatSummaryLogContent,
     formatUsageCostBreakdownLines,
+    resolveContentLogRoots,
     resolveContentLogsRoot,
     resolveLogsRoot
 } from './log';
+
+function makeFolder(path: string, children: Array<TFile | TFolder> = []): TFolder {
+    const folder = new TFolder(path) as TFolder & { children: Array<TFile | TFolder> };
+    folder.children = children;
+    return folder;
+}
+
+function makePluginWithVaultFiles(roots: Array<TFile | TFolder>): RadialTimelinePlugin {
+    const byPath = new Map<string, TFile | TFolder>();
+    const visit = (file: TFile | TFolder): void => {
+        byPath.set(normalizePath(file.path), file);
+        if (file instanceof TFolder) {
+            for (const child of (file as TFolder & { children?: Array<TFile | TFolder> }).children ?? []) {
+                visit(child);
+            }
+        }
+    };
+    roots.forEach(visit);
+    return {
+        app: {
+            vault: {
+                getAbstractFileByPath: (path: string) => byPath.get(normalizePath(path)) ?? null
+            }
+        }
+    } as unknown as RadialTimelinePlugin;
+}
 
 describe('log roots', () => {
     it('resolves the shared concise log root', () => {
@@ -15,6 +45,43 @@ describe('log roots', () => {
 
     it('resolves the shared content log root', () => {
         expect(resolveContentLogsRoot()).toBe('Radial Timeline/Logs/Content');
+    });
+
+    it('resolves all content log roots shown by the settings aggregate', () => {
+        expect(resolveContentLogRoots()).toEqual([
+            'Radial Timeline/Logs/Content',
+            'Radial Timeline/Logs/Inquiry/Content',
+            'Radial Timeline/Logs/Gossamer/Content',
+            'Radial Timeline/Logs/Pulse/Content'
+        ]);
+    });
+});
+
+describe('countContentLogFiles', () => {
+    it('counts markdown files recursively in the legacy shared content folder', () => {
+        const legacyRoot = makeFolder('Radial Timeline/Logs/Content', [
+            new TFile('Radial Timeline/Logs/Content/root.md'),
+            new TFile('Radial Timeline/Logs/Content/ignore.json'),
+            makeFolder('Radial Timeline/Logs/Content/Nested', [
+                new TFile('Radial Timeline/Logs/Content/Nested/nested.md')
+            ])
+        ]);
+
+        expect(countContentLogFiles(makePluginWithVaultFiles([legacyRoot]))).toBe(2);
+    });
+
+    it('aggregates current feature content folders', () => {
+        const inquiryRoot = makeFolder('Radial Timeline/Logs/Inquiry/Content', [
+            new TFile('Radial Timeline/Logs/Inquiry/Content/inquiry.md')
+        ]);
+        const gossamerRoot = makeFolder('Radial Timeline/Logs/Gossamer/Content', [
+            new TFile('Radial Timeline/Logs/Gossamer/Content/gossamer.md')
+        ]);
+        const pulseRoot = makeFolder('Radial Timeline/Logs/Pulse/Content', [
+            new TFile('Radial Timeline/Logs/Pulse/Content/pulse.md')
+        ]);
+
+        expect(countContentLogFiles(makePluginWithVaultFiles([inquiryRoot, gossamerRoot, pulseRoot]))).toBe(3);
     });
 });
 

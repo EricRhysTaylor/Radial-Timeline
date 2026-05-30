@@ -7,7 +7,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { addPathChip } from '../pathChip';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
-import { countContentLogFiles, resolveContentLogsRoot, resolveLogsRoot } from '../../ai/log';
+import { countContentLogFiles, resolveLogsRoot } from '../../ai/log';
 import { renderMetadataSection } from './MetadataSection';
 import {
     buildTimelineChapterResolverItems,
@@ -54,7 +54,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
 
     const outputFolder = resolveLogsRoot();
-    const contentFolder = resolveContentLogsRoot();
     const exportFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
 
     // Logs
@@ -76,7 +75,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
 
     const apiLoggingSetting = createDenseRow(logsContainer, {
         title: 'Enable AI content logs',
-        description: 'When enabled, full prompts, materials, and API responses are written as content logs. Concise logs, archives, snapshots, and move history are always written regardless of this toggle.',
+        description: 'When enabled, full prompts, materials, and API responses are written to feature content folders under Logs. Concise logs, archives, snapshots, and move history are always written regardless of this toggle.',
         control: (setting) => {
             setting.addToggle(toggle => toggle
                 .setValue(plugin.settings.logApiInteractions)
@@ -86,8 +85,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 }));
         }
     });
-    const contentChip = addPathChip(apiLoggingSetting, app, contentFolder);
-    addPathChip(apiLoggingSetting, app, outputFolder);
+    const contentChip = addPathChip(apiLoggingSetting, app, outputFolder, { label: 'Content logs' });
 
     const scheduleLogCount = () => {
         const runCount = () => {

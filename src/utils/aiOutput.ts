@@ -14,7 +14,7 @@ export async function ensureAiOutputFolder(plugin: RadialTimelinePlugin): Promis
     return folder;
 }
 
-/** @deprecated Content log counting now targets only `Radial Timeline/Logs/Content`. */
+/** @deprecated Content log counting now aggregates current feature content folders. */
 export function countAiLogFiles(plugin: RadialTimelinePlugin): number {
     return countContentLogFiles(plugin);
 }

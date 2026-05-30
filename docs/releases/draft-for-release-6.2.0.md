@@ -1,4 +1,4 @@
-## Radial Timeline 6.1.1
+## Radial Timeline 6.2.0
 
 Thank you to **Fioretin** for the thoughtful feedback in [GitHub Discussions #11](https://github.com/EricRhysTaylor/Radial-Timeline/discussions/11). It helped sharpen this release.
 

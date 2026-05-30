@@ -17,6 +17,19 @@ export interface PlanetaryConversionResult {
     formatted: string;
 }
 
+export interface PlanetaryDateTimeInput {
+    localYear: number;
+    localMonthIndex: number;
+    localDayOfMonth: number;
+    localHours: number;
+    localMinutes: number;
+    localSeconds?: number;
+}
+
+export interface PlanetaryToEarthConversionResult extends PlanetaryConversionResult {
+    earthDate: Date;
+}
+
 const EARTH_DAY_MS = 24 * 60 * 60 * 1000;
 
 export function getActivePlanetaryProfile(settings: RadialTimelineSettings): PlanetaryProfile | null {
@@ -43,6 +56,7 @@ export function convertFromEarth(date: Date, profile: PlanetaryProfile): Planeta
     if (hoursPerDay <= 0 || daysPerYear <= 0) return null;
 
     const localDayMs = hoursPerDay * 60 * 60 * 1000;
+    const localDaysPerYear = getPlanetaryDaysPerYear(profile);
     const epochShiftMs = (profile.epochOffsetDays ?? 0) * EARTH_DAY_MS;
     const shifted = date.getTime() + epochShiftMs;
 
@@ -50,14 +64,11 @@ export function convertFromEarth(date: Date, profile: PlanetaryProfile): Planeta
     const fullLocalDays = Math.floor(totalLocalDays);
     const dayFraction = totalLocalDays - fullLocalDays;
 
-    const localYear = Math.floor(fullLocalDays / daysPerYear) + 1;
-    const localDayOfYear = mod(fullLocalDays, daysPerYear);
+    const localYear = Math.floor(fullLocalDays / localDaysPerYear) + 1;
+    const localDayOfYear = mod(fullLocalDays, localDaysPerYear);
 
-    const monthNames = profile.monthNames || [];
-    const monthCount = Math.max(1, monthNames.length || 12);
-    const daysPerMonth = Math.max(1, Math.floor(daysPerYear / monthCount));
-    const localMonthIndex = Math.min(monthCount - 1, Math.floor(localDayOfYear / daysPerMonth));
-    const localDayOfMonth = mod(localDayOfYear, daysPerMonth) + 1;
+    const localMonthIndex = getPlanetaryMonthIndexForDayOfYear(profile, localDayOfYear);
+    const localDayOfMonth = localDayOfYear - getPlanetaryMonthStartDay(profile, localMonthIndex) + 1;
 
     const localWeekdayIndex = daysPerWeek > 0 ? mod(fullLocalDays, daysPerWeek) : 0;
 
@@ -78,6 +89,65 @@ export function convertFromEarth(date: Date, profile: PlanetaryProfile): Planeta
 
     return {
         profile,
+        localYear,
+        localDayOfYear,
+        localMonthIndex,
+        localDayOfMonth,
+        localWeekdayIndex,
+        localHours,
+        localMinutes,
+        localSeconds,
+        formatted,
+    };
+}
+
+export function convertToEarth(input: PlanetaryDateTimeInput, profile: PlanetaryProfile): PlanetaryToEarthConversionResult | null {
+    const { hoursPerDay, daysPerWeek } = profile;
+    if (!Number.isFinite(hoursPerDay) || hoursPerDay <= 0) return null;
+
+    const localDaysPerYear = getPlanetaryDaysPerYear(profile);
+    const monthCount = getPlanetaryMonthCount(profile);
+    const localYear = Math.round(input.localYear);
+    const localMonthIndex = Math.round(input.localMonthIndex);
+    const localDayOfMonth = Math.round(input.localDayOfMonth);
+    const localHours = Math.round(input.localHours);
+    const localMinutes = Math.round(input.localMinutes);
+    const localSeconds = Math.round(input.localSeconds ?? 0);
+
+    if (!Number.isFinite(localYear) || localYear < 1) return null;
+    if (!Number.isFinite(localMonthIndex) || localMonthIndex < 0 || localMonthIndex >= monthCount) return null;
+    if (!Number.isFinite(localDayOfMonth) || localDayOfMonth < 1) return null;
+    if (localDayOfMonth > getPlanetaryMonthDayCount(profile, localMonthIndex)) return null;
+    if (!Number.isFinite(localHours) || localHours < 0) return null;
+    if (!Number.isFinite(localMinutes) || localMinutes < 0 || localMinutes > 59) return null;
+    if (!Number.isFinite(localSeconds) || localSeconds < 0 || localSeconds > 59) return null;
+
+    const localDaySeconds = hoursPerDay * 60 * 60;
+    const localTimeSeconds = (localHours * 60 * 60) + (localMinutes * 60) + localSeconds;
+    if (localTimeSeconds >= localDaySeconds) return null;
+
+    const localDayOfYear = getPlanetaryMonthStartDay(profile, localMonthIndex) + localDayOfMonth - 1;
+    const fullLocalDays = ((localYear - 1) * localDaysPerYear) + localDayOfYear;
+    const epochShiftMs = (profile.epochOffsetDays ?? 0) * EARTH_DAY_MS;
+    const localDayMs = hoursPerDay * 60 * 60 * 1000;
+    const earthMs = (fullLocalDays * localDayMs) + (localTimeSeconds * 1000) - epochShiftMs;
+    const earthDate = new Date(earthMs);
+    if (Number.isNaN(earthDate.getTime())) return null;
+
+    const localWeekdayIndex = daysPerWeek > 0 ? mod(fullLocalDays, daysPerWeek) : 0;
+    const formatted = formatPlanetaryDateTime({
+        profile,
+        localYear,
+        localMonthIndex,
+        localDayOfMonth,
+        localWeekdayIndex,
+        localHours,
+        localMinutes,
+    });
+
+    return {
+        profile,
+        earthDate,
         localYear,
         localDayOfYear,
         localMonthIndex,
@@ -164,8 +234,41 @@ export function parseCommaNames(input: string | undefined): string[] | undefined
     return names.length ? names : undefined;
 }
 
+export function getPlanetaryMonthCount(profile: PlanetaryProfile): number {
+    return Math.max(1, Math.min(profile.monthNames?.length || 12, getPlanetaryDaysPerYear(profile)));
+}
+
+export function getPlanetaryMonthDayCount(profile: PlanetaryProfile, monthIndex: number): number {
+    const monthCount = getPlanetaryMonthCount(profile);
+    const normalizedIndex = Math.max(0, Math.min(monthCount - 1, Math.round(monthIndex)));
+    const daysPerYear = getPlanetaryDaysPerYear(profile);
+    const baseDaysPerMonth = getBasePlanetaryDaysPerMonth(profile);
+    if (normalizedIndex < monthCount - 1) return baseDaysPerMonth;
+    return Math.max(1, daysPerYear - (baseDaysPerMonth * (monthCount - 1)));
+}
+
+export function getPlanetaryMonthStartDay(profile: PlanetaryProfile, monthIndex: number): number {
+    const monthCount = getPlanetaryMonthCount(profile);
+    const normalizedIndex = Math.max(0, Math.min(monthCount - 1, Math.round(monthIndex)));
+    return normalizedIndex * getBasePlanetaryDaysPerMonth(profile);
+}
+
 function pad(value: number): string {
     return String(Math.max(0, value)).padStart(2, '0');
+}
+
+function getPlanetaryDaysPerYear(profile: PlanetaryProfile): number {
+    return Math.max(1, Math.floor(profile.daysPerYear));
+}
+
+function getBasePlanetaryDaysPerMonth(profile: PlanetaryProfile): number {
+    return Math.max(1, Math.floor(getPlanetaryDaysPerYear(profile) / getPlanetaryMonthCount(profile)));
+}
+
+function getPlanetaryMonthIndexForDayOfYear(profile: PlanetaryProfile, dayOfYear: number): number {
+    const monthCount = getPlanetaryMonthCount(profile);
+    const baseDaysPerMonth = getBasePlanetaryDaysPerMonth(profile);
+    return Math.min(monthCount - 1, Math.floor(dayOfYear / baseDaysPerMonth));
 }
 
 function mod(value: number, divisor: number): number {

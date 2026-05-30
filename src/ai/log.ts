@@ -482,6 +482,15 @@ export function resolveContentLogsRoot(): string {
     return normalizePath(`${resolveLogsRoot()}/${CONTENT_LOGS_FOLDER_NAME}`);
 }
 
+export function resolveContentLogRoots(): string[] {
+    return [
+        resolveContentLogsRoot(),
+        resolveInquiryContentLogsRoot(),
+        resolveGossamerContentLogsRoot(),
+        resolvePulseContentLogsRoot()
+    ];
+}
+
 export async function ensureLogsRoot(vault: Vault): Promise<TFolder | null> {
     const folderPath = resolveLogsRoot();
     const existing = vault.getAbstractFileByPath(folderPath);
@@ -626,17 +635,26 @@ export function resolveAvailableLogPath(vault: Vault, folderPath: string, baseNa
 }
 
 export function countContentLogFiles(plugin: RadialTimelinePlugin): number {
-    const folderPath = resolveContentLogsRoot();
-    const abstractFile = plugin.app.vault.getAbstractFileByPath(folderPath);
-    if (!abstractFile || !(abstractFile instanceof TFolder)) {
-        return 0;
-    }
-
+    const seen = new Set<string>();
     let count = 0;
-    for (const child of abstractFile.children) {
-        if (child instanceof TFile && child.extension === 'md') {
-            count += 1;
+    const countMarkdownFiles = (file: unknown): void => {
+        if (file instanceof TFile) {
+            if (!seen.has(file.path) && file.extension.toLowerCase() === 'md') {
+                seen.add(file.path);
+                count += 1;
+            }
+            return;
         }
+        if (file instanceof TFolder) {
+            const children = (file as TFolder & { children?: unknown[] }).children ?? [];
+            for (const child of children) {
+                countMarkdownFiles(child);
+            }
+        }
+    };
+
+    for (const folderPath of resolveContentLogRoots()) {
+        countMarkdownFiles(plugin.app.vault.getAbstractFileByPath(folderPath));
     }
     return count;
 }

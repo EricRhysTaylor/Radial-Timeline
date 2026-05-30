@@ -1574,11 +1574,18 @@ export class RadialTimelineView extends ItemView {
                 this.writingSessionRingPulseTimeout = undefined;
             }, 300);
         }
-        const gossamerLayer = this.currentMode === 'gossamer'
-            ? timelineRoot.querySelector('.rt-gossamer-layer')
-            : null;
-        if (gossamerLayer) {
-            timelineRoot.insertBefore(imported, gossamerLayer);
+        const layerAnchors = [
+            this.currentMode === 'gossamer' ? timelineRoot.querySelector('.rt-gossamer-layer') : null,
+            timelineRoot.querySelector('.rt-scene-info'),
+        ].filter((anchor): anchor is Element => Boolean(anchor));
+        const firstAnchor = layerAnchors.sort((a, b) => {
+            const position = a.compareDocumentPosition(b);
+            if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+            if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+            return 0;
+        })[0];
+        if (firstAnchor) {
+            timelineRoot.insertBefore(imported, firstAnchor);
         } else {
             timelineRoot.appendChild(imported);
         }

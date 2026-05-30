@@ -2054,10 +2054,12 @@ export function renderBeatPropertiesSection(params: {
         const loadedTabs = getLoadedBeatWorkspaceTabs();
         const activeTabId = getActiveBeatWorkspaceTabId();
         const libraryMode = isBeatLibraryMode();
+        const scrollEl = beatSystemTabs.createDiv({ cls: 'ert-mini-tabs-scroll' });
+        let activeBtnEl: HTMLButtonElement | null = null;
         loadedTabs.forEach((tab) => {
             const isActive = !libraryMode && tab.tabId === activeTabId;
             const status = getBeatSystemTabStatus(tab);
-            const btn = beatSystemTabs.createEl('button', {
+            const btn = scrollEl.createEl('button', {
                 cls: `ert-mini-tab${tab.sourceKind !== 'builtin' ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
                 attr: {
                     type: 'button',
@@ -2071,6 +2073,7 @@ export function renderBeatPropertiesSection(params: {
             setIcon(iconEl, status.icon);
             setTooltip(iconEl, status.tooltip);
             btn.createSpan({ cls: 'ert-mini-tab-label', text: tab.name });
+            if (isActive) activeBtnEl = btn;
             const closeEl = btn.createSpan({ cls: 'ert-mini-tab-close', attr: { role: 'button', 'aria-label': `Remove ${tab.name}` } });
             setIcon(closeEl, 'x');
             setTooltip(closeEl, `Remove "${tab.name}"`);
@@ -2116,6 +2119,13 @@ export function renderBeatPropertiesSection(params: {
             renderStageSwitcher();
             updateStageVisibility();
         });
+
+        // Keep the active tab on-screen when loaded tabs overflow the row.
+        if (activeBtnEl) {
+            window.requestAnimationFrame(() => {
+                activeBtnEl?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+            });
+        }
     }
 
     // ─── BEAT YAML EDITOR — always visible in Fields stage ─────────────
