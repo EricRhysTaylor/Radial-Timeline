@@ -2,7 +2,7 @@
 
 Thank you to **Fioretin** for the thoughtful feedback in [GitHub Discussions #11](https://github.com/EricRhysTaylor/Radial-Timeline/discussions/11). It helped sharpen this release.
 
-This release adds a built-in bug report path, chapter marker editing from the timeline, stronger writing-session word tracking, and safer AI execution.
+This release adds a built-in bug report path, chapter marker editing from the timeline, stronger writing-session word tracking, a revamped Alien Calendar Calculator, and safer AI execution.
 
 ### New Features
 
@@ -18,6 +18,9 @@ This release adds a built-in bug report path, chapter marker editing from the ti
    - Added typed-word counting and session word targets.
    - Cleaned up the session save modal.
    - Added restart-after-completion flow for the session timer.
+4. Revamped the Alien Calendar Calculator and Chronologue planet calendar flow.
+   - Refreshed the calculator panel for clearer Earth-to-local calendar conversion.
+   - Added a Settings -> Core -> Chronologue option to open Chronologue directly in Planet Calendar mode when a valid planetary profile is active.
 
 ### Improvements
 
@@ -26,7 +29,7 @@ This release adds a built-in bug report path, chapter marker editing from the ti
 - Improved Gossamer AI analysis with response validation, safer frontmatter writes, clearer progress/error states, and better handling for beat purpose text.
 - Improved Inquiry briefing behavior, including sorted findings/action items, compact briefing fingerprints, cache-state recovery, and more reliable reopened sessions.
 - Improved Settings → Publish wording and PDF template/font guidance.
-- Improved Chronologue defaults so the planetary calendar sub-mode can open first when configured.
+- Improved Chronologue defaults for authors who regularly work in planetary calendars.
 
 ### Bug Fixes
 
@@ -53,3 +56,7 @@ This release adds a built-in bug report path, chapter marker editing from the ti
 **Writing session control**
 
 <img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-session-start.png" alt="Writing session control popover" width="600">
+
+**Alien Calendar Calculator**
+
+<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/panel-planet-calculator.png" alt="Alien Calendar Calculator panel" width="600">

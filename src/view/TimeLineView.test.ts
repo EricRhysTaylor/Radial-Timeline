@@ -7,14 +7,12 @@ describe('RadialTimelineView layer ordering', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/view/TimeLineView.ts'), 'utf8');
         const fn = source.match(/private updateWritingSessionRing\([\s\S]+?\n    public focusTimelineSearchInput/)?.[0] ?? '';
         expect(fn).toContain("this.currentMode === 'gossamer'");
-        expect(fn).toContain("timelineRoot.querySelector('.rt-gossamer-layer')");
+        expect(fn).toContain("timelineRoot.querySelector('.rt-gossamer-layer, .rt-scene-info')");
         expect(fn).toContain("timelineRoot.querySelector('.rt-scene-info')");
         expect(fn).toContain('timelineRoot.insertBefore(imported, firstAnchor);');
-        expect(fn.indexOf("timelineRoot.querySelector('.rt-gossamer-layer')")).toBeLessThan(
-            fn.indexOf('const firstAnchor = layerAnchors.sort')
-        );
-        expect(fn.indexOf("timelineRoot.querySelector('.rt-scene-info')")).toBeLessThan(
-            fn.indexOf('const firstAnchor = layerAnchors.sort')
+        expect(fn).not.toContain('Node.DOCUMENT_POSITION');
+        expect(fn.indexOf("timelineRoot.querySelector('.rt-gossamer-layer, .rt-scene-info')")).toBeLessThan(
+            fn.indexOf('timelineRoot.insertBefore(imported, firstAnchor);')
         );
         expect(fn.indexOf('timelineRoot.insertBefore(imported, firstAnchor);')).toBeLessThan(
             fn.indexOf('timelineRoot.appendChild(imported);')

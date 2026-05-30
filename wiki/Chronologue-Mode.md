@@ -133,6 +133,7 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
 *   **Alt overlay**: Press `Alt` to enter the planetary wireframe for your active local time profile.
 *   **Alt + Shift**: This mirrors the standard Shift sub-mode in red, so you can compare elapsed time and discontinuities in local planetary time.
 *   **Active profile**: The selected profile in Settings controls which calendar is used for hover and conversion outputs.
+*   **Sticky Planet Calendar**: Settings -> Core -> Chronologue can make Planet Calendar the default Chronologue display when planetary time is enabled and a valid profile is active.
 *   **Translation layer**: Scene timings still derive from Earth timestamps; Planetary Time converts them for display and writing support.
 
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.

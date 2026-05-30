@@ -141,6 +141,7 @@ Configure the time-based visualization of your story.
 
 *   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the duration arcs. Can be `Auto` or a specific timeframe.
 *   **Discontinuity gap threshold**: Controls the sensitivity of the Shift sub-mode. When the gap between scenes exceeds this threshold, an infinity symbol appears.
+*   **Default Chronologue display**: Choose whether Chronologue opens in the standard Earth timeline or jumps straight to the Planet Calendar view when planetary time is enabled and a valid profile is active.
 
 > [!NOTE]
 > Read more in [Chronologue Mode](Chronologue-Mode).

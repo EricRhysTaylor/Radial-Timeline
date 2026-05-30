@@ -239,7 +239,7 @@ Opens the planetary conversion panel.
   <img src="images/panel-planet-calculator.png" alt="Planetary time calculator panel" style="width: 440px; max-width: 100%; border-radius: 8px;" />
 </div>
 
-Uses the active planetary profile from [Settings → Core](Settings-Core) and lets you select a date and time, convert that Earth timestamp to local planetary time, and copy a YAML-friendly result block. If no planetary profile exists or no active profile is selected, the calculator cannot produce a result.
+Uses the active planetary profile from [Settings → Core](Settings-Core) and lets you select a date and time, convert that Earth timestamp to local planetary time, and copy a YAML-friendly result block. The refreshed panel is designed for quick Alien Calendar checks while writing. If no planetary profile exists or no active profile is selected, the calculator cannot produce a result.
 
 Related: [Planetary Calendar](Chronologue-Mode#alt-sub-mode).
 
