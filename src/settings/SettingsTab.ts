@@ -1061,8 +1061,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             { label: 'Properties', target: scenePropertiesSection },
             { label: 'Chronology', target: chronologueSection },
             { label: 'Backdrop', target: backdropSection },
-            { label: 'Colors', target: colorsWorkingPatternSection },
-            { label: 'Readme', target: readmeSection }
+            { label: 'Colors', target: colorsWorkingPatternSection }
         ]);
 
         const inquirySection = inquiryBody.createDiv({

@@ -196,7 +196,7 @@ export class WritingSessionCompletionModal extends Modal {
             .setDesc('Writing day credited in stats. Defaults to the day this session started.')
             .addText((text: TextComponent) => {
                 text.inputEl.type = 'date';
-                text.inputEl.addClass('ert-input--md');
+                text.inputEl.addClass('ert-input--md', 'ert-writing-session-date-input');
                 text.setValue(sessionDate);
                 text.onChange(value => {
                     if (isDateKey(value)) sessionDate = value;

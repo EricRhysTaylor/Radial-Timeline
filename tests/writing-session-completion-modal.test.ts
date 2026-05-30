@@ -17,15 +17,26 @@ describe('writing session completion modal', () => {
         const modalBlock = readRuleBlock(css, '.ert-ui.ert-modal--writing-session.modal');
         const sectionBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-section');
         const gridBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-grid');
+        const wordsGridBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-grid--words');
         const scenesListBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-scenes__list');
-        const compactSettingBlock = readRuleBlock(css, '.ert-ui :is(.ert-writing-session-compact-setting, .ert-writing-session-note).setting-item');
+        const compactSettingBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-compact-setting.setting-item');
+        const compactControlBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-compact-setting .setting-item-control');
+        const noteSettingBlock = readRuleBlock(css, '.ert-ui .ert-writing-session-note.setting-item');
+        const dateInputBlock = readRuleBlock(css, '.ert-ui input[type="date"].ert-writing-session-date-input');
 
         expect(modalBlock).toContain('width: 680px');
         expect(sectionBlock).toContain('display: flex');
         expect(gridBlock).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+        expect(gridBlock).toContain('align-items: start');
+        expect(wordsGridBlock).toContain('border-top: 1px solid var(--background-modifier-border)');
         expect(scenesListBlock).toContain('overflow-y: auto');
         expect(scenesListBlock).toContain('max-height: min(28vh, 220px)');
         expect(compactSettingBlock).toContain('border-top: none');
+        expect(compactSettingBlock).toContain('align-items: start');
+        expect(compactSettingBlock).toContain('align-self: start');
+        expect(compactControlBlock).toContain('align-self: start');
+        expect(noteSettingBlock).toContain('border-top: 1px solid var(--background-modifier-border)');
+        expect(dateInputBlock).toContain('width: 13.5ch');
         expect(source).toContain('private formatHeaderMeta()');
         expect(source).toContain("header.createSpan({ cls: 'ert-modal-badge', text: this.formatHeaderMeta() })");
         expect(source).toContain('Review word counts, confirm touched scenes, choose the writing day, then save this session record.');
@@ -35,7 +46,7 @@ describe('writing session completion modal', () => {
         expect(source).toContain("cls: 'ert-writing-session-grid ert-writing-session-grid--session'");
         expect(source).toContain(".setName('Session date')");
         expect(source).toContain("text.inputEl.type = 'date'");
-        expect(source).toContain("text.inputEl.addClass('ert-input--md')");
+        expect(source).toContain("text.inputEl.addClass('ert-input--md', 'ert-writing-session-date-input')");
         expect(source).toContain('sessionDateFromStartedAt(this.active.startedAt)');
         expect(source).toContain("cls: 'ert-writing-session-scenes__list'");
         expect(source).toContain("noteSetting.settingEl.addClass('ert-writing-session-note')");

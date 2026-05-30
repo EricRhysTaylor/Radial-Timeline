@@ -4310,18 +4310,43 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--ert-gap-md);
+  align-items: start;
 }
 
-.ert-ui :is(.ert-writing-session-compact-setting, .ert-writing-session-note).setting-item {
-  border-top: none;
-  padding-top: 0;
+.ert-ui .ert-writing-session-grid--words {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: var(--ert-gap-md);
 }
 
 .ert-ui .ert-writing-session-compact-setting.setting-item {
-  align-items: flex-start;
+  border-top: none;
+  padding-top: 0;
+  align-items: start;
+  align-self: start;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-modal--writing-session .ert-writing-session-compact-setting.setting-item,
+.ert-ui .ert-modal--writing-session .ert-writing-session-compact-setting.setting-item {
+  border-top: none;
+}
+
+.ert-ui .ert-writing-session-note.setting-item {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: var(--ert-gap-md);
+}
+
+.ert-ui .ert-writing-session-date-input {
+  width: 13.5ch;
+  min-width: 13.5ch;
+}
+
+.ert-ui input[type="date"].ert-writing-session-date-input {
+  width: 13.5ch;
+  min-width: 13.5ch;
+  --ert-control-width: 13.5ch;
 }
 
 .ert-ui .ert-writing-session-compact-setting .setting-item-info,
@@ -4331,6 +4356,9 @@
 
 .ert-ui .ert-writing-session-compact-setting .setting-item-control {
   min-width: 0;
+  align-self: start;
+  display: flex;
+  align-items: flex-start;
 }
 
 .ert-ui .ert-writing-session-compact-setting .setting-item-name,
