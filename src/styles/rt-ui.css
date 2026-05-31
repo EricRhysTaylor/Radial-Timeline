@@ -9530,21 +9530,27 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--ert-gap-tight);
+  align-items: stretch;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  flex: 1 1 min(680px, 100%);
+  justify-content: flex-start;
   gap: var(--ert-gap-xs);
   padding: var(--ert-gap-xs) var(--ert-pad-cozy);
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 12px;
   cursor: pointer;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
   transition: border-color 120ms ease, box-shadow 120ms ease;
-  max-width: 340px;
-  overflow: hidden;
+  max-width: min(100%, 760px);
+  min-width: min(100%, 360px);
+  overflow: visible;
+  text-align: left;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill:hover {
@@ -9577,17 +9583,15 @@
 .ert-ui.ert-scope--settings .ert-audit-note-pill-name {
   font-weight: 600;
   color: var(--text-accent);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill-reason {
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* --- Details container --- */

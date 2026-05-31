@@ -3,7 +3,16 @@ import { ERT_CLASSES } from '../../../ui/classes';
 import type RadialTimelinePlugin from '../../../main';
 import { DEFAULT_SETTINGS } from '../../defaults';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../../wikiLink';
-import { collectFilesForAuditWithScope, formatAuditReport, type NoteAuditEntry, type YamlAuditResult } from '../../../utils/yamlAudit';
+import {
+    collectFilesForAuditWithScope,
+    formatAuditReport,
+    formatSemanticWarningChipText,
+    formatSemanticWarningReason,
+    getSemanticWarningType,
+    groupSemanticWarningEntries,
+    type NoteAuditEntry,
+    type YamlAuditResult,
+} from '../../../utils/yamlAudit';
 import {
     previewDeleteFields,
     previewReorder,
@@ -375,23 +384,35 @@ export function renderSceneNormalizerSection(params: {
             return;
         }
 
-        const chips = [
-            { label: 'Missing IDs', kind: 'critical', entries: auditResult.notes.filter((note) => note.missingReferenceId) },
-            { label: 'Duplicate IDs', kind: 'duplicate', entries: auditResult.notes.filter((note) => !!note.duplicateReferenceId) },
-            { label: 'Unsafe', kind: 'unsafe', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'dangerous') },
-            { label: 'Needs review', kind: 'suspicious', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'suspicious') },
-            { label: advancedEnabled ? 'Missing properties' : 'Missing core properties', kind: 'missing', entries: auditResult.notes.filter((note) => note.missingFields.length > 0) },
-            { label: 'Other plugin keys (read-only)', kind: 'extra', entries: auditResult.notes.filter((note) => note.extraKeys.length > 0) },
-            { label: 'Layout cleanup', kind: 'drift', entries: auditResult.notes.filter((note) => note.orderDrift) },
-            { label: 'Warnings', kind: 'warning', entries: auditResult.notes.filter((note) => note.semanticWarnings.length > 0) },
-        ] satisfies Array<{
+        type ChipConfig = {
+            key: string;
             label: string;
+            displayText?: string;
             kind: 'critical' | 'duplicate' | 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
+            warningType?: string;
             entries: NoteAuditEntry[];
-        }>;
+        };
+        const warningChips: ChipConfig[] = groupSemanticWarningEntries(auditResult.notes).map((group) => ({
+            key: `warning:${group.label}`,
+            label: group.label,
+            displayText: formatSemanticWarningChipText(group),
+            kind: 'warning' as const,
+            warningType: group.label,
+            entries: group.entries,
+        }));
+        const chips: ChipConfig[] = [
+            { key: 'missing-ids', label: 'Missing IDs', kind: 'critical', entries: auditResult.notes.filter((note) => note.missingReferenceId) },
+            { key: 'duplicate-ids', label: 'Duplicate IDs', kind: 'duplicate', entries: auditResult.notes.filter((note) => !!note.duplicateReferenceId) },
+            { key: 'unsafe', label: 'Unsafe', kind: 'unsafe', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'dangerous') },
+            { key: 'suspicious', label: 'Needs review', kind: 'suspicious', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'suspicious') },
+            { key: 'missing', label: advancedEnabled ? 'Missing properties' : 'Missing core properties', kind: 'missing', entries: auditResult.notes.filter((note) => note.missingFields.length > 0) },
+            { key: 'extra', label: 'Other plugin keys (read-only)', kind: 'extra', entries: auditResult.notes.filter((note) => note.extraKeys.length > 0) },
+            { key: 'drift', label: 'Layout cleanup', kind: 'drift', entries: auditResult.notes.filter((note) => note.orderDrift) },
+            ...warningChips,
+        ];
         const visibleChips = chips.filter((chip) => chip.entries.length > 0);
 
-        let activeKind: string | null = visibleChips[0]?.kind ?? null;
+        let activeKey: string | null = visibleChips[0]?.key ?? null;
         let page = 0;
         const chipsEl = resultsEl.createDiv({ cls: 'ert-audit-chips' });
         const detailsEl = resultsEl.createDiv({ cls: 'ert-audit-details' });
@@ -401,12 +422,12 @@ export function renderSceneNormalizerSection(params: {
             visibleChips.forEach((chip) => {
                 const styleKind = chip.kind === 'duplicate' ? 'critical' : chip.kind;
                 const chipBtn = chipsEl.createEl('button', {
-                    cls: `ert-chip ert-audit-chip ert-audit-chip--${styleKind}${activeKind === chip.kind ? ' is-active' : ''}`,
-                    text: `${chip.entries.length} ${chip.label.toLowerCase()}`,
+                    cls: `ert-chip ert-audit-chip ert-audit-chip--${styleKind}${activeKey === chip.key ? ' is-active' : ''}`,
+                    text: chip.displayText ?? `${chip.entries.length} ${chip.label.toLowerCase()}`,
                     attr: { type: 'button' }
                 });
                 chipBtn.addEventListener('click', () => {
-                    activeKind = activeKind === chip.kind ? null : chip.kind;
+                    activeKey = activeKey === chip.key ? null : chip.key;
                     page = 0;
                     renderChips();
                     renderNoteList();
@@ -419,8 +440,8 @@ export function renderSceneNormalizerSection(params: {
 
         const renderNoteList = () => {
             detailsEl.empty();
-            if (!activeKind) return;
-            const activeChip = visibleChips.find((chip) => chip.kind === activeKind);
+            if (!activeKey) return;
+            const activeChip = visibleChips.find((chip) => chip.key === activeKey);
             if (!activeChip) return;
 
             const total = activeChip.entries.length;
@@ -442,6 +463,11 @@ export function renderSceneNormalizerSection(params: {
                     reason = entry.duplicateReferenceId
                         ? `Duplicate scene ID: ${entry.duplicateReferenceId}`
                         : 'Duplicate scene ID';
+                } else if (activeChip.kind === 'warning') {
+                    const warnings = activeChip.warningType
+                        ? entry.semanticWarnings.filter((warning) => getSemanticWarningType(warning) === activeChip.warningType)
+                        : entry.semanticWarnings;
+                    reason = formatSemanticWarningReason(warnings);
                 }
 
                 const pillStyleKind = activeChip.kind === 'duplicate' ? 'critical' : activeChip.kind;

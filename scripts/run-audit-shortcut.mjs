@@ -1,20 +1,27 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 
 const MODES = {
   daily: {
     label: 'Daily Control Tower',
+    slug: 'daily-control-tower',
+    backupNote: 'Daily Control Tower',
     commitCount: 8,
     baselineLabel: 'best available baseline'
   },
   friday: {
     label: 'Friday Release Gate',
+    slug: 'friday-release-gate',
+    backupNote: 'Friday Release Gate',
     commitCount: 12,
     baselineLabel: 'release baseline'
   },
   deep: {
     label: 'Biweekly Deep Audit',
+    slug: 'biweekly-deep-audit',
+    backupNote: 'Biweekly Deep Audit',
     commitCount: 20,
     baselineLabel: 'best available baseline'
   }
@@ -22,18 +29,20 @@ const MODES = {
 
 const modeKey = (process.argv[2] || '').toLowerCase();
 const mode = MODES[modeKey];
+const shouldRecord = !process.argv.includes('--no-record');
 
 if (!mode) {
   console.error('[audit] Unknown audit shortcut. Use: daily, friday, or deep.');
   process.exit(1);
 }
 
-function run(command, { allowFailure = false } = {}) {
+function run(command, { allowFailure = false, env = {} } = {}) {
   const startedAt = Date.now();
   const result = spawnSync('zsh', ['-lc', command], {
     cwd: process.cwd(),
     encoding: 'utf8',
-    maxBuffer: 20 * 1024 * 1024
+    maxBuffer: 20 * 1024 * 1024,
+    env: { ...process.env, ...env }
   });
   const durationMs = Date.now() - startedAt;
   const stdout = (result.stdout || '').trim();
@@ -78,6 +87,10 @@ function parseLines(text) {
   return text ? text.split('\n').map(line => line.trim()).filter(Boolean) : [];
 }
 
+function escapeMarkdown(text) {
+  return String(text).replace(/\|/g, '\\|');
+}
+
 function parseStatusFiles(text) {
   return text
     .split('\n')
@@ -101,12 +114,12 @@ function inferBaseline() {
   return candidates.find(candidate => candidate.label === 'HEAD~1' && candidate.ref) || null;
 }
 
-function gate(name, command, availability = true) {
+function gate(name, command, availability = true, options = {}) {
   if (!availability) {
     return { name, status: 'Unavailable', detail: 'No matching npm script in package.json.' };
   }
 
-  const result = run(command, { allowFailure: true });
+  const result = run(command, { allowFailure: true, ...options });
   const status = result.ok ? 'Pass' : 'Fail';
   const detail = tail(result.output, result.ok ? 5 : 20) || '(no output)';
   return {
@@ -168,6 +181,133 @@ function shipReadinessFromGates(gates) {
   return 'Ship';
 }
 
+function formatDateStamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function buildReportLines({
+  mode,
+  version,
+  branch,
+  upstream,
+  baseline,
+  risk,
+  changedFiles,
+  areas,
+  recentCommits,
+  gates,
+  health,
+  shipReadiness,
+  actionItems
+}) {
+  const lines = [];
+
+  lines.push(`# ${mode.label}`);
+  lines.push('');
+  lines.push(`- Version: ${version}`);
+  lines.push(`- Branch: ${branch}`);
+  lines.push(`- Upstream: ${upstream}`);
+  lines.push(`- Baseline: ${baseline ? `${baseline.label} (${baseline.ref.slice(0, 8)})` : 'unavailable'}`);
+  lines.push(`- Risk Level: ${risk}`);
+  lines.push('');
+
+  lines.push('## Files Changed');
+  if (changedFiles.length === 0) {
+    lines.push('- None detected against baseline.');
+  } else {
+    for (const file of changedFiles) {
+      lines.push(`- ${file}`);
+    }
+  }
+  lines.push(`- Major systems touched: ${areas.length > 0 ? areas.join(', ') : 'none'}`);
+  lines.push('');
+
+  lines.push('## Recent Commits');
+  if (recentCommits.length === 0) {
+    lines.push('- None.');
+  } else {
+    for (const commit of recentCommits) {
+      lines.push(`- ${commit}`);
+    }
+  }
+  lines.push('');
+
+  lines.push('## Validation Gates');
+  for (const item of gates) {
+    const duration = item.duration ? ` (${item.duration})` : '';
+    lines.push(`- ${item.name}: ${item.status}${duration}`);
+    if (item.detail) {
+      lines.push(`  ${item.detail.replace(/\n/g, '\n  ')}`);
+    }
+  }
+  lines.push('');
+
+  lines.push('## Changed-Code Audit');
+  if (changedFiles.length === 0) {
+    lines.push('- No changed files against baseline; no new changed-code findings to report.');
+  } else {
+    lines.push('- No release-blocking correctness defects were detected in the changed files during this audit pass.');
+    if (changedFiles.includes('src/services/WritingSessionService.ts')) {
+      lines.push('- Writing session accounting changed materially; stats now credit `sessionDate` separately from save time and auto-pause at local midnight.');
+    }
+  }
+  lines.push('');
+
+  lines.push('## Critical Risks');
+  const criticalRisks = gates.filter(item => item.status === 'Fail');
+  if (criticalRisks.length === 0) lines.push('- None.');
+  for (const item of criticalRisks) {
+    lines.push(`- ${item.name} failed.`);
+  }
+  lines.push('');
+
+  lines.push('## Important Risks');
+  const importantRisks = [];
+  if (gates.find(item => item.name === 'npm run lint' && item.status === 'Unavailable')) {
+    importantRisks.push('No `npm run lint` script exists, so that quality gate is not enforced by the audit.');
+  }
+  if (changedFiles.includes('tests/writing-session-completion-modal.test.ts')) {
+    importantRisks.push('Completion modal coverage is present, but mostly source/layout assertions rather than end-to-end modal interaction behavior.');
+  }
+  if (importantRisks.length === 0) lines.push('- None.');
+  for (const item of importantRisks) {
+    lines.push(`- ${item}`);
+  }
+  lines.push('');
+
+  lines.push('## Watch List');
+  if (changedFiles.includes('src/services/WritingSessionService.ts')) {
+    lines.push('- Cross-midnight timer sessions and recovered-session attribution should stay under test as the timer flow evolves.');
+  } else {
+    lines.push('- None.');
+  }
+  lines.push('');
+
+  lines.push(`- Overall Repository Health: ${health}`);
+  lines.push(`- Ship Readiness: ${shipReadiness}`);
+  lines.push('');
+
+  lines.push('## Recommended Actions');
+  lines.push('### Do Now');
+  if (actionItems.doNow.length === 0) lines.push('- None.');
+  for (const item of actionItems.doNow) {
+    lines.push(`- ${item}`);
+  }
+  lines.push('### Schedule Later');
+  if (actionItems.scheduleLater.length === 0) lines.push('- None.');
+  for (const item of actionItems.scheduleLater) {
+    lines.push(`- ${item}`);
+  }
+  lines.push('### Ignore');
+  if (actionItems.ignore.length === 0) lines.push('- None.');
+  for (const item of actionItems.ignore) {
+    lines.push(`- ${item}`);
+  }
+
+  return lines;
+}
+
 const pkg = readJson('package.json');
 const baseline = inferBaseline();
 const branch = safe('git branch --show-current') || '(unknown)';
@@ -195,7 +335,7 @@ const gates = [
         duration: testGate.duration
       }
     : gate('Vitest', 'npm exec vitest -- run'),
-  gate('npm run build', 'npm run build'),
+  gate('npm run build', 'npm run build', true, { env: { SKIP_BACKUP: '1' } }),
   gate('npm run lint', 'npm run lint', Boolean(pkg.scripts?.lint)),
   gate('TypeScript no-emit', 'npx tsc --noEmit')
 ];
@@ -209,97 +349,40 @@ const risk = gates.some(item => item.status === 'Fail')
     ? 'Moderate'
     : 'Low';
 
-console.log(`[audit] ${mode.label}`);
-console.log(`Version: ${version}`);
-console.log(`Branch: ${branch}`);
-console.log(`Upstream: ${upstream}`);
-console.log(`Baseline: ${baseline ? `${baseline.label} (${baseline.ref.slice(0, 8)})` : 'unavailable'}`);
-console.log(`Risk Level: ${risk}`);
-console.log('');
+const reportLines = buildReportLines({
+  mode,
+  version,
+  branch,
+  upstream,
+  baseline,
+  risk,
+  changedFiles,
+  areas,
+  recentCommits,
+  gates,
+  health,
+  shipReadiness,
+  actionItems
+});
+const report = `${reportLines.join('\n')}\n`;
+const reportDir = path.resolve('docs/engineering/audits/reports');
+const reportPath = path.join(reportDir, `${formatDateStamp()}-${mode.slug}.md`);
 
-console.log('Files changed:');
-if (changedFiles.length === 0) {
-  console.log('- None detected against baseline.');
+mkdirSync(reportDir, { recursive: true });
+writeFileSync(reportPath, report, 'utf8');
+
+console.log(report);
+console.log(`[audit] Saved report: ${path.relative(process.cwd(), reportPath)}`);
+
+if (shouldRecord) {
+  console.log(`[audit] Recording run with backup note: ${mode.backupNote}`);
+  run('node backup.mjs --quiet', {
+    env: {
+      BACKUP_NOTE: mode.backupNote,
+      RT_CONTROL_TOWER_REMINDERS: '0'
+    }
+  });
+  console.log('[audit] Recorded audit report and pushed backup.');
 } else {
-  for (const file of changedFiles) {
-    console.log(`- ${file}`);
-  }
-}
-console.log(`Major systems touched: ${areas.length > 0 ? areas.join(', ') : 'none'}`);
-console.log('');
-
-console.log('Recent commits:');
-for (const commit of recentCommits) {
-  console.log(`- ${commit}`);
-}
-console.log('');
-
-console.log('Validation gates:');
-for (const item of gates) {
-  const duration = item.duration ? ` (${item.duration})` : '';
-  console.log(`- ${item.name}: ${item.status}${duration}`);
-  if (item.detail) {
-    console.log(`  ${item.detail.replace(/\n/g, '\n  ')}`);
-  }
-}
-console.log('');
-
-console.log('Changed-code audit:');
-if (changedFiles.length === 0) {
-  console.log('- No changed files against baseline; no new changed-code findings to report.');
-} else {
-  console.log('- No release-blocking correctness defects were detected in the changed files during this audit pass.');
-  if (changedFiles.includes('src/services/WritingSessionService.ts')) {
-    console.log('- Writing session accounting changed materially; stats now credit `sessionDate` separately from save time and auto-pause at local midnight.');
-  }
-}
-console.log('');
-
-console.log('Critical Risks:');
-const criticalRisks = gates.filter(item => item.status === 'Fail');
-if (criticalRisks.length === 0) console.log('- None.');
-for (const item of criticalRisks) {
-  console.log(`- ${item.name} failed.`);
-}
-
-console.log('Important Risks:');
-const importantRisks = [];
-if (gates.find(item => item.name === 'npm run lint' && item.status === 'Unavailable')) {
-  importantRisks.push('No `npm run lint` script exists, so that quality gate is not enforced by the audit.');
-}
-if (changedFiles.includes('tests/writing-session-completion-modal.test.ts')) {
-  importantRisks.push('Completion modal coverage is present, but mostly source/layout assertions rather than end-to-end modal interaction behavior.');
-}
-if (importantRisks.length === 0) console.log('- None.');
-for (const item of importantRisks) {
-  console.log(`- ${item}`);
-}
-
-console.log('Watch List:');
-if (changedFiles.includes('src/services/WritingSessionService.ts')) {
-  console.log('- Cross-midnight timer sessions and recovered-session attribution should stay under test as the timer flow evolves.');
-} else {
-  console.log('- None.');
-}
-console.log('');
-
-console.log(`Overall Repository Health: ${health}`);
-console.log(`Ship Readiness: ${shipReadiness}`);
-console.log('');
-
-console.log('Recommended Actions');
-console.log('Do Now:');
-if (actionItems.doNow.length === 0) console.log('- None.');
-for (const item of actionItems.doNow) {
-  console.log(`- ${item}`);
-}
-console.log('Schedule Later:');
-if (actionItems.scheduleLater.length === 0) console.log('- None.');
-for (const item of actionItems.scheduleLater) {
-  console.log(`- ${item}`);
-}
-console.log('Ignore:');
-if (actionItems.ignore.length === 0) console.log('- None.');
-for (const item of actionItems.ignore) {
-  console.log(`- ${item}`);
+  console.log('[audit] Skipped automatic backup recording (--no-record).');
 }

@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, Modal, setIcon, setTooltip, ButtonComponent, getIconIds, TFile, normalizePath } from 'obsidian';
+import { App, Notice, Setting as Settings, Modal, setIcon, setTooltip, ButtonComponent, getIconIds, TFile, normalizePath, Menu } from 'obsidian';
 import { t } from '../../i18n';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
@@ -50,7 +50,18 @@ import {
     RESERVED_OBSIDIAN_KEYS,
 } from '../../utils/yamlTemplateNormalize';
 import { scheduleFocusAfterPaint } from '../../utils/domFocus';
-import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
+import {
+    runYamlAudit,
+    collectFilesForAudit,
+    collectFilesForAuditWithScope,
+    formatAuditReport,
+    formatSemanticWarningChipText,
+    formatSemanticWarningReason,
+    getSemanticWarningType,
+    groupSemanticWarningEntries,
+    type YamlAuditResult,
+    type NoteAuditEntry,
+} from '../../utils/yamlAudit';
 import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
@@ -125,6 +136,7 @@ const isBeatLibraryMode = (): boolean => _currentInnerStage === 'library';
  */
 let _unsubTopBeatTabsDirty: (() => void) | null = null;
 let _unsubBeatAuditDirty: (() => void) | null = null;
+let _disconnectBeatTabsResizeObserver: (() => void) | null = null;
 
 export function renderBeatPropertiesSection(params: {
     app: App;
@@ -137,6 +149,8 @@ export function renderBeatPropertiesSection(params: {
     _unsubTopBeatTabsDirty = null;
     _unsubBeatAuditDirty?.();
     _unsubBeatAuditDirty = null;
+    _disconnectBeatTabsResizeObserver?.();
+    _disconnectBeatTabsResizeObserver = null;
     containerEl.empty();
     ensureBeatWorkspaceState(plugin.settings);
     ensureMaterializedBeatWorkspaceState(app, plugin.settings);
@@ -2050,16 +2064,34 @@ export function renderBeatPropertiesSection(params: {
     };
 
     function renderBeatSystemTabs(): void {
+        _disconnectBeatTabsResizeObserver?.();
+        _disconnectBeatTabsResizeObserver = null;
         beatSystemTabs.empty();
         const loadedTabs = getLoadedBeatWorkspaceTabs();
         const activeTabId = getActiveBeatWorkspaceTabId();
         const libraryMode = isBeatLibraryMode();
-        const scrollEl = beatSystemTabs.createDiv({ cls: 'ert-mini-tabs-scroll' });
-        let activeBtnEl: HTMLButtonElement | null = null;
+        const tabBtnByIndex: HTMLButtonElement[] = [];
+
+        const activateBeatTab = async (tab: LoadedBeatTab) => {
+            if (getLoadedBeatTabs(plugin.settings).some((loadedTab) => loadedTab.tabId === tab.tabId)) {
+                activateLoadedBeatTab(plugin.settings, tab.tabId);
+            } else {
+                materializeBeatTab(plugin.settings, tab);
+            }
+            _currentInnerStage = 'preview';
+            await plugin.saveSettings();
+            plugin.onSettingChanged(IMPACT_FULL); // Tier 3: beat system change rebuilds timeline beats
+            invalidateBeatStructuralStatus();
+            resetBeatAuditPanel?.();
+            updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
+            updateBeatSystemCard(tab.name);
+            renderBeatSystemTabs();
+        };
+
         loadedTabs.forEach((tab) => {
             const isActive = !libraryMode && tab.tabId === activeTabId;
             const status = getBeatSystemTabStatus(tab);
-            const btn = scrollEl.createEl('button', {
+            const btn = beatSystemTabs.createEl('button', {
                 cls: `ert-mini-tab${tab.sourceKind !== 'builtin' ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
                 attr: {
                     type: 'button',
@@ -2073,7 +2105,7 @@ export function renderBeatPropertiesSection(params: {
             setIcon(iconEl, status.icon);
             setTooltip(iconEl, status.tooltip);
             btn.createSpan({ cls: 'ert-mini-tab-label', text: tab.name });
-            if (isActive) activeBtnEl = btn;
+            tabBtnByIndex.push(btn);
             const closeEl = btn.createSpan({ cls: 'ert-mini-tab-close', attr: { role: 'button', 'aria-label': `Remove ${tab.name}` } });
             setIcon(closeEl, 'x');
             setTooltip(closeEl, `Remove "${tab.name}"`);
@@ -2083,22 +2115,30 @@ export function renderBeatPropertiesSection(params: {
                 void closeAndDeleteBeatTab(tab);
             });
 
-            btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+            btn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 if (isActive) return;
-                if (getLoadedBeatTabs(plugin.settings).some((loadedTab) => loadedTab.tabId === tab.tabId)) {
-                    activateLoadedBeatTab(plugin.settings, tab.tabId);
-                } else {
-                    materializeBeatTab(plugin.settings, tab);
-                }
-                _currentInnerStage = 'preview';
-                await plugin.saveSettings();
-                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: beat system change rebuilds timeline beats
-                invalidateBeatStructuralStatus();
-                resetBeatAuditPanel?.();
-                updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
-                updateBeatSystemCard(tab.name);
-                renderBeatSystemTabs();
+                void activateBeatTab(tab);
             });
+        });
+
+        // Overflow chip ("+N") — inserted between the loaded tabs and "+ Add system".
+        // Opens a Menu listing tabs that didn't fit; updated by recomputeOverflow().
+        const overflowBtn = beatSystemTabs.createEl('button', {
+            cls: 'ert-mini-tab ert-mini-tab--custom ert-mini-tab--overflow',
+            attr: { type: 'button', 'aria-label': 'More beat systems', 'aria-haspopup': 'menu' }
+        });
+        const overflowLabel = overflowBtn.createSpan({ cls: 'ert-mini-tab-label', text: '+0' });
+        overflowBtn.classList.add('ert-settings-hidden');
+        let hiddenTabs: LoadedBeatTab[] = [];
+        overflowBtn.addEventListener('click', (event) => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+            const menu = new Menu();
+            hiddenTabs.forEach((tab) => {
+                menu.addItem((item) => {
+                    item.setTitle(tab.name);
+                    item.onClick(() => void activateBeatTab(tab));
+                });
+            });
+            menu.showAtMouseEvent(event);
         });
 
         const addBtn = beatSystemTabs.createEl('button', {
@@ -2120,12 +2160,32 @@ export function renderBeatPropertiesSection(params: {
             updateStageVisibility();
         });
 
-        // Keep the active tab on-screen when loaded tabs overflow the row.
-        if (activeBtnEl) {
-            window.requestAnimationFrame(() => {
-                activeBtnEl?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-            });
-        }
+        const recomputeOverflow = () => {
+            tabBtnByIndex.forEach((btn) => { btn.classList.remove('ert-settings-hidden'); });
+            overflowBtn.classList.add('ert-settings-hidden');
+            hiddenTabs = [];
+            if (!beatSystemTabs.isConnected) return;
+            const fits = () => beatSystemTabs.scrollWidth <= beatSystemTabs.clientWidth;
+            if (fits()) return;
+            overflowBtn.classList.remove('ert-settings-hidden');
+            const hiddenIndices: number[] = [];
+            for (let i = tabBtnByIndex.length - 1; i >= 0; i--) {
+                const btn = tabBtnByIndex[i];
+                if (btn.classList.contains(ERT_CLASSES.IS_ACTIVE)) continue;
+                btn.classList.add('ert-settings-hidden');
+                hiddenIndices.push(i);
+                if (fits()) break;
+            }
+            // Preserve original tab order in the menu (we walked the row end-to-start).
+            hiddenTabs = hiddenIndices.slice().reverse().map((i) => loadedTabs[i]).filter(Boolean);
+            overflowLabel.setText(`+${hiddenTabs.length}`);
+            setTooltip(overflowBtn, `${hiddenTabs.length} more ${hiddenTabs.length === 1 ? 'system' : 'systems'}`);
+        };
+
+        window.requestAnimationFrame(() => recomputeOverflow());
+        const ro = new ResizeObserver(() => recomputeOverflow());
+        ro.observe(beatSystemTabs);
+        _disconnectBeatTabsResizeObserver = () => ro.disconnect();
     }
 
     // ─── BEAT YAML EDITOR — always visible in Fields stage ─────────────
@@ -4482,33 +4542,44 @@ export function renderBeatPropertiesSection(params: {
 
             // Collect all entries across all categories for a flat display
             interface ChipConfig {
+                key: string;
                 label: string;
+                displayText?: string;
                 count: number;
                 kind: 'critical' | 'duplicate' | 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
+                warningType?: string;
                 entries: NoteAuditEntry[];
             }
 
+            const warningChips: ChipConfig[] = groupSemanticWarningEntries(auditResult.notes).map((group) => ({
+                key: `warning:${group.label}`,
+                label: group.label,
+                displayText: formatSemanticWarningChipText(group),
+                count: group.entries.length,
+                kind: 'warning',
+                warningType: group.label,
+                entries: group.entries,
+            }));
             const chips: ChipConfig[] = [
-                { label: 'Critical: Missing IDs', count: s.notesMissingIds, kind: 'critical',
+                { key: 'missing-ids', label: 'Critical: Missing IDs', count: s.notesMissingIds, kind: 'critical',
                   entries: auditResult.notes.filter(n => n.missingReferenceId) },
-                { label: 'Critical: Duplicate IDs', count: s.notesDuplicateIds, kind: 'duplicate',
+                { key: 'duplicate-ids', label: 'Critical: Duplicate IDs', count: s.notesDuplicateIds, kind: 'duplicate',
                   entries: auditResult.notes.filter(n => !!n.duplicateReferenceId) },
-                { label: 'Unsafe', count: s.notesUnsafe, kind: 'unsafe',
+                { key: 'unsafe', label: 'Unsafe', count: s.notesUnsafe, kind: 'unsafe',
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'dangerous') },
-                { label: 'Suspicious', count: s.notesSuspicious, kind: 'suspicious',
+                { key: 'suspicious', label: 'Suspicious', count: s.notesSuspicious, kind: 'suspicious',
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'suspicious') },
-                { label: 'Missing properties', count: s.notesWithMissing, kind: 'missing',
+                { key: 'missing', label: 'Missing properties', count: s.notesWithMissing, kind: 'missing',
                   entries: auditResult.notes.filter(n => n.missingFields.length > 0) },
-                { label: 'Other plugin keys (read-only)', count: s.notesWithExtra, kind: 'extra',
+                { key: 'extra', label: 'Other plugin keys (read-only)', count: s.notesWithExtra, kind: 'extra',
                   entries: auditResult.notes.filter(n => n.extraKeys.length > 0) },
-                { label: 'Layout cleanup', count: s.notesWithDrift, kind: 'drift',
+                { key: 'drift', label: 'Layout cleanup', count: s.notesWithDrift, kind: 'drift',
                   entries: auditResult.notes.filter(n => n.orderDrift) },
-                { label: 'Warnings', count: s.notesWithWarnings, kind: 'warning',
-                  entries: auditResult.notes.filter(n => n.semanticWarnings.length > 0) },
+                ...warningChips,
             ];
 
             // Category chips row (clickable to filter)
-            let activeKind: string | null = chips.find(c => c.count > 0)?.kind ?? null;
+            let activeKey: string | null = chips.find(c => c.count > 0)?.key ?? null;
             const chipsEl = resultsEl.createDiv({ cls: 'ert-audit-chips' });
 
             const detailsEl = resultsEl.createDiv({ cls: 'ert-audit-details' });
@@ -4519,12 +4590,12 @@ export function renderBeatPropertiesSection(params: {
                     if (chip.count === 0) continue;
                     const chipStyleKind = chip.kind === 'duplicate' ? 'critical' : chip.kind;
                     const chipBtn = chipsEl.createEl('button', {
-                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chipStyleKind}${activeKind === chip.kind ? ' is-active' : ''}`,
-                        text: `${chip.count} ${chip.label.toLowerCase()}`,
+                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chipStyleKind}${activeKey === chip.key ? ' is-active' : ''}`,
+                        text: chip.displayText ?? `${chip.count} ${chip.label.toLowerCase()}`,
                         attr: { type: 'button' }
                     });
                     chipBtn.addEventListener('click', () => {
-                        activeKind = activeKind === chip.kind ? null : chip.kind;
+                        activeKey = activeKey === chip.key ? null : chip.key;
                         renderChips();
                         renderNoteList();
                     });
@@ -4539,9 +4610,9 @@ export function renderBeatPropertiesSection(params: {
 
             const renderNoteList = () => {
                 detailsEl.empty();
-                if (!activeKind) return;
+                if (!activeKey) return;
 
-                const activeChip = chips.find(c => c.kind === activeKind);
+                const activeChip = chips.find(c => c.key === activeKey);
                 if (!activeChip || activeChip.entries.length === 0) return;
 
                 const total = activeChip.entries.length;
@@ -4569,7 +4640,9 @@ export function renderBeatPropertiesSection(params: {
                             reason = `Not managed by Radial Timeline: ${entry.extraKeys.join(', ')}`;
                             break;
                         case 'warning':
-                            reason = entry.semanticWarnings.join(' | ');
+                            reason = formatSemanticWarningReason(activeChip.warningType
+                                ? entry.semanticWarnings.filter(warning => getSemanticWarningType(warning) === activeChip.warningType)
+                                : entry.semanticWarnings);
                             break;
                         case 'unsafe':
                         case 'suspicious':
@@ -5875,4 +5948,3 @@ export function renderBeatPropertiesSection(params: {
         }
     }
 }
-

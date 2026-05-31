@@ -8,6 +8,7 @@ import {
     reorderSceneFields,
 } from './sceneNormalizer';
 import { createInMemoryApp, type InMemoryApp } from '../../tests/helpers/inMemoryObsidian';
+import { formatSemanticWarningReason, runYamlAudit } from '../utils/yamlAudit';
 
 function buildSettings(advancedEnabled?: boolean) {
     return {
@@ -90,6 +91,42 @@ describe('sceneNormalizer', () => {
         });
 
         expect(audit.notes).toHaveLength(0);
+    });
+
+    it('reports scene Synopsis warnings by word count', async () => {
+        const app = createInMemoryApp({
+            'Books/BookA/01 Long Synopsis.md': `---\nID: scn_long\nClass: Scene\nAct: 1\nWhen: 2026-01-01\nPulse Update:\nSummary Update:\nSynopsis: one two three four five six seven eight nine ten eleven twelve thirteen\n---\nBody`,
+        });
+
+        const audit = await analyzeScenes({
+            app: app as never,
+            settings: {
+                ...buildSettings(false),
+                synopsisGenerationMaxWords: 12,
+            },
+            files: [app.vault.getMarkdownFiles()[0]],
+        });
+
+        expect(audit.summary.scenesWithWarnings).toBe(1);
+        expect(audit.notes[0].semanticWarnings).toEqual(['Synopsis length above target: 13 words (target 12 words).']);
+        expect(formatSemanticWarningReason(audit.notes[0].semanticWarnings)).toBe('Synopsis Warnings: 13 words');
+    });
+
+    it('reports beat Purpose warnings by word count instead of lines', async () => {
+        const app = createInMemoryApp({
+            'Books/BookA/03 Beat.md': `---\nID: beat_1\nClass: Beat\nAct: 1\nPurpose: ${Array.from({ length: 76 }, (_, index) => `word${index + 1}`).join(' ')}\nBeat Model: Save The Cat\nRange: 1-10\n---\nBody`,
+        });
+
+        const audit = await runYamlAudit({
+            app: app as never,
+            settings: buildSettings(false),
+            noteType: 'Beat',
+            files: [app.vault.getMarkdownFiles()[0]],
+        });
+
+        expect(audit.summary.notesWithWarnings).toBe(1);
+        expect(audit.notes[0].semanticWarnings).toContain('Purpose length above target: 76 words (target 75 words).');
+        expect(audit.notes[0].semanticWarnings.join(' ')).not.toContain('lines');
     });
 
     it('tolerates inactive advanced fields and reorders them after core in original relative order', async () => {

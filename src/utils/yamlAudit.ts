@@ -27,6 +27,7 @@ import {
 import { explainScope, resolveBookScopedFiles } from '../services/NoteScopeResolver';
 import { readReferenceId } from './sceneIds';
 import { getActiveLoadedBeatTab, getLoadedBeatTabWorkspaceSystemId } from '../storyBeats/workspaceState';
+import { getSynopsisGenerationWordLimit } from './synopsisLimits';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -79,6 +80,11 @@ export interface YamlAuditResult {
     safetyResults?: Map<TFile, FrontmatterSafetyResult>;
 }
 
+export interface SemanticWarningGroup {
+    label: string;
+    entries: NoteAuditEntry[];
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 /** Cap a reason string to a maximum length, appending "…" when truncated. */
@@ -86,10 +92,10 @@ function capReason(text: string, maxLen = 80): string {
     return text.length <= maxLen ? text : text.slice(0, maxLen - 1) + '…';
 }
 
-const SCENE_SYNOPSIS_SOFT_CHAR_LIMIT = 500;
-const SCENE_SYNOPSIS_SOFT_SENTENCE_LIMIT = 3;
-const BEAT_PURPOSE_SOFT_MAX_LINES = 3;
+const BEAT_PURPOSE_SOFT_MAX_WORDS = 75;
 const BACKDROP_SCENE_TITLE_MAX_MATCHES = 3;
+const SYNOPSIS_LENGTH_WARNING = 'Synopsis length above target';
+const PURPOSE_LENGTH_WARNING = 'Purpose length above target';
 
 function getStringField(fm: Record<string, unknown>, key: string): string | undefined {
     const value = fm[key];
@@ -98,16 +104,9 @@ function getStringField(fm: Record<string, unknown>, key: string): string | unde
     return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function splitMeaningfulLines(value: string): string[] {
-    return value
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(Boolean);
-}
-
-function countSentences(value: string): number {
-    const matches = value.match(/[.!?](?:\s|$)/g);
-    return matches ? matches.length : 1;
+function countWords(value: string): number {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    return normalized ? normalized.split(' ').length : 0;
 }
 
 function stripSceneNumberPrefix(title: string): string {
@@ -151,23 +150,66 @@ function collectSceneTitleIndex(app: App, settings: RadialTimelineSettings): str
     return [...titles];
 }
 
+export function getSemanticWarningType(warning: string): string {
+    const [head] = warning.split(':', 1);
+    return (head || warning).replace(/\.$/, '').trim();
+}
+
+export function groupSemanticWarningEntries(entries: NoteAuditEntry[]): SemanticWarningGroup[] {
+    const groups = new Map<string, NoteAuditEntry[]>();
+    for (const entry of entries) {
+        const labelsForEntry = new Set<string>();
+        for (const warning of entry.semanticWarnings) {
+            const label = getSemanticWarningType(warning);
+            if (labelsForEntry.has(label)) continue;
+            labelsForEntry.add(label);
+            const group = groups.get(label) ?? [];
+            group.push(entry);
+            groups.set(label, group);
+        }
+    }
+    return [...groups.entries()].map(([label, groupedEntries]) => ({
+        label,
+        entries: groupedEntries,
+    }));
+}
+
+export function formatSemanticWarningChipText(group: SemanticWarningGroup): string {
+    const count = group.entries.length;
+    return `${count} warning${count !== 1 ? 's' : ''}: ${group.label}.`;
+}
+
+export function formatSemanticWarningReason(warnings: string[]): string {
+    if (warnings.length === 0) return 'Warnings';
+    const parts = warnings.map((warning) => {
+        const type = getSemanticWarningType(warning);
+        const wordMatch = warning.match(/:\s*(\d+)\s+words?/i);
+        if (type === SYNOPSIS_LENGTH_WARNING && wordMatch) {
+            return `Synopsis Warnings: ${wordMatch[1]} words`;
+        }
+        if (type === PURPOSE_LENGTH_WARNING && wordMatch) {
+            return `Purpose Warnings: ${wordMatch[1]} words`;
+        }
+        return type;
+    });
+    return [...new Set(parts)].join('; ');
+}
+
 function buildSemanticWarnings(
     noteType: NoteType,
     fm: Record<string, unknown>,
-    sceneTitleIndex: string[]
+    sceneTitleIndex: string[],
+    settings: RadialTimelineSettings
 ): string[] {
     const warnings: string[] = [];
 
     if (noteType === 'Scene') {
         const synopsis = getStringField(fm, 'Synopsis');
         if (synopsis) {
-            if (synopsis.length > SCENE_SYNOPSIS_SOFT_CHAR_LIMIT) {
-                warnings.push(`Scene Synopsis is ${synopsis.length} chars (soft limit ≈${SCENE_SYNOPSIS_SOFT_CHAR_LIMIT}).`);
-            } else {
-                const sentenceCount = countSentences(synopsis);
-                if (sentenceCount > SCENE_SYNOPSIS_SOFT_SENTENCE_LIMIT) {
-                    warnings.push(`Scene Synopsis has ${sentenceCount} sentences (target is 1-${SCENE_SYNOPSIS_SOFT_SENTENCE_LIMIT}).`);
-                }
+            const wordCount = countWords(synopsis);
+            const targetWords = getSynopsisGenerationWordLimit(settings);
+            if (wordCount > targetWords) {
+                warnings.push(`${SYNOPSIS_LENGTH_WARNING}: ${wordCount} words (target ${targetWords} words).`);
             }
         }
         return warnings;
@@ -176,12 +218,12 @@ function buildSemanticWarnings(
     if (noteType === 'Beat') {
         const purpose = getStringField(fm, 'Purpose') ?? getStringField(fm, 'Description');
         if (getStringField(fm, 'Description') && !getStringField(fm, 'Purpose')) {
-            warnings.push('Legacy "Description" detected; migrate to "Purpose" (non-destructive, optional cleanup).');
+            warnings.push('Legacy Description key: migrate to Purpose.');
         }
         if (purpose) {
-            const purposeLines = splitMeaningfulLines(purpose).length;
-            if (purposeLines > BEAT_PURPOSE_SOFT_MAX_LINES) {
-                warnings.push(`Beat Purpose spans ${purposeLines} lines (likely drifting into scene retell).`);
+            const purposeWords = countWords(purpose);
+            if (purposeWords > BEAT_PURPOSE_SOFT_MAX_WORDS) {
+                warnings.push(`${PURPOSE_LENGTH_WARNING}: ${purposeWords} words (target ${BEAT_PURPOSE_SOFT_MAX_WORDS} words).`);
             }
         }
         return warnings;
@@ -190,7 +232,7 @@ function buildSemanticWarnings(
     if (noteType === 'Backdrop') {
         const context = getStringField(fm, 'Context') ?? getStringField(fm, 'Synopsis');
         if (getStringField(fm, 'Synopsis') && !getStringField(fm, 'Context')) {
-            warnings.push('Legacy "Synopsis" detected; migrate to "Context" (non-destructive, optional cleanup).');
+            warnings.push('Legacy Synopsis key: migrate to Context.');
         }
         if (context && sceneTitleIndex.length > 0) {
             const lower = context.toLowerCase();
@@ -202,7 +244,7 @@ function buildSemanticWarnings(
                 }
             }
             if (matched.length > 0) {
-                warnings.push(`Backdrop Context references likely scene title(s): ${matched.join(', ')}.`);
+                warnings.push(`Backdrop Context references scene titles: ${matched.join(', ')}.`);
             }
         }
         return warnings;
@@ -363,7 +405,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
         const orderDrift = missingFields.length === 0
             ? hasOrderDrift(noteKeys, canonicalOrder)
             : false;
-        const semanticWarnings = buildSemanticWarnings(noteType, fm, sceneTitleIndex);
+        const semanticWarnings = buildSemanticWarnings(noteType, fm, sceneTitleIndex, settings);
 
         auditedNotes.push({
             file,

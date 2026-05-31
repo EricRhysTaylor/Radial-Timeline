@@ -15,7 +15,7 @@ const reportsDirs = [
 const audits = [
   {
     name: 'Daily Control Tower',
-    command: 'Use $radial-timeline-daily-control-tower',
+    command: 'npm run auditDaily',
     backupNote: 'Daily Control Tower',
     markers: [
       'Daily Control Tower',
@@ -26,7 +26,7 @@ const audits = [
   },
   {
     name: 'Friday Release Gate',
-    command: 'Use $radial-timeline-friday-release-gate',
+    command: 'npm run auditFriday',
     backupNote: 'Friday Release Gate',
     markers: [
       'Friday Release Gate',
@@ -38,7 +38,7 @@ const audits = [
   },
   {
     name: 'Biweekly Deep Audit',
-    command: 'Use $radial-timeline-deep-audit',
+    command: 'npm run auditDeep',
     backupNote: 'Biweekly Deep Audit',
     markers: [
       'Biweekly Deep Audit',
@@ -69,7 +69,7 @@ if (overdue.length > 0) {
     const lastRunText = item.lastRun ? formatLocal(item.lastRun.date) : 'none found';
     console.log(`- ${item.audit.name} is overdue since ${formatLocal(item.dueAt)}. Last detected run: ${lastRunText}.`);
     console.log(`  Run: ${item.audit.command}`);
-    console.log(`  Then record it with: npm run backup -- --note "${item.audit.backupNote}"`);
+    console.log(`  That command now saves the report and records the audit automatically.`);
   }
 }
 
