@@ -438,7 +438,10 @@
 
 .ert-planetary-now-button {
   align-self: flex-end;
-  min-height: var(--ert-control-height);
+}
+
+.ert-planetary-copy-button {
+  flex: 0 0 auto;
 }
 
 /* Match date and time inputs to the same theme style */

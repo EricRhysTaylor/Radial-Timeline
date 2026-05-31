@@ -108,10 +108,11 @@ export class PlanetaryTimeModal extends Modal {
         const iconEl = this.resultEl.createDiv({ cls: 'ert-planetary-result-icon' });
         setIcon(iconEl, 'orbit');
         this.resultTextEl = this.resultEl.createDiv({ cls: 'ert-planetary-result-text' });
-        new ExtraButtonComponent(resultRow)
+        const copyButton = new ExtraButtonComponent(resultRow)
             .setIcon('copy')
             .setTooltip('Copy YAML')
             .onClick(() => this.copyYaml());
+        copyButton.extraSettingsEl.addClass('ert-iconBtn', 'ert-planetary-copy-button');
         this.renderResult();
     }
 
@@ -199,6 +200,7 @@ export class PlanetaryTimeModal extends Modal {
         inputSetting.addExtraButton((button: ExtraButtonComponent) => {
             button.setIcon('clock');
             button.setTooltip(t('planetary.modal.now'));
+            button.extraSettingsEl.addClass('ert-iconBtn', 'ert-planetary-earth-now-button');
             button.onClick(() => {
                 const now = new Date();
                 this.earthDateValue = this.formatDateInput(now);
@@ -240,7 +242,7 @@ export class PlanetaryTimeModal extends Modal {
             .setIcon('clock')
             .setTooltip(t('planetary.modal.todayTooltip'))
             .onClick(() => this.setPlanetaryFieldsFromEarthNow());
-        nowButton.extraSettingsEl.addClass('ert-planetary-now-button');
+        nowButton.extraSettingsEl.addClass('ert-iconBtn', 'ert-planetary-now-button');
 
         const timeSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.planetTimeLabel'))
