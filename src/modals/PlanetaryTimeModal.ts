@@ -194,56 +194,113 @@ export class PlanetaryTimeModal extends Modal {
         const profileName = profile?.label?.trim() || t('planetary.modal.planetFallback');
         const monthCount = profile ? getPlanetaryMonthCount(profile) : 12;
         this.planetMonthIndex = Math.max(0, Math.min(monthCount - 1, this.planetMonthIndex));
+        this.clampPlanetDay();
 
         const dateSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.planetDateLabel', { planet: profileName }))
             .setDesc(t('planetary.modal.planetDateDesc'));
-        dateSetting.addText((text: TextComponent) => {
-            text.inputEl.type = 'number';
-            text.inputEl.min = '1';
-            text.inputEl.step = '1';
-            text.inputEl.addClass('ert-input', 'ert-input--sm');
-            text.setValue(this.planetYearValue);
-            text.onChange(value => {
-                this.planetYearValue = value;
-            });
-        });
-        dateSetting.addDropdown(dropdown => {
-            dropdown.selectEl.addClass('ert-input', 'ert-input--md');
-            for (let index = 0; index < monthCount; index++) {
-                const monthName = profile?.monthNames?.[index] || `${t('planetary.modal.monthFallback')} ${index + 1}`;
-                dropdown.addOption(String(index), monthName);
-            }
-            dropdown.setValue(String(this.planetMonthIndex));
-            dropdown.onChange(value => {
-                this.planetMonthIndex = Number(value);
-                this.clampPlanetDay();
-                this.renderInputs();
-                this.renderResult();
-            });
-        });
-        dateSetting.addText((text: TextComponent) => {
-            text.inputEl.type = 'number';
-            text.inputEl.min = '1';
-            text.inputEl.step = '1';
-            text.inputEl.addClass('ert-input', 'ert-input--sm');
-            text.setValue(this.planetDayValue);
-            text.onChange(value => {
-                this.planetDayValue = value;
-            });
-        });
+        dateSetting.settingEl.addClass('ert-planetary-input-setting');
+        const dateControls = dateSetting.controlEl.createDiv({ cls: 'ert-planetary-field-row' });
+        this.addPlanetarySelectField(dateControls, 'calendar-clock', t('planetary.modal.yearField'), this.buildYearOptions(), this.planetYearValue, value => {
+            this.planetYearValue = value;
+            this.renderResult();
+        }, 'ert-planetary-field--year');
+        this.addPlanetarySelectField(dateControls, 'calendar-days', t('planetary.modal.monthField'), this.buildMonthOptions(profile, monthCount), String(this.planetMonthIndex), value => {
+            this.planetMonthIndex = Number(value);
+            this.clampPlanetDay();
+            this.renderInputs();
+            this.renderResult();
+        }, 'ert-planetary-field--month');
+        this.addPlanetarySelectField(dateControls, 'hash', t('planetary.modal.dayField'), this.buildDayOptions(profile), this.planetDayValue, value => {
+            this.planetDayValue = value;
+            this.renderResult();
+        }, 'ert-planetary-field--day');
 
         const timeSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.planetTimeLabel'))
             .setDesc(t('planetary.modal.planetTimeDesc'));
-        timeSetting.addText((text: TextComponent) => {
-            text.inputEl.addClass('ert-input', 'ert-input--md');
-            text.inputEl.placeholder = '00:00';
-            text.setValue(this.planetTimeValue);
-            text.onChange(value => {
-                this.planetTimeValue = value;
-            });
+        timeSetting.settingEl.addClass('ert-planetary-input-setting');
+        const timeControls = timeSetting.controlEl.createDiv({ cls: 'ert-planetary-field-row' });
+        const time = this.parsePlanetTime(this.planetTimeValue) ?? { hours: 0, minutes: 0 };
+        this.addPlanetarySelectField(timeControls, 'clock-3', t('planetary.modal.hourField'), this.buildHourOptions(profile), String(time.hours), value => {
+            this.planetTimeValue = `${String(Number(value)).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}`;
+            this.renderResult();
+        }, 'ert-planetary-field--hour');
+        this.addPlanetarySelectField(timeControls, 'timer', t('planetary.modal.minuteField'), this.buildMinuteOptions(), String(time.minutes), value => {
+            this.planetTimeValue = `${String(time.hours).padStart(2, '0')}:${String(Number(value)).padStart(2, '0')}`;
+            this.renderResult();
+        }, 'ert-planetary-field--minute');
+    }
+
+    private addPlanetarySelectField(
+        parent: HTMLElement,
+        icon: string,
+        label: string,
+        options: Array<{ value: string; label: string }>,
+        value: string,
+        onChange: (value: string) => void,
+        extraClass = ''
+    ): HTMLSelectElement {
+        const field = parent.createDiv({ cls: `ert-planetary-field ${extraClass}`.trim() });
+        const iconEl = field.createSpan({ cls: 'ert-planetary-field__icon' });
+        setIcon(iconEl, icon);
+        const labelEl = field.createSpan({ cls: 'ert-planetary-field__label', text: label });
+        const selectEl = field.createEl('select', {
+            cls: 'ert-input ert-planetary-field__select',
+            attr: { 'aria-label': label },
         });
+        options.forEach(option => {
+            selectEl.createEl('option', { text: option.label, value: option.value });
+        });
+        if (!options.some(option => option.value === value)) {
+            selectEl.createEl('option', { text: value, value });
+        }
+        selectEl.value = value;
+        selectEl.addEventListener('change', () => onChange(selectEl.value));
+        labelEl.addEventListener('click', () => selectEl.focus());
+        return selectEl;
+    }
+
+    private buildYearOptions(): Array<{ value: string; label: string }> {
+        const currentYear = Math.max(1, Math.round(Number(this.planetYearValue) || 1));
+        const years = new Set<number>();
+        for (let year = 1; year <= 120; year++) years.add(year);
+        years.add(currentYear);
+        return [...years]
+            .sort((a, b) => a - b)
+            .map(year => ({ value: String(year), label: String(year) }));
+    }
+
+    private buildMonthOptions(profile: PlanetaryProfile | null, monthCount: number): Array<{ value: string; label: string }> {
+        const options: Array<{ value: string; label: string }> = [];
+        for (let index = 0; index < monthCount; index++) {
+            const monthName = profile?.monthNames?.[index] || `${t('planetary.modal.monthFallback')} ${index + 1}`;
+            options.push({ value: String(index), label: monthName });
+        }
+        return options;
+    }
+
+    private buildDayOptions(profile: PlanetaryProfile | null): Array<{ value: string; label: string }> {
+        const maxDay = profile ? getPlanetaryMonthDayCount(profile, this.planetMonthIndex) : 31;
+        return Array.from({ length: maxDay }, (_, index) => {
+            const day = index + 1;
+            return { value: String(day), label: String(day) };
+        });
+    }
+
+    private buildHourOptions(profile: PlanetaryProfile | null): Array<{ value: string; label: string }> {
+        const hourCount = Math.max(1, Math.ceil(profile?.hoursPerDay || 24));
+        return Array.from({ length: hourCount }, (_, hour) => ({
+            value: String(hour),
+            label: String(hour).padStart(2, '0'),
+        }));
+    }
+
+    private buildMinuteOptions(): Array<{ value: string; label: string }> {
+        return Array.from({ length: 60 }, (_, minute) => ({
+            value: String(minute),
+            label: String(minute).padStart(2, '0'),
+        }));
     }
 
     private renderResult(): void {

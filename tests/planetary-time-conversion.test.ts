@@ -64,6 +64,8 @@ describe('planetary time conversion', () => {
         expect(modalSource).toContain("type PlanetaryConversionDirection = 'earth-to-planet' | 'planet-to-earth'");
         expect(modalSource).toContain('convertToEarth');
         expect(modalSource).toContain('renderPlanetToEarthResult');
+        expect(modalSource).toContain('addPlanetarySelectField');
+        expect(modalSource).toContain('ert-planetary-field-row');
         expect(chronoSource).toContain('getActivePlanetaryProfile');
         expect(chronoSource).toContain(".addOption('planetary', activePlanetaryLabel)");
     });

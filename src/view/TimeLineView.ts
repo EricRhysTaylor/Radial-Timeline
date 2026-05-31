@@ -1574,15 +1574,33 @@ export class RadialTimelineView extends ItemView {
                 this.writingSessionRingPulseTimeout = undefined;
             }, 300);
         }
-        const firstAnchor = this.currentMode === 'gossamer'
-            ? timelineRoot.querySelector('.rt-gossamer-layer, .rt-scene-info')
-            : timelineRoot.querySelector('.rt-scene-info');
+        const firstAnchor = this.resolveWritingSessionRingAnchor(timelineRoot);
         if (firstAnchor) {
             timelineRoot.insertBefore(imported, firstAnchor);
         } else {
             timelineRoot.appendChild(imported);
         }
         this.writingSessionRingRenderKey = renderKey;
+    }
+
+    private resolveWritingSessionRingAnchor(timelineRoot: Element): Element | null {
+        const selectors = this.currentMode === 'gossamer'
+            ? ['.rt-gossamer-layer', '.rt-scene-info']
+            : ['.rt-scene-info'];
+        for (const selector of selectors) {
+            const candidate = timelineRoot.querySelector(selector);
+            const directChild = this.findTimelineRootChild(timelineRoot, candidate);
+            if (directChild) return directChild;
+        }
+        return null;
+    }
+
+    private findTimelineRootChild(timelineRoot: Element, candidate: Element | null): Element | null {
+        let anchor = candidate;
+        while (anchor && anchor.parentElement !== timelineRoot) {
+            anchor = anchor.parentElement;
+        }
+        return anchor;
     }
 
     public focusTimelineSearchInput(): void {
@@ -2429,7 +2447,11 @@ export class RadialTimelineView extends ItemView {
                     } else {
                         svgElement.removeAttribute('data-chronologue-mode');
                     }
-                    this.updateWritingSessionRing(svgElement as unknown as SVGSVGElement);
+                    try {
+                        this.updateWritingSessionRing(svgElement as unknown as SVGSVGElement);
+                    } catch (error) {
+                        console.warn('[WritingSession] Failed to render session ring overlay.', error);
+                    }
                     
                     // If Gossamer mode is active, reuse hover-state styling: mute everything except Beat notes
                     if (this.currentMode === 'gossamer') {

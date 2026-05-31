@@ -673,6 +673,11 @@ export interface TranslationKeys {
             planetDateDesc: string;
             planetTimeLabel: string;
             planetTimeDesc: string;
+            yearField: string;
+            monthField: string;
+            dayField: string;
+            hourField: string;
+            minuteField: string;
             monthFallback: string;
             datetimeLabel: string;
             datetimeDesc: string;
@@ -2863,9 +2868,14 @@ export const en: TranslationKeys = {
             earthDatetimeLabel: 'Earth date & time',
             earthDatetimeDesc: 'Select an Earth date and time to convert.',
             planetDateLabel: '{{planet}} date',
-            planetDateDesc: 'Enter a local year, month, and day from this planetary calendar.',
+            planetDateDesc: 'Choose the local year, month, and day from this planetary calendar.',
             planetTimeLabel: 'Local time',
-            planetTimeDesc: 'Use HH:MM. Hours may go above 23 when the local day is longer than Earth.',
+            planetTimeDesc: 'Choose the local hour and minute for the date you know.',
+            yearField: 'Year',
+            monthField: 'Month',
+            dayField: 'Day',
+            hourField: 'Hour',
+            minuteField: 'Minute',
             monthFallback: 'Month',
             datetimeLabel: 'Earth date & time',
             datetimeDesc: 'Select a local date and time to convert.',

@@ -1018,6 +1018,44 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     // restore the UI state (buttons, slider, data attributes) based on global state.
     // Modes are MUTUALLY EXCLUSIVE: only one of Runtime, Alien, or Shift can be active.
     // =========================================================================
+    const schedulePlanetaryLabelUpdate = () => {
+        const timeoutId = window.setTimeout(() => {
+            try {
+                if (view.currentMode !== 'chronologue') return;
+                updateDateLabelsForAlienMode(true);
+            } catch (error) {
+                console.warn('[Chronologue] Failed to apply planetary calendar labels after render.', error);
+                try {
+                    deactivateAlienMode();
+                } catch {
+                    alienModeActive = false;
+                    globalAlienModeActive = false;
+                    svg.removeAttribute('data-shift-mode');
+                }
+            }
+        }, 0);
+        view.register(() => window.clearTimeout(timeoutId));
+    };
+
+    const schedulePlanetaryDefaultActivation = () => {
+        const timeoutId = window.setTimeout(() => {
+            try {
+                if (view.currentMode !== 'chronologue') return;
+                toggleAlienMode();
+            } catch (error) {
+                console.warn('[Chronologue] Failed to activate default planetary calendar view after render.', error);
+                try {
+                    deactivateAlienMode();
+                } catch {
+                    alienModeActive = false;
+                    globalAlienModeActive = false;
+                    svg.removeAttribute('data-shift-mode');
+                }
+            }
+        }, 0);
+        view.register(() => window.clearTimeout(timeoutId));
+    };
+
     if (globalRuntimeModeActive && rtButton) {
         runtimeModeActive = true;
         updateRtButtonState(rtButton, true);
@@ -1028,13 +1066,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         // Alien is now independent of Shift - don't activate Shift
         updateAltButtonState(altButton, true);
         svg.setAttribute('data-shift-mode', 'alien');
-        updateDateLabelsForAlienMode(true);
+        schedulePlanetaryLabelUpdate();
     } else if (globalShiftModeActive) {
         shiftModeActive = true;
         updateShiftButtonState(shiftButton, true);
         svg.setAttribute('data-shift-mode', 'active');
     } else if (shouldStartInPlanetaryCalendar()) {
-        toggleAlienMode();
+        schedulePlanetaryDefaultActivation();
     }
 }
 
