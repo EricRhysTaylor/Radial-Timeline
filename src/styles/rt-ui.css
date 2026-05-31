@@ -263,9 +263,14 @@
 
 .ert-ui.ert-scope--settings.ert-settings-root {
   box-sizing: border-box;
-  width: 100%;
+  /* Fixed canvas: Obsidian 1.13's settings window is resizable, but we pin the
+     panel to a single width so dragging the window only changes the empty gutter
+     — no reflow, no new layout widths to test. max-width:100% lets it shrink
+     gracefully if the window is dragged narrower than the lock. */
+  width: 820px;
   max-width: 100%;
   min-width: 0;
+  margin-inline: auto;
 }
 
 .ert-ui.ert-scope--settings.ert-settings-root > * {
