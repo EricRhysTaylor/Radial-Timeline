@@ -673,6 +673,14 @@ export default class RadialTimelinePlugin extends Plugin {
             planetarySelectionMigrated = true;
         }
 
+        if (
+            this.settings.planetaryTimeLastDirection !== 'earth-to-planet'
+            && this.settings.planetaryTimeLastDirection !== 'planet-to-earth'
+        ) {
+            this.settings.planetaryTimeLastDirection = DEFAULT_SETTINGS.planetaryTimeLastDirection;
+            planetarySelectionMigrated = true;
+        }
+
         let booksMigrated = false;
         const settingsAny = this.settings as unknown as Record<string, unknown>;
         const hasBooks = Array.isArray(this.settings.books) && this.settings.books.length > 0;

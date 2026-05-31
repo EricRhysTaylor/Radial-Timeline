@@ -1,17 +1,15 @@
 import { App, Modal, Setting as Settings, DropdownComponent, TextComponent, ButtonComponent, ExtraButtonComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { PlanetaryProfile } from '../types';
+import type { PlanetaryProfile, PlanetaryTimeConversionDirection } from '../types';
 import { convertFromEarth, convertToEarth, getPlanetaryMonthCount, getPlanetaryMonthDayCount } from '../utils/planetaryTime';
 import { t } from '../i18n';
 import { IMPACT_FULL } from '../settings/SettingImpact';
-
-type PlanetaryConversionDirection = 'earth-to-planet' | 'planet-to-earth';
 
 export class PlanetaryTimeModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private profiles: PlanetaryProfile[];
     private activeId: string | undefined;
-    private direction: PlanetaryConversionDirection = 'earth-to-planet';
+    private direction: PlanetaryTimeConversionDirection = 'earth-to-planet';
     private earthDateValue: string;
     private earthTimeValue: string;
     private planetYearValue = '1';
@@ -21,8 +19,9 @@ export class PlanetaryTimeModal extends Modal {
     private inputEl: HTMLElement | null = null;
     private resultEl: HTMLElement | null = null;
     private resultTextEl: HTMLElement | null = null;
+    private badgeEl: HTMLElement | null = null;
     private profileDropdown: DropdownComponent | null = null;
-    private directionButtons: Record<PlanetaryConversionDirection, HTMLButtonElement | null> = {
+    private directionButtons: Record<PlanetaryTimeConversionDirection, HTMLButtonElement | null> = {
         'earth-to-planet': null,
         'planet-to-earth': null,
     };
@@ -34,6 +33,12 @@ export class PlanetaryTimeModal extends Modal {
         this.plugin = plugin;
         this.profiles = plugin.settings.planetaryProfiles || [];
         this.activeId = plugin.settings.activePlanetaryProfileId || '';
+        if (
+            plugin.settings.planetaryTimeLastDirection === 'earth-to-planet'
+            || plugin.settings.planetaryTimeLastDirection === 'planet-to-earth'
+        ) {
+            this.direction = plugin.settings.planetaryTimeLastDirection;
+        }
         const now = new Date();
         this.earthDateValue = this.formatDateInput(now);
         this.earthTimeValue = this.formatTimeInput(now);
@@ -53,7 +58,8 @@ export class PlanetaryTimeModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: t('planetary.heading') });
+        this.badgeEl = header.createSpan({ cls: 'ert-modal-badge' });
+        this.syncHeaderBadge();
         header.createDiv({ cls: 'ert-modal-title', text: t('planetary.modal.title') });
         header.createDiv({ cls: 'ert-modal-subtitle', text: t('planetary.modal.converterDesc') });
 
@@ -75,6 +81,7 @@ export class PlanetaryTimeModal extends Modal {
                 this.plugin.settings.activePlanetaryProfileId = value;
                 await this.plugin.saveSettings();
                 this.plugin.onSettingChanged(IMPACT_FULL);
+                this.syncHeaderBadge();
                 this.renderInputs();
                 this.renderResult();
             });
@@ -108,36 +115,49 @@ export class PlanetaryTimeModal extends Modal {
         this.renderResult();
     }
 
-    private createDirectionButton(parent: HTMLElement, direction: PlanetaryConversionDirection): HTMLButtonElement {
-        const profileName = this.getActiveProfile()?.label?.trim() || t('planetary.modal.planetFallback');
-        const label = direction === 'earth-to-planet'
-            ? t('planetary.modal.earthToPlanet', { planet: profileName })
-            : t('planetary.modal.planetToEarth', { planet: profileName });
+    private createDirectionButton(parent: HTMLElement, direction: PlanetaryTimeConversionDirection): HTMLButtonElement {
         const button = parent.createEl('button', {
-            text: label,
+            text: this.getDirectionLabel(direction),
             cls: 'ert-planetary-direction-button',
             attr: { type: 'button' },
         });
         button.addEventListener('click', () => {
-            this.direction = direction;
-            this.syncDirectionButtons();
-            this.renderInputs();
-            this.renderResult();
+            this.setDirection(direction);
         });
         return button;
     }
 
     private syncDirectionButtons(): void {
-        (Object.keys(this.directionButtons) as PlanetaryConversionDirection[]).forEach(direction => {
+        this.syncHeaderBadge();
+        (Object.keys(this.directionButtons) as PlanetaryTimeConversionDirection[]).forEach(direction => {
             const button = this.directionButtons[direction];
             if (!button) return;
-            const profileName = this.getActiveProfile()?.label?.trim() || t('planetary.modal.planetFallback');
-            button.setText(direction === 'earth-to-planet'
-                ? t('planetary.modal.earthToPlanet', { planet: profileName })
-                : t('planetary.modal.planetToEarth', { planet: profileName }));
+            button.setText(this.getDirectionLabel(direction));
             button.classList.toggle('is-active', direction === this.direction);
             button.setAttribute('aria-pressed', direction === this.direction ? 'true' : 'false');
         });
+    }
+
+    private setDirection(direction: PlanetaryTimeConversionDirection): void {
+        if (this.direction === direction) return;
+        this.direction = direction;
+        this.plugin.settings.planetaryTimeLastDirection = direction;
+        void this.plugin.saveSettings();
+        this.syncDirectionButtons();
+        this.renderInputs();
+        this.renderResult();
+    }
+
+    private syncHeaderBadge(): void {
+        if (!this.badgeEl) return;
+        this.badgeEl.setText(`${t('planetary.heading')} · ${this.getDirectionLabel(this.direction)}`);
+    }
+
+    private getDirectionLabel(direction: PlanetaryTimeConversionDirection): string {
+        const profileName = this.getActiveProfile()?.label?.trim() || t('planetary.modal.planetFallback');
+        return direction === 'earth-to-planet'
+            ? t('planetary.modal.earthToPlanet', { planet: profileName })
+            : t('planetary.modal.planetToEarth', { planet: profileName });
     }
 
     private renderInputs(): void {
@@ -156,6 +176,7 @@ export class PlanetaryTimeModal extends Modal {
         const inputSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.earthDatetimeLabel'))
             .setDesc(t('planetary.modal.earthDatetimeDesc'));
+        inputSetting.settingEl.addClass('ert-planetary-earth-input-setting');
         inputSetting.addText((text: TextComponent) => {
             text.inputEl.type = 'date';
             text.inputEl.addClass('ert-input', 'ert-input--md');
@@ -215,6 +236,11 @@ export class PlanetaryTimeModal extends Modal {
             this.planetDayValue = value;
             this.renderResult();
         }, 'ert-planetary-field--day');
+        const nowButton = new ExtraButtonComponent(dateControls)
+            .setIcon('clock')
+            .setTooltip(t('planetary.modal.todayTooltip'))
+            .onClick(() => this.setPlanetaryFieldsFromEarthNow());
+        nowButton.extraSettingsEl.addClass('ert-planetary-now-button');
 
         const timeSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.planetTimeLabel'))
@@ -301,6 +327,19 @@ export class PlanetaryTimeModal extends Modal {
             value: String(minute),
             label: String(minute).padStart(2, '0'),
         }));
+    }
+
+    private setPlanetaryFieldsFromEarthNow(): void {
+        const profile = this.getActiveProfile();
+        if (!profile) return;
+        const conversion = convertFromEarth(new Date(), profile);
+        if (!conversion) return;
+        this.planetYearValue = String(conversion.localYear);
+        this.planetMonthIndex = conversion.localMonthIndex;
+        this.planetDayValue = String(conversion.localDayOfMonth);
+        this.planetTimeValue = `${String(conversion.localHours).padStart(2, '0')}:${String(conversion.localMinutes).padStart(2, '0')}`;
+        this.renderInputs();
+        this.renderResult();
     }
 
     private renderResult(): void {

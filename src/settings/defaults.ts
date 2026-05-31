@@ -134,6 +134,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     planetarySectionExpanded: true,
     planetaryProfiles: [],
     activePlanetaryProfileId: '',
+    planetaryTimeLastDirection: 'earth-to-planet',
     proAccessEnabled: true,
     frontmatterMappings: {},
     enableCustomMetadataMapping: false,

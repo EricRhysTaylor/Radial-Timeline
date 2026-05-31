@@ -60,12 +60,16 @@ describe('planetary time conversion', () => {
     it('keeps the converter modal bidirectional and labels Chronologue by active profile', () => {
         const modalSource = readFileSync(resolve(process.cwd(), 'src/modals/PlanetaryTimeModal.ts'), 'utf8');
         const chronoSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/ChronologueSection.ts'), 'utf8');
+        const defaultsSource = readFileSync(resolve(process.cwd(), 'src/settings/defaults.ts'), 'utf8');
+        const settingsTypeSource = readFileSync(resolve(process.cwd(), 'src/types/settings.ts'), 'utf8');
 
-        expect(modalSource).toContain("type PlanetaryConversionDirection = 'earth-to-planet' | 'planet-to-earth'");
+        expect(settingsTypeSource).toContain("export type PlanetaryTimeConversionDirection = 'earth-to-planet' | 'planet-to-earth'");
         expect(modalSource).toContain('convertToEarth');
         expect(modalSource).toContain('renderPlanetToEarthResult');
         expect(modalSource).toContain('addPlanetarySelectField');
         expect(modalSource).toContain('ert-planetary-field-row');
+        expect(modalSource).toContain('planetaryTimeLastDirection');
+        expect(defaultsSource).toContain("planetaryTimeLastDirection: 'earth-to-planet'");
         expect(chronoSource).toContain('getActivePlanetaryProfile');
         expect(chronoSource).toContain(".addOption('planetary', activePlanetaryLabel)");
     });

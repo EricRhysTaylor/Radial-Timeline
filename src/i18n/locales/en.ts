@@ -679,6 +679,7 @@ export interface TranslationKeys {
             hourField: string;
             minuteField: string;
             monthFallback: string;
+            todayTooltip: string;
             datetimeLabel: string;
             datetimeDesc: string;
             now: string;
@@ -2877,6 +2878,7 @@ export const en: TranslationKeys = {
             hourField: 'Hour',
             minuteField: 'Minute',
             monthFallback: 'Month',
+            todayTooltip: 'Fill from the current Earth date and time.',
             datetimeLabel: 'Earth date & time',
             datetimeDesc: 'Select a local date and time to convert.',
             now: 'Now',

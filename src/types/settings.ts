@@ -281,6 +281,7 @@ export type ReadabilityScale = 'normal' | 'large';
 export type RuntimeContentType = 'novel' | 'screenplay' | 'audiobook';
 export type ChronologueCalendarDefault = 'earth' | 'planetary' | 'remember';
 export type ChronologueCalendarView = 'earth' | 'planetary';
+export type PlanetaryTimeConversionDirection = 'earth-to-planet' | 'planet-to-earth';
 export type PovMarkerLabel = '0' | '1' | '2' | '3';
 
 export interface RuntimeRateProfile {
@@ -922,6 +923,7 @@ export interface RadialTimelineSettings {
     planetarySectionExpanded?: boolean;
     planetaryProfiles?: PlanetaryProfile[];
     activePlanetaryProfileId?: string
+    planetaryTimeLastDirection?: PlanetaryTimeConversionDirection;
     frontmatterMappings?: Record<string, string>;
     enableCustomMetadataMapping?: boolean;
     enableAdvancedYamlEditor?: boolean;

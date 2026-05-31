@@ -343,6 +343,16 @@
   gap: var(--ert-gap-sm);
 }
 
+.ert-planetary-modal-inputs .ert-planetary-earth-input-setting .setting-item-control {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-earth-input-setting .setting-item-control > input[type="time"] {
+  margin-inline-end: 0;
+}
+
 .ert-planetary-modal-inputs .ert-planetary-input-setting {
   display: flex;
   flex-direction: column;
@@ -357,31 +367,32 @@
 
 .ert-planetary-modal-inputs .ert-planetary-input-setting .setting-item-control {
   width: 100%;
-  justify-content: flex-start;
+  justify-content: flex-end;
   align-items: flex-start;
 }
 
 .ert-planetary-field-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: flex-end;
   align-items: flex-start;
-  gap: var(--ert-gap-sm);
+  gap: var(--ert-gap-xs);
   width: 100%;
   min-width: 0;
 }
 
 .ert-planetary-field {
+  --ert-planetary-icon-column: var(--size-4-5, var(--size-4-4));
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: var(--ert-planetary-icon-column) minmax(0, 1fr);
   grid-template-areas:
     ". label"
     "icon select";
   align-items: end;
-  column-gap: var(--ert-gap-xs);
+  column-gap: var(--ert-gap-2xs);
   row-gap: var(--ert-gap-2xs);
-  width: min(100%, calc(var(--ert-control-height) + var(--ert-gap-xs) + var(--ert-input-width-md)));
-  min-width: min(100%, calc(var(--ert-control-height) + var(--ert-gap-xs) + var(--ert-input-width-md)));
+  width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md)));
+  min-width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md)));
 }
 
 .ert-planetary-field__icon {
@@ -389,7 +400,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--ert-control-height);
+  width: var(--ert-planetary-icon-column);
   height: var(--ert-control-height);
   color: var(--text-muted);
 }
@@ -411,6 +422,23 @@
   grid-area: select;
   width: var(--ert-input-width-md);
   min-width: var(--ert-input-width-md);
+}
+
+.ert-planetary-field--year,
+.ert-planetary-field--day {
+  width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm)));
+  min-width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm)));
+}
+
+.ert-planetary-field--year .ert-planetary-field__select,
+.ert-planetary-field--day .ert-planetary-field__select {
+  width: var(--ert-input-width-sm);
+  min-width: var(--ert-input-width-sm);
+}
+
+.ert-planetary-now-button {
+  align-self: flex-end;
+  min-height: var(--ert-control-height);
 }
 
 /* Match date and time inputs to the same theme style */
