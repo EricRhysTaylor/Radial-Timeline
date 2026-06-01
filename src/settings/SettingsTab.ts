@@ -797,22 +797,38 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderCoreQuickLinks(containerEl: HTMLElement, links: Array<{ label: string; target: HTMLElement | null }>): void {
-        const row = containerEl.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-coreQuickLinks` });
-        row.createSpan({ cls: 'ert-coreQuickLinks__label', text: 'Quick Links' });
+        const valid = links.filter((link): link is { label: string; target: HTMLElement } => link.target !== null);
+        if (!valid.length) return;
 
-        links.forEach(({ label: text, target }) => {
-            if (!target) return;
-            const button = row.createEl('button', {
-                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ert-coreQuickLinks__pill`,
-                attr: { type: 'button' }
+        const root = containerEl.createDiv({ cls: 'ert-coreQuickLinks' });
+
+        // Split across two rows, keeping the first row strictly wider than the
+        // second so the block reads as a tapering header rather than a grid.
+        const firstCount = Math.ceil((valid.length + 1) / 2);
+
+        const buildRow = (entries: Array<{ label: string; target: HTMLElement }>, withLabel: boolean): void => {
+            const row = root.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-coreQuickLinks__row` });
+            if (withLabel) {
+                row.createSpan({ cls: 'ert-coreQuickLinks__label', text: 'Quick Links' });
+            }
+            entries.forEach(({ label: text, target }) => {
+                const button = row.createEl('button', {
+                    cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ert-coreQuickLinks__pill`,
+                    attr: { type: 'button' }
+                });
+                button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
+                const iconEl = button.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
+                setIcon(iconEl, 'corner-right-down');
+                this.plugin.registerDomEvent(button, 'click', () => {
+                    target.scrollIntoView({ block: 'start' });
+                });
             });
-            button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
-            const iconEl = button.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
-            setIcon(iconEl, 'corner-right-down');
-            this.plugin.registerDomEvent(button, 'click', () => {
-                target.scrollIntoView({ block: 'start' });
-            });
-        });
+        };
+
+        buildRow(valid.slice(0, firstCount), true);
+        if (valid.length > firstCount) {
+            buildRow(valid.slice(firstCount), false);
+        }
     }
 
     display(): void {
@@ -1055,13 +1071,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
+        // Order mirrors the on-page section order so the links read top-to-bottom.
         this.renderCoreQuickLinks(quickLinksRow, [
+            { label: 'General', target: generalSection },
+            { label: 'Progress', target: progressSection },
             { label: 'Sessions', target: goalsSessionsSection },
             { label: 'Beats', target: beatsStorySection },
             { label: 'Properties', target: scenePropertiesSection },
             { label: 'Chronology', target: chronologueSection },
+            { label: 'POV', target: povSection },
+            { label: 'Planet Calendar', target: planetarySection },
             { label: 'Backdrop', target: backdropSection },
-            { label: 'Colors', target: colorsWorkingPatternSection }
+            { label: 'Colors', target: colorsWorkingPatternSection },
+            { label: 'Release Notes', target: releaseNotesSection },
+            { label: 'Readme', target: readmeSection }
         ]);
 
         const inquirySection = inquiryBody.createDiv({
