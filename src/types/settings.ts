@@ -371,7 +371,15 @@ export interface WritingSessionRecord {
     typedWords?: number;
     netWordDelta?: number;
     scenesCompleted?: number;
+    /** Vault paths of scenes touched during the session. PRIVATE — never emitted to non-private audiences. */
     scenePaths?: string[];
+    /**
+     * Vault paths of scenes that transitioned to Complete during the session.
+     * PRIVATE — never emitted to non-private audiences. Captured at stop()
+     * time so completion attribution is durable on the record even if the
+     * scene's stage later moves.
+     */
+    scenesCompletedPaths?: string[];
     pagesEdited?: number;
     note?: string;
     source: 'timer' | 'manual';

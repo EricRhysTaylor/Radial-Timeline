@@ -48,11 +48,17 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(source).toContain('providerReuseKey: options.providerReuseKey,');
     });
 
-    it('keeps Anthropic attachment instruction prompts free of TASK so cacheable prefixes survive question changes', () => {
+    it('keeps cacheable prefixes free of TASK and target-scene selection so they survive question changes', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
-        expect(source).toContain('Deliberately omits TASK so the volatile question can be placed after');
+        expect(source).toContain('Deliberately omits TASK *and* the target-scene block so the volatile');
         expect(source).toContain("'EVIDENCE:',");
         expect(source).toContain("'(Evidence provided as document attachments.)'");
+        // Target selection is question-dependent: it must be folded into the
+        // volatile question, never the cacheable prefix or the corpus manifest.
+        expect(source).toContain('private buildVolatileTargetScenes(');
+        expect(source).toContain('this.appendVolatileTargetScenes(input.questionText, input.targetSceneIds)');
+        // The corpus manifest line must not carry isTarget any more.
+        expect(source).not.toContain('| isTarget=${isTarget}`');
     });
 
     it('uses planning-budget wording for single-pass rejection while preserving legacy detection', () => {

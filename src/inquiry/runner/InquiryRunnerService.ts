@@ -272,7 +272,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
-                input.questionText,
+                this.appendVolatileTargetScenes(input.questionText, input.targetSceneIds),
                 evidenceBlocks,
                 options,
                 instructionPrompt,
@@ -380,7 +380,10 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
-                input.questions.map(question => question.questionText).join('\n'),
+                this.appendVolatileTargetScenes(
+                    input.questions.map(question => question.questionText).join('\n'),
+                    input.targetSceneIds
+                ),
                 evidenceBlocks,
                 undefined,
                 instructionPrompt,
@@ -485,7 +488,7 @@ export class InquiryRunnerService implements InquiryRunner {
             task: 'InquiryTraceEstimate',
             systemPrompt,
             userPrompt,
-            userQuestion: input.questionText,
+            userQuestion: this.appendVolatileTargetScenes(input.questionText, input.targetSceneIds),
             ai: input.ai,
             jsonSchema: this.getJsonSchema(),
             temperature: 0.2,
@@ -785,7 +788,6 @@ export class InquiryRunnerService implements InquiryRunner {
         let bookAnchorIndex = 0;
         return entries.map(entry => {
             const mode = this.normalizeEntryMode(entry.mode);
-            const isTarget = entry.isTarget === true;
             const subject = this.buildManifestSubjectLabel(entry);
             if (entry.class === 'book') {
                 bookAnchorIndex += 1;
@@ -794,8 +796,30 @@ export class InquiryRunnerService implements InquiryRunner {
                 ? this.buildBookLabelForEntry(entry, bookAnchorIndex || 1)
                 : (entry.path.split('/').pop() || entry.path);
             const refIdPart = entry.sceneId ? `ref_id=${subject}` : `ref_id=${subject}`;
-            return `${refIdPart} | ref_label=${filename} | ref_path=${entry.path} | class=${entry.class} | mode=${mode} | isTarget=${isTarget}`;
+            // Manifest must be corpus-only (no per-scene isTarget): target
+            // selection is question-dependent and lives in the volatile
+            // question (see buildVolatileTargetScenes), so it must never enter
+            // the cacheable prefix or the provider prompt-cache prefix changes
+            // per question and reuse across questions on the same corpus dies.
+            return `${refIdPart} | ref_label=${filename} | ref_path=${entry.path} | class=${entry.class} | mode=${mode}`;
         });
+    }
+
+    /**
+     * Volatile target-scene block. Target selection is question-dependent, so
+     * it is folded into the volatile question (placed AFTER the cache break),
+     * never into the cacheable prefix or the corpus manifest. Empty when there
+     * are no target scenes. Preserves the target signal the manifest used to
+     * carry via `isTarget=`, relocated to where it cannot perturb cache reuse.
+     */
+    private buildVolatileTargetScenes(targetSceneIds: string[]): string {
+        if (!targetSceneIds.length) return '';
+        return ['', 'TARGET SCENES:', ...targetSceneIds.map(sceneId => `- ${sceneId}`)].join('\n');
+    }
+
+    private appendVolatileTargetScenes(question: string, targetSceneIds: string[]): string {
+        const block = this.buildVolatileTargetScenes(targetSceneIds);
+        return block ? `${question}${block}` : question;
     }
 
     private buildPrompt(
@@ -815,25 +839,18 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceText
         };
         const { systemPrompt, userPrompt, instructionText, schemaText, manifestText } = buildInquiryPromptParts(scaffoldInput);
-        const targetSceneBlock = input.selectionMode === 'focused' && input.targetSceneIds.length
-            ? [
-                '',
-                'TARGET SCENES:',
-                ...input.targetSceneIds.map(sceneId => `- ${sceneId}`)
-            ]
-            : [];
         const manifestBlock = manifestText ? ['', manifestText] : [];
 
         // Stable instruction prompt for attachment-mode caching.
-        // Deliberately omits TASK so the volatile question can be placed after
-        // the cache break and Anthropic can reuse the evidence prefix across
-        // different Inquiry questions on the same corpus.
+        // Deliberately omits TASK *and* the target-scene block so the volatile
+        // question can be placed after the cache break and any provider can
+        // reuse the evidence prefix across different Inquiry questions (and
+        // different target selections) on the same corpus.
         const instructionPrompt = [
             instructionText,
             '',
             schemaText,
             ...manifestBlock,
-            ...targetSceneBlock,
             '',
             'EVIDENCE:',
             '(Evidence provided as document attachments.)'
@@ -844,7 +861,6 @@ export class InquiryRunnerService implements InquiryRunner {
             '',
             schemaText,
             ...manifestBlock,
-            ...targetSceneBlock,
             '',
             'EVIDENCE:',
             evidenceText
@@ -946,14 +962,14 @@ export class InquiryRunnerService implements InquiryRunner {
         ].join('\n');
 
         // Stable instruction prompt for attachment-mode caching.
-        // Deliberately omits TASK so the volatile question list can be placed
-        // after the cache break and Anthropic can reuse the evidence prefix.
+        // Deliberately omits TASK *and* the target-scene block so the volatile
+        // question list can be placed after the cache break and any provider
+        // can reuse the evidence prefix across different target selections.
         const instructionPrompt = [
             instructionText,
             '',
             schema,
             ...manifestBlock,
-            ...targetSceneBlock,
             '',
             'EVIDENCE:',
             '(Evidence provided as document attachments.)'
@@ -964,7 +980,6 @@ export class InquiryRunnerService implements InquiryRunner {
             '',
             schema,
             ...manifestBlock,
-            ...targetSceneBlock,
             '',
             'EVIDENCE:',
             evidenceText
@@ -2906,7 +2921,7 @@ export class InquiryRunnerService implements InquiryRunner {
             input.ai,
             evidenceBlocks,
             this.getJsonSchema(),
-            input.questionText,
+            this.appendVolatileTargetScenes(input.questionText, input.targetSceneIds),
             instructionPrompt,
             cacheableUserInput,
             input.corpus.cacheReuseFingerprint,
@@ -2966,7 +2981,10 @@ export class InquiryRunnerService implements InquiryRunner {
             input.ai,
             evidenceBlocks,
             this.getOmnibusJsonSchema(),
-            input.questions.map(question => question.questionText).join('\n'),
+            this.appendVolatileTargetScenes(
+                input.questions.map(question => question.questionText).join('\n'),
+                input.targetSceneIds
+            ),
             instructionPrompt,
             cacheableUserInput,
             input.corpus.cacheReuseFingerprint,

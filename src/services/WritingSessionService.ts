@@ -56,6 +56,7 @@ export interface WritingSessionCompletionInput {
     netWordDelta?: number;
     scenesCompleted?: number;
     scenePaths?: string[];
+    scenesCompletedPaths?: string[];
     pagesEdited?: number;
     note?: string;
 }
@@ -361,6 +362,7 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
             typedWords: positiveInteger(record.typedWords),
             netWordDelta: Number.isFinite(record.netWordDelta) ? Math.round(record.netWordDelta ?? 0) : undefined,
             scenePaths: uniquePaths(record.scenePaths ?? []),
+            scenesCompletedPaths: uniquePaths(record.scenesCompletedPaths ?? []),
         })),
     };
 }
@@ -675,6 +677,30 @@ export class WritingSessionService {
         await this.plugin.saveSettings();
     }
 
+    /**
+     * Resolve which of the touched scenes actually completed during the
+     * session. Caller may pre-compute via completion.scenesCompletedPaths;
+     * otherwise we intersect touched scenes with the current Complete set so
+     * attribution is durable on the record even if the scene later moves
+     * stages.
+     */
+    private async resolveScenesCompletedPaths(completion: WritingSessionCompletionInput): Promise<string[]> {
+        if (Array.isArray(completion.scenesCompletedPaths)) {
+            return uniquePaths(completion.scenesCompletedPaths);
+        }
+        const touched = uniquePaths(completion.scenePaths ?? []);
+        if (touched.length === 0) return [];
+        try {
+            const scenes = await this.plugin.getSceneData();
+            const completePaths = new Set(scenes
+                .filter(scene => isCompleteStatus(scene.status) && Boolean(scene.path))
+                .map(scene => scene.path as string));
+            return touched.filter(path => completePaths.has(path));
+        } catch {
+            return [];
+        }
+    }
+
     private getOpenScenePaths(): string[] {
         const workspace = this.plugin.app?.workspace;
         const activePath = workspace?.getActiveFile?.()?.path;
@@ -866,6 +892,7 @@ export class WritingSessionService {
             netWordDelta: Number.isFinite(completion.netWordDelta) ? Math.round(completion.netWordDelta ?? 0) : undefined,
             scenesCompleted: positiveInteger(completion.scenesCompleted),
             scenePaths: uniquePaths(completion.scenePaths ?? []),
+            scenesCompletedPaths: await this.resolveScenesCompletedPaths(completion),
             pagesEdited: positiveInteger(completion.pagesEdited),
             note: completion.note?.trim() || undefined,
             source: 'timer',

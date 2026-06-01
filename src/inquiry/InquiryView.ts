@@ -8188,11 +8188,24 @@ export class InquiryView extends ItemView {
             .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}:${entry.isTarget ? 1 : 0}`)
             .sort()
             .join('|');
+        // The provider prompt-cache reuse key must be corpus-only. Target-scene
+        // selection is question-dependent and now lives in the volatile section
+        // of the prompt, so it must NOT enter the reuse key — otherwise the
+        // prompt_cache_key changes per question and the provider never reuses
+        // the corpus prefix across questions. Mirror the corpus-only
+        // serialization used by estimateTokensFromVault so the forecast/preview
+        // key matches the run key. (Session identity — `fingerprint` and
+        // `corpusOnlyFingerprint` — keeps isTarget so target re-selection still
+        // produces a distinct session.)
+        const reuseFingerprintSource = entries
+            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}`)
+            .sort()
+            .join('|');
         const modelId = modelIdOverride ?? this.getResolvedEngine().modelId;
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
         const corpusOnlyFingerprint = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`);
-        const cacheReuseFingerprint = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${modelId}|${fingerprintSource}`);
+        const cacheReuseFingerprint = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${modelId}|${reuseFingerprintSource}`);
 
         const snapshot = entries.map(entry => ({
             path: entry.path,

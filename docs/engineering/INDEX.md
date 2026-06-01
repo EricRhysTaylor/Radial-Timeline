@@ -43,6 +43,12 @@ Location: `docs/engineering/standards/`
   feature or significant addition before it is release-ready. Invoke via the
   `/feature-audit` slash command.
 
+- **[writing-session-privacy.md](standards/writing-session-privacy.md)**
+  Authoritative contract for projecting writing-session data to private,
+  friends, and community audiences. Read before touching any code that
+  reads, renders, or transmits `WritingSessionRecord`. Enforced by the
+  tracer test in `projections.privacy.test.ts`.
+
 - **[fallback-policy.md](standards/fallback-policy.md)**
   Authoritative no-fallback policy. Hard-fail at boundaries, surface real errors, never silently substitute. Enforced by `scripts/fallback-gate.mjs` and wired into `npm run gates`.
 
