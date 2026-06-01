@@ -406,11 +406,11 @@
 /* The time row's control is content-sized (flex:0 0 auto), so the fields need
    a definite width — the shared min(100%, …) rule resolves the 100% against an
    indefinite basis here and collapses the width:100% selects to min-content.
-   A plain calc keeps the fields at their intended md width so the selects fill
-   and the info column wraps in the remaining space. */
+   A plain calc keeps the fields sized so the selects fill and the info column
+   wraps. Hour/minute hold two digits, so sm keeps them inside the right margin. */
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .ert-planetary-field {
-  width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md));
-  min-width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md));
+  width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm));
+  min-width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm));
 }
 
 .ert-planetary-field {
