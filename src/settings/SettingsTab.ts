@@ -1073,8 +1073,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Order mirrors the on-page section order so the links read top-to-bottom.
         this.renderCoreQuickLinks(quickLinksRow, [
-            { label: 'General', target: generalSection },
-            { label: 'Progress', target: progressSection },
+            { label: 'Books', target: generalSection },
             { label: 'Sessions', target: goalsSessionsSection },
             { label: 'Beats', target: beatsStorySection },
             { label: 'Properties', target: scenePropertiesSection },
