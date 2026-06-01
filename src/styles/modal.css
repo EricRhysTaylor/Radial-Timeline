@@ -353,20 +353,31 @@
   margin-inline-end: 0;
 }
 
-/* Mars → Earth fields share the compact single-row layout (info left,
-   controls right) used by the Earth → Mars input, instead of stacking. */
+.ert-planetary-modal-inputs .ert-planetary-input-setting {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-planetary-modal-inputs .ert-planetary-input-setting .setting-item-info {
+  width: 100%;
+  margin-inline-end: 0;
+}
+
 .ert-planetary-modal-inputs .ert-planetary-input-setting .setting-item-control {
-  flex-wrap: nowrap;
+  width: 100%;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .ert-planetary-field-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--ert-gap-xs);
+  width: 100%;
   min-width: 0;
 }
 
@@ -426,7 +437,7 @@
 }
 
 .ert-planetary-now-button {
-  align-self: center;
+  align-self: flex-end;
 }
 
 .ert-planetary-copy-button {
