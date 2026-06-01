@@ -247,7 +247,7 @@ export class PlanetaryTimeModal extends Modal {
         const timeSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.planetTimeLabel'))
             .setDesc(t('planetary.modal.planetTimeDesc'));
-        timeSetting.settingEl.addClass('ert-planetary-input-setting');
+        timeSetting.settingEl.addClass('ert-planetary-input-setting', 'ert-planetary-time-input-setting');
         const timeControls = timeSetting.controlEl.createDiv({ cls: 'ert-planetary-field-row' });
         const time = this.parsePlanetTime(this.planetTimeValue) ?? { hours: 0, minutes: 0 };
         this.addPlanetarySelectField(timeControls, 'clock-3', t('planetary.modal.hourField'), this.buildHourOptions(profile), String(time.hours), value => {

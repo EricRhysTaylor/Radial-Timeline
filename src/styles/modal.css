@@ -381,6 +381,31 @@
   min-width: 0;
 }
 
+/* Local time renders on a single row (info left, hour/minute right) like the
+   Earth → Mars "Earth date & time" row, instead of stacking. The Mars date
+   row keeps the stacked layout because it carries three fields plus a button. */
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting {
+  flex-direction: row;
+  align-items: center;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-info {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-control {
+  width: auto;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting .ert-planetary-field-row {
+  width: auto;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
 .ert-planetary-field {
   --ert-planetary-icon-column: var(--size-4-5, var(--size-4-4));
   display: grid;
