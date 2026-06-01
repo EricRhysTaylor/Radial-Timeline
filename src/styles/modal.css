@@ -387,6 +387,11 @@
    .ert-planetary-input-setting class. The Mars date row keeps the stacked
    layout because it carries three fields plus a button. */
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-control {
+  /* Hold the controls at their content width so only the info column shrinks
+     and wraps. Without this, Obsidian's default flex:1 1 auto lets the control
+     shrink below the nowrap field-row, which then overflows left under the
+     description text. */
+  flex: 0 0 auto;
   flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
