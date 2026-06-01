@@ -9,6 +9,19 @@ Do NOT use git worktrees. Do NOT work from `~/.claude-worktrees/`. If you find y
 
 The primary branch is `master`.
 
+## Git Workflow
+
+- Work directly on `master`. Do NOT create feature branches — committing
+  to a new branch breaks the auto-backup push (a fresh branch has no
+  `origin` upstream) and adds friction for a solo, master-only repo.
+- After a self-contained, verified change, **commit AND push to
+  `origin/master` without asking.** Pushing is the default, not an
+  opt-in. (The auto-backup script pushes the current branch to its
+  upstream; on `master` that always works.)
+- Only pause to ask before genuinely destructive history operations
+  (force-push, hard reset of pushed commits, branch deletion of shared
+  refs) or when the user explicitly says "show me first."
+
 ## Build
 
 - `npm run build` to build (outputs to Obsidian vault plugin folders + `release/`)
