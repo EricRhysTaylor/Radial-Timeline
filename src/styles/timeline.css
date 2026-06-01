@@ -2082,14 +2082,9 @@
   padding: var(--ert-gap-xs) var(--ert-gap-sm);
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--background-modifier-border);
   border-radius: 0;
   font-size: 12px;
   line-height: 1.3;
-}
-
-.ert-session-log-row--compact:last-child {
-  border-bottom: 0;
 }
 
 .ert-session-log-row__head {
