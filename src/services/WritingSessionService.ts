@@ -15,6 +15,7 @@ import { getActiveBook } from '../utils/books';
 import { isCompleteStatus, normalizePublishStage } from '../progress/progressSnapshot';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 import { normalizeStatus } from '../utils/text';
+import { buildPrivateSessionLog, type PrivateSessionLogRow } from './WritingSessionLog';
 import { countWords, extractBodyText } from '../utils/manuscript';
 
 const MAX_SESSION_RECORDS = 500;
@@ -1029,6 +1030,23 @@ export class WritingSessionService {
             targetMode: this.getDefaultTargetMode(),
             dailyTargetMinutes: this.getDefaultGoalMinutes(),
             dailyTargetWords: this.getDefaultGoalWords(),
+        });
+    }
+
+    /**
+     * Private-audience session log for a window. Renderers (settings cards
+     * expand panel, timeline session popover) consume this directly.
+     *
+     * For non-private audiences the renderer must NOT call this method —
+     * instead use the dedicated `buildPrivateSessionLog` / friends /
+     * community projections in `WritingSessionLog.ts` to enforce the
+     * privacy contract.
+     */
+    getPrivateSessionLog(params: { days: number; endDate?: string; limit?: number }): PrivateSessionLogRow[] {
+        return buildPrivateSessionLog({
+            records: this.getSettings().records,
+            window: { endDate: params.endDate ?? localDateString(), days: params.days },
+            limit: params.limit,
         });
     }
 }

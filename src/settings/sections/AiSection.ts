@@ -1318,6 +1318,19 @@ export function renderAiSection(params: {
         const cacheRemainingLabel = cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()
             ? formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now())
             : null;
+        // DOCTRINE (matches the AI Engine popover's TTL-pill gate): a numeric
+        // countdown is only honest once the provider payload PROVES a cache
+        // resource exists (cache_read or cache_creation tokens > 0). The
+        // cacheWindowExpiresAt timestamp alone is setting-derived optimism —
+        // OpenAI never reports cache-creation tokens, so a "primed/created"
+        // run with cached_tokens=0 has no proof its cache exists and must NOT
+        // show "23h 51m remaining". Such runs still show the armed state, just
+        // without a fabricated countdown.
+        const cacheUsage = cacheSession?.result.tokenUsage;
+        const cacheProven = !!cacheUsage
+            && (((cacheUsage.cacheReadInputTokens ?? 0) > 0)
+                || ((cacheUsage.cacheCreationInputTokens ?? 0) > 0));
+        const provenCacheRemainingLabel = cacheProven ? cacheRemainingLabel : null;
         const cacheRatio = typeof cacheSession?.cachedStableRatio === 'number' && Number.isFinite(cacheSession.cachedStableRatio)
             ? Math.max(0, Math.min(1, cacheSession.cachedStableRatio))
             : undefined;
@@ -1364,18 +1377,19 @@ export function renderAiSection(params: {
             const observedCachePills: PreviewPill[] = cacheLabel
                 ? [{ text: cacheLabel, extraCls: 'ert-ai-pill--active' }]
                 : [];
-            const activeCacheTimeLabel = cacheRemainingLabel;
-            if (!activeCacheTimeLabel) {
-                throw new Error('Active cache session is missing a countdown label.');
-            }
+            // Only append a numeric countdown when the provider proves the
+            // cache exists. A warm reuse is itself proof for payload providers,
+            // but providers that never report an expiry (OpenAI) show the
+            // confirmed-reuse state without a fabricated remaining-time.
+            const warmTimeSuffix = provenCacheRemainingLabel ? ` • ${provenCacheRemainingLabel}` : '';
             return {
                 tone: 'success',
                 comparatorLabel: null,
                 comparatorValue: null,
                 statusIcon: 'badge-check',
                 statusText: hasCurrentCorpusMatch
-                    ? `Warm cache confirmed for current corpus • ${activeCacheTimeLabel}`
-                    : `Warm cache confirmed on last Inquiry corpus • ${activeCacheTimeLabel}`,
+                    ? `Warm cache confirmed for current corpus${warmTimeSuffix}`
+                    : `Warm cache confirmed on last Inquiry corpus${warmTimeSuffix}`,
                 extraPills: [...extraPills, ...observedCachePills],
                 cacheRatio,
                 cacheLabel
@@ -1389,16 +1403,20 @@ export function renderAiSection(params: {
             cacheSession?.providerCacheStatus === 'created'
             && cacheSession.cacheWindowExpiresAt
             && cacheSession.cacheWindowExpiresAt > Date.now()
-            && cacheRemainingLabel
         ) {
+            // Countdown only when the cache is payload-proven. An unproven
+            // "primed" run (e.g. OpenAI, which never reports cache-creation
+            // tokens, so cached_tokens=0) shows the armed state WITHOUT a
+            // fabricated remaining-time — the provider manages the real expiry.
+            const armedTimeSuffix = provenCacheRemainingLabel ? ` • ${provenCacheRemainingLabel}` : '';
             return {
                 tone: 'success',
                 comparatorLabel: null,
                 comparatorValue: null,
                 statusIcon: 'shield-check',
                 statusText: hasCurrentCorpusMatch
-                    ? `Cache armed for next run on current corpus • ${cacheRemainingLabel}`
-                    : `Cache armed on last Inquiry corpus • ${cacheRemainingLabel}`,
+                    ? `Cache armed for next run on current corpus${armedTimeSuffix}`
+                    : `Cache armed on last Inquiry corpus${armedTimeSuffix}`,
                 // Add an explicit "Cache armed" pill so the chip row
                 // matches the popover. The merge logic recognizes
                 // CACHE_ARMED_PILL_TEXT as the base — but for the

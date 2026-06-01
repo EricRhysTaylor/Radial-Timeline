@@ -13,7 +13,7 @@ import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents } from '../utils/text';
 import { renderSvgFromString } from '../utils/svgDom';
-import { openOrRevealFile } from '../utils/fileUtils';
+import { openOrRevealFileByPath } from '../utils/fileUtils';
 import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController, setupVersionIndicatorController, setupHelpIconController, setupTooltips } from './interactions';
 import { isShiftModeActive } from './interactions/ChronologueShiftController';
 import { RendererService } from '../services/RendererService';
@@ -29,6 +29,7 @@ import {
     SVG_SIZE
 } from '../renderer/layout/LayoutConstants';
 import { buildSessionTimerRingState, renderSessionTimerRingLayer, buildTabTimerDiscSvg } from '../renderer/components/SessionTimerRing';
+import { renderSessionLogList } from '../renderer/components/SessionLogList';
 import { 
     createSnapshot, 
     detectChanges, 
@@ -1076,9 +1077,42 @@ export class RadialTimelineView extends ItemView {
 
         if (!active) {
             this.renderIdleWritingSessionPanel(panel);
-            return;
+        } else {
+            this.renderActiveWritingSessionPanel(panel, active);
         }
-        this.renderActiveWritingSessionPanel(panel, active);
+        this.renderWritingSessionRecentStrip(panel);
+    }
+
+    /**
+     * Compact "last 7 days" session-log strip at the bottom of the writing
+     * session popover. Private audience only. Hidden when there is nothing
+     * to show.
+     */
+    private renderWritingSessionRecentStrip(panel: HTMLElement): void {
+        const rows = this.plugin.getWritingSessionService().getPrivateSessionLog({
+            days: 7,
+            limit: 5,
+        });
+        if (rows.length === 0) return;
+
+        const strip = panel.createDiv({ cls: 'ert-timeline-session-panel__recent' });
+        const header = strip.createDiv({ cls: 'ert-timeline-session-panel__recent-header' });
+        const iconEl = header.createSpan({ cls: 'ert-timeline-session-panel__recent-header-icon' });
+        setIcon(iconEl, 'history');
+        header.createSpan({ text: 'Recent · last 7 days' });
+        header.createSpan({
+            cls: 'ert-timeline-session-panel__recent-meta',
+            text: rows.length === 1 ? '1 session' : `${rows.length} sessions`,
+        });
+
+        const list = strip.createDiv();
+        renderSessionLogList(list, rows, {
+            mode: 'compact',
+            onSceneClick: (path) => {
+                void openOrRevealFileByPath(this.app, path);
+                this.hideWritingSessionPanel();
+            },
+        });
     }
 
     private renderIdleWritingSessionPanel(panel: HTMLElement): void {

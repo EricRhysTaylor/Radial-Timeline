@@ -29,7 +29,8 @@ describe('AI settings cache preview signals', () => {
         // alone) with a still-open TTL.
         expect(source.includes("cacheSession?.providerCacheStatus === 'created'")).toBe(true);
         // Pin: the status text uses "Cache armed" wording (matches the
-        // AI Engine popover) and includes the remaining-time label.
+        // AI Engine popover). The remaining-time label is appended only when
+        // the cache is payload-proven (see proof gate below).
         expect(source.includes('Cache armed for next run on current corpus')).toBe(true);
         expect(source.includes('Cache armed on last Inquiry corpus')).toBe(true);
         // Pin: explicit "Cache armed" pill is appended so the chip row
@@ -39,5 +40,12 @@ describe('AI settings cache preview signals', () => {
         // gated on providerCacheStatus from the cache manager, not on
         // cacheWindowExpiresAt alone.
         expect(/Cache armed[\s\S]+?providerCacheStatus === 'created'|providerCacheStatus === 'created'[\s\S]+?Cache armed/.test(source)).toBe(true);
+        // HONEST COUNTDOWN: a numeric remaining-time is only appended when the
+        // provider payload proves a cache exists (cache_read/cache_creation
+        // tokens > 0). OpenAI never reports cache-creation tokens, so a primed
+        // run with cached_tokens=0 shows the armed state with NO countdown.
+        expect(source.includes('const cacheProven = !!cacheUsage')).toBe(true);
+        expect(source.includes('const provenCacheRemainingLabel = cacheProven ? cacheRemainingLabel : null;')).toBe(true);
+        expect(source.includes('const armedTimeSuffix = provenCacheRemainingLabel ? ` • ${provenCacheRemainingLabel}` : \'\';')).toBe(true);
     });
 });

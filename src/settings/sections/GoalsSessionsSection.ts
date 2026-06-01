@@ -6,6 +6,8 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { WritingRangeStats } from '../../services/WritingSessionService';
+import { renderSessionLogList } from '../../renderer/components/SessionLogList';
+import { openOrRevealFileByPath } from '../../utils/fileUtils';
 import { fitSelectToSelectedLabel } from '../selectSizing';
 
 interface GoalsSessionsSectionParams {
@@ -213,6 +215,56 @@ function createRangeCard(plugin: RadialTimelinePlugin, container: HTMLElement, s
         item.createSpan({ cls: 'ert-goals-stage-pill__label', text: stage });
         item.createSpan({ cls: 'ert-goals-stage-pill__value', text: String(count) });
     });
+
+    renderSessionLogPreview(plugin, card, stats);
+}
+
+/**
+ * Per-card expandable session log. Today / 7 days open by default; 30 / 151
+ * collapsed. Reads from the PRIVATE projection only — friends/community
+ * surfaces use separate components.
+ */
+function renderSessionLogPreview(plugin: RadialTimelinePlugin, card: HTMLElement, stats: WritingRangeStats): void {
+    const details = card.createEl('details', { cls: 'ert-goals-stat-card__log' });
+    details.open = stats.days <= 7;
+    const summary = details.createEl('summary', { cls: 'ert-goals-stat-card__log-summary' });
+
+    const chev = summary.createSpan({ cls: 'ert-goals-stat-card__log-chevron' });
+    setIcon(chev, details.open ? 'chevron-down' : 'chevron-right');
+    summary.createSpan({ cls: 'ert-goals-stat-card__log-label', text: 'Session log' });
+    const count = summary.createSpan({
+        cls: 'ert-goals-stat-card__log-count',
+        text: stats.sessionsCompleted === 1 ? '1 session' : `${stats.sessionsCompleted} sessions`,
+    });
+    count.setAttribute('aria-hidden', 'true');
+
+    const body = details.createDiv({ cls: 'ert-goals-stat-card__log-body' });
+    let rendered = false;
+
+    const renderRows = () => {
+        if (rendered) return;
+        rendered = true;
+        const rows = plugin.getWritingSessionService().getPrivateSessionLog({
+            days: stats.days,
+            endDate: stats.endDate,
+        });
+        renderSessionLogList(body, rows, {
+            mode: 'preview',
+            onSceneClick: (path) => {
+                void openOrRevealFileByPath(plugin.app, path);
+            },
+            emptyMessage: stats.days === 1
+                ? 'No sessions logged today yet.'
+                : `No sessions logged in this ${stats.days}-day window.`,
+        });
+    };
+
+    if (details.open) renderRows();
+
+    details.ontoggle = () => {
+        setIcon(chev, details.open ? 'chevron-down' : 'chevron-right');
+        if (details.open) renderRows();
+    };
 }
 
 function renderStatsBody(plugin: RadialTimelinePlugin, container: HTMLElement, stats: WritingRangeStats[]): void {
