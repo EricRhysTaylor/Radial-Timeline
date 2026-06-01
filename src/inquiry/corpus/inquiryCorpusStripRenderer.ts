@@ -126,7 +126,7 @@ function buildCorpusLegendPanel(
     const yInset = Math.max(2, Math.round(noteH * 0.14));
     const padding = 14;
     const questionR = 9;
-    const questionProR = 7;
+    const questionProText = 'var(--ert-pro-accent-color)';
     const questionZone = 'var(--ert-inquiry-zone-setup)';
     const questionZoneStroke = 'var(--ert-inquiry-zone-setup-stroke)';
     const questionMutedStroke = `color-mix(in srgb, ${questionZone} 30%, transparent)`;
@@ -142,7 +142,6 @@ function buildCorpusLegendPanel(
             stroke: string;
             text: string;
             dasharray?: string;
-            pro?: boolean;
         }
     ): void => {
         const circle = createSvgElement('circle');
@@ -156,17 +155,6 @@ function buildCorpusLegendPanel(
             circle.style.strokeDasharray = options.dasharray;
         }
         g.appendChild(circle);
-
-        if (options.pro) {
-            const proRing = createSvgElement('circle');
-            proRing.setAttribute('cx', String(cx));
-            proRing.setAttribute('cy', String(cy));
-            proRing.setAttribute('r', String(questionProR));
-            proRing.style.fill = 'none';
-            proRing.style.stroke = 'var(--ert-pro-accent-color)';
-            proRing.style.strokeWidth = '1.1';
-            g.appendChild(proRing);
-        }
 
         const text = createSvgElement('text');
         text.setAttribute('x', String(cx));
@@ -434,8 +422,7 @@ function buildCorpusLegendPanel(
                     buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
                         label: '1',
                         stroke: questionZone,
-                        text: questionZone,
-                        pro: true
+                        text: questionProText
                     })
                 },
                 {
@@ -443,8 +430,7 @@ function buildCorpusLegendPanel(
                     buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
                         label: '1',
                         stroke: questionMutedStroke,
-                        text: questionMutedText,
-                        pro: true
+                        text: questionProText
                     })
                 },
                 {
