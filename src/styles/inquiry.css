@@ -1481,17 +1481,34 @@
 .inq-zone-dot-text {
   fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
   pointer-events: none;
-  transition: fill 160ms ease, filter 160ms ease;
+  transition: fill 160ms ease, opacity 160ms ease, filter 160ms ease;
 }
 
 /* Pro / signature questions are marked by a magenta NUMBER (not a second
    ring). The number color is the persistent "Pro origin" signal; run status
    is carried entirely by the dot circle. So the status text rules below are
-   scoped to :not(.is-signature) and the number stays magenta across states.
+   scoped to :not(.is-signature) and the hue stays magenta across states.
    (Error is the one exception — a failed run shows a red "X" regardless of
-   origin, see the is-processed-error rule which is intentionally unscoped.) */
+   origin, see the is-processed-error rule which is intentionally unscoped.)
+
+   The magenta OPACITY tracks the dot's run status so it doesn't shout over a
+   muted dot: dimmed at rest, dimmer still for prior/cached/stale, and
+   full-strength only when the dot is current / selected / hovered. */
 .inq-zone-dot.is-signature .inq-zone-dot-text {
   fill: var(--ert-pro-accent-color);
+  opacity: 0.65;
+}
+
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-signature.is-cached .inq-zone-dot-text,
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-signature.is-stale .inq-zone-dot-text {
+  opacity: 0.4;
+}
+
+.inq-zone-dot.is-signature.is-active .inq-zone-dot-text,
+.inq-zone-dot.is-signature:hover:not(:active) .inq-zone-dot-text,
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-signature.is-processed .inq-zone-dot-text,
+.ert-inquiry-svg.is-running .inq-zone-dot.is-signature.is-locked .inq-zone-dot-text {
+  opacity: 1;
 }
 
 .inq-zone-dot.is-active:not(.is-signature) .inq-zone-dot-text {

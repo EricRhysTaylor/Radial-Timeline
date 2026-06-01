@@ -142,6 +142,7 @@ function buildCorpusLegendPanel(
             stroke: string;
             text: string;
             dasharray?: string;
+            textOpacity?: number;
         }
     ): void => {
         const circle = createSvgElement('circle');
@@ -164,6 +165,9 @@ function buildCorpusLegendPanel(
         text.setAttribute('alignment-baseline', 'central');
         text.setAttribute('font-size', '12');
         text.style.fill = options.text;
+        if (typeof options.textOpacity === 'number') {
+            text.style.opacity = String(options.textOpacity);
+        }
         text.classList.add('ert-inquiry-cc-legend-row-label');
         text.textContent = options.label;
         g.appendChild(text);
@@ -422,7 +426,8 @@ function buildCorpusLegendPanel(
                     buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
                         label: '1',
                         stroke: questionZone,
-                        text: questionProText
+                        text: questionProText,
+                        textOpacity: 0.65
                     })
                 },
                 {
@@ -430,7 +435,8 @@ function buildCorpusLegendPanel(
                     buildIcon: (g, cx, cy) => buildQuestionDot(g, cx, cy, {
                         label: '1',
                         stroke: questionMutedStroke,
-                        text: questionProText
+                        text: questionProText,
+                        textOpacity: 0.4
                     })
                 },
                 {
