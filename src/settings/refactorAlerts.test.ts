@@ -22,9 +22,8 @@ describe('settings notification center log-folder alert', () => {
         expect(alert?.description).toContain('Gossamer Archive');
     });
 
-    it('shows the recovery-folder relocation notification as a moderate (warning) alert, newest last', () => {
+    it('shows the recovery-folder relocation notification as a moderate (warning) alert', () => {
         const active = getActiveRefactorAlerts({ ...DEFAULT_SETTINGS, dismissedAlerts: [] });
-        const ids = active.map(alert => alert.id);
         const alert = active.find(item => item.id === 'recovery-folder-relocation-v1');
 
         expect(alert).toMatchObject({
@@ -35,6 +34,21 @@ describe('settings notification center log-folder alert', () => {
         expect(alert?.description).toContain('Radial Timeline/Recover');
         expect(alert?.description).toContain('Snapshots');
         expect(alert?.description).toContain('Gossamer Archive');
-        expect(ids.at(-1)).toBe('recovery-folder-relocation-v1');
+    });
+
+    it('shows the Inquiry Pro-button restyle as a low-priority (info) notice, newest last', () => {
+        const active = getActiveRefactorAlerts({ ...DEFAULT_SETTINGS, dismissedAlerts: [] });
+        const ids = active.map(alert => alert.id);
+        const alert = active.find(item => item.id === 'inquiry-pro-button-design-v1');
+
+        expect(alert).toMatchObject({
+            severity: 'info',
+            icon: 'sparkles',
+            title: 'Inquiry Pro buttons restyled'
+        });
+        expect(alert?.description).toContain('magenta number');
+        expect(alert?.description).toContain('inner ring');
+        // Newest notification sorts last in the active list.
+        expect(ids.at(-1)).toBe('inquiry-pro-button-design-v1');
     });
 });

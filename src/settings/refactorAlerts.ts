@@ -106,6 +106,13 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         icon: 'archive-restore',
         title: 'Recovery files moved out of Logs',
         description: 'Snapshots and the Gossamer Archive — the files used to recover deleted or overwritten note data — now live under Radial Timeline/Recover instead of Radial Timeline/Logs. The Logs folder now holds only disposable run logs, so you can purge it at any time without losing recovery data. If a Snapshots or Gossamer Archive folder already exists under Radial Timeline/Logs, move it into Radial Timeline/Recover to preserve that earlier recovery data.',
+    },
+    {
+        id: 'inquiry-pro-button-design-v1',
+        severity: 'info',
+        icon: 'sparkles',
+        title: 'Inquiry Pro buttons restyled',
+        description: 'In the Inquiry View, Pro-generated questions are now marked by a magenta number instead of an inner ring. The dot circle alone carries run status (ready, run, stale), so each button is simpler to read at a glance. Purely cosmetic — no action required.',
     }
 ];
 
