@@ -328,9 +328,24 @@ describe('AI settings models table', () => {
 
     it('lets observed provider cache hits override static cache-off preview copy', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("const observedCachePills: PreviewPill[] = cacheLabel")).toBe(true);
+        // When an observed cache hit exists (cacheRatio > 0), the static
+        // "Cache off" base pill is dropped before merge so it cannot
+        // contradict the realized hit.
+        expect(source.includes("typeof certificate.cacheRatio === 'number' && certificate.cacheRatio > 0")).toBe(true);
         expect(source.includes("basePreviewPills.filter(pill => !/^Cache off\\b/i.test(pill.text))")).toBe(true);
-        expect(source.includes("extraPills: [...extraPills, ...observedCachePills]")).toBe(true);
+        // The warm/armed branches flag cacheArmed; the assembler turns that
+        // into the single "Cache armed" pill (vs "Provider cache supported").
+        expect(source.includes('cacheArmed: true')).toBe(true);
+    });
+
+    it('orders preview pills author-first: cost, single cache pill, then context/pass last', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        // Cost is what the author cares about most → first.
+        expect(source.includes('const costPill = previewPills.find(isCostPill)')).toBe(true);
+        // Exactly one cache pill, labelled by prior-run state.
+        expect(source.includes("certificate.cacheArmed ? 'Cache armed' : CACHE_ARMED_PILL_TEXT")).toBe(true);
+        // Single/multi-pass context pill goes last.
+        expect(source.includes('const orderedPills = [costPill, cachePill, ...otherPills, passPill]')).toBe(true);
     });
 
     it('surfaces provider usage cost in the AI model preview when exact usage pricing is available', () => {

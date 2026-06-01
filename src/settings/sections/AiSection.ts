@@ -1195,6 +1195,12 @@ export function renderAiSection(params: {
         extraPills: PreviewPill[];
         cacheRatio?: number;
         cacheLabel?: string | null;
+        /**
+         * True when a prior run has primed/reused the provider cache for this
+         * engine+corpus (warm or armed branch). Drives the single cache pill:
+         * armed → "Cache armed"; otherwise → "Provider cache supported".
+         */
+        cacheArmed?: boolean;
     };
 
     let lastResolvedPreviewState: ResolvedPreviewRenderState | null = null;
@@ -1374,9 +1380,6 @@ export function renderAiSection(params: {
             && cacheSession.cacheWindowExpiresAt
             && cacheSession.cacheWindowExpiresAt > Date.now()
         ) {
-            const observedCachePills: PreviewPill[] = cacheLabel
-                ? [{ text: cacheLabel, extraCls: 'ert-ai-pill--active' }]
-                : [];
             // Only append a numeric countdown when the provider proves the
             // cache exists. A warm reuse is itself proof for payload providers,
             // but providers that never report an expiry (OpenAI) show the
@@ -1390,7 +1393,8 @@ export function renderAiSection(params: {
                 statusText: hasCurrentCorpusMatch
                     ? `Warm cache confirmed for current corpus${warmTimeSuffix}`
                     : `Warm cache confirmed on last Inquiry corpus${warmTimeSuffix}`,
-                extraPills: [...extraPills, ...observedCachePills],
+                extraPills,
+                cacheArmed: true,
                 cacheRatio,
                 cacheLabel
             };
@@ -1417,14 +1421,10 @@ export function renderAiSection(params: {
                 statusText: hasCurrentCorpusMatch
                     ? `Cache armed for next run on current corpus${armedTimeSuffix}`
                     : `Cache armed on last Inquiry corpus${armedTimeSuffix}`,
-                // Add an explicit "Cache armed" pill so the chip row
-                // matches the popover. The merge logic recognizes
-                // CACHE_ARMED_PILL_TEXT as the base — but for the
-                // armed state we want a distinct, louder label.
-                extraPills: [
-                    ...extraPills,
-                    { text: 'Cache armed', extraCls: 'ert-ai-pill--active' }
-                ]
+                // The single cache pill is shaped by the assembler from
+                // `cacheArmed`; no per-branch pill injection here.
+                extraPills,
+                cacheArmed: true
             };
         }
 
@@ -1452,7 +1452,31 @@ export function renderAiSection(params: {
                 ? basePreviewPills.filter(pill => !/^Cache off\b/i.test(pill.text))
                 : basePreviewPills
         ).concat(certificate.extraPills));
-        renderResolvedPreviewPills(previewPills);
+
+        // Author-priority ordering: cost first (what they care about most),
+        // then exactly ONE cache pill, anything else (e.g. citations), and the
+        // single/multi-pass context pill last. The cache pill collapses to one:
+        //   - cache disabled            → keep the "Cache off …" pill verbatim
+        //   - prior run primed/reused   → "Cache armed"   (certificate.cacheArmed)
+        //   - otherwise (no prior run)  → "Provider cache supported"
+        const isCostPill = (pill: PreviewPill): boolean => /^Last run cost\b/i.test(pill.text);
+        const isPassPill = (pill: PreviewPill): boolean => /^Context\s*·/i.test(pill.text);
+        const isCachePill = (pill: PreviewPill): boolean =>
+            /^(Provider cache supported|Provider cache enabled|Cache armed|Cache enabled|Cache off)\b/i.test(pill.text);
+
+        const costPill = previewPills.find(isCostPill) ?? null;
+        const passPill = previewPills.find(isPassPill) ?? null;
+        const existingCachePill = previewPills.find(isCachePill) ?? null;
+        const cachePill: PreviewPill | null = existingCachePill
+            ? (/^Cache off\b/i.test(existingCachePill.text)
+                ? existingCachePill
+                : { text: certificate.cacheArmed ? 'Cache armed' : CACHE_ARMED_PILL_TEXT, extraCls: 'ert-ai-pill--active' })
+            : null;
+        const otherPills = previewPills.filter(pill => !isCostPill(pill) && !isPassPill(pill) && !isCachePill(pill));
+
+        const orderedPills = [costPill, cachePill, ...otherPills, passPill]
+            .filter((pill): pill is PreviewPill => pill !== null);
+        renderResolvedPreviewPills(orderedPills);
 
         if (certificate.comparatorLabel) {
             resolvedPreviewComparatorLabel.setText(certificate.comparatorLabel);

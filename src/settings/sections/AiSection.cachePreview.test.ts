@@ -33,9 +33,11 @@ describe('AI settings cache preview signals', () => {
         // the cache is payload-proven (see proof gate below).
         expect(source.includes('Cache armed for next run on current corpus')).toBe(true);
         expect(source.includes('Cache armed on last Inquiry corpus')).toBe(true);
-        // Pin: explicit "Cache armed" pill is appended so the chip row
-        // mirrors the popover's chip.
-        expect(source.includes("text: 'Cache armed'")).toBe(true);
+        // Pin: the armed/warm branches flag `cacheArmed: true`; the assembler
+        // turns that into exactly ONE cache pill labelled "Cache armed",
+        // otherwise "Provider cache supported". No per-branch pill injection.
+        expect(source.includes('cacheArmed: true')).toBe(true);
+        expect(source.includes("certificate.cacheArmed ? 'Cache armed' : CACHE_ARMED_PILL_TEXT")).toBe(true);
         // Doctrine: the armed branch is NOT a fabrication — it's
         // gated on providerCacheStatus from the cache manager, not on
         // cacheWindowExpiresAt alone.
