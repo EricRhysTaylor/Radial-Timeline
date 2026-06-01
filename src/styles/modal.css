@@ -392,6 +392,7 @@
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-info {
   width: auto;
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-control {
