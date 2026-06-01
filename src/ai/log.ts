@@ -120,13 +120,14 @@ function normalizePricingProvider(provider?: string | null): 'anthropic' | 'open
 export function buildUsageCostBreakdown(
     provider: string | null | undefined,
     modelId: string | null | undefined,
-    usage?: TokenUsage | null
+    usage?: TokenUsage | null,
+    cacheProvenance?: 'hit' | 'created'
 ): UsageCostBreakdown | null {
     if (!usage) return null;
     const pricingProvider = normalizePricingProvider(provider);
     if (!pricingProvider || !modelId) return null;
     if (!getActivePricingTable()[pricingProvider]?.[modelId]) return null;
-    return estimateUsageCost(pricingProvider, modelId, usage);
+    return estimateUsageCost(pricingProvider, modelId, usage, cacheProvenance);
 }
 
 export interface LogCostEstimateInput {
@@ -146,9 +147,10 @@ export function formatUsageCostBreakdownLines(
     provider: string | null | undefined,
     modelId: string | null | undefined,
     usage?: TokenUsage | null,
-    estimateInput?: LogCostEstimateInput | null
+    estimateInput?: LogCostEstimateInput | null,
+    cacheProvenance?: 'hit' | 'created'
 ): string[] {
-    const breakdown = buildUsageCostBreakdown(provider, modelId, usage);
+    const breakdown = buildUsageCostBreakdown(provider, modelId, usage, cacheProvenance);
     const pricingProvider = normalizePricingProvider(provider);
     let estimate: CorpusCostEstimate | null = null;
     if (pricingProvider && modelId && estimateInput) {
@@ -180,12 +182,20 @@ export function formatUsageCostBreakdownLines(
         if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
         return formatExactUsdCost(value);
     };
+    // On a 'created' run the provider's "cached" token count is the cache
+    // that was WRITTEN this run, not read from a prior one (Gemini reports
+    // cachedContentTokenCount on the creating call too). Attribute it to the
+    // write line so the log can't claim a read that never happened.
+    const cacheWriteTokens = typeof breakdown?.cacheCreationInputTokens === 'number'
+        ? breakdown.cacheCreationInputTokens
+        : (cacheProvenance === 'created' ? breakdown?.cacheReadInputTokens : undefined);
+    const cacheReadTokens = cacheProvenance === 'created' ? undefined : breakdown?.cacheReadInputTokens;
     const lines = [
         '## Cost Breakdown',
         `- Billed input total: ${formatTokenCount(breakdown?.inputTokens)}`,
         `- Raw input: ${formatTokenCount(breakdown?.rawInputTokens)}`,
-        `- Cache read: ${formatTokenCount(breakdown?.cacheReadInputTokens)}`,
-        `- Cache write: ${formatTokenCount(breakdown?.cacheCreationInputTokens)}`,
+        `- Cache read: ${formatTokenCount(cacheReadTokens)}`,
+        `- Cache write: ${formatTokenCount(cacheWriteTokens)}`,
         `- Output: ${formatTokenCount(breakdown?.outputTokens)}`,
         '',
         `- Estimated fresh: ${formatCost(estimate?.freshCostUSD)}`,
@@ -197,7 +207,13 @@ export function formatUsageCostBreakdownLines(
         && typeof breakdown?.totalCostUSD === 'number'
         && Number.isFinite(breakdown.totalCostUSD)
     ) {
-        const estimatedEffectiveCost = (typeof breakdown?.cacheReadInputTokens === 'number' && breakdown.cacheReadInputTokens > 0)
+        // A 'created' run paid the fresh (creation) price even though the
+        // provider reported cached tokens — compare against the fresh estimate,
+        // not the cached one. Only a genuine reuse hit compares against cached.
+        const reusedThisRun = cacheProvenance !== 'created'
+            && typeof breakdown?.cacheReadInputTokens === 'number'
+            && breakdown.cacheReadInputTokens > 0;
+        const estimatedEffectiveCost = reusedThisRun
             ? estimate.cachedCostUSD
             : estimate.freshCostUSD;
         if (typeof estimatedEffectiveCost === 'number' && Number.isFinite(estimatedEffectiveCost)) {
@@ -215,9 +231,10 @@ export function formatUsageCostBreakdownLines(
 export function formatActualUsageCost(
     provider: string | null | undefined,
     modelId: string | null | undefined,
-    usage?: TokenUsage | null
+    usage?: TokenUsage | null,
+    cacheProvenance?: 'hit' | 'created'
 ): string {
-    const breakdown = buildUsageCostBreakdown(provider, modelId, usage);
+    const breakdown = buildUsageCostBreakdown(provider, modelId, usage, cacheProvenance);
     const cost = breakdown?.totalCostUSD;
     return typeof cost === 'number' && Number.isFinite(cost)
         ? formatExactUsdCost(cost)

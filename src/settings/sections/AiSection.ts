@@ -1307,7 +1307,7 @@ export function renderAiSection(params: {
         const extraPills: PreviewPill[] = [];
         const hasUsagePricing = !!getActivePricingTable()[context.provider]?.[context.modelId];
         const latestUsageCost = hasUsagePricing
-            ? estimateUsageCost(context.provider, context.modelId, latestSession.result.tokenUsage)?.totalCostUSD
+            ? estimateUsageCost(context.provider, context.modelId, latestSession.result.tokenUsage, latestSession.providerCacheStatus)?.totalCostUSD
             : undefined;
         if (typeof latestUsageCost === 'number' && Number.isFinite(latestUsageCost)) {
             extraPills.push({

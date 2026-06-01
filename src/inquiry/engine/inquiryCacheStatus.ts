@@ -79,13 +79,16 @@ export function getDispatchEngineKey(result: InquiryResult): string | null {
  * result's provider/model + token-usage payload. Returns undefined for
  * unsupported providers, missing model/usage, or pricing failures.
  */
-export function resolveActualUsageCostForResult(result: InquiryResult): number | undefined {
+export function resolveActualUsageCostForResult(
+    result: InquiryResult,
+    cacheProvenance?: 'hit' | 'created'
+): number | undefined {
     const provider = (result.aiProvider ?? '').trim().toLowerCase();
     if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'google') return undefined;
     const modelId = result.aiModelResolved || result.aiModelRequested;
     if (!modelId || !result.tokenUsage) return undefined;
     try {
-        const breakdown = estimateUsageCost(provider, modelId, result.tokenUsage);
+        const breakdown = estimateUsageCost(provider, modelId, result.tokenUsage, cacheProvenance);
         return typeof breakdown?.totalCostUSD === 'number' && Number.isFinite(breakdown.totalCostUSD)
             ? breakdown.totalCostUSD
             : undefined;
@@ -119,7 +122,7 @@ export function buildEngineRecentRunSnapshot(
         citationsRequested,
         citationCount: sourcesVM.totalCount,
         tokenUsage: result.tokenUsage,
-        actualCostUSD: resolveActualUsageCostForResult(result),
+        actualCostUSD: resolveActualUsageCostForResult(result, cacheStatus),
         cacheStatus
     };
 }

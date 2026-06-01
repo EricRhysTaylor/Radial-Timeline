@@ -398,12 +398,14 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('buildEngineRecentRunSnapshotPure(')).toBe(true);
         expect(viewSource.includes('this.areInquiryProviderCitationsEnabled()')).toBe(true);
         expect(viewSource.includes('cacheStatus')).toBe(true);
-        expect(viewSource.includes('return resolveActualUsageCostForResultPure(result);')).toBe(true);
+        expect(viewSource.includes('return resolveActualUsageCostForResultPure(result, cacheProvenance);')).toBe(true);
         // The pricing call now lives in the pure module, not InquiryView.
         expect(viewSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(false);
         const statusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/engine/inquiryCacheStatus.ts'), 'utf8');
-        expect(statusSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage)')).toBe(true);
-        expect(statusSource.includes('actualCostUSD: resolveActualUsageCostForResult(result)')).toBe(true);
+        // Cost pricing now threads cacheProvenance so a Gemini 'created' run is
+        // priced at the input rate, not the cache-read discount.
+        expect(statusSource.includes('estimateUsageCost(provider, modelId, result.tokenUsage, cacheProvenance)')).toBe(true);
+        expect(statusSource.includes('actualCostUSD: resolveActualUsageCostForResult(result, cacheStatus)')).toBe(true);
     });
 
     it('uses same-material same-engine run cost for the preview cost pill before learned-output estimates', () => {

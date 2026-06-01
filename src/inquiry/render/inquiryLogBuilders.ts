@@ -280,12 +280,13 @@ export function buildInquiryLogContent(args: {
             result.aiProvider,
             result.aiModelResolved || result.aiModelRequested,
             usage,
-            logCostEstimateInput
+            logCostEstimateInput,
+            trace.cacheStatus
         )
         : [];
     const actualUsageCostLabel = isSimulated
         ? 'not applicable'
-        : formatActualUsageCost(result.aiProvider, result.aiModelResolved || result.aiModelRequested, usage);
+        : formatActualUsageCost(result.aiProvider, result.aiModelResolved || result.aiModelRequested, usage, trace.cacheStatus);
 
     const lines: string[] = [];
     if (isSimulated) {
@@ -312,7 +313,11 @@ export function buildInquiryLogContent(args: {
         if (cachePrefixLabel) cacheSummaryParts.push(`prefix=${cachePrefixLabel}`);
         if (cacheTokensLabel) cacheSummaryParts.push(`tokens=${cacheTokensLabel}`);
         if (usage && typeof usage.cacheReadInputTokens === 'number') {
-            cacheSummaryParts.push(`read=${formatTokenCount(usage.cacheReadInputTokens)}`);
+            // On a 'created' run the cached-token count is the cache WRITTEN
+            // this run, not read from a prior one — label it accordingly so the
+            // log never reports a read that did not happen.
+            const verb = trace.cacheStatus === 'created' ? 'write' : 'read';
+            cacheSummaryParts.push(`${verb}=${formatTokenCount(usage.cacheReadInputTokens)}`);
         }
         lines.push(cacheSummaryParts.join(' · '));
     }
@@ -612,7 +617,8 @@ export function buildInquiryContentLogContent(args: {
             aiProvider,
             aiModelResolved || aiModelRequested,
             tokenUsage,
-            logCostEstimateInput
+            logCostEstimateInput,
+            trace.cacheStatus
         )
         : [];
 

@@ -189,7 +189,7 @@ describe('InquiryView keeps thin delegating wrappers (behaviour unchanged)', () 
     });
 
     it('chunk-2 wrappers delegate while keeping guard / citations / lookup / now in the view', () => {
-        expect(src.includes('return resolveActualUsageCostForResultPure(result);')).toBe(true);
+        expect(src.includes('return resolveActualUsageCostForResultPure(result, cacheProvenance);')).toBe(true);
         // The wrapper now plumbs `cacheStatus` (from session.providerCacheStatus)
         // through to the pure builder so the cache pill can distinguish
         // create-vs-reuse for Gemini.

@@ -350,7 +350,7 @@ describe('AI settings models table', () => {
 
     it('surfaces provider usage cost in the AI model preview when exact usage pricing is available', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('estimateUsageCost(context.provider, context.modelId, latestSession.result.tokenUsage)')).toBe(true);
+        expect(source.includes('estimateUsageCost(context.provider, context.modelId, latestSession.result.tokenUsage, latestSession.providerCacheStatus)')).toBe(true);
         expect(source.includes('text: `Last run cost · ${formatExactUsdCost(latestUsageCost)}`')).toBe(true);
         expect(source.includes('extraPills')).toBe(true);
     });

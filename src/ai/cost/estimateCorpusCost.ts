@@ -186,7 +186,16 @@ export function estimateCorpusCost(
 export function estimateUsageCost(
     provider: AIProviderId,
     modelId: string,
-    usage?: TokenUsage | null
+    usage?: TokenUsage | null,
+    /**
+     * Whether the run REUSED a prior cache ('hit') or CREATED one this run
+     * ('created'). Required for providers like Gemini that report
+     * `cachedContentTokenCount` on the creating call too: on a 'created' run
+     * those tokens were processed fresh, so they must be priced at the input
+     * rate, NOT the cache-read discount. Omit when unknown (treated as a read,
+     * preserving prior behavior for providers that only report true reuse).
+     */
+    cacheProvenance?: 'hit' | 'created'
 ): UsageCostEstimate | null {
     if (!usage) return null;
     const totalInputTokens = typeof usage.inputTokens === 'number'
@@ -195,8 +204,13 @@ export function estimateUsageCost(
             .filter((value): value is number => typeof value === 'number')
             .reduce((sum, value) => sum + value, 0);
     const pricing = resolveProviderModelPricing(provider, modelId, totalInputTokens);
-    const hasCacheRead = hasCacheReadPricing(pricing);
     const hasExplicitCacheWrite = hasExplicitCacheWritePricing(pricing);
+    // On a 'created' run, the "cache read" tokens were processed fresh to build
+    // the cache, so they bill at the input rate. On a reuse 'hit' (or unknown),
+    // they bill at the discounted cache-read rate.
+    const cacheReadRatePer1M = cacheProvenance === 'created'
+        ? pricing.inputPer1M
+        : pricing.cacheReadPer1M;
     const cacheReadInputTokenCount = typeof usage.cacheReadInputTokens === 'number' ? usage.cacheReadInputTokens : 0;
     const cacheCreationInputTokenCount = typeof usage.cacheCreationInputTokens === 'number' ? usage.cacheCreationInputTokens : 0;
     const cacheCreation5mInputTokens = usage.cacheCreation5mInputTokens;
@@ -221,8 +235,9 @@ export function estimateUsageCost(
     const rawInputCostUSD = hasDetailedInputUsage && typeof inferredRawInputTokens === 'number'
         ? toUsd(inferredRawInputTokens, pricing.inputPer1M)
         : undefined;
-    const cacheReadCostUSD = hasCacheRead && typeof usage.cacheReadInputTokens === 'number'
-        ? toUsd(usage.cacheReadInputTokens, pricing.cacheReadPer1M)
+    const cacheReadCostUSD = typeof usage.cacheReadInputTokens === 'number'
+        && typeof cacheReadRatePer1M === 'number' && Number.isFinite(cacheReadRatePer1M)
+        ? toUsd(usage.cacheReadInputTokens, cacheReadRatePer1M)
         : undefined;
     const cacheCreationCostUSD = hasExplicitCacheWrite
         ? (

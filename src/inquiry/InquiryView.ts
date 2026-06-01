@@ -3707,8 +3707,11 @@ export class InquiryView extends ItemView {
         );
     }
 
-    private getActualUsageCostForResult(result: InquiryResult): number | undefined {
-        return resolveActualUsageCostForResultPure(result);
+    private getActualUsageCostForResult(
+        result: InquiryResult,
+        cacheProvenance?: 'hit' | 'created'
+    ): number | undefined {
+        return resolveActualUsageCostForResultPure(result, cacheProvenance);
     }
 
     private getLatestSameCorpusActualCostForResolvedEngine(): number | null {
@@ -3735,7 +3738,7 @@ export class InquiryView extends ItemView {
             if (resolvedModel !== normalizedModelId && requestedModel !== normalizedModelId) continue;
             const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();
             if (sessionReuseFingerprint !== currentReuseFingerprint) continue;
-            const actualCost = this.getActualUsageCostForResult(session.result);
+            const actualCost = this.getActualUsageCostForResult(session.result, session.providerCacheStatus);
             if (typeof actualCost === 'number' && Number.isFinite(actualCost) && actualCost >= 0) {
                 return actualCost;
             }
@@ -10826,7 +10829,7 @@ export class InquiryView extends ItemView {
             const resolvedModel = (session.result.aiModelResolved || '').trim();
             const requestedModel = (session.result.aiModelRequested || '').trim();
             if (resolvedModel !== normalizedModelId && requestedModel !== normalizedModelId) continue;
-            const actualCost = this.getActualUsageCostForResult(session.result);
+            const actualCost = this.getActualUsageCostForResult(session.result, session.providerCacheStatus);
             if (typeof actualCost === 'number' && Number.isFinite(actualCost) && actualCost >= 0) {
                 return actualCost;
             }
