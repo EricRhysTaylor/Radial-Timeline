@@ -54,6 +54,37 @@ const WRITE_BASELINE = args.has("--write-baseline") || args.has("--update-baseli
 const BASELINE_PATH = path.join(ROOT, "scripts/css-drift-baseline.json");
 const BASELINE_KEY = MAINTENANCE_MODE ? "maintenance" : MIGRATION_MODE ? "migration" : null;
 
+/**
+ * Class selectors known to be appended to `document.body` (or any element
+ * outside the `.ert-ui` subtree). Rules whose selector list mentions one of
+ * these CANNOT read `--ert-gap-*` / `--ert-pad-*` — those tokens are scoped
+ * to `.ert-ui`. Hard-fail any such rule that uses them. Add new portal-mounted
+ * chrome here when you create it; the matching pattern is loose-prefix (also
+ * matches `.ert-timeline-session-panel__recent`, etc.).
+ *
+ * See docs/engineering/standards/css-guidelines.md → Token scope.
+ */
+const BODY_PORTAL_SELECTORS = [
+  ".ert-timeline-session-panel",
+  // Session-log chrome only renders inside .ert-timeline-session-panel
+  // (and the in-settings card expand, which IS under .ert-ui — that path is
+  // safe). The compact-variant rules below are the body-portal usage; they
+  // must still use --size-4-* tokens because that's the worst-case scope.
+  ".ert-session-log-list--compact",
+  ".ert-session-log-row--compact",
+];
+
+// Matches a top-level CSS rule whose selector list contains any of the
+// body-portal selectors. Captures: [1]=selector, [2]=rule body.
+// Greedy `[^{}]*` on selector and `[^}]*` on body — does not support nested
+// `{}` inside the body (none of our rules use it for these surfaces today).
+const BODY_PORTAL_RULE_REGEX = new RegExp(
+  `((?:[^{}@/]*?(?:${BODY_PORTAL_SELECTORS
+    .map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|")})[^{}@]*?))\\{([^}]*)\\}`,
+  "g",
+);
+
 const FAIL = [];
 const WARN = [];
 
@@ -322,6 +353,25 @@ for (const file of FILES.filter(exists)) {
       "Box-shadow uses raw rgba() (prefer theme vars/tokens).",
       m[0].trim(),
       "shadow-rgba",
+      getLineNumber(lineStarts, m.index)
+    );
+  }
+
+  // 9) Token-scope fail (hard fail) — `--ert-gap-*` and `--ert-pad-*` are
+  // scoped to `.ert-ui`. Rules whose selector lists a known body-portal
+  // class CANNOT reach those tokens; the `var()` reference is undefined
+  // there and the property silently falls back to `0`. See
+  // docs/engineering/standards/css-guidelines.md → Token scope.
+  for (const m of findAll(BODY_PORTAL_RULE_REGEX, css)) {
+    const ruleBody = m[2];
+    const ertVarMatch = ruleBody.match(/var\(--ert-(gap|pad)-[a-z0-9-]+/);
+    if (!ertVarMatch) continue;
+    const selector = m[1].trim();
+    addFail(
+      file,
+      `Body-portal rule uses '${ertVarMatch[0]})' — --ert-gap-*/--ert-pad-* are scoped to .ert-ui and unreachable here; use --size-4-* tokens instead.`,
+      `${selector} { … ${ertVarMatch[0]}…) … }`,
+      "ert-token-scope",
       getLineNumber(lineStarts, m.index)
     );
   }

@@ -189,10 +189,34 @@ function renderCompactRow(parent: HTMLElement, row: PrivateSessionLogRow, option
             .filter(path => !row.scenesCompletedPaths.includes(path))
             .map(path => ({ path, kind: 'touched' as const })),
     ];
+    // In compact mode, individual chips are not interactive — the whole row
+    // is the click target so the entire row hover-feedbacks as one unit.
     if (allChipPaths.length > 0) {
         const chips = li.createSpan({ cls: 'ert-session-log-row__chips' });
-        allChipPaths.slice(0, COMPACT_SCENE_CHIP_LIMIT).forEach(item => appendSceneChip(chips, item.path, options, item.kind));
+        allChipPaths.slice(0, COMPACT_SCENE_CHIP_LIMIT).forEach(item =>
+            appendSceneChip(chips, item.path, { ...options, onSceneClick: undefined }, item.kind),
+        );
         appendChipOverflow(chips, Math.max(0, allChipPaths.length - COMPACT_SCENE_CHIP_LIMIT));
+    }
+
+    const primaryPath = allChipPaths[0]?.path;
+    if (primaryPath && options.onSceneClick) {
+        li.classList.add('ert-session-log-row--clickable');
+        li.setAttribute('role', 'button');
+        li.setAttribute('tabindex', '0');
+        li.setAttribute('aria-label', `Open ${primaryPath}`);
+        li.onclick = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            options.onSceneClick?.(primaryPath);
+        };
+        li.onkeydown = (event: KeyboardEvent) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                options.onSceneClick?.(primaryPath);
+            }
+        };
     }
 }
 

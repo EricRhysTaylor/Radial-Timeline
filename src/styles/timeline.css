@@ -2019,7 +2019,8 @@
 }
 
 .ert-session-log-list--compact {
-  gap: var(--ert-gap-xs);
+  /* Token scope: panel is body-portaled, --ert-gap-* unreachable. Use --size-4-*. */
+  gap: var(--size-4-2);
 }
 
 .ert-session-log-list__empty {
@@ -2078,13 +2079,30 @@
 .ert-session-log-row--compact {
   flex-direction: row;
   align-items: center;
-  gap: var(--ert-gap-sm);
-  padding: var(--ert-gap-xs) var(--ert-gap-sm);
+  /*
+   * Token scope: this panel (.ert-timeline-session-panel) is appended to
+   * document.body and has no .ert-ui ancestor — --ert-gap-* and --ert-pad-*
+   * are undefined here and would silently resolve to invalid, dropping the
+   * declaration to its initial value (0). Use Obsidian's global --size-4-*.
+   */
+  gap: var(--size-4-2);
+  padding: var(--size-4-1) var(--size-4-2);
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-s);
   font-size: 12px;
   line-height: 1.3;
+  transition: background-color 100ms ease;
+}
+
+.ert-session-log-row--compact.ert-session-log-row--clickable {
+  cursor: pointer;
+}
+
+.ert-session-log-row--compact.ert-session-log-row--clickable:hover,
+.ert-session-log-row--compact.ert-session-log-row--clickable:focus-visible {
+  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+  outline: none;
 }
 
 .ert-session-log-row__head {
@@ -2252,19 +2270,25 @@
 }
 
 /* Compact log inside the timeline session popover */
+/*
+ * IMPORTANT: this section lives inside .ert-timeline-session-panel which is
+ * appended to document.body — it has NO .ert-ui ancestor, so --ert-gap-*
+ * and --ert-pad-* variables do not resolve here. Use Obsidian's global
+ * --size-4-* / --size-2-* tokens instead. (See css-guidelines.md → Token scope.)
+ */
 .ert-timeline-session-panel__recent {
-  margin-top: var(--ert-gap-cozy);
-  padding-top: var(--ert-gap-sm);
+  margin-top: var(--size-4-3);
+  padding-top: var(--size-4-3);
   border-top: 1px solid var(--background-modifier-border);
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-tight);
+  gap: var(--size-4-2);
 }
 
 .ert-timeline-session-panel__recent-header {
   display: flex;
   align-items: center;
-  gap: var(--ert-gap-tight);
+  gap: var(--size-4-2);
   font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;

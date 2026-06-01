@@ -75,6 +75,44 @@ When in doubt, leave the surface flat. If a surface needs emphasis, reach for a 
 - margins are exceptions, not the default
 - prefer ERT tokens and layout primitives over one-off wrappers
 
+## Token Scope (read before writing CSS for any new surface)
+
+`--ert-gap-*` and `--ert-pad-*` are defined **only** inside `.ert-ui`
+(see `src/styles/rt-ui.css` line 1) — not on `:root`. CSS custom
+properties only cascade to descendants of the element where they're
+declared. **Any UI surface without an `.ert-ui` ancestor cannot read
+these tokens.** When a CSS rule references `var(--ert-gap-cozy)` in
+such a surface, the variable is undefined, the entire property
+declaration is invalid, and the property silently falls back to its
+initial value — for `padding` and `gap` that's `0`. The rule looks
+correct but produces nothing.
+
+**Body-portaled surfaces that have NO `.ert-ui` ancestor:**
+- `.ert-timeline-session-panel` (the writing-session popover; appended
+  to `document.body`)
+- Any other element created via `document.body.appendChild(...)` or
+  any portal that bypasses the settings/modal shells
+
+**For those surfaces, use Obsidian's global tokens:**
+- spacing: `--size-4-1` (4px), `--size-4-2` (8px), `--size-4-3` (12px),
+  `--size-4-4` (16px); `--size-2-1` through `--size-2-3` for finer
+  increments
+- radius: `--radius-s`, `--radius-m`, `--radius-l`
+- colors: `--background-*`, `--text-*`, `--color-*`, `--background-modifier-*`
+
+`scripts/css-drift-check.mjs` fails the build when `var(--ert-gap-*)`
+or `var(--ert-pad-*)` is used inside a rule whose selector is on the
+body-portal allowlist (`BODY_PORTAL_SELECTORS`). Add new portal-mounted
+chrome to that allowlist when you create it.
+
+**Debugging "my CSS isn't applying" (start here, not last):**
+1. Open the element in the inspector. If `padding` / `gap` computes to
+   `0`, it's almost certainly a token-scope bug — `var(...)` is undefined.
+2. Replace one `var(--ert-...)` reference with a literal (e.g. `12px`)
+   in source, build, reload. If the literal renders, the tokens are out
+   of scope. Switch to `--size-4-*`.
+3. Only after ruling out token scope, suspect specificity / cascade.
+
 ## Current Enforcement
 
 ### Verified by `npm run verify`

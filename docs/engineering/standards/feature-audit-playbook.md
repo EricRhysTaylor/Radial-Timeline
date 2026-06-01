@@ -80,6 +80,15 @@ For each, identify issues and (on approval) refactor toward the stated target.
    layouts, notices, empty states, tooltip tone, modal structure,
    terminology. Remove drift introduced during iteration.
 
+   **CSS variable scope check (mandatory for any new chrome).** For every
+   element introduced by the feature: open it in the inspector and verify
+   that its CSS custom properties (`var(...)` references) resolve to real
+   values. `--ert-gap-*` and `--ert-pad-*` are scoped to `.ert-ui` only —
+   any element appended to `document.body` (popovers, tooltips, portals)
+   cannot read them, and properties using them silently fall back to `0`.
+   For those surfaces, use Obsidian's global `--size-4-*` tokens. See
+   `css-guidelines.md` → Token scope.
+
 7. **Performance** — repeated vault scans, unnecessary recomputation, repeated
    markdown parsing, avoidable async churn, excessive renders, duplicated
    selectors, unnecessary timeline rebuilds. Prefer cached derivations and
