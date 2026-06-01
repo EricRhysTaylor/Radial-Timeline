@@ -796,6 +796,18 @@ export class InquiryView extends ItemView {
         this.renderDesktopLayout();
         this.refreshUI();
         this.recoverInquiryRunOnOpen();
+
+        // SVG text cannot be measured while the leaf is hidden (display:none),
+        // so a result that lands on a backgrounded tab wraps to a single line.
+        // Re-render the active result's hero when this view becomes active again
+        // so the now-measurable text wraps correctly. Mirrors the
+        // active-leaf-change re-render pattern in TimeLineView.
+        this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+            if (this.app.workspace.getActiveViewOfType(InquiryView) !== this) return;
+            if (this.isResultsState() && this.state.activeResult) {
+                this.showResultsPreview(this.state.activeResult);
+            }
+        }));
     }
 
     /**
@@ -10250,6 +10262,23 @@ export class InquiryView extends ItemView {
         };
     }
 
+    /**
+     * SVG text measurement (getComputedTextLength) returns 0 when the leaf is
+     * hidden (display:none) or detached. A probe tspan lets the wrap logic tell
+     * "this text genuinely has zero width" from "this element cannot currently
+     * be measured" — the latter must never be cached as a real wrap result.
+     */
+    private isSvgTextMeasurable(textEl: SVGTextElement, sampleText: string): boolean {
+        const sample = sampleText.trim();
+        if (!sample) return true;
+        const probe = createSvgElement('tspan');
+        probe.textContent = sample;
+        textEl.appendChild(probe);
+        const measurable = probe.getComputedTextLength() > 0;
+        textEl.removeChild(probe);
+        return measurable;
+    }
+
     private setWrappedSvgText(
         textEl: SVGTextElement,
         text: string,
@@ -10283,6 +10312,19 @@ export class InquiryView extends ItemView {
 
         const words = text.split(/\s+/).filter(Boolean);
         const x = textEl.getAttribute('x') ?? '0';
+
+        // Single stamp path for both wrap branches. Skip caching when the
+        // element is not currently measurable (hidden leaf) so the one-line
+        // collapse it produces is not frozen — active-leaf-change recomputes
+        // it when the view becomes visible.
+        const measurable = this.isSvgTextMeasurable(textEl, text);
+        const stampWrapCache = (exactLines: number): number => {
+            if (measurable) {
+                textEl.setAttribute('data-rt-wrap-cache', cacheKey);
+                textEl.setAttribute('data-rt-wrap-lines', String(exactLines));
+            }
+            return exactLines;
+        };
 
         // Compute balanced lines BEFORE capturing existingTspans.
         // computeBalancedSvgLines uses textEl.textContent = ... for measurement,
@@ -10328,10 +10370,7 @@ export class InquiryView extends ItemView {
                 }
             }
 
-            const exactLines = Math.max(balancedLines.length, 1);
-            textEl.setAttribute('data-rt-wrap-cache', cacheKey);
-            textEl.setAttribute('data-rt-wrap-lines', String(exactLines));
-            return exactLines;
+            return stampWrapCache(Math.max(balancedLines.length, 1));
         }
 
         let line = '';
@@ -10379,10 +10418,7 @@ export class InquiryView extends ItemView {
             }
         });
 
-        const exactLines = Math.max(truncated ? maxLines : lineIndex + 1, 1);
-        textEl.setAttribute('data-rt-wrap-cache', cacheKey);
-        textEl.setAttribute('data-rt-wrap-lines', String(exactLines));
-        return exactLines;
+        return stampWrapCache(Math.max(truncated ? maxLines : lineIndex + 1, 1));
     }
 
     private applyEllipsis(tspan: SVGTSpanElement, maxWidth: number): void {

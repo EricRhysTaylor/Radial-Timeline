@@ -567,3 +567,26 @@ describe('InquiryView payload accounting', () => {
     });
 
 });
+
+describe('InquiryView hidden-leaf hero wrap recovery', () => {
+    const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+
+    it('does not cache an SVG wrap result computed while the leaf is unmeasurable', () => {
+        // getComputedTextLength() returns 0 on a hidden (display:none) leaf;
+        // caching that one-line collapse freezes the bad wrap until the text
+        // changes. The measurability probe gates the cache stamp.
+        expect(viewSource.includes('private isSvgTextMeasurable(')).toBe(true);
+        expect(viewSource.includes('const measurable = this.isSvgTextMeasurable(textEl, text);')).toBe(true);
+        expect(viewSource.includes('if (measurable) {')).toBe(true);
+        // Both wrap branches return through the single stamp helper — no raw
+        // data-rt-wrap-cache writes remain in the wrap body.
+        expect(viewSource.includes('return stampWrapCache(Math.max(balancedLines.length, 1));')).toBe(true);
+        expect(viewSource.includes('return stampWrapCache(Math.max(truncated ? maxLines : lineIndex + 1, 1));')).toBe(true);
+    });
+
+    it('re-renders the active result hero when the view becomes active again', () => {
+        expect(viewSource.includes("this.app.workspace.on('active-leaf-change'")).toBe(true);
+        expect(viewSource.includes('this.app.workspace.getActiveViewOfType(InquiryView) !== this')).toBe(true);
+        expect(viewSource.includes('this.showResultsPreview(this.state.activeResult);')).toBe(true);
+    });
+});
