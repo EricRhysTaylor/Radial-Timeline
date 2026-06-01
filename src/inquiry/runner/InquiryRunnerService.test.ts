@@ -3,18 +3,19 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 describe('InquiryRunnerService output-truncation recovery', () => {
-    it('retries once at the output ceiling before falling back to chunking', () => {
+    it('requests the output ceiling on the first pass, with chunking as the only truncation fallback', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
-        // On truncation with a corpus that fit one pass, retry single-pass at
-        // the provider ceiling (forceMaxOutputCeiling) BEFORE chunk+synthesize.
-        expect(source.includes("run.aiReason === 'truncated' && precheck.onePassFit !== 'overflows'")).toBe(true);
+        // The precheck estimate (which drives the first pass's output cap) and
+        // the first pass itself both force the ceiling — no wasted truncated
+        // call followed by a retry.
         expect(source.includes('forceMaxOutputCeiling: true')).toBe(true);
-        expect(source.includes('maxTokens: this.getOutputTokenCap(ai.provider)')).toBe(true);
-        // The ceiling retry must sit before the chunked fallback it precedes.
-        const retryIdx = source.indexOf('forceMaxOutputCeiling: true');
-        const fallbackChunkIdx = source.indexOf('runChunkedInquiry', retryIdx);
-        expect(retryIdx).toBeGreaterThan(0);
-        expect(fallbackChunkIdx).toBeGreaterThan(retryIdx);
+        // Truncation even at the ceiling falls back to chunk+synthesize.
+        const ceilingIdx = source.indexOf('forceMaxOutputCeiling: true');
+        const fallbackChunkIdx = source.indexOf('runChunkedInquiry', ceilingIdx);
+        expect(ceilingIdx).toBeGreaterThan(0);
+        expect(fallbackChunkIdx).toBeGreaterThan(ceilingIdx);
+        // The redundant intermediate "retry at ceiling" path is gone.
+        expect(source.includes('maxTokens: this.getOutputTokenCap(ai.provider)')).toBe(false);
     });
 });
 

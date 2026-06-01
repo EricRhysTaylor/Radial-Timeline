@@ -1099,50 +1099,19 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionPrompt,
             cacheableUserInput,
             providerReuseKey,
-            forceFreshRun: executionOptions?.forceFreshRun
+            forceFreshRun: executionOptions?.forceFreshRun,
+            // Request the full output ceiling on the first pass (the precheck
+            // estimate above was prepared the same way). Avoids a wasted
+            // truncated call followed by a ceiling retry.
+            forceMaxOutputCeiling: true
         });
         run = this.withExecutionContext(run, {
             executionPassCount: 1
         });
 
-        // Output truncated at the (tier-clamped) cap, but the corpus fit one
-        // pass — the structured reply just needed more room. Retry ONCE in a
-        // single pass forcing the model/provider output ceiling (e.g. 16k for
-        // Opus) before the expensive chunk+synthesize path. The corpus prefix
-        // is already cached from the first attempt, so the retry reuses it
-        // (cheap input); only the larger output is billed.
-        if (run.aiReason === 'truncated' && precheck.onePassFit !== 'overflows') {
-            executionOptions?.onProgress?.({
-                phase: 'one_pass',
-                currentPass: 1,
-                totalPasses: 1,
-                detail: t('inquiry.runner.waiting')
-            });
-            this.throwIfAborted(executionOptions?.shouldAbort);
-            const ceilingRun = await this.runInquiryRequest(aiClient, {
-                task: 'AnalyzeCorpus',
-                systemPrompt,
-                userPrompt,
-                userQuestion,
-                ai,
-                jsonSchema,
-                temperature,
-                maxTokens: this.getOutputTokenCap(ai.provider),
-                evidenceBlocks,
-                preparedEstimate: null,
-                instructionPrompt,
-                cacheableUserInput,
-                providerReuseKey,
-                forceFreshRun: executionOptions?.forceFreshRun,
-                forceMaxOutputCeiling: true
-            });
-            run = this.withExecutionContext(ceilingRun, {
-                executionPassCount: 1
-            });
-        }
-
-        // Inquiry specialization: if it STILL truncates at the ceiling,
-        // package and synthesize.
+        // Inquiry specialization: if the response STILL truncates even at the
+        // full output ceiling, the findings genuinely exceed one response —
+        // package and synthesize across chunks.
         if (run.aiReason === 'truncated') {
             {
                 const multiPass = await this.runChunkedInquiry(aiClient, {
@@ -1409,7 +1378,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 evidenceBlocks: options.evidenceBlocks,
                 instructionPrompt: options.instructionPrompt,
                 cacheableUserInput: options.cacheableUserInput,
-                providerReuseKey: options.providerReuseKey
+                providerReuseKey: options.providerReuseKey,
+                // Inquiry requests the full output ceiling up front. The
+                // tier-clamped cap saves nothing (billing is per token
+                // generated) and only truncates large structured findings;
+                // the prepared estimate drives the first pass's output cap.
+                forceMaxOutputCeiling: true
             });
             if (!preparedEstimate) {
                 throw new Error('prepareRunEstimate unavailable');
