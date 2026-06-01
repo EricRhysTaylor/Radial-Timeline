@@ -20,6 +20,21 @@ describe('settings notification center log-folder alert', () => {
         expect(alert?.description).toContain('Moves');
         expect(alert?.description).toContain('Snapshots');
         expect(alert?.description).toContain('Gossamer Archive');
-        expect(ids.at(-1)).toBe('logs-folder-structure-v1');
+    });
+
+    it('shows the recovery-folder relocation notification as a moderate (warning) alert, newest last', () => {
+        const active = getActiveRefactorAlerts({ ...DEFAULT_SETTINGS, dismissedAlerts: [] });
+        const ids = active.map(alert => alert.id);
+        const alert = active.find(item => item.id === 'recovery-folder-relocation-v1');
+
+        expect(alert).toMatchObject({
+            severity: 'warning',
+            icon: 'archive-restore',
+            title: 'Recovery files moved out of Logs'
+        });
+        expect(alert?.description).toContain('Radial Timeline/Recover');
+        expect(alert?.description).toContain('Snapshots');
+        expect(alert?.description).toContain('Gossamer Archive');
+        expect(ids.at(-1)).toBe('recovery-folder-relocation-v1');
     });
 });

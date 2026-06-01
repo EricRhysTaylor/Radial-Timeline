@@ -99,6 +99,13 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         icon: 'folder-tree',
         title: 'Log folders reorganized',
         description: 'Logs now live under Radial Timeline/Logs with dedicated folders for Inquiry, Gossamer, Pulse, Moves, Snapshots, and Gossamer Archive. Full AI content logs are stored inside Content subfolders for the matching feature.',
+    },
+    {
+        id: 'recovery-folder-relocation-v1',
+        severity: 'warning',
+        icon: 'archive-restore',
+        title: 'Recovery files moved out of Logs',
+        description: 'Snapshots and the Gossamer Archive — the files used to recover deleted or overwritten note data — now live under Radial Timeline/Recover instead of Radial Timeline/Logs. The Logs folder now holds only disposable run logs, so you can purge it at any time without losing recovery data. If a Snapshots or Gossamer Archive folder already exists under Radial Timeline/Logs, move it into Radial Timeline/Recover to preserve that earlier recovery data.',
     }
 ];
 

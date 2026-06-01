@@ -97,6 +97,10 @@ export type UsageCostBreakdown = {
 };
 
 const DEFAULT_LOGS_ROOT = 'Radial Timeline/Logs';
+// Recovery data (snapshots + Gossamer Archive) lives OUTSIDE the Logs tree so
+// the author can purge Logs at any time without losing the materials needed to
+// reconstruct deleted or overwritten note data.
+const DEFAULT_RECOVER_ROOT = 'Radial Timeline/Recover';
 const CONTENT_LOGS_FOLDER_NAME = 'Content';
 const INQUIRY_LOGS_FOLDER_NAME = 'Inquiry';
 const GOSSAMER_LOGS_FOLDER_NAME = 'Gossamer';
@@ -575,8 +579,9 @@ export async function ensureGossamerContentLogsRoot(vault: Vault): Promise<TFold
     return ensureNestedFolder(vault, resolveGossamerContentLogsRoot());
 }
 
+// Recovery data — lives under Recover, never under Logs.
 export function resolveGossamerArchiveRoot(): string {
-    return normalizePath(`${DEFAULT_LOGS_ROOT}/${GOSSAMER_ARCHIVE_FOLDER_NAME}`);
+    return normalizePath(`${DEFAULT_RECOVER_ROOT}/${GOSSAMER_ARCHIVE_FOLDER_NAME}`);
 }
 
 export async function ensureGossamerArchiveRoot(vault: Vault): Promise<TFolder | null> {
@@ -607,8 +612,9 @@ export async function ensureMovesLogsRoot(vault: Vault): Promise<TFolder | null>
     return ensureNestedFolder(vault, resolveMovesLogsRoot());
 }
 
+// Recovery data — lives under Recover, never under Logs.
 export function resolveSnapshotsLogsRoot(): string {
-    return normalizePath(`${DEFAULT_LOGS_ROOT}/${SNAPSHOTS_LOGS_FOLDER_NAME}`);
+    return normalizePath(`${DEFAULT_RECOVER_ROOT}/${SNAPSHOTS_LOGS_FOLDER_NAME}`);
 }
 
 export async function ensureSnapshotsLogsRoot(vault: Vault): Promise<TFolder | null> {
