@@ -22,7 +22,14 @@ const PROFILE_FILE_NAME = 'output-profile.json';
 const MAX_SAMPLES_PER_MODEL = 50;
 const MIN_SAMPLES_FOR_PREDICTION = 3;
 const SAFETY_MULTIPLIER = 1.5;
-const MIN_REQUEST_FLOOR = 4000;
+// Floor for the REQUESTED output cap (max_tokens). Capping below the provider
+// ceiling saves nothing — you are billed per token generated, not per token
+// requested — it only risks truncating a large structured response (e.g. a
+// 56-scene Inquiry findings array). Keep enough headroom that a normal
+// structured reply completes; the per-provider hard cap is still the upper
+// bound, and stop_reason/finish_reason truncation detection backstops anything
+// that legitimately exceeds it.
+const MIN_REQUEST_FLOOR = 8000;
 
 type InputBucket = 'small' | 'medium' | 'large';
 

@@ -18,6 +18,31 @@ export class AnthropicProvider implements AIProvider {
         return CAPS.includes(capability);
     }
 
+    /**
+     * Output-truncation outcome. Anthropic returns `stop_reason: 'max_tokens'`
+     * when the response hit the output cap — the partial text is unusable
+     * (e.g. a JSON object cut off mid-array). We surface this as a 'truncated'
+     * rejection (NOT success) so the runner routes to its truncation recovery
+     * (chunk + synthesize) instead of failing downstream as "malformed JSON".
+     * Without this check a too-low output cap silently masquerades as a model
+     * JSON error.
+     */
+    private resolveTruncationOutcome(
+        result: { success: boolean; responseData: unknown },
+        classification: { aiStatus: ProviderExecutionResult['aiStatus']; aiReason?: string }
+    ): { aiStatus: ProviderExecutionResult['aiStatus']; aiReason?: string } {
+        const stopReason = result.responseData && typeof result.responseData === 'object'
+            ? (result.responseData as { stop_reason?: unknown }).stop_reason
+            : undefined;
+        if (result.success && stopReason === 'max_tokens') {
+            return { aiStatus: 'rejected', aiReason: 'truncated' };
+        }
+        return {
+            aiStatus: result.success ? 'success' : classification.aiStatus,
+            aiReason: result.success ? undefined : classification.aiReason
+        };
+    }
+
     private deriveCacheResult(responseData: unknown): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
         const usage = extractTokenUsage('anthropic', responseData);
         const cacheRead = usage?.cacheReadInputTokens ?? 0;
@@ -59,14 +84,15 @@ export class AnthropicProvider implements AIProvider {
             cacheTtl
         );
         const classification = classifyProviderError(result);
+        const outcome = this.resolveTruncationOutcome(result, classification);
         const cacheResult = this.deriveCacheResult(result.responseData);
         return {
-            success: result.success,
+            success: result.success && outcome.aiStatus === 'success',
             content: result.content,
             responseData: result.responseData,
             requestPayload: result.requestPayload,
-            aiStatus: result.success ? 'success' : classification.aiStatus,
-            aiReason: result.success ? undefined : classification.aiReason,
+            aiStatus: outcome.aiStatus,
+            aiReason: outcome.aiReason,
             aiProvider: 'anthropic',
             aiModelRequested: req.modelId,
             aiModelResolved: req.modelId,
@@ -98,14 +124,15 @@ export class AnthropicProvider implements AIProvider {
             cacheTtl
         );
         const classification = classifyProviderError(result);
+        const outcome = this.resolveTruncationOutcome(result, classification);
         const cacheResult = this.deriveCacheResult(result.responseData);
         return {
-            success: result.success,
+            success: result.success && outcome.aiStatus === 'success',
             content: result.content,
             responseData: result.responseData,
             requestPayload: result.requestPayload,
-            aiStatus: result.success ? 'success' : classification.aiStatus,
-            aiReason: result.success ? undefined : classification.aiReason,
+            aiStatus: outcome.aiStatus,
+            aiReason: outcome.aiReason,
             aiProvider: 'anthropic',
             aiModelRequested: req.modelId,
             aiModelResolved: req.modelId,
