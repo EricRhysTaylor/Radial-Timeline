@@ -435,22 +435,21 @@
   line-height: 1;
 }
 
+/* Fill the grid cell rather than using a fixed ch width. The cell is sized by
+   the field's width calc (in the field's font); a fixed ch width on the select
+   resolves against the select's own (smaller) font, leaving dead trailing
+   space inside the field. Filling the cell makes the select box edge meet the
+   field edge, so the Now button sits flush like the Earth → Mars input. */
 .ert-planetary-field__select {
   grid-area: select;
-  width: var(--ert-input-width-md);
-  min-width: var(--ert-input-width-md);
+  width: 100%;
+  min-width: 0;
 }
 
 .ert-planetary-field--year,
 .ert-planetary-field--day {
   width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm)));
   min-width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm)));
-}
-
-.ert-planetary-field--year .ert-planetary-field__select,
-.ert-planetary-field--day .ert-planetary-field__select {
-  width: var(--ert-input-width-sm);
-  min-width: var(--ert-input-width-sm);
 }
 
 .ert-planetary-now-button {
