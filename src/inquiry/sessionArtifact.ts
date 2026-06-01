@@ -17,21 +17,19 @@ export const INQUIRY_ARTIFACT_SCHEMA_VERSION = 1 as const;
 /**
  * Durable subset of an InquirySession that is persisted.
  *
- * Transient runtime fields are intentionally excluded — prompt-cache windows
- * expire within minutes and `lastAccessed` is recomputed in memory, so
- * persisting them is churn without value. They are rebuilt on hydration.
+ * Only `lastAccessed` is transient — it is recomputed in memory and re-seeded
+ * from `createdAt` on hydration. The provider-cache fields (window expiry,
+ * reuse state, provider cache status, reuse fingerprint, observed ratios) ARE
+ * persisted so the armed/warm cache state survives an Obsidian restart.
+ *
+ * (Earlier these were stripped on the assumption that cache windows "expire
+ * within minutes" — false for OpenAI's 24h retention, and nothing actually
+ * rebuilt them on load, so every restart looked like a brand-new run.)
+ * `cacheWindowExpiresAt` is an absolute timestamp and every reader already
+ * discards it once it is in the past, so a stale window loaded after a long
+ * downtime is harmless.
  */
-export type PersistedInquirySession = Omit<
-    InquirySession,
-    | 'lastAccessed'
-    | 'cacheWindowExpiresAt'
-    | 'cacheReuseFingerprint'
-    | 'cacheReuseState'
-    | 'providerCacheStatus'
-    | 'cachedStableRatio'
-    | 'cachedStableTokens'
-    | 'totalInputTokens'
->;
+export type PersistedInquirySession = Omit<InquirySession, 'lastAccessed'>;
 
 export interface InquirySessionArtifact {
     schemaVersion: typeof INQUIRY_ARTIFACT_SCHEMA_VERSION;
@@ -40,17 +38,10 @@ export interface InquirySessionArtifact {
 }
 
 function stripTransient(session: InquirySession): PersistedInquirySession {
-    const {
-        lastAccessed: _lastAccessed,
-        cacheWindowExpiresAt: _cacheWindowExpiresAt,
-        cacheReuseFingerprint: _cacheReuseFingerprint,
-        cacheReuseState: _cacheReuseState,
-        providerCacheStatus: _providerCacheStatus,
-        cachedStableRatio: _cachedStableRatio,
-        cachedStableTokens: _cachedStableTokens,
-        totalInputTokens: _totalInputTokens,
-        ...durable
-    } = session;
+    // Only `lastAccessed` is transient; the provider-cache fields are durable
+    // so the armed/warm state is restored after a restart (stale windows are
+    // filtered by the `> now` checks at every read site).
+    const { lastAccessed: _lastAccessed, ...durable } = session;
     return durable;
 }
 

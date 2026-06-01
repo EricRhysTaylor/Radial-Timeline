@@ -16,7 +16,7 @@ function makeSession(overrides: Partial<InquirySession> = {}): InquirySession {
         targetSceneIds: ['scn_a', ' scn_b ', ''],
         status: 'saved',
         briefPath: 'Radial Timeline/Inquiry/Briefing/Brief.md',
-        // transient runtime fields that must NOT be persisted
+        // durable cache state — persisted so armed/warm survives a restart
         cacheWindowExpiresAt: 9999,
         cacheReuseFingerprint: 'fp',
         cacheReuseState: 'warm',
@@ -36,16 +36,21 @@ describe('serializeSessionsToArtifact', () => {
         expect(artifact.sessions).toHaveLength(1);
     });
 
-    it('strips transient runtime fields (cache window + lastAccessed)', () => {
+    it('strips only lastAccessed; persists cache state so armed/warm survives a restart', () => {
         const artifact = serializeSessionsToArtifact([makeSession()], 1);
         const persisted = artifact.sessions[0] as Record<string, unknown>;
         expect(persisted.key).toBe('k1');
         expect(persisted.briefPath).toBe('Radial Timeline/Inquiry/Briefing/Brief.md');
+        // Only lastAccessed is transient (re-seeded on hydration).
         expect('lastAccessed' in persisted).toBe(false);
-        expect('cacheWindowExpiresAt' in persisted).toBe(false);
-        expect('cacheReuseFingerprint' in persisted).toBe(false);
-        expect('providerCacheStatus' in persisted).toBe(false);
-        expect('totalInputTokens' in persisted).toBe(false);
+        // Provider-cache fields ARE durable now — restored after restart.
+        expect(persisted.cacheWindowExpiresAt).toBe(9999);
+        expect(persisted.cacheReuseFingerprint).toBe('fp');
+        expect(persisted.cacheReuseState).toBe('warm');
+        expect(persisted.providerCacheStatus).toBe('hit');
+        expect(persisted.cachedStableRatio).toBe(0.5);
+        expect(persisted.cachedStableTokens).toBe(10);
+        expect(persisted.totalInputTokens).toBe(20);
     });
 });
 
@@ -56,6 +61,17 @@ describe('parseSessionArtifact', () => {
         expect(sessions).not.toBeNull();
         expect(sessions).toHaveLength(1);
         expect(sessions![0].key).toBe('k1');
+    });
+
+    it('round-trips the provider-cache state (armed/warm survives a restart)', () => {
+        const raw = JSON.stringify(serializeSessionsToArtifact([makeSession()], 1));
+        const sessions = parseSessionArtifact(raw);
+        const restored = sessions![0];
+        expect(restored.cacheWindowExpiresAt).toBe(9999);
+        expect(restored.cacheReuseFingerprint).toBe('fp');
+        expect(restored.cacheReuseState).toBe('warm');
+        expect(restored.providerCacheStatus).toBe('hit');
+        expect(restored.cachedStableTokens).toBe(10);
     });
 
     it('re-seeds lastAccessed from createdAt on hydration', () => {
