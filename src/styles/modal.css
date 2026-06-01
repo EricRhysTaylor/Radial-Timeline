@@ -464,6 +464,10 @@
 
 .ert-planetary-now-button {
   align-self: flex-end;
+  /* Zero Obsidian's default extra-button margin and add gap-xs so the total
+     space (field-row gap + this margin) matches the 8px gap-sm used before
+     the Earth → Mars "Now" button. */
+  margin: 0 0 0 var(--ert-gap-xs);
 }
 
 .ert-planetary-copy-button {
