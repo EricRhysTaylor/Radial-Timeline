@@ -1105,7 +1105,44 @@ export class InquiryRunnerService implements InquiryRunner {
             executionPassCount: 1
         });
 
-        // Inquiry specialization: if single-pass truncates, package and synthesize.
+        // Output truncated at the (tier-clamped) cap, but the corpus fit one
+        // pass — the structured reply just needed more room. Retry ONCE in a
+        // single pass forcing the model/provider output ceiling (e.g. 16k for
+        // Opus) before the expensive chunk+synthesize path. The corpus prefix
+        // is already cached from the first attempt, so the retry reuses it
+        // (cheap input); only the larger output is billed.
+        if (run.aiReason === 'truncated' && precheck.onePassFit !== 'overflows') {
+            executionOptions?.onProgress?.({
+                phase: 'one_pass',
+                currentPass: 1,
+                totalPasses: 1,
+                detail: t('inquiry.runner.waiting')
+            });
+            this.throwIfAborted(executionOptions?.shouldAbort);
+            const ceilingRun = await this.runInquiryRequest(aiClient, {
+                task: 'AnalyzeCorpus',
+                systemPrompt,
+                userPrompt,
+                userQuestion,
+                ai,
+                jsonSchema,
+                temperature,
+                maxTokens: this.getOutputTokenCap(ai.provider),
+                evidenceBlocks,
+                preparedEstimate: null,
+                instructionPrompt,
+                cacheableUserInput,
+                providerReuseKey,
+                forceFreshRun: executionOptions?.forceFreshRun,
+                forceMaxOutputCeiling: true
+            });
+            run = this.withExecutionContext(ceilingRun, {
+                executionPassCount: 1
+            });
+        }
+
+        // Inquiry specialization: if it STILL truncates at the ceiling,
+        // package and synthesize.
         if (run.aiReason === 'truncated') {
             {
                 const multiPass = await this.runChunkedInquiry(aiClient, {
@@ -1159,6 +1196,7 @@ export class InquiryRunnerService implements InquiryRunner {
             cacheableUserInput?: string;
             providerReuseKey?: string;
             forceFreshRun?: boolean;
+            forceMaxOutputCeiling?: boolean;
         }
     ): Promise<AIRunResult> {
         const preparedEstimate = options.preparedEstimate
@@ -1174,7 +1212,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 evidenceBlocks: options.evidenceBlocks,
                 instructionPrompt: options.instructionPrompt,
                 cacheableUserInput: options.cacheableUserInput,
-                providerReuseKey: options.providerReuseKey
+                providerReuseKey: options.providerReuseKey,
+                forceMaxOutputCeiling: options.forceMaxOutputCeiling
             });
         const effectiveUserInput = this.resolveProviderUserInput(
             options.ai.provider,
@@ -1202,7 +1241,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
                 reasoningDepth: 'deep',
-                jsonStrict: true
+                jsonStrict: true,
+                forceMaxOutputCeiling: options.forceMaxOutputCeiling
             },
             bypassInMemoryCache: options.forceFreshRun === true,
             bypassProviderReuse: options.forceFreshRun === true,
@@ -1232,6 +1272,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionPrompt?: string;
             cacheableUserInput?: string;
             providerReuseKey?: string;
+            forceMaxOutputCeiling?: boolean;
         }
     ): Promise<AIRunPreparedEstimate | null> {
         const effectiveUserInput = this.resolveProviderUserInput(
@@ -1261,7 +1302,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
                 reasoningDepth: 'deep',
-                jsonStrict: true
+                jsonStrict: true,
+                forceMaxOutputCeiling: options.forceMaxOutputCeiling
             },
             providerReuseKey: options.providerReuseKey,
             evidenceDocuments: options.evidenceBlocks?.length

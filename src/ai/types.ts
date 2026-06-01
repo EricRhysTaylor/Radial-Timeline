@@ -130,6 +130,14 @@ export interface AIOverrides {
     reasoningDepth?: 'standard' | 'deep';
     jsonStrict?: boolean;
     seed?: number;
+    /**
+     * Force the output cap to the model/provider ceiling, bypassing the
+     * rate-limit tier clamp and mode/feature multipliers. Used by the
+     * truncation retry: a structured reply that hit the (tier-clamped) cap
+     * just needs more room, and capping output below the ceiling saves
+     * nothing (billing is per token generated, not per token requested).
+     */
+    forceMaxOutputCeiling?: boolean;
 }
 
 export interface AIPrivacySettings {

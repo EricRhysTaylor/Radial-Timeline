@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+describe('InquiryRunnerService output-truncation recovery', () => {
+    it('retries once at the output ceiling before falling back to chunking', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        // On truncation with a corpus that fit one pass, retry single-pass at
+        // the provider ceiling (forceMaxOutputCeiling) BEFORE chunk+synthesize.
+        expect(source.includes("run.aiReason === 'truncated' && precheck.onePassFit !== 'overflows'")).toBe(true);
+        expect(source.includes('forceMaxOutputCeiling: true')).toBe(true);
+        expect(source.includes('maxTokens: this.getOutputTokenCap(ai.provider)')).toBe(true);
+        // The ceiling retry must sit before the chunked fallback it precedes.
+        const retryIdx = source.indexOf('forceMaxOutputCeiling: true');
+        const fallbackChunkIdx = source.indexOf('runChunkedInquiry', retryIdx);
+        expect(retryIdx).toBeGreaterThan(0);
+        expect(fallbackChunkIdx).toBeGreaterThan(retryIdx);
+    });
+});
+
 describe('InquiryRunnerService execution integrity', () => {
     it('uses scene ids for inquiry evidence citation references', () => {
         const runnerSource = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');

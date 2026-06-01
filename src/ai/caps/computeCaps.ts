@@ -147,7 +147,15 @@ export function computeCaps(input: ComputeCapsInput): ComputedCaps {
         Math.floor(baseOutput * modeMultiplier * featureMultiplier)
     );
 
-    const maxOutputTokens = Math.min(baseOutput, targetOutput);
+    // Ceiling override (truncation retry): use the full model/provider output
+    // ceiling, ignoring the rate-limit tier clamp and the mode/feature
+    // multipliers. The tier governs request RATE, not per-request max_tokens,
+    // and a lower cap saves nothing on cost — it only truncates large
+    // structured replies. Still bounded by the provider/model hard maximum.
+    const ceilingOutput = Math.max(512, Math.min(providerCaps.providerMaxOutputTokens, modelMaxOutput));
+    const maxOutputTokens = input.overrides?.forceMaxOutputCeiling
+        ? ceilingOutput
+        : Math.min(baseOutput, targetOutput);
     const safeChunkThreshold = tierCaps.safeUtilization;
     const maxInputTokens = Math.max(1024, Math.floor((input.model.contextWindow || providerCaps.defaultInputTokens) * safeChunkThreshold));
 

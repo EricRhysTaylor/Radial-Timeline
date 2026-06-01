@@ -34,6 +34,30 @@ describe('computeCaps', () => {
         expect(tier4.maxInputTokens).toBe(900000);
     });
 
+    it('forceMaxOutputCeiling lifts a tier-clamped output cap to the model ceiling', () => {
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.7');
+        expect(model).toBeDefined();
+        // Tier 1 clamps Opus output to 4000 — the cause of truncated findings.
+        const clamped = computeCaps({
+            provider: 'anthropic',
+            model: model!,
+            accessTier: 1,
+            feature: 'InquiryMode',
+            overrides: { maxOutputMode: 'max' }
+        });
+        // The ceiling override (truncation retry) ignores the tier clamp.
+        const ceiling = computeCaps({
+            provider: 'anthropic',
+            model: model!,
+            accessTier: 1,
+            feature: 'InquiryMode',
+            overrides: { maxOutputMode: 'max', forceMaxOutputCeiling: true }
+        });
+        expect(clamped.maxOutputTokens).toBe(4000);
+        expect(ceiling.maxOutputTokens).toBe(16000);
+        expect(ceiling.maxOutputTokens).toBeGreaterThan(clamped.maxOutputTokens);
+    });
+
     it('uses deeper reasoning defaults for inquiry when requested', () => {
         const model = BUILTIN_MODELS.find(entry => entry.alias === 'gpt-5.5');
         expect(model).toBeDefined();
