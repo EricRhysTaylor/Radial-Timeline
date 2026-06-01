@@ -15,6 +15,9 @@ import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { RadialTimelineView } from './view/TimeLineView';
 import { InquiryView } from './inquiry/InquiryView';
+import { readInquirySessionsFromVault, writeInquirySessionsToVault } from './inquiry/InquiryArtifactStore';
+import { DEFAULT_INQUIRY_HISTORY_LIMIT } from './inquiry/constants';
+import type { InquirySession } from './inquiry/sessionTypes';
 import { InquiryService } from './inquiry/InquiryService';
 import { InquiryEstimateService } from './inquiry/services/inquiryEstimateService';
 import { OutputProfileStore } from './ai/cost/outputProfile';
@@ -629,9 +632,43 @@ export default class RadialTimelinePlugin extends Plugin {
         return this.sceneDataService.getBookMeta();
     }
 
+    /**
+     * Inquiry sessions are persisted to a vault sidecar
+     * (`.radial-timeline/inquiry/sessions.json`), not `data.json` — the vault is
+     * the single source of truth for brief content, so briefs ship with the
+     * vault and rehydrate on a fresh plugin install.
+     *
+     * Hydrates the in-memory working set from the vault. Any sessions that exist
+     * only in a legacy `data.json` cache (pre-upgrade) are migrated into the
+     * sidecar once; thereafter `performSave` strips the field from `data.json`.
+     * The vault wins on key collisions.
+     */
+    private async hydrateInquirySessionsFromVault(): Promise<void> {
+        const vaultSessions = await readInquirySessionsFromVault(this.app);
+        const legacySessions = (this.settings.inquirySessionCache?.sessions ?? []) as unknown as InquirySession[];
+
+        const byKey = new Map<string, InquirySession>();
+        for (const session of legacySessions) byKey.set(session.key, session);
+        for (const session of vaultSessions) byKey.set(session.key, session);
+        const merged = Array.from(byKey.values());
+
+        this.settings.inquirySessionCache = {
+            sessions: merged,
+            max: DEFAULT_INQUIRY_HISTORY_LIMIT
+        } as RadialTimelineSettings['inquirySessionCache'];
+
+        const legacyOnly = legacySessions.some(
+            legacy => !vaultSessions.some(vaultSession => vaultSession.key === legacy.key)
+        );
+        if (legacyOnly) {
+            await writeInquirySessionsToVault(this.app, merged);
+        }
+    }
+
     async loadSettings() {
         const loadedSettings = (await this.loadData()) ?? {};
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+        await this.hydrateInquirySessionsFromVault();
         if (this.settings.publishStageColors?.House === '#DA7847') {
             this.settings.publishStageColors.House = '#F2863C';
         }
@@ -993,7 +1030,11 @@ export default class RadialTimelinePlugin extends Plugin {
                 console.error('[AI][credentials] Failed to run plaintext credential scan.', error);
             }
         }
-        await this.saveData(this.settings);
+        // Inquiry sessions live in the vault sidecar (single source of truth),
+        // never in data.json. Strip the in-memory mirror before writing so the
+        // brief store has exactly one persisted home.
+        const { inquirySessionCache: _inquirySessionCache, ...persistedSettings } = this.settings;
+        await this.saveData(persistedSettings as RadialTimelineSettings);
     }
 
     // Helper method to validate and remember folder paths

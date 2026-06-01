@@ -2,6 +2,7 @@ import type RadialTimelinePlugin from '../main';
 import type { InquirySession, InquirySessionCache, InquirySessionStatus } from './sessionTypes';
 import type { InquiryScope } from './state';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT } from './constants';
+import { writeInquirySessionsToVault } from './InquiryArtifactStore';
 
 export class InquirySessionStore {
     private cache: InquirySessionCache;
@@ -238,13 +239,17 @@ export class InquirySessionStore {
     }
 
     private scheduleSave(): void {
+        // In-memory mirror: the close/reopen recovery flow and the settings
+        // session-count snapshot read `settings.inquirySessionCache`. This copy
+        // is NEVER persisted to data.json (stripped in persistSettingsInternal);
+        // the vault sidecar below is the single persisted source of truth.
         this.plugin.settings.inquirySessionCache = this.cache;
         if (this.saveTimeout) {
             window.clearTimeout(this.saveTimeout);
         }
         this.saveTimeout = window.setTimeout(() => {
             this.saveTimeout = null;
-            void this.plugin.saveSettings();
+            void writeInquirySessionsToVault(this.plugin.app, this.cache.sessions);
         }, 600);
     }
 }
