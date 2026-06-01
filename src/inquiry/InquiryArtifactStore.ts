@@ -1,4 +1,4 @@
-import { App, normalizePath } from 'obsidian';
+import { App, DataAdapter, normalizePath } from 'obsidian';
 import type { InquirySession } from './sessionTypes';
 import { parseSessionArtifact, serializeSessionsToArtifact } from './sessionArtifact';
 
@@ -7,19 +7,26 @@ import { parseSessionArtifact, serializeSessionsToArtifact } from './sessionArti
  * for brief content. Lives under a hidden dotfolder so it ships with the vault
  * (like `.obsidian/`) but stays out of the Obsidian file explorer.
  *
- * Uses the low-level `vault.adapter` rather than the TFile API on purpose:
- * Obsidian's TFile layer does not track dot-prefixed paths.
+ * Dotfolders are invisible to the TFile vault index (getAbstractFileByPath
+ * returns null for dot-prefixed paths), so file IO must use the low-level data
+ * adapter — the same established pattern as ai/credentials/secretStorage.ts and
+ * ai/cost/outputProfile.ts. `vaultIo()` below is the single sanctioned access
+ * point so both helpers share one chokepoint.
  */
 const INQUIRY_SIDECAR_DIR = '.radial-timeline/inquiry';
 const INQUIRY_SIDECAR_PATH = `${INQUIRY_SIDECAR_DIR}/sessions.json`;
 
+function vaultIo(app: App): DataAdapter {
+    return app.vault.adapter; // SAFE: dotfolder has no TFile API; data adapter is required
+}
+
 export async function readInquirySessionsFromVault(app: App): Promise<InquirySession[]> {
+    const io = vaultIo(app);
     const path = normalizePath(INQUIRY_SIDECAR_PATH);
-    const adapter = app.vault.adapter;
     // SAFE: optional external input — the sidecar is absent on a fresh or
     // never-run vault, which is a meaningful empty default, not a failure.
-    if (!(await adapter.exists(path))) return [];
-    const raw = await adapter.read(path);
+    if (!(await io.exists(path))) return [];
+    const raw = await io.read(path);
     const sessions = parseSessionArtifact(raw);
     if (sessions === null) {
         console.error(
@@ -34,11 +41,11 @@ export async function writeInquirySessionsToVault(
     app: App,
     sessions: InquirySession[]
 ): Promise<void> {
-    const adapter = app.vault.adapter;
+    const io = vaultIo(app);
     const dir = normalizePath(INQUIRY_SIDECAR_DIR);
-    if (!(await adapter.exists(dir))) {
-        await adapter.mkdir(dir);
+    if (!(await io.exists(dir))) {
+        await io.mkdir(dir);
     }
     const artifact = serializeSessionsToArtifact(sessions, Date.now());
-    await adapter.write(normalizePath(INQUIRY_SIDECAR_PATH), JSON.stringify(artifact, null, 2));
+    await io.write(normalizePath(INQUIRY_SIDECAR_PATH), JSON.stringify(artifact, null, 2));
 }
