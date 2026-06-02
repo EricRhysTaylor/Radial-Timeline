@@ -371,7 +371,35 @@
   align-items: flex-start;
 }
 
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting {
+  --ert-planetary-time-select-width: calc(var(--ert-input-width-3digit) + var(--ert-gap-sm));
+  --ert-planetary-time-control-width: calc(
+    var(--size-4-5, var(--size-4-4)) + var(--ert-gap-2xs) + var(--ert-planetary-time-select-width)
+    + var(--ert-gap-xs)
+    + var(--size-4-5, var(--size-4-4)) + var(--ert-gap-2xs) + var(--ert-planetary-time-select-width)
+  );
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ert-planetary-time-control-width);
+  align-items: flex-start;
+  column-gap: var(--ert-gap-xl);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting > .setting-item-info {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting > .setting-item-control {
+  grid-column: 2;
+  grid-row: 1;
+  display: contents;
+}
+
 .ert-planetary-field-row {
+  --ert-planetary-icon-column: var(--size-4-5, var(--size-4-4));
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -381,36 +409,50 @@
   min-width: 0;
 }
 
-/* Local time uses the default single-row setting layout (info left grows and
-   wraps, controls right) — the same layout as the Active profile / Conversion
-   / Earth date rows. It deliberately does NOT carry the stacked-column
-   .ert-planetary-input-setting class. The Mars date row keeps the stacked
-   layout because it carries three fields plus a button. */
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-info {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  margin-inline-end: 0;
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-description {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .setting-item-control {
-  /* Hold the controls at their content width so only the info column shrinks
-     and wraps. Without this, Obsidian's default flex:1 1 auto lets the control
-     shrink below the nowrap field-row, which then overflows left under the
-     description text. */
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  align-items: center;
+  width: auto;
+  min-width: 0;
+  max-width: none;
 }
 
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .ert-planetary-field-row {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
   width: auto;
   flex-wrap: nowrap;
-  align-items: center;
+  justify-content: flex-end;
 }
 
-/* The time row's control is content-sized (flex:0 0 auto), so the fields need
-   a definite width — the shared min(100%, …) rule resolves the 100% against an
-   indefinite basis here and collapses the width:100% selects to min-content.
-   Hour/minute only ever show two digits, so a snug width keeps them well
-   inside the right margin instead of reaching the hard content edge. */
 .ert-planetary-modal-inputs .ert-planetary-time-input-setting .ert-planetary-field {
-  width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-3digit));
-  min-width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-3digit));
+  width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-planetary-time-select-width));
+  min-width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-planetary-time-select-width));
+  max-width: calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-planetary-time-select-width));
+}
+
+.ert-planetary-modal-inputs .ert-planetary-time-input-setting .ert-planetary-field__select {
+  /* Fill the grid cell instead of a fixed ch width. A fixed ch resolves
+     against the select's own (smaller) font, rendering the box narrower than
+     the cell (sized in the field font) and leaving dead space on the right —
+     on the Minute field that gap stops the cluster reaching the Convert
+     button's right margin. Filling the cell makes the select edge meet the
+     field edge (matches the date-field fix above). */
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .ert-planetary-field {
@@ -461,10 +503,14 @@
   min-width: 0;
 }
 
-.ert-planetary-field--year,
-.ert-planetary-field--day {
+.ert-planetary-field--year {
   width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm)));
   min-width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-sm)));
+}
+
+.ert-planetary-field--day {
+  width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md)));
+  min-width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md)));
 }
 
 .ert-planetary-now-button {
