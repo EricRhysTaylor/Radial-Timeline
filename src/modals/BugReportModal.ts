@@ -145,7 +145,7 @@ export class BugReportModal extends ErtModal {
 
         this.previewEl = body.createDiv({ cls: 'ert-bug-report-preview' });
         this.previewEl.toggleClass('ert-bug-report-preview--empty', true);
-        this.previewEl.setText('No screenshot attached. Capture, attach, or paste an image with ⌘V (no focus needed).');
+        this.previewEl.setText('No screenshot attached. Capture, attach, or paste an image with ⌘V.');
 
         this.statusEl = body.createDiv({ cls: 'ert-bug-report-status' });
     }
