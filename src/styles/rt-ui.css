@@ -4336,6 +4336,17 @@
   padding-top: var(--ert-gap-md);
 }
 
+.ert-ui .ert-writing-session-note .setting-item-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ert-ui .ert-writing-session-note textarea.ert-input--full {
+  width: 100%;
+  min-width: 0;
+  --ert-control-width: 100%;
+}
+
 .ert-ui .ert-writing-session-date-input {
   width: 13.5ch;
   min-width: 13.5ch;
