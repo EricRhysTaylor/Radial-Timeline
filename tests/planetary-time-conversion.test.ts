@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { PlanetaryProfile } from '../src/types/settings';
-import { convertFromEarth, convertToEarth } from '../src/utils/planetaryTime';
+import { createMarsPlanetaryProfile, DARIAN_MARS_MONTH_NAMES, matchesLegacyMarsMonthNames } from '../src/utils/planetaryMars';
+import { convertFromEarth, convertToEarth, parseCommaNames } from '../src/utils/planetaryTime';
 
 const TEST_PROFILE: PlanetaryProfile = {
     id: 'test',
@@ -57,6 +58,21 @@ describe('planetary time conversion', () => {
         expect(invalid).toBeNull();
     });
 
+    it('keeps the Mars template named and only migrates the exact legacy numeric month list', () => {
+        const mars = createMarsPlanetaryProfile();
+
+        expect(mars.monthNames?.[0]).toBe('Sagittarius');
+        expect(mars.monthNames).toEqual(DARIAN_MARS_MONTH_NAMES);
+        expect(matchesLegacyMarsMonthNames(Array.from({ length: 24 }, (_, index) => String(index + 1)))).toBe(true);
+        expect(matchesLegacyMarsMonthNames(mars.monthNames)).toBe(false);
+        expect(matchesLegacyMarsMonthNames(['1', '2', 'Custom'])).toBe(false);
+    });
+
+    it('parses planetary name lists from comma-separated or line-separated settings text', () => {
+        expect(parseCommaNames('Solis, Lunae\nMartis')).toEqual(['Solis', 'Lunae', 'Martis']);
+        expect(parseCommaNames('\n  Sagittarius\nDhanus, Capricornus  ')).toEqual(['Sagittarius', 'Dhanus', 'Capricornus']);
+    });
+
     it('keeps the converter modal bidirectional and labels Chronologue by active profile', () => {
         const modalSource = readFileSync(resolve(process.cwd(), 'src/modals/PlanetaryTimeModal.ts'), 'utf8');
         const chronoSource = readFileSync(resolve(process.cwd(), 'src/settings/sections/ChronologueSection.ts'), 'utf8');
@@ -68,6 +84,9 @@ describe('planetary time conversion', () => {
         expect(modalSource).toContain('renderPlanetToEarthResult');
         expect(modalSource).toContain('addPlanetarySelectField');
         expect(modalSource).toContain('ert-planetary-field-row');
+        expect(modalSource).toContain('formatIndexedLabel');
+        expect(modalSource).toContain('getWeekdayNameForLocalDay');
+        expect(modalSource).toContain('getPlanetaryMonthStartDay');
         expect(modalSource).toContain('planetaryTimeLastDirection');
         expect(defaultsSource).toContain("planetaryTimeLastDirection: 'earth-to-planet'");
         expect(chronoSource).toContain('getActivePlanetaryProfile');

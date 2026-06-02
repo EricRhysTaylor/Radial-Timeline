@@ -228,7 +228,7 @@ export function formatPlanetaryDateAdaptive(
 export function parseCommaNames(input: string | undefined): string[] | undefined {
     if (!input) return undefined;
     const names = input
-        .split(',')
+        .split(/[,\n]+/)
         .map(n => n.trim())
         .filter(Boolean);
     return names.length ? names : undefined;

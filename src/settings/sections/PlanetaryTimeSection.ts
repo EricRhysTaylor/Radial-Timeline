@@ -1,7 +1,8 @@
-import { App, Modal, Notice, Setting as Settings, TextComponent, DropdownComponent, ButtonComponent, setIcon, setTooltip } from 'obsidian';
+import { App, Modal, Notice, Setting as Settings, TextAreaComponent, TextComponent, DropdownComponent, ButtonComponent, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
+import { createMarsPlanetaryProfile, MARS_TEMPLATE_ID } from '../../utils/planetaryMars';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -26,21 +27,8 @@ const DEFAULT_PROFILE = (): PlanetaryProfile => ({
     weekdayNames: undefined,
 });
 
-// Mars template - built-in for fun! Based on the Darian calendar
-const MARS_TEMPLATE_ID = 'mars-template';
-const MARS_PROFILE = (): PlanetaryProfile => ({
-    id: MARS_TEMPLATE_ID,
-    label: 'Mars',
-    hoursPerDay: 25,
-    daysPerWeek: 7,
-    daysPerYear: 668,
-    epochOffsetDays: 0,
-    epochLabel: 'Sol',
-    // 24 numbered months (~28 sols each)
-    monthNames: ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24'],
-    // Darian calendar weekday names
-    weekdayNames: ['Solis', 'Lunae', 'Martis', 'Mercurii', 'Jovis', 'Veneris', 'Saturni'],
-});
+// Mars template - built-in for fun! Based on the Darian calendar.
+const MARS_PROFILE = createMarsPlanetaryProfile;
 
 class PlanetaryProfileNameModal extends Modal {
     private readonly initialValue: string;
@@ -314,7 +302,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
     });
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
 
-    const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
+    const flash = (input: HTMLInputElement | HTMLTextAreaElement, type: 'success' | 'error') => {
         const successClass = 'ert-setting-input-success';
         const errorClass = 'ert-setting-input-error';
         input.classList.remove(type === 'success' ? errorClass : successClass);
@@ -322,7 +310,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
         window.setTimeout(() => input.classList.remove(type === 'success' ? successClass : errorClass), type === 'success' ? 900 : 1200);
     };
 
-    const saveProfile = async (updated: PlanetaryProfile, input?: HTMLInputElement) => {
+    const saveProfile = async (updated: PlanetaryProfile, input?: HTMLInputElement | HTMLTextAreaElement) => {
         const result = validatePlanetaryProfile(updated);
         if (!result.ok) {
             if (input) flash(input, 'error');
@@ -410,10 +398,11 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
 
         new Settings(fieldsContainer)
             .setName(t('planetary.fields.monthNames'))
-            .setDesc('Optional. Determines how the year is divided. Provide names to set the month count (e.g. 4 names = 4 months). Leave blank for 12 numbered months.')
-            .addText((text: TextComponent) => {
-                text.inputEl.addClass('ert-input--lg');
-                const originalValue = (profile.monthNames || []).join(', ');
+            .setDesc('Optional. Determines how the year is divided. Enter one name per line, or comma separated. Leave blank for 12 numbered months.')
+            .addTextArea((text: TextAreaComponent) => {
+                text.inputEl.addClass('ert-textarea', 'ert-textarea--wide');
+                text.inputEl.rows = 6;
+                const originalValue = (profile.monthNames || []).join('\n');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
@@ -426,10 +415,11 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
 
         new Settings(fieldsContainer)
             .setName(t('planetary.fields.weekdayNames'))
-            .setDesc('Optional. Sets weekday labels; leave blank for numbered weekdays.')
-            .addText((text: TextComponent) => {
-                text.inputEl.addClass('ert-input--lg');
-                const originalValue = (profile.weekdayNames || []).join(', ');
+            .setDesc('Optional. Sets weekday labels. Enter one name per line, or comma separated. The first name is weekday 1, so Year 1 Day 1 starts there.')
+            .addTextArea((text: TextAreaComponent) => {
+                text.inputEl.addClass('ert-textarea', 'ert-textarea--wide');
+                text.inputEl.rows = 3;
+                const originalValue = (profile.weekdayNames || []).join('\n');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {

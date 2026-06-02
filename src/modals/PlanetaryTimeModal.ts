@@ -1,7 +1,7 @@
 import { App, Modal, Setting as Settings, DropdownComponent, TextComponent, ButtonComponent, ExtraButtonComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { PlanetaryProfile, PlanetaryTimeConversionDirection } from '../types';
-import { convertFromEarth, convertToEarth, getPlanetaryMonthCount, getPlanetaryMonthDayCount } from '../utils/planetaryTime';
+import { convertFromEarth, convertToEarth, getPlanetaryMonthCount, getPlanetaryMonthDayCount, getPlanetaryMonthStartDay } from '../utils/planetaryTime';
 import { t } from '../i18n';
 import { IMPACT_FULL } from '../settings/SettingImpact';
 
@@ -222,10 +222,11 @@ export class PlanetaryTimeModal extends Modal {
         const dateSetting = new Settings(this.inputEl)
             .setName(t('planetary.modal.planetDateLabel', { planet: profileName }))
             .setDesc(t('planetary.modal.planetDateDesc'));
-        dateSetting.settingEl.addClass('ert-planetary-input-setting');
+        dateSetting.settingEl.addClass('ert-planetary-input-setting', 'ert-planetary-date-input-setting');
         const dateControls = dateSetting.controlEl.createDiv({ cls: 'ert-planetary-field-row' });
         this.addPlanetarySelectField(dateControls, 'calendar-clock', t('planetary.modal.yearField'), this.buildYearOptions(), this.planetYearValue, value => {
             this.planetYearValue = value;
+            this.renderInputs();
             this.renderResult();
         }, 'ert-planetary-field--year');
         this.addPlanetarySelectField(dateControls, 'calendar-days', t('planetary.modal.monthField'), this.buildMonthOptions(profile, monthCount), String(this.planetMonthIndex), value => {
@@ -302,8 +303,8 @@ export class PlanetaryTimeModal extends Modal {
     private buildMonthOptions(profile: PlanetaryProfile | null, monthCount: number): Array<{ value: string; label: string }> {
         const options: Array<{ value: string; label: string }> = [];
         for (let index = 0; index < monthCount; index++) {
-            const monthName = profile?.monthNames?.[index] || `${t('planetary.modal.monthFallback')} ${index + 1}`;
-            options.push({ value: String(index), label: monthName });
+            const monthName = profile?.monthNames?.[index]?.trim();
+            options.push({ value: String(index), label: this.formatIndexedLabel(index, monthName, String(index + 1)) });
         }
         return options;
     }
@@ -312,8 +313,32 @@ export class PlanetaryTimeModal extends Modal {
         const maxDay = profile ? getPlanetaryMonthDayCount(profile, this.planetMonthIndex) : 31;
         return Array.from({ length: maxDay }, (_, index) => {
             const day = index + 1;
-            return { value: String(day), label: String(day) };
+            const weekdayName = this.getWeekdayNameForLocalDay(profile, day);
+            return { value: String(day), label: this.formatIndexedLabel(index, weekdayName, String(day)) };
         });
+    }
+
+    private getWeekdayNameForLocalDay(profile: PlanetaryProfile | null, localDayOfMonth: number): string | undefined {
+        if (!profile?.weekdayNames?.length) return undefined;
+        const daysPerWeek = Math.max(1, Math.floor(profile.daysPerWeek || profile.weekdayNames.length));
+        const localYear = Math.max(1, Math.round(Number(this.planetYearValue) || 1));
+        const localDaysPerYear = Math.max(1, Math.floor(profile.daysPerYear));
+        const localDayOfYear = getPlanetaryMonthStartDay(profile, this.planetMonthIndex) + localDayOfMonth - 1;
+        const fullLocalDays = ((localYear - 1) * localDaysPerYear) + localDayOfYear;
+        const weekdayIndex = this.mod(fullLocalDays, daysPerWeek);
+        return profile.weekdayNames[weekdayIndex]?.trim();
+    }
+
+    private formatIndexedLabel(index: number, name: string | undefined, fallback: string): string {
+        const ordinal = index + 1;
+        const label = name?.trim();
+        if (!label || label === String(ordinal)) return fallback;
+        return `${ordinal} · ${label}`;
+    }
+
+    private mod(value: number, divisor: number): number {
+        const result = value % divisor;
+        return result < 0 ? result + divisor : result;
     }
 
     private buildHourOptions(profile: PlanetaryProfile | null): Array<{ value: string; label: string }> {

@@ -116,8 +116,12 @@ function appendSceneChip(parent: HTMLElement, path: string, options: SessionLogL
         cls: `ert-session-log-row__chip ert-session-log-row__chip--${kind}`,
         text: basenameNoExt(path),
     });
-    chip.setAttribute('title', path);
     if (options.onSceneClick) {
+        // Only set the title (native tooltip) when the chip is itself the
+        // click target. In compact mode the chip is non-interactive and the
+        // row carries the aria-label — setting a chip title here would
+        // double-fire two tooltips on hover.
+        chip.setAttribute('title', path);
         chip.classList.add('ert-session-log-row__chip--clickable');
         chip.onclick = (event: MouseEvent) => {
             event.preventDefault();

@@ -62,6 +62,7 @@ import { TimelineAuditAiService } from './services/TimelineAuditAiService';
 import { WritingSessionService } from './services/WritingSessionService';
 import { ensureBundledPandocLayoutsRegistered, ensureSpecDrivenBundledFictionTemplatesCurrent, setBundledFontSourcePath, setPandocFontPathsForVault } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
+import { DARIAN_MARS_MONTH_NAMES, MARS_TEMPLATE_ID, matchesLegacyMarsMonthNames } from './utils/planetaryMars';
 import type { GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
 import { seedProEntitlement } from './settings/proEntitlementSeed';
@@ -110,8 +111,6 @@ function countTypedWordStarts(previousChar: string, inserted: string): number {
     }
     return count;
 }
-
-
 
 // Search highlighting is centralized in TimeLineView.addHighlightRectangles() after SVG render.
 
@@ -696,6 +695,12 @@ export default class RadialTimelinePlugin extends Plugin {
         let planetarySelectionMigrated = false;
         const planetaryProfiles = Array.isArray(this.settings.planetaryProfiles) ? this.settings.planetaryProfiles : [];
         this.settings.planetaryProfiles = planetaryProfiles;
+        for (const profile of planetaryProfiles) {
+            if (profile?.id === MARS_TEMPLATE_ID && matchesLegacyMarsMonthNames(profile.monthNames)) {
+                profile.monthNames = [...DARIAN_MARS_MONTH_NAMES];
+                planetarySelectionMigrated = true;
+            }
+        }
 
         if (typeof this.settings.activePlanetaryProfileId !== 'string') {
             this.settings.activePlanetaryProfileId = '';
