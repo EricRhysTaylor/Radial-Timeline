@@ -3,27 +3,29 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
+// Each mode maps to a run-gates profile, so the cadence tiers run genuinely
+// different gate sets (daily = fast core; friday/deep = full suite).
 const MODES = {
   daily: {
     label: 'Daily Control Tower',
     slug: 'daily-control-tower',
     backupNote: 'Daily Control Tower',
     commitCount: 8,
-    baselineLabel: 'best available baseline'
+    profile: 'daily'
   },
   friday: {
     label: 'Friday Release Gate',
     slug: 'friday-release-gate',
     backupNote: 'Friday Release Gate',
     commitCount: 12,
-    baselineLabel: 'release baseline'
+    profile: 'release'
   },
   deep: {
     label: 'Biweekly Deep Audit',
     slug: 'biweekly-deep-audit',
     backupNote: 'Biweekly Deep Audit',
     commitCount: 20,
-    baselineLabel: 'best available baseline'
+    profile: 'deep'
   }
 };
 
@@ -79,16 +81,12 @@ function safe(command) {
 }
 
 function shortDuration(durationMs) {
-  if (durationMs < 1000) return `${durationMs}ms`;
+  if (durationMs < 1000) return `${Math.round(durationMs)}ms`;
   return `${(durationMs / 1000).toFixed(1)}s`;
 }
 
 function parseLines(text) {
   return text ? text.split('\n').map(line => line.trim()).filter(Boolean) : [];
-}
-
-function escapeMarkdown(text) {
-  return String(text).replace(/\|/g, '\\|');
 }
 
 function parseStatusFiles(text) {
@@ -114,22 +112,6 @@ function inferBaseline() {
   return candidates.find(candidate => candidate.label === 'HEAD~1' && candidate.ref) || null;
 }
 
-function gate(name, command, availability = true, options = {}) {
-  if (!availability) {
-    return { name, status: 'Unavailable', detail: 'No matching npm script in package.json.' };
-  }
-
-  const result = run(command, { allowFailure: true, ...options });
-  const status = result.ok ? 'Pass' : 'Fail';
-  const detail = tail(result.output, result.ok ? 5 : 20) || '(no output)';
-  return {
-    name,
-    status,
-    detail,
-    duration: shortDuration(result.durationMs)
-  };
-}
-
 function topAreas(files) {
   const counts = new Map();
   for (const file of files) {
@@ -141,29 +123,20 @@ function topAreas(files) {
     .map(([area, count]) => `${area}(${count})`);
 }
 
-function buildActionItems(gates, changedFiles) {
+// Action items are derived from real gate outcomes: failed gates become
+// "Do Now"; the gate runner's surfaced follow-ups (model drift, API gaps,
+// CSS/compliance deltas) become "Schedule Later".
+function buildActionItems(gates, gateActionItems) {
   const doNow = [];
-  const scheduleLater = [];
+  const scheduleLater = [...gateActionItems];
   const ignore = [];
 
-  const failedCoreGate = gates.find(item =>
-    item.status === 'Fail' && ['npm test', 'npm run build', 'TypeScript no-emit'].includes(item.name)
-  );
-  if (failedCoreGate) {
-    doNow.push(`Fix failing validation gate: ${failedCoreGate.name}.`);
-  }
+  gates
+    .filter(item => item.status === 'Fail')
+    .forEach(item => doNow.push(`Fix failing gate: ${item.name}.`));
 
-  if (gates.find(item => item.name === 'npm run lint' && item.status === 'Unavailable')) {
-    scheduleLater.push('Decide whether this repo should expose a real `npm run lint` gate.');
-  }
-
-  if (changedFiles.includes('src/modals/WritingSessionCompletionModal.ts')
-    && changedFiles.includes('tests/writing-session-completion-modal.test.ts')) {
-    scheduleLater.push('Add a behavior-level completion-modal submit test; current coverage is mostly layout/source assertions.');
-  }
-
-  if (scheduleLater.length === 0) {
-    ignore.push('No non-blocking follow-up work surfaced from this audit.');
+  if (doNow.length === 0 && scheduleLater.length === 0) {
+    ignore.push('No follow-up work surfaced from this audit.');
   }
 
   return { doNow, scheduleLater, ignore };
@@ -197,6 +170,7 @@ function buildReportLines({
   areas,
   recentCommits,
   gates,
+  notices,
   health,
   shipReadiness,
   actionItems
@@ -260,25 +234,13 @@ function buildReportLines({
   }
   lines.push('');
 
-  lines.push('## Important Risks');
-  const importantRisks = [];
-  if (gates.find(item => item.name === 'npm run lint' && item.status === 'Unavailable')) {
-    importantRisks.push('No `npm run lint` script exists, so that quality gate is not enforced by the audit.');
-  }
-  if (changedFiles.includes('tests/writing-session-completion-modal.test.ts')) {
-    importantRisks.push('Completion modal coverage is present, but mostly source/layout assertions rather than end-to-end modal interaction behavior.');
-  }
-  if (importantRisks.length === 0) lines.push('- None.');
-  for (const item of importantRisks) {
-    lines.push(`- ${item}`);
-  }
-  lines.push('');
-
-  lines.push('## Watch List');
-  if (changedFiles.includes('src/services/WritingSessionService.ts')) {
-    lines.push('- Cross-midnight timer sessions and recovered-session attribution should stay under test as the timer flow evolves.');
-  } else {
+  lines.push('## Notices');
+  if (!notices || notices.length === 0) {
     lines.push('- None.');
+  } else {
+    for (const notice of notices) {
+      lines.push(`- ${notice}`);
+    }
   }
   lines.push('');
 
@@ -316,36 +278,40 @@ const diffFiles = baseline
   ? parseLines(safe(`git diff --name-only ${baseline.ref} HEAD`))
   : [];
 const statusOutput = safe('git status --short');
-const statusLines = parseLines(statusOutput);
 const workingTreeFiles = parseStatusFiles(statusOutput);
 const changedFiles = [...new Set([...diffFiles, ...workingTreeFiles])];
 const areas = topAreas(changedFiles);
 
-const testGate = gate('npm test', 'npm test');
-const vitestCoveredByTest = typeof pkg.scripts?.test === 'string' && pkg.scripts.test.includes('vitest');
-const gates = [
-  testGate,
-  vitestCoveredByTest
-    ? {
-        name: 'Vitest',
-        status: testGate.status,
-        detail: 'Covered by `npm test` script.',
-        duration: testGate.duration
-      }
-    : gate('Vitest', 'npm exec vitest -- run'),
-  gate('npm run build', 'npm run build', true, { env: { SKIP_BACKUP: '1' } }),
-  gate('npm run lint', 'npm run lint', Boolean(pkg.scripts?.lint)),
-  gate('TypeScript no-emit', 'npx tsc --noEmit')
-];
+// Delegate gate execution to run-gates.mjs (the single source of truth for
+// which checks run). This shortcut owns report generation + optional recording.
+const resultsFile = path.resolve('.gate-logs', `audit-${mode.profile}-results.json`);
+console.log(`[audit] Running gate profile: ${mode.profile}`);
+run(`node scripts/run-gates.mjs --profile=${mode.profile} --continue --results-file=${JSON.stringify(resultsFile)}`, {
+  allowFailure: true
+});
 
-const actionItems = buildActionItems(gates, changedFiles);
+let gateResults;
+try {
+  gateResults = readJson(resultsFile);
+} catch (error) {
+  console.error(`[audit] Could not read gate results from ${path.relative(process.cwd(), resultsFile)}: ${error?.message || error}`);
+  process.exit(1);
+}
+
+const gates = (gateResults.steps || []).map(step => ({
+  name: step.label,
+  status: step.status === 'PASS' ? 'Pass' : 'Fail',
+  detail: (step.notices && step.notices.length > 0)
+    ? step.notices.slice(0, 3).join('\n')
+    : (step.tail || ''),
+  duration: shortDuration(step.durationMs)
+}));
+const notices = gateResults.notices || [];
+
+const actionItems = buildActionItems(gates, gateResults.actionItems || []);
 const health = healthFromGates(gates);
 const shipReadiness = shipReadinessFromGates(gates);
-const risk = gates.some(item => item.status === 'Fail')
-  ? 'High'
-  : gates.some(item => item.status === 'Unavailable')
-    ? 'Moderate'
-    : 'Low';
+const risk = gates.some(item => item.status === 'Fail') ? 'High' : 'Low';
 
 const reportLines = buildReportLines({
   mode,
@@ -358,6 +324,7 @@ const reportLines = buildReportLines({
   areas,
   recentCommits,
   gates,
+  notices,
   health,
   shipReadiness,
   actionItems

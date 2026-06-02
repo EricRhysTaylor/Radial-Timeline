@@ -10,6 +10,15 @@ const LOG_ROOT = path.join(ROOT, '.gate-logs');
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const LOG_DIR = path.join(LOG_ROOT, timestamp);
 const verbose = process.argv.includes('--verbose');
+const continueOnFail = process.argv.includes('--continue');
+
+function argValue(name) {
+    const hit = process.argv.find(arg => arg.startsWith(`${name}=`));
+    return hit ? hit.slice(name.length + 1) : '';
+}
+
+const profileArg = argValue('--profile');
+const resultsFileArg = argValue('--results-file');
 
 const colors = {
     bold: '\x1b[1m',
@@ -87,6 +96,30 @@ const steps = [
         command: 'npm run test:quiet',
     },
 ];
+
+// Gate profiles select WHICH steps run for a given cadence, so daily/release/deep
+// are genuinely different rather than the same list under different labels.
+// `'all'` runs every step (default for `npm run gates` / `npm run backup`).
+const PROFILES = {
+    quick: ['css-duplicates-pre', 'build', 'quality', 'tests'],
+    daily: ['css-duplicates-pre', 'build', 'quality', 'obsidian-review', 'tests'],
+    release: 'all',
+    deep: 'all',
+};
+
+function selectSteps() {
+    if (!profileArg) return steps;
+    const profile = PROFILES[profileArg];
+    if (!profile) {
+        console.error(`Unknown gate profile: ${profileArg}. Use one of: ${Object.keys(PROFILES).join(', ')}.`);
+        process.exit(1);
+    }
+    if (profile === 'all') return steps;
+    const ids = new Set(profile);
+    return steps.filter(step => ids.has(step.id));
+}
+
+const activeSteps = selectSteps();
 
 function color(name, text) {
     return `${colors[name] ?? ''}${text}${colors.reset}`;
@@ -229,18 +262,35 @@ function runCommand(command, logFile) {
     });
 }
 
+async function writeResults(results, actionItems, notices, ok) {
+    if (!resultsFileArg) return;
+    const payload = {
+        profile: profileArg || 'all',
+        ok,
+        generatedAt: new Date().toISOString(),
+        steps: results,
+        actionItems: unique(actionItems),
+        notices: unique(notices),
+    };
+    const target = path.isAbsolute(resultsFileArg) ? resultsFileArg : path.join(ROOT, resultsFileArg);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, JSON.stringify(payload, null, 2), 'utf8');
+}
+
 async function main() {
     await fs.mkdir(LOG_DIR, { recursive: true });
     const notices = [];
     const actionItems = [];
+    const results = [];
+    let firstFailure = null;
 
-    console.log(color('bold', 'Radial Timeline gates'));
+    console.log(color('bold', `Radial Timeline gates${profileArg ? ` [${profileArg}]` : ''}`));
     console.log(`${color('dim', 'Logs:')} ${rel(LOG_DIR)}`);
 
-    for (let index = 0; index < steps.length; index++) {
-        const step = steps[index];
+    for (let index = 0; index < activeSteps.length; index++) {
+        const step = activeSteps[index];
         const logFile = path.join(LOG_DIR, `${String(index + 1).padStart(2, '0')}-${step.id}.log`);
-        process.stdout.write(`[${index + 1}/${steps.length}] ${step.label} ... `);
+        process.stdout.write(`[${index + 1}/${activeSteps.length}] ${step.label} ... `);
         const result = await runCommand(step.command, logFile);
         const logPath = rel(logFile);
         const outputNotices = step.report
@@ -250,7 +300,19 @@ async function main() {
         notices.push(...outputNotices);
         actionItems.push(...reportItems);
 
-        if (result.code !== 0) {
+        const ok = result.code === 0;
+        results.push({
+            id: step.id,
+            label: step.label,
+            status: ok ? 'PASS' : 'FAIL',
+            code: result.code,
+            durationMs: result.elapsedMs,
+            logPath,
+            notices: unique([...outputNotices, ...reportItems]),
+            tail: tail(result.output, ok ? 3 : 16),
+        });
+
+        if (!ok) {
             console.log(`${color('red', 'FAIL')} (${duration(result.elapsedMs)})`);
             console.log(`${color('red', 'Gate failed:')} ${step.label}`);
             console.log(`${color('dim', 'Log:')} ${logPath}`);
@@ -260,11 +322,16 @@ async function main() {
                 console.log(color('bold', 'Failure Tail'));
                 console.log(failureTail);
             }
-            if (notices.length || actionItems.length) {
-                printSummary(actionItems, notices);
-            }
+            if (!firstFailure) firstFailure = step.label;
             process.exitCode = result.code || 1;
-            return;
+            if (!continueOnFail) {
+                if (notices.length || actionItems.length) {
+                    printSummary(actionItems, notices);
+                }
+                await writeResults(results, actionItems, notices, false);
+                return;
+            }
+            continue;
         }
 
         const noticeCount = outputNotices.length + reportItems.length;
@@ -273,7 +340,12 @@ async function main() {
     }
 
     printSummary(actionItems, notices);
-    console.log(color('green', 'All gates passed.'));
+    await writeResults(results, actionItems, notices, !firstFailure);
+    if (firstFailure) {
+        console.log(color('red', `Gates completed with failures (first: ${firstFailure}).`));
+    } else {
+        console.log(color('green', 'All gates passed.'));
+    }
 }
 
 function printSummary(actionItems, notices) {
