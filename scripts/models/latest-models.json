@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-01T20:09:33.659Z",
+  "generatedAt": "2026-06-02T21:04:48.420Z",
   "summary": {
     "openai": 120,
     "anthropic": 10,
@@ -1369,6 +1369,9 @@
             "high": {
               "supported": false
             },
+            "xhigh": {
+              "supported": false
+            },
             "max": {
               "supported": false
             }
@@ -1439,6 +1442,9 @@
               "supported": false
             },
             "high": {
+              "supported": false
+            },
+            "xhigh": {
               "supported": false
             },
             "max": {
@@ -1513,6 +1519,9 @@
             "high": {
               "supported": false
             },
+            "xhigh": {
+              "supported": false
+            },
             "max": {
               "supported": false
             }
@@ -1584,6 +1593,9 @@
             },
             "high": {
               "supported": true
+            },
+            "xhigh": {
+              "supported": false
             },
             "max": {
               "supported": false
@@ -1657,6 +1669,9 @@
             "high": {
               "supported": true
             },
+            "xhigh": {
+              "supported": false
+            },
             "max": {
               "supported": true
             }
@@ -1727,6 +1742,9 @@
               "supported": true
             },
             "high": {
+              "supported": true
+            },
+            "xhigh": {
               "supported": true
             },
             "max": {
@@ -1801,6 +1819,9 @@
             "high": {
               "supported": true
             },
+            "xhigh": {
+              "supported": true
+            },
             "max": {
               "supported": true
             }
@@ -1871,6 +1892,9 @@
               "supported": false
             },
             "high": {
+              "supported": false
+            },
+            "xhigh": {
               "supported": false
             },
             "max": {
@@ -1945,6 +1969,9 @@
             "high": {
               "supported": false
             },
+            "xhigh": {
+              "supported": false
+            },
             "max": {
               "supported": false
             }
@@ -2016,6 +2043,9 @@
             },
             "high": {
               "supported": true
+            },
+            "xhigh": {
+              "supported": false
             },
             "max": {
               "supported": true
