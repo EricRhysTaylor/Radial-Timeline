@@ -4578,6 +4578,18 @@
   line-height: 1.4;
 }
 
+.ert-ui .ert-manuscript-modal-description {
+  max-width: 58rem;
+}
+
+.ert-ui .ert-manuscript-modal-description p {
+  margin: 0;
+}
+
+.ert-ui .ert-manuscript-modal-description p + p {
+  margin-top: var(--ert-gap-sm);
+}
+
 /* YAML field reference inline chip — used for tokens like `When`, `Status`,
  * `Class`. Visually distinct from prose without competing with action chips. */
 .ert-yaml-token {

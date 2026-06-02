@@ -2760,7 +2760,7 @@ export const en: TranslationKeys = {
     manuscriptModal: {
         badge: 'Export',
         title: 'Export',
-        description: 'Export Markdown or PDF with presets, polished layouts, book matter, split output, cleanup, export checks, and reusable settings.',
+        description: 'Turn your timeline into a precise export file for editing workflows, or into a polished manuscript package.\n\nExport clean Markdown in the exact shape you need. Set range and order, split long works into organized files, isolate subplots, and clean up special manuscript formatting. Or export a publication-ready PDF with layout templates, front and back matter, and export checks.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Adjust scene range below.',
         exportHeading: 'Export type',

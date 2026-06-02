@@ -471,9 +471,9 @@ export class ManuscriptOptionsModal extends Modal {
             cls: 'ert-modal-title',
             text: 'Export manuscript'
         });
-        hero.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: t('manuscriptModal.description')
+        const description = hero.createDiv({ cls: 'ert-modal-subtitle ert-manuscript-modal-description' });
+        t('manuscriptModal.description').split('\n\n').forEach((paragraph) => {
+            description.createEl('p', { text: paragraph });
         });
         const bookContextRow = hero.createDiv({ cls: 'ert-modal-meta' });
         const manageBooksLink = bookContextRow.createEl('a', {
