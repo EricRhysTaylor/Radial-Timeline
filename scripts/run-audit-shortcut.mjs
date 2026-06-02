@@ -29,7 +29,7 @@ const MODES = {
 
 const modeKey = (process.argv[2] || '').toLowerCase();
 const mode = MODES[modeKey];
-const shouldRecord = !process.argv.includes('--no-record');
+const shouldRecord = process.argv.includes('--record');
 
 if (!mode) {
   console.error('[audit] Unknown audit shortcut. Use: daily, friday, or deep.');
@@ -243,14 +243,12 @@ function buildReportLines({
   }
   lines.push('');
 
-  lines.push('## Changed-Code Audit');
+  lines.push('## Changed-Code Scope');
   if (changedFiles.length === 0) {
-    lines.push('- No changed files against baseline; no new changed-code findings to report.');
+    lines.push('- No changed files against baseline.');
   } else {
-    lines.push('- No release-blocking correctness defects were detected in the changed files during this audit pass.');
-    if (changedFiles.includes('src/services/WritingSessionService.ts')) {
-      lines.push('- Writing session accounting changed materially; stats now credit `sessionDate` separately from save time and auto-pause at local midnight.');
-    }
+    lines.push(`- ${changedFiles.length} changed file(s) across: ${areas.length > 0 ? areas.join(', ') : 'none'}.`);
+    lines.push('- Scope only. This audit does not perform automated changed-code defect analysis; see Validation Gates above for pass/fail.');
   }
   lines.push('');
 
@@ -384,5 +382,5 @@ if (shouldRecord) {
   });
   console.log('[audit] Recorded audit report and pushed backup.');
 } else {
-  console.log('[audit] Skipped automatic backup recording (--no-record).');
+  console.log('[audit] Not recording (pass --record to record the report and push a backup).');
 }
