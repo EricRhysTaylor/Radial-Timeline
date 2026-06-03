@@ -1397,6 +1397,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateWordCountsToggle?.setValue(this.updateWordCounts);
         this.syncExportTypePills();
 
+        const requestedOpenScenes = this.subplot === OPEN_SCENES_FILTER;
         const subplotOptions = Array.from(this.subplotDropdown?.selectEl.options || []);
         const subplotExists = subplotOptions.some(option => option.value === this.subplot);
         if (!subplotExists) {
@@ -1408,7 +1409,8 @@ export class ManuscriptOptionsModal extends Modal {
         await this.loadScenesForOrder();
         // loadScenesForOrder resets range to the full book; restore the
         // template's saved range (if any), clamped to the current scene count.
-        if (typeof template.rangeStart === 'number' && typeof template.rangeEnd === 'number' && this.totalScenes > 0) {
+        const restoreSavedRange = !requestedOpenScenes;
+        if (restoreSavedRange && typeof template.rangeStart === 'number' && typeof template.rangeEnd === 'number' && this.totalScenes > 0) {
             const total = Math.max(1, this.totalScenes);
             const savedStart = Math.max(1, Math.min(Math.floor(template.rangeStart), total));
             const savedEnd = Math.max(savedStart, Math.min(Math.floor(template.rangeEnd), total));
@@ -1450,6 +1452,7 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private buildCurrentSnapshot(): ExportProfile {
+        const persistRange = !this.isOpenScenesMode();
         const transient = buildTransientModalExportProfile({
             id: '__last_used_snapshot__',
             name: 'Last used',
@@ -1471,8 +1474,8 @@ export class ManuscriptOptionsModal extends Modal {
             splitParts: this.splitParts,
             selectedLayoutId: this.selectedLayoutId,
             templateProfiles: this.templateProfiles,
-            rangeStart: this.rangeStart,
-            rangeEnd: this.rangeEnd,
+            rangeStart: persistRange ? this.rangeStart : undefined,
+            rangeEnd: persistRange ? this.rangeEnd : undefined,
         });
         return buildPersistedExportProfileFromModalExportProfile(transient);
     }
