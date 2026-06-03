@@ -6,7 +6,7 @@
  * Helpers cover the load-bearing logic: validation rules, slug uniqueness,
  * archetype cloning, and header preset → per-corner field mapping.
  */
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
     applyHeaderPreset,
     cloneArchetypeSpec,
@@ -70,6 +70,19 @@ describe('generateUniqueDesignedSlug', () => {
 });
 
 describe('validateDesignedStyleSpec', () => {
+    // Font-install diagnostics shell out to the host font list, which is
+    // non-deterministic across machines (CI Linux runners lack Arial). Pin a
+    // catalog so the "no warnings" assertion is host-independent. The
+    // latin-modern case below is bundled-path based and unaffected by this.
+    const priorFontCatalog = process.env.RT_FONT_CATALOG;
+    beforeAll(() => {
+        process.env.RT_FONT_CATALOG = 'Arial,Times New Roman,Georgia,Garamond,EB Garamond';
+    });
+    afterAll(() => {
+        if (priorFontCatalog === undefined) delete process.env.RT_FONT_CATALOG;
+        else process.env.RT_FONT_CATALOG = priorFontCatalog;
+    });
+
     it('accepts a valid base spec with no errors and no warnings', () => {
         const spec = freshSubmissionSpec();
         const result = validateDesignedStyleSpec(spec, 'My Style');

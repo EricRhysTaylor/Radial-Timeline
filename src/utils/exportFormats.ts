@@ -474,6 +474,17 @@ function loadFontCatalogFromFcList(): string[] | null {
 }
 
 function loadSystemFontCatalog(): string[] | null {
+    // Test/CI seam: RT_FONT_CATALOG forces a deterministic catalog (comma-
+    // separated font names) so font diagnostics do not depend on which fonts
+    // the host machine happens to have installed (e.g. Arial is absent on
+    // Linux CI runners). Checked before the cache so it is never poisoned by a
+    // prior real fc-list read, and not cached itself so different callers can
+    // vary it. Unset → normal system detection.
+    const override = process.env.RT_FONT_CATALOG;
+    if (override !== undefined) {
+        return override.split(',').map(name => name.trim()).filter(Boolean);
+    }
+
     if (systemFontCatalogLoaded) return systemFontCatalogCache;
     systemFontCatalogLoaded = true;
 
