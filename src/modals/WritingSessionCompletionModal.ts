@@ -108,7 +108,12 @@ export class WritingSessionCompletionModal extends Modal {
         let wordsAdded: number | undefined = hasTypedWords ? typedWords : undefined;
         let scenesCompleted: number | undefined;
         let note = '';
-        const selectedScenePaths = new Set(this.sceneSuggestions.map(suggestion => suggestion.path));
+        // Default-OFF: user opts in to scenes they actually worked on. The
+        // suggestion list (currently-active file, open files, working scenes,
+        // recently-modified files) is informational — pre-selecting all of
+        // them is a trap because the active file is often unrelated to the
+        // session work, and "selecting" implies opt-in, not opt-out.
+        const selectedScenePaths = new Set<string>();
 
         const wireNumber = (
             setting: Setting,
@@ -174,14 +179,18 @@ export class WritingSessionCompletionModal extends Modal {
 
         if (this.sceneSuggestions.length > 0) {
             const sceneSection = form.createDiv({ cls: 'ert-writing-session-scenes' });
-            sceneSection.createDiv({ cls: 'ert-writing-session-scenes__title', text: 'Touched scenes' });
+            sceneSection.createDiv({ cls: 'ert-writing-session-scenes__title', text: 'Select scenes you worked on' });
+            sceneSection.createDiv({
+                cls: 'ert-writing-session-scenes__hint',
+                text: 'Suggestions from your open files, working scenes, and recent edits. None are checked by default — pick only the ones you actually wrote on.',
+            });
             const sceneList = sceneSection.createDiv({ cls: 'ert-writing-session-scenes__list' });
             this.sceneSuggestions.forEach(suggestion => {
                 new Setting(sceneList)
                     .setName(suggestion.title || suggestion.path)
                     .setDesc(this.formatSceneSuggestionDetail(suggestion))
                     .addToggle(toggle => {
-                        toggle.setValue(true);
+                        toggle.setValue(false);
                         toggle.onChange(value => {
                             if (value) selectedScenePaths.add(suggestion.path);
                             else selectedScenePaths.delete(suggestion.path);
