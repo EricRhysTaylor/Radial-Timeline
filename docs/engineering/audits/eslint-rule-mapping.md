@@ -109,3 +109,69 @@ These have no current equivalent — pure upside:
 
 Deletion happens **only** after step 3 has run ESLint report-only and the
 REPLACE rows are confirmed to fire on the same violations ours catch.
+
+---
+
+## Step 3 report-only run — actual output (2026-06-02)
+
+First real run via `npm run lint:obsidian:report` (ESLint 9 + typescript-eslint 8
++ eslint-plugin-obsidianmd 0.3.0, flat config, scoped to `src/**/*.ts`,
+non-test). **3,032 problems total.** Breakdown and where it contradicts the
+assumptions above:
+
+### Headline correction: the `recommended` preset is mostly NOT Obsidian rules
+
+- **2,211 of 3,032 (73%)** come from `@typescript-eslint/*` **type-checked**
+  rules bundled by the preset — generic TS strictness (`no-unsafe-*`,
+  `no-unused-vars` 388, `no-explicit-any` 286, `no-unnecessary-type-assertion`
+  339, `no-deprecated` 76, `no-floating-promises` 64, …). These are unrelated to
+  Obsidian guidance.
+- **749** come from actual `obsidianmd/*` rules.
+- **72** from other bundled plugins (security/correctness).
+- **Implication for step 4:** do NOT promote the whole preset to blocking.
+  Scope promotion to `obsidianmd/*` first; treat the typescript-eslint
+  type-checked suite as a separate, much larger decision (likely its own
+  ratcheted baseline, not a wholesale flip).
+
+### `obsidianmd/*` findings (749)
+
+| Rule | Count | Mapping impact |
+|---|---:|---|
+| `prefer-active-doc` | 385 | **GAIN confirmed** — large, previously unchecked. |
+| `no-static-styles-assignment` | 160 | **REPLACE confirmed** — inline-style rule is live and fires more than our regex. |
+| `ui/sentence-case` | 127 | **GAIN confirmed.** |
+| `prefer-window-timers` | 24 | **REPLACE confirmed** (timers). |
+| `no-global-this` | 12 | GAIN. |
+| `rule-custom-message` | 12 | meta — ignore. |
+| `no-unsupported-api` | 9 | GAIN (partial overlap w/ review-readiness). |
+| `prefer-instanceof` | 8 | GAIN. |
+| `hardcoded-config-path` / `no-tfile-tfolder-cast` | 3 / 3 | GAIN. |
+| `settings-tab/no-manual-html-headings` | 2 | GAIN. |
+| `prefer-file-manager-trash-file` | 2 | GAIN. |
+| `commands/no-plugin-id-in-command-id` / `object-assign` | 1 / 1 | GAIN. |
+
+### Corrections to earlier assumptions
+
+- **innerHTML is NOT uncovered.** The preset bundles `@microsoft/sdl/no-inner-html`
+  (6) and `no-unsanitized/property` (8). The "KEEP — no official innerHTML rule"
+  rows are **partially wrong**: there is bundled coverage (not an `obsidianmd/`
+  rule). Keep our checks for now, but revisit during promotion.
+- **REPLACE rows with 0 findings = UNCONFIRMED, not validated:** `detach-leaves`
+  (0), `no-view-references-in-plugin` (0), `no-nodejs-modules` (0),
+  `no-plugin-as-component` (0). Either we have no current violations or the rule
+  didn't fire — we cannot claim supersession without a shared violation. Do not
+  delete these custom checks on the strength of this run.
+- **Manifest/license rules untested here:** the lane is scoped to `src/`, so
+  `validate-manifest` / `validate-license` cannot fire on `manifest.json`. The
+  `validate-manifest` REPLACE row is **out of scope for this run**; test
+  separately before retiring the compliance-check manifest rules.
+- **`no-explicit-any` = 286** via typescript-eslint (not obsidianmd). Our custom
+  `: any` check uses a `// SAFE:` allowlist; ESLint counts all. Confirms AST
+  catches far more, but promoting this to error is a large standalone effort.
+
+### Net for step 4
+
+Promote `obsidianmd/*` selectively (start with the high-signal REPLACE-confirmed
+rules: `no-static-styles-assignment`, `prefer-window-timers`). Keep everything
+marked UNCONFIRMED/out-of-scope. The typescript-eslint type-checked suite is a
+separate track. No custom checks deleted in step 3.

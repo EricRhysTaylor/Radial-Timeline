@@ -74,6 +74,12 @@ const steps = [
         command: 'npm run review:obsidian',
     },
     {
+        id: 'lint-obsidian',
+        label: 'Obsidian lint (report-only)',
+        command: 'node scripts/lint-obsidian-report.mjs --quiet',
+        report: summarizeObsidianLint,
+    },
+    {
         id: 'css-drift',
         label: 'CSS drift',
         command: 'npm run css-drift -- --maintenance',
@@ -102,7 +108,7 @@ const steps = [
 // `'all'` runs every step (default for `npm run gates` / `npm run backup`).
 const PROFILES = {
     quick: ['css-duplicates-pre', 'build', 'quality', 'tests'],
-    daily: ['css-duplicates-pre', 'build', 'quality', 'obsidian-review', 'tests'],
+    daily: ['css-duplicates-pre', 'build', 'quality', 'obsidian-review', 'lint-obsidian', 'tests'],
     release: 'all',
     deep: 'all',
 };
@@ -171,6 +177,19 @@ async function readJson(filePath) {
     } catch {
         return null;
     }
+}
+
+async function summarizeObsidianLint() {
+    const report = await readJson('.gate-logs/eslint-obsidian.json');
+    if (!report || !report.total) return [];
+    const obs = Object.entries(report.byRule || {}).filter(([rule]) => rule.startsWith('obsidianmd/'));
+    const obsTotal = obs.reduce((sum, [, count]) => sum + count, 0);
+    const top = obs
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([rule, count]) => `${rule.replace('obsidianmd/', '')}(${count})`)
+        .join(', ');
+    return [`Obsidian lint (report-only): ${report.total} problems total, ${obsTotal} from obsidianmd rules — top: ${top || 'none'}. See .gate-logs/eslint-obsidian.json.`];
 }
 
 async function summarizeModelDrift() {
