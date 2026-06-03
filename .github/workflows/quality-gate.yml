@@ -29,6 +29,12 @@ jobs:
       - name: TypeScript no-emit
         run: npx tsc --noEmit
 
+      # build-only reads (but does not generate) styles.css; the full build
+      # bundles it first. On a fresh CI checkout the artifact is absent, so
+      # generate it here without changing build-only's local semantics.
+      - name: Bundle CSS (generate styles.css)
+        run: node scripts/bundle-css.mjs
+
       - name: Production build (no backup/vault copy)
         run: npm run build-only
 
