@@ -962,40 +962,6 @@ export class RadialTimelineView extends ItemView {
             : this.getDefaultSessionGoalWords();
     }
 
-    private formatDailySessionProgress(): string {
-        const dailyProgress = this.plugin.getWritingSessionService().getDailySessionProgress();
-        const parts: string[] = [];
-        const usesTime = dailyProgress.targetMode === 'time' || dailyProgress.targetMode === 'both';
-        const usesWords = dailyProgress.targetMode === 'words' || dailyProgress.targetMode === 'both';
-        if (usesTime || dailyProgress.minutesLogged > 0) {
-            if (!dailyProgress.dailyTargetMinutes) {
-                if (dailyProgress.minutesLogged > 0) parts.push(`${dailyProgress.minutesLogged}m logged`);
-            } else if (dailyProgress.sessionsCompleted > 0 || dailyProgress.minutesLogged > 0) {
-                if (dailyProgress.remainingMinutes && dailyProgress.remainingMinutes > 0) {
-                    parts.push(`${dailyProgress.minutesLogged}m logged · ${dailyProgress.remainingMinutes}m left`);
-                } else if (dailyProgress.overGoalMinutes > 0) {
-                    parts.push(`${dailyProgress.minutesLogged}m logged · ${dailyProgress.overGoalMinutes}m over`);
-                } else {
-                    parts.push(`${dailyProgress.minutesLogged}m logged · time met`);
-                }
-            }
-        }
-        if (usesWords || dailyProgress.wordsLogged > 0) {
-            if (!dailyProgress.dailyTargetWords) {
-                if (dailyProgress.wordsLogged > 0) parts.push(`${dailyProgress.wordsLogged}w logged`);
-            } else if (dailyProgress.sessionsCompleted > 0 || dailyProgress.wordsLogged > 0) {
-                if (dailyProgress.remainingWords && dailyProgress.remainingWords > 0) {
-                    parts.push(`${dailyProgress.wordsLogged}w logged · ${dailyProgress.remainingWords}w left`);
-                } else if (dailyProgress.overGoalWords > 0) {
-                    parts.push(`${dailyProgress.wordsLogged}w logged · ${dailyProgress.overGoalWords}w over`);
-                } else {
-                    parts.push(`${dailyProgress.wordsLogged}w logged · words met`);
-                }
-            }
-        }
-        return parts.join(' · ');
-    }
-
     private createSessionButton(parent: HTMLElement, label: string, className: string, onClick: () => void | Promise<void>): HTMLButtonElement {
         const button = parent.createEl('button', { cls: className, text: label });
         button.type = 'button';
@@ -1135,10 +1101,10 @@ export class RadialTimelineView extends ItemView {
             cls: 'ert-timeline-session-panel__idle-meta',
             text: this.formatIdleWritingSessionMeta(sessionGoalMinutes, sessionGoalWords, defaultTargetMode, defaultMode, defaultStage),
         });
-        const dailyMetaText = this.formatDailySessionProgress();
-        if (dailyMetaText) {
-            introText.createDiv({ cls: 'ert-timeline-session-panel__daily-meta', text: dailyMetaText });
-        }
+        // Intentionally NO daily-progress strip ("140m logged · 100m over · 0w
+        // logged · 400w left"). The session log below shows today's actual
+        // sessions; that's where running totals belong. The intro card answers
+        // one question only: "what will this session do?"
 
         const form = panel.createDiv({ cls: 'ert-timeline-session-panel__form' });
         const sessionSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });

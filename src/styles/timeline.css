@@ -1333,11 +1333,6 @@
   font-size: var(--font-ui-smaller);
 }
 
-.ert-timeline-session-panel__daily-meta {
-  color: var(--text-faint);
-  font-size: var(--font-ui-smallest);
-}
-
 .ert-timeline-session-panel__row {
   display: flex;
   align-items: center;

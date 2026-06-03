@@ -252,9 +252,33 @@ export interface SessionLogWindow {
     days: number;
 }
 
-function dateKey(iso: string | undefined): string {
-    if (!iso) return '';
-    return iso.slice(0, 10);
+/**
+ * Effective attribution day for a record (YYYY-MM-DD). Prefers the author's
+ * `sessionDate` choice; falls back to the LOCAL day of `endedAt`. Never UTC
+ * day — a session saved at 6pm Pacific is "today" for the author even though
+ * UTC has rolled to tomorrow. All window / grouping logic must use this.
+ */
+function effectiveDayFor(record: WritingSessionRecord): string {
+    if (record.sessionDate && /^\d{4}-\d{2}-\d{2}$/.test(record.sessionDate)) {
+        return record.sessionDate;
+    }
+    const parsed = new Date(record.endedAt);
+    if (Number.isNaN(parsed.getTime())) return '';
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+/** Add `delta` calendar days to a YYYY-MM-DD string (local-day arithmetic). */
+function addDays(yyyymmdd: string, delta: number): string {
+    const [y, m, d] = yyyymmdd.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + delta);
+    const y2 = date.getFullYear();
+    const m2 = String(date.getMonth() + 1).padStart(2, '0');
+    const d2 = String(date.getDate()).padStart(2, '0');
+    return `${y2}-${m2}-${d2}`;
 }
 
 export function filterRecordsForWindow(
@@ -263,12 +287,10 @@ export function filterRecordsForWindow(
 ): WritingSessionRecord[] {
     const end = window.endDate;
     if (!end) return [];
-    const endMs = Date.parse(`${end}T23:59:59.999Z`);
-    const startMs = endMs - (Math.max(1, window.days) * 24 * 60 * 60 * 1000) + 1;
-    if (!Number.isFinite(endMs) || !Number.isFinite(startMs)) return [];
+    const start = addDays(end, -(Math.max(1, window.days) - 1));
     return records.filter(record => {
-        const ended = Date.parse(record.endedAt);
-        return Number.isFinite(ended) && ended >= startMs && ended <= endMs;
+        const day = effectiveDayFor(record);
+        return Boolean(day) && day >= start && day <= end;
     });
 }
 
@@ -299,7 +321,10 @@ export function buildCommunityDailyLog(params: {
     const filtered = filterRecordsForWindow(params.records, params.window);
     const byDay = new Map<string, WritingSessionRecord[]>();
     for (const record of filtered) {
-        const day = dateKey(record.endedAt);
+        // Group by the SAME effective day the window filter uses, so window
+        // membership and grouping never disagree (would otherwise produce
+        // empty days or orphaned records).
+        const day = effectiveDayFor(record);
         if (!day) continue;
         const bucket = byDay.get(day);
         if (bucket) bucket.push(record);
