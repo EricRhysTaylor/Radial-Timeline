@@ -771,7 +771,13 @@ export class ManuscriptOptionsModal extends Modal {
         this.createSectionHeading(this.exportCleanupCard, 'Export cleanup');
         this.exportCleanupCard.createDiv({
             cls: 'ert-sub-card-note',
-            text: 'Controls how draft-only elements are removed before final output.'
+            text: 'Controls how draft-only elements are removed before final output, including wikilinks, web links, comments, callouts, and block anchors.'
+        });
+
+        const linksRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        linksRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip links ([[Scene|alias]], [web link](url); keep label text)' });
+        this.cleanupLinksToggle = new ToggleComponent(linksRow).onChange((value) => {
+            this.setActiveCleanupOption('stripLinks', value);
         });
 
         const commentsRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
@@ -780,20 +786,14 @@ export class ManuscriptOptionsModal extends Modal {
             this.setActiveCleanupOption('stripComments', value);
         });
 
-        const linksRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        linksRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip links (keep label text)' });
-        this.cleanupLinksToggle = new ToggleComponent(linksRow).onChange((value) => {
-            this.setActiveCleanupOption('stripLinks', value);
-        });
-
         const calloutsRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        calloutsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip callouts' });
+        calloutsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip callouts (> [!note])' });
         this.cleanupCalloutsToggle = new ToggleComponent(calloutsRow).onChange((value) => {
             this.setActiveCleanupOption('stripCallouts', value);
         });
 
         const blockIdsRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        blockIdsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip block IDs (^id)' });
+        blockIdsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip block IDs / anchors (^scene-end)' });
         this.cleanupBlockIdsToggle = new ToggleComponent(blockIdsRow).onChange((value) => {
             this.setActiveCleanupOption('stripBlockIds', value);
         });

@@ -9550,31 +9550,36 @@
   padding: var(--ert-gap-xs) 0;
 }
 
-/* --- Note pills (flowing row) --- */
+/* --- Note pills (contained row list) --- */
 .ert-ui.ert-scope--settings .ert-audit-note-pills {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ert-gap-tight);
   align-items: stretch;
+  min-width: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   flex-wrap: wrap;
-  flex: 1 1 min(680px, 100%);
+  width: 100%;
   justify-content: flex-start;
   gap: var(--ert-gap-xs);
   padding: var(--ert-gap-xs) var(--ert-pad-cozy);
   border-radius: 8px;
   font-size: 12px;
+  line-height: 1.35;
   cursor: pointer;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
   transition: border-color 120ms ease, box-shadow 120ms ease;
-  max-width: min(100%, 760px);
-  min-width: min(100%, 360px);
-  overflow: visible;
+  box-sizing: border-box;
+  height: auto;
+  min-height: var(--input-height);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   text-align: left;
 }
 
@@ -9602,18 +9607,21 @@
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill--warning {
   border-color: color-mix(in srgb, var(--text-warning) 32%, var(--background-modifier-border));
-  align-items: center;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill-name {
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 600;
   color: var(--text-accent);
   white-space: normal;
   overflow-wrap: anywhere;
-  max-width: 100%;
+  max-width: min(100%, 34ch);
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill-reason {
+  flex: 1 1 24ch;
+  min-width: min(100%, 24ch);
   color: var(--text-muted);
   white-space: normal;
   overflow-wrap: anywhere;
