@@ -45,6 +45,13 @@ export interface PrivateSessionLogRow {
     id: string;
     endedAt: string;                 // minute precision
     startedAt: string;
+    /**
+     * Author's chosen attribution day (YYYY-MM-DD, local). When present, the
+     * day label in the UI should prefer this over `endedAt` so a session
+     * deliberately backdated via the completion modal renders on the day the
+     * author meant it to. Falls back to the day-portion of `endedAt`.
+     */
+    sessionDate?: string;
     durationMs: number;
     mode: WritingSessionMode;
     stage?: WritingSessionStage;
@@ -149,6 +156,7 @@ export function projectPrivate(record: WritingSessionRecord): PrivateSessionLogR
         id: record.id,
         endedAt: redactTime(record.endedAt, 'private'),
         startedAt: redactTime(record.startedAt, 'private'),
+        sessionDate: record.sessionDate,
         durationMs: Math.max(0, record.elapsedMs ?? 0),
         mode: record.mode,
         stage: record.stage,

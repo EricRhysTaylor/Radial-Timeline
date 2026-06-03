@@ -83,9 +83,25 @@ function daysBetween(a: Date, b: Date): number {
     return Math.round(ms / (24 * 60 * 60 * 1000));
 }
 
-function formatRelativeDateHeader(iso: string, reference: Date): string {
-    const parsed = new Date(iso);
-    if (Number.isNaN(parsed.getTime())) return '';
+/**
+ * Author's chosen day for the row, when present, else the local day of
+ * endedAt. Prefer this for ANY display that says "Today / Yesterday / Sat":
+ * if the author backdated the session via the completion modal,
+ * `sessionDate` is the truth. `endedAt` is just when the clock physically
+ * stopped, which can differ for late-night saves crossing the local day.
+ */
+function rowDayDate(row: PrivateSessionLogRow): Date | null {
+    if (row.sessionDate && /^\d{4}-\d{2}-\d{2}$/.test(row.sessionDate)) {
+        const [y, m, d] = row.sessionDate.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+    const parsed = new Date(row.endedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatRelativeDateHeader(row: PrivateSessionLogRow, reference: Date): string {
+    const parsed = rowDayDate(row);
+    if (!parsed) return '';
     const delta = daysBetween(reference, parsed);
     if (delta === 0) return 'Today';
     if (delta === 1) return 'Yesterday';
@@ -95,9 +111,9 @@ function formatRelativeDateHeader(iso: string, reference: Date): string {
     return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function formatCompactDate(iso: string, reference: Date): string {
-    const parsed = new Date(iso);
-    if (Number.isNaN(parsed.getTime())) return '';
+function formatCompactDate(row: PrivateSessionLogRow, reference: Date): string {
+    const parsed = rowDayDate(row);
+    if (!parsed) return '';
     const delta = daysBetween(reference, parsed);
     if (delta === 0) return 'Today';
     if (delta === 1) return 'Yesterday';
@@ -107,8 +123,21 @@ function formatCompactDate(iso: string, reference: Date): string {
     return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function dayKey(iso: string): string {
-    return iso.slice(0, 10);
+/**
+ * Stable per-day key for grouping. Uses sessionDate when present (so
+ * backdated sessions group with the author's chosen day), else the local
+ * day-portion of endedAt.
+ */
+function rowDayKey(row: PrivateSessionLogRow): string {
+    if (row.sessionDate && /^\d{4}-\d{2}-\d{2}$/.test(row.sessionDate)) {
+        return row.sessionDate;
+    }
+    const parsed = new Date(row.endedAt);
+    if (Number.isNaN(parsed.getTime())) return '';
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 function appendSceneChip(parent: HTMLElement, path: string, options: SessionLogListOptions, kind: 'touched' | 'completed'): void {
@@ -181,7 +210,7 @@ function renderCompactRow(parent: HTMLElement, row: PrivateSessionLogRow, option
     li.setAttribute('data-mode', row.mode);
     if (row.stage) li.setAttribute('data-stage', row.stage);
 
-    li.createSpan({ cls: 'ert-session-log-row__date', text: formatCompactDate(row.endedAt, reference) });
+    li.createSpan({ cls: 'ert-session-log-row__date', text: formatCompactDate(row, reference) });
     li.createSpan({ cls: 'ert-session-log-row__duration', text: formatDurationMs(row.durationMs) });
     const modeDot = li.createSpan({ cls: `ert-session-log-row__mode-dot ert-session-log-row__mode-dot--${row.mode}` });
     modeDot.setAttribute('aria-label', MODE_LABEL[row.mode]);
@@ -254,13 +283,13 @@ export function renderSessionLogList(
     let currentKey = '';
     let currentGroup: HTMLElement | null = null;
     for (const row of rows) {
-        const key = dayKey(row.endedAt);
+        const key = rowDayKey(row);
         if (key !== currentKey || !currentGroup) {
             currentKey = key;
             const group = container.createDiv({ cls: 'ert-session-log-group' });
             group.createDiv({
                 cls: 'ert-session-log-group__header',
-                text: formatRelativeDateHeader(row.endedAt, reference),
+                text: formatRelativeDateHeader(row, reference),
             });
             currentGroup = group.createDiv({ cls: 'ert-session-log-group__rows' });
         }
