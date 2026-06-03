@@ -1,0 +1,14 @@
+{
+  "rules": [
+    "obsidianmd/no-static-styles-assignment",
+    "obsidianmd/prefer-window-timers"
+  ],
+  "total": 184,
+  "byRule": {
+    "obsidianmd/no-static-styles-assignment": 160,
+    "obsidianmd/prefer-window-timers": 24
+  },
+  "updatedAt": "2026-06-03T00:10:58.180Z",
+  "mode": "ratchet",
+  "note": "Fails when selected eslint-plugin-obsidianmd rule counts increase."
+}

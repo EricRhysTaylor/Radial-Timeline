@@ -4,9 +4,11 @@ Decision artifact for the gate-tooling overhaul. Built **before** any deletion s
 project doctrine is not mistaken for generic Obsidian guidance that
 `eslint-plugin-obsidianmd` now owns.
 
-Status: **planning / report-only**. No checks removed yet. Nothing is deleted
-until step 3 (ESLint adopted as a real gate) has run report-only long enough to
-know the blast radius.
+Status: **step 4 / selective ratchet enforcement**. The full Obsidian preset is
+still report-only. Two confirmed replacement rules are now enforced through a
+committed baseline in `scripts/eslint-obsidian-enforced-baseline.json`:
+`obsidianmd/no-static-styles-assignment` and `obsidianmd/prefer-window-timers`.
+No custom checks have been deleted yet.
 
 ## Preconditions discovered
 
@@ -33,9 +35,9 @@ know the blast radius.
 
 | Custom check (line) | Official rule | Verdict | Notes |
 |---|---|---|---|
-| `innerHTML` / `outerHTML` assignment (16–17) | *(none — plugin has no innerHTML rule)* | **KEEP** | Security/XSS. Dedupe with compliance-check's `innerHTML`/`outerHTML` (same intent, two scripts). |
-| inline `style=` / `.style.prop=` (18–21) | `no-static-styles-assignment` | **REPLACE** | Direct match. |
-| `document.createElement(...).style=` (21) | `no-static-styles-assignment` | **REPLACE** | Same rule. |
+| `innerHTML` / `outerHTML` assignment (16–17) | bundled `@microsoft/sdl/no-inner-html`, `no-unsanitized/property` | **KEEP for now** | Security/XSS. Bundled coverage exists, but not yet promoted; dedupe with compliance-check later. |
+| inline `style=` / `.style.prop=` (18–21) | `no-static-styles-assignment` | **REPLACE confirmed / ratcheted** | Direct match. Promoted in step 4 via selected-rule baseline; do not delete custom check until the ratchet proves stable. |
+| `document.createElement(...).style=` (21) | `no-static-styles-assignment` | **REPLACE confirmed / ratcheted** | Same rule. |
 | `getLeaf().openFile()` (22) | *(none exact)* | **KEEP** | Our workspace.openLinkText preference; not generic. |
 | `: any` type (48) | `@typescript-eslint/no-explicit-any` | **CORE** | Type-checked rule catches `as any`, `any[]`, generics our regex misses. |
 | CSS class must be `ert-`/`is-`/`has-` prefixed (72–125) | *(none)* | **KEEP** | **ERT design-system doctrine. Do not delete.** |
@@ -50,7 +52,7 @@ know the blast radius.
 | `new-function` | core `no-new-func` | **CORE** | |
 | `node-core-import`, `node-core-require` | `no-nodejs-modules` | **REPLACE** | |
 | `console-log` | core `no-console` | **CORE** | |
-| `nodejs-timeout-type`, `bare-timeout-call` | `prefer-window-timers` | **REPLACE** | Auto-fixable upstream. |
+| `nodejs-timeout-type`, `bare-timeout-call` | `prefer-window-timers` | **REPLACE confirmed / ratcheted** | Auto-fixable upstream. Promoted in step 4 via selected-rule baseline. |
 | `var-declaration` | core `no-var` | **CORE** | |
 | `platform-import-check` | `platform` | **REPLACE** | |
 | `detach-leaves-in-onunload` | `detach-leaves` | **REPLACE** | Direct match, **auto-fixable** upstream. |
@@ -175,3 +177,33 @@ Promote `obsidianmd/*` selectively (start with the high-signal REPLACE-confirmed
 rules: `no-static-styles-assignment`, `prefer-window-timers`). Keep everything
 marked UNCONFIRMED/out-of-scope. The typescript-eslint type-checked suite is a
 separate track. No custom checks deleted in step 3.
+
+---
+
+## Step 4 selective promotion (2026-06-02)
+
+Step 4 promoted only the two confirmed, high-signal replacement rules:
+
+| Rule | Baseline | Enforcement |
+|---|---:|---|
+| `obsidianmd/no-static-styles-assignment` | 160 | Blocking ratchet: fails on increase. |
+| `obsidianmd/prefer-window-timers` | 24 | Blocking ratchet: fails on increase. |
+
+Implementation:
+
+- `eslint.config.mjs` remains the **full recommended preset report-only** lane.
+- `eslint.obsidian.enforced.config.mjs` contains only the selected enforced rule subset.
+- `scripts/lint-obsidian-enforced.mjs` compares current selected-rule counts to
+  `scripts/eslint-obsidian-enforced-baseline.json` and fails only when counts increase.
+- `npm run lint:obsidian` now runs the ratcheted selected-rule gate.
+- `npm run lint:obsidian:report` still runs the full preset and always exits 0.
+- `run-gates.mjs` now includes both lanes: the blocking selected-rule baseline,
+  then the full report-only summary.
+
+Retirement decision:
+
+- **No custom regex checks removed in step 4.** The selected ESLint gate is now
+  real, but because it is ratcheted against existing findings, removing custom
+  checks should wait until normal daily/release runs prove the ratchet is stable.
+- The next safe retirement target is the duplicate inline-style/timer regex
+  coverage, not project doctrine checks.

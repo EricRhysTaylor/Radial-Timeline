@@ -74,6 +74,11 @@ const steps = [
         command: 'npm run review:obsidian',
     },
     {
+        id: 'lint-obsidian-enforced',
+        label: 'Obsidian lint baseline',
+        command: 'npm run lint:obsidian -- --quiet',
+    },
+    {
         id: 'lint-obsidian',
         label: 'Obsidian lint (report-only)',
         command: 'node scripts/lint-obsidian-report.mjs --quiet',
@@ -108,7 +113,7 @@ const steps = [
 // `'all'` runs every step (default for `npm run gates` / `npm run backup`).
 const PROFILES = {
     quick: ['css-duplicates-pre', 'build', 'quality', 'tests'],
-    daily: ['css-duplicates-pre', 'build', 'quality', 'obsidian-review', 'lint-obsidian', 'tests'],
+    daily: ['css-duplicates-pre', 'build', 'quality', 'obsidian-review', 'lint-obsidian-enforced', 'lint-obsidian', 'tests'],
     release: 'all',
     deep: 'all',
 };
