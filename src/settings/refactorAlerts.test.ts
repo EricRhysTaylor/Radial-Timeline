@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from './defaults';
-import { getActiveRefactorAlerts } from './refactorAlerts';
+import {
+    getActiveRefactorAlerts,
+    getAllNotificationsForHistory,
+    getAllRefactorAlertIds,
+} from './refactorAlerts';
 
 describe('settings notification center log-folder alert', () => {
     it('shows the log folder structure notification as the lowest-priority info alert', () => {
@@ -50,5 +54,46 @@ describe('settings notification center log-folder alert', () => {
         expect(alert?.description).toContain('inner ring');
         // Newest notification sorts last in the active list.
         expect(ids.at(-1)).toBe('inquiry-pro-button-design-v1');
+    });
+});
+
+describe('fresh-install alert baseline', () => {
+    it('suppresses every pre-install alert from the active list', () => {
+        const baseline = getAllRefactorAlertIds();
+        const active = getActiveRefactorAlerts({
+            ...DEFAULT_SETTINGS,
+            dismissedAlerts: [],
+            installAlertBaseline: baseline,
+        });
+        expect(active).toEqual([]);
+    });
+
+    it('keeps pre-install alerts out of the processed-notifications history too', () => {
+        const baseline = getAllRefactorAlertIds();
+        const history = getAllNotificationsForHistory({
+            ...DEFAULT_SETTINGS,
+            dismissedAlerts: [],
+            installAlertBaseline: baseline,
+        });
+        expect(history).toEqual([]);
+    });
+
+    it('still surfaces a new alert introduced after install (id not in baseline)', () => {
+        // Simulate a vault installed before the newest alert existed: the
+        // baseline holds every id except the most recent one.
+        const allIds = getAllRefactorAlertIds();
+        const newestId = allIds.at(-1)!;
+        const partialBaseline = allIds.filter(id => id !== newestId);
+        const active = getActiveRefactorAlerts({
+            ...DEFAULT_SETTINGS,
+            dismissedAlerts: [],
+            installAlertBaseline: partialBaseline,
+        });
+        expect(active.map(a => a.id)).toContain(newestId);
+    });
+
+    it('leaves existing users (no baseline) unaffected', () => {
+        const active = getActiveRefactorAlerts({ ...DEFAULT_SETTINGS, dismissedAlerts: [] });
+        expect(active.length).toBeGreaterThan(0);
     });
 });

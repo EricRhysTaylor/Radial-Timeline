@@ -29,6 +29,8 @@ import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
 import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
+import { getAllRefactorAlertIds } from './settings/refactorAlerts';
+import releaseNotesBundle from './data/releaseNotesBundle.json';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
 import { SceneHighlighter } from './services/SceneHighlighter';
@@ -665,7 +667,11 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async loadSettings() {
-        const loadedSettings = (await this.loadData()) ?? {};
+        const rawLoaded = await this.loadData();
+        // A brand-new vault has no data.json yet (loadData → null/empty). Used
+        // below to suppress the backlog of upgrade alerts for fresh installs.
+        const isFreshInstall = rawLoaded == null || Object.keys(rawLoaded as object).length === 0;
+        const loadedSettings = rawLoaded ?? {};
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
         await this.hydrateInquirySessionsFromVault();
         if (this.settings.publishStageColors?.House === '#DA7847') {
@@ -834,6 +840,23 @@ export default class RadialTimelinePlugin extends Plugin {
         if (this.settings.cachedReleaseNotes === undefined) {
             this.settings.cachedReleaseNotes = DEFAULT_SETTINGS.cachedReleaseNotes;
         }
+
+        // Fresh first-time install: the upgrade/migration alerts and the
+        // release-notes modal target existing users moving up from an earlier
+        // version — a brand-new vault has nothing to migrate. Snapshot the
+        // current alert IDs as a "pre-acknowledged at install" baseline and mark
+        // the latest release notes as already seen, so a new user starts clean.
+        // Future updates introduce alert IDs not in this baseline, so genuine
+        // upgrade notices still surface once this user becomes an upgrader.
+        let freshInstallSeeded = false;
+        if (isFreshInstall && this.settings.installAlertBaseline === undefined) {
+            this.settings.installAlertBaseline = getAllRefactorAlertIds();
+            const latestReleaseVersion = (releaseNotesBundle as { entries?: Array<{ version?: string }> }).entries?.[0]?.version;
+            if (typeof latestReleaseVersion === 'string') {
+                this.settings.lastSeenReleaseNotesVersion = latestReleaseVersion;
+            }
+            freshInstallSeeded = true;
+        }
         if (this.settings.authorProgress) {
             // Always auto-update export paths (no user toggle)
             this.settings.authorProgress.defaults.autoUpdateExportPath = true;
@@ -993,7 +1016,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || timelineScopeMigrated || planetarySelectionMigrated || modeMigrated) {
+        if (freshInstallSeeded || proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || timelineScopeMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }

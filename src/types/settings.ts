@@ -1020,6 +1020,14 @@ export interface RadialTimelineSettings {
     // Refactor Alerts System
     dismissedAlerts?: string[];
 
+    // Snapshot of refactor-alert IDs that existed when the plugin was first
+    // installed into this vault. Set once, on a brand-new install, so the
+    // backlog of upgrade/migration notices never shows to a fresh user (they
+    // have nothing to migrate). `undefined` for existing users — they keep
+    // seeing alerts as normal. Future updates add IDs not in this baseline, so
+    // genuine upgrade alerts still surface once this user becomes an upgrader.
+    installAlertBaseline?: string[];
+
     // Bundled .tex template auto-hotfix history. Each entry records an
     // (layoutId, hotfixId) pair that ran during plugin load. The synthetic
     // The template and matter update refactor alert reads from this list — it appears

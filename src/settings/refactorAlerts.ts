@@ -128,6 +128,15 @@ export function getAllFieldMigrations(): FieldMigration[] {
 }
 
 /**
+ * IDs of every statically-defined refactor alert. Snapshotted on a fresh
+ * install (see `settings.installAlertBaseline`) so the existing upgrade backlog
+ * is treated as pre-acknowledged for brand-new vaults.
+ */
+export function getAllRefactorAlertIds(): string[] {
+    return REFACTOR_ALERTS.map(a => a.id);
+}
+
+/**
  * Check if a specific alert has any pending migrations in the user's template
  */
 function alertHasPendingMigrations(alert: RefactorAlert, template: string): boolean {
@@ -238,10 +247,14 @@ export function getTemplateHotfixAlert(settings: RadialTimelineSettings): Refact
  */
 export function getActiveRefactorAlerts(settings: RadialTimelineSettings): RefactorAlert[] {
     const dismissed = settings.dismissedAlerts ?? [];
+    const installBaseline = settings.installAlertBaseline ?? [];
     const remappings = getActiveFrontmatterMappings(settings) ?? {};
     const template = settings.sceneYamlTemplates?.advanced ?? '';
 
     const staticActive = REFACTOR_ALERTS.filter(alert => {
+        // Skip alerts that predate this vault's fresh install (nothing to migrate)
+        if (installBaseline.includes(alert.id)) return false;
+
         // Skip if already dismissed
         if (dismissed.includes(alert.id)) return false;
 
@@ -273,7 +286,10 @@ export function getActiveRefactorAlerts(settings: RadialTimelineSettings): Refac
  */
 export function getActiveMigrations(settings: RadialTimelineSettings): FieldMigration[] {
     const dismissed = settings.dismissedAlerts ?? [];
-    return getAllFieldMigrations().filter(m => !dismissed.includes(m.alertId));
+    const installBaseline = settings.installAlertBaseline ?? [];
+    return getAllFieldMigrations().filter(
+        m => !dismissed.includes(m.alertId) && !installBaseline.includes(m.alertId)
+    );
 }
 
 /**
@@ -289,11 +305,16 @@ export function hasActiveAlerts(settings: RadialTimelineSettings): boolean {
  */
 export function getAllNotificationsForHistory(settings: RadialTimelineSettings): RefactorAlert[] {
     const dismissed = settings.dismissedAlerts ?? [];
+    const installBaseline = settings.installAlertBaseline ?? [];
     const template = settings.sceneYamlTemplates?.advanced ?? '';
 
     // Filter alerts that have been dismissed OR have no pending migrations
     // (i.e., they've been processed or were non-migration notices)
     return REFACTOR_ALERTS.filter(alert => {
+        // Alerts that predate this vault's fresh install never appear anywhere,
+        // including the "notifications processed" history.
+        if (installBaseline.includes(alert.id)) return false;
+
         // For alerts with migrations, only show in history if dismissed or migrations complete
         if (alert.migrations?.length) {
             return dismissed.includes(alert.id) || !alertHasPendingMigrations(alert, template);
