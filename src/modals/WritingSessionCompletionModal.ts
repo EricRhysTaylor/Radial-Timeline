@@ -180,10 +180,6 @@ export class WritingSessionCompletionModal extends Modal {
         if (this.sceneSuggestions.length > 0) {
             const sceneSection = form.createDiv({ cls: 'ert-writing-session-scenes' });
             sceneSection.createDiv({ cls: 'ert-writing-session-scenes__title', text: 'Select scenes you worked on' });
-            sceneSection.createDiv({
-                cls: 'ert-writing-session-scenes__hint',
-                text: 'Suggestions from your open files, working scenes, and recent edits. None are checked by default — pick only the ones you actually wrote on.',
-            });
             const sceneList = sceneSection.createDiv({ cls: 'ert-writing-session-scenes__list' });
             this.sceneSuggestions.forEach(suggestion => {
                 new Setting(sceneList)
