@@ -3090,7 +3090,7 @@
 }
 
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row {
-  --ert-ai-strategy-select-width: 13ch;
+  --ert-ai-strategy-select-width: 14ch;
 }
 
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .setting-item-control :is(select, .dropdown).ert-ai-strategy-select {
