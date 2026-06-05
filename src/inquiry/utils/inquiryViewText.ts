@@ -360,7 +360,8 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
             lines.push(`- ${prefix}${action.text}`);
         });
     } else if (brief.findings.length) {
-        lines.push('', '## Pending Author Actions', 'No separate author actions — the findings above are observations to verify, not scene rewrites.');
+        lines.push('', '## Pending Author Actions',
+            brief.noPendingActionsText || 'No separate author actions were generated for this run.');
     }
 
     if (brief.rawResponse) {
