@@ -6,15 +6,8 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
             schema_version: { type: 'number' },
             summaryFlow: { type: 'string' },
             summaryDepth: { type: 'string' },
-            verdict: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                    flow: { type: 'number' },
-                    depth: { type: 'number' }
-                },
-                required: ['flow', 'depth']
-            },
+            verdictFlow: { type: 'number' },
+            verdictDepth: { type: 'number' },
             findings: {
                 type: 'array',
                 items: {
@@ -28,6 +21,7 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                         lens: { type: 'string' },
                         headline: { type: 'string' },
                         bullets: { type: 'array', items: { type: 'string' } },
+                        recommended_action: { type: 'string' },
                         subject: { type: 'string' },
                         span: { type: 'string' },
                         evidence_quote: { type: 'string' },
@@ -47,11 +41,11 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                         },
                         role: { type: 'string' }
                     },
-                    required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'subject', 'span', 'evidence_quote', 'supporting_refs', 'role']
+                    required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'recommended_action', 'subject', 'span', 'evidence_quote', 'supporting_refs', 'role']
                 }
             }
         },
-        required: ['schema_version', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
+        required: ['schema_version', 'summaryFlow', 'summaryDepth', 'verdictFlow', 'verdictDepth', 'findings']
     };
 }
 
@@ -70,15 +64,8 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                         question_id: { type: 'string' },
                         summaryFlow: { type: 'string' },
                         summaryDepth: { type: 'string' },
-                        verdict: {
-                            type: 'object',
-                            additionalProperties: false,
-                            properties: {
-                                flow: { type: 'number' },
-                                depth: { type: 'number' }
-                            },
-                            required: ['flow', 'depth']
-                        },
+                        verdictFlow: { type: 'number' },
+                        verdictDepth: { type: 'number' },
                         findings: {
                             type: 'array',
                             items: {
@@ -92,6 +79,7 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                                     lens: { type: 'string' },
                                     headline: { type: 'string' },
                                     bullets: { type: 'array', items: { type: 'string' } },
+                                    recommended_action: { type: 'string' },
                                     subject: { type: 'string' },
                                     span: { type: 'string' },
                                     evidence_quote: { type: 'string' },
@@ -111,11 +99,11 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                                     },
                                     role: { type: 'string' }
                                 },
-                                required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'subject', 'span', 'evidence_quote', 'supporting_refs', 'role']
+                                required: ['ref_id', 'ref_label', 'ref_path', 'kind', 'lens', 'headline', 'bullets', 'recommended_action', 'subject', 'span', 'evidence_quote', 'supporting_refs', 'role']
                             }
                         }
                     },
-                    required: ['question_id', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
+                    required: ['question_id', 'summaryFlow', 'summaryDepth', 'verdictFlow', 'verdictDepth', 'findings']
                 }
             }
         },

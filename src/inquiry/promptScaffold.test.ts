@@ -20,12 +20,16 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.schemaText.includes('"recommended_action"')).toBe(true);
         expect(parts.instructionText.includes('Answer the editorial question using the evidence.')).toBe(true);
         expect(parts.instructionText.includes('do not repeat or lightly rephrase the headline')).toBe(true);
-        // Regression guard: the response shape must NOT seed verdict with any
-        // numeric value — models echo it verbatim (observed with Opus 4.8 →
-        // Flow 0 / Depth 0). It must use a non-copyable shape hint instead.
-        expect(/"flow":\s*\d/.test(parts.schemaText)).toBe(false);
-        expect(/"depth":\s*\d/.test(parts.schemaText)).toBe(false);
-        expect(parts.schemaText.includes('"flow": <computed integer 0-100>')).toBe(true);
+        // Regression guard: verdict must be FLAT (verdictFlow/verdictDepth),
+        // never a nested object — Opus 4.8 leaks tool-call XML
+        // (<parameter name="flow">) into the nested shape, corrupting it to
+        // Flow 0 / Depth 0. And the score must be a non-copyable shape hint,
+        // not a numeric placeholder (which models echo verbatim).
+        expect(parts.schemaText.includes('"verdict":')).toBe(false);
+        expect(/"verdictFlow":\s*\d/.test(parts.schemaText)).toBe(false);
+        expect(/"verdictDepth":\s*\d/.test(parts.schemaText)).toBe(false);
+        expect(parts.schemaText.includes('"verdictFlow": <computed integer 0-100>')).toBe(true);
+        expect(parts.instructionText.includes('do not nest them inside a "verdict" object')).toBe(true);
         expect(parts.instructionText.includes('never emit the literal placeholder text')).toBe(true);
         expect(parts.userPrompt.includes('SELECTION MODE')).toBe(false);
         expect(parts.userPrompt.includes('TARGET SCENES:\n- scn_target_01')).toBe(true);

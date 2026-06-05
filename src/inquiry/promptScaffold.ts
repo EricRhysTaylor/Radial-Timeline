@@ -57,10 +57,8 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         `  "schema_version": ${INQUIRY_SCHEMA_VERSION},`,
         '  "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
         '  "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
-        '  "verdict": {',
-        '    "flow": <computed integer 0-100>,',
-        '    "depth": <computed integer 0-100>',
-        '  },',
+        '  "verdictFlow": <computed integer 0-100>,',
+        '  "verdictDepth": <computed integer 0-100>,',
         '  "findings": [',
         '    {',
         '      "ref_id": "scn_a1b2c3d4",',
@@ -87,7 +85,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '- Flow: momentum/causality/pressure progression across the evaluated corpus.',
         '- Depth: coherence/implication/structural integrity across the evaluated corpus.',
         'Scores reflect the corpus, not the quality of your answer.',
-        'verdict.flow and verdict.depth are REQUIRED integers (0-100) you MUST compute from the corpus — never return 0 unless the corpus genuinely scores at the floor.',
+        'verdictFlow and verdictDepth are REQUIRED top-level integer fields (0-100) you MUST compute from the corpus — never return 0 unless the corpus genuinely scores at the floor. Emit them as flat number fields, exactly like summaryFlow/summaryDepth; do not nest them inside a "verdict" object.',
         'Use the same evidence for both lenses; interpretation changes, not evidence.',
         'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
         'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
@@ -139,7 +137,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
                 'Avoid drifting into broad global critique when the target scenes already answer the task.'
             ]
             : []),
-        'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, and findings.',
+        'Return JSON only with summaryFlow, summaryDepth, verdictFlow, verdictDepth, and findings.',
         'Match the response shape below. It shows field names and types only — angle-bracket hints like <computed integer 0-100> mark values you must compute; never emit the literal placeholder text.'
     ].join('\n');
 

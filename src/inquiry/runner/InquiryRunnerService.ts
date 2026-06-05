@@ -113,6 +113,11 @@ type RawInquiryResponse = {
     summary?: string;
     summaryFlow?: string;
     summaryDepth?: string;
+    verdictFlow?: number;
+    verdictDepth?: number;
+    // Legacy nested shape, retained only for backward-compatible reads.
+    // Opus 4.8 corrupts this nested object by leaking tool-call XML
+    // (<parameter name="flow">...) into it, so the wire schema is now flat.
     verdict?: {
         flow?: number;
         depth?: number;
@@ -888,10 +893,8 @@ export class InquiryRunnerService implements InquiryRunner {
             '      "question_id": "setup-core",',
             '      "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
             '      "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
-            '      "verdict": {',
-            '        "flow": <computed integer 0-100>,',
-            '        "depth": <computed integer 0-100>',
-            '      },',
+            '      "verdictFlow": <computed integer 0-100>,',
+            '      "verdictDepth": <computed integer 0-100>,',
             '      "findings": [',
             '        {',
             '          "ref_id": "scn_a1b2c3d4",',
@@ -945,7 +948,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionText,
             '',
             'Answer every listed question using the same evidence and return one result per question.',
-            'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, and findings for every question.',
+            'Return JSON only with summaryFlow, summaryDepth, verdictFlow, verdictDepth, and findings for every question.',
             'Return JSON only using the exact schema below.',
             '',
             schema,
@@ -2071,9 +2074,12 @@ export class InquiryRunnerService implements InquiryRunner {
         evidenceDocumentMeta?: EvidenceDocumentMeta[],
         tokenUsage?: InquiryRunTrace['usage']
     ): InquiryResult {
-        const verdict = parsed.verdict || {};
-        const flow = this.normalizeScore(verdict.flow);
-        const depth = this.normalizeScore(verdict.depth);
+        // Flat verdictFlow/verdictDepth is the reliable shape; fall back to
+        // the legacy nested verdict object for older responses. The nested
+        // shape was dropped because Opus 4.8 leaks tool-call XML into it
+        // (verdict became a string, flow/depth → undefined → score 0).
+        const flow = this.normalizeScore(parsed.verdictFlow ?? parsed.verdict?.flow);
+        const depth = this.normalizeScore(parsed.verdictDepth ?? parsed.verdict?.depth);
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
