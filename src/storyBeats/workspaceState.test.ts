@@ -3,7 +3,7 @@ import { TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import type { RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { getBeatLibraryItems } from './libraryState';
-import { activateLoadedBeatTab, ensureBeatWorkspaceState, ensureMaterializedBeatWorkspaceState, getActiveLoadedBeatTab, getLoadedBeatTabs, getMaterializedBeatTabs, loadBeatTabFromLibraryItem, unloadBeatTab } from './workspaceState';
+import { activateLoadedBeatTab, autoAdoptDetectedBeatsIfEmpty, ensureBeatWorkspaceState, ensureMaterializedBeatWorkspaceState, getActiveLoadedBeatTab, getLoadedBeatTabs, getMaterializedBeatTabs, loadBeatTabFromLibraryItem, unloadBeatTab } from './workspaceState';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 function buildSettings(): RadialTimelineSettings {
@@ -75,6 +75,58 @@ describe('beat workspace initialization', () => {
         expect(loadedTabs[0].name).toBe('Classic Dramatic Structure');
         expect(getActiveLoadedBeatTab(settings)).toBeUndefined();
         expect(resolveSelectedBeatModelFromSettings(settings)).toBeUndefined();
+    });
+});
+
+describe('fresh-vault beat adoption', () => {
+    function beatNote(model: string, title: string, act: number): Record<string, unknown> {
+        return { ID: `${model}:${title}`, Class: 'Beat', 'Beat Model': model, Title: title, Act: act };
+    }
+
+    it('adopts manuscript beats into an empty workspace and activates the dominant system', () => {
+        const settings = buildSettings();
+        // Mirrors the Pride & Prejudice vault: two canon systems present, Save
+        // The Cat has more beat notes so it should win the active slot.
+        const app = buildBeatApp([
+            beatNote('Save The Cat', 'Opening Image', 1),
+            beatNote('Save The Cat', 'Catalyst', 1),
+            beatNote('Save The Cat', 'Midpoint', 2),
+            beatNote('Classic Dramatic Structure', 'Setup', 1),
+        ]);
+
+        const result = autoAdoptDetectedBeatsIfEmpty(app, settings);
+        const loadedTabs = getLoadedBeatTabs(settings);
+
+        expect(result.changed).toBe(true);
+        expect(result.activatedName).toBe('Save The Cat');
+        // Both detected canon systems are loaded as tabs...
+        expect(loadedTabs.map((tab) => tab.name).sort()).toEqual(['Classic Dramatic Structure', 'Save The Cat']);
+        // ...and the dominant one is active.
+        expect(getActiveLoadedBeatTab(settings)?.name).toBe('Save The Cat');
+    });
+
+    it('does nothing when the workspace already has loaded tabs', () => {
+        const settings = buildSettings();
+        const builtinItem = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Classic Dramatic Structure');
+        loadBeatTabFromLibraryItem(settings, builtinItem!);
+        const app = buildBeatApp([beatNote('Save The Cat', 'Opening Image', 1)]);
+
+        const result = autoAdoptDetectedBeatsIfEmpty(app, settings);
+
+        expect(result.changed).toBe(false);
+        // The manuscript's Save The Cat beats were NOT auto-loaded over the user's choice.
+        expect(getLoadedBeatTabs(settings).map((tab) => tab.name)).toEqual(['Classic Dramatic Structure']);
+        expect(getActiveLoadedBeatTab(settings)?.name).toBe('Classic Dramatic Structure');
+    });
+
+    it('does nothing when the manuscript has no beat notes', () => {
+        const settings = buildSettings();
+        const app = buildBeatApp([{ Class: 'Scene', Title: 'Just a scene' }]);
+
+        const result = autoAdoptDetectedBeatsIfEmpty(app, settings);
+
+        expect(result.changed).toBe(false);
+        expect(getLoadedBeatTabs(settings)).toHaveLength(0);
     });
 });
 

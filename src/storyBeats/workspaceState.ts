@@ -244,7 +244,14 @@ export function getLoadedBeatTabs(settings: RadialTimelineSettings): LoadedBeatT
         .map(cloneLoadedTab);
 }
 
-function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSettings): LoadedBeatTab[] {
+interface ManuscriptDetectedGroup {
+    modelName: string;
+    /** How many distinct beat notes for this model were found in the manuscript. */
+    foundCount: number;
+    tab: LoadedBeatTab;
+}
+
+function collectManuscriptDetectedGroups(app: App, settings: RadialTimelineSettings): ManuscriptDetectedGroup[] {
     const beatScope = resolveBookScopedFiles({ app, settings, noteType: 'Beat' });
     if (!beatScope.files.length) return [];
     const mappings = getActiveFrontmatterMappings(settings);
@@ -298,11 +305,12 @@ function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSetting
     }
 
     return [...manuscriptGroups.values()].map((group) => {
+        const foundCount = group.beats.size;
         const matchedLibraryItem = libraryItems.find((item) => toBeatModelMatchKey(item.name) === toBeatModelMatchKey(group.modelName));
         if (matchedLibraryItem) {
-            return createLoadedTabFromLibraryItem(matchedLibraryItem);
+            return { modelName: group.modelName, foundCount, tab: createLoadedTabFromLibraryItem(matchedLibraryItem) };
         }
-        return {
+        const tab: LoadedBeatTab = {
             tabId: buildDetectedBeatTabId(group.modelName),
             sourceKind: 'detected',
             sourceId: `detected:${toBeatModelMatchKey(group.modelName)}`,
@@ -315,7 +323,54 @@ function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSetting
             config: cloneBeatConfig(settings.beatSystemConfigs?.[group.modelName]),
             dirty: false,
         };
+        return { modelName: group.modelName, foundCount, tab };
     });
+}
+
+function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSettings): LoadedBeatTab[] {
+    return collectManuscriptDetectedGroups(app, settings).map((group) => group.tab);
+}
+
+/**
+ * Fresh-vault adoption. When the active book has NO loaded beat tabs yet but the
+ * manuscript already contains `Class: Beat` notes, load a tab for every detected
+ * system (canon-matched ones resolve straight to their library definition) and
+ * activate the dominant one — the system with the most beat notes actually
+ * present, tie-broken toward the richer canon set.
+ *
+ * Gated on an empty workspace so it only fires on first open and never fights a
+ * user's later manual tab choices. Returns the activated tab's id/name when it
+ * adopted so callers can surface a one-time notice and refresh the timeline.
+ */
+export function autoAdoptDetectedBeatsIfEmpty(
+    app: App,
+    settings: RadialTimelineSettings
+): { changed: boolean; activatedTabId?: string; activatedName?: string } {
+    const workspace = getWorkspace(settings);
+    if (workspace.loadedTabIds.length > 0) return { changed: false };
+
+    const groups = collectManuscriptDetectedGroups(app, settings);
+    if (groups.length === 0) return { changed: false };
+
+    const detectedTabs = groups.map((group) => group.tab);
+    const { workspace: merged, changed } = mergeDetectedTabsIntoWorkspace(settings, workspace, detectedTabs);
+    if (!changed) return { changed: false };
+
+    const dominant = groups.reduce((best, group) => {
+        if (group.foundCount !== best.foundCount) {
+            return group.foundCount > best.foundCount ? group : best;
+        }
+        return group.tab.beats.length > best.tab.beats.length ? group : best;
+    });
+    const dominantKey = toBeatModelMatchKey(dominant.modelName);
+    const dominantTabId = merged.loadedTabIds.find((tabId) => {
+        const tab = merged.tabsById[tabId];
+        return tab ? toBeatModelMatchKey(tab.name) === dominantKey : false;
+    });
+    if (!dominantTabId) return { changed: true };
+
+    const activated = activateLoadedBeatTab(settings, dominantTabId);
+    return { changed: true, activatedTabId: dominantTabId, activatedName: activated?.name };
 }
 
 export function getMaterializedBeatTabs(app: App, settings: RadialTimelineSettings): LoadedBeatTab[] {

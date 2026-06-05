@@ -30,6 +30,7 @@ import { cleanupTooltipAnchors } from './utils/tooltip';
 import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { getAllRefactorAlertIds } from './settings/refactorAlerts';
+import { autoAdoptDetectedBeatsIfEmpty } from './storyBeats/workspaceState';
 import releaseNotesBundle from './data/releaseNotesBundle.json';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -332,9 +333,28 @@ export default class RadialTimelinePlugin extends Plugin {
         this.settings.timelineScope = 'book';
         this.syncLegacySourcePathFromActiveBook();
         await this.saveSettings();
+        this.maybeAutoAdoptBeatSystems();
         this.refreshTimelineIfNeeded(null);
         this.updateTimelineBookHeaders();
         this.inquiryService?.notifyBookSettingsChanged();
+    }
+
+    /**
+     * Fresh-vault beat adoption. If the active book has no loaded beat tabs but
+     * the manuscript already contains `Class: Beat` notes, load each detected
+     * system and activate the dominant one. Runs only while the workspace is
+     * empty, so it fires once on first open and never overrides manual choices.
+     * Must be called after the metadata cache is populated (layout-ready).
+     * Returns true when it adopted, so callers can refresh the timeline.
+     */
+    private maybeAutoAdoptBeatSystems(): boolean {
+        const result = autoAdoptDetectedBeatsIfEmpty(this.app, this.settings);
+        if (!result.changed) return false;
+        void this.saveSettings();
+        if (result.activatedName) {
+            new Notice(`Adopted "${result.activatedName}" beats from your manuscript.`);
+        }
+        return true;
     }
 
     public async setTimelineScope(scope: 'book' | 'saga'): Promise<void> {
@@ -446,6 +466,11 @@ export default class RadialTimelinePlugin extends Plugin {
                 const sceneIdsMigrated = await migrateSceneFrontmatterIds(this);
                 if (sceneIdsMigrated > 0) {
                     new Notice(`🔑 Scene IDs added to ${sceneIdsMigrated} scene${sceneIdsMigrated === 1 ? '' : 's'}. No action required.`);
+                }
+                // Fresh-vault beat adoption: load+activate beats already present in
+                // the manuscript. Safe here — metadata cache is populated at layout-ready.
+                if (this.maybeAutoAdoptBeatSystems()) {
+                    this.refreshTimelineIfNeeded(null);
                 }
             })();
         });
