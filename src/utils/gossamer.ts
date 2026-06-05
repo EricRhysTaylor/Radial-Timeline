@@ -161,6 +161,27 @@ export function clearGossamerRunSlot(frontmatter: Record<string, unknown>, index
   delete frontmatter[getGossamerSignalKey(index)];
 }
 
+/**
+ * Total reset: strip every Gossamer run slot (all signals) plus the legacy
+ * Gossamer fields, leaving the beat with no Gossamer data at all. Iterates one
+ * slot past GOSSAMER_MAX_HISTORY to also catch any over-length history written
+ * by older builds. Returns true if anything was removed.
+ */
+export function clearAllGossamerData(frontmatter: Record<string, unknown>): boolean {
+  let removed = false;
+  for (let i = 1; i <= GOSSAMER_MAX_HISTORY + 10; i++) {
+    if (frontmatter[getGossamerScoreKey(i)] !== undefined) removed = true;
+    clearGossamerRunSlot(frontmatter, i);
+  }
+  for (const key of GOSSAMER_LEGACY_FIELDS) {
+    if (frontmatter[key] !== undefined) {
+      removed = true;
+      delete frontmatter[key];
+    }
+  }
+  return removed;
+}
+
 function readGossamerSlotMetadata(source: Record<string, unknown>, index: number): GossamerSlotMetadata {
   const readString = (key: string): string | undefined => {
     const value = readGossamerFieldValue(source, key);

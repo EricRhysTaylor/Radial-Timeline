@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendGossamerScore, buildAllGossamerRuns, normalizeGossamerHistory } from './gossamer';
+import { appendGossamerScore, buildAllGossamerRuns, clearAllGossamerData, normalizeGossamerHistory } from './gossamer';
 import { toBeatModelMatchKey } from './beatsInputNormalize';
 
 function makeBeat(title: string, fields: Record<string, unknown> = {}) {
@@ -179,5 +179,42 @@ describe('gossamer slot persistence', () => {
     expect(normalized.GossamerProvider2).toBe('openai');
     expect(normalized.GossamerModel2).toBe('GPT-5.4');
     expect(normalized.GossamerStage2).toBe('Author');
+  });
+});
+
+describe('clearAllGossamerData', () => {
+  it('strips every signal slot plus legacy fields, preserving non-Gossamer keys', () => {
+    const frontmatter: Record<string, unknown> = {
+      ID: 'scn_9cc52149',
+      Class: 'Beat',
+      Act: 1,
+      'Gossamer Last Updated': 'Apr 22, 2026, 7:37 AM by gpt-5.4',
+      Gossamer3: 20,
+      'Gossamer3 Justification': 'satirical and external',
+      GossamerStage3: 'Press',
+      GossamerRunId3: 'goss-mo9jchii-6zs1zw',
+      GossamerSignal3: 'interiority',
+      Gossamer4: 35,
+      GossamerSignal4: 'activity',
+      Gossamer5: 18,
+      GossamerSignal5: 'tension'
+    };
+
+    const removed = clearAllGossamerData(frontmatter);
+
+    expect(removed).toBe(true);
+    // Non-Gossamer keys survive untouched.
+    expect(frontmatter.ID).toBe('scn_9cc52149');
+    expect(frontmatter.Class).toBe('Beat');
+    expect(frontmatter.Act).toBe(1);
+    // No Gossamer key of any signal or legacy field remains.
+    const leftover = Object.keys(frontmatter).filter((k) => k.startsWith('Gossamer'));
+    expect(leftover).toEqual([]);
+  });
+
+  it('returns false when there is no Gossamer data to remove', () => {
+    const frontmatter: Record<string, unknown> = { ID: 'scn_1', Class: 'Beat' };
+    expect(clearAllGossamerData(frontmatter)).toBe(false);
+    expect(Object.keys(frontmatter)).toEqual(['ID', 'Class']);
   });
 });

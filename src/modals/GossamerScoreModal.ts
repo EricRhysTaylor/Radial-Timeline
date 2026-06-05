@@ -8,7 +8,7 @@ import { t } from '../i18n';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
-import { clearGossamerRunSlot, collectGossamerManagedSnapshot, filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
+import { clearAllGossamerData, clearGossamerRunSlot, collectGossamerManagedSnapshot, filterBeatsBySystem, GOSSAMER_LEGACY_FIELDS, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from '../types/gossamerSignals';
 import { parseScoresAndJustifications, type ParsedBeatEntry } from '../GossamerCommands';
 import { getSortedSceneFiles } from '../utils/manuscript';
@@ -193,6 +193,27 @@ export class GossamerScoreModal extends Modal {
           ? raw.trim().toLowerCase()
           : 'momentum';
         if (slotSignal === signal) return true;
+      }
+    }
+    return false;
+  }
+
+  /** True if any beat carries Gossamer data of any signal (or legacy fields). */
+  private hasAnyGossamerData(): boolean {
+    const sourcePath = this.plugin.settings.sourcePath || '';
+    const allFiles = this.plugin.app.vault.getMarkdownFiles();
+    const files = sourcePath
+      ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
+      : allFiles;
+    for (const file of files) {
+      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+      if (!fm) continue;
+      if (fm.Class !== 'Beat' && fm.class !== 'Beat') continue;
+      for (let i = 1; i <= 30; i++) {
+        if (fm[`Gossamer${i}`] !== undefined) return true;
+      }
+      for (const key of GOSSAMER_LEGACY_FIELDS) {
+        if (fm[key] !== undefined) return true;
       }
     }
     return false;
@@ -586,6 +607,17 @@ export class GossamerScoreModal extends Modal {
     // Outline-only danger treatment; only the red border is overridden so the
     // theme's native hover/focus styles still apply.
     deleteBtn.buttonEl.classList.add('ert-gossamer-btn-danger-outline');
+
+    // Full reset — wipes every signal's runs plus legacy fields, returning the
+    // book's beats to a clean slate. Enabled whenever any Gossamer data exists.
+    const hasAnyGossamerData = this.hasAnyGossamerData();
+    const deleteAllBtn = new ButtonComponent(maintenanceRow)
+      .setButtonText(t('gossamer.scoreModal.deleteAllButton'))
+      .setDisabled(!hasAnyGossamerData)
+      .onClick(async () => {
+        await this.deleteAllGossamerData();
+      });
+    deleteAllBtn.buttonEl.classList.add('ert-gossamer-btn-danger-outline');
 
     // Group 2: AI workflow (bordered container — primary path; both workflow
     // actions live here so Copy → Paste reads as one continuous workflow.)
@@ -1245,6 +1277,109 @@ export class GossamerScoreModal extends Modal {
 
     } catch (error) {
       console.error('[Gossamer] Failed to delete all scores:', error);
+      new Notice(t('gossamer.scoreModal.deleteFailed'));
+    }
+  }
+
+  /**
+   * Total reset — strips every Gossamer slot (all signals) plus legacy fields
+   * from every Beat note in scope, returning the book to a clean slate ready
+   * for a fresh run. Unlike deleteAllScores (signal-scoped), this is unconditional.
+   */
+  private async deleteAllGossamerData(): Promise<void> {
+    const sourcePath = this.plugin.settings.sourcePath || '';
+    const allFiles = this.plugin.app.vault.getMarkdownFiles();
+    const files = sourcePath
+      ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
+      : allFiles;
+
+    const isBeat = (fm: Record<string, any> | undefined): boolean =>
+      !!fm && (fm.Class === 'Beat' || fm.class === 'Beat');
+
+    const fileHasGossamerData = (fm: Record<string, any>): boolean => {
+      for (let i = 1; i <= 30; i++) {
+        if (fm[`Gossamer${i}`] !== undefined) return true;
+      }
+      for (const key of GOSSAMER_LEGACY_FIELDS) {
+        if (fm[key] !== undefined) return true;
+      }
+      return false;
+    };
+
+    const beatsWithData = files.filter((file) => {
+      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+      return isBeat(fm as any) && fileHasGossamerData(fm as any);
+    });
+
+    if (beatsWithData.length === 0) {
+      new Notice(t('gossamer.scoreModal.noGossamerToDelete'));
+      return;
+    }
+
+    const confirmed = await new Promise<boolean>((resolve) => {
+      const modal = new Modal(this.app);
+      const { modalEl, contentEl } = modal;
+      modal.titleEl.setText('');
+      contentEl.empty();
+
+      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+      modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
+
+      const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+      hero.createSpan({ text: t('gossamer.scoreModal.deleteConfirmBadge'), cls: 'ert-modal-badge' });
+      hero.createDiv({ text: t('gossamer.scoreModal.deleteAllConfirmTitle'), cls: 'ert-modal-title' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: t('gossamer.scoreModal.deleteAllConfirmSubtitle') });
+
+      const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
+      card.createDiv({
+        text: t('gossamer.scoreModal.deleteAllConfirmBody'),
+        cls: 'ert-purge-message'
+      });
+
+      const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
+
+      new ButtonComponent(buttonContainer)
+        .setButtonText(t('gossamer.scoreModal.deleteAllConfirmButton'))
+        .setWarning()
+        .onClick(async () => {
+          modal.close();
+          resolve(true);
+        });
+
+      new ButtonComponent(buttonContainer)
+        .setButtonText(t('gossamer.scoreModal.deleteConfirmCancel'))
+        .onClick(() => {
+          modal.close();
+          resolve(false);
+        });
+
+      modal.open();
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const snapshotPath = await this.snapshotGossamerFields(beatsWithData, 'gossamer-delete-all', {
+        beatCount: beatsWithData.length
+      });
+
+      let deletedCount = 0;
+      for (const file of beatsWithData) {
+        await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+          if (clearAllGossamerData(yaml as Record<string, unknown>)) deletedCount++;
+        });
+      }
+
+      const parts = [t('gossamer.scoreModal.deletedAllGossamer', { count: deletedCount })];
+      if (snapshotPath) parts.push(t('gossamer.scoreModal.normalizeArchive', { path: snapshotPath }));
+      new Notice(parts.join(' '));
+      this.close();
+
+    } catch (error) {
+      console.error('[Gossamer] Failed to delete all Gossamer data:', error);
       new Notice(t('gossamer.scoreModal.deleteFailed'));
     }
   }

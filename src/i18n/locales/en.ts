@@ -1122,6 +1122,7 @@ export interface TranslationKeys {
             groupAi: string;
             normalizeButton: string;
             deleteButton: string;
+            deleteAllButton: string;
             copyButton: string;
             pasteButton: string;
             saveButton: string;
@@ -1171,6 +1172,12 @@ export interface TranslationKeys {
             deleteConfirmBody: string;
             deleteConfirmButton: string;
             deleteConfirmCancel: string;
+            noGossamerToDelete: string;
+            deletedAllGossamer: string;
+            deleteAllConfirmTitle: string;
+            deleteAllConfirmSubtitle: string;
+            deleteAllConfirmBody: string;
+            deleteAllConfirmButton: string;
             normalizeConfirmBadge: string;
             normalizeConfirmTitle: string;
             normalizeConfirmSubtitle: string;
@@ -3321,6 +3328,7 @@ export const en: TranslationKeys = {
             groupAi: 'AI workflow',
             normalizeButton: 'Normalize history',
             deleteButton: 'Delete {{label}} scores',
+            deleteAllButton: 'Delete all',
             copyButton: 'Copy AI prompt',
             pasteButton: 'Paste AI response',
             saveButton: 'Save scores',
@@ -3370,6 +3378,12 @@ export const en: TranslationKeys = {
             deleteConfirmBody: 'This will remove every Gossamer slot whose signal is {{label}} across ALL Beat notes in the active book, including their justifications. Slots belonging to other signals are kept.',
             deleteConfirmButton: 'Delete {{label}} scores',
             deleteConfirmCancel: 'Cancel',
+            noGossamerToDelete: 'No Gossamer data found to delete.',
+            deletedAllGossamer: 'Deleted all Gossamer data from {{count}} Beat note(s). Every signal history was removed.',
+            deleteAllConfirmTitle: 'Delete ALL Gossamer data',
+            deleteAllConfirmSubtitle: 'RT will archive every removed Gossamer field to the Gossamer log before cleanup. This resets all beats for a fresh run.',
+            deleteAllConfirmBody: 'This will remove EVERY Gossamer slot — all signals (Momentum, Interiority, Activity, Tension) and their justifications — plus legacy Gossamer fields, across ALL Beat notes in the active book. Nothing is kept.',
+            deleteAllConfirmButton: 'Delete all Gossamer data',
             normalizeConfirmBadge: 'Warning',
             normalizeConfirmTitle: 'Normalize Gossamer history?',
             normalizeConfirmSubtitle: 'This action cannot be undone. RT archives removed fields before cleanup.',
