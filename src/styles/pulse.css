@@ -2569,6 +2569,16 @@ body > .tooltip {
   border-color: color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
 }
 
+/* Button rows inside footer groups — .ert-row has no flex/gap outside the
+ * settings scope, so the paired buttons would otherwise butt together. Use the
+ * small spacing token so the gap matches the commit cluster. */
+.ert-gossamer-footer__group .ert-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  flex-wrap: wrap;
+}
+
 .ert-gossamer-footer__group-label {
   font-size: 10px;
   line-height: 10px;
