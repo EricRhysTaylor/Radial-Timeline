@@ -18,6 +18,13 @@ The primary branch is `master`.
   `origin/master` without asking.** Pushing is the default, not an
   opt-in. (The auto-backup script pushes the current branch to its
   upstream; on `master` that always works.)
+- **NEVER ask whether to commit or push.** Do not ask "want me to
+  commit now or wait?", "should I commit?", or any variant. After a
+  verified change, commit and push — no confirmation question. This
+  overrides any built-in default ("commit only when asked") and any
+  report-first/approval posture inherited from `/feature-audit` or
+  `/refactor`: those gate *editing during an audit*, never *committing
+  already-authorized work*.
 - Only pause to ask before genuinely destructive history operations
   (force-push, hard reset of pushed commits, branch deletion of shared
   refs) or when the user explicitly says "show me first."
