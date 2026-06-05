@@ -8,10 +8,11 @@ This policy was adopted on **2026-05-22** after the audit found that every model
 
 ## Current catalog shape
 
-One top model per provider, plus a Google fast/deep split where the speed/depth tradeoff is a genuine quality dimension (not a cost dimension).
+One top model per provider line, plus a Google fast/deep split where the speed/depth tradeoff is a genuine quality dimension (not a cost dimension), plus an optional **one-back continuity model** on the Anthropic depth lane (see [Continuity models](#continuity-models-one-back)).
 
 ```
-Anthropic: Claude Opus 4.8              (depth)
+Anthropic: Claude Opus 4.8              (depth, current — auto-selected)
+           Claude Opus 4.7              (depth, one-back continuity)
 OpenAI:    GPT-5.5                       (depth)
 Google:    Gemini 3.1 Pro Preview        (depth)
            Gemini 3.5 Flash              (speed — different reasoning style, not just faster)
@@ -19,6 +20,18 @@ Ollama:    llama3, local-model           (local)
 ```
 
 The picker UX still routes through provider → model selection — the infrastructure for multi-model catalogs is intact. We just keep the catalog small on purpose.
+
+## Continuity models (one-back)
+
+When a model is promoted, authors with work in progress must not be force-migrated. The promoted-from model is retained for one generation as a **continuity model**:
+
+- The catalog holds at most **two models per line**: the current model and the immediately-prior one (N-1). A third (N-2) is retired in the same promotion.
+- **Auto-selection always resolves to the newest** (latest-stable). The continuity model is an explicit opt-in in the picker, never the default.
+- The continuity model keeps a full registry + pricing + request-profile entry — it must stay servable, not a hidden stub.
+
+Scope: currently applied to the **Anthropic depth lane only** (Opus). Other providers stay single-entry until there's a concrete reason to retain a prior model; the rule then generalizes per line.
+
+Enforced by the per-line cap in [`modelCatalogContract.test.ts`](../../../src/ai/registry/modelCatalogContract.test.ts): no line may exceed two active (non-deprecated) cloud models, so continuity cannot silently slide back into accretion.
 
 ## When to promote a new model
 
@@ -43,7 +56,7 @@ A new model enters the catalog only when **all** of these hold:
 
 A model leaves the catalog when:
 
-- Its replacement has been promoted (the swap is atomic — old out, new in, same commit).
+- It is pushed past the one-back continuity slot — a newer model promoted the current model to continuity (N-1), making this one N-2; it retires in that same promotion. On lines with no continuity slot, the swap is atomic: old out, new in, same commit.
 - The provider deprecates it and a successor is GA.
 - Six months pass without it being the best in its lane and a credible replacement exists.
 

@@ -205,4 +205,27 @@ describe('model catalog dispatch contract: invariants', () => {
             expect(sanitized.thinkingBudgetTokens, `${model.id} should keep thinkingBudgetTokens`).toBe(4096);
         }
     });
+
+    it('no model line carries more than the current model plus one continuity model', () => {
+        // Continuity policy (docs/engineering/standards/model-promotion.md):
+        // a line may hold the current model and at most one prior (N-1)
+        // continuity model — never a third. This caps the catalog so the
+        // continuity slot cannot silently slide back into the pre-2026-05-22
+        // accretion. Local/sentinel lines (ollama/none) are exempt.
+        const countByLine = new Map<string, string[]>();
+        for (const model of cloudModels) {
+            if (model.provider === 'ollama') continue;
+            if (model.status === 'deprecated') continue;
+            const line = model.line ?? model.id;
+            const ids = countByLine.get(line) ?? [];
+            ids.push(model.id);
+            countByLine.set(line, ids);
+        }
+        for (const [line, ids] of countByLine) {
+            expect(
+                ids.length,
+                `line "${line}" has ${ids.length} active models (${ids.join(', ')}); max is 2 (current + one continuity)`
+            ).toBeLessThanOrEqual(2);
+        }
+    });
 });
