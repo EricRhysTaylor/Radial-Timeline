@@ -93,6 +93,7 @@ type RawInquiryFinding = {
     lens?: string;
     headline?: string;
     bullets?: string[];
+    recommended_action?: string;
     subject?: string;
     span?: string;
     evidence_quote?: string;
@@ -888,8 +889,8 @@ export class InquiryRunnerService implements InquiryRunner {
             '      "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
             '      "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
             '      "verdict": {',
-            '        "flow": 0,',
-            '        "depth": 0',
+            '        "flow": 72,',
+            '        "depth": 58',
             '      },',
             '      "findings": [',
             '        {',
@@ -900,6 +901,7 @@ export class InquiryRunnerService implements InquiryRunner {
             '          "lens": "flow|depth|both|",',
             '          "headline": "short line",',
             '          "bullets": ["specific", "supporting points"],',
+            '          "recommended_action": "concrete author edit/check, phrased as an imperative; empty string if the finding needs no separate action",',
             '          "subject": "thread, arc, or big-picture subject (empty string if not needed)",',
             '          "span": "book span such as B1-B3 or B2 (empty string if not needed)",',
             '          "evidence_quote": "verbatim sentence or phrase from the cited or supporting evidence (empty string if no quotable prose)",',
@@ -2270,6 +2272,9 @@ export class InquiryRunnerService implements InquiryRunner {
             const bullets = Array.isArray(raw.bullets)
                 ? raw.bullets.map(value => String(value)).filter(Boolean)
                 : [];
+            const recommendedAction = typeof raw.recommended_action === 'string'
+                ? raw.recommended_action.trim()
+                : '';
             const subject = typeof raw.subject === 'string' ? raw.subject.trim() : '';
             const span = typeof raw.span === 'string' ? raw.span.trim() : '';
             const evidenceQuote = typeof raw.evidence_quote === 'string'
@@ -2311,6 +2316,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 kind,
                 headline,
                 bullets,
+                ...(recommendedAction ? { recommendedAction } : {}),
                 ...(subject ? { subject } : {}),
                 ...(span ? { span } : {}),
                 related: [],
