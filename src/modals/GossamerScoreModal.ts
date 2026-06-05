@@ -1143,6 +1143,53 @@ export class GossamerScoreModal extends Modal {
     }
   }
 
+  /**
+   * Shared warning-confirm dialog for the destructive delete actions. Returns
+   * true if the user confirms. Single home for the modal sizing so the two
+   * delete flows don't each re-declare the inline-style block.
+   */
+  private confirmPurge(opts: { title: string; subtitle: string; body: string; confirmLabel: string }): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const modal = new Modal(this.app);
+      const { modalEl, contentEl } = modal;
+      modal.titleEl.setText('');
+      contentEl.empty();
+
+      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+      modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
+
+      const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+      hero.createSpan({ text: t('gossamer.scoreModal.deleteConfirmBadge'), cls: 'ert-modal-badge' });
+      hero.createDiv({ text: opts.title, cls: 'ert-modal-title' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: opts.subtitle });
+
+      const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
+      card.createDiv({ text: opts.body, cls: 'ert-purge-message' });
+
+      const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
+
+      new ButtonComponent(buttonContainer)
+        .setButtonText(opts.confirmLabel)
+        .setWarning()
+        .onClick(() => {
+          modal.close();
+          resolve(true);
+        });
+
+      new ButtonComponent(buttonContainer)
+        .setButtonText(t('gossamer.scoreModal.deleteConfirmCancel'))
+        .onClick(() => {
+          modal.close();
+          resolve(false);
+        });
+
+      modal.open();
+    });
+  }
+
   private async deleteAllScores(): Promise<void> {
     const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
     const activeSignalLabel = GOSSAMER_SIGNAL_METADATA[activeSignal].label;
@@ -1188,47 +1235,11 @@ export class GossamerScoreModal extends Modal {
       return;
     }
 
-    const confirmed = await new Promise<boolean>((resolve) => {
-      const modal = new Modal(this.app);
-      const { modalEl, contentEl } = modal;
-      modal.titleEl.setText('');
-      contentEl.empty();
-
-      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-      modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
-
-      const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-      hero.createSpan({ text: t('gossamer.scoreModal.deleteConfirmBadge'), cls: 'ert-modal-badge' });
-      hero.createDiv({ text: t('gossamer.scoreModal.deleteConfirmTitle', { label: activeSignalLabel }), cls: 'ert-modal-title' });
-      hero.createDiv({ cls: 'ert-modal-subtitle', text: t('gossamer.scoreModal.deleteConfirmSubtitle', { label: activeSignalLabel }) });
-
-      const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
-      card.createDiv({
-        text: t('gossamer.scoreModal.deleteConfirmBody', { label: activeSignalLabel }),
-        cls: 'ert-purge-message'
-      });
-
-      const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
-
-      new ButtonComponent(buttonContainer)
-        .setButtonText(t('gossamer.scoreModal.deleteConfirmButton', { label: activeSignalLabel }))
-        .setWarning()
-        .onClick(async () => {
-          modal.close();
-          resolve(true);
-        });
-
-      new ButtonComponent(buttonContainer)
-        .setButtonText(t('gossamer.scoreModal.deleteConfirmCancel'))
-        .onClick(() => {
-          modal.close();
-          resolve(false);
-        });
-
-      modal.open();
+    const confirmed = await this.confirmPurge({
+      title: t('gossamer.scoreModal.deleteConfirmTitle', { label: activeSignalLabel }),
+      subtitle: t('gossamer.scoreModal.deleteConfirmSubtitle', { label: activeSignalLabel }),
+      body: t('gossamer.scoreModal.deleteConfirmBody', { label: activeSignalLabel }),
+      confirmLabel: t('gossamer.scoreModal.deleteConfirmButton', { label: activeSignalLabel })
     });
 
     if (!confirmed) return;
@@ -1316,47 +1327,11 @@ export class GossamerScoreModal extends Modal {
       return;
     }
 
-    const confirmed = await new Promise<boolean>((resolve) => {
-      const modal = new Modal(this.app);
-      const { modalEl, contentEl } = modal;
-      modal.titleEl.setText('');
-      contentEl.empty();
-
-      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-      modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
-
-      const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-      hero.createSpan({ text: t('gossamer.scoreModal.deleteConfirmBadge'), cls: 'ert-modal-badge' });
-      hero.createDiv({ text: t('gossamer.scoreModal.deleteAllConfirmTitle'), cls: 'ert-modal-title' });
-      hero.createDiv({ cls: 'ert-modal-subtitle', text: t('gossamer.scoreModal.deleteAllConfirmSubtitle') });
-
-      const card = contentEl.createDiv({ cls: 'ert-glass-card ert-purge-confirm-card' });
-      card.createDiv({
-        text: t('gossamer.scoreModal.deleteAllConfirmBody'),
-        cls: 'ert-purge-message'
-      });
-
-      const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
-
-      new ButtonComponent(buttonContainer)
-        .setButtonText(t('gossamer.scoreModal.deleteAllConfirmButton'))
-        .setWarning()
-        .onClick(async () => {
-          modal.close();
-          resolve(true);
-        });
-
-      new ButtonComponent(buttonContainer)
-        .setButtonText(t('gossamer.scoreModal.deleteConfirmCancel'))
-        .onClick(() => {
-          modal.close();
-          resolve(false);
-        });
-
-      modal.open();
+    const confirmed = await this.confirmPurge({
+      title: t('gossamer.scoreModal.deleteAllConfirmTitle'),
+      subtitle: t('gossamer.scoreModal.deleteAllConfirmSubtitle'),
+      body: t('gossamer.scoreModal.deleteAllConfirmBody'),
+      confirmLabel: t('gossamer.scoreModal.deleteAllConfirmButton')
     });
 
     if (!confirmed) return;
