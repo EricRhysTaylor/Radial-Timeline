@@ -24,9 +24,11 @@ describe('release channel curation', () => {
         expect(picker).toContain('gemini-3.5-flash');
     });
 
-    it('returns the single curated Anthropic picker entry', () => {
+    it('returns the current Anthropic model plus the one-back continuity model', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'anthropic').map(model => model.alias);
-        expect(picker).toEqual(['claude-opus-4.8']);
+        // 4.8 (newest stable, auto-selected) is offered first; 4.7 stays as
+        // an explicit opt-in so in-flight authors aren't force-migrated.
+        expect(picker).toEqual(['claude-opus-4.8', 'claude-opus-4.7']);
     });
 
     it('selectLatestModelByReleaseChannel returns the only stable OpenAI model', () => {

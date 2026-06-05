@@ -11,7 +11,7 @@
       "capabilities": ["longContext", "jsonStrict", "reasoningStrong", "highOutputCap"],
       "personality": { "reasoning": 10, "writing": 10, "determinism": 9 },
       "contextWindow": 1000000,
-      "maxOutput": 16000,
+      "maxOutput": 64000,
       "releasedAt": "2026-05-28",
       "status": "stable",
       "rollout": {
@@ -20,6 +20,27 @@
         "supersedes": "claude-opus-4-7",
         "fallbackModelId": "claude-opus-4-7",
         "lane": "pro"
+      }
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-7",
+      "alias": "claude-opus-4.7",
+      "label": "Claude Opus 4.7",
+      "line": "claude-opus",
+      "tier": "DEEP",
+      "capabilities": ["longContext", "jsonStrict", "reasoningStrong", "highOutputCap"],
+      "personality": { "reasoning": 10, "writing": 10, "determinism": 9 },
+      "contextWindow": 1000000,
+      "maxOutput": 64000,
+      "releasedAt": "2026-04-16",
+      "status": "stable",
+      "rollout": {
+        "channel": "stable",
+        "status": "stable",
+        "supersedes": "claude-opus-4-6",
+        "fallbackModelId": "claude-opus-4-6",
+        "lane": "default"
       }
     },
     {

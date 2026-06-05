@@ -48,6 +48,35 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         }
     },
     {
+        // Continuity model: the immediately-prior Opus, kept one generation
+        // back so authors mid-project aren't force-migrated off 4.7 when 4.8
+        // ships. Auto-selection (latest-stable) still resolves to 4.8 — 4.7
+        // is an explicit opt-in in the picker. Same request contract and
+        // pricing as 4.8. Retire when a newer Opus promotes 4.8 to N-1.
+        provider: 'anthropic',
+        id: 'claude-opus-4-7',
+        alias: 'claude-opus-4.7',
+        label: 'Claude Opus 4.7',
+        line: 'claude-opus',
+        tier: 'DEEP',
+        capabilities: [...DEEP_CAPS],
+        personality: { reasoning: 10, writing: 10, determinism: 9 },
+        contextWindow: 1000000,
+        maxOutput: 64000,
+        releasedAt: '2026-04-16',
+        status: 'stable',
+        rollout: {
+            channel: 'stable',
+            status: 'stable',
+            lane: 'default'
+        },
+        constraints: {
+            supportsTemperature: false,
+            supportsTopP: false,
+            supportsAdaptiveThinking: true
+        }
+    },
+    {
         provider: 'openai',
         id: 'gpt-5.5',
         alias: 'gpt-5.5',
