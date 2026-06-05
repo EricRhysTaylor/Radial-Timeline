@@ -37,7 +37,8 @@ describe('computeCaps', () => {
     it('forceMaxOutputCeiling lifts a tier-clamped output cap to the model ceiling', () => {
         const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.8');
         expect(model).toBeDefined();
-        // Tier 1 clamps Opus output to 4000 — the cause of truncated findings.
+        // Tier 1 clamps Opus output to the tier cap (16000) — below the
+        // 64k model/provider ceiling reachable via forceMaxOutputCeiling.
         const clamped = computeCaps({
             provider: 'anthropic',
             model: model!,
@@ -53,8 +54,8 @@ describe('computeCaps', () => {
             feature: 'InquiryMode',
             overrides: { maxOutputMode: 'max', forceMaxOutputCeiling: true }
         });
-        expect(clamped.maxOutputTokens).toBe(4000);
-        expect(ceiling.maxOutputTokens).toBe(16000);
+        expect(clamped.maxOutputTokens).toBe(16000);
+        expect(ceiling.maxOutputTokens).toBe(64000);
         expect(ceiling.maxOutputTokens).toBeGreaterThan(clamped.maxOutputTokens);
     });
 

@@ -28,7 +28,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         capabilities: [...DEEP_CAPS],
         personality: { reasoning: 10, writing: 10, determinism: 9 },
         contextWindow: 1000000,
-        maxOutput: 16000,
+        maxOutput: 64000,
         releasedAt: '2026-05-28',
         status: 'stable',
         rollout: {

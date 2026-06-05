@@ -375,12 +375,13 @@ function mapBudgetToEffort(budgetTokens: number): 'low' | 'medium' | 'high' {
   return 'high';
 }
 
-function buildAnthropicBetaHeader(input: { thinkingEnabled: boolean }): string {
-  const betaHeaders = ['prompt-caching-2024-07-31'];
-  if (input.thinkingEnabled) {
-    betaHeaders.push('output-128k-2025-02-19');
-  }
-  return betaHeaders.join(',');
+function buildAnthropicBetaHeader(): string {
+  // The legacy output-128k-2025-02-19 header was removed: 128k synchronous
+  // max output is the default on every Anthropic model RT serves (all
+  // Claude 4.x — Opus 4.6/4.7/4.8, Sonnet 4.5/4.6), so the header is a
+  // no-op carried over from the 3.7-era. See models/overview and the 4.8
+  // migration guide. Prompt caching is still gated behind a beta header.
+  return 'prompt-caching-2024-07-31';
 }
 
 export function normalizeAnthropicTokenCountResponse(
@@ -424,9 +425,6 @@ export async function callAnthropicApi(
   }
   if (!modelId) {
     return { success: false, content: null, responseData: { type: 'error', error: { type: 'plugin_config_error', message: 'Anthropic model ID not configured.' } }, error: 'Anthropic model ID not configured.' };  }
-  const thinkingEnabled = !jsonSchema
-    && typeof thinkingBudgetTokens === 'number'
-    && thinkingBudgetTokens >= 1024;
   const requestBody = buildAnthropicMessageRequestBody({
     mode: 'generate',
     modelId,
@@ -450,7 +448,7 @@ export async function callAnthropicApi(
       method: 'POST',
       headers: {
         'anthropic-version': apiVersion,
-        'anthropic-beta': buildAnthropicBetaHeader({ thinkingEnabled }),
+        'anthropic-beta': buildAnthropicBetaHeader(),
         'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },
@@ -571,7 +569,7 @@ export async function countAnthropicTokens(
       method: 'POST',
       headers: {
         'anthropic-version': apiVersion,
-        'anthropic-beta': buildAnthropicBetaHeader({ thinkingEnabled: false }),
+        'anthropic-beta': buildAnthropicBetaHeader(),
         'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },
