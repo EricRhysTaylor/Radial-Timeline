@@ -1,4 +1,5 @@
 import type { InquiryCanonicalQuestionTier } from '../../types/settings';
+import { setSvgAccessibleName } from '../../utils/tooltip';
 import { polarToCartesian } from '../utils/inquiryGeometry';
 import type { InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
@@ -552,21 +553,25 @@ export class InquiryGlyph {
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');
                     marker.group.setAttribute('tabindex', '0');
+                    // Accessible name via <title>, NEVER aria-label: this is an
+                    // SVG <g>, and aria-label would trigger Obsidian's tooltip
+                    // handler -> HTMLElement.isShown() (which SVG lacks) ->
+                    // "e.isShown is not a function". See setSvgAccessibleName.
                     if (isProcessed && processedStatus === 'success') {
-                        marker.group.setAttribute('aria-label', 'Current result');
+                        setSvgAccessibleName(marker.group, 'Current result');
                     } else if (isCached) {
-                        marker.group.setAttribute('aria-label', 'Open previous result');
+                        setSvgAccessibleName(marker.group, 'Open previous result');
                     } else if (isPrior) {
-                        marker.group.setAttribute('aria-label', 'Prior result from another model; run selected model');
+                        setSvgAccessibleName(marker.group, 'Prior result from another model; run selected model');
                     } else if (isStale) {
-                        marker.group.setAttribute('aria-label', 'Prior result — corpus changed, re-run to refresh');
+                        setSvgAccessibleName(marker.group, 'Prior result — corpus changed, re-run to refresh');
                     } else {
-                        marker.group.setAttribute('aria-label', 'Run question');
+                        setSvgAccessibleName(marker.group, 'Run question');
                     }
                 } else {
                     marker.group.removeAttribute('role');
                     marker.group.removeAttribute('tabindex');
-                    marker.group.removeAttribute('aria-label');
+                    setSvgAccessibleName(marker.group, null);
                 }
                 marker.group.removeAttribute('data-rt-tip');
                 marker.group.removeAttribute('data-rt-tip-placement');

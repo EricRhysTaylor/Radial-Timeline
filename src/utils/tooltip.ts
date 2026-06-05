@@ -36,6 +36,37 @@ const RT_TOOLTIP_OFFSET_Y_ATTR = 'data-rt-tip-offset-y';
 const RT_TOOLTIP_TONE_ATTR = 'data-rt-tip-tone';
 const TOOLTIP_ACTIVE_CLASS = 'rt-tooltip-active';
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * Set (or clear, with `null`) the accessible name of an SVG element via a
+ * `<title>` child — the SVG-native accessible name, which also yields a
+ * native hover tooltip.
+ *
+ * NEVER put `aria-label` (or call `setTooltip`) on an SVG element. Obsidian's
+ * global tooltip handler shows a tooltip for any aria-labelled element and, on
+ * its hover-delay timer, calls `HTMLElement.isShown()` — a method Obsidian
+ * adds to `HTMLElement.prototype` (its `enhance.js`) that `SVGElement` does NOT
+ * inherit. The result is the recurring `e.isShown is not a function` crash.
+ * `<title>` involves no Obsidian code path, so it is crash-safe on SVG.
+ */
+export function setSvgAccessibleName(el: Element, name: string | null): void {
+    const existing = Array.from(el.children).find(
+        child => child.tagName.toLowerCase() === 'title'
+    ) ?? null;
+    if (name === null || name === '') {
+        existing?.remove();
+        return;
+    }
+    if (existing) {
+        if (existing.textContent !== name) existing.textContent = name;
+        return;
+    }
+    const title = document.createElementNS(SVG_NS, 'title');
+    title.textContent = name;
+    el.insertBefore(title, el.firstChild);
+}
+
 // Singleton tooltip element
 let customTooltipEl: HTMLElement | null = null;
 let currentTarget: Element | null = null;

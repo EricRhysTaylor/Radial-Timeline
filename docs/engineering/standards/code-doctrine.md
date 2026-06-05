@@ -230,6 +230,24 @@ Enforcement layers:
 
 When you migrate another field, add it to the registry in `frontmatter.ts`, write a helper, add the source-grep test for the consuming module, and add the doctrine entry here.
 
+### SVG Elements Never Take `aria-label` or `setTooltip`
+
+Obsidian augments `HTMLElement.prototype` with helpers — including `isShown()` — via its bundled `enhance.js`. `SVGElement` does **not** inherit these. Obsidian's global tooltip handler shows a tooltip for any element carrying `aria-label` (and for `setTooltip` targets), and on its hover-delay `setTimeout` it calls `target.isShown()`. On an SVG element that throws **`e.isShown is not a function`** — the recurring crash on the Inquiry question markers (the SVG `<g role="button">` "buttons").
+
+```
+// Forbidden — SVG <g>/<rect>/<circle>/… : triggers Obsidian's tooltip -> isShown() crash
+svgGroup.setAttribute('aria-label', 'Run question');
+setTooltip(svgGroup, 'Run question');
+
+// Allowed — SVG-native accessible name + native hover tooltip, no Obsidian code path
+setSvgAccessibleName(svgGroup, 'Run question');   // src/utils/tooltip.ts (<title> child)
+
+// Allowed — RT's own SVG-safe styled tooltip system
+svgGroup.setAttribute('data-rt-tip', 'Run question');
+```
+
+`aria-label` on **HTML** elements (buttons, inputs, divs) is fine and expected — the rule is SVG-specific. `src/utils/tooltip.ts` already documents that Obsidian's tooltip API is unreliable on SVG; this is the same boundary, stated as a hard rule. Enforced for the glyph by the source-grep guard in [`InquiryGlyph.aria.test.ts`](../../../src/inquiry/components/InquiryGlyph.aria.test.ts).
+
 ### Source-Grep Regression Guards
 
 A source-grep regression guard is a unit test that reads the source of another module as a string and asserts that specific patterns are present or absent. They complement — never replace — unit tests of behavior. They catch a class of regressions that behavior tests reliably miss: wiring removed, an order swapped, a forbidden literal re-introduced by a future contributor who didn't read the original rationale.
