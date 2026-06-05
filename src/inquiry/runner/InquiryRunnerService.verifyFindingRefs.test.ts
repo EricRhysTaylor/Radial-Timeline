@@ -12,7 +12,7 @@ type Verifier = (
     sceneRefIndex: ReturnType<typeof buildSceneRefIndex> | Record<string, unknown>,
     options?: Record<string, unknown>
 ) => {
-    verified: Array<{ refId: string; headline: string; rawRef?: Record<string, string>; subject?: string; span?: string; supportingRefs?: Array<{ refId: string }> }>;
+    verified: Array<{ refId: string; headline: string; recommendedAction?: string; rawRef?: Record<string, string>; subject?: string; span?: string; supportingRefs?: Array<{ refId: string }> }>;
     unverified: Array<{ rawRefId?: string; rawRefLabel?: string; rawRefPath?: string; headline: string; warning: string }>;
     warnings: Array<{ stage: string; message: string }>;
 };
@@ -89,6 +89,7 @@ describe('verifyFindingRefs', () => {
                 kind: 'continuity',
                 headline: 'Clean finding',
                 bullets: ['a'],
+                recommended_action: 'Clarify the setup before the payoff.',
                 role: 'target'
             }],
             singleSceneIndex()
@@ -96,6 +97,7 @@ describe('verifyFindingRefs', () => {
 
         expect(out.verified.length).toBe(1);
         expect(out.verified[0].refId).toBe('scn_a1b2c3d4');
+        expect(out.verified[0].recommendedAction).toBe('Clarify the setup before the payoff.');
         expect(out.verified[0].rawRef).toBeUndefined();
         expect(out.unverified.length).toBe(0);
         expect(out.warnings.length).toBe(0);

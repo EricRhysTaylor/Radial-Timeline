@@ -56,6 +56,12 @@ export interface InquiryFinding {
     kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error' | 'strength' | 'thread' | 'arc' | 'payoff' | 'structure';
     headline: string;
     bullets: string[];
+    /**
+     * Concrete author-facing edit/check recommendation derived from the finding.
+     * Empty/omitted means the finding is informational enough that no separate
+     * action should be written into the brief or scene frontmatter.
+     */
+    recommendedAction?: string;
     subject?: string;
     span?: string;
     /**
