@@ -432,22 +432,36 @@ describe('getInquiryActionText', () => {
         expect(getInquiryActionText(f({ kind: 'strength', headline: 'h' }), new Map())).toBeNull();
     });
 
-    it('empty/whitespace headlines become the "Finding" fallback (preserved normalizeInquiryHeadline behavior)', () => {
-        // normalizeInquiryHeadline substitutes 'Finding' when the headline is
-        // empty, so getInquiryActionText for a hit-kind finding can never
-        // produce null via headline emptiness alone — only via non-hit kind.
-        expect(getInquiryActionText(f({ kind: 'thread', headline: '' }), new Map())).toBe('Finding');
-        expect(getInquiryActionText(f({ kind: 'thread', headline: '   ' }), new Map())).toBe('Finding');
+    it('returns null when no dedicated recommended action is present', () => {
+        expect(getInquiryActionText(f({ kind: 'thread', headline: '' }), new Map())).toBeNull();
+        expect(getInquiryActionText(f({ kind: 'thread', headline: 'Beat lands soft' }), new Map())).toBeNull();
     });
 
-    it('returns the trimmed normalized headline for hit findings', () => {
-        const out = getInquiryActionText(f({ kind: 'thread', headline: '  Beat lands soft  ' }), new Map());
-        expect(out).toBe('Beat lands soft');
+    it('returns the trimmed normalized recommended action for hit findings', () => {
+        const out = getInquiryActionText(f({
+            kind: 'thread',
+            headline: 'Beat lands soft',
+            recommendedAction: '  Seed the missing pressure before the turn.  '
+        }), new Map());
+        expect(out).toBe('Seed the missing pressure before the turn.');
     });
 
-    it('reference labels replace inline tokens in the headline', () => {
+    it('suppresses actions that only repeat the finding headline', () => {
+        const out = getInquiryActionText(f({
+            kind: 'thread',
+            headline: 'Beat lands soft',
+            recommendedAction: 'Beat lands soft.'
+        }), new Map());
+        expect(out).toBeNull();
+    });
+
+    it('reference labels replace inline tokens in the recommended action', () => {
         const labels = new Map<string, string>([['s1', 'Opening']]);
-        const out = getInquiryActionText(f({ kind: 'thread', headline: 'See S1' }), labels);
+        const out = getInquiryActionText(f({
+            kind: 'thread',
+            headline: 'Missing setup',
+            recommendedAction: 'Seed the motive before S1.'
+        }), labels);
         expect(out && out.includes('Opening')).toBe(true);
     });
 });
@@ -456,39 +470,38 @@ describe('buildInquiryPendingAction', () => {
     const r = result({});
     const items: InquiryCorpusItem[] = [];
 
-    it('returns null when action text is null (only non-hit kind reaches null)', () => {
-        // Empty headlines DO produce text ('Finding' fallback), so the only
-        // null path is non-hit kind. This matches getInquiryActionText.
+    it('returns null when action text is null', () => {
         expect(buildInquiryPendingAction(finding({ kind: 'none', headline: 'h' }), r, items, new Map())).toBeNull();
         expect(buildInquiryPendingAction(finding({ kind: 'strength', headline: 'h' }), r, items, new Map())).toBeNull();
+        expect(buildInquiryPendingAction(finding({ kind: 'thread', headline: 'h' }), r, items, new Map())).toBeNull();
     });
 
     it('falls back to uppercased S-number refId when chip-label resolver returns null', () => {
         // Empty items + no displayLabel match → resolveFindingChipLabel returns null;
         // refId 's5' → uppercased 'S5'.
         const out = buildInquiryPendingAction(
-            finding({ kind: 'thread', headline: 'h', refId: 's5' }),
+            finding({ kind: 'thread', headline: 'h', recommendedAction: 'Add setup.', refId: 's5' }),
             r,
             items,
             new Map()
         );
         expect(out?.targetLabel).toBe('S5');
-        expect(out?.text).toBe('h');
+        expect(out?.text).toBe('Add setup.');
     });
 
     it('targetLabel is undefined when neither chip resolver nor S-number pattern match', () => {
         const out = buildInquiryPendingAction(
-            finding({ kind: 'thread', headline: 'h', refId: 'gap_001' }),
+            finding({ kind: 'thread', headline: 'h', recommendedAction: 'Clarify the turn.', refId: 'gap_001' }),
             r,
             items,
             new Map()
         );
         expect(out?.targetLabel).toBeUndefined();
-        expect(out?.text).toBe('h');
+        expect(out?.text).toBe('Clarify the turn.');
     });
 
     it('text equals the getInquiryActionText output for the same inputs', () => {
-        const f1 = finding({ kind: 'thread', headline: 'Hello' });
+        const f1 = finding({ kind: 'thread', headline: 'Hello', recommendedAction: 'Revise the setup.' });
         const expected = getInquiryActionText(f1, new Map());
         const out = buildInquiryPendingAction(f1, r, items, new Map());
         expect(out?.text).toBe(expected);
@@ -506,35 +519,34 @@ describe('buildBriefPendingActions', () => {
         const out = buildBriefPendingActions(r([
             finding({ kind: 'none', headline: 'x', refId: 's1' }),
             finding({ kind: 'strength', headline: 'y', refId: 's2' }),
-            finding({ kind: 'thread', headline: 'keep', refId: 's3' })
+            finding({ kind: 'thread', headline: 'keep', recommendedAction: 'Revise the setup.', refId: 's3' })
         ]), [], new Map());
         expect(out.length).toBe(1);
-        expect(out[0].text).toBe('keep');
+        expect(out[0].text).toBe('Revise the setup.');
     });
 
-    it('skips findings where buildInquiryPendingAction returns null (non-hit kind)', () => {
-        // Empty headlines fall back to 'Finding'; the genuine null path is
-        // a non-hit kind which is filtered before buildInquiryPendingAction.
+    it('skips findings where buildInquiryPendingAction returns null', () => {
         const out = buildBriefPendingActions(r([
             finding({ kind: 'none', headline: 'x', refId: 's1' }),
-            finding({ kind: 'thread', headline: 'real', refId: 's2' })
+            finding({ kind: 'thread', headline: 'no action', refId: 's2' }),
+            finding({ kind: 'thread', headline: 'real', recommendedAction: 'Move the reveal earlier.', refId: 's3' })
         ]), [], new Map());
-        expect(out.map(a => a.text)).toEqual(['real']);
+        expect(out.map(a => a.text)).toEqual(['Move the reveal earlier.']);
     });
 
     it('dedupes by `${targetLabel ?? ""}::${text}` keeping first occurrence (preserves order)', () => {
         const out = buildBriefPendingActions(r([
-            finding({ kind: 'thread', headline: 'A', refId: 's1' }), // → S1::A
-            finding({ kind: 'arc',    headline: 'A', refId: 's1' }), // duplicate key
-            finding({ kind: 'thread', headline: 'B', refId: 's2' })  // → S2::B
+            finding({ kind: 'thread', headline: 'A', recommendedAction: 'Revise A.', refId: 's1' }), // → S1::Revise A.
+            finding({ kind: 'arc',    headline: 'A', recommendedAction: 'Revise A.', refId: 's1' }), // duplicate key
+            finding({ kind: 'thread', headline: 'B', recommendedAction: 'Revise B.', refId: 's2' })  // → S2::Revise B.
         ]), [], new Map());
-        expect(out.map(a => `${a.targetLabel ?? ''}::${a.text}`)).toEqual(['S1::A', 'S2::B']);
+        expect(out.map(a => `${a.targetLabel ?? ''}::${a.text}`)).toEqual(['S1::Revise A.', 'S2::Revise B.']);
     });
 
     it('distinct targetLabel + same text produces two entries (key is composite)', () => {
         const out = buildBriefPendingActions(r([
-            finding({ kind: 'thread', headline: 'same', refId: 's1' }),
-            finding({ kind: 'thread', headline: 'same', refId: 's2' })
+            finding({ kind: 'thread', headline: 'same', recommendedAction: 'Revise shared beat.', refId: 's1' }),
+            finding({ kind: 'thread', headline: 'same', recommendedAction: 'Revise shared beat.', refId: 's2' })
         ]), [], new Map());
         expect(out.length).toBe(2);
     });
@@ -629,6 +641,25 @@ describe('buildInquirySceneNotes', () => {
         expect(out[0].anchorId).toBe('anchor-Book/1.md');
         expect(out[0].entries[0].headline).toBe('first');
         expect(out[0].entries[1].headline).toBe('second');
+    });
+
+    it('entry line: prefers recommendedAction over headline; falls back to headline when absent', () => {
+        const r = result({ scope: 'book', findings: [
+            f({ refId: 's1', headline: 'Setup is thin', recommendedAction: 'Seed the motive before S1.' }),
+            f({ refId: 's2', headline: 'Reveal lands soft' }) // no action → headline
+        ] });
+        const out = runScene(r, []);
+        const byLabel = new Map(out.map(n => [n.label, n.entries[0].headline]));
+        expect(byLabel.get('S1')).toBe('Seed the motive before S1.');
+        expect(byLabel.get('S2')).toBe('Reveal lands soft');
+    });
+
+    it('entry line: action equal to headline is suppressed, so the headline is used', () => {
+        const r = result({ scope: 'book', findings: [
+            f({ refId: 's1', headline: 'Tighten the turn', recommendedAction: 'Tighten the turn' })
+        ] });
+        const out = runScene(r, []);
+        expect(out[0].entries[0].headline).toBe('Tighten the turn');
     });
 
     it('order: matched uses items.indexOf; numeric-aware label sort across notes', () => {

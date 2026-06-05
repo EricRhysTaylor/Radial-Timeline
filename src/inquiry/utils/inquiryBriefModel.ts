@@ -319,23 +319,39 @@ export function buildInquirySceneReferenceIndex(
     }));
 }
 
+function normalizeActionComparisonText(value: string): string {
+    return value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 /**
  * Action text for a single finding (the per-finding label used in
  * brief pending-action entries). Non-hit kinds (`'none'`, `'strength'`)
- * yield null. Empty / whitespace-only normalized headlines yield null.
- * Otherwise: the headline, run through reference-token replacement,
- * trimmed.
+ * yield null. Findings must carry a dedicated recommendedAction; brief
+ * actions are no longer synthesized from finding headlines because that
+ * duplicates the report instead of producing author work.
  */
 export function getInquiryActionText(
     finding: InquiryFinding,
     referenceLabels: ReadonlyMap<string, string>
 ): string | null {
     if (finding.kind === 'none' || finding.kind === 'strength') return null;
+    const action = normalizeInquiryBriefText(
+        finding.recommendedAction || '',
+        referenceLabels
+    ).trim();
+    if (!action) return null;
+
     const headline = normalizeInquiryBriefText(
         normalizeInquiryHeadline(finding.headline),
         referenceLabels
     ).trim();
-    return headline || null;
+    if (normalizeActionComparisonText(action) === normalizeActionComparisonText(headline)) return null;
+    if (normalizeActionComparisonText(action) === 'finding') return null;
+    return action;
 }
 
 /**
@@ -404,7 +420,10 @@ export function buildBriefPendingActions(
  *    negatives → MAX_SAFE_INTEGER), then locale-aware numeric label.
  *  - Bullets: buildSceneDossierBodyLines → normalize → filter `startsWith('• ')`
  *    → strip prefix. (Pre-existing quirk preserved verbatim — see B4d scoping note.)
- *  - Headline fallback: `'Finding text unavailable.'`; lens `'both'` → `'Flow / Depth'`.
+ *  - Entry line: prefers the finding's recommendedAction (via
+ *    getInquiryActionText) so per-scene notes read as author work, not a
+ *    replay of the headline; falls back to the headline, then to
+ *    `'Finding text unavailable.'`. Lens `'both'` → `'Flow / Depth'`.
  */
 export function buildInquirySceneNotes(
     result: InquiryResult,
@@ -449,10 +468,15 @@ export function buildInquirySceneNotes(
         const header = match
             ? formatReferenceDisplay(match, label)
             : label.toUpperCase();
+        // Prefer the concrete recommendedAction as the per-scene line when
+        // one exists: it is distinct, author-facing work rather than a replay
+        // of the finding headline already shown in Target/Context Findings.
+        // Falls back to the headline when the finding carries no action.
+        const actionLine = getInquiryActionText(finding, referenceLabels);
         const entry = {
-            headline: sanitizeDossierText(
-                normalizeInquiryBriefText(finding.headline, referenceLabels)
-            ) || 'Finding text unavailable.',
+            headline: (actionLine && sanitizeDossierText(actionLine))
+                || sanitizeDossierText(normalizeInquiryBriefText(finding.headline, referenceLabels))
+                || 'Finding text unavailable.',
             bullets: buildSceneDossierBodyLines(finding)
                 .map(line => normalizeInquiryBriefText(line, referenceLabels))
                 .filter(line => line.startsWith('• '))
