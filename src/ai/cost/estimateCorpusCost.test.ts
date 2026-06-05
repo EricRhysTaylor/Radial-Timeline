@@ -14,11 +14,11 @@ import { estimateCorpusCost, estimateUsageCost } from './estimateCorpusCost';
  */
 
 describe('estimateCorpusCost', () => {
-    it('anchor: claude-opus-4-7 no-cache cost matches input × inputPer1M + output × outputPer1M', () => {
+    it('anchor: claude-opus-4-8 no-cache cost matches input × inputPer1M + output × outputPer1M', () => {
         // 200k input × $5/M + 10k output × $25/M = $1.00 + $0.25 = $1.25.
         const result = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             200_000,
             10_000,
             1,
@@ -34,7 +34,7 @@ describe('estimateCorpusCost', () => {
     it('partial cache reuse: cached cost is lower than fresh cost', () => {
         const result = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             200_000,
             10_000,
             1,
@@ -47,7 +47,7 @@ describe('estimateCorpusCost', () => {
     it('full cache reuse: cached < fresh and neither goes negative', () => {
         const result = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             200_000,
             10_000,
             1,
@@ -62,7 +62,7 @@ describe('estimateCorpusCost', () => {
     it('multi-pass uses the explicit default cache reuse ratio (0.5)', () => {
         const result = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             400_000,
             20_000,
             3
@@ -75,7 +75,7 @@ describe('estimateCorpusCost', () => {
     it('output-heavy estimates stay non-negative and cached <= fresh', () => {
         const result = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             20_000,
             120_000,
             1
@@ -90,7 +90,7 @@ describe('estimateCorpusCost', () => {
         // tiers the longer one should be costlier per-token.
         const atThreshold = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             200_000,
             10_000,
             1,
@@ -98,7 +98,7 @@ describe('estimateCorpusCost', () => {
         );
         const aboveThreshold = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             250_000,
             10_000,
             1,
@@ -211,7 +211,7 @@ describe('estimateCorpusCost', () => {
     it('cacheWriteTtl=5m (default) produces a lower priming-pass cost than 1h', () => {
         const fiveMinute = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             200_000,
             10_000,
             1,
@@ -219,7 +219,7 @@ describe('estimateCorpusCost', () => {
         );
         const oneHour = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             200_000,
             10_000,
             1,
@@ -233,7 +233,7 @@ describe('estimateCorpusCost', () => {
         // estimate is materially low. This pins that the gap exists.
         const fiveMinute = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             300_000,
             3_500,
             1,
@@ -241,7 +241,7 @@ describe('estimateCorpusCost', () => {
         );
         const oneHour = estimateCorpusCost(
             'anthropic',
-            'claude-opus-4-7',
+            'claude-opus-4-8',
             300_000,
             3_500,
             1,

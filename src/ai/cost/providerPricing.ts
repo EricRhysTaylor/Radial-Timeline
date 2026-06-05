@@ -46,7 +46,7 @@ export interface ResolvedProviderModelPricing {
 
 export const BUILTIN_PRICING: ProviderPricingTable = {
     anthropic: {
-        'claude-opus-4-7': {
+        'claude-opus-4-8': {
             inputPer1M: 5.0,
             outputPer1M: 25.0,
             cacheWrite5mPer1M: 6.25,

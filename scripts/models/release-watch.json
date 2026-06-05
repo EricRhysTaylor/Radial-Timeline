@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "watchedReleases": [
     {
-      "id": "anthropic-claude-opus-4-7-2026-04-16",
+      "id": "anthropic-claude-opus-4-8-2026-05-28",
       "provider": "anthropic",
-      "modelId": "claude-opus-4-7",
-      "label": "Claude Opus 4.7",
-      "announcedAt": "2026-04-16",
-      "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-7",
+      "modelId": "claude-opus-4-8",
+      "label": "Claude Opus 4.8",
+      "announcedAt": "2026-05-28",
+      "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-8",
       "notifyUntil": "curated"
     },
     {

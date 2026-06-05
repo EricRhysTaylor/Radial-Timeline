@@ -44,10 +44,10 @@ describe('BUILTIN_MODELS — OpenAI GPT-5.5', () => {
     });
 });
 
-describe('BUILTIN_MODELS — Anthropic Claude Opus 4.7', () => {
+describe('BUILTIN_MODELS — Anthropic Claude Opus 4.8', () => {
     it('exposes a 1M context / 16k output window', () => {
-        const model = byAlias('claude-opus-4.7');
-        expect(model.id).toBe('claude-opus-4-7');
+        const model = byAlias('claude-opus-4.8');
+        expect(model.id).toBe('claude-opus-4-8');
         expect(model.contextWindow).toBe(1000000);
         expect(model.maxOutput).toBe(16000);
         expect(model.status).toBe('stable');

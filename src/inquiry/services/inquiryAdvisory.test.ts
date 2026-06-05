@@ -51,7 +51,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns null when the current engine already has sources and fits in one pass', () => {
-        const currentModel = getModel('claude-opus-4-7');
+        const currentModel = getModel('claude-opus-4-8');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
@@ -115,7 +115,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('does not suggest a single-pass switch for only a minor pass-count gain', () => {
-        const currentModel = getModel('claude-opus-4-7');
+        const currentModel = getModel('claude-opus-4-8');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',
@@ -131,7 +131,7 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns null when no meaningful advisory advantage exists', () => {
-        const currentModel = getModel('claude-opus-4-7');
+        const currentModel = getModel('claude-opus-4-8');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             scopeLabel: 'B1',

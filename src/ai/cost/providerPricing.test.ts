@@ -14,8 +14,8 @@ describe('providerPricing', () => {
         resetPricingToBuiltin();
     });
 
-    it('stores an explicit Claude Opus 4.7 pricing row', () => {
-        const pricing = getProviderPricing('anthropic', 'claude-opus-4-7');
+    it('stores an explicit Claude Opus 4.8 pricing row', () => {
+        const pricing = getProviderPricing('anthropic', 'claude-opus-4-8');
 
         expect(pricing.inputPer1M).toBe(5);
         expect(pricing.outputPer1M).toBe(25);
@@ -143,7 +143,7 @@ describe('providerPricing', () => {
             }
         }, 'remote');
 
-        const pricing = getProviderPricing('anthropic', 'claude-opus-4-7');
+        const pricing = getProviderPricing('anthropic', 'claude-opus-4-8');
         expect(pricing.inputPer1M).toBe(5);
     });
 

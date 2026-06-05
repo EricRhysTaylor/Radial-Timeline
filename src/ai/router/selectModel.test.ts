@@ -6,10 +6,10 @@ describe('selectModel', () => {
     it('returns pinned alias when eligible', () => {
         const result = selectModel(BUILTIN_MODELS, {
             provider: 'anthropic',
-            policy: { type: 'pinned', pinnedAlias: 'claude-opus-4.7' },
+            policy: { type: 'pinned', pinnedAlias: 'claude-opus-4.8' },
             requiredCapabilities: ['longContext', 'jsonStrict']
         });
-        expect(result.model.alias).toBe('claude-opus-4.7');
+        expect(result.model.alias).toBe('claude-opus-4.8');
         expect(result.warnings.length).toBe(0);
     });
 
@@ -29,7 +29,7 @@ describe('selectModel', () => {
             policy: { type: 'latestStable' },
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong']
         });
-        expect(result.model.alias).toBe('claude-opus-4.7');
+        expect(result.model.alias).toBe('claude-opus-4.8');
     });
 
     it('resolves an OpenAI model for high-output Inquiry requirements', () => {

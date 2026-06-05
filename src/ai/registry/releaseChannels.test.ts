@@ -26,7 +26,7 @@ describe('release channel curation', () => {
 
     it('returns the single curated Anthropic picker entry', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'anthropic').map(model => model.alias);
-        expect(picker).toEqual(['claude-opus-4.7']);
+        expect(picker).toEqual(['claude-opus-4.8']);
     });
 
     it('selectLatestModelByReleaseChannel returns the only stable OpenAI model', () => {
@@ -39,6 +39,6 @@ describe('release channel curation', () => {
 
     it('selectLatestModelByReleaseChannel returns the only stable Anthropic model', () => {
         const stable = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'anthropic', 'stable');
-        expect(stable?.alias).toBe('claude-opus-4.7');
+        expect(stable?.alias).toBe('claude-opus-4.8');
     });
 });

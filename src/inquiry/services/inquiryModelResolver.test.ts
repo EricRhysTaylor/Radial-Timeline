@@ -23,8 +23,8 @@ describe('resolveInquiryEngine', () => {
 
         expect(resolved.provider).toBe('anthropic');
         expect(resolved.blocked).toBeUndefined();
-        expect(resolved.modelId).toBe('claude-opus-4-7');
-        expect(resolved.modelAlias).toBe('claude-opus-4.7');
+        expect(resolved.modelId).toBe('claude-opus-4-8');
+        expect(resolved.modelAlias).toBe('claude-opus-4.8');
     });
 
     it('resolves pinned Anthropic Opus 4.7 when explicitly selected', () => {
@@ -33,7 +33,7 @@ describe('resolveInquiryEngine', () => {
                 aiSettings: {
                     ...buildDefaultAiSettings(),
                     provider: 'anthropic',
-                    modelPolicy: { type: 'pinned', pinnedAlias: 'claude-opus-4.7' },
+                    modelPolicy: { type: 'pinned', pinnedAlias: 'claude-opus-4.8' },
                     credentials: {
                         ...buildDefaultAiSettings().credentials,
                         anthropicSecretId: 'rt.anthropic.test'
@@ -46,8 +46,8 @@ describe('resolveInquiryEngine', () => {
 
         expect(resolved.provider).toBe('anthropic');
         expect(resolved.blocked).toBeUndefined();
-        expect(resolved.modelId).toBe('claude-opus-4-7');
-        expect(resolved.modelAlias).toBe('claude-opus-4.7');
+        expect(resolved.modelId).toBe('claude-opus-4-8');
+        expect(resolved.modelAlias).toBe('claude-opus-4.8');
     });
 
     it('does not fall back to legacy provider fields when canonical AI settings disable AI', () => {

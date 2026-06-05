@@ -72,7 +72,7 @@ describe('remote pricing pipeline — happy path', () => {
     it('fetched remote pricing is merged and drives active pricing table', async () => {
         const remotePayload = {
             models: [
-                { provider: 'anthropic', modelId: 'claude-opus-4-7', inputPer1M: 2.5, outputPer1M: 12.0 },
+                { provider: 'anthropic', modelId: 'claude-opus-4-8', inputPer1M: 2.5, outputPer1M: 12.0 },
                 { provider: 'openai', modelId: 'gpt-5.5', inputPer1M: 2.8, outputPer1M: 9.0 }
             ]
         };
@@ -88,7 +88,7 @@ describe('remote pricing pipeline — happy path', () => {
 
         mergeRemotePricing(result.table!, result.source, result.fetchedAt);
 
-        expect(getProviderPricing('anthropic', 'claude-opus-4-7').inputPer1M).toBe(2.5);
+        expect(getProviderPricing('anthropic', 'claude-opus-4-8').inputPer1M).toBe(2.5);
         expect(getProviderPricing('openai', 'gpt-5.5').inputPer1M).toBe(2.8);
         expect(getActivePricingMeta().source).toBe('remote');
     });
@@ -111,7 +111,7 @@ describe('remote pricing pipeline — happy path', () => {
         // New model should be accessible
         expect(getProviderPricing('anthropic', 'claude-future-7').inputPer1M).toBe(1.0);
         // Existing builtin should still be there
-        expect(getProviderPricing('anthropic', 'claude-opus-4-7').inputPer1M).toBe(5.0);
+        expect(getProviderPricing('anthropic', 'claude-opus-4-8').inputPer1M).toBe(5.0);
     });
 
     it('remote pricing overrides builtin pricing for same model', async () => {
@@ -157,14 +157,14 @@ describe('remote pricing pipeline — fallback behavior', () => {
             enabled: true,
             url: 'https://example.com/pricing.json',
             readCache: async () => staleCacheJson({
-                table: { anthropic: { 'claude-opus-4-7': { inputPer1M: 99, outputPer1M: 99 } } }
+                table: { anthropic: { 'claude-opus-4-8': { inputPer1M: 99, outputPer1M: 99 } } }
             }),
             writeCache: async () => undefined,
             fetchImpl: failingFetch(503)
         });
 
         expect(result.source).toBe('cache');
-        expect(result.table?.anthropic?.['claude-opus-4-7']?.inputPer1M).toBe(99);
+        expect(result.table?.anthropic?.['claude-opus-4-8']?.inputPer1M).toBe(99);
         expect(result.warning).toContain('503');
     });
 
@@ -248,7 +248,7 @@ describe('remote pricing pipeline — fallback behavior', () => {
         expect(result.table).toBeNull();
 
         // Active pricing should still be builtin
-        const opus = getProviderPricing('anthropic', 'claude-opus-4-7');
+        const opus = getProviderPricing('anthropic', 'claude-opus-4-8');
         expect(opus.inputPer1M).toBe(5.0);
         expect(getActivePricingMeta().source).toBe('builtin');
     });
@@ -406,9 +406,9 @@ describe('remote registry pipeline — happy path', () => {
         const remoteModels = [
             makeModel({
                 provider: 'anthropic',
-                id: 'claude-opus-4-7',
-                alias: 'claude-opus-4.7',
-                label: 'Remote Claude Opus 4.7',
+                id: 'claude-opus-4-8',
+                alias: 'claude-opus-4.8',
+                label: 'Remote Claude Opus 4.8',
                 tier: 'DEEP',
                 capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
                 contextWindow: 1_000_000,
@@ -417,8 +417,8 @@ describe('remote registry pipeline — happy path', () => {
             }),
             makeModel({
                 provider: 'anthropic',
-                id: 'claude-opus-4-7',
-                alias: 'claude-opus-4.7',
+                id: 'claude-opus-4-8',
+                alias: 'claude-opus-4.8',
                 label: 'Remote Claude Sonnet 4.6',
                 tier: 'BALANCED',
                 capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
@@ -443,7 +443,7 @@ describe('remote registry pipeline — happy path', () => {
             accessTier: 1
         });
 
-        expect(selection.model.alias).toBe('claude-opus-4.7');
+        expect(selection.model.alias).toBe('claude-opus-4.8');
     });
 
     it('registry cache is written on successful remote fetch', async () => {
@@ -641,7 +641,7 @@ describe('drift handling — registry/pricing misalignment', () => {
         };
 
         // Exists in both builtin pricing and registry
-        expect(supports('anthropic', 'claude-opus-4-7')).toBe(true);
+        expect(supports('anthropic', 'claude-opus-4-8')).toBe(true);
         // Would only be in registry, not pricing
         expect(supports('anthropic', 'claude-no-pricing')).toBe(false);
     });
@@ -744,7 +744,7 @@ describe('both registry and pricing fetches failing', () => {
 
         // Active pricing remains builtin
         expect(getActivePricingMeta().source).toBe('builtin');
-        expect(getProviderPricing('anthropic', 'claude-opus-4-7').inputPer1M).toBe(5.0);
+        expect(getProviderPricing('anthropic', 'claude-opus-4-8').inputPer1M).toBe(5.0);
     });
 
     it('both fail with stale caches: system uses cached data for both', async () => {

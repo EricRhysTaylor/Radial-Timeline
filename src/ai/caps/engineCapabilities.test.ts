@@ -16,7 +16,7 @@ function byAlias(alias: string): ModelInfo {
 
 describe('resolveEngineCapabilities', () => {
     it('marks Anthropic Inquiry-relevant capabilities as available and batch as not yet used', () => {
-        const model = byAlias('claude-opus-4.7');
+        const model = byAlias('claude-opus-4.8');
         const resolved = resolveEngineCapabilities(model);
 
         expect(resolved.directManuscriptCitations.status).toBe('available');
@@ -78,20 +78,20 @@ describe('resolveEngineCapabilities', () => {
     });
 
     it('resolves by model reference and builds a per-model matrix row shape', () => {
-        const model = byAlias('claude-opus-4.7');
+        const model = byAlias('claude-opus-4.8');
         const byRef = resolveEngineCapabilitiesForRef(BUILTIN_MODELS, {
             provider: model.provider,
             modelId: model.id
         });
-        expect(byRef?.modelAlias).toBe('claude-opus-4.7');
+        expect(byRef?.modelAlias).toBe('claude-opus-4.8');
 
         const matrix = buildEngineCapabilityMatrix([model]);
         expect(matrix).toEqual([
             {
                 provider: 'anthropic',
-                modelId: 'claude-opus-4-7',
-                modelAlias: 'claude-opus-4.7',
-                modelLabel: 'Claude Opus 4.7',
+                modelId: 'claude-opus-4-8',
+                modelAlias: 'claude-opus-4.8',
+                modelLabel: 'Claude Opus 4.8',
                 contextWindow: 1000000,
                 directManuscriptCitations: 'available',
                 groundedToolAttribution: 'unavailable',
@@ -106,7 +106,7 @@ describe('resolveEngineCapabilities', () => {
 
 describe('getModelUiSignals', () => {
     it('returns citation and reuse labels for Anthropic model with exclusive constraint', () => {
-        const model = byAlias('claude-opus-4.7');
+        const model = byAlias('claude-opus-4.8');
         const signals = getModelUiSignals(model);
 
         // Sonnet 4.6 has cacheVsCitationsExclusive constraint
@@ -135,7 +135,7 @@ describe('getModelUiSignals', () => {
     });
 
     it('returns isPreview false for stable models', () => {
-        const stable = byAlias('claude-opus-4.7');
+        const stable = byAlias('claude-opus-4.8');
         expect(getModelUiSignals(stable).isPreview).toBe(false);
     });
 

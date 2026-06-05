@@ -29,9 +29,9 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     ],
     anthropic: [
         {
-            id: 'claude-opus-4-7',
-            label: 'Claude Opus 4.7',
-            guidance: "Claude Opus 4.7 (1,000,000 context). RT's Anthropic lane — uses the document-citation and prompt-caching path RT relies on. [FYI](https://docs.anthropic.com/en/docs/build-with-claude/citations)",
+            id: 'claude-opus-4-8',
+            label: 'Claude Opus 4.8',
+            guidance: "Claude Opus 4.8 (1,000,000 context). RT's Anthropic lane — uses the document-citation and prompt-caching path RT relies on. [FYI](https://docs.anthropic.com/en/docs/build-with-claude/citations)",
         },
     ],
     google: [

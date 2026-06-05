@@ -20,16 +20,16 @@ const LOCAL_CAPS: Capability[] = ['jsonStrict'];
 export const BUILTIN_MODELS: ModelInfo[] = [
     {
         provider: 'anthropic',
-        id: 'claude-opus-4-7',
-        alias: 'claude-opus-4.7',
-        label: 'Claude Opus 4.7',
+        id: 'claude-opus-4-8',
+        alias: 'claude-opus-4.8',
+        label: 'Claude Opus 4.8',
         line: 'claude-opus',
         tier: 'DEEP',
         capabilities: [...DEEP_CAPS],
         personality: { reasoning: 10, writing: 10, determinism: 9 },
         contextWindow: 1000000,
         maxOutput: 16000,
-        releasedAt: '2026-04-16',
+        releasedAt: '2026-05-28',
         status: 'stable',
         rollout: {
             channel: 'stable',

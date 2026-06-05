@@ -87,7 +87,7 @@ describe('countContentLogFiles', () => {
 
 describe('buildUsageCostBreakdown', () => {
     it('builds a cache-aware Anthropic cost breakdown from aggregated usage', () => {
-        const breakdown = buildUsageCostBreakdown('anthropic', 'claude-opus-4-7', {
+        const breakdown = buildUsageCostBreakdown('anthropic', 'claude-opus-4-8', {
             inputTokens: 185_581,
             outputTokens: 18_523,
             rawInputTokens: 53_581,
@@ -122,7 +122,7 @@ describe('buildUsageCostBreakdown', () => {
     });
 
     it('formats readable cost breakdown log lines', () => {
-        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-7', {
+        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-8', {
             inputTokens: 185_581,
             outputTokens: 18_523,
             rawInputTokens: 53_581,
@@ -154,7 +154,7 @@ describe('buildUsageCostBreakdown', () => {
     });
 
     it('uses the fresh estimate for cost accuracy when Anthropic created cache but did not hit it', () => {
-        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-7', {
+        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-8', {
             inputTokens: 307_895,
             outputTokens: 3_165,
             rawInputTokens: 26,
@@ -176,7 +176,7 @@ describe('buildUsageCostBreakdown', () => {
     });
 
     it('omits cost accuracy when actual cost is unavailable', () => {
-        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-7', {
+        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-8', {
             outputTokens: 10_000
         }, {
             executionInputTokens: 100_000,

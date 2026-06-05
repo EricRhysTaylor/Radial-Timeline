@@ -4,7 +4,7 @@ import { BUILTIN_MODELS } from '../registry/builtinModels';
 
 describe('computeCaps', () => {
     it('increases output cap for higher access tiers', () => {
-        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.7');
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.8');
         expect(model).toBeDefined();
         const tier1 = computeCaps({
             provider: 'anthropic',
@@ -35,7 +35,7 @@ describe('computeCaps', () => {
     });
 
     it('forceMaxOutputCeiling lifts a tier-clamped output cap to the model ceiling', () => {
-        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.7');
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-opus-4.8');
         expect(model).toBeDefined();
         // Tier 1 clamps Opus output to 4000 — the cause of truncated findings.
         const clamped = computeCaps({
