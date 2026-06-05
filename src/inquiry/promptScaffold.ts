@@ -58,8 +58,8 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '  "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
         '  "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
         '  "verdict": {',
-        '    "flow": 72,',
-        '    "depth": 58',
+        '    "flow": <computed integer 0-100>,',
+        '    "depth": <computed integer 0-100>',
         '  },',
         '  "findings": [',
         '    {',
@@ -87,7 +87,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '- Flow: momentum/causality/pressure progression across the evaluated corpus.',
         '- Depth: coherence/implication/structural integrity across the evaluated corpus.',
         'Scores reflect the corpus, not the quality of your answer.',
-        'verdict.flow and verdict.depth are REQUIRED integers (0-100) you MUST compute from the corpus. The numbers in the schema below are illustrative placeholders only — replace them with your own assessment. Never copy the example values, and never return 0 unless the corpus genuinely scores at the floor.',
+        'verdict.flow and verdict.depth are REQUIRED integers (0-100) you MUST compute from the corpus — never return 0 unless the corpus genuinely scores at the floor.',
         'Use the same evidence for both lenses; interpretation changes, not evidence.',
         'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
         'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
@@ -140,7 +140,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
             ]
             : []),
         'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, and findings.',
-        'Return JSON only using the exact schema below.'
+        'Match the response shape below. It shows field names and types only — angle-bracket hints like <computed integer 0-100> mark values you must compute; never emit the literal placeholder text.'
     ].join('\n');
 
     const targetSceneBlock = normalized.selectionMode === 'focused' && normalized.targetSceneIds.length

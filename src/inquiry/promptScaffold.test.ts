@@ -20,11 +20,13 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.schemaText.includes('"recommended_action"')).toBe(true);
         expect(parts.instructionText.includes('Answer the editorial question using the evidence.')).toBe(true);
         expect(parts.instructionText.includes('do not repeat or lightly rephrase the headline')).toBe(true);
-        // Regression guard: the verdict placeholder must NOT seed 0/0, which
-        // models echo verbatim (observed with Opus 4.8 → Flow 0 / Depth 0).
-        expect(parts.schemaText.includes('"flow": 0')).toBe(false);
-        expect(parts.schemaText.includes('"depth": 0')).toBe(false);
-        expect(parts.instructionText.includes('Never copy the example values')).toBe(true);
+        // Regression guard: the response shape must NOT seed verdict with any
+        // numeric value — models echo it verbatim (observed with Opus 4.8 →
+        // Flow 0 / Depth 0). It must use a non-copyable shape hint instead.
+        expect(/"flow":\s*\d/.test(parts.schemaText)).toBe(false);
+        expect(/"depth":\s*\d/.test(parts.schemaText)).toBe(false);
+        expect(parts.schemaText.includes('"flow": <computed integer 0-100>')).toBe(true);
+        expect(parts.instructionText.includes('never emit the literal placeholder text')).toBe(true);
         expect(parts.userPrompt.includes('SELECTION MODE')).toBe(false);
         expect(parts.userPrompt.includes('TARGET SCENES:\n- scn_target_01')).toBe(true);
         expect(INQUIRY_ROLE_TEMPLATE_GUARDRAIL.includes('role template')).toBe(true);
