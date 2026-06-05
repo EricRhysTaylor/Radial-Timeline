@@ -103,11 +103,13 @@ describe('AI client privacy-flag wiring', () => {
 /**
  * Pre-dispatch availability gate (regression guard added 2026-05-23).
  *
- * The provider snapshot reports whether a model is exposed to the user's
- * account at their access tier. Previously, availabilityStatus was recorded
- * on advancedContext but the run dispatched anyway — burning the user's
- * API quota on a guaranteed 404/400. This guard pins that the not_visible
- * status hard-fails before this.execute() is called.
+ * The provider snapshot is a global model catalog (not keyed to the user's
+ * account/tier) used to catch dispatching an unknown model id. Previously,
+ * availabilityStatus was recorded on advancedContext but the run dispatched
+ * anyway — burning the user's API quota on a guaranteed 404/400. This guard
+ * pins that the not_visible status hard-fails before this.execute() is
+ * called. Curated BUILTIN_MODELS are exempt from not_visible (snapshot lag
+ * must not block a model RT ships); see the curated-exemption guard below.
  */
 describe('AI client model-availability gate', () => {
     const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
@@ -128,6 +130,15 @@ describe('AI client model-availability gate', () => {
         expect(executeIndex).toBeGreaterThan(-1);
         expect(gateIndex).toBeGreaterThan(setLastIndex);
         expect(gateIndex).toBeLessThan(executeIndex);
+    });
+
+    it('exempts curated BUILTIN_MODELS from not_visible so snapshot lag cannot block a shipped model', () => {
+        // A newly promoted model can be missing from the global, lagging
+        // provider snapshot for days. The availability computation must check
+        // BUILTIN_MODELS membership and downgrade absence to 'unknown' for
+        // curated models rather than fabricating a not_visible tier reason.
+        expect(code).toMatch(/isCuratedBuiltinModel/);
+        expect(code).toMatch(/BUILTIN_MODELS\.some\(/);
     });
 });
 

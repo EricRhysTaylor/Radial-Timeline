@@ -7,6 +7,7 @@ import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelo
 import { buildOutputRulesText } from '../prompts/outputRules';
 import { providerSupportsCorpusReuse, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
+import { BUILTIN_MODELS } from '../registry/builtinModels';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { loadRemotePricing, type RemotePricingLoadResult } from '../cost/remotePricing';
 import { mergeRemotePricing } from '../cost/providerPricing';
@@ -813,11 +814,27 @@ export class AIClient {
         const availableModel = snapshotProvider
             ? findSnapshotModel(snapshotState.snapshot, snapshotProvider, modelSelection.model.id)
             : null;
+        // A model RT itself curates and ships (in BUILTIN_MODELS) is never
+        // marked not_visible by snapshot absence. The provider snapshot is a
+        // global catalog fetched from the repo — it is NOT keyed to the user's
+        // API key or access tier, and it lags provider releases (a newly
+        // promoted model can be missing for days). Claiming such a model is
+        // "not visible to your account at your access tier" would be a
+        // fabricated reason (code-doctrine § Do Not Lie to the Author). When a
+        // curated model is absent from the snapshot we report 'unknown' and let
+        // the real provider call be the authority — if the account truly lacks
+        // access, the provider returns the real error. Only non-curated models
+        // (e.g. a hand-typed id) are gated as not_visible.
+        const isCuratedBuiltinModel = BUILTIN_MODELS.some(model => model.id === modelSelection.model.id);
         const availabilityStatus: AIRunAdvancedContext['availabilityStatus'] = !snapshotProvider
             ? 'unknown'
             : !snapshotState.snapshot
             ? 'unknown'
-            : (availableModel ? 'visible' : 'not_visible');
+            : availableModel
+            ? 'visible'
+            : isCuratedBuiltinModel
+            ? 'unknown'
+            : 'not_visible';
 
         // Truth-safe reuse state — warm only when provable
         const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);
@@ -893,17 +910,16 @@ export class AIClient {
         };
         setLastRunAdvanced(this.plugin, request.feature, advancedContext);
 
-        // Pre-dispatch availability gate. The provider snapshot is the
-        // authoritative source for "is this model exposed to your account at
-        // your access tier." Dispatching a known-not_visible model wastes the
-        // user's API budget on a guaranteed 404/400; abort with a clear
-        // message that names the model + provider so the user can either
-        // upgrade the tier or pick a visible model. The advancedContext above
-        // already carries the not_visible status into logs/UI.
+        // Pre-dispatch availability gate. Only fires for NON-curated models
+        // (e.g. a hand-typed id) that are also absent from the provider
+        // snapshot — dispatching those wastes the user's API budget on a
+        // guaranteed 404/400. Curated BUILTIN_MODELS are exempt above
+        // (snapshot lag must not block a model RT ships). The advancedContext
+        // already carries the status into logs/UI before we throw.
         if (availabilityStatus === 'not_visible') {
             throw new Error(
-                `Model "${modelSelection.model.label}" (${modelSelection.model.alias}) is not visible to your ${provider} account at the current access tier. ` +
-                `Update model selection or access tier in Settings → AI before running.`
+                `Model "${modelSelection.model.label}" (${modelSelection.model.alias}) is not in the current ${provider} model snapshot — it may be retired, misspelled, or not yet published. ` +
+                `Pick a model from the list in Settings → AI before running.`
             );
         }
 
