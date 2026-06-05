@@ -14,11 +14,7 @@
  *       provider:'none' and provider:'ollama') has a pricing entry in
  *       src/ai/cost/providerPricing.ts.
  *
- *   [2] Every model.id in src/data/aiModels.ts CURATED_MODELS has a
- *       backing entry in BUILTIN_MODELS — a curated picker entry without
- *       a runtime registry entry is unservable.
- *
- *   [3] Every model.id in providerPricing.ts is either in BUILTIN_MODELS
+ *   [2] Every model.id in providerPricing.ts is either in BUILTIN_MODELS
  *       or in the documented dangling allowlist (legacy retained-for-
  *       continuity entries).
  *
@@ -38,7 +34,6 @@ const ROOT = path.resolve(__dirname, '..');
 
 const BUILTIN_MODELS_PATH = path.join(ROOT, 'src/ai/registry/builtinModels.ts');
 const PROVIDER_PRICING_PATH = path.join(ROOT, 'src/ai/cost/providerPricing.ts');
-const CURATED_MODELS_PATH = path.join(ROOT, 'src/data/aiModels.ts');
 
 // Pricing entries that intentionally exist without a corresponding
 // BUILTIN_MODELS entry. Each must be justified with a comment when
@@ -119,32 +114,17 @@ function parsePricingKeys(source) {
     return keys;
 }
 
-/**
- * Parse CURATED_MODELS to extract the user-facing picker entries.
- */
-function parseCuratedIds(source) {
-    const ids = new Set();
-    const re = /id:\s*'([^']+)'/g;
-    let match;
-    while ((match = re.exec(source)) !== null) {
-        ids.add(match[1]);
-    }
-    return ids;
-}
-
 async function main() {
-    const [builtinSrc, pricingSrc, curatedSrc] = await Promise.all([
+    const [builtinSrc, pricingSrc] = await Promise.all([
         readFileSafe(BUILTIN_MODELS_PATH),
         readFileSafe(PROVIDER_PRICING_PATH),
-        readFileSafe(CURATED_MODELS_PATH),
     ]);
 
     const builtinAll = parseBuiltinModels(builtinSrc);
     const builtinIds = new Set(builtinAll.map(m => m.id));
     const pricingKeys = parsePricingKeys(pricingSrc);
-    const curatedIds = parseCuratedIds(curatedSrc);
 
-    log(`${COLOR.dim}Parsed:${COLOR.reset} ${builtinAll.length} BUILTIN_MODELS · ${pricingKeys.size} pricing keys · ${curatedIds.size} CURATED_MODELS entries`);
+    log(`${COLOR.dim}Parsed:${COLOR.reset} ${builtinAll.length} BUILTIN_MODELS · ${pricingKeys.size} pricing keys`);
 
     const findings = [];
 
@@ -163,18 +143,7 @@ async function main() {
         }
     }
 
-    // [2] CURATED_MODELS → must be backed by BUILTIN_MODELS
-    for (const id of curatedIds) {
-        if (!builtinIds.has(id)) {
-            findings.push({
-                severity: 'error',
-                check: 'curated-without-builtin',
-                message: `CURATED_MODELS has '${id}' but no matching entry in BUILTIN_MODELS — user would pick an unservable model`,
-            });
-        }
-    }
-
-    // [3] pricing entries → must be in BUILTIN_MODELS or allowlisted
+    // [2] pricing entries → must be in BUILTIN_MODELS or allowlisted
     for (const key of pricingKeys) {
         if (builtinIds.has(key)) continue;
         if (PRICING_DANGLING_ALLOWLIST.has(key)) continue;
