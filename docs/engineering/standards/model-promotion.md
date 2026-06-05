@@ -11,7 +11,7 @@ This policy was adopted on **2026-05-22** after the audit found that every model
 One top model per provider, plus a Google fast/deep split where the speed/depth tradeoff is a genuine quality dimension (not a cost dimension).
 
 ```
-Anthropic: Claude Opus 4.7              (depth)
+Anthropic: Claude Opus 4.8              (depth)
 OpenAI:    GPT-5.5                       (depth)
 Google:    Gemini 3.1 Pro Preview        (depth)
            Gemini 3.5 Flash              (speed — different reasoning style, not just faster)

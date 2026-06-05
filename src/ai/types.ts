@@ -74,6 +74,13 @@ export interface ModelInfo {
         supportsTopP?: boolean;
         /** Whether this model exposes provider reasoning effort controls. */
         supportsReasoningEffort?: boolean;
+        /**
+         * Whether this model uses adaptive thinking (thinking:{type:'adaptive'}
+         * + output_config.effort) instead of the legacy manual budget shape
+         * (thinking:{type:'enabled',budget_tokens}). Claude Opus 4.7+ reject the
+         * legacy shape with a 400; older Claude models require it.
+         */
+        supportsAdaptiveThinking?: boolean;
         /** Provider endpoint/lane RT should use for this model. */
         preferredOpenAiEndpoint?: 'responses' | 'chat_completions';
     };

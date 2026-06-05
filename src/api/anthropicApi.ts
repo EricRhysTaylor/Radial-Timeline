@@ -7,6 +7,7 @@
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
+import { modelSupportsAdaptiveThinking } from '../ai/registry/modelRequestProfiles';
 import type { AnthropicCacheTtl, EvidenceDocument, TokenCountResult } from '../ai/types';
 
 export type AnthropicTextBlock = {
@@ -354,8 +355,10 @@ function buildAnthropicMessageRequestBody(
     // Verified via smoke probe against Opus 4.7 on 2026-05-23 — provider
     // returns 400: "thinking.type.enabled is not supported for this model.
     // Use thinking.type.adaptive and output_config.effort to control
-    // thinking behavior." Older Claude models still want the legacy shape.
-    if (modelSupportsAdaptiveThinking(input.modelId)) {
+    // thinking behavior." Which shape a model wants is declared on its
+    // record (ModelInfo.constraints.supportsAdaptiveThinking), not matched
+    // on the model id here.
+    if (modelSupportsAdaptiveThinking('anthropic', input.modelId)) {
       requestBody.thinking = { type: 'adaptive' };
       requestBody.output_config = { effort: mapBudgetToEffort(thinkingBudget) };
     } else {
@@ -363,12 +366,6 @@ function buildAnthropicMessageRequestBody(
     }
   }
   return requestBody;
-}
-
-/** Whether the model accepts thinking.type='adaptive' (Opus 4.7+ family). */
-function modelSupportsAdaptiveThinking(modelId: string | undefined): boolean {
-  if (!modelId) return false;
-  return /claude-opus-4-[7-9]\b|claude-opus-[5-9]/i.test(modelId);
 }
 
 /** Map a budget-token target to the closest adaptive effort level. */

@@ -35,6 +35,16 @@ export const BUILTIN_MODELS: ModelInfo[] = [
             channel: 'stable',
             status: 'stable',
             lane: 'default'
+        },
+        // Opus 4.7+ (incl. 4.8) reject request-level temperature/top_p
+        // (provider-managed sampling) and use adaptive thinking only — the
+        // legacy thinking:{type:'enabled'} shape returns 400. Verified via
+        // smoke probe against Opus 4.7 (2026-05-23); 4.8 keeps the contract
+        // per the migration guide (no breaking changes from 4.7).
+        constraints: {
+            supportsTemperature: false,
+            supportsTopP: false,
+            supportsAdaptiveThinking: true
         }
     },
     {

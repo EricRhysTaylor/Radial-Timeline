@@ -1,4 +1,5 @@
-import type { AIProviderId } from '../types';
+import type { AIProviderId, ModelInfo } from '../types';
+import { BUILTIN_MODELS } from './builtinModels';
 
 export interface ModelRequestProfile {
     supportsTemperature: boolean;
@@ -10,6 +11,8 @@ export interface ModelRequestProfile {
     supportsThinkingBudget: boolean;
     supportsReasoningEffort?: boolean;
     preferredOpenAiEndpoint?: 'responses' | 'chat_completions';
+    /** Adaptive thinking (type:'adaptive' + effort) vs legacy manual budget. */
+    supportsAdaptiveThinking?: boolean;
 }
 
 const PROVIDER_DEFAULTS: Record<Exclude<AIProviderId, 'none'>, ModelRequestProfile> = {
@@ -56,31 +59,26 @@ const PROVIDER_DEFAULTS: Record<Exclude<AIProviderId, 'none'>, ModelRequestProfi
     }
 };
 
-const OPENAI_GPT_5_5_OVERRIDE: Partial<ModelRequestProfile> = {
-    supportsTemperature: false,
-    supportsTopP: false,
-    supportsReasoningEffort: true,
-    preferredOpenAiEndpoint: 'responses'
-};
+// Request-shape facts live on each model record's `constraints`
+// (ModelInfo.constraints) — the single source of truth, carried by both
+// builtin and remote-fetched model records. We project the profile-relevant
+// fields here so there is no parallel hand-maintained override table to
+// drift against the catalog (e.g. GPT-5.5 previously declared the same
+// sampling facts in both places).
+function constraintsToProfileOverride(constraints: ModelInfo['constraints']): Partial<ModelRequestProfile> {
+    if (!constraints) return {};
+    const override: Partial<ModelRequestProfile> = {};
+    if (constraints.supportsTemperature !== undefined) override.supportsTemperature = constraints.supportsTemperature;
+    if (constraints.supportsTopP !== undefined) override.supportsTopP = constraints.supportsTopP;
+    if (constraints.supportsReasoningEffort !== undefined) override.supportsReasoningEffort = constraints.supportsReasoningEffort;
+    if (constraints.preferredOpenAiEndpoint !== undefined) override.preferredOpenAiEndpoint = constraints.preferredOpenAiEndpoint;
+    if (constraints.supportsAdaptiveThinking !== undefined) override.supportsAdaptiveThinking = constraints.supportsAdaptiveThinking;
+    return override;
+}
 
-// Claude Opus 4.7+ (incl. 4.8) reject both `temperature` AND `top_p`
-// request parameters (provider-managed sampling). Anthropic returns 400
-// "`X` is deprecated for this model" if either is sent. Verified live via
-// smoke probe against Opus 4.7 (2026-05-23); 4.8 keeps the same contract
-// per the migration guide (no breaking changes from 4.7).
-const ANTHROPIC_OPUS_4_8_OVERRIDE: Partial<ModelRequestProfile> = {
-    supportsTemperature: false,
-    supportsTopP: false,
-};
-
-const REQUEST_PROFILE_OVERRIDES: Partial<Record<Exclude<AIProviderId, 'none'>, Record<string, Partial<ModelRequestProfile>>>> = {
-    openai: {
-        'gpt-5.5': OPENAI_GPT_5_5_OVERRIDE
-    },
-    anthropic: {
-        'claude-opus-4-8': ANTHROPIC_OPUS_4_8_OVERRIDE
-    }
-};
+const PROFILE_OVERRIDES_BY_ID: Map<string, Partial<ModelRequestProfile>> = new Map(
+    BUILTIN_MODELS.map(model => [model.id, constraintsToProfileOverride(model.constraints)])
+);
 
 function isGoogleManagedSamplingModel(modelId: string): boolean {
     return /\b2\.5\b|\b3\.\d/.test(modelId);
@@ -93,7 +91,7 @@ export function getModelRequestProfile(
     const normalized = (modelId || '').trim().replace(/^models\//, '');
     const base = PROVIDER_DEFAULTS[provider];
     const explicitOverride = normalized
-        ? REQUEST_PROFILE_OVERRIDES[provider]?.[normalized]
+        ? PROFILE_OVERRIDES_BY_ID.get(normalized)
         : undefined;
     const familyOverride: Partial<ModelRequestProfile> = provider === 'google' && isGoogleManagedSamplingModel(normalized)
         ? { supportsTemperature: false, supportsTopP: false }
@@ -124,4 +122,16 @@ export function modelSupportsThinkingBudget(
     modelId?: string
 ): boolean {
     return getModelRequestProfile(provider, modelId).supportsThinkingBudget === true;
+}
+
+/**
+ * Whether the model uses Anthropic adaptive thinking (thinking:{type:'adaptive'}
+ * + output_config.effort). Declared per-model via ModelInfo.constraints rather
+ * than pattern-matched on the model id.
+ */
+export function modelSupportsAdaptiveThinking(
+    provider: Exclude<AIProviderId, 'none'>,
+    modelId?: string
+): boolean {
+    return getModelRequestProfile(provider, modelId).supportsAdaptiveThinking === true;
 }
