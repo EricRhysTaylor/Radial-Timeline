@@ -6257,7 +6257,14 @@ export class InquiryView extends ItemView {
             scopeKey,
             targetSceneIds
         });
-        const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
+        // A normal run dedupes to one session per question+corpus (overwrites
+        // in place). A force-rerun gets a unique key so it APPENDS a distinct
+        // history entry instead of purging the prior run; `baseKey` (stored on
+        // the session) still groups all runs of this question together.
+        const canonicalKey = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
+        const key = options?.forceRerun
+            ? `${canonicalKey}::rerun-${Date.now()}`
+            : canonicalKey;
         let cacheStatus: 'fresh' | 'stale' | 'missing' = 'missing';
 
         if (!options?.forceRerun) {

@@ -1219,7 +1219,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 forceMaxOutputCeiling: options.forceMaxOutputCeiling
             },
             bypassInMemoryCache: options.forceFreshRun === true,
-            bypassProviderReuse: options.forceFreshRun === true,
+            // Force-rerun bypasses only the in-memory OUTPUT cache so the answer
+            // is regenerated. The provider input-prefix cache (Anthropic) is
+            // kept — its output is never reused, so a rerun stays cheap and the
+            // cache window/countdown survives. (Was tied to forceFreshRun, which
+            // needlessly paid full input cost and disarmed the cache on rerun.)
+            bypassProviderReuse: false,
             preparedEstimate: preparedEstimate ?? undefined,
             providerReuseKey: options.providerReuseKey,
             evidenceDocuments: options.evidenceBlocks?.length
