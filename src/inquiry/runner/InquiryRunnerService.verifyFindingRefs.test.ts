@@ -15,6 +15,7 @@ type Verifier = (
     verified: Array<{ refId: string; headline: string; recommendedAction?: string; rawRef?: Record<string, string>; subject?: string; span?: string; supportingRefs?: Array<{ refId: string }> }>;
     unverified: Array<{ rawRefId?: string; rawRefLabel?: string; rawRefPath?: string; headline: string; warning: string }>;
     warnings: Array<{ stage: string; message: string }>;
+    repairs: Array<{ rawRef: string; canonicalRef: string }>;
 };
 
 function getVerifier(): Verifier {
@@ -151,7 +152,7 @@ describe('verifyFindingRefs', () => {
         expect(out.warnings[0].message).toContain('could not be matched');
     });
 
-    it('rescues a fabricated ref_id when ref_label matches a single corpus entry', () => {
+    it('rescues a fabricated ref_id via label as a DIAGNOSTIC, not an author-facing warning', () => {
         const verify = getVerifier();
         const out = verify(
             [{
@@ -166,6 +167,7 @@ describe('verifyFindingRefs', () => {
             singleSceneIndex()
         );
 
+        // Finding stays usable and bound to the canonical id.
         expect(out.verified.length).toBe(1);
         expect(out.verified[0].refId).toBe('scn_a1b2c3d4');
         expect(out.verified[0].rawRef).toEqual({
@@ -173,7 +175,31 @@ describe('verifyFindingRefs', () => {
             refLabel: '3 Party.md',
             refPath: 'Book 1 Shail + Trisan/3 Party.md'
         });
-        expect(out.warnings.some(w => w.stage === 'unresolved_ref' && w.message.includes('scn_a1b2c3d4'))).toBe(true);
+        // A deterministic repair must NOT raise a hard "do not trust" warning...
+        expect(out.warnings.length).toBe(0);
+        // ...but it IS retained as an internal audit diagnostic.
+        expect(out.repairs).toEqual([{ rawRef: 'scn_deadbeef', canonicalRef: 'scn_a1b2c3d4' }]);
+    });
+
+    it('repairs a numbered placeholder ref (scn_16) via label without an author warning (Opus 4.8 signature)', () => {
+        const verify = getVerifier();
+        const out = verify(
+            [{
+                ref_id: 'scn_3',                       // S-number placeholder, not a canonical hash
+                ref_label: '3 Party.md',
+                ref_path: 'Book 1 Shail + Trisan/3 Party.md',
+                kind: 'unclear',
+                headline: 'Numbered placeholder ref',
+                bullets: ['x'],
+                role: 'context'
+            }],
+            singleSceneIndex()
+        );
+
+        expect(out.verified.length).toBe(1);
+        expect(out.verified[0].refId).toBe('scn_a1b2c3d4');
+        expect(out.warnings.length).toBe(0);
+        expect(out.repairs).toEqual([{ rawRef: 'scn_3', canonicalRef: 'scn_a1b2c3d4' }]);
     });
 
     it('quarantines when fallback keys are ambiguous (multiple scenes share a number)', () => {

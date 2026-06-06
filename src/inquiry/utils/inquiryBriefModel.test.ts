@@ -18,7 +18,6 @@ import {
     buildInquiryReferenceLabelMap,
     buildInquirySceneReferenceIndex,
     getInquiryActionText,
-    getInquiryNoPendingActionsCopy,
     buildInquiryPendingAction,
     buildBriefPendingActions,
     buildInquirySceneNotes,
@@ -754,17 +753,6 @@ describe('buildInquiryBriefModel (final composite assembler)', () => {
         citations: [] as never,
         evidenceDocumentMeta: [] as never,
         ...over
-    });
-
-    it('noPendingActionsText: derived from result.questionZone', () => {
-        expect(buildInquiryBriefModel(baseResult({ questionZone: 'setup' as InquiryZone }), baseOpts()).noPendingActionsText)
-            .toBe('No separate author actions — the findings above are preconditions to verify, not scene rewrites.');
-        expect(buildInquiryBriefModel(baseResult({ questionZone: 'pressure' as InquiryZone }), baseOpts()).noPendingActionsText)
-            .toContain('pressure, escalation, or consequence');
-        expect(buildInquiryBriefModel(baseResult({ questionZone: 'payoff' as InquiryZone }), baseOpts()).noPendingActionsText)
-            .toContain('setup/payoff chain');
-        expect(buildInquiryBriefModel(baseResult(), baseOpts()).noPendingActionsText)
-            .toBe('No separate author actions were generated for this run.');
     });
 
     it('questionTitle: promptLabel non-null → used; null → "Inquiry Question"', () => {

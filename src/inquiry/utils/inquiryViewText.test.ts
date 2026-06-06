@@ -81,6 +81,34 @@ describe('inquiryViewText', () => {
         expect(content).toContain('Scene: 50 Long Road Up');
     });
 
+    it('renders a scoped "No Action Items" empty-state when there are no pending actions', () => {
+        const brief: InquiryBriefModel = {
+            questionTitle: 'Question',
+            questionText: 'What is assumed?',
+            scopeIndicator: 'Book B1',
+            selectionMode: 'discover',
+            roleValidation: 'ok',
+            pills: [],
+            flowSummary: 'Flow summary',
+            depthSummary: 'Depth summary',
+            findings: [
+                { headline: 'A precondition', sceneLabel: '7 Entail', role: 'context', lens: 'Depth', bullets: ['x'] }
+            ],
+            sources: [],
+            sceneNotes: [],
+            sceneReferences: [],
+            pendingActions: [],
+            logTitle: null
+        };
+
+        const content = renderInquiryBrief(brief);
+        expect(content).toContain('## Pending Author Actions');
+        expect(content).toContain('**No Action Items** — no pending edits were identified for this inquiry.');
+        // Scoped to the inquiry, never a manuscript-quality claim.
+        expect(content).not.toContain('excellent');
+        expect(content).not.toContain('No separate author actions');
+    });
+
     it('builds scope indicators from the canonical scopeLabel field', () => {
         const result: InquiryResult = {
             runId: 'run-1',

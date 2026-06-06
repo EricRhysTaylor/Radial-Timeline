@@ -417,6 +417,17 @@ export function buildInquiryLogContent(args: {
     }
     lines.push('');
 
+    // Internal audit of deterministically-repaired citations (malformed
+    // ref_id → canonical id via label/path). Diagnostic only — these do NOT
+    // drive the author-facing untrusted-evidence banner.
+    if (result.citationRepairs && result.citationRepairs.length) {
+        lines.push('## Citation Diagnostics');
+        result.citationRepairs.forEach(repair => {
+            lines.push(`- Repaired malformed ref "${repair.rawRef}" → canonical "${repair.canonicalRef}" via label/path.`);
+        });
+        lines.push('');
+    }
+
     lines.push('## Suggested Fixes');
     buildSuggestedFixes().forEach(fix => {
         lines.push(`- ${fix}`);

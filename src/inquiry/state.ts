@@ -117,10 +117,30 @@ export type CitationIntegrityStage = 'unresolved_ref' | 'ref_label_mismatch';
  * A run-level warning about citation integrity. Each entry corresponds to one
  * integrity event (e.g. a fabricated ref, a label that points to a different
  * scene than its ref_id). Rendered in a blunt banner above findings.
+ *
+ * Reserved for HARD failures that affect trust: unresolved/quarantined refs and
+ * id/label mismatches. Deterministic repairs (a malformed ref matched to a
+ * unique scene via label/path) are NOT warnings — they are diagnostics; see
+ * `CitationRepairDiagnostic`.
  */
 export interface CitationIntegrityWarning {
     stage: CitationIntegrityStage;
     message: string;
+}
+
+/**
+ * An internal diagnostic recording a citation the model emitted with a
+ * malformed/non-canonical ref_id that was deterministically repaired to a
+ * single corpus scene via an exact label/path match. The finding is fully
+ * usable — these are logged for audit, never surfaced as an author-facing
+ * "untrusted evidence" warning. (Observed: Opus 4.8 emitting `scn_16` for
+ * scene 16 instead of the canonical `scn_<hash>` id.)
+ */
+export interface CitationRepairDiagnostic {
+    /** The malformed ref the model emitted, e.g. "scn_16". */
+    rawRef: string;
+    /** The canonical corpus id it was repaired to, e.g. "scn_2b0eb73f". */
+    canonicalRef: string;
 }
 
 /**
@@ -230,6 +250,12 @@ export interface InquiryResult {
      * label-vs-id, etc.). When present, the UI must show a blunt banner.
      */
     citationIntegrityWarnings?: CitationIntegrityWarning[];
+    /**
+     * Internal audit log of citations whose malformed ref_id was
+     * deterministically repaired via label/path. Diagnostic only — never drives
+     * the author-facing untrusted-evidence banner.
+     */
+    citationRepairs?: CitationRepairDiagnostic[];
     /** Normalized source attribution from provider runtime (manuscript and tool/file/url forms). */
     citations?: InquiryCitation[];
     /** Ordered metadata for evidence documents sent to the AI. Indices match citation documentIndex. */

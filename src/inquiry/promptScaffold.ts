@@ -114,6 +114,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'When identifying absences (e.g. missing setup, weak foreshadowing, underdeveloped elements): reference the scene where the absence is most visible to the reader, or the scene where the missing element should have been established.',
         'Avoid abstract identifiers such as gap_001 or similar constructs.',
         'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
+        'Never derive ref_id from a scene number: the scene labelled "(S16)" is NOT scn_16. Copy the exact scn_<hash> ref_id from the CORPUS MANIFEST row; the S-number is a display label, never an id.',
         'Evidence headings include "(Summary)" or "(Full)".',
         'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
         'Return findings for scenes/moments that materially answer the question. A finding may be an evidence-bearing observation, not only a revision problem.',

@@ -71,12 +71,6 @@ export type InquiryBriefModel = {
         targetLabel?: string;
         text: string;
     }>;
-    /**
-     * Zone-aware editorial copy for the empty "Pending Author Actions"
-     * state (findings present, no actions). Precomputed in the brief model
-     * from the canonical question zone so the renderer stays dumb.
-     */
-    noPendingActionsText?: string;
     logTitle?: string | null;
     rawResponse?: string | null;
     refNormalized?: boolean;

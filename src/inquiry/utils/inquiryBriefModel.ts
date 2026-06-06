@@ -382,27 +382,6 @@ export function buildInquiryPendingAction(
  * actions, and dedupes by `<targetLabel>::<text>` (empty label
  * normalized to '' for the key). Preserves first-occurrence order.
  */
-/**
- * Editorial copy shown when a run produced findings but no separate
- * author actions. Zone-aware so the line reads as the right kind of
- * non-action: setup → preconditions to verify; pressure → where tension
- * may need attention; payoff → whether the setup/payoff chain resolves.
- * Falls back to a neutral line when the result carries no canonical zone.
- * Derives from the canonical zone, never from raw question text.
- */
-export function getInquiryNoPendingActionsCopy(zone?: InquiryZone): string {
-    switch (zone) {
-        case 'setup':
-            return 'No separate author actions — the findings above are preconditions to verify, not scene rewrites.';
-        case 'pressure':
-            return 'No separate author actions — use the findings above to check where pressure, escalation, or consequence may need attention.';
-        case 'payoff':
-            return 'No separate author actions — use the findings above to verify whether the setup/payoff chain already resolves cleanly.';
-        default:
-            return 'No separate author actions were generated for this run.';
-    }
-}
-
 export function buildBriefPendingActions(
     result: InquiryResult,
     items: InquiryCorpusItem[],
@@ -701,7 +680,6 @@ export function buildInquiryBriefModel(
         sceneNotes,
         sceneReferences,
         pendingActions,
-        noPendingActionsText: getInquiryNoPendingActionsCopy(result.questionZone),
         logTitle,
         rawResponse: includeRawResponse ? rawResponseText : null,
         refNormalized: (result.refNormalizationCount ?? 0) > 0,

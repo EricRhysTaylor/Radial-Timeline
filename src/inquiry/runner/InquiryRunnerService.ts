@@ -5,7 +5,7 @@ import { t } from '../../i18n';
 import { extractSummary, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { CitationIntegrityWarning, EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryFinding, InquiryResult, InquiryRoleValidation, InquiryTokenUsageScope, UnverifiedCitation } from '../state';
+import type { CitationIntegrityWarning, CitationRepairDiagnostic, EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryFinding, InquiryResult, InquiryRoleValidation, InquiryTokenUsageScope, UnverifiedCitation } from '../state';
 import { computeCitationIntegritySummary } from '../state';
 import type {
     CorpusManifestEntry,
@@ -2136,6 +2136,7 @@ export class InquiryRunnerService implements InquiryRunner {
             ...(tokenUsage ? { tokenUsage } : {}),
             ...(partition.unverified.length ? { unverifiedFindings: partition.unverified } : {}),
             ...(partition.warnings.length ? { citationIntegrityWarnings: partition.warnings } : {}),
+            ...(partition.repairs.length ? { citationRepairs: partition.repairs } : {}),
             ...(citations?.length ? { citations } : {}),
             ...(evidenceDocumentMeta?.length ? { evidenceDocumentMeta } : {})
         };
@@ -2253,10 +2254,12 @@ export class InquiryRunnerService implements InquiryRunner {
         verified: InquiryFinding[];
         unverified: UnverifiedCitation[];
         warnings: CitationIntegrityWarning[];
+        repairs: CitationRepairDiagnostic[];
     } {
         const verified: InquiryFinding[] = [];
         const unverified: UnverifiedCitation[] = [];
         const warnings: CitationIntegrityWarning[] = [];
+        const repairs: CitationRepairDiagnostic[] = [];
         const primaryRefType = options.primaryRefType ?? 'scene';
 
         rawFindings.forEach(raw => {
@@ -2349,10 +2352,14 @@ export class InquiryRunnerService implements InquiryRunner {
                     ...(rawRefLabel ? { refLabel: rawRefLabel } : {}),
                     ...(rawRefPath ? { refPath: rawRefPath } : {})
                 };
-                warnings.push({
-                    stage: 'unresolved_ref',
-                    message: `AI citation "${rawRefId || rawRefLabel || rawRefPath}" could not be matched directly; repaired to ${normalized.ref.ref_id} via label/path.`
-                });
+                // Deterministic repair (unique label/path match) — NOT a trust
+                // failure. Record as an internal diagnostic so the malformed
+                // original is auditable, but do NOT push an author-facing
+                // citation-integrity warning (which would falsely flag the
+                // finding as untrusted). The finding stays fully usable.
+                const rawRefForDiag = rawRefId || rawRefLabel || rawRefPath || '(missing ref)';
+                repairs.push({ rawRef: rawRefForDiag, canonicalRef: normalized.ref.ref_id });
+                console.warn(`[Inquiry] AI citation "${rawRefForDiag}" could not be matched directly; repaired to ${normalized.ref.ref_id} via label/path.`);
             }
 
             const mismatch = primaryRefType === 'book'
@@ -2379,7 +2386,7 @@ export class InquiryRunnerService implements InquiryRunner {
             verified.push(finding);
         });
 
-        return { verified, unverified, warnings };
+        return { verified, unverified, warnings, repairs };
     }
 
     private normalizeSupportingRefs(
