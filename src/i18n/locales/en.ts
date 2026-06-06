@@ -844,6 +844,8 @@ export interface TranslationKeys {
             forceRerun: string;
             openCitationBriefing: string;
             openCitationMarkdown: string;
+            openBriefingArticle: string;
+            openBriefMarkdown: string;
             openScene: string;
             openNote: string;
             cancelTargeting: string;
@@ -3050,6 +3052,8 @@ export const en: TranslationKeys = {
             forceRerun: 'Force Re-run',
             openCitationBriefing: 'Open Citation in Briefing Article',
             openCitationMarkdown: 'Open Citation in Markdown Brief',
+            openBriefingArticle: 'Open Briefing Article',
+            openBriefMarkdown: 'Open Markdown Brief',
             openScene: 'Open Scene',
             openNote: 'Open Note',
             cancelTargeting: 'Cancel all targeting',

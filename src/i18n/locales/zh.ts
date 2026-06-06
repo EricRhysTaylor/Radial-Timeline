@@ -239,6 +239,8 @@ export const zh: DeepPartial<TranslationKeys> = {
             forceRerun: '强制重新运行',
             openCitationBriefing: '在简报文章中打开引用',
             openCitationMarkdown: '在 Markdown Brief 中打开引用',
+            openBriefingArticle: '打开简报文章',
+            openBriefMarkdown: '打开 Markdown Brief',
             openScene: '打开场景',
             openNote: '打开笔记',
             cancelTargeting: '取消所有定位',

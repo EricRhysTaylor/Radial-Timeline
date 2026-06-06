@@ -142,6 +142,15 @@ describe('InquiryView payload accounting', () => {
         expect(corpusSource.includes('args.onGlobalContextMenu(event)')).toBe(true);
     });
 
+    it('keeps saved brief actions available from scene menus even without citations', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private hasActiveSavedBrief(): boolean')).toBe(true);
+        expect(viewSource.includes('if (this.hasActiveSavedBrief()) {')).toBe(true);
+        expect(viewSource.includes("options.hasCitation ? t('inquiry.menu.openCitationBriefing') : t('inquiry.menu.openBriefingArticle')")).toBe(true);
+        expect(viewSource.includes("options.hasCitation ? t('inquiry.menu.openCitationMarkdown') : t('inquiry.menu.openBriefMarkdown')")).toBe(true);
+        expect(viewSource.includes('void (options.hasCitation ? this.openActiveBriefForItem(options.item) : this.openActiveBrief());')).toBe(true);
+    });
+
     it('starts Inquiry in a fresh launch mode instead of auto-rehydrating cached state', () => {
         const mainSource = readFileSync(resolve(process.cwd(), 'src/main.ts'), 'utf8');
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');

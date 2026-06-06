@@ -19,6 +19,8 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.schemaText.includes('"schema_version"')).toBe(true);
         expect(parts.schemaText.includes('"recommended_action"')).toBe(true);
         expect(parts.instructionText.includes('Answer the editorial question using the evidence.')).toBe(true);
+        expect(parts.instructionText.includes('A finding may be an evidence-bearing observation, not only a revision problem.')).toBe(true);
+        expect(parts.instructionText.includes('include the strongest scene observations that support that conclusion')).toBe(true);
         expect(parts.instructionText.includes('do not repeat or lightly rephrase the headline')).toBe(true);
         expect(parts.instructionText.includes('Never emit a placeholder finding with an empty headline and empty bullets.')).toBe(true);
         // Regression guard: verdict must be FLAT (verdictFlow/verdictDepth),

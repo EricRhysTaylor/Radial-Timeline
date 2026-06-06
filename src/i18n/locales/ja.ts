@@ -239,6 +239,8 @@ export const ja: DeepPartial<TranslationKeys> = {
             forceRerun: '強制再実行',
             openCitationBriefing: 'Briefing 記事で引用を開く',
             openCitationMarkdown: 'Markdown Brief で引用を開く',
+            openBriefingArticle: 'Briefing 記事を開く',
+            openBriefMarkdown: 'Markdown Brief を開く',
             openScene: 'シーンを開く',
             openNote: 'ノートを開く',
             cancelTargeting: 'すべてのターゲティングをキャンセル',

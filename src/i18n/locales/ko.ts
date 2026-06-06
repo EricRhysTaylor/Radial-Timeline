@@ -238,6 +238,8 @@ export const ko: DeepPartial<TranslationKeys> = {
             forceRerun: '강제 재실행',
             openCitationBriefing: 'Briefing 글에서 인용 열기',
             openCitationMarkdown: 'Markdown Brief에서 인용 열기',
+            openBriefingArticle: 'Briefing 글 열기',
+            openBriefMarkdown: 'Markdown Brief 열기',
             openScene: '장면 열기',
             openNote: '노트 열기',
             cancelTargeting: '모든 타겟팅 취소',

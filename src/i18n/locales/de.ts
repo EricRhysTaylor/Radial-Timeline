@@ -238,6 +238,8 @@ export const de: DeepPartial<TranslationKeys> = {
             forceRerun: 'Erneut ausführen erzwingen',
             openCitationBriefing: 'Zitat im Briefing-Artikel öffnen',
             openCitationMarkdown: 'Zitat im Markdown-Brief öffnen',
+            openBriefingArticle: 'Briefing-Artikel öffnen',
+            openBriefMarkdown: 'Markdown-Brief öffnen',
             openScene: 'Szene öffnen',
             openNote: 'Notiz öffnen',
             cancelTargeting: 'Gesamtes Targeting abbrechen',

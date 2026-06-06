@@ -4736,6 +4736,13 @@ export class InquiryView extends ItemView {
         return findingMap.has(item.displayLabel);
     }
 
+    private hasActiveSavedBrief(): boolean {
+        const sessionId = this.state.activeSessionId;
+        if (!sessionId) return false;
+        const session = this.sessionStore.peekSession(sessionId);
+        return !!session?.briefPath;
+    }
+
     private showMinimapSceneMenu(options: {
         item: InquiryCorpusItem;
         filePath: string;
@@ -4754,17 +4761,27 @@ export class InquiryView extends ItemView {
                 }
             });
         });
-        if (options.hasCitation) {
+        if (this.hasActiveSavedBrief()) {
             menu.addItem(menuItem => {
-                menuItem.setTitle(this.menuTitleWithKeys(t('inquiry.menu.openCitationBriefing'), ['⌥', 'Click']));
+                menuItem.setTitle(this.menuTitleWithKeys(
+                    options.hasCitation ? t('inquiry.menu.openCitationBriefing') : t('inquiry.menu.openBriefingArticle'),
+                    ['⌥', 'Click']
+                ));
                 menuItem.onClick(() => {
-                    this.openActiveBriefArticleForItem(options.item);
+                    if (options.hasCitation) {
+                        this.openActiveBriefArticleForItem(options.item);
+                        return;
+                    }
+                    this.openActiveBriefArticle();
                 });
             });
             menu.addItem(menuItem => {
-                menuItem.setTitle(this.menuTitleWithKeys(t('inquiry.menu.openCitationMarkdown'), ['Click']));
+                menuItem.setTitle(this.menuTitleWithKeys(
+                    options.hasCitation ? t('inquiry.menu.openCitationMarkdown') : t('inquiry.menu.openBriefMarkdown'),
+                    ['Click']
+                ));
                 menuItem.onClick(() => {
-                    void this.openActiveBriefForItem(options.item);
+                    void (options.hasCitation ? this.openActiveBriefForItem(options.item) : this.openActiveBrief());
                 });
             });
         }
@@ -8338,6 +8355,32 @@ export class InquiryView extends ItemView {
         const anchorSource = this.getMinimapItemFilePath(item) || item.id || item.displayLabel;
         const anchorId = this.getBriefSceneAnchorId(anchorSource);
         await this.openActiveBrief(anchorId);
+    }
+
+    private openActiveBriefArticle(): void {
+        const sessionId = this.state.activeSessionId;
+        if (!sessionId) {
+            new Notice(t('inquiry.notice.noBriefActive'));
+            return;
+        }
+        const session = this.sessionStore.peekSession(sessionId);
+        if (!session?.briefPath) {
+            new Notice(t('inquiry.notice.briefNotSaved'));
+            return;
+        }
+        const file = this.app.vault.getAbstractFileByPath(session.briefPath);
+        if (!(file instanceof TFile)) {
+            new Notice(t('inquiry.notice.briefNotFound'));
+            return;
+        }
+        const staleDiagnosis = this.diagnoseSessionStaleness(session);
+        this.openBriefingPresentation(this.buildInquiryBriefModel(session.result, session.logPath), {
+            briefFile: file,
+            logFile: this.getArtifactFileAtPath(session.logPath),
+            generatedAt: session.result.completedAt ?? session.createdAt,
+            isCorpusStale: !!staleDiagnosis,
+            staleDiagnosis
+        });
     }
 
     private openActiveBriefArticleForItem(item: InquiryCorpusItem): void {

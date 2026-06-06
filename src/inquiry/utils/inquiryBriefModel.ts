@@ -183,10 +183,11 @@ export function formatInquiryBriefTitle(
 
 /**
  * A finding counts as a "hit" (worth surfacing in the brief) when its
- * kind is neither `'none'` nor `'strength'`. Pure predicate.
+ * kind is not `'none'`. Strength findings are evidence observations:
+ * they surface in findings/scene notes, but do not generate actions.
  */
 export function isFindingHit(finding: InquiryFinding): boolean {
-    return finding.kind !== 'none' && finding.kind !== 'strength';
+    return finding.kind !== 'none';
 }
 
 /**

@@ -242,13 +242,13 @@ describe('formatInquiryBriefTitle', () => {
 });
 
 describe('isFindingHit / getFindingRole', () => {
-    it('isFindingHit: hit for any kind except "none" or "strength"', () => {
+    it('isFindingHit: hit for any kind except "none"', () => {
         expect(isFindingHit(finding({ kind: 'thread' }))).toBe(true);
         expect(isFindingHit(finding({ kind: 'arc' }))).toBe(true);
         expect(isFindingHit(finding({ kind: 'payoff' }))).toBe(true);
         expect(isFindingHit(finding({ kind: 'unclear' }))).toBe(true);
+        expect(isFindingHit(finding({ kind: 'strength' }))).toBe(true);
         expect(isFindingHit(finding({ kind: 'none' }))).toBe(false);
-        expect(isFindingHit(finding({ kind: 'strength' }))).toBe(false);
     });
     it('getFindingRole: "target" iff role is exactly "target"; otherwise "context"', () => {
         expect(getFindingRole(finding({ role: 'target' }))).toBe('target');
@@ -278,7 +278,7 @@ describe('getResultSummaryForMode', () => {
 
 describe('getOrderedFindings', () => {
     const f = (p: Partial<InquiryFinding>): InquiryFinding => finding(p);
-    it('filters out non-hits (none/strength)', () => {
+    it('filters out only none findings', () => {
         const r = result({
             findings: [
                 f({ kind: 'thread', headline: 'A' }),
@@ -290,7 +290,7 @@ describe('getOrderedFindings', () => {
         const out = getOrderedFindings(r, 'flow' as InquiryLens);
         const headlines = out.map(x => x.headline);
         expect(headlines).not.toContain('B');
-        expect(headlines).not.toContain('C');
+        expect(headlines).toContain('C');
         expect(headlines).toContain('A');
         expect(headlines).toContain('D');
     });
