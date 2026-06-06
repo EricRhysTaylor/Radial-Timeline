@@ -2260,6 +2260,21 @@ export class InquiryRunnerService implements InquiryRunner {
         const primaryRefType = options.primaryRefType ?? 'scene';
 
         rawFindings.forEach(raw => {
+            const rawHeadline = typeof raw.headline === 'string' ? raw.headline.trim() : '';
+            const bullets = Array.isArray(raw.bullets)
+                ? raw.bullets.map(value => String(value).trim()).filter(Boolean)
+                : [];
+            const recommendedAction = typeof raw.recommended_action === 'string'
+                ? raw.recommended_action.trim()
+                : '';
+            const evidenceQuote = typeof raw.evidence_quote === 'string'
+                ? raw.evidence_quote.trim()
+                : '';
+
+            if (!rawHeadline && !bullets.length && !recommendedAction && !evidenceQuote) {
+                return;
+            }
+
             const rawRefId = raw.ref_id ? String(raw.ref_id) : undefined;
             const rawRefLabel = raw.ref_label ? String(raw.ref_label) : undefined;
             const rawRefPath = raw.ref_path ? String(raw.ref_path) : undefined;
@@ -2279,18 +2294,9 @@ export class InquiryRunnerService implements InquiryRunner {
             const kind = this.normalizeFindingKind(raw.kind);
             const lens = this.normalizeFindingLens(raw.lens);
             const role = this.normalizeFindingRole(raw.role);
-            const headline = raw.headline ? String(raw.headline) : 'Finding';
-            const bullets = Array.isArray(raw.bullets)
-                ? raw.bullets.map(value => String(value)).filter(Boolean)
-                : [];
-            const recommendedAction = typeof raw.recommended_action === 'string'
-                ? raw.recommended_action.trim()
-                : '';
+            const headline = rawHeadline || 'Finding';
             const subject = typeof raw.subject === 'string' ? raw.subject.trim() : '';
             const span = typeof raw.span === 'string' ? raw.span.trim() : '';
-            const evidenceQuote = typeof raw.evidence_quote === 'string'
-                ? raw.evidence_quote.trim()
-                : '';
 
             if (normalized.unresolved) {
                 const offendingRef = rawRefId || rawRefLabel || rawRefPath || '(missing ref)';

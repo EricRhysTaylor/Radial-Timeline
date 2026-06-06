@@ -118,6 +118,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
         'Return findings ONLY for scenes/moments that need revision, clarification, or stronger setup/payoff support.',
         'If a scene is working well, do NOT include it in findings. An empty findings array is valid and preferred over praise.',
+        'Never emit a placeholder finding with an empty headline and empty bullets. If you have no concrete finding text for a scene, omit that finding entirely.',
         'Do not return praise or strength observations as findings. Findings must identify a deficit, gap, or revision opportunity.',
         'Use kind: "strength" ONLY if a scene is explicitly noteworthy as a structural anchor — never for general praise. Strength findings are informational and will not generate action items.',
         'Return at most ONE finding per scene reference. If multiple issues exist for the same scene, combine them into a single headline and bullet list.',

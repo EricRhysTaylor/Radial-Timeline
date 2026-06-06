@@ -20,6 +20,7 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.schemaText.includes('"recommended_action"')).toBe(true);
         expect(parts.instructionText.includes('Answer the editorial question using the evidence.')).toBe(true);
         expect(parts.instructionText.includes('do not repeat or lightly rephrase the headline')).toBe(true);
+        expect(parts.instructionText.includes('Never emit a placeholder finding with an empty headline and empty bullets.')).toBe(true);
         // Regression guard: verdict must be FLAT (verdictFlow/verdictDepth),
         // never a nested object — Opus 4.8 leaks tool-call XML
         // (<parameter name="flow">) into the nested shape, corrupting it to

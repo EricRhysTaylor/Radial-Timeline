@@ -103,6 +103,28 @@ describe('verifyFindingRefs', () => {
         expect(out.warnings.length).toBe(0);
     });
 
+    it('drops contentless placeholder findings before citation validation', () => {
+        const verify = getVerifier();
+        const out = verify(
+            [{
+                ref_id: 'scn_deadbeef',
+                ref_label: '20 Collins Proposes.md',
+                ref_path: 'Pride & Prejudice/20 Collins Proposes.md',
+                kind: 'loose_end',
+                headline: '',
+                bullets: [],
+                recommended_action: '',
+                evidence_quote: '',
+                role: ''
+            }],
+            singleSceneIndex()
+        );
+
+        expect(out.verified.length).toBe(0);
+        expect(out.unverified.length).toBe(0);
+        expect(out.warnings.length).toBe(0);
+    });
+
     it('quarantines a fabricated ref when nothing matches the corpus', () => {
         const verify = getVerifier();
         const out = verify(
