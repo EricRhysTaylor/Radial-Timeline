@@ -81,32 +81,39 @@ describe('inquiryViewText', () => {
         expect(content).toContain('Scene: 50 Long Road Up');
     });
 
-    it('renders a scoped "No Action Items" empty-state when there are no pending actions', () => {
-        const brief: InquiryBriefModel = {
-            questionTitle: 'Question',
-            questionText: 'What is assumed?',
-            scopeIndicator: 'Book B1',
-            selectionMode: 'discover',
-            roleValidation: 'ok',
-            pills: [],
-            flowSummary: 'Flow summary',
-            depthSummary: 'Depth summary',
-            findings: [
-                { headline: 'A precondition', sceneLabel: '7 Entail', role: 'context', lens: 'Depth', bullets: ['x'] }
-            ],
-            sources: [],
-            sceneNotes: [],
-            sceneReferences: [],
-            pendingActions: [],
-            logTitle: null
-        };
+    const briefWithNoActions = (over: Partial<InquiryBriefModel> = {}): InquiryBriefModel => ({
+        questionTitle: 'Question',
+        questionText: 'What is assumed?',
+        scopeIndicator: 'Book B1',
+        selectionMode: 'discover',
+        roleValidation: 'ok',
+        pills: [],
+        flowSummary: 'Flow summary',
+        depthSummary: 'Depth summary',
+        findings: [
+            { headline: 'A precondition', sceneLabel: '7 Entail', role: 'context', lens: 'Depth', bullets: ['x'] }
+        ],
+        sources: [],
+        sceneNotes: [],
+        sceneReferences: [],
+        pendingActions: [],
+        logTitle: null,
+        ...over
+    });
 
-        const content = renderInquiryBrief(brief);
+    it('renders a scoped "No Action Items" empty-state only for a completed pass', () => {
+        const content = renderInquiryBrief(briefWithNoActions({ showNoActionItems: true }));
         expect(content).toContain('## Pending Author Actions');
         expect(content).toContain('**No Action Items** — no pending edits were identified for this inquiry.');
         // Scoped to the inquiry, never a manuscript-quality claim.
         expect(content).not.toContain('excellent');
         expect(content).not.toContain('No separate author actions');
+    });
+
+    it('suppresses the empty-state when the pass did not complete usably (showNoActionItems falsy)', () => {
+        const content = renderInquiryBrief(briefWithNoActions({ showNoActionItems: false }));
+        expect(content).not.toContain('No Action Items');
+        expect(content).not.toContain('no pending edits were identified');
     });
 
     it('builds scope indicators from the canonical scopeLabel field', () => {

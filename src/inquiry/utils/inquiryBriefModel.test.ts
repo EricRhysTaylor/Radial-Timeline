@@ -755,6 +755,20 @@ describe('buildInquiryBriefModel (final composite assembler)', () => {
         ...over
     });
 
+    it('showNoActionItems: true only for a usable completed pass', () => {
+        // Usable success → empty-state allowed.
+        expect(buildInquiryBriefModel(baseResult(), baseOpts()).showNoActionItems).toBe(true);
+        // Error run → suppressed.
+        expect(buildInquiryBriefModel(baseResult(), baseOpts({ isError: true })).showNoActionItems).toBe(false);
+        // Simulated/stub run → suppressed.
+        expect(buildInquiryBriefModel(baseResult({ aiReason: 'simulated' as never }), baseOpts()).showNoActionItems).toBe(false);
+        // Evidence-compromised (unverified citations, zero verified findings) → suppressed.
+        expect(buildInquiryBriefModel(
+            baseResult({ findings: [], unverifiedFindings: [{ headline: 'h', bullets: [], warning: 'w' }] as never }),
+            baseOpts()
+        ).showNoActionItems).toBe(false);
+    });
+
     it('questionTitle: promptLabel non-null → used; null → "Inquiry Question"', () => {
         expect(buildInquiryBriefModel(baseResult(), baseOpts({ promptLabel: 'My Q' })).questionTitle).toBe('My Q');
         expect(buildInquiryBriefModel(baseResult(), baseOpts({ promptLabel: null })).questionTitle).toBe('Inquiry Question');

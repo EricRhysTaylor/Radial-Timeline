@@ -665,6 +665,13 @@ export function buildInquiryBriefModel(
 
     const integritySummary = computeCitationIntegritySummary(result);
 
+    // The "No Action Items" empty-state is a real result, so it may only show
+    // for a usable, completed pass: not an error, not a simulated/stub run, and
+    // not one whose evidence base is compromised. Otherwise the section stays
+    // silent rather than implying a clean review happened.
+    const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
+    const showNoActionItems = !isError && !isSimulated && !integritySummary.evidenceCompromised;
+
     return {
         questionTitle,
         questionText,
@@ -680,6 +687,7 @@ export function buildInquiryBriefModel(
         sceneNotes,
         sceneReferences,
         pendingActions,
+        showNoActionItems,
         logTitle,
         rawResponse: includeRawResponse ? rawResponseText : null,
         refNormalized: (result.refNormalizationCount ?? 0) > 0,

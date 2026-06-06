@@ -71,6 +71,13 @@ export type InquiryBriefModel = {
         targetLabel?: string;
         text: string;
     }>;
+    /**
+     * True only for a usable, completed inquiry pass (not error / simulated /
+     * stub / evidence-compromised). Gates the "No Action Items" empty-state so
+     * it reads as a real result, never as the mere absence of actions on a
+     * failed or non-completed run.
+     */
+    showNoActionItems?: boolean;
     logTitle?: string | null;
     rawResponse?: string | null;
     refNormalized?: boolean;

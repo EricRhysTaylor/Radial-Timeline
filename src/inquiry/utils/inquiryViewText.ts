@@ -359,9 +359,11 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
             const prefix = action.targetLabel ? `${action.targetLabel} — ` : '';
             lines.push(`- ${prefix}${action.text}`);
         });
-    } else {
-        // Scoped empty-state: a result, not an absence. Speaks only to THIS
-        // inquiry's edit actions — never a manuscript-quality claim.
+    } else if (brief.showNoActionItems) {
+        // Scoped empty-state: a real result from a completed pass, not an
+        // absence. Speaks only to THIS inquiry's edit actions — never a
+        // manuscript-quality claim, and never shown for error/simulated/
+        // evidence-compromised runs (gated by showNoActionItems).
         lines.push('', '## Pending Author Actions',
             '**No Action Items** — no pending edits were identified for this inquiry.');
     }
