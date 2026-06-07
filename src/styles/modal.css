@@ -1634,6 +1634,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-cozy);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 42%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
 }
 
 .ert-purge-confirm-modal .ert-modal-subtitle {

@@ -2558,13 +2558,20 @@ body > .tooltip {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
   padding: 10px 12px;
   border: 1px dashed color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
   border-radius: 8px;
   background-color: color-mix(in srgb, var(--background-secondary) 40%, transparent);
 }
 
+.ert-gossamer-footer__group--maintenance {
+  flex: 0 1 auto;
+}
+
 .ert-gossamer-footer__group--ai {
+  flex: 0 1 360px;
+  max-width: 360px;
   border-style: solid;
   border-color: color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
 }
@@ -2594,7 +2601,8 @@ body > .tooltip {
   font-family: var(--font-monospace);
   opacity: 0.8;
   max-width: 100%;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .ert-gossamer-footer__vault-link {
@@ -2615,8 +2623,10 @@ body > .tooltip {
 
 .ert-gossamer-footer__commit {
   display: flex;
+  flex: 0 0 100%;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
   margin-left: auto;
   padding-top: 18px; /* align visually with buttons inside bordered groups */
 }
