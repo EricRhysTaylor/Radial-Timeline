@@ -16,6 +16,54 @@ import { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
 
 export { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
 
+/** Combined Anthropic-style cache-write tokens (explicit field, else 5m+1h split). */
+function resolveCacheWriteTokens(usage: TokenUsage): number {
+    return usage.cacheCreationInputTokens
+        ?? ((usage.cacheCreation5mInputTokens ?? 0) + (usage.cacheCreation1hInputTokens ?? 0));
+}
+
+/**
+ * One-line token usage, with cache read/write appended when the provider
+ * reported cache activity. `inputTokens` is the billed total (fresh + cache
+ * read + cache write) per extractTokenUsage, so the cache figures are a
+ * breakdown of it, not extra tokens.
+ */
+export function formatTokenUsageLine(usage?: TokenUsage | null): string {
+    if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
+        return 'not available';
+    }
+    const parts = [
+        `input=${usage.inputTokens ?? 'unavailable'}`,
+        `output=${usage.outputTokens ?? 'unavailable'}`,
+        `total=${usage.totalTokens ?? 'unavailable'}`
+    ];
+    const cacheRead = usage.cacheReadInputTokens ?? 0;
+    const cacheWrite = resolveCacheWriteTokens(usage);
+    if (cacheRead > 0) parts.push(`cache read=${cacheRead}`);
+    if (cacheWrite > 0) parts.push(`cache write=${cacheWrite}`);
+    return parts.join(', ');
+}
+
+/**
+ * Provider-cache provenance for a run, derived solely from the usage payload:
+ * HIT (prefix reused this run), CREATED (prefix cached for the next run), or
+ * none. Lets a reader answer "did the cache work?" without inferring from cost.
+ */
+export function formatCacheStatusLine(usage?: TokenUsage | null): string {
+    if (!usage) return 'unavailable';
+    const cacheRead = usage.cacheReadInputTokens ?? 0;
+    const cacheWrite = resolveCacheWriteTokens(usage);
+    const billedInput = usage.inputTokens ?? 0;
+    if (cacheRead > 0) {
+        const pct = billedInput > 0 ? Math.round((cacheRead / billedInput) * 100) : 0;
+        return `HIT — ${cacheRead.toLocaleString()} input tokens reused (${pct}% of billed input)`;
+    }
+    if (cacheWrite > 0) {
+        return `CREATED — ${cacheWrite.toLocaleString()} input tokens cached for reuse by the next run`;
+    }
+    return 'none — no provider cache read or write on this run';
+}
+
 export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Synopsis' | 'Gossamer';
 export type AiLogStatus = 'success' | 'error' | 'simulated';
 
@@ -292,15 +340,7 @@ export function formatAiLogContent(
     const normalizeText = (value?: string | null) => value && value.trim() ? value : 'N/A';
     const formatList = (items?: string[]) => items && items.length ? items.join('; ') : 'None.';
     const formatRetries = (count?: number) => typeof count === 'number' ? String(count) : 'None.';
-    const formatUsage = (usage?: TokenUsage | null) => {
-        if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
-            return 'not available';
-        }
-        const input = usage.inputTokens ?? 'unavailable';
-        const output = usage.outputTokens ?? 'unavailable';
-        const total = usage.totalTokens ?? 'unavailable';
-        return `input=${input}, output=${output}, total=${total}`;
-    };
+    const formatUsage = (usage?: TokenUsage | null) => formatTokenUsageLine(usage);
     const formatNextRunOnly = (value?: boolean | null) => {
         if (value === true) return 'true';
         if (value === false) return 'false';
@@ -442,15 +482,7 @@ export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
     const modelRequestedDisplay = formatModel(envelope.modelRequested);
     const modelResolvedDisplay = formatModel(envelope.modelResolved);
 
-    const formatUsage = (usage?: TokenUsage | null) => {
-        if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
-            return 'not available';
-        }
-        const input = usage.inputTokens ?? 'unavailable';
-        const output = usage.outputTokens ?? 'unavailable';
-        const total = usage.totalTokens ?? 'unavailable';
-        return `input=${input}, output=${output}, total=${total}`;
-    };
+    const formatUsage = (usage?: TokenUsage | null) => formatTokenUsageLine(usage);
 
     const formatRetries = (count?: number) => typeof count === 'number' ? String(count) : '0';
 
@@ -464,6 +496,7 @@ export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
     lines.push(`- Duration: ${formatDuration(envelope.durationMs)}`);
     lines.push(`- Status: ${envelope.status}`);
     lines.push(`- Token usage: ${formatUsage(envelope.tokenUsage)}`);
+    lines.push(`- Cache: ${formatCacheStatusLine(envelope.tokenUsage)}`);
     lines.push(`- Actual usage cost: ${formatActualUsageCost(envelope.provider, envelope.modelResolved ?? envelope.modelRequested, envelope.tokenUsage)}`);
     lines.push(`- Retry attempts: ${formatRetries(envelope.retryAttempts)}`);
     lines.push('');

@@ -5,7 +5,9 @@ import {
     buildUsageCostBreakdown,
     countContentLogFiles,
     formatActualUsageCost,
+    formatCacheStatusLine,
     formatSummaryLogContent,
+    formatTokenUsageLine,
     formatUsageCostBreakdownLines,
     resolveContentLogRoots,
     resolveContentLogsRoot,
@@ -240,5 +242,35 @@ describe('buildUsageCostBreakdown', () => {
         });
 
         expect(content).toMatch(/- Actual usage cost: \$\d+(\.\d{1,3})?/);
+    });
+});
+
+describe('cache provenance log lines', () => {
+    it('appends cache read/write to the token usage line only when present', () => {
+        expect(formatTokenUsageLine({ inputTokens: 1000, outputTokens: 50, totalTokens: 1050 }))
+            .toBe('input=1000, output=50, total=1050');
+        expect(formatTokenUsageLine({
+            inputTokens: 239854, outputTokens: 1449, totalTokens: 241303,
+            cacheReadInputTokens: 238400, rawInputTokens: 1454
+        })).toBe('input=239854, output=1449, total=241303, cache read=238400');
+        expect(formatTokenUsageLine(null)).toBe('not available');
+    });
+
+    it('reports HIT with the reused-input percentage', () => {
+        const line = formatCacheStatusLine({
+            inputTokens: 239854, cacheReadInputTokens: 238400
+        });
+        expect(line).toContain('HIT');
+        expect(line).toContain('99%');
+    });
+
+    it('reports CREATED on a cache-write run (falling back to the 5m/1h split)', () => {
+        expect(formatCacheStatusLine({ inputTokens: 239874, cacheCreation5mInputTokens: 238000 }))
+            .toContain('CREATED');
+    });
+
+    it('reports none when the provider neither read nor wrote a cache', () => {
+        expect(formatCacheStatusLine({ inputTokens: 1000, outputTokens: 50 }))
+            .toContain('none');
     });
 });
