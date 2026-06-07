@@ -18,6 +18,7 @@ import type { AIRunAdvancedContext } from '../ai/types';
 import {
     type GossamerCacheWindow,
     formatGossamerCacheClock,
+    formatGossamerCacheCostHint,
     isGossamerCacheWindowOpen
 } from '../gossamer/cacheWindow';
 import { GOSSAMER_SIGNAL_TYPES } from '../types/gossamerSignals';
@@ -176,6 +177,10 @@ export class GossamerProcessingModal extends ErtModal {
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'ert-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText(t('gossamer.processingModal.gatheringDetails'));
 
+        // Cache-window alert: persists across modal close/reopen and signal
+        // switches as long as the prior run's window is still open.
+        this.mountCacheTimer(card);
+
         // Check if API key is configured for the active provider
         const aiSettings = getCanonicalAiSettings(this.plugin);
         const selection = resolveConfiguredSelection(aiSettings, { feature: 'Gossamer' });
@@ -258,9 +263,9 @@ export class GossamerProcessingModal extends ErtModal {
         this.apiStatusEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-api-status' });
         this.apiStatusEl.setText(t('gossamer.processingModal.waitingToSend'));
 
-        // Cache-window row: hidden until a successful run arms a window.
-        this.cacheTimerEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-cache-timer ert-hidden' });
-        this.renderCacheTimer();
+        // Cache-window row: shows a live countdown whenever a window is open
+        // (this run's, or a still-warm one from a prior run).
+        this.mountCacheTimer(statusSection);
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
         advancedDetails.createEl('summary', { text: t('gossamer.processingModal.advancedHeading') });
@@ -472,10 +477,35 @@ export class GossamerProcessingModal extends ErtModal {
     public setCacheWindow(next: GossamerCacheWindow | null): void {
         this.cacheWindow = next;
         this.renderCacheTimer();
-        if (next && isGossamerCacheWindowOpen(next, Date.now()) && !this.cacheTimerInterval) {
-            // SAFE: Modal has no registerInterval; cleared in onClose() and on expiry.
-            this.cacheTimerInterval = window.setInterval(() => this.renderCacheTimer(), 1000);
-        }
+        this.ensureCacheTimerTick();
+    }
+
+    /**
+     * Effective window for display: the one armed by this modal's own run if
+     * present, otherwise the plugin's live window from a prior run. The latter
+     * is why the alert survives closing + reopening the modal (or switching
+     * signals) while the cache is still warm.
+     */
+    private resolveCacheWindow(): GossamerCacheWindow | null {
+        return this.cacheWindow ?? this.plugin.gossamerCacheWindow;
+    }
+
+    /**
+     * Create (or re-bind) the cache-timer element under `parent` and paint it
+     * from the current window. Called by both the confirmation and processing
+     * views so the alert is present whenever a window is open.
+     */
+    private mountCacheTimer(parent: HTMLElement): void {
+        this.cacheTimerEl = parent.createDiv({ cls: 'ert-gossamer-proc-cache-timer ert-hidden' });
+        this.renderCacheTimer();
+        this.ensureCacheTimerTick();
+    }
+
+    private ensureCacheTimerTick(): void {
+        if (this.cacheTimerInterval) return;
+        if (!isGossamerCacheWindowOpen(this.resolveCacheWindow(), Date.now())) return;
+        // SAFE: Modal has no registerInterval; cleared in onClose() and on expiry.
+        this.cacheTimerInterval = window.setInterval(() => this.renderCacheTimer(), 1000);
     }
 
     private clearCacheTimerInterval(): void {
@@ -488,7 +518,8 @@ export class GossamerProcessingModal extends ErtModal {
     private renderCacheTimer(): void {
         const el = this.cacheTimerEl;
         if (!el) return;
-        const clock = formatGossamerCacheClock(this.cacheWindow, Date.now());
+        const window_ = this.resolveCacheWindow();
+        const clock = formatGossamerCacheClock(window_, Date.now());
         if (!clock) {
             el.empty();
             el.addClass('ert-hidden');
@@ -496,8 +527,10 @@ export class GossamerProcessingModal extends ErtModal {
             return;
         }
         const remaining = GOSSAMER_SIGNAL_TYPES.length - 1;
+        const costHint = formatGossamerCacheCostHint(window_);
+        const base = `Manuscript cached · ${clock} — score the other ${remaining} signals now to reuse it`;
         el.removeClass('ert-hidden');
-        el.setText(`Manuscript cached · ${clock} — score the other ${remaining} signals now to reuse it`);
+        el.setText(costHint ? `${base} (${costHint})` : base);
     }
 
     /**

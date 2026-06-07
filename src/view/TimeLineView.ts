@@ -53,7 +53,7 @@ import type {
 } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
 import { GOSSAMER_SIGNAL_METADATA, GOSSAMER_SIGNAL_TYPES, type GossamerSignalType } from '../types/gossamerSignals';
-import { formatGossamerCacheClock } from '../gossamer/cacheWindow';
+import { formatGossamerCacheClock, formatGossamerCacheCostHint } from '../gossamer/cacheWindow';
 import { tooltip as applyTooltip } from '../utils/tooltip';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
@@ -2779,11 +2779,9 @@ export class RadialTimelineView extends ItemView {
         pill.setAttribute('data-state', 'open');
         pill.textContent = `Cache ${clock}`;
         if (pill.getAttribute('data-tooltip-bound') !== 'true') {
-            applyTooltip(
-                pill,
-                `Manuscript cached on ${window_.provider} — score the other signals now to reuse it`,
-                'bottom'
-            );
+            const costHint = formatGossamerCacheCostHint(window_);
+            const tip = `Manuscript cached on ${window_.provider} — score the other signals now to reuse it`;
+            applyTooltip(pill, costHint ? `${tip} (${costHint})` : tip, 'bottom');
             pill.setAttribute('data-tooltip-bound', 'true');
         }
     }

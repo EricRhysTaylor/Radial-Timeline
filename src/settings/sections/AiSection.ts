@@ -10,7 +10,7 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { formatProviderCacheWindowLabel } from '../../ai/settings/cacheWindows';
-import { formatGossamerCacheClock } from '../../gossamer/cacheWindow';
+import { formatGossamerCacheClock, formatGossamerCacheCostHint } from '../../gossamer/cacheWindow';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
@@ -1537,10 +1537,15 @@ export function renderAiSection(params: {
             capacityGossamerCache.setText('');
             return;
         }
+        const costHint = formatGossamerCacheCostHint(win);
         resolvedPreviewGossamerCacheEl.toggleClass('ert-settings-hidden', false);
-        resolvedPreviewGossamerCacheEl.setText(`Gossamer cache ${clock}`);
+        resolvedPreviewGossamerCacheEl.setText(costHint ? `Gossamer cache ${clock} · ${costHint}` : `Gossamer cache ${clock}`);
         capacityGossamerCache.toggleClass('ert-settings-hidden', false);
-        capacityGossamerCache.setText(`Cache window ${clock} (${win.provider}) — reused by remaining signals`);
+        capacityGossamerCache.setText(
+            costHint
+                ? `Cache window ${clock} (${win.provider}) — ${costHint}`
+                : `Cache window ${clock} (${win.provider}) — reused by remaining signals`
+        );
     };
     updateGossamerCacheSettingsUi();
 

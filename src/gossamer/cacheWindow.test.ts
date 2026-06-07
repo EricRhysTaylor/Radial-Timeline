@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     buildGossamerCacheWindow,
     formatGossamerCacheClock,
+    formatGossamerCacheCostHint,
     formatGossamerCachePillLabel,
     isGossamerCacheWindowOpen,
     type GossamerCacheWindow
@@ -96,5 +97,26 @@ describe('formatGossamerCacheClock', () => {
     it('builds the short pill label', () => {
         expect(formatGossamerCachePillLabel(win(5 * 60_000), 0)).toBe('Cache 05:00');
         expect(formatGossamerCachePillLabel(win(1_000), 2_000)).toBeNull();
+    });
+});
+
+describe('formatGossamerCacheCostHint', () => {
+    const base: GossamerCacheWindow = { provider: 'anthropic', modelLabel: 'Claude', armedAt: 0, expiresAt: 1 };
+
+    it('returns null when no projection was captured', () => {
+        expect(formatGossamerCacheCostHint(base)).toBeNull();
+        expect(formatGossamerCacheCostHint(null)).toBeNull();
+    });
+
+    it('shows next-vs-fresh when both projections exist', () => {
+        const hint = formatGossamerCacheCostHint({ ...base, nextRunCostUSD: 0.16, freshRunCostUSD: 2.43 });
+        expect(hint).toContain('next signal');
+        expect(hint).toContain('fresh');
+    });
+
+    it('shows next-only when fresh is absent', () => {
+        const hint = formatGossamerCacheCostHint({ ...base, nextRunCostUSD: 0.16 });
+        expect(hint).toContain('next signal');
+        expect(hint).not.toContain('fresh');
     });
 });
