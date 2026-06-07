@@ -11190,8 +11190,13 @@ export class InquiryView extends ItemView {
             ?? (options.sessionKey ? this.sessionStore.peekSession(options.sessionKey)?.logPath : undefined);
         const brief = this.buildInquiryBriefModel(result, sessionLogPath, options.rawResponse);
         const renderedBody = renderInquiryBrief(brief);
+        // The brief's filename is the stable IB-id; `aliases` makes it
+        // resolvable/searchable by its human title in the quick-switcher and
+        // [[wikilinks]] (core Obsidian). A `title:` property is NOT read by
+        // Obsidian core (only the Front Matter Title plugin honors it) and was
+        // pure duplication of the alias — dropped.
         const aliasYaml = JSON.stringify(briefTitle);
-        const content = `---\ntitle: ${aliasYaml}\naliases:\n  - ${aliasYaml}\n---\n\n${renderedBody}`;
+        const content = `---\naliases:\n  - ${aliasYaml}\n---\n\n${renderedBody}`;
 
         try {
             const file = await this.app.vault.create(filePath, content);
