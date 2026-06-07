@@ -250,7 +250,7 @@ export const ja: DeepPartial<TranslationKeys> = {
             noInquiryRun: 'まだ inquiry が実行されていません。',
             runToSeeVerdicts: 'inquiry を実行して判定を確認します。',
             selectionDiscover: '選択モード · Discover',
-            targetSection: 'ターゲットの発見',
+            targetSection: '主要な発見',
             contextSection: 'コンテキストの発見',
             empty: 'なし。',
         },

@@ -249,7 +249,7 @@ export const de: DeepPartial<TranslationKeys> = {
             noInquiryRun: 'Noch keine Inquiry-Ausführung.',
             runToSeeVerdicts: 'Inquiry ausführen, um Bewertungen zu sehen.',
             selectionDiscover: 'Auswahlmodus · Discover',
-            targetSection: 'Ziel-Befunde',
+            targetSection: 'Primäre Befunde',
             contextSection: 'Kontext-Befunde',
             empty: 'Keine.',
         },

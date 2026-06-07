@@ -249,7 +249,7 @@ export const ko: DeepPartial<TranslationKeys> = {
             noInquiryRun: '아직 inquiry가 실행되지 않았습니다.',
             runToSeeVerdicts: '판정을 보려면 inquiry를 실행하세요.',
             selectionDiscover: '선택 모드 · 발견',
-            targetSection: '대상 발견',
+            targetSection: '주요 발견',
             contextSection: '컨텍스트 발견',
             empty: '없음.',
         },

@@ -290,7 +290,7 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
         });
     };
 
-    renderFindingSection('Target Findings', targetFindings);
+    renderFindingSection('Primary Findings', targetFindings);
     renderFindingSection('Context Findings', contextFindings);
 
     if (brief.unverifiedFindings && brief.unverifiedFindings.length) {

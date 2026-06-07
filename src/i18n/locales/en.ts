@@ -3082,7 +3082,7 @@ export const en: TranslationKeys = {
             scopeNoteTargetBookOnly: 'Target Scenes are book-only and inactive in Saga scope.',
             integrityCompromised: '⚠ Evidence compromised — no verified findings; {{count}} AI {{citationWord}} could not be matched to your manuscript.',
             integrityWarning: '⚠ {{count}} AI {{citationWord}} could not be matched to your manuscript.',
-            targetSection: 'Target Findings',
+            targetSection: 'Primary Findings',
             contextSection: 'Context Findings',
             unverifiedSection: '⚠ Unverified AI Citations ({{count}})',
             unverifiedWarning: 'These citations are unverified and should not be trusted as evidence.',

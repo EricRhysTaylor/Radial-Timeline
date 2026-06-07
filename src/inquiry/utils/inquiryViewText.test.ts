@@ -73,7 +73,7 @@ describe('inquiryViewText', () => {
 
         const content = renderInquiryBrief(brief);
 
-        expect(content).toContain('## Target Findings');
+        expect(content).toContain('## Primary Findings');
         expect(content).toContain('### Primary scene issue');
         expect(content).toContain('Scene: 24 Shail Grounded');
         expect(content).toContain('## Context Findings');

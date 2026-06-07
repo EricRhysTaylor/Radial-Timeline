@@ -250,7 +250,7 @@ export const zh: DeepPartial<TranslationKeys> = {
             noInquiryRun: '尚未运行 Inquiry。',
             runToSeeVerdicts: '运行 Inquiry 以查看判定。',
             selectionDiscover: '选择模式 · 发现',
-            targetSection: '目标发现',
+            targetSection: '主要发现',
             contextSection: '上下文发现',
             empty: '无。',
         },
