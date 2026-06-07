@@ -118,6 +118,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Evidence headings include "(Summary)" or "(Full)".',
         'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
         'Return findings for scenes/moments that materially answer the question. A finding may be an evidence-bearing observation, not only a revision problem.',
+        'Be exhaustive, not illustrative: return a SEPARATE finding (each with its own citation) for EVERY scene or moment that materially answers the question — not just the single strongest example. Any specific scene you name in summaryFlow or summaryDepth MUST have a corresponding finding; do not let the summary mention scenes the findings array omits.',
         'When the manuscript is working well, include the strongest scene observations that support that conclusion so the answer has a verifiable evidence trail.',
         'Never emit a placeholder finding with an empty headline and empty bullets. If you have no concrete finding text for a scene, omit that finding entirely.',
         'Use kind: "strength" only for an evidence-bearing structural observation that directly answers the question. Strength findings are informational and will not generate action items.',

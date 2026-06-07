@@ -34,6 +34,8 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.schemaText.includes('"verdictFlow": <computed integer 0-100>')).toBe(true);
         expect(parts.instructionText.includes('do not nest them inside a "verdict" object')).toBe(true);
         expect(parts.instructionText.includes('never emit the literal placeholder text')).toBe(true);
+        // Coverage: findings must cover every scene the summary names, not just one example.
+        expect(parts.instructionText.includes('Be exhaustive, not illustrative')).toBe(true);
         expect(parts.userPrompt.includes('SELECTION MODE')).toBe(false);
         expect(parts.userPrompt.includes('TARGET SCENES:\n- scn_target_01')).toBe(true);
         expect(INQUIRY_ROLE_TEMPLATE_GUARDRAIL.includes('role template')).toBe(true);

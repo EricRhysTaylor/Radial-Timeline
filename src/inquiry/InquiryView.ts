@@ -7363,6 +7363,12 @@ export class InquiryView extends ItemView {
                 kind: legacy.kind,
                 headline: legacy.headline,
                 bullets: legacy.bullets,
+                // recommendedAction MUST be carried through: this legacy
+                // re-mapper rebuilds findings field-by-field, and omitting it
+                // silently strips the model's concrete edit action before the
+                // brief is built — producing "No Action Items" on every run
+                // even when the model supplied actions.
+                ...(legacy.recommendedAction ? { recommendedAction: legacy.recommendedAction } : {}),
                 ...(legacy.subject ? { subject: legacy.subject } : {}),
                 ...(legacy.span ? { span: legacy.span } : {}),
                 ...(legacy.evidenceQuote ? { evidenceQuote: legacy.evidenceQuote } : {}),

@@ -10,6 +10,14 @@ describe('InquiryView payload accounting', () => {
         expect(source.includes('cachedRead(file)')).toBe(true);
     });
 
+    it('carries recommendedAction through the legacy result re-mapper (else pending actions vanish on every run)', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        // normalizeLegacyResult rebuilds findings field-by-field; recommendedAction
+        // MUST be among the carried fields or the brief shows "No Action Items"
+        // even when the model supplied concrete edits.
+        expect(source.includes('recommendedAction: legacy.recommendedAction')).toBe(true);
+    });
+
     it('renders selection mode from persisted result metadata instead of inferring from finding roles', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(source.includes("selectionMode: result.selectionMode === 'focused' ? 'focused' : 'discover'")).toBe(true);
