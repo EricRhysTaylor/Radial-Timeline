@@ -185,7 +185,9 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private renderFindings(container: HTMLElement): void {
-        const section = this.createSection(container, 'Findings');
+        // No outer "Findings" label — the "Primary Findings" group label heads
+        // this section, so a section header would be redundant.
+        const section = this.createSection(container);
         const targetFindings = this.brief.findings.filter(finding => finding.role === 'target');
         const contextFindings = this.brief.findings.filter(finding => finding.role !== 'target');
 
@@ -334,9 +336,14 @@ export class InquiryBriefingModal extends Modal {
         });
     }
 
-    private createSection(container: HTMLElement, label: string): HTMLElement {
+    private createSection(container: HTMLElement, label?: string): HTMLElement {
         const section = container.createEl('section', { cls: 'rt-briefing-section' });
-        section.createDiv({ cls: 'rt-briefing-section-label', text: label });
+        // Label optional: the Findings section omits it because its first group
+        // label ("Primary Findings") already heads the area — an outer
+        // "Findings" header would just stack two near-identical labels.
+        if (label) {
+            section.createDiv({ cls: 'rt-briefing-section-label', text: label });
+        }
         return section;
     }
 
