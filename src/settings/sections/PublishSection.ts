@@ -41,6 +41,7 @@ import {
 import { adaptPandocLayoutsToPublishingModel } from '../../utils/publishingModel';
 import { buildPublishingProgressStages, type PublishingStageId } from '../../utils/publishingProgress';
 import {
+    acknowledgeHotfixHistory,
     ensureBundledLayoutInstalledForExport,
     ensureBundledPandocLayoutsRegistered,
     getBundledPandocLayouts,
@@ -2965,10 +2966,20 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                 const refreshFailures = refreshResults.filter(item => item.failed).length;
                 if (refreshFailures > 0 || result.failed.length > 0) {
                     new Notice('Some bundled layouts or required fonts failed to install.');
-                } else if (result.installed.length > 0) {
-                    new Notice(`Installed ${result.installed.length} bundled layout template(s) and required fonts in ${getConfiguredPandocFolder(plugin)}/.`);
                 } else {
-                    new Notice('Bundled layouts and required fonts are installed and refreshed.');
+                    // Templates and fonts are now current on disk, so clear the
+                    // "Update templates" nudge by acknowledging the hotfix
+                    // history. Without this the button stays lit forever even
+                    // after a successful refresh.
+                    plugin.settings.templateHotfixHistory = acknowledgeHotfixHistory(
+                        plugin.settings.templateHotfixHistory
+                    );
+                    await plugin.saveSettings();
+                    if (result.installed.length > 0) {
+                        new Notice(`Installed ${result.installed.length} bundled layout template(s) and required fonts in ${getConfiguredPandocFolder(plugin)}/.`);
+                    } else {
+                        new Notice('Bundled layouts and required fonts are installed and refreshed.');
+                    }
                 }
                 renderLayoutRows();
                 refreshPublishingStatusCard();
