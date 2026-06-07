@@ -557,13 +557,16 @@ body.rt-modal-open .radial-timeline-container * {
 }
 
 /* Cache-window countdown pill. Sits beside the signal selector and shows the
-   remaining provider-cache window while it is open; collapsed when idle. */
-.rt-gossamer-runs .ert-gossamer-cache-pill {
+   remaining provider-cache window while it is open; collapsed when idle.
+   Padding is em-based: this lives in the timeline SVG foreignObject, outside
+   the .ert-ui scope where the --ert-pad-* tokens resolve (same reason the
+   sibling runs-header pill uses literal units). */
+.ert-gossamer-cache-pill {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   min-height: 28px;
-  padding: 4px 12px;
+  padding: 0.27em 0.8em;
   border: 1px dashed color-mix(in srgb, var(--interactive-accent) 50%, var(--background-modifier-border));
   border-radius: 999px;
   background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
@@ -577,7 +580,7 @@ body.rt-modal-open .radial-timeline-container * {
   user-select: none;
 }
 
-.rt-gossamer-runs .ert-gossamer-cache-pill[data-state="idle"] {
+.ert-gossamer-cache-pill[data-state="idle"] {
   display: none;
 }
 
