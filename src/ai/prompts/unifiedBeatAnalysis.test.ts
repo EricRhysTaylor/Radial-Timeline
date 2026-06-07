@@ -1,5 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { buildUnifiedBeatAnalysisPrompt, buildUnifiedBeatAnalysisPromptParts } from './unifiedBeatAnalysis';
+import {
+    buildUnifiedBeatAnalysisCacheParts,
+    buildUnifiedBeatAnalysisPrompt,
+    buildUnifiedBeatAnalysisPromptParts
+} from './unifiedBeatAnalysis';
+
+describe('buildUnifiedBeatAnalysisCacheParts', () => {
+    const beats = [
+        { beatName: 'Opening Image', beatNumber: 1, idealRange: '0-10' },
+        { beatName: 'Catalyst', beatNumber: 2, idealRange: '10-20' }
+    ];
+    const MANUSCRIPT = 'The manuscript body that must be cached.';
+
+    it('keeps the manuscript in the stable half and the rubric in the volatile half', () => {
+        const { stableInput, volatileQuestion } = buildUnifiedBeatAnalysisCacheParts(MANUSCRIPT, beats, 'Save The Cat', 'momentum');
+        // Stable half carries the corpus + beat list; the rubric never leaks into it.
+        expect(stableInput.includes(MANUSCRIPT)).toBe(true);
+        expect(stableInput.includes('Story beats:')).toBe(true);
+        expect(stableInput.includes('Score MOMENTUM')).toBe(false);
+        // Volatile half carries the per-signal rubric + response contract, never the corpus.
+        expect(volatileQuestion.includes('Score MOMENTUM')).toBe(true);
+        expect(volatileQuestion.includes('set "signal" to "momentum"')).toBe(true);
+        expect(volatileQuestion.includes(MANUSCRIPT)).toBe(false);
+    });
+
+    it('produces a byte-identical stable half across all four signals (cross-signal cache reuse)', () => {
+        const signals = ['momentum', 'tension', 'activity', 'interiority'] as const;
+        const stableHalves = signals.map(s => buildUnifiedBeatAnalysisCacheParts(MANUSCRIPT, beats, 'Save The Cat', s).stableInput);
+        const volatileHalves = signals.map(s => buildUnifiedBeatAnalysisCacheParts(MANUSCRIPT, beats, 'Save The Cat', s).volatileQuestion);
+        // The cacheable prefix must not vary by signal...
+        expect(new Set(stableHalves).size).toBe(1);
+        // ...while the volatile rubric must differ for every signal.
+        expect(new Set(volatileHalves).size).toBe(signals.length);
+    });
+});
 
 describe('buildUnifiedBeatAnalysisPromptParts', () => {
     it('recombines into the canonical unified beat prompt', () => {

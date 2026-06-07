@@ -14,7 +14,10 @@ describe('AI client resolved-model caching', () => {
     it('treats Anthropic Inquiry cache state as eligible until the provider confirms a hit', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
         expect(source.includes("userQuestion: request.userQuestion")).toBe(true);
-        expect(source.includes("placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0")).toBe(true);
+        // Volatile-last layout defaults to Inquiry but any feature can opt in
+        // (Gossamer) so its stable corpus is reused across prompt-cache windows.
+        expect(source.includes("const placeUserQuestionLast = (request.placeUserQuestionLast ?? isInquiry) && hasUserQuestion;")).toBe(true);
+        expect(source.includes("placeUserQuestionLast,")).toBe(true);
         expect(source.includes('const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);')).toBe(true);
         expect(source.includes("reuseState = cacheAttempted ? 'eligible' : 'idle';")).toBe(true);
         expect(source.includes("} else if (provider === 'openai') {")).toBe(true);

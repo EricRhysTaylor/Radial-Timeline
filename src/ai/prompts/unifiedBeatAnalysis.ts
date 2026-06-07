@@ -100,6 +100,60 @@ export function getUnifiedBeatAnalysisJsonSchema() {
   return UNIFIED_BEAT_ANALYSIS_SCHEMA;
 }
 
+function formatBeatList(beats: UnifiedBeatInfo[]): string {
+  return beats
+    .map((b, i) => {
+      const prefix = b.placement ? `[${b.placement}]` : `${i + 1}.`;
+      const description = b.description && b.description.trim().length > 0
+        ? ` — ${b.description.trim()}`
+        : '';
+      return `${prefix} ${b.beatName}${description}`;
+    })
+    .join('\n');
+}
+
+/** The signal-specific scoring rubric plus the per-row response contract. */
+function buildSignalInstruction(signal: GossamerSignalType): string {
+  const signalBlock = GOSSAMER_SIGNAL_METADATA[signal].promptBlock;
+  return `${signalBlock}
+
+Respond strictly in the provided JSON schema.
+Return a score (0-100) and one short sentence justification per beat.
+For each row, set "signal" to "${signal}".`;
+}
+
+/**
+ * Build the prompt as a cache-stable / volatile split for provider prompt caching.
+ *
+ * `stableInput` (beat list + full manuscript) is byte-identical across all four
+ * signals on a given manuscript, so when it lands in the provider cache prefix
+ * (Anthropic `cache_control`, Gemini `cachedContent`, OpenAI prefix cache) the
+ * second-through-fourth signal runs reuse it instead of re-billing the corpus.
+ * `volatileQuestion` (the signal-specific rubric + "set signal to X") is the only
+ * part that changes between signals and MUST be placed after the cache break.
+ *
+ * The caller wires this as `userInput: stableInput` + `userQuestion: volatileQuestion`
+ * with `placeUserQuestionLast: true` so composeEnvelope inserts the cache-break
+ * delimiter between them. For the stable prefix to actually be reused, the caller
+ * must also keep every other envelope input signal-neutral (role template,
+ * projectContext incl. `task`, featureModeInstructions, output rules).
+ */
+export function buildUnifiedBeatAnalysisCacheParts(
+  manuscriptText: string,
+  beats: UnifiedBeatInfo[],
+  beatSystem: string,
+  signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL
+): { stableInput: string; volatileQuestion: string } {
+  const beatList = formatBeatList(beats);
+  const stableInput = `Beat system: ${beatSystem}
+Story beats:
+${beatList}
+
+Manuscript:
+${manuscriptText}`;
+  return { stableInput, volatileQuestion: buildSignalInstruction(signal) };
+}
+
 export function buildUnifiedBeatAnalysisPromptParts(
   manuscriptText: string,
   beats: UnifiedBeatInfo[],
@@ -110,15 +164,7 @@ export function buildUnifiedBeatAnalysisPromptParts(
   instructionText: string;
   prompt: string;
 } {
-  const beatList = beats
-    .map((b, i) => {
-      const prefix = b.placement ? `[${b.placement}]` : `${i + 1}.`;
-      const description = b.description && b.description.trim().length > 0
-        ? ` — ${b.description.trim()}`
-        : '';
-      return `${prefix} ${b.beatName}${description}`;
-    })
-    .join('\n');
+  const beatList = formatBeatList(beats);
 
   const signalBlock = GOSSAMER_SIGNAL_METADATA[signal].promptBlock;
 

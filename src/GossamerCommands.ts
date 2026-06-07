@@ -22,7 +22,7 @@ import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } fr
 import { tokenEstimateFromMethod } from './ai/estimates';
 import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
-import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
+import { buildUnifiedBeatAnalysisCacheParts, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
 import { validateGossamerResponse } from './ai/gossamer/responseValidation';
 import { unwrapStructuredEnvelope } from './ai/structuredResponseUnwrap';
@@ -1017,15 +1017,40 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.setStatus(t('gossamer.notices.buildingPrompt'));
     const selectedSignal: GossamerSignalType = plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
     const signalMeta = GOSSAMER_SIGNAL_METADATA[selectedSignal];
-    const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem, selectedSignal);
+    // Cache-split layout: the manuscript + beat list (stableInput) is byte-identical
+    // across all four signals, so it lands in the provider cache prefix and the
+    // second-through-fourth signal runs on the same manuscript reuse it instead of
+    // re-billing the corpus. The signal rubric (volatileQuestion) rides after the
+    // cache break via placeUserQuestionLast. Everything else in the envelope is kept
+    // signal-neutral below so the cached prefix stays identical run-to-run.
+    const { stableInput, volatileQuestion } = buildUnifiedBeatAnalysisCacheParts(
+      evidenceDocument.text,
+      beats,
+      beatSystem,
+      selectedSignal
+    );
+    // Full prompt string for the log envelope (stable corpus first, volatile rubric last).
+    const prompt = `${stableInput}\n\n${volatileQuestion}`;
     const schema = getUnifiedBeatAnalysisJsonSchema();
     const aiClient = getAIClient(plugin);
+    const activeBookTitle = typeof plugin.getActiveBookTitle === 'function'
+      ? plugin.getActiveBookTitle()
+      : 'Unknown Book';
     const runRequest: AIRunRequest = {
       feature: 'Gossamer',
       task: `Beat${signalMeta.short.charAt(0) + signalMeta.short.slice(1).toLowerCase()}Analysis`,
       requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
-      featureModeInstructions: `Evaluate narrative ${signalMeta.label.toLowerCase()} at each beat using only the submitted manuscript and beat list.`,
-      userInput: prompt,
+      // Signal-neutral so the cached prefix is byte-identical across all four signals;
+      // the per-signal rubric rides in userQuestion after the cache break.
+      featureModeInstructions: 'Evaluate the requested narrative signal at each beat using only the submitted manuscript and beat list. The signal and its scoring rubric follow the manuscript.',
+      // Explicit signal-neutral project context. getProjectContext() would otherwise
+      // embed the per-signal `task` into the stable prefix and break cross-signal reuse.
+      projectContext: `Project: Radial Timeline\nBook: ${activeBookTitle}\nFeature: Gossamer\nTask: Beat signal analysis`,
+      userInput: stableInput,
+      userQuestion: volatileQuestion,
+      // Place the signal rubric after the cache-break delimiter so the manuscript
+      // prefix is reused across the four per-signal runs (provider prompt caching).
+      placeUserQuestionLast: true,
       returnType: 'json',
       responseSchema: schema as unknown as Record<string, unknown>,
       // Bypass the user's active role template so a "literary fiction editor" or

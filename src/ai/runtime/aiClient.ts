@@ -535,6 +535,11 @@ export class AIClient {
             && (request.evidenceDocuments?.length ?? 0) > 0;
 
         const isInquiry = request.feature.toLowerCase().includes('inquiry');
+        const hasUserQuestion = typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0;
+        // Volatile-last layout (question after the cache break) is the default for
+        // Inquiry; any feature can opt in via request.placeUserQuestionLast to make
+        // its stable corpus reusable across provider prompt-cache windows (Gossamer).
+        const placeUserQuestionLast = (request.placeUserQuestionLast ?? isInquiry) && hasUserQuestion;
         const envelope = composeEnvelope({
             roleTemplateName: roleTemplate.name,
             roleTemplateText: roleTemplate.prompt,
@@ -543,7 +548,7 @@ export class AIClient {
             userInput: request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? '',
             userQuestion: request.userQuestion,
             outputRules: getOutputRules(request),
-            placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0,
+            placeUserQuestionLast,
             cacheBreakDelimiter: (provider === 'anthropic' || provider === 'google' || provider === 'openai')
                 ? CACHE_BREAK_DELIMITER : undefined
         });

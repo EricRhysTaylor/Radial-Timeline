@@ -356,6 +356,14 @@ export interface AIRunRequest {
     projectContext?: string;
     userInput?: string;
     userQuestion?: string;
+    /**
+     * Place `userQuestion` after the cache-break delimiter (volatile-last layout).
+     * Defaults to true only for Inquiry. Set true for any feature that wants the
+     * stable corpus reused across runs via provider prompt caching (Gossamer scores
+     * one signal per run on an unchanged manuscript — the rubric is the only volatile
+     * part). Requires a non-empty `userQuestion`.
+     */
+    placeUserQuestionLast?: boolean;
     outputRules?: string;
     promptTemplate?: string;
     vars?: Record<string, unknown>;
