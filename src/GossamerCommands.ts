@@ -26,7 +26,7 @@ import { buildUnifiedBeatAnalysisCacheParts, getUnifiedBeatAnalysisJsonSchema, t
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
 import { validateGossamerResponse } from './ai/gossamer/responseValidation';
 import { buildGossamerCacheWindow } from './gossamer/cacheWindow';
-import { estimateCorpusCost } from './ai/cost/estimateCorpusCost';
+import { estimateUsageCost } from './ai/cost/estimateCorpusCost';
 import { validateAiSettings } from './ai/settings/validateAiSettings';
 import { buildDefaultAiSettings } from './ai/settings/aiSettings';
 import { unwrapStructuredEnvelope } from './ai/structuredResponseUnwrap';
@@ -1171,29 +1171,21 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       returnedAt.getTime(),
       validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value
     );
-    // Project what scoring the next signal will cost while this window is open
-    // (cached) versus a cold run (fresh). Best-effort: the countdown still shows
-    // if pricing is unavailable for the model.
+    // Record the FACTUAL billed cost of this run on the window from the
+    // provider's usage payload (no projection of future runs). Best-effort:
+    // the countdown still shows if pricing is unavailable for the model.
     if (plugin.gossamerCacheWindow && result.provider !== 'none') {
       try {
-        const window = plugin.gossamerCacheWindow;
         const usage = extractTokenUsage(result.provider, result.responseData);
         const modelId = result.modelResolved || result.modelRequested;
-        const inputTokens = usage?.inputTokens ?? 0;
-        const outputTokens = usage?.outputTokens ?? 0;
-        if (modelId && inputTokens > 0) {
-          const reuseRatio = window.cachedStableTokens && window.cachedStableTokens > 0
-            ? Math.min(1, window.cachedStableTokens / inputTokens)
-            : undefined;
-          const projection = estimateCorpusCost(result.provider, modelId, inputTokens, outputTokens || 1500, 1, {
-            cacheReuseRatio: reuseRatio,
-            cacheWriteTtl: '1h'
-          });
-          if (typeof projection.cachedCostUSD === 'number') window.nextRunCostUSD = projection.cachedCostUSD;
-          if (typeof projection.freshCostUSD === 'number') window.freshRunCostUSD = projection.freshCostUSD;
+        if (usage && modelId) {
+          const cost = estimateUsageCost(result.provider, modelId, usage, result.advancedContext?.cacheStatus);
+          if (typeof cost?.totalCostUSD === 'number' && Number.isFinite(cost.totalCostUSD)) {
+            plugin.gossamerCacheWindow.lastRunCostUSD = cost.totalCostUSD;
+          }
         }
       } catch (e) {
-        console.warn('[Gossamer] Cache-cost projection unavailable:', sanitizeLogPayload(e).sanitized);
+        console.warn('[Gossamer] Cache-cost capture unavailable:', sanitizeLogPayload(e).sanitized);
       }
     }
     modal.setCacheWindow(plugin.gossamerCacheWindow);

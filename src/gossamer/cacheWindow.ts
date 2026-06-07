@@ -17,7 +17,7 @@
  */
 import type { AIProviderId, AIRunAdvancedContext, AiSettingsV1 } from '../ai/types';
 import { resolveProviderCacheWindowMs } from '../ai/settings/cacheWindows';
-import { formatApproxUsdCost } from '../ai/cost/estimateCorpusCost';
+import { formatExactUsdCost } from '../ai/cost/estimateCorpusCost';
 
 export type GossamerCacheProvider = 'anthropic' | 'openai' | 'google';
 
@@ -32,10 +32,11 @@ export interface GossamerCacheWindow {
   cachedStableTokens?: number;
   /** Whether the arming run created the cache or reused an existing one. */
   cacheStatus?: 'hit' | 'created';
-  /** Projected cost (USD) of the next signal run while this window is open. */
-  nextRunCostUSD?: number;
-  /** Projected cost (USD) of a cold run with no cache, for contrast. */
-  freshRunCostUSD?: number;
+  /**
+   * Actual billed cost (USD) of the run that armed/refreshed this window,
+   * derived from the provider's usage payload — a fact, not a projection.
+   */
+  lastRunCostUSD?: number;
 }
 
 const CACHE_PROVIDERS: readonly AIProviderId[] = ['anthropic', 'openai', 'google'];
@@ -120,20 +121,18 @@ export function formatGossamerCachePillLabel(
 }
 
 /**
- * Projected-cost hint for the next signal run, e.g.
- * `"next signal ~$0.16 vs ~$2.43 fresh"`. Null when no projection was
- * captured. Independent of the countdown — a closed window simply has no
- * projection to show.
+ * Factual cost report for the run that armed this window, e.g.
+ * `"last run $0.157 · cache hit"`. Reports only the observed billed cost from
+ * the usage payload — no projection of future runs. Null when no cost was
+ * captured.
  */
 export function formatGossamerCacheCostHint(
   window: GossamerCacheWindow | null | undefined
 ): string | null {
-  if (typeof window?.nextRunCostUSD !== 'number' || !Number.isFinite(window.nextRunCostUSD)) {
+  if (typeof window?.lastRunCostUSD !== 'number' || !Number.isFinite(window.lastRunCostUSD)) {
     return null;
   }
-  const next = formatApproxUsdCost(window.nextRunCostUSD);
-  if (typeof window.freshRunCostUSD === 'number' && Number.isFinite(window.freshRunCostUSD)) {
-    return `next signal ${next} vs ${formatApproxUsdCost(window.freshRunCostUSD)} fresh`;
-  }
-  return `next signal ${next}`;
+  const cost = formatExactUsdCost(window.lastRunCostUSD);
+  const status = window.cacheStatus ? ` · cache ${window.cacheStatus}` : '';
+  return `last run ${cost}${status}`;
 }

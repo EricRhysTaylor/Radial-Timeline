@@ -103,20 +103,22 @@ describe('formatGossamerCacheClock', () => {
 describe('formatGossamerCacheCostHint', () => {
     const base: GossamerCacheWindow = { provider: 'anthropic', modelLabel: 'Claude', armedAt: 0, expiresAt: 1 };
 
-    it('returns null when no projection was captured', () => {
+    it('returns null when no cost was captured', () => {
         expect(formatGossamerCacheCostHint(base)).toBeNull();
         expect(formatGossamerCacheCostHint(null)).toBeNull();
     });
 
-    it('shows next-vs-fresh when both projections exist', () => {
-        const hint = formatGossamerCacheCostHint({ ...base, nextRunCostUSD: 0.16, freshRunCostUSD: 2.43 });
-        expect(hint).toContain('next signal');
-        expect(hint).toContain('fresh');
+    it('reports the factual last-run cost with cache status', () => {
+        const hit = formatGossamerCacheCostHint({ ...base, lastRunCostUSD: 0.157, cacheStatus: 'hit' });
+        expect(hit).toBe('last run $0.157 · cache hit');
+        const created = formatGossamerCacheCostHint({ ...base, lastRunCostUSD: 2.43, cacheStatus: 'created' });
+        expect(created).toBe('last run $2.43 · cache created');
     });
 
-    it('shows next-only when fresh is absent', () => {
-        const hint = formatGossamerCacheCostHint({ ...base, nextRunCostUSD: 0.16 });
-        expect(hint).toContain('next signal');
-        expect(hint).not.toContain('fresh');
+    it('omits status when unknown, and never projects future runs', () => {
+        const hint = formatGossamerCacheCostHint({ ...base, lastRunCostUSD: 0.157 });
+        expect(hint).toBe('last run $0.157');
+        expect(hint).not.toContain('next');
+        expect(hint).not.toContain('~');
     });
 });
