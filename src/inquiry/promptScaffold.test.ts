@@ -36,6 +36,10 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.instructionText.includes('never emit the literal placeholder text')).toBe(true);
         // Coverage: findings must cover every scene the summary names, not just one example.
         expect(parts.instructionText.includes('Be exhaustive, not illustrative')).toBe(true);
+        // Context-sensitivity: orientation risk judged against genre/period/audience, not a modern general reader.
+        expect(parts.instructionText.includes('Account for genre, period, intended audience, and world-context.')).toBe(true);
+        expect(parts.instructionText.includes('prefer light-touch grounding over explanatory flattening')).toBe(true);
+        expect(parts.instructionText.includes('Before recommending added explanation, ask whether the target reader is expected to infer this')).toBe(true);
         expect(parts.userPrompt.includes('SELECTION MODE')).toBe(false);
         expect(parts.userPrompt.includes('TARGET SCENES:\n- scn_target_01')).toBe(true);
         expect(INQUIRY_ROLE_TEMPLATE_GUARDRAIL.includes('role template')).toBe(true);
