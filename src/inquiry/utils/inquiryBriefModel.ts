@@ -421,10 +421,11 @@ export function buildBriefPendingActions(
  *    negatives → MAX_SAFE_INTEGER), then locale-aware numeric label.
  *  - Bullets: buildSceneDossierBodyLines → normalize → filter `startsWith('• ')`
  *    → strip prefix. (Pre-existing quirk preserved verbatim — see B4d scoping note.)
- *  - Entry line: prefers the finding's recommendedAction (via
- *    getInquiryActionText) so per-scene notes read as author work, not a
- *    replay of the headline; falls back to the headline, then to
- *    `'Finding text unavailable.'`. Lens `'both'` → `'Flow / Depth'`.
+ *  - Entry line: the finding HEADLINE (sanitized/normalized) so per-scene
+ *    notes read as a scene-local diagnosis; falls back to
+ *    `'Finding text unavailable.'`. The prescription (recommendedAction)
+ *    lives in Pending Author Actions, not here. Lens `'both'` →
+ *    `'Flow / Depth'`.
  */
 export function buildInquirySceneNotes(
     result: InquiryResult,
@@ -469,14 +470,12 @@ export function buildInquirySceneNotes(
         const header = match
             ? formatReferenceDisplay(match, label)
             : label.toUpperCase();
-        // Prefer the concrete recommendedAction as the per-scene line when
-        // one exists: it is distinct, author-facing work rather than a replay
-        // of the finding headline already shown in Target/Context Findings.
-        // Falls back to the headline when the finding carries no action.
-        const actionLine = getInquiryActionText(finding, referenceLabels);
+        // Use the finding HEADLINE as the per-scene line: this section is the
+        // scene-local diagnosis. The prescription (recommendedAction) is shown
+        // separately in Pending Author Actions, so preferring it here would
+        // just duplicate that section verbatim for every actionable finding.
         const entry = {
-            headline: (actionLine && sanitizeDossierText(actionLine))
-                || sanitizeDossierText(normalizeInquiryBriefText(finding.headline, referenceLabels))
+            headline: sanitizeDossierText(normalizeInquiryBriefText(finding.headline, referenceLabels))
                 || 'Finding text unavailable.',
             bullets: buildSceneDossierBodyLines(finding)
                 .map(line => normalizeInquiryBriefText(line, referenceLabels))

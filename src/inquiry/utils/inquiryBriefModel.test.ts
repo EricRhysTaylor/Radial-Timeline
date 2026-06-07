@@ -643,18 +643,21 @@ describe('buildInquirySceneNotes', () => {
         expect(out[0].entries[1].headline).toBe('second');
     });
 
-    it('entry line: prefers recommendedAction over headline; falls back to headline when absent', () => {
+    it('entry line: always the headline, regardless of recommendedAction', () => {
+        // Per-scene notes are the scene-local diagnosis; the prescription
+        // (recommendedAction) lives in Pending Author Actions, so the headline
+        // is used whether or not the finding carries an action.
         const r = result({ scope: 'book', findings: [
             f({ refId: 's1', headline: 'Setup is thin', recommendedAction: 'Seed the motive before S1.' }),
             f({ refId: 's2', headline: 'Reveal lands soft' }) // no action → headline
         ] });
         const out = runScene(r, []);
         const byLabel = new Map(out.map(n => [n.label, n.entries[0].headline]));
-        expect(byLabel.get('S1')).toBe('Seed the motive before S1.');
+        expect(byLabel.get('S1')).toBe('Setup is thin');
         expect(byLabel.get('S2')).toBe('Reveal lands soft');
     });
 
-    it('entry line: action equal to headline is suppressed, so the headline is used', () => {
+    it('entry line: action equal to headline still yields the headline', () => {
         const r = result({ scope: 'book', findings: [
             f({ refId: 's1', headline: 'Tighten the turn', recommendedAction: 'Tighten the turn' })
         ] });
