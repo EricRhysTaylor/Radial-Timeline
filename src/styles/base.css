@@ -556,6 +556,31 @@ body.rt-modal-open .radial-timeline-container * {
   color: var(--text-normal);
 }
 
+/* Cache-window countdown pill. Sits beside the signal selector and shows the
+   remaining provider-cache window while it is open; collapsed when idle. */
+.rt-gossamer-runs .ert-gossamer-cache-pill {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px dashed color-mix(in srgb, var(--interactive-accent) 50%, var(--background-modifier-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  font-size: 15px;
+  line-height: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.rt-gossamer-runs .ert-gossamer-cache-pill[data-state="idle"] {
+  display: none;
+}
+
 .rt-gossamer-runs__signals {
   display: inline-flex;
   align-items: center;

@@ -1083,6 +1083,19 @@
   align-items: center;
 }
 
+/* Cache-window countdown shown after a successful run — nudges the author to
+   score the remaining signals while the manuscript prefix is still cached. */
+.ert-gossamer-proc-cache-timer {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px dashed color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
+  border-radius: var(--ert-radius-sm, 8px);
+  background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+  font-size: 13px;
+  font-family: var(--font-monospace);
+  color: var(--text-normal);
+}
+
 .ert-gossamer-processing-modal .ert-pulse-progress-bar {
   transition: width 0.12s linear;
 }

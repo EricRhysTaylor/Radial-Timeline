@@ -10,6 +10,7 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { formatProviderCacheWindowLabel } from '../../ai/settings/cacheWindows';
+import { formatGossamerCacheClock } from '../../gossamer/cacheWindow';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
@@ -758,6 +759,11 @@ export function renderAiSection(params: {
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
+    // Live cache-window line — hidden unless a prior Gossamer run armed a still-open
+    // provider-cache window the remaining signals can reuse. Ticked by the preview interval.
+    const capacityGossamerCache = capacityGossamer.valueEl.createDiv({
+        cls: 'ert-ai-capacity-meta ert-ai-capacity-meta--cache ert-settings-hidden'
+    });
     const capacityGossamerSections = capacityGossamer.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
     renderPanelViewModelSections(capacityGossamerSections, buildPanelViewModel({
         feature: 'gossamer',
@@ -1138,6 +1144,11 @@ export function renderAiSection(params: {
     const resolvedPreviewCacheMeterLabel = resolvedPreviewFrame.createDiv({
         cls: 'ert-ai-resolved-preview-cache-meter-label ert-settings-hidden'
     });
+    // Gossamer cache-window pill — independent of the Inquiry cache certificate
+    // above; shows a live countdown while a Gossamer run's manuscript cache is open.
+    const resolvedPreviewGossamerCacheEl = resolvedPreviewFrame.createDiv({
+        cls: 'ert-ai-resolved-preview-gossamer-cache ert-settings-hidden'
+    });
     params.addAiRelatedElement(resolvedPreviewFrame);
 
     // Forward-declared; populated after credential helpers are defined.
@@ -1513,8 +1524,29 @@ export function renderAiSection(params: {
         }
     };
 
+    // Gossamer cache-window countdown — drives both the preview pill and the
+    // capacity-table line from the plugin's live window. Hidden when no window
+    // is open. Reuses the preview's existing 1s tick (no extra interval).
+    const updateGossamerCacheSettingsUi = (): void => {
+        const win = plugin.gossamerCacheWindow;
+        const clock = formatGossamerCacheClock(win, Date.now());
+        if (!clock || !win) {
+            resolvedPreviewGossamerCacheEl.toggleClass('ert-settings-hidden', true);
+            resolvedPreviewGossamerCacheEl.setText('');
+            capacityGossamerCache.toggleClass('ert-settings-hidden', true);
+            capacityGossamerCache.setText('');
+            return;
+        }
+        resolvedPreviewGossamerCacheEl.toggleClass('ert-settings-hidden', false);
+        resolvedPreviewGossamerCacheEl.setText(`Gossamer cache ${clock}`);
+        capacityGossamerCache.toggleClass('ert-settings-hidden', false);
+        capacityGossamerCache.setText(`Cache window ${clock} (${win.provider}) — reused by remaining signals`);
+    };
+    updateGossamerCacheSettingsUi();
+
     const previewCertificateIntervalId = window.setInterval(() => {
         applyResolvedPreviewCertificate();
+        updateGossamerCacheSettingsUi();
         if (lastCostComparisonRows.length > 0) {
             renderCostComparisonRows(lastCostComparisonRows);
         }

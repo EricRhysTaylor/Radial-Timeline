@@ -68,6 +68,7 @@ import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import { DARIAN_MARS_MONTH_NAMES, MARS_TEMPLATE_ID, matchesLegacyMarsMonthNames } from './utils/planetaryMars';
 import type { GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
+import type { GossamerCacheWindow } from './gossamer/cacheWindow';
 import { seedProEntitlement } from './settings/proEntitlementSeed';
 import { hasProFeatureAccess } from './settings/featureGate';
 import { DisposableRegistry } from './core/disposable';
@@ -187,7 +188,14 @@ export default class RadialTimelinePlugin extends Plugin {
     public gossamerVisibleRunInventory: GossamerRunRecord[] = [];
     public gossamerFilterBeatSystemKey = '';
     public gossamerSelectedSignal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL;
-    
+    /**
+     * Provider-cache window armed by the most recent Gossamer AI run. While
+     * open, scoring the remaining signals reuses the cached manuscript. In
+     * memory only (a fresh plugin process can't prove a prior window is still
+     * live), read by every cache-countdown surface. See gossamer/cacheWindow.ts.
+     */
+    public gossamerCacheWindow: GossamerCacheWindow | null = null;
+
     // APR Service
     private authorProgressService!: AuthorProgressService;
 

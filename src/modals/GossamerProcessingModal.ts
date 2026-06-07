@@ -15,6 +15,12 @@ import { getCredential } from '../ai/credentials/credentials';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { SimulatedProgress } from '../utils/simulatedProgress';
 import type { AIRunAdvancedContext } from '../ai/types';
+import {
+    type GossamerCacheWindow,
+    formatGossamerCacheClock,
+    isGossamerCacheWindowOpen
+} from '../gossamer/cacheWindow';
+import { GOSSAMER_SIGNAL_TYPES } from '../types/gossamerSignals';
 import { describeTokenEstimateMethod } from '../ai/tokens/inputTokenEstimate';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
@@ -71,6 +77,11 @@ export class GossamerProcessingModal extends ErtModal {
     private progressSimulator?: SimulatedProgress;
     private estimatedProcessingMs: number = 60000;
 
+    // Provider-cache window (armed after a successful run)
+    private cacheWindow: GossamerCacheWindow | null = null;
+    private cacheTimerEl?: HTMLElement;
+    private cacheTimerInterval?: number;
+
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
@@ -116,6 +127,7 @@ export class GossamerProcessingModal extends ErtModal {
             window.clearInterval(this.timerInterval);
             this.timerInterval = undefined;
         }
+        this.clearCacheTimerInterval();
         if (this.progressSimulator) {
             this.progressSimulator.stop();
         }
@@ -245,6 +257,10 @@ export class GossamerProcessingModal extends ErtModal {
 
         this.apiStatusEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-api-status' });
         this.apiStatusEl.setText(t('gossamer.processingModal.waitingToSend'));
+
+        // Cache-window row: hidden until a successful run arms a window.
+        this.cacheTimerEl = statusSection.createDiv({ cls: 'ert-gossamer-proc-cache-timer ert-hidden' });
+        this.renderCacheTimer();
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
         advancedDetails.createEl('summary', { text: t('gossamer.processingModal.advancedHeading') });
@@ -446,6 +462,42 @@ export class GossamerProcessingModal extends ErtModal {
         bucket[signal] = elapsedMs;
         this.plugin.settings.gossamerLastRunMsBySignal = bucket;
         await this.plugin.saveSettings();
+    }
+
+    /**
+     * Surface the provider-cache window armed by this run so the author knows
+     * how long they have to score the remaining signals on the cached
+     * manuscript. Drives a live MM:SS countdown that self-hides on expiry.
+     */
+    public setCacheWindow(next: GossamerCacheWindow | null): void {
+        this.cacheWindow = next;
+        this.renderCacheTimer();
+        if (next && isGossamerCacheWindowOpen(next, Date.now()) && !this.cacheTimerInterval) {
+            // SAFE: Modal has no registerInterval; cleared in onClose() and on expiry.
+            this.cacheTimerInterval = window.setInterval(() => this.renderCacheTimer(), 1000);
+        }
+    }
+
+    private clearCacheTimerInterval(): void {
+        if (this.cacheTimerInterval) {
+            window.clearInterval(this.cacheTimerInterval);
+            this.cacheTimerInterval = undefined;
+        }
+    }
+
+    private renderCacheTimer(): void {
+        const el = this.cacheTimerEl;
+        if (!el) return;
+        const clock = formatGossamerCacheClock(this.cacheWindow, Date.now());
+        if (!clock) {
+            el.empty();
+            el.addClass('ert-hidden');
+            this.clearCacheTimerInterval();
+            return;
+        }
+        const remaining = GOSSAMER_SIGNAL_TYPES.length - 1;
+        el.removeClass('ert-hidden');
+        el.setText(`Manuscript cached · ${clock} — score the other ${remaining} signals now to reuse it`);
     }
 
     /**

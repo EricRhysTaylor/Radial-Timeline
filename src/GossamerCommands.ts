@@ -25,6 +25,9 @@ import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisCacheParts, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
 import { validateGossamerResponse } from './ai/gossamer/responseValidation';
+import { buildGossamerCacheWindow } from './gossamer/cacheWindow';
+import { validateAiSettings } from './ai/settings/validateAiSettings';
+import { buildDefaultAiSettings } from './ai/settings/aiSettings';
 import { unwrapStructuredEnvelope } from './ai/structuredResponseUnwrap';
 import { getAIClient } from './ai/runtime/aiClient';
 import {
@@ -1156,6 +1159,18 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     modal.apiCallSuccess();
     modal.setStatus('Parsing AI response...');
+
+    // Arm the provider-cache window. The provider cached the manuscript prefix
+    // the moment it accepted this run, independent of whether our downstream
+    // validation passes — so the remaining signals can reuse it from here. A
+    // null window (non-caching provider / cache not engaged) simply clears any
+    // stale window. See gossamer/cacheWindow.ts.
+    plugin.gossamerCacheWindow = buildGossamerCacheWindow(
+      result.advancedContext ?? null,
+      returnedAt.getTime(),
+      validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value
+    );
+    modal.setCacheWindow(plugin.gossamerCacheWindow);
 
     // Parse response - AI returns raw scores without range info (to avoid anchoring bias)
     interface AiBeatAnalysis {

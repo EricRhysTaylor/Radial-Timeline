@@ -53,6 +53,7 @@ import type {
 } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
 import { GOSSAMER_SIGNAL_METADATA, GOSSAMER_SIGNAL_TYPES, type GossamerSignalType } from '../types/gossamerSignals';
+import { formatGossamerCacheClock } from '../gossamer/cacheWindow';
 import { tooltip as applyTooltip } from '../utils/tooltip';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
@@ -152,6 +153,8 @@ export class RadialTimelineView extends ItemView {
     private writingSessionCountdownToggle?: HTMLInputElement;
     private writingSessionGoalInput?: HTMLInputElement;
     private writingSessionTickInterval?: number;
+    private gossamerCachePillEl?: HTMLElement;
+    private gossamerCacheTickInterval?: number;
     private tabTimerIconActive = false;
     private writingSessionPulseTimeout?: number;
     private writingSessionLastTitlePulseKey?: string;
@@ -473,6 +476,10 @@ export class RadialTimelineView extends ItemView {
                 if (this.writingSessionTickInterval !== undefined) {
                     window.clearInterval(this.writingSessionTickInterval);
                     this.writingSessionTickInterval = undefined;
+                }
+                if (this.gossamerCacheTickInterval !== undefined) {
+                    window.clearInterval(this.gossamerCacheTickInterval);
+                    this.gossamerCacheTickInterval = undefined;
                 }
                 if (this.writingSessionPulseTimeout !== undefined) {
                     window.clearTimeout(this.writingSessionPulseTimeout);
@@ -2747,6 +2754,40 @@ export class RadialTimelineView extends ItemView {
         svg.appendChild(foreignObject);
     }
 
+    /**
+     * Refresh the Gossamer cache-window pill in the runs header. Reads the
+     * plugin's live window and shows a MM:SS countdown while it is open;
+     * hides the pill (and stops its own tick) once it closes.
+     */
+    private updateGossamerCachePill(): void {
+        const pill = this.gossamerCachePillEl;
+        if (!pill || !pill.isConnected) {
+            if (this.gossamerCacheTickInterval !== undefined) {
+                window.clearInterval(this.gossamerCacheTickInterval);
+                this.gossamerCacheTickInterval = undefined;
+            }
+            return;
+        }
+        const window_ = this.plugin.gossamerCacheWindow;
+        const clock = formatGossamerCacheClock(window_, Date.now());
+        if (!clock || !window_) {
+            pill.setAttribute('data-state', 'idle');
+            pill.textContent = '';
+            pill.removeAttribute('data-tooltip-bound');
+            return;
+        }
+        pill.setAttribute('data-state', 'open');
+        pill.textContent = `Cache ${clock}`;
+        if (pill.getAttribute('data-tooltip-bound') !== 'true') {
+            applyTooltip(
+                pill,
+                `Manuscript cached on ${window_.provider} — score the other signals now to reuse it`,
+                'bottom'
+            );
+            pill.setAttribute('data-tooltip-bound', 'true');
+        }
+    }
+
     private renderGossamerRunsPanel(svg: SVGSVGElement): void {
         if (this.currentMode !== 'gossamer') return;
 
@@ -2851,6 +2892,20 @@ export class RadialTimelineView extends ItemView {
             signalButtons.push({ el: btn, signal: signalId });
         });
         controlsRow.appendChild(signalSelector);
+
+        // Cache-window pill — shown while a prior run's manuscript cache is still
+        // live, so switching signals here reuses it. Self-ticking; hidden when no
+        // window is open. (xhtml element so it lives inside the foreignObject.)
+        const cachePill = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+        cachePill.className = 'ert-gossamer-cache-pill';
+        cachePill.setAttribute('data-state', 'idle');
+        controlsRow.appendChild(cachePill);
+        this.gossamerCachePillEl = cachePill;
+        this.updateGossamerCachePill();
+        if (this.gossamerCacheTickInterval !== undefined) {
+            window.clearInterval(this.gossamerCacheTickInterval);
+        }
+        this.gossamerCacheTickInterval = window.setInterval(() => this.updateGossamerCachePill(), 1000);
 
         panel.appendChild(controlsRow);
 
