@@ -126,7 +126,7 @@
 .rt-welcome-card:focus-visible {
   border-color: var(--interactive-accent);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-l);
   outline: none;
 }
 
