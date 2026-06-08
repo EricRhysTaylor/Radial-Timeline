@@ -186,7 +186,23 @@ export function renderBackdropRing({
             startAngle: computedStartAngle,
             endAngle: computedEndAngle
         };
-    }).filter((seg): seg is BackdropSegment => seg !== null);
+    }).filter((seg): seg is BackdropSegment => {
+        // Drop any segment with non-finite angles. A single bad date upstream
+        // (NaN from parseWhenField, etc.) would otherwise propagate to SVG
+        // path coordinates as "NaN" strings — browsers render those as nothing,
+        // silently blanking the whole timeline.
+        if (seg === null) return false;
+        if (!Number.isFinite(seg.startAngle) || !Number.isFinite(seg.endAngle)) {
+            // eslint-disable-next-line no-console
+            console.warn(
+                '[radial-timeline] dropping backdrop with non-finite angles:',
+                seg.scene.title || seg.scene.path,
+                { startAngle: seg.startAngle, endAngle: seg.endAngle }
+            );
+            return false;
+        }
+        return true;
+    });
 
     // 4. Render Segments
     // Strategy:
@@ -387,9 +403,14 @@ export function renderBackdropRing({
 
     // Render overlays AFTER base ring so they sit above bases,
     // but insert them immediately before closing the base ring so hover order stays consistent.
+    // Skip intervals smaller than this angular width — degenerate slices produce
+    // malformed SVG path data that some browsers render as nothing.
+    const MIN_OVERLAY_ANGULAR_WIDTH = 0.005; // ~0.3 degrees
     const overlayPaths: string[] = [];
     intervals.forEach((interval) => {
         const { start, end, active: activeSegments } = interval;
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+        if (end - start < MIN_OVERLAY_ANGULAR_WIDTH) return;
         activeSegments.forEach((segIdx, depth) => {
             const hueClass = `rt-backdrop-hue-${depth % 8}`; // map depth to a finite hue set
             const parityClass = depth % 2 === 0 ? 'rt-backdrop-overlap-even' : 'rt-backdrop-overlap-odd';

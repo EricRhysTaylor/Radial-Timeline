@@ -22,16 +22,27 @@ review — they recommend, they do not modify product code.
 
 ---
 
-## How to run an audit (manual)
+## How to run an audit (agent-run)
 
 1. Pick the track and open its prompt file under `prompts/`.
-2. Paste the full prompt into an IDE agent (Claude Code, Cursor, etc.) at the
-   repo root.
+2. Give the full prompt to an IDE agent (Claude Code, Cursor, Codex, etc.) at
+   the repo root.
 3. The agent inspects the codebase, cites files and line numbers, and
    produces a report.
-4. Save the report under `reports/` using the filename convention
+4. The agent saves the report under `reports/` using the filename convention
    `YYYY-MM-DD-<track>.md` (e.g. `2026-05-19-codebase-health.md`).
 5. Review with a human. Do not auto-apply any recommendation.
+
+For the recurring shortcut audits in this repo, the agent is also responsible
+for executing and recording them rather than telling Eric to run shell
+commands manually:
+
+- `npm run auditDaily`
+- `npm run auditFriday`
+- `npm run auditDeep`
+
+When preserving one of those runs as a backup note, the agent should also run
+`npm run backup -- --note "<Audit Name>"` itself.
 
 The `package.json` audit shortcuts simply echo the prompt path:
 

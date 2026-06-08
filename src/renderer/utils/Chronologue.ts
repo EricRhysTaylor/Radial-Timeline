@@ -185,14 +185,22 @@ export function renderChronologueOverlays({
             // Use precise middle radius of the allocated ring lane
             const backdropRadius = ringStartRadii[ringIndex] + ringWidths[ringIndex] / 2;
 
-            svg += renderBackdropRing({
-                plugin,
-                scenes,
-                availableRadius: backdropRadius,
-                synopsesElements,
-                maxTextWidth,
-                masterSubplotOrder
-            });
+            // Defensive: a failure inside renderBackdropRing must not blank
+            // the whole Chronologue timeline. If it throws, log to console
+            // and skip the backdrop ring — the rest of the timeline still renders.
+            try {
+                svg += renderBackdropRing({
+                    plugin,
+                    scenes,
+                    availableRadius: backdropRadius,
+                    synopsesElements,
+                    maxTextWidth,
+                    masterSubplotOrder
+                });
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[radial-timeline] renderBackdropRing failed; backdrop ring skipped this render.', err);
+            }
         }
     }
 

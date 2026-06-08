@@ -29,6 +29,19 @@ The primary branch is `master`.
   (force-push, hard reset of pushed commits, branch deletion of shared
   refs) or when the user explicitly says "show me first."
 
+## Audit Ownership
+
+- Recurring engineering audits are agent-owned tasks, not manual user tasks.
+- When Daily Control Tower, Friday Release Gate, or Biweekly Deep Audit is due,
+  the agent should run the appropriate repo command itself:
+  - `npm run auditDaily`
+  - `npm run auditFriday`
+  - `npm run auditDeep`
+- If the audit should be preserved as a backup note, the agent should record it
+  itself with `npm run backup -- --note "<Audit Name>"`.
+- Do not tell Eric to run these commands manually unless he explicitly asks for
+  the raw command instead of agent execution.
+
 ## Build
 
 - `npm run build` to build (outputs to Obsidian vault plugin folders + `release/`)

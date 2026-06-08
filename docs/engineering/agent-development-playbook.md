@@ -23,6 +23,21 @@ For UI/CSS work, also:
 4. Run gates (`npm run gates`).
 5. Summarize what changed.
 
+## Recurring Audit Ownership
+
+Recurring control-tower audits are executed by the agent, not delegated back to
+Eric as manual shell work.
+
+- Daily control tower: agent runs `npm run auditDaily`.
+- Friday release gate: agent runs `npm run auditFriday`.
+- Biweekly deep audit: agent runs `npm run auditDeep`.
+- If the audit needs a matching backup record, the agent also runs
+  `npm run backup -- --note "<Audit Name>"`.
+
+For reminder-style automations, the correct behavior is: detect whether the
+audit is missing, then run it or instruct a future agent thread to run it. Do
+not phrase the result as "Eric should run ...".
+
 ## Refactor Workflow
 When refactoring:
 
