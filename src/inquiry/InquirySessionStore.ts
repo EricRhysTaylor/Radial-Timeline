@@ -249,7 +249,40 @@ export class InquirySessionStore {
         }
         this.saveTimeout = window.setTimeout(() => {
             this.saveTimeout = null;
-            void writeInquirySessionsToVault(this.plugin.app, this.cache.sessions);
+            void this.writeNow();
         }, 600);
+    }
+
+    /**
+     * Persist the current working set to the vault sidecar IMMEDIATELY,
+     * cancelling any pending debounced save.
+     *
+     * The sidecar is the single source of truth for full session restore, so
+     * durable moments — a completed run saving its brief, the view closing,
+     * packaging a demo vault — call this to guarantee the hidden file matches
+     * the in-memory set with no timing window. (The 600 ms debounce alone is
+     * lost if Obsidian quits / the plugin reloads / the vault is copied before
+     * it fires, which leaves a brief on disk with no rehydratable session.)
+     */
+    async flush(): Promise<void> {
+        if (this.saveTimeout) {
+            window.clearTimeout(this.saveTimeout);
+            this.saveTimeout = null;
+        }
+        this.plugin.settings.inquirySessionCache = this.cache;
+        await this.writeNow();
+    }
+
+    private async writeNow(): Promise<void> {
+        // Errors are logged, never swallowed silently — a failed sidecar write
+        // is the difference between a vault that restores and one that does not.
+        try {
+            await writeInquirySessionsToVault(this.plugin.app, this.cache.sessions);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(
+                `[RadialTimeline] Failed to persist inquiry sessions to vault sidecar: ${message}`
+            );
+        }
     }
 }

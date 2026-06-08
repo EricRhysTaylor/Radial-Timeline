@@ -863,6 +863,10 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) {
             new Notice(t('inquiry.notice.runContinuesInBackground'));
         }
+        // Drain any pending debounced session save before teardown so the
+        // sidecar is current on close. A background run that is still going
+        // persists its own session via the write-through in saveBrief().
+        await this.sessionStore.flush();
         // All tracked view-scoped timers are cleared in LIFO order; one bad
         // cleanup cannot block the others.
         this.viewDisposables.disposeAll();
@@ -11215,6 +11219,12 @@ export class InquiryView extends ItemView {
                     status: options.statusOverride ?? 'saved',
                     briefPath: file.path
                 });
+                // Write-through: the session now holds its final restorable
+                // state (saved status + briefPath). Persist it synchronously
+                // alongside the brief so the hidden sidecar can never lag the
+                // visible brief — the vault stays fully rehydratable even if
+                // Obsidian quits or the vault is packaged immediately after.
+                await this.sessionStore.flush();
             }
             this.updateBriefingButtonState();
             this.refreshBriefingPanel();
