@@ -3,10 +3,19 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { ButtonComponent, Platform, setIcon } from 'obsidian';
+import { setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../branding/rtLogo';
+import { readInquirySessionsFromVault } from '../inquiry/InquiryArtifactStore';
+import type { BookProfile } from '../types/settings';
+import {
+    DEFAULT_BOOK_TITLE,
+    createBookId,
+    deriveBookTitleFromSourcePath,
+    getActiveBook,
+    normalizeBookProfile
+} from '../utils/books';
 
 interface WelcomeScreenParams {
     container: HTMLElement;
@@ -15,56 +24,48 @@ interface WelcomeScreenParams {
 }
 
 const WELCOME_COPY = {
-    introLine1: 'Radial Timeline is a concise visualization system to organize and structure a scene-based story or creative work. Try it for novels, sagas, screenplays, podcasts or YouTube scripts—fiction or non-fiction.',
-    introLine2: 'Get your feet wet by creating your first scene. See it appear in the timeline.',
-    actions: {
-        primary: 'Create your first scene',
-        secondary: 'Design a story framework',
-        tertiary: 'How the timeline works'
+    intro: 'Radial Timeline turns a scene-based story into a single, navigable map — novels, sagas, screenplays, podcasts or YouTube scripts, fiction or non-fiction. Pick a starting point below.',
+    cards: {
+        website: {
+            title: 'Visit the website',
+            desc: 'Guides, walkthroughs, release notes, pricing, and the story behind Radial Timeline live at radialtimeline.com.',
+            cta: 'Open radialtimeline.com'
+        },
+        sampleGet: {
+            title: 'Explore a sample vault',
+            desc: 'See a finished novel — Pride & Prejudice — fully mapped in the timeline with AI analysis already run. No API key needed to explore it.',
+            cta: 'Get the sample vault'
+        },
+        sampleOpen: {
+            title: 'Sample vault detected',
+            desc: (name: string) => `This vault ships a ready-to-explore ${name}. Open it to drop straight into a finished story on the timeline.`,
+            cta: 'Open the sample vault'
+        },
+        design: {
+            title: 'Design your book',
+            desc: 'Lay out acts, subplots, characters, and beats with Book Designer — a structural starting point you can refine anytime.',
+            cta: 'Open Book Designer',
+            secondary: 'or create any note →'
+        }
     },
-    stepsHeading: 'Start in three steps:',
-    step1: {
-        title: '1. Name your book',
-        body: 'Click \u201cCreate your first scene\u201d above. The first time, we\u2019ll ask for a book name and create a matching folder in your vault. You can rename or add more books anytime in Book Manager.',
-        note: ''
-    },
-    step2: {
-        title: '2. Write prose immediately',
-        body: 'Create your first scene using the command palette (\u201cCreate note\u2026\u201d), then start writing. As characters and time become clear, add them in Scene Properties. The default subplot is Main Plot\u2014you can move it anytime.'
-    },
-    step3: {
-        title: '3. Shape the story structure',
-        bullets: [
-            {
-                title: 'Design a framework',
-                body: ' \u2014 Use Book Designer to set up acts, subplots, characters, and optional beats as a starting point.'
-            },
-            {
-                title: 'Refine structure later',
-                body: ' \u2014 adjust acts, add beats, and more in Settings.'
-            }
-        ]
-    },
-    reorderNote: 'Scenes and beats can be conveniently dragged into a new order in Narrative mode.'
+    reorderNote: 'Tip: scenes and beats drag into a new order in Narrative mode. Rename or add books anytime in Book Manager.'
 } as const;
 
-const WELCOME_LINKS = {
-    scenesStructureTimeline: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Scenes-Structure-Timeline'
+const WELCOME_URLS = {
+    website: 'https://radialtimeline.com',
+    sampleNewsletter: 'https://radialtimeline.com/resources/newsletter',
+    wiki: 'https://github.com/EricRhysTaylor/radial-timeline/wiki',
+    discussions: 'https://github.com/EricRhysTaylor/radial-timeline/discussions',
+    issues: 'https://github.com/EricRhysTaylor/radial-timeline/issues'
 } as const;
 
-const WELCOME_ICONS = {
-    primary: 'file-plus',
-    secondary: 'layers',
-    tertiary: 'info'
+const CARD_ICONS = {
+    website: 'globe',
+    sample: 'book-open',
+    design: 'compass'
 } as const;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-
-const addButtonIcon = (buttonEl: HTMLButtonElement, iconName: string): void => {
-    const icon = buttonEl.createSpan({ cls: 'rt-welcome-button-icon' });
-    buttonEl.prepend(icon);
-    setIcon(icon, iconName);
-};
 
 const openRadialTimelineSettings = (
     plugin: RadialTimelinePlugin,
@@ -77,13 +78,6 @@ const openRadialTimelineSettings = (
     if (!setting) return;
     setting.open();
     setting.openTabById('radial-timeline');
-};
-
-const appendCommandPaletteKeycaps = (parent: HTMLElement): void => {
-    const wrap = parent.createSpan({ cls: 'rt-welcome-keycaps' });
-    wrap.createEl('kbd', { cls: 'rt-welcome-keycap', text: Platform.isMacOS ? '⌘' : 'Ctrl' });
-    wrap.createSpan({ cls: 'rt-welcome-keycaps-sep', text: '+' });
-    wrap.createEl('kbd', { cls: 'rt-welcome-keycap', text: 'P' });
 };
 
 const runCreateNoteCommand = (plugin: RadialTimelinePlugin): void => {
@@ -134,6 +128,148 @@ const appendWelcomeBackgroundLogo = (parent: HTMLElement): void => {
     parent.appendChild(svg);
 };
 
+interface CardRefs {
+    root: HTMLElement;
+    title: HTMLElement;
+    desc: HTMLElement;
+    cta: HTMLElement;
+    /** Rebind the card's primary action — used after async sample-vault detection. */
+    setActivate: (fn: () => void) => void;
+}
+
+interface CardSpec {
+    hero?: boolean;
+    icon: string;
+    title: string;
+    desc: string;
+    ctaLabel: string;
+    onActivate: () => void;
+}
+
+const buildCard = (parent: HTMLElement, plugin: RadialTimelinePlugin, spec: CardSpec): CardRefs => {
+    const root = parent.createDiv({ cls: 'rt-welcome-card' });
+    if (spec.hero) root.addClass('rt-welcome-card-hero');
+    root.setAttr('role', 'button');
+    root.setAttr('tabindex', '0');
+
+    const iconEl = root.createDiv({ cls: 'rt-welcome-card-icon' });
+    setIcon(iconEl, spec.icon);
+
+    const title = root.createDiv({ cls: 'rt-welcome-card-title', text: spec.title });
+    const desc = root.createDiv({ cls: 'rt-welcome-card-desc', text: spec.desc });
+    const cta = root.createDiv({ cls: 'rt-welcome-card-cta', text: spec.ctaLabel });
+
+    // The whole card is the primary affordance; activate is rebindable so the
+    // Sample Vault card can swap its action after async detection resolves.
+    let activate = spec.onActivate;
+    plugin.registerDomEvent(root, 'click', () => activate());
+    plugin.registerDomEvent(root, 'keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+            evt.preventDefault();
+            activate();
+        }
+    });
+
+    return { root, title, desc, cta, setActivate: (fn) => { activate = fn; } };
+};
+
+interface SampleVaultConfig {
+    displayName?: string;
+    bookFolder?: string;
+}
+
+/**
+ * Reads a shipped sample vault's declarative manifest, if present. Discovery
+ * follows docs/engineering/sample-vaults.md: scan markdown frontmatter for
+ * `rt_sample_vault: true`. Returns the friendly name + book folder so the
+ * Sample Vault card can open the right book. Absent manifest is a normal,
+ * meaningful default (not every detected sample carries a config yet).
+ */
+const findSampleVaultConfig = (plugin: RadialTimelinePlugin): SampleVaultConfig | null => {
+    const files = plugin.app.vault.getMarkdownFiles();
+    for (const file of files) {
+        const fm = plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+        if (fm && fm.rt_sample_vault === true) {
+            return {
+                displayName: typeof fm.display_name === 'string' ? fm.display_name : undefined,
+                bookFolder: typeof fm.book_folder === 'string' ? fm.book_folder : undefined
+            };
+        }
+    }
+    return null;
+};
+
+/**
+ * Opens the detected sample vault: select the book whose source folder matches
+ * the manifest, registering it first if the vault shipped content but no book
+ * is registered yet (fresh unzip + plugin install). If we can't determine a
+ * target, deep-link the recipient into Book Manager. The full first-run import
+ * state machine (markers, banners, Demo Mode) is documented in sample-vaults.md
+ * and remains a separate effort.
+ */
+const openSampleVault = async (
+    plugin: RadialTimelinePlugin,
+    config: SampleVaultConfig | null,
+    refreshTimeline: () => void
+): Promise<void> => {
+    const books = plugin.settings.books || [];
+    const bookFolder = config?.bookFolder?.trim();
+    let targetId: string | null = null;
+
+    if (bookFolder) {
+        const existing = books.find(b => (b.sourceFolder || '').trim() === bookFolder);
+        if (existing) {
+            targetId = existing.id;
+        } else {
+            const profile = normalizeBookProfile({
+                id: createBookId(),
+                title: deriveBookTitleFromSourcePath(bookFolder) || config?.displayName || DEFAULT_BOOK_TITLE,
+                sourceFolder: bookFolder
+            } as BookProfile);
+            plugin.settings.books = [...books, profile];
+            await plugin.saveSettings();
+            targetId = profile.id;
+        }
+    } else if (books.length) {
+        targetId = (getActiveBook(plugin.settings) ?? books[0]).id;
+    }
+
+    if (targetId) {
+        await plugin.setActiveBookId(targetId);
+        refreshTimeline();
+    } else {
+        openRadialTimelineSettings(plugin, 'core');
+    }
+};
+
+/**
+ * The Inquiry sidecar (.radial-timeline/inquiry/sessions.json) is the most
+ * reliable signal that a vault is a packaged sample: shipped samples carry
+ * pre-run, saved Inquiry briefs, while a fresh or working-but-empty vault never
+ * does. Because the Welcome screen only renders when the active book has no
+ * scenes, "saved sessions present here" almost always means "sample content is
+ * on disk but not yet selected as a book." Fire-and-forget; mutating a detached
+ * container after the view closes is harmless.
+ */
+const hydrateSampleVaultCard = async (
+    refs: CardRefs,
+    plugin: RadialTimelinePlugin,
+    refreshTimeline: () => void
+): Promise<void> => {
+    const sessions = await readInquirySessionsFromVault(plugin.app);
+    const hasSavedBriefs = sessions.some(s => s.status === 'saved');
+    if (!hasSavedBriefs) return;
+
+    const config = findSampleVaultConfig(plugin);
+    const name = config?.displayName || 'sample vault';
+
+    refs.root.addClass('rt-welcome-card-detected');
+    refs.title.setText(WELCOME_COPY.cards.sampleOpen.title);
+    refs.desc.setText(WELCOME_COPY.cards.sampleOpen.desc(name));
+    refs.cta.setText(WELCOME_COPY.cards.sampleOpen.cta);
+    refs.setActivate(() => { void openSampleVault(plugin, config, refreshTimeline); });
+};
+
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
     container.addClass('rt-welcome-view');
 
@@ -146,134 +282,66 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const body = container.createDiv({ cls: 'rt-welcome-body' });
 
-    body.createEl('p', {
-        cls: 'rt-welcome-paragraph',
-        text: WELCOME_COPY.introLine1
+    body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.intro });
+
+    // Three hero cards: Website · Sample Vault (hero) · Design your book
+    const cards = body.createDiv({ cls: 'rt-welcome-cards' });
+
+    buildCard(cards, plugin, {
+        icon: CARD_ICONS.website,
+        title: WELCOME_COPY.cards.website.title,
+        desc: WELCOME_COPY.cards.website.desc,
+        ctaLabel: WELCOME_COPY.cards.website.cta,
+        onActivate: () => { window.open(WELCOME_URLS.website, '_blank'); }
     });
 
-    body.createEl('p', {
-        cls: 'rt-welcome-paragraph',
-        text: WELCOME_COPY.introLine2
+    const sampleRefs = buildCard(cards, plugin, {
+        hero: true,
+        icon: CARD_ICONS.sample,
+        title: WELCOME_COPY.cards.sampleGet.title,
+        desc: WELCOME_COPY.cards.sampleGet.desc,
+        ctaLabel: WELCOME_COPY.cards.sampleGet.cta,
+        onActivate: () => { window.open(WELCOME_URLS.sampleNewsletter, '_blank'); }
     });
+    void hydrateSampleVaultCard(sampleRefs, plugin, refreshTimeline);
 
-    // Primary + secondary actions
-    const topActions = body.createDiv({ cls: 'rt-welcome-actions' });
-
-    const createSceneBtn = new ButtonComponent(topActions)
-        .setButtonText(WELCOME_COPY.actions.primary)
-        .setCta()
-        .onClick(() => {
-            runCreateNoteCommand(plugin);
-        });
-    createSceneBtn.buttonEl.classList.add('rt-welcome-primary-btn', 'rt-welcome-action-btn');
-    addButtonIcon(createSceneBtn.buttonEl, WELCOME_ICONS.primary);
-
-    const frameworkBtn = new ButtonComponent(topActions)
-        .setButtonText(WELCOME_COPY.actions.secondary)
-        .onClick(() => {
-            new BookDesignerModal(plugin.app, plugin).open();
-        });
-    frameworkBtn.buttonEl.classList.add('rt-welcome-action-btn');
-    addButtonIcon(frameworkBtn.buttonEl, WELCOME_ICONS.secondary);
-
-    const learnBtn = new ButtonComponent(topActions)
-        .setButtonText(WELCOME_COPY.actions.tertiary)
-        .onClick(() => {
-            window.open(WELCOME_LINKS.scenesStructureTimeline, '_blank');
-        });
-    learnBtn.buttonEl.classList.add('rt-welcome-action-btn');
-    addButtonIcon(learnBtn.buttonEl, WELCOME_ICONS.tertiary);
-
-    // Quick-start heading
-    body.createEl('p', {
-        cls: 'rt-welcome-paragraph',
-        text: WELCOME_COPY.stepsHeading
+    const designRefs = buildCard(cards, plugin, {
+        icon: CARD_ICONS.design,
+        title: WELCOME_COPY.cards.design.title,
+        desc: WELCOME_COPY.cards.design.desc,
+        ctaLabel: WELCOME_COPY.cards.design.cta,
+        onActivate: () => { new BookDesignerModal(plugin.app, plugin).open(); }
     });
-
-    // Step 1: Create your first scene
-    const step1 = body.createDiv({ cls: 'rt-welcome-step' });
-    step1.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step1.title });
-    const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step1Text.createSpan({ text: 'Click “Create your first scene” above. The first time, we’ll ask for a book name and create a matching folder in your vault. You can rename or add more books anytime in ' });
-    const bookManagerLink = step1Text.createEl('a', { text: 'Book Manager', href: '#' });
-    plugin.registerDomEvent(bookManagerLink, 'click', (evt) => {
+    const designSecondary = designRefs.root.createEl('a', {
+        cls: 'rt-welcome-card-secondary',
+        href: '#',
+        text: WELCOME_COPY.cards.design.secondary
+    });
+    plugin.registerDomEvent(designSecondary, 'click', (evt) => {
         evt.preventDefault();
-        openRadialTimelineSettings(plugin, 'core');
-    });
-    step1Text.createSpan({ text: '.' });
-    if (WELCOME_COPY.step1.note) {
-        step1.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.step1.note });
-    }
-
-    // Step 2: Write prose immediately
-    const step2 = body.createDiv({ cls: 'rt-welcome-step' });
-    step2.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step2.title });
-    const step2Text = step2.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step2Text.createSpan({ text: 'Create your first scene using the command palette ' });
-    appendCommandPaletteKeycaps(step2Text);
-    step2Text.createSpan({ text: ', then ' });
-    const createNoteLink = step2Text.createEl('a', { text: 'Create note…', href: '#' });
-    plugin.registerDomEvent(createNoteLink, 'click', (evt) => {
-        evt.preventDefault();
+        evt.stopPropagation();
         runCreateNoteCommand(plugin);
     });
-    step2Text.createSpan({ text: ' and start writing. As characters and time become clear, add them in Scene Properties. The default subplot is Main Plot—you can move it anytime.' });
 
-    // Step 3: Story setup
-    const step3 = body.createDiv({ cls: 'rt-welcome-step' });
-    step3.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step3.title });
-    const step3List = step3.createEl('ul', { cls: 'rt-welcome-list' });
+    // Closing notes + odds and ends
+    body.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.reorderNote });
 
-    const designerLi = step3List.createEl('li');
-    designerLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[0].title });
-    designerLi.createSpan({ text: ' — Use the command palette ' });
-    appendCommandPaletteKeycaps(designerLi);
-    designerLi.createSpan({ text: ' and open ' });
-    const bookDesignLink = designerLi.createEl('a', { text: 'Book Design…', href: '#' });
-    plugin.registerDomEvent(bookDesignLink, 'click', (evt) => {
-        evt.preventDefault();
-        new BookDesignerModal(plugin.app, plugin).open();
-    });
-    designerLi.createSpan({ text: ' to set up acts, subplots, characters, and optional beats as a starting point.' });
-
-    const settingsLi = step3List.createEl('li');
-    settingsLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[1].title });
-    settingsLi.createSpan({ text: ' — adjust acts, add beats, and more in ' });
-    const settingsLink = settingsLi.createEl('a', { text: 'Settings', href: '#' });
-    plugin.registerDomEvent(settingsLink, 'click', (evt) => {
-        evt.preventDefault();
-        openRadialTimelineSettings(plugin, 'core');
-    });
-    settingsLi.createSpan({ text: '.' });
-
-    body.createEl('p', {
-        cls: 'rt-welcome-paragraph',
-        text: WELCOME_COPY.reorderNote
-    });
-
-    // Links
     const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });
     const links = linksWrapper.createDiv({ cls: 'rt-welcome-links' });
-
     const makeLinkRow = (label: string, href: string) => {
         const row = links.createDiv({ cls: 'rt-welcome-link-row' });
         row.createEl('a', { href, text: label });
     };
-
-    makeLinkRow('Wiki \u2014 full documentation', 'https://github.com/EricRhysTaylor/radial-timeline/wiki');
-    makeLinkRow('Discussions', 'https://github.com/EricRhysTaylor/radial-timeline/discussions');
-    makeLinkRow('Bug reports / feature requests', 'https://github.com/EricRhysTaylor/radial-timeline/issues');
+    makeLinkRow('Wiki — full documentation', WELCOME_URLS.wiki);
+    makeLinkRow('Discussions', WELCOME_URLS.discussions);
+    makeLinkRow('Bug reports / feature requests', WELCOME_URLS.issues);
 
     // Backup Notice
     const backupNotice = body.createDiv({ cls: 'rt-welcome-backup-notice' });
-    
-    // Icon
     const iconContainer = backupNotice.createDiv({ cls: 'rt-welcome-backup-icon' });
     iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-archive-restore"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2"/><path d="M20 8v11a2 2 0 0 1-2 2h-2"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/></svg>`; // SAFE: innerHTML used for static trusted Lucide icon SVG (no user input)
 
-    // Text
     const backupText = backupNotice.createDiv({ cls: 'rt-welcome-backup-text' });
-    
     const backupPara = backupText.createDiv();
     backupPara.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
     backupPara.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
@@ -281,5 +349,4 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
     backupPara.createSpan({ text: ' or ' });
     backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
-
 }
