@@ -1,146 +1,131 @@
 /*
  * Backdrop Ring Renderer
- * Renders the "Backdrop" layer in Chronologue mode.
+ *
+ * Renders the "Backdrop" layer in Chronologue mode. Backdrops are time
+ * spans (e.g. "Bingley at Netherfield" Sep–Dec 1811) that should appear
+ * as bands behind the scene ring.
+ *
+ * Architecture: overlapping backdrops are placed in separate concentric
+ * lanes via greedy interval-graph scheduling. Lane 0 is the outermost
+ * (drawn at the layout-engine-allocated radius); each additional lane
+ * stacks one BACKDROP_RING_HEIGHT inward. This is the same algorithm
+ * used by BackdropMicroRings.ts.
+ *
+ * The previous architecture tried to render all overlapping backdrops
+ * at a single radius with stacked overlay paths and a diagonal pattern
+ * fill, which produced visual confusion ("plaid") and a silent-blank
+ * SVG bug at depth-3+ overlap. Lanes eliminate that class of problem
+ * by construction — within a single lane, segments never overlap.
  */
 
 import type { TimelineItem } from '../../types/timeline';
-import { parseDuration, calculateTimeSpan, parseWhenField } from '../../utils/date';
+import { parseDuration, parseWhenField } from '../../utils/date';
 import { formatNumber } from '../../utils/svg';
 import { BACKDROP_RING_HEIGHT, BACKDROP_TITLE_RADIUS_OFFSET } from '../layout/LayoutConstants';
 import { isBeatNote, sortScenes, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { appendSynopsisElementForScene } from '../utils/SynopsisBuilder';
 import { makeSceneId } from '../../utils/numberSquareHelpers';
 
+
 /**
- * Map a time value to an angular position on the timeline arc
+ * Escape XML/SVG special characters in text destined for SVG <text> content
+ * or attribute values. A single unescaped `&` (e.g. "Hunsford & Rosings")
+ * makes the whole SVG invalid and the browser drops it silently — no console
+ * error, just a blank timeline. Must escape `&` first so subsequent
+ * replacements don't re-escape ampersands they introduce.
  */
-function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number {
-    if (endMs === startMs) return -Math.PI / 2;
-    const progress = (timeMs - startMs) / (endMs - startMs);
-    // Chronologue maps 0..1 to -PI/2 .. 3PI/2 (top start, clockwise)
-    return progress * 2 * Math.PI - Math.PI / 2;
+function escapeXml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
 }
+
 
 interface BackdropSegment {
     scene: TimelineItem;
     startAngle: number;
     endAngle: number;
+    lane: number;
 }
 
-export type BackdropRingOptions = {
-    plugin: PluginRendererFacade;
-    scenes: TimelineItem[];
-    availableRadius: number; // Required: the lane radius must be determined by layout engine
-    synopsesElements: SVGGElement[];
-    maxTextWidth: number;
-    masterSubplotOrder: string[];
+export type BackdropRingLayout = {
+    segments: BackdropSegment[];
+    laneCount: number;
 };
 
-export function renderBackdropRing({
-    plugin,
-    scenes,
-    availableRadius,
-    synopsesElements,
-    maxTextWidth,
-    masterSubplotOrder
-}: BackdropRingOptions): string {
-    // 1. Filter for valid Backdrop items
+
+/**
+ * Build the lane layout for backdrops without drawing anything.
+ *
+ * Returns the segments tagged with their lane assignment plus the total
+ * lane count. Callers can use `laneCount` to reserve radial space (e.g.
+ * to shift the micro-backdrop ring inward when laneCount > 1).
+ *
+ * Filters out backdrops with non-finite angles (e.g. from bad date input)
+ * with a console.warn naming the offending file. This prevents a single
+ * malformed backdrop from blanking the whole timeline via NaN-string
+ * propagation into SVG path coordinates.
+ */
+export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLayout {
+    // 1. Filter for valid Backdrop items.
     const backdropItems = scenes.filter(s => s.itemType === 'Backdrop' && s.when && (s.Duration || s.End));
-    if (backdropItems.length === 0) return '';
+    if (backdropItems.length === 0) {
+        return { segments: [], laneCount: 0 };
+    }
 
-    // 2. Prepare scenes for Outer Ring Alignment
-    // IMPORTANT: We must replicate the EXACT deduplication and sorting logic used by Chronologue.ts
-    // to ensure our angular calculations align perfectly with the scene squares on the outer ring.
-
+    // 2. Build the scene-ring reference (same dedup+sort as Chronologue.ts)
+    //    so our angular calculations align with the scene squares.
     const seenPaths = new Set<string>();
     const candidates: TimelineItem[] = [];
-
     scenes.forEach(s => {
-        // Exclude non-scene items (Beat, Plot) and Backdrops
         if (isBeatNote(s) || s.itemType === 'Backdrop') return;
-        
-        // Deduplicate by path or title+date (same key as Chronologue.ts)
         const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
-        
         if (!seenPaths.has(key)) {
-            // Must have a valid date to be on the Chronologue ring
             if (s.when && s.when instanceof Date && !isNaN(s.when.getTime())) {
                 seenPaths.add(key);
                 candidates.push(s);
             }
         }
     });
-
-    // Use shared sort helper with forceChronological=true to match Chronologue mode
     const sortedScenes = sortScenes(candidates, true, true);
+    if (sortedScenes.length === 0) {
+        return { segments: [], laneCount: 0 };
+    }
 
-    if (sortedScenes.length === 0) return '';
-
-    // 3. Process segments
-
-    // Helper: Map a timestamp to an angle by interpolating between scene indices
-    // The scene ring maps scenes to angles: Start = -PI/2, End = 3PI/2.
-    // Each scene occupies `totalAngle / numScenes`.
-    // Scene[i] starts at `startAngle + (i * angularSize)`.
     const startAngle = -Math.PI / 2;
     const endAngle = (3 * Math.PI) / 2;
     const totalAngle = endAngle - startAngle;
     const angularSize = totalAngle / sortedScenes.length;
 
     function mapTimestampToSceneIndexAngle(timeMs: number, bias: 'start' | 'end' = 'end'): number {
-        // Find the index of the scene just before this time
         let prevIndex = -1;
         for (let i = 0; i < sortedScenes.length; i++) {
             const sceneTime = sortedScenes[i].when!.getTime();
-            // For 'start' bias, we stop as soon as we hit the time (strict less than)
-            // This maps to the FIRST scene at that time.
-            // For 'end' bias, we continue through all scenes at that time (less or equal)
-            // This maps to the LAST scene at that time.
             const condition = bias === 'start' ? sceneTime < timeMs : sceneTime <= timeMs;
-            
-            if (condition) {
-                prevIndex = i;
-            } else {
-                break;
-            }
+            if (condition) prevIndex = i;
+            else break;
         }
-
-        // If before the first scene
-        if (prevIndex === -1) {
-             // For backdrops starting before the first scene, we can clamp to the start (as requested)
-             // or project backwards. Since "clampedStart" handles the bounding, if we are here,
-             // it means we are effectively at index 0.
-             // BUT: We want to support time-based interpolation between scenes if possible.
-             // If we are strictly index-based, "time" between Scene A and Scene B is linear only between their indices.
-             return startAngle;
-        }
-
-        // If after the last scene
+        if (prevIndex === -1) return startAngle;
         if (prevIndex === sortedScenes.length - 1) {
-            return startAngle + (prevIndex * angularSize) + angularSize; // End of last scene
+            return startAngle + (prevIndex * angularSize) + angularSize;
         }
-
-        // Interpolate between Scene[i] and Scene[i+1]
         const prevScene = sortedScenes[prevIndex];
         const nextScene = sortedScenes[prevIndex + 1];
         const prevTime = prevScene.when!.getTime();
         const nextTime = nextScene.when!.getTime();
-        
         const segmentDuration = nextTime - prevTime;
-        // Avoid division by zero if scenes are at same time
         const progress = segmentDuration > 0 ? (timeMs - prevTime) / segmentDuration : 0;
-        
-        // The gap between scene starts is `angularSize`.
-        // Scene[i] starts at `angle`. Scene[i+1] starts at `angle + angularSize`.
-        // So we interpolate within that angular slice.
         const prevAngle = startAngle + (prevIndex * angularSize);
         return prevAngle + (progress * angularSize);
     }
 
-
-    const segments: BackdropSegment[] = backdropItems.map((item, index) => {
+    // 3. Compute angular extents for each backdrop.
+    const rawSegments: BackdropSegment[] = [];
+    backdropItems.forEach(item => {
         const itemStart = item.when!.getTime();
-        
         let itemEnd: number;
         if (item.End) {
             const parsedEnd = parseWhenField(item.End);
@@ -150,29 +135,19 @@ export function renderBackdropRing({
             itemEnd = itemStart + duration;
         }
 
-        // Clamp to valid date range (though range is now technically discrete scenes)
-        // We use the start/end timestamps of the first/last scene as the bounding box
         const viewStartMs = sortedScenes[0].when!.getTime();
         const viewEndMs = sortedScenes[sortedScenes.length - 1].when!.getTime();
-
         const clampedStartMs = Math.max(itemStart, viewStartMs);
         const clampedEndMs = Math.min(itemEnd, viewEndMs);
 
-        // Filter out if strictly outside
-        if (clampedStartMs >= clampedEndMs && itemStart < viewStartMs && itemEnd < viewStartMs) return null;
-        if (clampedStartMs >= clampedEndMs && itemStart > viewEndMs) return null;
-
-        // Ensure we at least show a sliver if it overlaps a single point or is very short but valid
-        // Actually, if clampedStart == clampedEnd, it's a point. Backdrop usually implies duration.
-        // Let's allow it.
+        if (clampedStartMs >= clampedEndMs && itemStart < viewStartMs && itemEnd < viewStartMs) return;
+        if (clampedStartMs >= clampedEndMs && itemStart > viewEndMs) return;
 
         let computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs, 'start');
         let computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs, 'end');
 
-        // Guard: if the backdrop spans the entire scene range (start == end == full circle),
-        // the arc would collapse to a point because start/end coordinates are identical.
-        // Nudge the end angle slightly so we still render a visible segment and label.
-        const epsilon = 0.002; // small angle to avoid zero-length paths
+        // Guard against zero-width and full-circle degenerate paths.
+        const epsilon = 0.002;
         const span = computedEndAngle - computedStartAngle;
         const fullCircleSpan = totalAngle - epsilon;
         if (span <= 0) {
@@ -181,113 +156,112 @@ export function renderBackdropRing({
             computedEndAngle = computedStartAngle + fullCircleSpan;
         }
 
-        return {
-            scene: item,
-            startAngle: computedStartAngle,
-            endAngle: computedEndAngle
-        };
-    }).filter((seg): seg is BackdropSegment => {
-        // Drop any segment with non-finite angles. A single bad date upstream
-        // (NaN from parseWhenField, etc.) would otherwise propagate to SVG
-        // path coordinates as "NaN" strings — browsers render those as nothing,
-        // silently blanking the whole timeline.
-        if (seg === null) return false;
-        if (!Number.isFinite(seg.startAngle) || !Number.isFinite(seg.endAngle)) {
+        // Defensive: drop any segment whose angles are non-finite (NaN from
+        // bad upstream date parse). Browsers render "NaN" path coordinates
+        // as nothing, which silently blanked the whole timeline in the
+        // pre-lane architecture.
+        if (!Number.isFinite(computedStartAngle) || !Number.isFinite(computedEndAngle)) {
             // eslint-disable-next-line no-console
             console.warn(
                 '[radial-timeline] dropping backdrop with non-finite angles:',
-                seg.scene.title || seg.scene.path,
-                { startAngle: seg.startAngle, endAngle: seg.endAngle }
+                item.title || item.path,
+                { startAngle: computedStartAngle, endAngle: computedEndAngle }
             );
-            return false;
+            return;
         }
-        return true;
+
+        rawSegments.push({
+            scene: item,
+            startAngle: computedStartAngle,
+            endAngle: computedEndAngle,
+            lane: -1,
+        });
     });
 
-    // 4. Render Segments
-    // Strategy:
-    // - Render base arc for each backdrop (solid style).
-    // - Separately render overlay arcs only for the angular portions that actually overlap (>=2 active).
-    //   Overlays alternate outline/solid and cycle hue based on overlap depth within that interval.
+    if (rawSegments.length === 0) {
+        return { segments: [], laneCount: 0 };
+    }
+
+    // 4. Greedy lane assignment, sorted by start angle.
+    //    Identical algorithm to BackdropMicroRings.ts — produces the
+    //    minimum number of lanes needed so that no two segments in the
+    //    same lane overlap angularly.
+    const sortedByStart = rawSegments.slice().sort((a, b) => a.startAngle - b.startAngle);
+    const lanes: BackdropSegment[][] = [];
+    sortedByStart.forEach(segment => {
+        let assigned = false;
+        for (let laneIndex = 0; laneIndex < lanes.length; laneIndex++) {
+            const overlaps = lanes[laneIndex].some(existing =>
+                segment.startAngle < existing.endAngle && segment.endAngle > existing.startAngle
+            );
+            if (!overlaps) {
+                segment.lane = laneIndex;
+                lanes[laneIndex].push(segment);
+                assigned = true;
+                break;
+            }
+        }
+        if (!assigned) {
+            segment.lane = lanes.length;
+            lanes.push([segment]);
+        }
+    });
+
+    return { segments: sortedByStart, laneCount: lanes.length };
+}
+
+
+export type BackdropRingOptions = {
+    plugin: PluginRendererFacade;
+    scenes: TimelineItem[]; // still needed for the synopsis appender's context
+    layout: BackdropRingLayout;
+    availableRadius: number; // center radius of the outermost lane (lane 0)
+    synopsesElements: SVGGElement[];
+    maxTextWidth: number;
+    masterSubplotOrder: string[];
+};
+
+export function renderBackdropRing({
+    plugin,
+    scenes,
+    layout,
+    availableRadius,
+    synopsesElements,
+    maxTextWidth,
+    masterSubplotOrder,
+}: BackdropRingOptions): string {
+    if (!layout.segments.length) return '';
 
     let svg = `<g class="rt-backdrop-ring">`;
 
-    // Background Circle for the whole ring (Void Style)
-    // Use a specific class to avoid global 'rt-void-cell' fill behavior
-    // UPDATED: User requested to match Subplot ring architecture.
-    // 1. Base layer: Solid white/theme-bg stroke for the full 20px height
-    // 2. Borders: Thin 1px strokes at inner and outer edges
-    
-    // Base "Body" of the ring
-    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
-
-    // Define diagonal pattern for overlaps
-    svg += `<defs>
-        <pattern id="rt-backdrop-diagonal" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="20" height="40" fill="var(--rt-subplot-colors-0)" fill-opacity="0.25" />
-            <rect x="20" y="0" width="20" height="40" fill="var(--rt-subplot-colors-1)" fill-opacity="0.25" />
-        </pattern>
-    </defs>`;
-
-    // Inner and Outer borders (mimic subplot ring edges)
-    const innerBorderR = availableRadius - (BACKDROP_RING_HEIGHT / 2);
-    const outerBorderR = availableRadius + (BACKDROP_RING_HEIGHT / 2);
-    svg += `<circle cx="0" cy="0" r="${formatNumber(innerBorderR)}" class="rt-backdrop-border" fill="none" />`;
-    svg += `<circle cx="0" cy="0" r="${formatNumber(outerBorderR)}" class="rt-backdrop-border" fill="none" />`;
-
-    // Precompute overlap intervals (where 2+ arcs are active)
-    type Interval = { start: number; end: number; active: number[] };
-    const events: Array<{ angle: number; type: 'start' | 'end'; idx: number }> = [];
-    segments.forEach((seg, idx) => {
-        events.push({ angle: seg.startAngle, type: 'start', idx });
-        events.push({ angle: seg.endAngle, type: 'end', idx });
-    });
-    // Sort: end before start at same angle
-    events.sort((a, b) => a.angle === b.angle ? (a.type === 'end' ? -1 : 1) : a.angle - b.angle);
-
-    const intervals: Interval[] = [];
-    const active: number[] = [];
-    let prevAngle: number | null = null;
-    for (const ev of events) {
-        if (prevAngle !== null && ev.angle > prevAngle && active.length > 1) {
-            intervals.push({ start: prevAngle, end: ev.angle, active: [...active] });
-        }
-        if (ev.type === 'start') {
-            active.push(ev.idx);
-        } else {
-            const pos = active.indexOf(ev.idx);
-            if (pos >= 0) active.splice(pos, 1);
-        }
-        prevAngle = ev.angle;
+    // Background + borders per lane.
+    for (let lane = 0; lane < layout.laneCount; lane++) {
+        const laneCenter = availableRadius - lane * BACKDROP_RING_HEIGHT;
+        svg += `<circle cx="0" cy="0" r="${formatNumber(laneCenter)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
+        const innerBorderR = laneCenter - (BACKDROP_RING_HEIGHT / 2);
+        const outerBorderR = laneCenter + (BACKDROP_RING_HEIGHT / 2);
+        svg += `<circle cx="0" cy="0" r="${formatNumber(innerBorderR)}" class="rt-backdrop-border" fill="none" />`;
+        svg += `<circle cx="0" cy="0" r="${formatNumber(outerBorderR)}" class="rt-backdrop-border" fill="none" />`;
     }
 
-    segments.forEach((seg, idx) => {
+    // One segment per backdrop, drawn at its lane's radius.
+    layout.segments.forEach((seg, idx) => {
+        const laneCenter = availableRadius - seg.lane * BACKDROP_RING_HEIGHT;
         const largeArcFlag = (seg.endAngle - seg.startAngle) > Math.PI ? 1 : 0;
 
-        // Arc Geometry
-        const x1 = formatNumber(availableRadius * Math.cos(seg.startAngle));
-        const y1 = formatNumber(availableRadius * Math.sin(seg.startAngle));
-        const x2 = formatNumber(availableRadius * Math.cos(seg.endAngle));
-        const y2 = formatNumber(availableRadius * Math.sin(seg.endAngle));
-
-        const d = `M ${x1} ${y1} A ${formatNumber(availableRadius)} ${formatNumber(availableRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
-
-        // Text Path Geometry (shifted outward by offset constant)
-        const textRadius = availableRadius + BACKDROP_TITLE_RADIUS_OFFSET;
+        // Text path runs along the lane (offset by constant — currently
+        // negative so text rides just inside the lane's outer border).
+        const textRadius = laneCenter + BACKDROP_TITLE_RADIUS_OFFSET;
         const tx1 = formatNumber(textRadius * Math.cos(seg.startAngle));
         const ty1 = formatNumber(textRadius * Math.sin(seg.startAngle));
         const tx2 = formatNumber(textRadius * Math.cos(seg.endAngle));
         const ty2 = formatNumber(textRadius * Math.sin(seg.endAngle));
         const td = `M ${tx1} ${ty1} A ${formatNumber(textRadius)} ${formatNumber(textRadius)} 0 ${largeArcFlag} 1 ${tx2} ${ty2}`;
 
-        const TD_COL_DY = 16; // Standard row height for synopsis metadata
-
-        // Unique ID for text path
         const pathId = `backdrop-arc-${idx}`;
         const sceneUniqueKey = seg.scene.path || `${seg.scene.title || ''}::${seg.scene.number ?? ''}::${seg.scene.when ?? ''}`;
         const sceneId = makeSceneId(0, 1, idx, true, true, sceneUniqueKey);
 
-        // Populate Synopsis
         appendSynopsisElementForScene({
             plugin,
             scene: seg.scene,
@@ -295,28 +269,20 @@ export function renderBackdropRing({
             maxTextWidth,
             masterSubplotOrder,
             scenes,
-            targets: synopsesElements
+            targets: synopsesElements,
         });
 
-        // Create a standard scene group wrapper so interactions (Synopsis, Click) work automatically
         const encodedPath = encodeURIComponent(seg.scene.path || '');
-        const currentSegmentClass = `rt-backdrop-segment`;
-        const labelClass = `rt-backdrop-label`;
-        svg += `<g class="rt-scene-group" data-item-type="Backdrop" data-path="${encodedPath}">`;
-
-        // 1. Definition Path (invisible, for text)
+        svg += `<g class="rt-scene-group" data-item-type="Backdrop" data-path="${encodedPath}" data-backdrop-lane="${seg.lane}">`;
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
-        // Use slightly smaller height for the segment to show the borders clearly (1px inset)
-        const segmentHeight = BACKDROP_RING_HEIGHT - 2; 
+        // Filled box geometry for the segment, centered on the lane radius.
+        const segmentHeight = BACKDROP_RING_HEIGHT - 2;
         const halfHeight = segmentHeight / 2;
-        
-        // Use full height geometry without inset for solid fill
-        const boxInnerRadius = availableRadius - halfHeight;
-        const boxOuterRadius = availableRadius + halfHeight;
-        const boxLargeArcFlag = (seg.endAngle - seg.startAngle) > Math.PI ? 1 : 0;
-        
-        // Box corners
+        const boxInnerRadius = laneCenter - halfHeight;
+        const boxOuterRadius = laneCenter + halfHeight;
+        const boxLargeArcFlag = largeArcFlag;
+
         const startInnerX = formatNumber(boxInnerRadius * Math.cos(seg.startAngle));
         const startInnerY = formatNumber(boxInnerRadius * Math.sin(seg.startAngle));
         const startOuterX = formatNumber(boxOuterRadius * Math.cos(seg.startAngle));
@@ -325,103 +291,37 @@ export function renderBackdropRing({
         const endInnerY = formatNumber(boxInnerRadius * Math.sin(seg.endAngle));
         const endOuterX = formatNumber(boxOuterRadius * Math.cos(seg.endAngle));
         const endOuterY = formatNumber(boxOuterRadius * Math.sin(seg.endAngle));
-        
-        // Full box path: start outer -> arc to end outer -> line to end inner -> arc back to start inner -> close
+
         const boxPath = `M ${startOuterX} ${startOuterY} ` +
             `A ${formatNumber(boxOuterRadius)} ${formatNumber(boxOuterRadius)} 0 ${boxLargeArcFlag} 1 ${endOuterX} ${endOuterY} ` +
             `L ${endInnerX} ${endInnerY} ` +
             `A ${formatNumber(boxInnerRadius)} ${formatNumber(boxInnerRadius)} 0 ${boxLargeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
             `Z`;
-        
-        // 2. Visible Segment (Filled Geometry)
-        // Replaces the stroked arc with a filled closed path geometry
-        svg += `<path id="${sceneId}" d="${boxPath}" class="${currentSegmentClass} rt-scene-path" pointer-events="all" data-scene-id="${sceneId}" />`;
-        
-        // 3. Repeating Text
+
+        svg += `<path id="${sceneId}" d="${boxPath}" class="rt-backdrop-segment rt-scene-path" pointer-events="all" data-scene-id="${sceneId}" />`;
+
+        // Repeating title text along the textPath.
         const title = seg.scene.title || 'Untitled';
-        // Arc Length = radius * angle, minus padding (8px at each end = 16px total)
-        // Use full available arc length for repeat calculation
         const textPadding = 4;
         const totalArcLen = textRadius * (seg.endAngle - seg.startAngle);
         const usableArcLen = Math.max(0, totalArcLen - (textPadding * 2));
-        
-        // Estimate char width more conservatively to ensure filling
-        // font-size 20px, avg char width approx 12-14px.
-        // Adding extra repeats to be safe since textPath clips overflow automatically.
-        const estimatedTextWidth = (title.length * 14) + 30; // +30 for the bullet/spacing
-        const repeatCount = Math.ceil(usableArcLen / estimatedTextWidth) + 2; // +2 buffer
-        
-        const content = (title + ' • ').repeat(repeatCount);
+        const estimatedTextWidth = (title.length * 14) + 30;
+        const repeatCount = Math.ceil(usableArcLen / estimatedTextWidth) + 2;
+        // CRITICAL: escape XML special characters in the title before injecting
+        // into SVG text content. An unescaped `&` (e.g. "Hunsford & Rosings")
+        // produces invalid SVG that browsers silently drop — blanking the
+        // whole timeline with no console error.
+        const safeTitle = escapeXml(title);
+        const content = (safeTitle + ' • ').repeat(repeatCount);
 
-        svg += `<text class="${labelClass}">
+        svg += `<text class="rt-backdrop-label">
             <textPath href="#${pathId}" startOffset="${textPadding}" spacing="auto" method="align">
                 ${content}
             </textPath>
         </text>`;
 
         svg += `</g>`;
-
-        // Synopsis (Transparent hover target usually handled by shared synopsis logic, 
-        // but here we might need specific hover area since it's a specific ring?)
-        // The user said "synopsis would still be there". 
-        // The main renderer handles Synopsis via `appendSynopsisElementForScene`.
-        // We just need to make sure `extractGradeFromScene` or whatever generates the ID matches.
-        // actually, main renderer generates synopses for ALL scenes passed to it.
-        // `timeline.ts` line 342 iterates all scenes.
-        // Our `Backdrop` items are in `scenes` array.
-        // But `timeline.ts` skips them if it expects acts/subplots? 
-        // We added logic to SceneDataService to put them in "Backdrop" subplot.
-        // We need to ensure the main loop in TimelineRenderer doesn't skip them or render them in the normal rings.
-        // Wait, main renderer renders RINGS based on subplots. 
-        // If "Backdrop" is a subplot, it might try to render a normal ring for it!
-        // We probably want to EXCLUDE Backdrop items from the standard ring loop.
     });
-
-    // 4b. Overlay only the truly overlapping angular slices
-    const overlayRadius = availableRadius;
-    const boxHeight = BACKDROP_RING_HEIGHT - 2;
-    const halfHeight = boxHeight / 2;
-    const overlayInnerR = overlayRadius - halfHeight;
-    const overlayOuterR = overlayRadius + halfHeight;
-
-    const buildBoxPath = (start: number, end: number) => {
-        const boxLargeArcFlag = (end - start) > Math.PI ? 1 : 0;
-        const startInnerX = formatNumber(overlayInnerR * Math.cos(start));
-        const startInnerY = formatNumber(overlayInnerR * Math.sin(start));
-        const startOuterX = formatNumber(overlayOuterR * Math.cos(start));
-        const startOuterY = formatNumber(overlayOuterR * Math.sin(start));
-        const endInnerX = formatNumber(overlayInnerR * Math.cos(end));
-        const endInnerY = formatNumber(overlayInnerR * Math.sin(end));
-        const endOuterX = formatNumber(overlayOuterR * Math.cos(end));
-        const endOuterY = formatNumber(overlayOuterR * Math.sin(end));
-        return `M ${startOuterX} ${startOuterY} ` +
-            `A ${formatNumber(overlayOuterR)} ${formatNumber(overlayOuterR)} 0 ${boxLargeArcFlag} 1 ${endOuterX} ${endOuterY} ` +
-            `L ${endInnerX} ${endInnerY} ` +
-            `A ${formatNumber(overlayInnerR)} ${formatNumber(overlayInnerR)} 0 ${boxLargeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
-            `Z`;
-    };
-
-    // Render overlays AFTER base ring so they sit above bases,
-    // but insert them immediately before closing the base ring so hover order stays consistent.
-    // Skip intervals smaller than this angular width — degenerate slices produce
-    // malformed SVG path data that some browsers render as nothing.
-    const MIN_OVERLAY_ANGULAR_WIDTH = 0.005; // ~0.3 degrees
-    const overlayPaths: string[] = [];
-    intervals.forEach((interval) => {
-        const { start, end, active: activeSegments } = interval;
-        if (!Number.isFinite(start) || !Number.isFinite(end)) return;
-        if (end - start < MIN_OVERLAY_ANGULAR_WIDTH) return;
-        activeSegments.forEach((segIdx, depth) => {
-            const hueClass = `rt-backdrop-hue-${depth % 8}`; // map depth to a finite hue set
-            const parityClass = depth % 2 === 0 ? 'rt-backdrop-overlap-even' : 'rt-backdrop-overlap-odd';
-            const overlayClass = `rt-backdrop-segment rt-backdrop-overlap ${parityClass} ${hueClass}`;
-            const path = buildBoxPath(start, end);
-            overlayPaths.push(`<path d="${path}" class="${overlayClass}" pointer-events="none" />`);
-        });
-    });
-
-    // Append overlays at the very end (above bases)
-    overlayPaths.forEach(p => { svg += p; });
 
     svg += `</g>`;
     return svg;

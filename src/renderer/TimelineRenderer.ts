@@ -337,7 +337,8 @@ export function createTimelineSVG(
         lineInnerRadius,
         maxStageColor,
         subplotDominanceStates,
-        microRingLayout
+        microRingLayout,
+        backdropLayout
     } = precomputed;
 
     const NUM_RINGS = masterSubplotOrder.length;
@@ -857,7 +858,8 @@ export function createTimelineSVG(
             maxTextWidth,
             useRuntimeMode: isRuntimeModeActive(),
             microRingLayout,
-            microRingBaseRadius
+            microRingBaseRadius,
+            backdropLayout
         });
     }
 

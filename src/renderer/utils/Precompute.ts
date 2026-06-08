@@ -19,6 +19,7 @@ import {
 } from '../layout/LayoutConstants';
 import { computeRingGeometry } from '../layout/Rings';
 import { buildBackdropMicroRingLayout, type BackdropMicroRingLayout } from '../components/BackdropMicroRings';
+import { buildBackdropRingLayout, type BackdropRingLayout } from '../components/BackdropRing';
 import { getMostAdvancedStageColor } from '../../utils/colour';
 import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
@@ -39,6 +40,7 @@ export interface PrecomputedRenderValues {
     maxStageColor: string;
     subplotDominanceStates: Map<string, SubplotDominanceState>;
     microRingLayout?: BackdropMicroRingLayout;
+    backdropLayout?: BackdropRingLayout;
 }
 
 export function computeCacheableValues(
@@ -81,6 +83,25 @@ export function computeCacheableValues(
         : undefined;
     const microRingLaneCount = microRingLayout?.laneCount ?? 0;
     const shouldIncludeMicroBackdrop = shouldIncludeBackdrop && microRingLaneCount > 0;
+
+    // Compute the backdrop ring layout up front so we can reserve the right
+    // amount of radial space for it in fixedRings below. Lane count > 1
+    // means overlapping backdrops will be stacked into concentric lanes;
+    // the subplot rings inside must shift inward accordingly.
+    let backdropLayout: BackdropRingLayout | undefined;
+    if (shouldIncludeBackdrop) {
+        try {
+            backdropLayout = buildBackdropRingLayout(scenes);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error(
+                '[radial-timeline] buildBackdropRingLayout failed in precompute; backdrop ring will be skipped.',
+                err
+            );
+            backdropLayout = undefined;
+        }
+    }
+    const backdropLaneCount = backdropLayout?.laneCount ?? 0;
 
     if (shouldIncludeBackdrop) {
         allSubplots.push('Backdrop');
@@ -201,9 +222,15 @@ export function computeCacheableValues(
     const fixedRings: Array<{ index: number; width: number }> = [];
     const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
     if (shouldIncludeBackdrop && backdropSubplotIndex !== -1) {
+        // Width scales with the number of backdrop lanes — when overlapping
+        // backdrops force stacking into multiple lanes (e.g. lane 0 +
+        // lane 1), the Backdrop subplot's allocation must grow so the
+        // subplot rings inside push inward correctly. Fall back to a
+        // single-lane allocation if the layout couldn't be built.
+        const laneCount = backdropLaneCount > 0 ? backdropLaneCount : 1;
         fixedRings.push({
             index: NUM_RINGS - 1 - backdropSubplotIndex,
-            width: BACKDROP_RING_HEIGHT
+            width: laneCount * BACKDROP_RING_HEIGHT
         });
     }
     const microBackdropSubplotIndex = masterSubplotOrder.indexOf('MicroBackdrop');
@@ -246,6 +273,7 @@ export function computeCacheableValues(
         lineInnerRadius: ringGeo.lineInnerRadius,
         maxStageColor,
         subplotDominanceStates,
-        microRingLayout
+        microRingLayout,
+        backdropLayout
     };
 }

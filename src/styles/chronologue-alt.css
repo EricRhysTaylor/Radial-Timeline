@@ -21,11 +21,6 @@
   opacity: 0.3;
 }
 
-.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-segment.rt-backdrop-overlap {
-  opacity: 0.25;
-  pointer-events: none;
-}
-
 .radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-segment {
   fill: rgba(180, 60, 60, 0.05);
   stroke: rgba(180, 60, 60, 0.3);

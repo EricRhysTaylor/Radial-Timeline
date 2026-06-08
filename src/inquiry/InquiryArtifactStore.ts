@@ -13,8 +13,8 @@ import { parseSessionArtifact, serializeSessionsToArtifact } from './sessionArti
  * ai/cost/outputProfile.ts. `vaultIo()` below is the single sanctioned access
  * point so both helpers share one chokepoint.
  */
-const INQUIRY_SIDECAR_DIR = '.radial-timeline/inquiry';
-const INQUIRY_SIDECAR_PATH = `${INQUIRY_SIDECAR_DIR}/sessions.json`;
+export const INQUIRY_SIDECAR_DIR = '.radial-timeline/inquiry';
+export const INQUIRY_SIDECAR_PATH = `${INQUIRY_SIDECAR_DIR}/sessions.json`;
 
 function vaultIo(app: App): DataAdapter {
     return app.vault.adapter; // SAFE: dotfolder has no TFile API; data adapter is required
@@ -35,6 +35,11 @@ export async function readInquirySessionsFromVault(app: App): Promise<InquirySes
         return [];
     }
     return sessions;
+}
+
+export async function hasInquirySessionSidecarInVault(app: App): Promise<boolean> {
+    const io = vaultIo(app);
+    return io.exists(normalizePath(INQUIRY_SIDECAR_PATH));
 }
 
 export async function writeInquirySessionsToVault(

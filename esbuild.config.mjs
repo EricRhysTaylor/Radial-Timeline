@@ -231,7 +231,9 @@ const context = await esbuild.context({
 	bundle: true,
 	// Obsidian plugin bundles should not emit runtime console output.
 	// Strip console/debugger calls from the shipped bundle, including bundled deps.
-	drop: ['console', 'debugger'],
+	// TEMP: console kept enabled for backdrop-blank diagnostics — revert to
+	//       ['console', 'debugger'] after the bug is identified.
+	drop: ['debugger'],
 	external: [
 		'obsidian',
 		'electron',

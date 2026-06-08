@@ -139,37 +139,11 @@
   display: none;
 }
 
-/* Overlap pattern */
-.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap {
-  fill: url(#rt-backdrop-diagonal);
-  stroke: none;
-  fill-opacity: 1;
-  opacity: 1;
-  mix-blend-mode: normal;
-}
-
-.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-even,
-.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd {
-  stroke-dasharray: none;
-  stroke: none;
-  fill-opacity: 1;
-  fill: url(#rt-backdrop-diagonal);
-}
-
-.radial-timeline-container .rt-backdrop-segment:hover ~ .rt-backdrop-segment.rt-backdrop-overlap,
-.radial-timeline-container .rt-backdrop-segment.rt-selected ~ .rt-backdrop-segment.rt-backdrop-overlap {
-  opacity: 0;
-}
-
-.radial-timeline-container .rt-backdrop-ring:hover .rt-backdrop-segment.rt-backdrop-overlap {
-  opacity: 0;
-}
-
-.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-scene-group[data-item-type="Backdrop"],
-.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-backdrop-segment.rt-backdrop-overlap {
-  opacity: 0;
-  pointer-events: none;
-}
+/* Overlap-overlay system removed — overlapping backdrops now stack into
+   separate concentric lanes (see BackdropRing.ts buildBackdropRingLayout),
+   so there are no "overlap" segments to style. The .rt-backdrop-overlap*
+   classes and the #rt-backdrop-diagonal pattern were referenced only by
+   the old code path. */
 
 /* Labels */
 .rt-backdrop-label {
@@ -186,16 +160,6 @@
   text-transform: uppercase;
 }
 
-.rt-backdrop-overlap-label {
-  fill: white;
-  fill-opacity: 1;
-  stroke: none;
-}
-
-.rt-backdrop-overlap-label.rt-backdrop-overlap-odd {
-  fill: white;
-  stroke: none;
-}
 
 .rt-backdrop-label textPath {
   text-decoration: none;
@@ -267,11 +231,6 @@
   opacity: 0.95;
   pointer-events: stroke;
   cursor: pointer;
-}
-
-.radial-timeline-container .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-segment.rt-backdrop-overlap,
-.radial-timeline-container .radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-segment.rt-backdrop-overlap {
-  opacity: 0;
 }
 
 .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-label,

@@ -428,6 +428,14 @@
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
 }
 
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item.ert-book-card--autoloaded {
+  border-color: color-mix(in srgb, var(--text-success) 74%, var(--background-modifier-border));
+  animation: ert-book-autoload-pulse 1.6s ease-in-out 3;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--text-success) 26%, transparent),
+    0 0 24px color-mix(in srgb, var(--text-success) 16%, transparent);
+}
+
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-book-card.setting-item.ert-book-card--link-broken {
   border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--text-error) 6%, var(--background-primary));
@@ -587,6 +595,20 @@
   box-shadow:
     0 16px 36px color-mix(in srgb, var(--background-modifier-border) 72%, transparent),
     0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+}
+
+@keyframes ert-book-autoload-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--text-success) 22%, transparent),
+      0 0 16px color-mix(in srgb, var(--text-success) 12%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--text-success) 46%, transparent),
+      0 0 34px color-mix(in srgb, var(--text-success) 28%, transparent);
+  }
 }
 
 /* Book title: clickable rename link */

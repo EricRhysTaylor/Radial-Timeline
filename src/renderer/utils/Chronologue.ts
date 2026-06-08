@@ -12,7 +12,8 @@ import {
     renderChronologicalBackboneArc,
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
-import { renderBackdropRing } from '../components/BackdropRing';
+import { renderBackdropRing, type BackdropRingLayout } from '../components/BackdropRing';
+import { BACKDROP_RING_HEIGHT } from '../layout/LayoutConstants';
 import {
     renderBackdropMicroRings,
     type BackdropMicroRingLayout,
@@ -105,6 +106,7 @@ export type ChronologueOverlayOptions = {
     useRuntimeMode?: boolean;
     microRingLayout?: BackdropMicroRingLayout;
     microRingBaseRadius?: number;
+    backdropLayout?: BackdropRingLayout;
 };
 
 export function renderChronologueOverlays({
@@ -121,7 +123,8 @@ export function renderChronologueOverlays({
     maxTextWidth = 0,
     useRuntimeMode = false,
     microRingLayout,
-    microRingBaseRadius
+    microRingBaseRadius,
+    backdropLayout
 }: ChronologueOverlayOptions): string {
     const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
     let svg = '';
@@ -142,6 +145,13 @@ export function renderChronologueOverlays({
     if (chronologueTimelineArc) {
         svg += chronologueTimelineArc;
     }
+
+    // The backdrop layout was pre-built by Precompute so the layout engine
+    // could reserve the correct radial width for it (lanes × ring height).
+    // With that reservation in place, the subplot rings inside have already
+    // been pushed inward correctly — and microRingBaseRadius already reflects
+    // the post-allocation geometry, so no extra shift is needed here.
+    const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
 
     if (microRingLayout?.segments.length && Number.isFinite(microRingBaseRadius)) {
         svg += renderBackdropMicroRings({
@@ -173,25 +183,25 @@ export function renderChronologueOverlays({
         customThresholdMs
     );
 
-    // Render Backdrop Ring - ONLY if it was pre-allocated a virtual lane by the layout engine
-    const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
-    if (backdropSubplotIndex !== -1) {
+    // Render the Backdrop ring using the layout precomputed above.
+    // The layout engine allocated `laneCount * BACKDROP_RING_HEIGHT` of
+    // radial space for the Backdrop slot, so lane 0 sits at the outer
+    // edge of that allocation and inner lanes stack inward into the
+    // remaining space — without colliding with the next subplot ring.
+    if (backdropLayout && backdropLayout.segments.length > 0 && backdropSubplotIndex !== -1) {
         const numRings = ringStartRadii.length;
-        // Find the specific ring index for this subplot
-        // Ring indices go from 0 (inner) to NUM_RINGS-1 (outer)
         const ringIndex = numRings - 1 - backdropSubplotIndex;
-
         if (ringIndex >= 0 && ringIndex < numRings) {
-            // Use precise middle radius of the allocated ring lane
-            const backdropRadius = ringStartRadii[ringIndex] + ringWidths[ringIndex] / 2;
+            // Outer edge of the allocated Backdrop slot, minus half a lane
+            // height — i.e. the center of lane 0 (the outermost lane).
+            const slotOuterEdge = ringStartRadii[ringIndex] + ringWidths[ringIndex];
+            const backdropRadius = slotOuterEdge - (BACKDROP_RING_HEIGHT / 2);
 
-            // Defensive: a failure inside renderBackdropRing must not blank
-            // the whole Chronologue timeline. If it throws, log to console
-            // and skip the backdrop ring — the rest of the timeline still renders.
             try {
                 svg += renderBackdropRing({
                     plugin,
                     scenes,
+                    layout: backdropLayout,
                     availableRadius: backdropRadius,
                     synopsesElements,
                     maxTextWidth,

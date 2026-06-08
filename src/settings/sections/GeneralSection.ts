@@ -17,6 +17,7 @@ import {
 import { ERT_CLASSES } from '../../ui/classes';
 import { scheduleFocusAfterPaint } from '../../utils/domFocus';
 import { addHeadingIcon, applyErtHeaderLayout } from '../wikiLink';
+import { consumeBookManagerAutoloadHighlight } from '../bookManagerAutoloadHighlight';
 
 // ── Rename modal (mirrors CampaignNameModal pattern) ────────────────────
 class BookRenameModal extends Modal {
@@ -278,6 +279,7 @@ export function renderGeneralSection(params: {
     setIcon(addBookBtn, 'plus');
 
     const booksPanel = containerEl.createDiv({ cls: `${ERT_CLASSES.STACK} ert-books-panel` });
+    const autoloadHighlightedBookId = consumeBookManagerAutoloadHighlight();
 
     /** Pulse the "+" button green when books need attention (no books, or missing source folder) */
     const updateAddBtnPulse = () => {
@@ -405,6 +407,10 @@ export function renderGeneralSection(params: {
             // ── Single-row book card (Setting row) ───────────────────
             const row = new ObsidianSetting(booksPanel);
             row.settingEl.addClass('ert-row', 'ert-book-card', isActive ? 'is-active' : 'is-inactive');
+            if (book.id === autoloadHighlightedBookId) {
+                row.settingEl.addClass('ert-book-card--autoloaded');
+                row.settingEl.setAttr('aria-live', 'polite');
+            }
             if (hasBrokenFolderLink) {
                 row.settingEl.addClass('ert-book-card--link-broken');
             }
@@ -459,6 +465,9 @@ export function renderGeneralSection(params: {
             // Desc: scene count stat
             row.setDesc(`BOOK ${sequenceNumber} — ${sceneStatText}`);
             row.descEl.addClass('ert-book-card__meta');
+            if (book.id === autoloadHighlightedBookId) {
+                row.descEl.setText(`BOOK ${sequenceNumber} — demo autoloaded · ${sceneStatText}`);
+            }
             if (hasBrokenFolderLink) {
                 row.descEl.addClass('ert-book-card__stat--invalid');
             } else if (sceneStatWarn) {

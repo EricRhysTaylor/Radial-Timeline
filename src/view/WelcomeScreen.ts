@@ -3,11 +3,12 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { setIcon } from 'obsidian';
+import { normalizePath, setIcon, TFolder } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../branding/rtLogo';
-import { readInquirySessionsFromVault } from '../inquiry/InquiryArtifactStore';
+import { hasInquirySessionSidecarInVault } from '../inquiry/InquiryArtifactStore';
+import { markBookManagerAutoloadHighlight } from '../settings/bookManagerAutoloadHighlight';
 import type { BookProfile } from '../types/settings';
 import {
     DEFAULT_BOOK_TITLE,
@@ -24,16 +25,21 @@ interface WelcomeScreenParams {
 }
 
 const WELCOME_COPY = {
-    intro: 'Radial Timeline turns a scene-based story into a single, navigable map — novels, sagas, screenplays, podcasts or YouTube scripts, fiction or non-fiction. Pick a starting point below.',
+    intro: 'Radial Timeline turns long-form narratives into a single, navigable story map. Track scenes, arcs, characters, beats, and timelines across novels, sagas, memoirs, and other sustained fiction or nonfiction projects. Pick a starting point below.',
     cards: {
         website: {
             title: 'Visit the website',
-            desc: 'Guides, walkthroughs, release notes, pricing, and the story behind Radial Timeline live at radialtimeline.com.',
-            cta: 'Open radialtimeline.com'
+            desc: 'Guides, walkthroughs, release notes, pricing, and the story behind Radial Timeline.',
+            cta: 'Open Website'
+        },
+        sampleChecking: {
+            title: 'Explore a sample vault',
+            desc: 'Checking this vault for packaged Radial Timeline sample data before opening the download page.',
+            cta: 'Checking vault...'
         },
         sampleGet: {
             title: 'Explore a sample vault',
-            desc: 'See a finished novel — Pride & Prejudice — fully mapped in the timeline with AI analysis already run. No API key needed to explore it.',
+            desc: 'Download a finished novel, Pride & Prejudice, fully mapped in the timeline with AI analysis already run. No API key needed to explore it.',
             cta: 'Get the sample vault'
         },
         sampleOpen: {
@@ -42,10 +48,10 @@ const WELCOME_COPY = {
             cta: 'Open the sample vault'
         },
         design: {
-            title: 'Design your book',
-            desc: 'Lay out acts, subplots, characters, and beats with Book Designer — a structural starting point you can refine anytime.',
-            cta: 'Open Book Designer',
-            secondary: 'or create any note →'
+            title: 'Set Book Project',
+            desc: 'Choose the manuscript folder that drives the timeline, exports, Inquiry scope, and Book Manager.',
+            cta: 'Open Book Manager',
+            secondary: 'or open Book Designer →'
         }
     },
     reorderNote: 'Tip: scenes and beats drag into a new order in Narrative mode. Rename or add books anytime in Book Manager.'
@@ -78,11 +84,6 @@ const openRadialTimelineSettings = (
     if (!setting) return;
     setting.open();
     setting.openTabById('radial-timeline');
-};
-
-const runCreateNoteCommand = (plugin: RadialTimelinePlugin): void => {
-    const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
-    commandManager?.executeCommandById?.('radial-timeline:create-note');
 };
 
 const appendWelcomeBackgroundLogo = (parent: HTMLElement): void => {
@@ -140,6 +141,7 @@ interface CardRefs {
 interface CardSpec {
     hero?: boolean;
     icon: string;
+    number: string;
     title: string;
     desc: string;
     ctaLabel: string;
@@ -151,6 +153,10 @@ const buildCard = (parent: HTMLElement, plugin: RadialTimelinePlugin, spec: Card
     if (spec.hero) root.addClass('rt-welcome-card-hero');
     root.setAttr('role', 'button');
     root.setAttr('tabindex', '0');
+    root.setAttr('data-card-number', spec.number);
+
+    const bgIconEl = root.createDiv({ cls: 'rt-welcome-card-bg-icon' });
+    setIcon(bgIconEl, spec.icon);
 
     const iconEl = root.createDiv({ cls: 'rt-welcome-card-icon' });
     setIcon(iconEl, spec.icon);
@@ -178,6 +184,11 @@ interface SampleVaultConfig {
     bookFolder?: string;
 }
 
+const displayNameToBookTitle = (displayName: string | undefined, bookFolder: string | undefined): string => {
+    const cleaned = (displayName || '').replace(/\s+Sample\s+Vault\s*$/i, '').trim();
+    return cleaned || deriveBookTitleFromSourcePath(bookFolder) || DEFAULT_BOOK_TITLE;
+};
+
 /**
  * Reads a shipped sample vault's declarative manifest, if present. Discovery
  * follows docs/engineering/sample-vaults.md: scan markdown frontmatter for
@@ -199,6 +210,63 @@ const findSampleVaultConfig = (plugin: RadialTimelinePlugin): SampleVaultConfig 
     return null;
 };
 
+const inferBookFolderFromSceneNotes = (plugin: RadialTimelinePlugin): SampleVaultConfig | null => {
+    const counts = new Map<string, number>();
+    for (const file of plugin.app.vault.getMarkdownFiles()) {
+        const fm = plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+        if (!fm || (fm.Class !== 'Scene' && fm.class !== 'Scene')) continue;
+        const parts = normalizePath(file.path).split('/').filter(Boolean);
+        if (parts.length < 2) continue;
+        const root = parts[0];
+        const abstract = plugin.app.vault.getAbstractFileByPath(root);
+        if (!(abstract instanceof TFolder)) continue;
+        counts.set(root, (counts.get(root) || 0) + 1);
+    }
+
+    let bestFolder = '';
+    let bestCount = 0;
+    counts.forEach((count, folder) => {
+        if (count > bestCount || (count === bestCount && folder.localeCompare(bestFolder) < 0)) {
+            bestFolder = folder;
+            bestCount = count;
+        }
+    });
+
+    if (!bestFolder || bestCount === 0) return null;
+    return {
+        displayName: deriveBookTitleFromSourcePath(bestFolder) || bestFolder,
+        bookFolder: bestFolder
+    };
+};
+
+const resolveSampleVaultConfig = (plugin: RadialTimelinePlugin): SampleVaultConfig | null => {
+    return findSampleVaultConfig(plugin) || inferBookFolderFromSceneNotes(plugin);
+};
+
+const ensureSampleBookProject = async (
+    plugin: RadialTimelinePlugin,
+    config: SampleVaultConfig | null
+): Promise<string | null> => {
+    const books = plugin.settings.books || [];
+    const bookFolder = config?.bookFolder?.trim();
+    if (!bookFolder) return (getActiveBook(plugin.settings) ?? books[0])?.id ?? null;
+
+    const normalizedBookFolder = normalizePath(bookFolder);
+    const existing = books.find(b => normalizePath((b.sourceFolder || '').trim()) === normalizedBookFolder);
+    if (existing) {
+        return existing.id;
+    }
+
+    const profile = normalizeBookProfile({
+        id: createBookId(),
+        title: displayNameToBookTitle(config?.displayName, normalizedBookFolder),
+        sourceFolder: normalizedBookFolder
+    } as BookProfile);
+    plugin.settings.books = [...books, profile];
+    await plugin.saveSettings();
+    return profile.id;
+};
+
 /**
  * Opens the detected sample vault: select the book whose source folder matches
  * the manifest, registering it first if the vault shipped content but no book
@@ -212,29 +280,10 @@ const openSampleVault = async (
     config: SampleVaultConfig | null,
     refreshTimeline: () => void
 ): Promise<void> => {
-    const books = plugin.settings.books || [];
-    const bookFolder = config?.bookFolder?.trim();
-    let targetId: string | null = null;
-
-    if (bookFolder) {
-        const existing = books.find(b => (b.sourceFolder || '').trim() === bookFolder);
-        if (existing) {
-            targetId = existing.id;
-        } else {
-            const profile = normalizeBookProfile({
-                id: createBookId(),
-                title: deriveBookTitleFromSourcePath(bookFolder) || config?.displayName || DEFAULT_BOOK_TITLE,
-                sourceFolder: bookFolder
-            } as BookProfile);
-            plugin.settings.books = [...books, profile];
-            await plugin.saveSettings();
-            targetId = profile.id;
-        }
-    } else if (books.length) {
-        targetId = (getActiveBook(plugin.settings) ?? books[0]).id;
-    }
+    const targetId = await ensureSampleBookProject(plugin, config);
 
     if (targetId) {
+        markBookManagerAutoloadHighlight(targetId);
         await plugin.setActiveBookId(targetId);
         refreshTimeline();
     } else {
@@ -242,27 +291,46 @@ const openSampleVault = async (
     }
 };
 
+const openBookManagerFromWelcome = async (plugin: RadialTimelinePlugin): Promise<void> => {
+    if (await hasInquirySessionSidecarInVault(plugin.app)) {
+        const config = resolveSampleVaultConfig(plugin);
+        const targetId = await ensureSampleBookProject(plugin, config);
+        if (targetId) {
+            markBookManagerAutoloadHighlight(targetId);
+            await plugin.setActiveBookId(targetId);
+        }
+    }
+    openRadialTimelineSettings(plugin, 'core');
+};
+
 /**
- * The Inquiry sidecar (.radial-timeline/inquiry/sessions.json) is the most
- * reliable signal that a vault is a packaged sample: shipped samples carry
- * pre-run, saved Inquiry briefs, while a fresh or working-but-empty vault never
- * does. Because the Welcome screen only renders when the active book has no
- * scenes, "saved sessions present here" almost always means "sample content is
- * on disk but not yet selected as a book." Fire-and-forget; mutating a detached
- * container after the view closes is harmless.
+ * The Inquiry sidecar (.radial-timeline/inquiry/sessions.json) is the clearest
+ * signal that the vault already carries packaged Radial Timeline data. Check
+ * for the file before showing the sample download/signup path; otherwise a
+ * sample vault can look like it needs to be fetched again. Fire-and-forget;
+ * mutating a detached container after the view closes is harmless.
  */
 const hydrateSampleVaultCard = async (
     refs: CardRefs,
     plugin: RadialTimelinePlugin,
     refreshTimeline: () => void
 ): Promise<void> => {
-    const sessions = await readInquirySessionsFromVault(plugin.app);
-    const hasSavedBriefs = sessions.some(s => s.status === 'saved');
-    if (!hasSavedBriefs) return;
+    const hasSidecar = await hasInquirySessionSidecarInVault(plugin.app);
+    if (!hasSidecar) {
+        refs.root.removeClass('rt-welcome-card-pending');
+        refs.title.setText(WELCOME_COPY.cards.sampleGet.title);
+        refs.desc.setText(WELCOME_COPY.cards.sampleGet.desc);
+        refs.cta.setText(WELCOME_COPY.cards.sampleGet.cta);
+        refs.setActivate(() => { window.open(WELCOME_URLS.sampleNewsletter, '_blank'); });
+        return;
+    }
 
-    const config = findSampleVaultConfig(plugin);
-    const name = config?.displayName || 'sample vault';
+    const config = resolveSampleVaultConfig(plugin);
+    const name = displayNameToBookTitle(config?.displayName, config?.bookFolder).toLowerCase() === DEFAULT_BOOK_TITLE.toLowerCase()
+        ? 'sample vault'
+        : displayNameToBookTitle(config?.displayName, config?.bookFolder);
 
+    refs.root.removeClass('rt-welcome-card-pending');
     refs.root.addClass('rt-welcome-card-detected');
     refs.title.setText(WELCOME_COPY.cards.sampleOpen.title);
     refs.desc.setText(WELCOME_COPY.cards.sampleOpen.desc(name));
@@ -288,6 +356,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const cards = body.createDiv({ cls: 'rt-welcome-cards' });
 
     buildCard(cards, plugin, {
+        number: '01',
         icon: CARD_ICONS.website,
         title: WELCOME_COPY.cards.website.title,
         desc: WELCOME_COPY.cards.website.desc,
@@ -297,20 +366,23 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const sampleRefs = buildCard(cards, plugin, {
         hero: true,
+        number: '02',
         icon: CARD_ICONS.sample,
-        title: WELCOME_COPY.cards.sampleGet.title,
-        desc: WELCOME_COPY.cards.sampleGet.desc,
-        ctaLabel: WELCOME_COPY.cards.sampleGet.cta,
-        onActivate: () => { window.open(WELCOME_URLS.sampleNewsletter, '_blank'); }
+        title: WELCOME_COPY.cards.sampleChecking.title,
+        desc: WELCOME_COPY.cards.sampleChecking.desc,
+        ctaLabel: WELCOME_COPY.cards.sampleChecking.cta,
+        onActivate: () => undefined
     });
+    sampleRefs.root.addClass('rt-welcome-card-pending');
     void hydrateSampleVaultCard(sampleRefs, plugin, refreshTimeline);
 
     const designRefs = buildCard(cards, plugin, {
+        number: '03',
         icon: CARD_ICONS.design,
         title: WELCOME_COPY.cards.design.title,
         desc: WELCOME_COPY.cards.design.desc,
         ctaLabel: WELCOME_COPY.cards.design.cta,
-        onActivate: () => { new BookDesignerModal(plugin.app, plugin).open(); }
+        onActivate: () => { void openBookManagerFromWelcome(plugin); }
     });
     const designSecondary = designRefs.root.createEl('a', {
         cls: 'rt-welcome-card-secondary',
@@ -320,7 +392,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     plugin.registerDomEvent(designSecondary, 'click', (evt) => {
         evt.preventDefault();
         evt.stopPropagation();
-        runCreateNoteCommand(plugin);
+        new BookDesignerModal(plugin.app, plugin).open();
     });
 
     // Closing notes + odds and ends

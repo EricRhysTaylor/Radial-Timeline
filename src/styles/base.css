@@ -91,6 +91,10 @@
 .rt-welcome-footnote {
   font-size: 13px;
   color: var(--text-muted);
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--text-muted) 38%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-primary-alt) 58%, transparent);
 }
 
 /* Three hero cards */
@@ -109,17 +113,25 @@
 }
 
 .rt-welcome-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
   padding: 20px;
   text-align: left;
-  background: var(--background-primary-alt);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--background-primary-alt) 94%, white 6%),
+      var(--background-primary-alt));
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 74%, white 12%);
+  border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
+    0 10px 26px color-mix(in srgb, black 18%, transparent);
 }
 
 .rt-welcome-card:hover,
@@ -133,16 +145,54 @@
 /* Center card carries the strategic emphasis (Sample Vault) */
 .rt-welcome-card-hero {
   border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--background-modifier-border));
-  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary-alt));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--interactive-accent) 12%, var(--background-primary-alt)),
+      color-mix(in srgb, var(--interactive-accent) 7%, var(--background-primary-alt)));
 }
 
 /* When a sample vault is detected on disk, lift the card further */
 .rt-welcome-card-detected {
   border-color: var(--interactive-accent);
-  background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary-alt));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--interactive-accent) 18%, var(--background-primary-alt)),
+      color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary-alt)));
+}
+
+.rt-welcome-card::after {
+  content: attr(data-card-number);
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 0;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  pointer-events: none;
+}
+
+.rt-welcome-card-bg-icon {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 0;
+  width: 122px;
+  height: 122px;
+  color: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  pointer-events: none;
+}
+
+.rt-welcome-card-bg-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.1;
 }
 
 .rt-welcome-card-icon {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,6 +208,8 @@
 }
 
 .rt-welcome-card-title {
+  position: relative;
+  z-index: 1;
   font-size: 17px;
   font-weight: 700;
   line-height: 1.2;
@@ -165,6 +217,8 @@
 }
 
 .rt-welcome-card-desc {
+  position: relative;
+  z-index: 1;
   font-size: 13.5px;
   line-height: 1.45;
   color: var(--text-muted);
@@ -172,6 +226,8 @@
 }
 
 .rt-welcome-card-cta {
+  position: relative;
+  z-index: 1;
   margin-top: 8px;
   align-self: stretch;
   text-align: center;
@@ -188,7 +244,20 @@
   background: var(--interactive-accent-hover);
 }
 
+.rt-welcome-card-pending {
+  cursor: default;
+}
+
+.rt-welcome-card-pending .rt-welcome-card-cta,
+.rt-welcome-card-pending:hover .rt-welcome-card-cta,
+.rt-welcome-card-pending:focus-visible .rt-welcome-card-cta {
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+}
+
 .rt-welcome-card-secondary {
+  position: relative;
+  z-index: 1;
   font-size: 12.5px;
   color: var(--text-muted);
   text-decoration: none;
