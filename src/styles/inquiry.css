@@ -3331,7 +3331,7 @@ body.rt-modal-open .ert-inquiry-svg {
   border-top: 1px solid var(--background-modifier-border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--ert-gap-sm);
 }
 
 .ert-inquiry-briefing-session-state-title {
@@ -3346,7 +3346,7 @@ body.rt-modal-open .ert-inquiry-svg {
   width: 100%;
   border: none;
   border-radius: 12px;
-  padding: 8px 10px;
+  padding: var(--ert-pad-xs) var(--ert-pad-cozy);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-on-accent);
@@ -3373,7 +3373,7 @@ body.rt-modal-open .ert-inquiry-svg {
   width: 100%;
   border: 1px solid var(--background-modifier-border);
   border-radius: 12px;
-  padding: 8px 10px;
+  padding: var(--ert-pad-xs) var(--ert-pad-cozy);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-normal);
