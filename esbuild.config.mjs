@@ -80,7 +80,7 @@ if (isCI) {
 		{ path: "/Users/ericrhystaylor/Obsidian Vault Author/.obsidian/plugins/radial-timeline", name: "Author" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault New/.obsidian/plugins/radial-timeline", name: "New" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline", name: "Fresh" },
-		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline", name: "Jane Austin" },
+		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Jane Austen/.obsidian/plugins/radial-timeline", name: "Jane Austen" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Sherlock Holmes/.obsidian/plugins/radial-timeline", name: "Sherlock Holmes" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Pride & Prejudice/.obsidian/plugins/radial-timeline", name: "P&P" },
 		{ path: "/Users/ericrhystaylor/Documents/Author Eric Rhys Taylor/Obsidian Vault Author timelapse/.obsidian/plugins/radial-timeline", name: "Timelapse" },
