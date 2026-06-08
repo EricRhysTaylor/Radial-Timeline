@@ -5957,7 +5957,9 @@ export class InquiryView extends ItemView {
         this.setIconButtonDisabled(this.apiSimulationButton, runDisabled || running);
         const singleBook = (this.corpus?.books ?? []).length <= 1;
         this.setIconButtonDisabled(this.scopeToggleButton, lockout || running || singleBook);
-        this.setIconButtonDisabled(this.engineBadgeGroup, lockout || running);
+        // The engine button opens AI settings, so keep it clickable during setup
+        // (not-configured / no-scenes) — only mute it while a query is running.
+        this.setIconButtonDisabled(this.engineBadgeGroup, running);
         this.setIconButtonDisabled(this.artifactButton, lockout || running);
         this.setIconButtonDisabled(this.detailsToggle, lockout || running);
 

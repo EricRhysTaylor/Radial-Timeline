@@ -57,14 +57,14 @@
   opacity: 0.55;
 }
 
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn) {
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn):not(.ert-inquiry-engine-btn) {
   pointer-events: none;
   cursor: default;
   opacity: 0.35;
 }
 
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn) .ert-inquiry-icon-btn-bg,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn) .ert-inquiry-icon {
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn):not(.ert-inquiry-engine-btn) .ert-inquiry-icon-btn-bg,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn):not(.ert-inquiry-engine-btn) .ert-inquiry-icon {
   animation: none;
 }
 
