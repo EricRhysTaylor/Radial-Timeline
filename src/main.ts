@@ -388,6 +388,10 @@ export default class RadialTimelinePlugin extends Plugin {
 
     public async persistBookSettings(): Promise<void> {
         this.syncLegacySourcePathFromActiveBook();
+        // Pointing a freshly-created book at its manuscript folder is the moment
+        // its beat notes first become discoverable — adopt them now so a new user
+        // doesn't have to manually load the detected set.
+        this.maybeAutoAdoptBeatSystems();
         await this.saveSettings();
         this.refreshTimelineIfNeeded(null);
         this.updateTimelineBookHeaders();
