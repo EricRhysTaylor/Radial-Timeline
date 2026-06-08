@@ -62,12 +62,40 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _pendingSectionRevealTimer: number | null = null;
     private _tabEls: Partial<Record<RadialTimelineSettingsTabId, HTMLElement>> = {};
     private _tabContentEls: Partial<Record<RadialTimelineSettingsTabId, HTMLElement>> = {};
+    private _beatsWrapper?: HTMLElement;
+    private _backdropYamlTarget?: HTMLElement;
 
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: RadialTimelineSettingsTabId): void {
         this._activeTab = tab;
         this._hasExplicitTabRequest = true;
         this.updateRenderedTabState();
+    }
+
+    /**
+     * Re-render just the Story beats system panel in place. Called when the
+     * active book's settings change (e.g. its source folder is pointed at a
+     * manuscript), so the panel reflects newly-detected/auto-adopted beat
+     * systems without rebuilding the whole settings tab. No-op when the tab
+     * isn't currently displayed.
+     */
+    public refreshBeatPropertiesSection(): void {
+        const wrapper = this._beatsWrapper;
+        if (!wrapper || !wrapper.isConnected) return;
+        wrapper.empty();
+        renderBeatPropertiesSection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: wrapper,
+            backdropYamlTargetEl: this._backdropYamlTarget,
+        });
+        // Mirror the section ordering applied in display().
+        const story = wrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
+        const acts = wrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);
+        const yaml = wrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-yaml"]`);
+        if (story) wrapper.appendChild(story);
+        if (acts) wrapper.appendChild(acts);
+        if (yaml) wrapper.appendChild(yaml);
     }
 
     public revealSettingsSection(
@@ -1039,6 +1067,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const beatsWrapper = searchableContent.createDiv();
         const backdropYamlTarget = createDiv();
+        this._beatsWrapper = beatsWrapper;
+        this._backdropYamlTarget = backdropYamlTarget;
         renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
         beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
         const beatsActsSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);

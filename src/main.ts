@@ -396,6 +396,9 @@ export default class RadialTimelinePlugin extends Plugin {
         this.refreshTimelineIfNeeded(null);
         this.updateTimelineBookHeaders();
         this.inquiryService?.notifyBookSettingsChanged();
+        // Keep the open Story beats system panel in sync with the active book
+        // (source folder, auto-adopted systems). No-op when settings is closed.
+        this.settingsTab?.refreshBeatPropertiesSection();
     }
 
     /**
