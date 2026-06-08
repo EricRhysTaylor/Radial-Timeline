@@ -59,6 +59,8 @@ export type InquiryBriefingPanelRefs = {
     briefingClearButton: HTMLButtonElement;
     briefingResetButton: HTMLButtonElement;
     briefingPurgeButton: HTMLButtonElement;
+    briefingSaveStateButton: HTMLButtonElement;
+    briefingRestoreButton: HTMLButtonElement;
 };
 
 export type InquiryEnginePanelRefs = {
@@ -342,6 +344,34 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
         text: 'Does not delete briefs.'
     });
 
+    // Session State — turn the hidden sidecar into an explicit, visible
+    // workflow: briefs are visible documents; session state is what makes them
+    // appear as live Inquiry history. Save before packaging/sharing a vault;
+    // Restore rehydrates the list from the sidecar on a fresh install.
+    const briefingSessionStateEl = briefingFooterEl.createDiv({ cls: 'ert-inquiry-briefing-session-state' });
+    briefingSessionStateEl.createDiv({
+        cls: 'ert-inquiry-briefing-session-state-title',
+        text: 'Session State'
+    });
+    const briefingSaveStateButton = briefingSessionStateEl.createEl('button', {
+        cls: 'ert-inquiry-briefing-save-state',
+        text: 'Save Session State'
+    });
+    addTooltipData(
+        briefingSaveStateButton,
+        balanceTooltipText('Flushes the current Inquiry sessions to the vault sidecar (.radial-timeline/inquiry/sessions.json). Use this before packaging or sharing this vault.'),
+        'top'
+    );
+    const briefingRestoreButton = briefingSessionStateEl.createEl('button', {
+        cls: 'ert-inquiry-briefing-restore',
+        text: 'Restore Sessions'
+    });
+    addTooltipData(
+        briefingRestoreButton,
+        balanceTooltipText('Reads the vault sidecar and rehydrates the session list. Merges by key (sidecar wins on conflicts); never clobbers unsaved current work.'),
+        'top'
+    );
+
     return {
         briefingPanelEl,
         briefingListEl,
@@ -349,7 +379,9 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
         briefingFooterEl,
         briefingClearButton,
         briefingResetButton,
-        briefingPurgeButton
+        briefingPurgeButton,
+        briefingSaveStateButton,
+        briefingRestoreButton
     };
 }
 

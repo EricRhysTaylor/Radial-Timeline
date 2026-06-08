@@ -114,15 +114,21 @@ export function bindInquiryBriefingPanelEvents(args: {
     briefingClearButton?: HTMLButtonElement;
     briefingResetButton?: HTMLButtonElement;
     briefingPurgeButton?: HTMLButtonElement;
+    briefingSaveStateButton?: HTMLButtonElement;
+    briefingRestoreButton?: HTMLButtonElement;
     onClearClick: (event: MouseEvent) => void;
     onResetClick: (event: MouseEvent) => void;
     onPurgeClick: (event: MouseEvent) => void;
+    onSaveStateClick: (event: MouseEvent) => void;
+    onRestoreClick: (event: MouseEvent) => void;
     onPointerEnter: () => void;
     onPointerLeave: () => void;
 }): void {
     args.registerDomEvent(args.briefingClearButton, 'click', (event: Event) => args.onClearClick(event as MouseEvent));
     args.registerDomEvent(args.briefingResetButton, 'click', (event: Event) => args.onResetClick(event as MouseEvent));
     args.registerDomEvent(args.briefingPurgeButton, 'click', (event: Event) => args.onPurgeClick(event as MouseEvent));
+    args.registerDomEvent(args.briefingSaveStateButton, 'click', (event: Event) => args.onSaveStateClick(event as MouseEvent));
+    args.registerDomEvent(args.briefingRestoreButton, 'click', (event: Event) => args.onRestoreClick(event as MouseEvent));
     args.registerDomEvent(args.briefingPanelEl, 'pointerenter', () => args.onPointerEnter());
     args.registerDomEvent(args.briefingPanelEl, 'pointerleave', () => args.onPointerLeave());
 }

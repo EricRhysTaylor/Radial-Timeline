@@ -134,6 +134,7 @@ import type {
     InquiryRunnerInput
 } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
+import { readInquirySessionsFromVault } from './InquiryArtifactStore';
 import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { extractSummary, getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { getSequencedBooks } from '../utils/books';
@@ -498,6 +499,8 @@ export class InquiryView extends ItemView {
     private briefingClearButton?: HTMLButtonElement;
     private briefingResetButton?: HTMLButtonElement;
     private briefingPurgeButton?: HTMLButtonElement;
+    private briefingSaveStateButton?: HTMLButtonElement;
+    private briefingRestoreButton?: HTMLButtonElement;
     private briefingEmptyEl?: HTMLDivElement;
     private briefingPopover!: HoverPopoverController;
     private enginePopover!: HoverPopoverController;
@@ -1122,6 +1125,8 @@ export class InquiryView extends ItemView {
         this.briefingClearButton = refs.briefingClearButton;
         this.briefingResetButton = refs.briefingResetButton;
         this.briefingPurgeButton = refs.briefingPurgeButton;
+        this.briefingSaveStateButton = refs.briefingSaveStateButton;
+        this.briefingRestoreButton = refs.briefingRestoreButton;
 
         this.briefingPopover = new HoverPopoverController({
             beforeShow: () => {
@@ -1142,6 +1147,8 @@ export class InquiryView extends ItemView {
             briefingClearButton: this.briefingClearButton,
             briefingResetButton: this.briefingResetButton,
             briefingPurgeButton: this.briefingPurgeButton,
+            briefingSaveStateButton: this.briefingSaveStateButton,
+            briefingRestoreButton: this.briefingRestoreButton,
             onClearClick: (event: MouseEvent) => {
                 event.stopPropagation();
                 this.handleBriefingClearClick();
@@ -1153,6 +1160,14 @@ export class InquiryView extends ItemView {
             onPurgeClick: (event: MouseEvent) => {
                 event.stopPropagation();
                 void this.handleBriefingPurgeClick();
+            },
+            onSaveStateClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                void this.handleBriefingSaveStateClick();
+            },
+            onRestoreClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                void this.handleBriefingRestoreClick();
             },
             onPointerEnter: () => this.briefingPopover.cancelHide(),
             onPointerLeave: () => this.briefingPopover.scheduleHide()
@@ -1870,6 +1885,60 @@ export class InquiryView extends ItemView {
         }
         this.resetCorpusOverrides();
         this.notifyInteraction(t('inquiry.interaction.corpusOverridesReset'));
+    }
+
+    /**
+     * Explicit "I'm about to package/share this vault" action: flush the live
+     * session cache to the hidden sidecar now, bypassing the debounce, and
+     * report how many sessions were written.
+     */
+    private async handleBriefingSaveStateClick(): Promise<void> {
+        await this.sessionStore.flush();
+        const count = this.sessionStore.getSessionCount();
+        this.notifyInteraction(`${count} session${count === 1 ? '' : 's'} saved`);
+    }
+
+    /**
+     * Rehydrate the session list from the hidden sidecar. Merges by key and
+     * prefers the sidecar version on a collision, but never removes sessions
+     * that exist only in the current working set — restore augments, it does
+     * not clobber. Reports found / restored / skipped and warns when any
+     * restored brief file is missing from the vault.
+     */
+    private async handleBriefingRestoreClick(): Promise<void> {
+        if (this.state.isRunning) {
+            this.notifyInteraction(t('inquiry.interaction.running'));
+            return;
+        }
+        const sidecarSessions = await readInquirySessionsFromVault(this.app);
+        const found = sidecarSessions.length;
+        if (found === 0) {
+            this.notifyInteraction('No saved session state found in this vault.');
+            return;
+        }
+        let restored = 0;
+        let skipped = 0;
+        let missingBriefs = 0;
+        for (const session of sidecarSessions) {
+            if (!session.key) {
+                skipped++;
+                continue;
+            }
+            // Upsert: sidecar wins on a key collision; sessions absent from the
+            // sidecar stay untouched in the live cache.
+            this.sessionStore.setSession(session);
+            restored++;
+            if (session.briefPath && !this.app.vault.getAbstractFileByPath(session.briefPath)) {
+                missingBriefs++;
+            }
+        }
+        await this.sessionStore.flush();
+        this.refreshUI({ reason: 'inquiry sessions restored from vault' });
+        const parts = [`${found} found`, `${restored} restored`, `${skipped} skipped`];
+        if (missingBriefs > 0) {
+            parts.push(`⚠ ${missingBriefs} brief${missingBriefs === 1 ? '' : 's'} missing`);
+        }
+        this.notifyInteraction(parts.join(' · '));
     }
 
     private async handleBriefingPurgeClick(): Promise<void> {
