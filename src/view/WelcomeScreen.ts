@@ -7,6 +7,7 @@ import { normalizePath, setIcon, TFolder } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../branding/rtLogo';
+import { WELCOME_AUTHOR_IMAGE } from '../branding/welcomeAuthorImage';
 import { hasInquirySessionSidecarInVault, readInquirySidecarVaultIdentity } from '../inquiry/InquiryArtifactStore';
 import {
     normalizeClassContribution,
@@ -509,12 +510,18 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         ]);
     });
 
-    // Quick-start workflow, below the hero cards. Backtick-wrapped segments
-    // (e.g. `Create note`) render as inline command/code chips.
+    // Quick-start workflow, below the hero cards. Inlined author image on the
+    // left, steps on the right. Backtick-wrapped segments (e.g. `Create note`)
+    // render as inline command/code chips.
     const workflow = body.createDiv({ cls: 'ert-welcome-workflow' });
-    workflow.createDiv({ cls: 'ert-welcome-workflow-lead', text: WELCOME_COPY.workflow.lead });
+    workflow.createEl('img', {
+        cls: 'ert-welcome-workflow-image',
+        attr: { src: WELCOME_AUTHOR_IMAGE, alt: '', 'aria-hidden': 'true' }
+    });
+    const workflowContent = workflow.createDiv({ cls: 'ert-welcome-workflow-content' });
+    workflowContent.createDiv({ cls: 'ert-welcome-workflow-lead', text: WELCOME_COPY.workflow.lead });
     for (const step of WELCOME_COPY.workflow.steps) {
-        const stepEl = workflow.createDiv({ cls: 'ert-welcome-workflow-step' });
+        const stepEl = workflowContent.createDiv({ cls: 'ert-welcome-workflow-step' });
         const iconEl = stepEl.createDiv({ cls: 'ert-welcome-workflow-icon' });
         setIcon(iconEl, step.icon);
         const textEl = stepEl.createSpan({ cls: 'ert-welcome-workflow-text' });
