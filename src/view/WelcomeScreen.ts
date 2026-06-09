@@ -60,7 +60,7 @@ const WELCOME_COPY = {
         }
     },
     workflow: {
-        lead: 'Starting a new vault? Consider the following workflow:',
+        lead: 'Starting a new vault?',
         steps: [
             { icon: 'compass', text: 'Set your novel folder inside the vault with [Book Manager].', link: 'book-manager' },
             { icon: 'file-plus', text: 'Add scenes with `Create note`, or scaffold quickly with `Book Designer`.' },
