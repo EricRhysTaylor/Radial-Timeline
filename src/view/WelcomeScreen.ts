@@ -537,8 +537,9 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     };
     const workflowContent = workflow.createDiv({ cls: 'ert-welcome-workflow-content' });
     workflowContent.createDiv({ cls: 'ert-welcome-workflow-lead', text: WELCOME_COPY.workflow.lead });
+    const workflowSteps = workflowContent.createDiv({ cls: 'ert-welcome-workflow-steps' });
     for (const step of WELCOME_COPY.workflow.steps) {
-        const stepEl = workflowContent.createDiv({ cls: 'ert-welcome-workflow-step' });
+        const stepEl = workflowSteps.createDiv({ cls: 'ert-welcome-workflow-step' });
         const iconEl = stepEl.createDiv({ cls: 'ert-welcome-workflow-icon' });
         setIcon(iconEl, step.icon);
         const textEl = stepEl.createSpan({ cls: 'ert-welcome-workflow-text' });
