@@ -8,8 +8,12 @@ import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../branding/rtLogo';
 import { hasInquirySessionSidecarInVault } from '../inquiry/InquiryArtifactStore';
+import {
+    normalizeClassContribution,
+    normalizeInquirySources
+} from '../inquiry/services/InquiryCorpusService';
 import { markBookManagerAutoloadHighlight } from '../settings/bookManagerAutoloadHighlight';
-import type { BookProfile } from '../types/settings';
+import type { BookProfile, InquiryClassConfig, InquirySourcesSettings } from '../types/settings';
 import {
     DEFAULT_BOOK_TITLE,
     createBookId,
@@ -184,6 +188,23 @@ interface SampleVaultConfig {
     bookFolder?: string;
 }
 
+const SAMPLE_INQUIRY_CORE_CLASSES: InquiryClassConfig[] = [
+    normalizeClassContribution({
+        className: 'scene',
+        enabled: true,
+        bookScope: 'full',
+        sagaScope: 'summary',
+        referenceScope: 'excluded'
+    }),
+    normalizeClassContribution({
+        className: 'outline',
+        enabled: true,
+        bookScope: 'full',
+        sagaScope: 'full',
+        referenceScope: 'excluded'
+    })
+];
+
 const displayNameToBookTitle = (displayName: string | undefined, bookFolder: string | undefined): string => {
     const cleaned = (displayName || '').replace(/\s+Sample\s+Vault\s*$/i, '').trim();
     return cleaned || deriveBookTitleFromSourcePath(bookFolder) || DEFAULT_BOOK_TITLE;
@@ -267,6 +288,44 @@ const ensureSampleBookProject = async (
     return profile.id;
 };
 
+const mergeSampleInquirySources = (raw?: InquirySourcesSettings): InquirySourcesSettings => {
+    const current = normalizeInquirySources(raw);
+    const classScope = new Set(current.classScope || []);
+    classScope.add('/');
+
+    const classesByName = new Map((current.classes || []).map(config => [config.className, config]));
+    for (const coreConfig of SAMPLE_INQUIRY_CORE_CLASSES) {
+        const existing = classesByName.get(coreConfig.className);
+        classesByName.set(
+            coreConfig.className,
+            existing
+                ? normalizeClassContribution({
+                    ...existing,
+                    enabled: true,
+                    bookScope: existing.bookScope === 'excluded' ? coreConfig.bookScope : existing.bookScope,
+                    sagaScope: existing.sagaScope === 'excluded' ? coreConfig.sagaScope : existing.sagaScope,
+                    referenceScope: 'excluded'
+                })
+                : coreConfig
+        );
+    }
+
+    return {
+        ...current,
+        preset: current.preset || 'default',
+        classScope: Array.from(classScope),
+        classes: Array.from(classesByName.values()),
+        lastScanAt: current.lastScanAt || new Date().toISOString()
+    };
+};
+
+const ensureSampleInquirySources = async (plugin: RadialTimelinePlugin): Promise<void> => {
+    const nextSources = mergeSampleInquirySources(plugin.settings.inquirySources);
+    plugin.settings.inquirySources = nextSources;
+    await plugin.saveSettings();
+    plugin.getInquiryService().notifySourcesSettingsChanged();
+};
+
 /**
  * Opens the detected sample vault: select the book whose source folder matches
  * the manifest, registering it first if the vault shipped content but no book
@@ -283,6 +342,7 @@ const openSampleVault = async (
     const targetId = await ensureSampleBookProject(plugin, config);
 
     if (targetId) {
+        await ensureSampleInquirySources(plugin);
         markBookManagerAutoloadHighlight(targetId);
         await plugin.setActiveBookId(targetId);
         refreshTimeline();
@@ -296,6 +356,7 @@ const openBookManagerFromWelcome = async (plugin: RadialTimelinePlugin): Promise
         const config = resolveSampleVaultConfig(plugin);
         const targetId = await ensureSampleBookProject(plugin, config);
         if (targetId) {
+            await ensureSampleInquirySources(plugin);
             markBookManagerAutoloadHighlight(targetId);
             await plugin.setActiveBookId(targetId);
         }
