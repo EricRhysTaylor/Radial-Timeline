@@ -270,6 +270,8 @@ export function renderGeneralSection(params: {
         .setHeading();
     addHeadingIcon(booksHeading, 'library-big');
     applyErtHeaderLayout(booksHeading);
+    // Stable scroll target for deep-links (e.g. the Welcome "Book Manager" link).
+    booksHeading.settingEl.addClass('ert-books-heading');
 
     // "+" add-book button in the setting row's control column (far right)
     const addBookBtn = booksHeading.controlEl.createEl('button', {

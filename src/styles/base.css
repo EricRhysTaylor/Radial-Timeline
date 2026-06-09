@@ -186,11 +186,12 @@
 /* Inline command / palette chip (Obsidian inline-code styling). */
 .ert-welcome-kbd {
   font-family: var(--font-monospace);
-  font-size: 0.88em;
-  padding: 0.05em 0.4em;
+  font-size: 0.85em;
+  padding: 0.1em 0.45em;
   border-radius: 4px;
-  background: var(--code-background);
-  color: var(--code-normal);
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 24%, transparent);
+  color: var(--text-normal);
   white-space: nowrap;
 }
 

@@ -392,6 +392,11 @@ const openBookManagerFromWelcome = async (plugin: RadialTimelinePlugin): Promise
         }
     }
     openRadialTimelineSettings(plugin, 'core');
+    // Settings render async after the tab opens; scroll the Books heading into
+    // view once it exists so the link lands on the right section.
+    window.setTimeout(() => {
+        document.querySelector('.ert-books-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
 };
 
 /**
