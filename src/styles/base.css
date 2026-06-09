@@ -210,7 +210,8 @@
   top: 14px;
   right: 16px;
   z-index: 0;
-  font-size: 34px;
+  font-size: 102px;
+  letter-spacing: -0.12em;
   line-height: 1;
   font-weight: 800;
   color: color-mix(in srgb, var(--text-muted) 18%, transparent);
@@ -219,8 +220,8 @@
 
 .rt-welcome-card-bg-icon {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  left: 18px;
+  top: 18px;
   z-index: 0;
   width: 122px;
   height: 122px;
