@@ -23,7 +23,7 @@ function makeSession(key: string): InquirySession {
 }
 
 /**
- * Fake data adapter standing in for app.vault.adapter. Serves a sidecar payload
+ * Fake data adapter standing in for the vault data-adapter. Serves a sidecar payload
  * and records every write so tests can assert whether the store flushed (and
  * with what).
  */
