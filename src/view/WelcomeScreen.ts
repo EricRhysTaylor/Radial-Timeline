@@ -47,7 +47,7 @@ const WELCOME_COPY = {
             cta: 'Get the sample vault'
         },
         sampleOpen: {
-            title: 'Sample vault detected',
+            title: (name: string) => `${name} detected`,
             desc: (name: string) => `This vault ships a ready-to-explore ${name}. Open it to drop straight into a finished story on the timeline.`,
             cta: 'Open the sample vault'
         },
@@ -431,7 +431,10 @@ const hydrateSampleVaultCard = async (
 
     refs.root.removeClass('rt-welcome-card-pending');
     refs.root.addClass('rt-welcome-card-detected');
-    refs.title.setText(WELCOME_COPY.cards.sampleOpen.title);
+    // Title leads with the detected book name ("Pride & Prejudice detected"),
+    // capitalized for the generic fallback ("Sample vault detected").
+    const titleName = name.charAt(0).toUpperCase() + name.slice(1);
+    refs.title.setText(WELCOME_COPY.cards.sampleOpen.title(titleName));
     refs.desc.setText(WELCOME_COPY.cards.sampleOpen.desc(name));
     refs.cta.setText(WELCOME_COPY.cards.sampleOpen.cta);
     refs.setActivate(() => { void openSampleVault(plugin, config, refreshTimeline); });
