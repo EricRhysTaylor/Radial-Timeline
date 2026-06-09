@@ -52,6 +52,8 @@ import { validateAiSettings } from './ai/settings/validateAiSettings';
 import { buildDefaultAiSettings } from './ai/settings/aiSettings';
 import { getAIClient } from './ai/runtime/aiClient';
 import { migrateLegacyKeysToSecretStorage, needsLegacyKeyMigration } from './ai/credentials/credentials';
+import { hasSecret } from './ai/credentials/secretStorage';
+import type { AIProviderId } from './ai/types';
 import { migrateAuthorProgressSettings } from './authorProgress/authorProgressConfig';
 import { migrateBeatSettings, stripLegacyBeatSettings } from './migrations/beatSettings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
@@ -147,6 +149,34 @@ export default class RadialTimelinePlugin extends Plugin {
     // marker lets a freshly reopened view observe that a run is still
     // running and pick up its persisted result without starting a new one.
     public _inquiryRunInFlight: { sessionKey: string; question: string; startedAt: number } | null = null;
+
+    /**
+     * Per-provider "a REAL key is actually stored" flags, resolved async via
+     * hasSecret() on load and whenever a key changes. The engine resolver reads
+     * THIS — not the always-present secret-ID alias — so a keyless vault honestly
+     * reports no credential (and Demo Mode / "Not configured" states fire).
+     */
+    public credentialPresence: Partial<Record<AIProviderId, boolean>> = {};
+
+    /**
+     * Recompute credentialPresence from secret storage, then notify Inquiry views
+     * so they re-resolve the engine. Fire-and-forget on load; awaited after a key
+     * is saved/removed. Cheap (a few hasSecret lookups).
+     */
+    public async refreshCredentialPresence(): Promise<void> {
+        const creds = this.settings.aiSettings?.credentials;
+        const next: Partial<Record<AIProviderId, boolean>> = {};
+        const entries: Array<[AIProviderId, string | undefined]> = [
+            ['openai', creds?.openaiSecretId],
+            ['anthropic', creds?.anthropicSecretId],
+            ['google', creds?.googleSecretId]
+        ];
+        for (const [provider, secretId] of entries) {
+            next[provider] = secretId ? await hasSecret(this.app, secretId) : false;
+        }
+        this.credentialPresence = next;
+        this.inquiryService?.notifyAiSettingsChanged();
+    }
 
     private readonly eventBus = new EventTarget();
     private readonly disposables = new DisposableRegistry();
@@ -498,6 +528,9 @@ export default class RadialTimelinePlugin extends Plugin {
         this.timelineService = new TimelineService(this.app, this);
         this.disposables.add(this.timelineService);
         this.inquiryService = new InquiryService(this.app, this);
+        // Resolve real key presence (async) now that secret storage + Inquiry
+        // service exist; refreshes any open Inquiry view when it lands.
+        void this.refreshCredentialPresence();
         this.inquiryEstimateService = new InquiryEstimateService();
         this.outputProfileStore = new OutputProfileStore(this);
         void this.outputProfileStore.ensureLoaded();

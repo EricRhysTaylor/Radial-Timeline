@@ -2859,7 +2859,10 @@ export function renderAiSection(params: {
                             revealSecretName = false;
                         }
                         setProviderState(validation.state);
-                        plugin.getInquiryService().notifyAiSettingsChanged();
+                        // A real key now exists in secret storage — recompute
+                        // credential presence so the engine flips out of Demo Mode
+                        // (this also notifies Inquiry views to re-resolve).
+                        await plugin.refreshCredentialPresence();
                     })();
                 });
             });

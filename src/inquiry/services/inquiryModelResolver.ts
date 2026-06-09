@@ -169,13 +169,14 @@ export function resolveInquiryEngine(
     // ── Model selection ────────────────────────────────────────────
     const accessTier = resolveTier(aiSettings, provider);
     const providerLabel = PROVIDER_LABELS[provider] ?? String(provider);
+    // For key-based providers "has credential" must mean a REAL secret is stored,
+    // not merely that a secret-ID alias exists — the alias (e.g. `rt.openai.api-key`)
+    // is a default and is always present, so it can't stand in for the key. Actual
+    // presence is resolved async (via hasSecret) into plugin.credentialPresence;
+    // undefined → treat as absent so a keyless vault is honestly keyless.
     const hasCredential = provider === 'ollama'
         ? !!getLocalLlmSettings(aiSettings).baseUrl?.trim() && getLocalLlmSettings(aiSettings).enabled
-        : provider === 'anthropic'
-            ? !!aiSettings.credentials?.anthropicSecretId?.trim()
-            : provider === 'openai'
-                ? !!aiSettings.credentials?.openaiSecretId?.trim()
-                : !!aiSettings.credentials?.googleSecretId?.trim();
+        : (plugin.credentialPresence?.[provider] ?? false);
 
     if (!hasCredential) {
         return {

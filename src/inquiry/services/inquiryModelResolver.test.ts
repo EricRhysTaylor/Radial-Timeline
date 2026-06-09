@@ -16,7 +16,8 @@ describe('resolveInquiryEngine', () => {
                         anthropicSecretId: 'rt.anthropic.test'
                     }
                 }
-            }
+            },
+            credentialPresence: { anthropic: true }
         } as any;
 
         const resolved = resolveInquiryEngine(plugin, BUILTIN_MODELS);
@@ -39,7 +40,8 @@ describe('resolveInquiryEngine', () => {
                         anthropicSecretId: 'rt.anthropic.test'
                     }
                 }
-            }
+            },
+            credentialPresence: { anthropic: true }
         } as any;
 
         const resolved = resolveInquiryEngine(plugin, BUILTIN_MODELS);
