@@ -3,6 +3,8 @@ import type { InquirySession, InquirySessionCache, InquirySessionStatus } from '
 import type { InquiryScope } from './state';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT } from './constants';
 import { readInquirySessionsFromVault, writeInquirySessionsToVault } from './InquiryArtifactStore';
+import type { InquiryVaultIdentity } from './sessionArtifact';
+import { getActiveBook } from '../utils/books';
 
 export class InquirySessionStore {
     private cache: InquirySessionCache;
@@ -323,6 +325,17 @@ export class InquirySessionStore {
         await this.writeNow();
     }
 
+    /**
+     * Stamp the active Book Profile's identity into the sidecar so the Welcome
+     * screen can name a packaged demo vault from this one file — no manifest,
+     * no data.json. Undefined when no book is active.
+     */
+    private resolveVaultIdentity(): InquiryVaultIdentity | undefined {
+        const book = getActiveBook(this.plugin.settings);
+        if (!book) return undefined;
+        return { displayName: book.title, bookFolder: book.sourceFolder };
+    }
+
     private async writeNow(): Promise<void> {
         // Never let an un-hydrated cache reach the sidecar. Until hydrate() has
         // loaded sessions.json, this cache may be empty (fresh load) and writing
@@ -332,7 +345,7 @@ export class InquirySessionStore {
         // Errors are logged, never swallowed silently — a failed sidecar write
         // is the difference between a vault that restores and one that does not.
         try {
-            await writeInquirySessionsToVault(this.plugin.app, this.cache.sessions);
+            await writeInquirySessionsToVault(this.plugin.app, this.cache.sessions, this.resolveVaultIdentity());
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error(

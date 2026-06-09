@@ -705,7 +705,11 @@ export default class RadialTimelinePlugin extends Plugin {
             legacy => !vaultSessions.some(vaultSession => vaultSession.key === legacy.key)
         );
         if (legacyOnly) {
-            await writeInquirySessionsToVault(this.app, merged);
+            const activeBook = getActiveBook(this.settings);
+            const vaultIdentity = activeBook
+                ? { displayName: activeBook.title, bookFolder: activeBook.sourceFolder }
+                : undefined;
+            await writeInquirySessionsToVault(this.app, merged, vaultIdentity);
         }
     }
 

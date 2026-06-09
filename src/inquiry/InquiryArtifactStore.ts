@@ -1,6 +1,7 @@
 import { App, DataAdapter, normalizePath } from 'obsidian';
 import type { InquirySession } from './sessionTypes';
-import { parseSessionArtifact, serializeSessionsToArtifact } from './sessionArtifact';
+import type { InquiryVaultIdentity } from './sessionArtifact';
+import { parseSessionArtifact, parseSessionArtifactVault, serializeSessionsToArtifact } from './sessionArtifact';
 
 /**
  * Vault-resident persistence for inquiry sessions — the single source of truth
@@ -57,15 +58,37 @@ export async function hasInquirySessionSidecarInVault(app: App): Promise<boolean
 
 export async function writeInquirySessionsToVault(
     app: App,
-    sessions: InquirySession[]
+    sessions: InquirySession[],
+    vault?: InquiryVaultIdentity
 ): Promise<void> {
     const io = vaultIo(app);
     const dir = normalizePath(INQUIRY_SIDECAR_DIR);
     if (!(await io.exists(dir))) {
         await io.mkdir(dir);
     }
-    const artifact = serializeSessionsToArtifact(sessions, Date.now());
+    const artifact = serializeSessionsToArtifact(sessions, Date.now(), vault);
     await io.write(normalizePath(INQUIRY_SIDECAR_PATH), JSON.stringify(artifact, null, 2));
+}
+
+/**
+ * Read just the stamped Book-Profile identity from the sidecar (visible path,
+ * legacy fallback). Lets the Welcome screen name a detected demo vault from the
+ * file the author already produced via Save Session State — no manifest needed.
+ * Returns null when there's no sidecar or it carries no identity.
+ */
+export async function readInquirySidecarVaultIdentity(app: App): Promise<InquiryVaultIdentity | null> {
+    const io = vaultIo(app);
+    const newPath = normalizePath(INQUIRY_SIDECAR_PATH);
+    const legacyPath = normalizePath(LEGACY_INQUIRY_SIDECAR_PATH);
+    const path = (await io.exists(newPath))
+        ? newPath
+        : (await io.exists(legacyPath)) ? legacyPath : null;
+    if (!path) return null;
+    try {
+        return parseSessionArtifactVault(await io.read(path));
+    } catch {
+        return null;
+    }
 }
 
 /**

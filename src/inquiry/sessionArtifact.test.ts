@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
     INQUIRY_ARTIFACT_SCHEMA_VERSION,
+    cleanVaultIdentity,
     parseSessionArtifact,
+    parseSessionArtifactVault,
     serializeSessionsToArtifact
 } from './sessionArtifact';
 import type { InquirySession } from './sessionTypes';
@@ -98,5 +100,36 @@ describe('parseSessionArtifact', () => {
     it('returns an empty array for a valid empty artifact', () => {
         const raw = JSON.stringify(serializeSessionsToArtifact([], 1));
         expect(parseSessionArtifact(raw)).toEqual([]);
+    });
+});
+
+describe('vault identity (Book-Profile name stamped into the sidecar)', () => {
+    it('omits the vault field when no identity is given', () => {
+        const artifact = serializeSessionsToArtifact([makeSession()], 1);
+        expect('vault' in artifact).toBe(false);
+    });
+
+    it('stamps and round-trips the vault identity', () => {
+        const raw = JSON.stringify(serializeSessionsToArtifact([makeSession()], 1, {
+            displayName: 'Pride & Prejudice',
+            bookFolder: 'Pride & Prejudice'
+        }));
+        expect(parseSessionArtifactVault(raw)).toEqual({
+            displayName: 'Pride & Prejudice',
+            bookFolder: 'Pride & Prejudice'
+        });
+        // Sessions still parse unaffected by the new header field.
+        expect(parseSessionArtifact(raw)).toHaveLength(1);
+    });
+
+    it('cleanVaultIdentity drops blanks and collapses empty to undefined', () => {
+        expect(cleanVaultIdentity({ displayName: '  P&P  ', bookFolder: '' })).toEqual({ displayName: 'P&P' });
+        expect(cleanVaultIdentity({ displayName: '   ', bookFolder: '  ' })).toBeUndefined();
+        expect(cleanVaultIdentity(undefined)).toBeUndefined();
+    });
+
+    it('parseSessionArtifactVault returns null when no identity was stamped', () => {
+        const raw = JSON.stringify(serializeSessionsToArtifact([makeSession()], 1));
+        expect(parseSessionArtifactVault(raw)).toBeNull();
     });
 });

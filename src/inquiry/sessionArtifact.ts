@@ -31,10 +31,35 @@ export const INQUIRY_ARTIFACT_SCHEMA_VERSION = 1 as const;
  */
 export type PersistedInquirySession = Omit<InquirySession, 'lastAccessed'>;
 
+/**
+ * Identity of the book this vault ships, stamped into the sidecar on save from
+ * the active Book Profile. This is what lets the Welcome screen name a demo
+ * vault ("Pride & Prejudice") WITHOUT a separate manifest file or the plugin's
+ * data.json — the Book Profile is the source of truth, and Save Session State
+ * propagates it into the one file that travels with the vault.
+ */
+export interface InquiryVaultIdentity {
+    displayName?: string;
+    bookFolder?: string;
+}
+
 export interface InquirySessionArtifact {
     schemaVersion: typeof INQUIRY_ARTIFACT_SCHEMA_VERSION;
     savedAt: number;
+    vault?: InquiryVaultIdentity;
     sessions: PersistedInquirySession[];
+}
+
+/** Drop blank fields; return undefined when nothing meaningful remains. */
+export function cleanVaultIdentity(vault?: InquiryVaultIdentity): InquiryVaultIdentity | undefined {
+    if (!vault) return undefined;
+    const displayName = vault.displayName?.trim();
+    const bookFolder = vault.bookFolder?.trim();
+    if (!displayName && !bookFolder) return undefined;
+    return {
+        ...(displayName ? { displayName } : {}),
+        ...(bookFolder ? { bookFolder } : {})
+    };
 }
 
 function stripTransient(session: InquirySession): PersistedInquirySession {
@@ -47,13 +72,33 @@ function stripTransient(session: InquirySession): PersistedInquirySession {
 
 export function serializeSessionsToArtifact(
     sessions: InquirySession[],
-    savedAt: number
+    savedAt: number,
+    vault?: InquiryVaultIdentity
 ): InquirySessionArtifact {
+    const cleaned = cleanVaultIdentity(vault);
     return {
         schemaVersion: INQUIRY_ARTIFACT_SCHEMA_VERSION,
         savedAt,
+        ...(cleaned ? { vault: cleaned } : {}),
         sessions: sessions.map(stripTransient)
     };
+}
+
+/**
+ * Extract just the stamped vault identity from a sidecar payload, for the
+ * Welcome screen's demo-vault naming. Returns null for a missing/invalid
+ * payload or one with no usable identity — naming then falls back to the
+ * manifest or scene-folder inference.
+ */
+export function parseSessionArtifactVault(raw: string): InquiryVaultIdentity | null {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+    if (!isArtifact(parsed)) return null;
+    return cleanVaultIdentity((parsed as InquirySessionArtifact).vault) ?? null;
 }
 
 /**

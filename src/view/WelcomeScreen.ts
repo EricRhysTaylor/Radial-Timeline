@@ -7,7 +7,7 @@ import { normalizePath, setIcon, TFolder } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../branding/rtLogo';
-import { hasInquirySessionSidecarInVault } from '../inquiry/InquiryArtifactStore';
+import { hasInquirySessionSidecarInVault, readInquirySidecarVaultIdentity } from '../inquiry/InquiryArtifactStore';
 import {
     normalizeClassContribution,
     normalizeInquirySources
@@ -404,7 +404,17 @@ const hydrateSampleVaultCard = async (
         return;
     }
 
-    const config = resolveSampleVaultConfig(plugin);
+    // The sidecar's stamped Book-Profile identity is the primary name source —
+    // it travels with the vault (no data.json, no manifest needed). Fall back to
+    // the manifest / scene-folder inference only for fields it doesn't carry.
+    const sidecarIdentity = await readInquirySidecarVaultIdentity(plugin.app);
+    const fallback = resolveSampleVaultConfig(plugin);
+    const config: SampleVaultConfig | null = (sidecarIdentity || fallback)
+        ? {
+            displayName: sidecarIdentity?.displayName ?? fallback?.displayName,
+            bookFolder: sidecarIdentity?.bookFolder ?? fallback?.bookFolder
+        }
+        : null;
     const name = displayNameToBookTitle(config?.displayName, config?.bookFolder).toLowerCase() === DEFAULT_BOOK_TITLE.toLowerCase()
         ? 'sample vault'
         : displayNameToBookTitle(config?.displayName, config?.bookFolder);
