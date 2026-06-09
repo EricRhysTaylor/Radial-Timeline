@@ -113,7 +113,10 @@
 .ert-welcome-workflow-lead {
   font-size: 14px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--text-normal);
+  margin-bottom: var(--size-2-2);
 }
 
 .ert-welcome-workflow-step {
@@ -219,7 +222,7 @@
 .rt-welcome-card::after {
   content: attr(data-card-number);
   position: absolute;
-  top: 6px;
+  top: 0px;
   right: 16px;
   z-index: 0;
   font-size: 102px;
