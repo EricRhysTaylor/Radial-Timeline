@@ -59,12 +59,13 @@ const WELCOME_COPY = {
         }
     },
     workflow: {
-        lead: 'Starting a new, empty vault? The quick path:',
+        lead: 'Starting a new vault? Consider the following workflow:',
         steps: [
-            { icon: 'compass', text: 'Set your novel folder inside the vault — Book Manager.' },
-            { icon: 'file-plus', text: 'Add scenes with "Create note", or scaffold quickly with Book Designer.' },
-            { icon: 'layers', text: 'Fill scenes with basic properties, then expand with subplots, beats, characters, and more.' },
-            { icon: 'map-pin', text: 'Decide early: how many acts? Establish context markers with Backdrop notes or micro-backdrops (Settings).' }
+            { icon: 'compass', text: 'Set your novel folder inside the vault with Book Manager.' },
+            { icon: 'file-plus', text: 'Add scenes with `Create note`, or scaffold quickly with `Book Designer`.' },
+            { icon: 'layers', text: 'Populate scenes and then expand with subplots, beat systems and more.' },
+            { icon: 'map-pin', text: 'Decide early: How many acts? What is the span of time? Consider helpful context markers with backdrop notes or micro-backdrops.' },
+            { icon: 'target', text: "Once you get in the rhythm, don't forget to save your working sessions and set writing goals for scenes or publish stages." }
         ]
     },
     feedback: 'Take a moment to share your experiences and what you would like to see next as you develop your story. Radial Timeline is expanding in every direction, and your feedback helps guide it. Happy Writing!',
@@ -462,20 +463,27 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const body = container.createDiv({ cls: 'rt-welcome-body' });
 
+    // Two description paragraphs stay together directly under the title.
     body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.intro });
+    body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.feedback });
 
-    // Quick-start workflow for a brand-new, empty vault.
+    // Quick-start workflow, below the description. Backtick-wrapped segments
+    // (e.g. `Create note`) render as inline command/code chips.
     const workflow = body.createDiv({ cls: 'ert-welcome-workflow' });
     workflow.createDiv({ cls: 'ert-welcome-workflow-lead', text: WELCOME_COPY.workflow.lead });
     for (const step of WELCOME_COPY.workflow.steps) {
         const stepEl = workflow.createDiv({ cls: 'ert-welcome-workflow-step' });
         const iconEl = stepEl.createDiv({ cls: 'ert-welcome-workflow-icon' });
         setIcon(iconEl, step.icon);
-        stepEl.createSpan({ cls: 'ert-welcome-workflow-text', text: step.text });
+        const textEl = stepEl.createSpan({ cls: 'ert-welcome-workflow-text' });
+        step.text.split(/`([^`]+)`/g).forEach((part, index) => {
+            if (index % 2 === 1) {
+                textEl.createEl('code', { cls: 'ert-welcome-kbd', text: part });
+            } else if (part) {
+                textEl.appendText(part);
+            }
+        });
     }
-
-    // Feedback / sign-off.
-    body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.feedback });
 
     // Three hero cards: Book Project · Sample Vault · Website.
     const cards = body.createDiv({ cls: 'rt-welcome-cards' });
