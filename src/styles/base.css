@@ -102,8 +102,9 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-sm);
-  padding: var(--ert-pad-loose) var(--ert-pad-md);
+  gap: var(--size-4-2);
+  padding: var(--size-4-6);
+  text-align: left;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--background-primary-alt) 50%, transparent);
@@ -118,7 +119,7 @@
 .ert-welcome-workflow-step {
   display: flex;
   align-items: flex-start;
-  gap: var(--ert-gap-cozy);
+  gap: var(--size-4-3);
 }
 
 .ert-welcome-workflow-icon {
@@ -207,11 +208,13 @@
 .rt-welcome-card::after {
   content: attr(data-card-number);
   position: absolute;
-  top: 14px;
+  /* Large glyph has ascent padding above the digits; pull up so the visible
+     top margin matches the right margin. */
+  top: -14px;
   right: 16px;
   z-index: 0;
   font-size: 102px;
-  letter-spacing: -0.12em;
+  letter-spacing: -0.04em;
   line-height: 1;
   font-weight: 800;
   color: color-mix(in srgb, var(--text-muted) 18%, transparent);
@@ -220,8 +223,10 @@
 
 .rt-welcome-card-bg-icon {
   position: absolute;
-  left: 18px;
-  top: 18px;
+  /* Tuck into the top-left corner so ~1/4 of the shape is clipped, sitting
+     behind the crisp foreground icon as a ghost. */
+  left: -30px;
+  top: -30px;
   z-index: 0;
   width: 122px;
   height: 122px;
@@ -330,14 +335,14 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: var(--ert-pad-3xl);
+  gap: var(--size-4-9);
 }
 
 .ert-welcome-links-col {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--ert-gap-tight);
+  gap: var(--size-2-3);
 }
 
 .rt-welcome-link-row {
