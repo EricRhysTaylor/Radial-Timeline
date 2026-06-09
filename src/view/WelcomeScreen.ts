@@ -65,7 +65,7 @@ const WELCOME_COPY = {
             { icon: 'file-plus', text: 'Add scenes with `Create note`, or scaffold quickly with `Book Designer`.' },
             { icon: 'layers', text: 'Populate scenes and then expand with subplots, beat systems and more.' },
             { icon: 'map-pin', text: 'Decide early: How many acts? What is the span of time? Consider helpful context markers with backdrop notes or micro-backdrops.' },
-            { icon: 'target', text: "Once you get in the rhythm, don't forget to save your working sessions and set writing goals for scenes or publish stages." }
+            { icon: 'target', text: "Once you get in the rhythm, don't forget to track your writing session time and word count and set due dates for scenes or publish stages." }
         ]
     },
     feedback: 'Take a moment to share your experiences using the RT and what features you would like to see next to smooth your writing workflow. Radial Timeline is expanding in every direction, and your feedback helps guide it. Happy Writing!',
