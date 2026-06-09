@@ -702,6 +702,7 @@ export interface TranslationKeys {
             runningTooltip: string;
             runningSingleTooltip: string;
             onboardingTooltip: string;
+            noApiKeyTooltip: string;
         };
         mobile: {
             title: string;
@@ -835,6 +836,7 @@ export interface TranslationKeys {
             cannotCancelFromPreview: string;
             cancelRequested: string;
             bookScopeUnresolved: string;
+            noApiKey: string;
             writebackDisabledSimulated: string;
             noActionItemsThreshold: string;
             cancelOnlySingleQuestion: string;
@@ -895,6 +897,8 @@ export interface TranslationKeys {
             hoverPreview: string;
             inquiryNotConfiguredHero: string;
             inquiryNotConfiguredHelp: string;
+            noApiKeyHero: string;
+            noApiKeyHelp: string;
             noScenesHero: string;
         };
         details: {
@@ -2910,6 +2914,7 @@ export const en: TranslationKeys = {
             runningTooltip: 'Inquiry is processing an API run.\nYou can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
             runningSingleTooltip: 'Inquiry is processing this question now.\nYou can switch to another note and keep working while it runs, but leave this Inquiry tab open.\nIf you cancel this run, you must start over from the beginning. There is no resume.',
             onboardingTooltip: 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.',
+            noApiKeyTooltip: 'This vault is read-only without an API key.\nOpen a saved session to explore the finished analysis.\nAdd a provider key in Settings → Radial Timeline → AI to run new analyses.',
         },
         mobile: {
             title: 'Desktop required',
@@ -3043,6 +3048,7 @@ export const en: TranslationKeys = {
             cannotCancelFromPreview: 'This run cannot be cancelled from the preview panel.',
             cancelRequested: 'Inquiry cancel requested. Inquiry will stop after the current pass returns. The active provider request may still complete.',
             bookScopeUnresolved: 'Book scope unresolved. Configure a book in settings before running Inquiry.',
+            noApiKey: 'Add an API key in Settings → Radial Timeline → AI to run new Inquiry analyses.',
             writebackDisabledSimulated: '{{fieldLabel}} writeback is disabled for simulated runs.',
             noActionItemsThreshold: 'No action items met the writeback threshold.',
             cancelOnlySingleQuestion: 'Cancel is available for active single-question Inquiry runs.',
@@ -3103,6 +3109,8 @@ export const en: TranslationKeys = {
             hoverPreview: 'Hover a question to preview its payload.',
             inquiryNotConfiguredHero: 'Inquiry is not configured.',
             inquiryNotConfiguredHelp: 'Set scan roots and class scope in Settings → Radial Timeline → Inquiry.',
+            noApiKeyHero: 'Read-only — no API key.',
+            noApiKeyHelp: 'Open a saved session to explore. Add a provider key in Settings → Radial Timeline → AI to run new analyses.',
             noScenesHero: 'No scenes available for Inquiry.',
         },
         details: {

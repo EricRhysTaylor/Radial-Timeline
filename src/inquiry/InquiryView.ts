@@ -3853,6 +3853,11 @@ export class InquiryView extends ItemView {
     onAiSettingsChanged(): void {
         this._resolvedEngine = null;
         this._currentCorpusContext = null;
+        // Adding/removing a provider key flips the no-api-key read-only state, so
+        // recompute guidance here — otherwise the calm read-only screen would
+        // persist until the view is reopened.
+        this.guidanceState = this.resolveGuidanceState();
+        this.updateGuidance();
         this.updateEngineBadge();
         this.refreshEnginePanel();
         this.updateMinimapPressureGauge();
@@ -5892,8 +5897,22 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return 'running';
         if (!this.isInquiryConfigured()) return 'not-configured';
         if (this.getInquirySceneCount() === 0) return 'no-scenes';
+        // Configured + has scenes but the active provider has no key → read-only
+        // Demo Mode: browse saved sessions, but new runs are blocked WITHOUT the
+        // red alert state (which is reserved for genuine misconfiguration).
+        if (this.isInquiryApiKeyMissing()) return 'no-api-key';
         if (this.isResultsState()) return 'results';
         return 'ready';
+    }
+
+    /**
+     * True when the active provider has no usable credential. The resolver
+     * never throws — it returns a blocked DTO with hasCredential:false — so this
+     * is a pure read. AI-disabled / unconfigured cases are caught upstream
+     * (the view won't open) and by the earlier guidance branches.
+     */
+    private isInquiryApiKeyMissing(): boolean {
+        return !this.getResolvedEngine().hasCredential;
     }
 
     private isInquiryConfigured(): boolean {
@@ -5916,7 +5935,9 @@ export class InquiryView extends ItemView {
     }
 
     private isInquiryRunDisabled(): boolean {
-        return this.guidanceState === 'not-configured' || this.guidanceState === 'no-scenes';
+        return this.guidanceState === 'not-configured'
+            || this.guidanceState === 'no-scenes'
+            || this.guidanceState === 'no-api-key';
     }
 
     private isInquiryGuidanceLockout(): boolean {
@@ -5942,7 +5963,10 @@ export class InquiryView extends ItemView {
         const running = this.state.isRunning;
 
         if (this.rootSvg) {
-            this.rootSvg.classList.toggle('is-inquiry-blocked', runDisabled);
+            // Red alert is reserved for genuine misconfiguration (not-configured /
+            // no-scenes) — NOT the calm no-api-key read-only state, which disables
+            // running but must never paint the ring red.
+            this.rootSvg.classList.toggle('is-inquiry-blocked', blocked || lockout);
             this.rootSvg.classList.toggle('is-run-locked', runDisabled || running);
             this.rootSvg.classList.toggle('is-no-scenes', state === 'no-scenes');
             this.rootSvg.classList.toggle('is-guidance-lockout', lockout);
@@ -5985,6 +6009,24 @@ export class InquiryView extends ItemView {
             this.hoverTextEl.classList.add('ert-hidden');
             this.hoverTextEl.classList.remove('is-guidance', 'is-guidance-alert', 'is-guidance-results');
             clearSvgChildren(this.hoverTextEl);
+            return;
+        }
+
+        if (state === 'no-api-key') {
+            // Calm read-only message — uses `is-guidance` (text-normal fill), not
+            // `is-guidance-alert` (red). No reopen needed: cleared live when a key
+            // is added via onAiSettingsChanged().
+            this.hoverTextEl.classList.remove('ert-hidden');
+            this.hoverTextEl.classList.toggle('is-guidance', true);
+            this.hoverTextEl.classList.toggle('is-guidance-alert', false);
+            this.hoverTextEl.classList.toggle('is-guidance-results', false);
+            this.hoverTextEl.setAttribute('x', '0');
+            this.hoverTextEl.setAttribute('y', String(GUIDANCE_TEXT_Y));
+            this.hoverTextEl.setAttribute('text-anchor', 'middle');
+            this.setGuidanceTextLines(
+                [t('inquiry.preview.noApiKeyHero'), t('inquiry.preview.noApiKeyHelp')],
+                GUIDANCE_LINE_HEIGHT
+            );
             return;
         }
 
@@ -6063,9 +6105,11 @@ export class InquiryView extends ItemView {
                 : t('inquiry.help.runningTooltip'))
             : (corpusAlert
                 ? t('inquiry.help.corpusTooltip')
-                : (isAlert
-                    ? (state === 'not-configured' ? t('inquiry.help.configTooltip') : t('inquiry.help.noScenesTooltip'))
-                    : (isResults ? t('inquiry.help.resultsTooltip') : (hasSessions ? t('inquiry.help.tooltip') : t('inquiry.help.onboardingTooltip')))));
+                : (state === 'no-api-key'
+                    ? t('inquiry.help.noApiKeyTooltip')
+                    : (isAlert
+                        ? (state === 'not-configured' ? t('inquiry.help.configTooltip') : t('inquiry.help.noScenesTooltip'))
+                        : (isResults ? t('inquiry.help.resultsTooltip') : (hasSessions ? t('inquiry.help.tooltip') : t('inquiry.help.onboardingTooltip'))))));
         const balancedTooltip = balanceTooltipText(tooltip);
 
         this.helpToggleButton.removeAttribute('aria-pressed');
@@ -6301,6 +6345,11 @@ export class InquiryView extends ItemView {
         question: InquiryQuestion,
         options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
+        if (this.guidanceState === 'no-api-key') {
+            // Read-only Demo Mode: explain rather than silently no-op or throw.
+            this.notifyInteraction(t('inquiry.interaction.noApiKey'));
+            return;
+        }
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction(t('inquiry.interaction.running'));
@@ -7311,6 +7360,7 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return t('inquiry.runner.inquiryAlreadyRunning');
         if (this.isInquiryBlocked()) return t('inquiry.runner.inquiryNotConfigured');
         if (this.guidanceState === 'no-scenes') return t('inquiry.runner.noScenesAvailable');
+        if (this.guidanceState === 'no-api-key') return t('inquiry.interaction.noApiKey');
         if (!questions.length) return t('inquiry.runner.noEnabledQuestions');
         if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable';
         return null;

@@ -211,7 +211,7 @@ export type CorpusCcStats = {
 };
 
 export type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped' | 'refused';
-export type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
+export type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'no-api-key' | 'ready' | 'running' | 'results';
 
 export type OmnibusProviderChoice = {
     provider: Exclude<AIProviderId, 'none'>;
