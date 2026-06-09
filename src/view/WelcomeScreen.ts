@@ -58,6 +58,16 @@ const WELCOME_COPY = {
             secondary: '→ or open Book Designer'
         }
     },
+    workflow: {
+        lead: 'Starting a new, empty vault? The quick path:',
+        steps: [
+            { icon: 'compass', text: 'Set your novel folder inside the vault — Book Manager.' },
+            { icon: 'file-plus', text: 'Add scenes with "Create note", or scaffold quickly with Book Designer.' },
+            { icon: 'layers', text: 'Fill scenes with basic properties, then expand with subplots, beats, characters, and more.' },
+            { icon: 'map-pin', text: 'Decide early: how many acts? Establish context markers with Backdrop notes or micro-backdrops (Settings).' }
+        ]
+    },
+    feedback: 'Take a moment to share your experiences and what you would like to see next as you develop your story. Radial Timeline is expanding in every direction, and your feedback helps guide it. Happy Writing!',
     updateNote: 'Community features coming to RT and website later this year.'
 } as const;
 
@@ -451,6 +461,19 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.intro });
 
+    // Quick-start workflow for a brand-new, empty vault.
+    const workflow = body.createDiv({ cls: 'ert-welcome-workflow' });
+    workflow.createDiv({ cls: 'ert-welcome-workflow-lead', text: WELCOME_COPY.workflow.lead });
+    for (const step of WELCOME_COPY.workflow.steps) {
+        const stepEl = workflow.createDiv({ cls: 'ert-welcome-workflow-step' });
+        const iconEl = stepEl.createDiv({ cls: 'ert-welcome-workflow-icon' });
+        setIcon(iconEl, step.icon);
+        stepEl.createSpan({ cls: 'ert-welcome-workflow-text', text: step.text });
+    }
+
+    // Feedback / sign-off.
+    body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.feedback });
+
     // Three hero cards: Book Project · Sample Vault · Website.
     const cards = body.createDiv({ cls: 'rt-welcome-cards' });
 
@@ -496,6 +519,21 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     // Closing notes + odds and ends
     body.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.updateNote });
 
+    // Resource links, two columns, ABOVE the backup block.
+    // Left column: YouTube, Wiki. Right column: Discussions, Bug reports.
+    const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });
+    const links = linksWrapper.createDiv({ cls: 'rt-welcome-links' });
+    const linksColLeft = links.createDiv({ cls: 'ert-welcome-links-col' });
+    const linksColRight = links.createDiv({ cls: 'ert-welcome-links-col' });
+    const makeLinkRow = (col: HTMLElement, label: string, href: string) => {
+        const row = col.createDiv({ cls: 'rt-welcome-link-row' });
+        row.createEl('a', { href, text: label });
+    };
+    makeLinkRow(linksColLeft, 'YouTube videos', WELCOME_URLS.youtube);
+    makeLinkRow(linksColLeft, 'Wiki — full documentation', WELCOME_URLS.wiki);
+    makeLinkRow(linksColRight, 'Discussions', WELCOME_URLS.discussions);
+    makeLinkRow(linksColRight, 'Bug reports / feature requests', WELCOME_URLS.issues);
+
     // Backup Notice
     const backupNotice = body.createDiv({ cls: 'rt-welcome-backup-notice' });
     const iconContainer = backupNotice.createDiv({ cls: 'rt-welcome-backup-icon' });
@@ -509,15 +547,4 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
     backupPara.createSpan({ text: ' or ' });
     backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
-
-    const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });
-    const links = linksWrapper.createDiv({ cls: 'rt-welcome-links' });
-    const makeLinkRow = (label: string, href: string) => {
-        const row = links.createDiv({ cls: 'rt-welcome-link-row' });
-        row.createEl('a', { href, text: label });
-    };
-    makeLinkRow('Wiki — full documentation', WELCOME_URLS.wiki);
-    makeLinkRow('YouTube videos', WELCOME_URLS.youtube);
-    makeLinkRow('Discussions', WELCOME_URLS.discussions);
-    makeLinkRow('Bug reports / feature requests', WELCOME_URLS.issues);
 }
