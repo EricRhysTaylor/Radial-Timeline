@@ -225,6 +225,10 @@
   flex: 1 1 auto;
 }
 
+.rt-welcome-card-secondary-row {
+  margin-top: 10px;
+}
+
 .rt-welcome-card-cta {
   position: relative;
   z-index: 1;
@@ -258,14 +262,17 @@
 .rt-welcome-card-secondary {
   position: relative;
   z-index: 1;
+  display: inline-block;
+  width: fit-content;
   font-size: 12.5px;
   color: var(--text-muted);
   text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, currentColor 48%, transparent);
 }
 
 .rt-welcome-card-secondary:hover {
   color: var(--text-accent);
-  text-decoration: underline;
+  border-bottom-color: currentColor;
 }
 
 .rt-welcome-links-wrapper {

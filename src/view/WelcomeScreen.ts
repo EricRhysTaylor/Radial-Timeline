@@ -29,7 +29,7 @@ interface WelcomeScreenParams {
 }
 
 const WELCOME_COPY = {
-    intro: 'Radial Timeline turns long-form narratives into a single, navigable story map. Track scenes, arcs, characters, beats, and timelines across novels, sagas, memoirs, and other sustained fiction or nonfiction projects. Pick a starting point below.',
+    intro: 'Radial Timeline turns long-form narratives into a single, navigable story map. Track scenes, subplots, characters, beats, and timelines across novels, sagas, memoirs, and other sustained fiction or nonfiction projects. Pick a starting point below.',
     cards: {
         website: {
             title: 'Visit the website',
@@ -55,10 +55,10 @@ const WELCOME_COPY = {
             title: 'Set Book Project',
             desc: 'Choose the manuscript folder that drives the timeline, exports, Inquiry scope, and Book Manager.',
             cta: 'Open Book Manager',
-            secondary: 'or open Book Designer →'
+            secondary: '→ or open Book Designer'
         }
     },
-    reorderNote: 'Tip: scenes and beats drag into a new order in Narrative mode. Rename or add books anytime in Book Manager.'
+    updateNote: 'Community features coming to RT and website later this year.'
 } as const;
 
 const WELCOME_URLS = {
@@ -66,7 +66,8 @@ const WELCOME_URLS = {
     sampleNewsletter: 'https://radialtimeline.com/resources/newsletter',
     wiki: 'https://github.com/EricRhysTaylor/radial-timeline/wiki',
     discussions: 'https://github.com/EricRhysTaylor/radial-timeline/discussions',
-    issues: 'https://github.com/EricRhysTaylor/radial-timeline/issues'
+    issues: 'https://github.com/EricRhysTaylor/radial-timeline/issues',
+    youtube: 'https://www.youtube.com/@RadialTimeline'
 } as const;
 
 const CARD_ICONS = {
@@ -150,6 +151,8 @@ interface CardSpec {
     desc: string;
     ctaLabel: string;
     onActivate: () => void;
+    secondaryLabel?: string;
+    onSecondaryActivate?: () => void;
 }
 
 const buildCard = (parent: HTMLElement, plugin: RadialTimelinePlugin, spec: CardSpec): CardRefs => {
@@ -166,7 +169,21 @@ const buildCard = (parent: HTMLElement, plugin: RadialTimelinePlugin, spec: Card
     setIcon(iconEl, spec.icon);
 
     const title = root.createDiv({ cls: 'rt-welcome-card-title', text: spec.title });
-    const desc = root.createDiv({ cls: 'rt-welcome-card-desc', text: spec.desc });
+    const desc = root.createDiv({ cls: 'rt-welcome-card-desc' });
+    desc.createDiv({ cls: 'rt-welcome-card-desc-text', text: spec.desc });
+    if (spec.secondaryLabel && spec.onSecondaryActivate) {
+        const secondaryRow = desc.createDiv({ cls: 'rt-welcome-card-secondary-row' });
+        const secondary = secondaryRow.createEl('a', {
+            cls: 'rt-welcome-card-secondary',
+            href: '#',
+            text: spec.secondaryLabel
+        });
+        plugin.registerDomEvent(secondary, 'click', (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            spec.onSecondaryActivate?.();
+        });
+    }
     const cta = root.createDiv({ cls: 'rt-welcome-card-cta', text: spec.ctaLabel });
 
     // The whole card is the primary affordance; activate is rebindable so the
@@ -374,7 +391,8 @@ const openBookManagerFromWelcome = async (plugin: RadialTimelinePlugin): Promise
 const hydrateSampleVaultCard = async (
     refs: CardRefs,
     plugin: RadialTimelinePlugin,
-    refreshTimeline: () => void
+    refreshTimeline: () => void,
+    onDetected: () => void
 ): Promise<void> => {
     const hasSidecar = await hasInquirySessionSidecarInVault(plugin.app);
     if (!hasSidecar) {
@@ -397,6 +415,16 @@ const hydrateSampleVaultCard = async (
     refs.desc.setText(WELCOME_COPY.cards.sampleOpen.desc(name));
     refs.cta.setText(WELCOME_COPY.cards.sampleOpen.cta);
     refs.setActivate(() => { void openSampleVault(plugin, config, refreshTimeline); });
+    onDetected();
+};
+
+const applyWelcomeCardOrder = (
+    ordered: Array<{ refs: CardRefs; number: string }>
+): void => {
+    ordered.forEach((entry, index) => {
+        entry.refs.root.style.order = String(index + 1);
+        entry.refs.root.setAttr('data-card-number', entry.number);
+    });
 };
 
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
@@ -413,16 +441,18 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.intro });
 
-    // Three hero cards: Website · Sample Vault (hero) · Design your book
+    // Three hero cards: Book Project · Sample Vault · Website.
     const cards = body.createDiv({ cls: 'rt-welcome-cards' });
 
-    buildCard(cards, plugin, {
+    const designRefs = buildCard(cards, plugin, {
         number: '01',
-        icon: CARD_ICONS.website,
-        title: WELCOME_COPY.cards.website.title,
-        desc: WELCOME_COPY.cards.website.desc,
-        ctaLabel: WELCOME_COPY.cards.website.cta,
-        onActivate: () => { window.open(WELCOME_URLS.website, '_blank'); }
+        icon: CARD_ICONS.design,
+        title: WELCOME_COPY.cards.design.title,
+        desc: WELCOME_COPY.cards.design.desc,
+        ctaLabel: WELCOME_COPY.cards.design.cta,
+        onActivate: () => { void openBookManagerFromWelcome(plugin); },
+        secondaryLabel: WELCOME_COPY.cards.design.secondary,
+        onSecondaryActivate: () => { new BookDesignerModal(plugin.app, plugin).open(); }
     });
 
     const sampleRefs = buildCard(cards, plugin, {
@@ -435,39 +465,26 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         onActivate: () => undefined
     });
     sampleRefs.root.addClass('rt-welcome-card-pending');
-    void hydrateSampleVaultCard(sampleRefs, plugin, refreshTimeline);
 
-    const designRefs = buildCard(cards, plugin, {
+    const websiteRefs = buildCard(cards, plugin, {
         number: '03',
-        icon: CARD_ICONS.design,
-        title: WELCOME_COPY.cards.design.title,
-        desc: WELCOME_COPY.cards.design.desc,
-        ctaLabel: WELCOME_COPY.cards.design.cta,
-        onActivate: () => { void openBookManagerFromWelcome(plugin); }
+        icon: CARD_ICONS.website,
+        title: WELCOME_COPY.cards.website.title,
+        desc: WELCOME_COPY.cards.website.desc,
+        ctaLabel: WELCOME_COPY.cards.website.cta,
+        onActivate: () => { window.open(WELCOME_URLS.website, '_blank'); }
     });
-    const designSecondary = designRefs.root.createEl('a', {
-        cls: 'rt-welcome-card-secondary',
-        href: '#',
-        text: WELCOME_COPY.cards.design.secondary
-    });
-    plugin.registerDomEvent(designSecondary, 'click', (evt) => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        new BookDesignerModal(plugin.app, plugin).open();
+
+    void hydrateSampleVaultCard(sampleRefs, plugin, refreshTimeline, () => {
+        applyWelcomeCardOrder([
+            { refs: sampleRefs, number: '01' },
+            { refs: designRefs, number: '02' },
+            { refs: websiteRefs, number: '03' }
+        ]);
     });
 
     // Closing notes + odds and ends
-    body.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.reorderNote });
-
-    const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });
-    const links = linksWrapper.createDiv({ cls: 'rt-welcome-links' });
-    const makeLinkRow = (label: string, href: string) => {
-        const row = links.createDiv({ cls: 'rt-welcome-link-row' });
-        row.createEl('a', { href, text: label });
-    };
-    makeLinkRow('Wiki — full documentation', WELCOME_URLS.wiki);
-    makeLinkRow('Discussions', WELCOME_URLS.discussions);
-    makeLinkRow('Bug reports / feature requests', WELCOME_URLS.issues);
+    body.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.updateNote });
 
     // Backup Notice
     const backupNotice = body.createDiv({ cls: 'rt-welcome-backup-notice' });
@@ -482,4 +499,15 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
     backupPara.createSpan({ text: ' or ' });
     backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
+
+    const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });
+    const links = linksWrapper.createDiv({ cls: 'rt-welcome-links' });
+    const makeLinkRow = (label: string, href: string) => {
+        const row = links.createDiv({ cls: 'rt-welcome-link-row' });
+        row.createEl('a', { href, text: label });
+    };
+    makeLinkRow('Wiki — full documentation', WELCOME_URLS.wiki);
+    makeLinkRow('YouTube videos', WELCOME_URLS.youtube);
+    makeLinkRow('Discussions', WELCOME_URLS.discussions);
+    makeLinkRow('Bug reports / feature requests', WELCOME_URLS.issues);
 }
