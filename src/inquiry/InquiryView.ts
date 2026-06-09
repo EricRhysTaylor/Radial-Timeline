@@ -785,6 +785,11 @@ export class InquiryView extends ItemView {
         }
         this.viewDisposables = new DisposableRegistry();
         this.registerViewTimerCleanups();
+        // Load the session cache from the vault sidecar (single source of truth)
+        // and arm writes BEFORE any session-touching UI work below. The store is
+        // constructed with an empty cache; without this awaited hydrate the first
+        // interaction would flush that empty cache over a good sessions.json.
+        await this.sessionStore.hydrate();
         const freshLaunchPending = this.plugin.consumeInquiryFreshLaunchPending();
         if (!this.state.isRunning) {
             this.clearRehydrateState();

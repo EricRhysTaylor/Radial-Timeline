@@ -2,15 +2,65 @@ import type RadialTimelinePlugin from '../main';
 import type { InquirySession, InquirySessionCache, InquirySessionStatus } from './sessionTypes';
 import type { InquiryScope } from './state';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT } from './constants';
-import { writeInquirySessionsToVault } from './InquiryArtifactStore';
+import { readInquirySessionsFromVault, writeInquirySessionsToVault } from './InquiryArtifactStore';
 
 export class InquirySessionStore {
     private cache: InquirySessionCache;
     private saveTimeout: number | null = null;
 
+    /**
+     * Writes to the vault sidecar are disarmed until hydrate() has loaded it.
+     * A freshly constructed store seeds its cache from settings.inquirySessionCache,
+     * which is intentionally NEVER persisted to data.json — so after an Obsidian
+     * restart / plugin reload / vault copy the cache starts EMPTY. Without this
+     * gate, the first interaction (even getSession() bumping lastAccessed) would
+     * flush that empty cache over a good sessions.json. This flag is the guard
+     * against that load-order clobber. Paired with hydrate(), which reads the
+     * sidecar — the single source of truth — before arming writes.
+     */
+    private hydrated = false;
+
     constructor(private plugin: RadialTimelinePlugin) {
         this.cache = this.snapshotFromSettings();
         this.prune();
+    }
+
+    /**
+     * Load the cache from the vault sidecar (the single persisted source of
+     * truth) and arm the store for writes. MUST be awaited before any mutation
+     * can flush — see the `hydrated` field for the clobber it prevents.
+     *
+     * A same-process reopen may carry newer, not-yet-flushed work in the
+     * in-memory cache; those sessions win over the sidecar on key conflict so a
+     * reopen never drops unsaved work. Pure read of the sidecar — does not write
+     * it back. On an IO read failure we leave writes DISARMED so a file we
+     * couldn't read is never overwritten with an empty set.
+     */
+    async hydrate(): Promise<void> {
+        let sidecarSessions: InquirySession[];
+        try {
+            sidecarSessions = await readInquirySessionsFromVault(this.plugin.app);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(
+                `[RadialTimeline] Failed to read inquiry sessions from vault sidecar; leaving writes disarmed to avoid clobbering it: ${message}`
+            );
+            return;
+        }
+        const byKey = new Map<string, InquirySession>();
+        for (const session of sidecarSessions) {
+            byKey.set(session.key, session);
+        }
+        // In-memory (potentially newer, unsaved) work wins on conflict.
+        for (const session of this.cache.sessions) {
+            byKey.set(session.key, session);
+        }
+        this.cache.sessions = Array.from(byKey.values());
+        this.prune();
+        // Keep the in-memory mirror consistent so reloadFromSettings()
+        // (orphaned-run recovery) re-reads the hydrated set, not a stale cache.
+        this.plugin.settings.inquirySessionCache = this.cache;
+        this.hydrated = true;
     }
 
     /**
@@ -274,6 +324,11 @@ export class InquirySessionStore {
     }
 
     private async writeNow(): Promise<void> {
+        // Never let an un-hydrated cache reach the sidecar. Until hydrate() has
+        // loaded sessions.json, this cache may be empty (fresh load) and writing
+        // it would wipe a good file — the exact load-order clobber the `hydrated`
+        // guard exists to prevent.
+        if (!this.hydrated) return;
         // Errors are logged, never swallowed silently — a failed sidecar write
         // is the difference between a vault that restores and one that does not.
         try {
