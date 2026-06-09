@@ -183,28 +183,31 @@ export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLay
     }
 
     // 4. Greedy lane assignment, sorted chronologically (by start angle).
-    //    Hard rule: at no point inside the lane can 3+ backdrops be
-    //    simultaneously active. Pairwise depth-2 overlaps are fine — the
-    //    system renders them legibly. The constraint is therefore:
+    //    A lane accepts a candidate iff every pairwise overlap with the
+    //    lane's existing segments stays at or below MAX_PAIRWISE_OVERLAP
+    //    of the SHORTER segment in that pair.
     //
-    //        adding the candidate must not push the maximum depth at any
-    //        moment within the candidate's range above 2.
+    //    Why the shorter-segment denominator: it catches "small fully
+    //    inside big" cases. A short backdrop entirely contained in a
+    //    longer one would otherwise look fine by candidate-percentage
+    //    alone, but the short one's plaid would cover 100% of itself —
+    //    visually it's been swallowed. Measuring against the shorter
+    //    span makes burial the disqualifier, not raw overlap length.
     //
-    //    Equivalently: at every moment in the candidate's range, at most
-    //    ONE existing segment in the lane is currently active.
-    //
-    //    This lets a single lane hold many backdrops whose overlap pairs
-    //    are spread around the timeline. A new (inner) lane only opens
-    //    when the candidate would otherwise create a triple-stack.
+    //    The 50% cap means a pair can share a lane as long as each
+    //    backdrop is visible (non-overlap region) for at least half its
+    //    own span. Multiple non-burying overlap pairs can share a lane
+    //    as long as their overlap regions don't collide into depth-3.
     //
     //    Because we scan outer-to-inner and process chronologically, a
     //    backdrop's typical lane reflects its position in time.
+    const MAX_PAIRWISE_OVERLAP = 0.5;
     const sortedByStart = rawSegments.slice().sort((a, b) => a.startAngle - b.startAngle);
     const lanes: BackdropSegment[][] = [];
     sortedByStart.forEach(segment => {
         let assigned = false;
         for (let laneIndex = 0; laneIndex < lanes.length; laneIndex++) {
-            if (maxExistingDepthInRange(lanes[laneIndex], segment) < 2) {
+            if (maxPairwiseOverlapRatio(lanes[laneIndex], segment) <= MAX_PAIRWISE_OVERLAP) {
                 segment.lane = laneIndex;
                 lanes[laneIndex].push(segment);
                 assigned = true;
@@ -222,41 +225,33 @@ export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLay
 
 
 /**
- * Sweep over a lane and return the maximum number of existing segments
- * simultaneously active at any moment within [candidate.startAngle,
- * candidate.endAngle].
+ * For a candidate segment and a lane's existing segments, return the
+ * largest pairwise overlap ratio — overlap length divided by the SHORTER
+ * of the two segments' total spans.
  *
- * The lane-assignment rule allows placement when this returns < 2 — that
- * is, when adding the candidate keeps the lane's depth at every moment
- * within the candidate's range at or below 2.
- *
- * Returns 0 when no existing segment overlaps the candidate's range.
+ * Using the shorter denominator makes "small fully inside big" yield
+ * ratio 1.0 (full burial of the small segment), which the lane rule
+ * rejects. Two same-sized segments overlapping halfway yields 0.5
+ * (boundary). Returns 0 when there's no overlap at all.
  */
-function maxExistingDepthInRange(
+function maxPairwiseOverlapRatio(
     lane: BackdropSegment[],
     candidate: BackdropSegment
 ): number {
-    type Event = { angle: number; delta: number };
-    const events: Event[] = [];
+    let maxRatio = 0;
+    const candSize = candidate.endAngle - candidate.startAngle;
     for (const seg of lane) {
-        const start = Math.max(seg.startAngle, candidate.startAngle);
-        const end = Math.min(seg.endAngle, candidate.endAngle);
-        if (start < end) {
-            events.push({ angle: start, delta: +1 });
-            events.push({ angle: end, delta: -1 });
-        }
+        const overlapStart = Math.max(seg.startAngle, candidate.startAngle);
+        const overlapEnd = Math.min(seg.endAngle, candidate.endAngle);
+        const overlapSize = overlapEnd - overlapStart;
+        if (overlapSize <= 0) continue;
+        const segSize = seg.endAngle - seg.startAngle;
+        const denom = Math.min(candSize, segSize);
+        if (denom <= 0) continue;
+        const ratio = overlapSize / denom;
+        if (ratio > maxRatio) maxRatio = ratio;
     }
-    if (events.length === 0) return 0;
-    // Sort by angle; at ties, process ends before starts so a segment
-    // ending exactly as another begins doesn't momentarily over-count.
-    events.sort((a, b) => a.angle - b.angle || a.delta - b.delta);
-    let active = 0;
-    let max = 0;
-    for (const ev of events) {
-        active += ev.delta;
-        if (active > max) max = active;
-    }
-    return max;
+    return maxRatio;
 }
 
 

@@ -140,13 +140,27 @@
 }
 
 /* Depth-2 overlap overlay. The lane-assignment rule caps in-lane overlap
-   at depth 2, so the renderer emits one diagonal-stripe box per overlap
-   region (see renderOverlapOverlays in BackdropRing.ts). The pattern is
-   defined inline in that component using --rt-subplot-colors-0 and -1
-   so themes drive the colors. */
+   at depth 2 and 50% pairwise (no segment is buried), so the renderer
+   emits one diagonal-stripe box per overlap region (see
+   renderOverlapOverlays in BackdropRing.ts). The pattern is defined
+   inline in that component using --rt-subplot-colors-0 and -1 so themes
+   drive the colors. */
 .radial-timeline-container .rt-backdrop-overlap {
   fill: url(#rt-backdrop-diagonal);
   stroke: none;
+  /* Overlay-only — interaction belongs to the underlying segments */
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+/* When any backdrop segment is hovered or selected, hide every overlay
+   in the ring so the focused backdrop's full band reads clearly. The
+   overlays follow all segment <g>s in DOM order (see render order in
+   BackdropRing.ts) so the general-sibling combinator reaches them. */
+.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-backdrop-overlap,
+.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"].rt-selected ~ .rt-backdrop-overlap,
+.radial-timeline-container .rt-backdrop-ring:hover .rt-backdrop-overlap {
+  opacity: 0;
 }
 
 /* Labels */
