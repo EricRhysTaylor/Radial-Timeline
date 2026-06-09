@@ -134,7 +134,7 @@ import type {
     InquiryRunnerInput
 } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
-import { readInquirySessionsFromVault } from './InquiryArtifactStore';
+import { readInquirySessionsFromVault, readInquirySidecarVaultIdentity } from './InquiryArtifactStore';
 import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { extractSummary, getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { getSequencedBooks } from '../utils/books';
@@ -665,6 +665,10 @@ export class InquiryView extends ItemView {
     private sessionStore: InquirySessionStore;
     private minimapResultPreviewActive = false;
     private guidanceState: InquiryGuidanceState = 'ready';
+    // Stamped name of a packaged demo vault (from the sidecar), or null. Used to
+    // make the no-api-key state read as an honest "Demo Vault" rather than a
+    // half-configured engine.
+    private demoVaultName: string | null = null;
     private inquiryRunTokenCounter = 0;
     private activeInquiryRunToken = 0;
     private cancelledInquiryRunTokens = new Set<number>();
@@ -790,6 +794,7 @@ export class InquiryView extends ItemView {
         // constructed with an empty cache; without this awaited hydrate the first
         // interaction would flush that empty cache over a good sessions.json.
         await this.sessionStore.hydrate();
+        this.demoVaultName = (await readInquirySidecarVaultIdentity(this.app))?.displayName ?? null;
         const freshLaunchPending = this.plugin.consumeInquiryFreshLaunchPending();
         if (!this.state.isRunning) {
             this.clearRehydrateState();
@@ -1240,7 +1245,12 @@ export class InquiryView extends ItemView {
 
         // ── 1. Header summary (non-repeated) ──
         if (this.enginePanelMetaEl) {
-            this.enginePanelMetaEl.setText(`${engine.providerLabel} · ${engine.modelLabel}`);
+            // In Demo Mode be honest: no key is set, this is a packaged vault.
+            this.enginePanelMetaEl.setText(
+                this.isInquiryDemoMode()
+                    ? `No API key set · Demo Vault: ${this.getDemoVaultLabel()}`
+                    : `${engine.providerLabel} · ${engine.modelLabel}`
+            );
         }
 
         // ── 2. Status card (readiness strip) ──
@@ -5919,6 +5929,18 @@ export class InquiryView extends ItemView {
         return !this.getResolvedEngine().hasCredential;
     }
 
+    /**
+     * Demo Mode: a packaged vault being explored read-only — no usable key AND
+     * saved briefings present to browse. Drives the honest "Demo Vault" copy.
+     */
+    private isInquiryDemoMode(): boolean {
+        return this.guidanceState === 'no-api-key' && this.hasInquirySessions();
+    }
+
+    private getDemoVaultLabel(): string {
+        return this.demoVaultName?.trim() || 'Demo Vault';
+    }
+
     private isInquiryConfigured(): boolean {
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const hasBooks = (this.plugin.settings.books || []).some(book => (book.sourceFolder || '').trim().length > 0);
@@ -6028,7 +6050,9 @@ export class InquiryView extends ItemView {
             this.hoverTextEl.setAttribute('y', String(GUIDANCE_TEXT_Y));
             this.hoverTextEl.setAttribute('text-anchor', 'middle');
             this.setGuidanceTextLines(
-                [t('inquiry.preview.noApiKeyHero'), t('inquiry.preview.noApiKeyHelp')],
+                this.isInquiryDemoMode()
+                    ? [`Demo Vault — ${this.getDemoVaultLabel()}`, 'Select a Briefing to begin.']
+                    : [t('inquiry.preview.noApiKeyHero'), t('inquiry.preview.noApiKeyHelp')],
                 GUIDANCE_LINE_HEIGHT
             );
             return;
@@ -6110,7 +6134,9 @@ export class InquiryView extends ItemView {
             : (corpusAlert
                 ? t('inquiry.help.corpusTooltip')
                 : (state === 'no-api-key'
-                    ? t('inquiry.help.noApiKeyTooltip')
+                    ? (this.isInquiryDemoMode()
+                        ? 'Demo Vault Active. Select a Briefing to begin.'
+                        : t('inquiry.help.noApiKeyTooltip'))
                     : (isAlert
                         ? (state === 'not-configured' ? t('inquiry.help.configTooltip') : t('inquiry.help.noScenesTooltip'))
                         : (isResults ? t('inquiry.help.resultsTooltip') : (hasSessions ? t('inquiry.help.tooltip') : t('inquiry.help.onboardingTooltip'))))));
@@ -6350,7 +6376,13 @@ export class InquiryView extends ItemView {
         options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
         if (this.guidanceState === 'no-api-key') {
-            // Read-only Demo Mode: explain rather than silently no-op or throw.
+            if (this.isInquiryDemoMode()) {
+                // Demo Mode: a muted run opens the saved briefings to explore
+                // ("Select a Briefing to begin") rather than erroring.
+                this.briefingPopover.show();
+                return;
+            }
+            // Read-only, no demo content: explain rather than no-op or throw.
             this.notifyInteraction(t('inquiry.interaction.noApiKey'));
             return;
         }
