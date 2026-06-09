@@ -5914,11 +5914,14 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return 'running';
         if (!this.isInquiryConfigured()) return 'not-configured';
         if (this.getInquirySceneCount() === 0) return 'no-scenes';
-        // Configured + has scenes but the active provider has no key → read-only
-        // Demo Mode: browse saved sessions, but new runs are blocked WITHOUT the
-        // red alert state (which is reserved for genuine misconfiguration).
-        if (this.isInquiryApiKeyMissing()) return 'no-api-key';
+        // A displayed briefing is ALWAYS a results view — it must render
+        // identically with or without a key. "No key" gates running a NEW
+        // inquiry (a capability, via isInquiryApiKeyMissing()), never the
+        // display of an existing one. So results wins over no-api-key here.
         if (this.isResultsState()) return 'results';
+        // Configured + has scenes + no result shown + no key → read-only Demo
+        // Mode (browse saved briefings), without the red misconfiguration alert.
+        if (this.isInquiryApiKeyMissing()) return 'no-api-key';
         return 'ready';
     }
 
@@ -5937,7 +5940,10 @@ export class InquiryView extends ItemView {
      * saved briefings present to browse. Drives the honest "Demo Vault" copy.
      */
     private isInquiryDemoMode(): boolean {
-        return this.guidanceState === 'no-api-key' && this.hasInquirySessions();
+        // Predicate-based (not the display-state label) so the honest "Demo
+        // Vault" engine copy holds whether the empty prompt OR a saved briefing
+        // is on screen.
+        return this.isInquiryApiKeyMissing() && this.hasInquirySessions();
     }
 
     private getDemoVaultLabel(): string {
@@ -5964,9 +5970,11 @@ export class InquiryView extends ItemView {
     }
 
     private isInquiryRunDisabled(): boolean {
+        // Run capability is independent of the DISPLAY state: a missing key
+        // disables running even while a briefing is shown (state === 'results').
         return this.guidanceState === 'not-configured'
             || this.guidanceState === 'no-scenes'
-            || this.guidanceState === 'no-api-key';
+            || this.isInquiryApiKeyMissing();
     }
 
     private isInquiryGuidanceLockout(): boolean {
@@ -6378,7 +6386,7 @@ export class InquiryView extends ItemView {
         question: InquiryQuestion,
         options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
-        if (this.guidanceState === 'no-api-key') {
+        if (this.isInquiryApiKeyMissing()) {
             if (this.isInquiryDemoMode()) {
                 // Demo Mode: a muted run opens the saved briefings to explore
                 // ("Select a Briefing to begin") rather than erroring.
@@ -7399,7 +7407,7 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return t('inquiry.runner.inquiryAlreadyRunning');
         if (this.isInquiryBlocked()) return t('inquiry.runner.inquiryNotConfigured');
         if (this.guidanceState === 'no-scenes') return t('inquiry.runner.noScenesAvailable');
-        if (this.guidanceState === 'no-api-key') return t('inquiry.interaction.noApiKey');
+        if (this.isInquiryApiKeyMissing()) return t('inquiry.interaction.noApiKey');
         if (!questions.length) return t('inquiry.runner.noEnabledQuestions');
         if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable';
         return null;
