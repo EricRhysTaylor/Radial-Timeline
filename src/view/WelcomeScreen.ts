@@ -69,7 +69,7 @@ const WELCOME_COPY = {
             { icon: 'target', text: "Once you get in the rhythm, don't forget to track your writing session time and word count and set due dates for scenes or publish stages." }
         ]
     },
-    feedback: 'Take a moment to share your experiences using the RT and what features you would like to see next to smooth your writing workflow. Radial Timeline is expanding in every direction, and your feedback helps guide it. Happy Writing!',
+    feedback: 'Take a moment to [share your experiences] using the RT and what features you would like to see next to smooth your writing workflow. Radial Timeline is expanding in every direction, and your feedback helps guide it. Happy Writing!',
     updateNote: 'Community features coming to RT and website later this year.'
 } as const;
 
@@ -79,7 +79,8 @@ const WELCOME_URLS = {
     wiki: 'https://github.com/EricRhysTaylor/radial-timeline/wiki',
     discussions: 'https://github.com/EricRhysTaylor/radial-timeline/discussions',
     issues: 'https://github.com/EricRhysTaylor/radial-timeline/issues',
-    youtube: 'https://www.youtube.com/@RadialTimeline'
+    youtube: 'https://www.youtube.com/@RadialTimeline',
+    feedbackEmail: 'feedback@radialtimeline.com'
 } as const;
 
 const CARD_ICONS = {
@@ -464,9 +465,21 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const body = container.createDiv({ cls: 'rt-welcome-body' });
 
-    // Two description paragraphs stay together directly under the title.
+    // Two description paragraphs stay together directly under the title. The
+    // feedback line's [bracketed] phrase becomes a mailto link.
     body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.intro });
-    body.createEl('p', { cls: 'rt-welcome-paragraph', text: WELCOME_COPY.feedback });
+    const feedbackP = body.createEl('p', { cls: 'rt-welcome-paragraph' });
+    for (const part of WELCOME_COPY.feedback.split(/(\[[^\]]+\])/g)) {
+        if (part.startsWith('[') && part.endsWith(']')) {
+            feedbackP.createEl('a', {
+                cls: 'ert-welcome-step-link',
+                text: part.slice(1, -1),
+                href: `mailto:${WELCOME_URLS.feedbackEmail}`
+            });
+        } else if (part) {
+            feedbackP.appendText(part);
+        }
+    }
 
     // Three hero cards: Book Project · Sample Vault · Website.
     const cards = body.createDiv({ cls: 'rt-welcome-cards' });
