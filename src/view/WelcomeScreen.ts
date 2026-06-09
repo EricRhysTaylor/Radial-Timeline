@@ -382,7 +382,7 @@ const openBookManagerFromWelcome = async (plugin: RadialTimelinePlugin): Promise
 };
 
 /**
- * The Inquiry sidecar (.radial-timeline/inquiry/sessions.json) is the clearest
+ * The Inquiry sidecar (Radial Timeline/Inquiry/Sessions/sessions.json) is the clearest
  * signal that the vault already carries packaged Radial Timeline data. Check
  * for the file before showing the sample download/signup path; otherwise a
  * sample vault can look like it needs to be fetched again. Fire-and-forget;

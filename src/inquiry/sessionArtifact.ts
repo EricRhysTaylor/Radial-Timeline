@@ -3,8 +3,8 @@ import type { InquirySession } from './sessionTypes';
 /**
  * Versioned shape of the vault-resident inquiry session store.
  *
- * Inquiry briefs are persisted to a vault sidecar
- * (`.radial-timeline/inquiry/sessions.json`) rather than `data.json`. The vault
+ * Inquiry briefs are persisted to a visible vault sidecar
+ * (`Radial Timeline/Inquiry/Sessions/sessions.json`) rather than `data.json`. The vault
  * is the single source of truth for brief content: it ships with the vault,
  * survives a fresh plugin install, and rehydrates the Inquiry View with no
  * `data.json` present.

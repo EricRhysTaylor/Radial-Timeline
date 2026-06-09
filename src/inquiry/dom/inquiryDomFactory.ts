@@ -359,7 +359,7 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     });
     addTooltipData(
         briefingSaveStateButton,
-        balanceTooltipText('Flushes the current Inquiry sessions to the vault sidecar (.radial-timeline/inquiry/sessions.json). Use this before packaging or sharing this vault.'),
+        balanceTooltipText('Flushes the current Inquiry sessions to the vault sidecar (Radial Timeline/Inquiry/Sessions/sessions.json). Use this before packaging or sharing this vault.'),
         'top'
     );
     const briefingRestoreButton = briefingSessionStateEl.createEl('button', {

@@ -15,7 +15,7 @@ import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { RadialTimelineView } from './view/TimeLineView';
 import { InquiryView } from './inquiry/InquiryView';
-import { readInquirySessionsFromVault, writeInquirySessionsToVault } from './inquiry/InquiryArtifactStore';
+import { migrateInquirySidecarToVisible, readInquirySessionsFromVault, writeInquirySessionsToVault } from './inquiry/InquiryArtifactStore';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT } from './inquiry/constants';
 import type { InquirySession } from './inquiry/sessionTypes';
 import { InquiryService } from './inquiry/InquiryService';
@@ -674,8 +674,8 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     /**
-     * Inquiry sessions are persisted to a vault sidecar
-     * (`.radial-timeline/inquiry/sessions.json`), not `data.json` — the vault is
+     * Inquiry sessions are persisted to a visible vault sidecar
+     * (`Radial Timeline/Inquiry/Sessions/sessions.json`), not `data.json` — the vault is
      * the single source of truth for brief content, so briefs ship with the
      * vault and rehydrate on a fresh plugin install.
      *
@@ -685,6 +685,9 @@ export default class RadialTimelinePlugin extends Plugin {
      * The vault wins on key collisions.
      */
     private async hydrateInquirySessionsFromVault(): Promise<void> {
+        // Move the sidecar out of the hidden .radial-timeline/ dotfolder into the
+        // visible Radial Timeline/Inquiry/Sessions/ folder before reading it.
+        await migrateInquirySidecarToVisible(this.app);
         const vaultSessions = await readInquirySessionsFromVault(this.app);
         const legacySessions = (this.settings.inquirySessionCache?.sessions ?? []) as unknown as InquirySession[];
 
