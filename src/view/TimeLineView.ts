@@ -1968,10 +1968,11 @@ export class RadialTimelineView extends ItemView {
         const headerTitle = this.containerEl.querySelector('.view-header-title') as HTMLElement | null;
         if (headerTitle) headerTitle.textContent = titleText;
 
-        const tabTitle = this.containerEl
-            .closest('.workspace-leaf')
-            ?.querySelector('.workspace-tab-header-inner-title') as HTMLElement | null;
-        if (tabTitle) tabTitle.textContent = titleText;
+        // The tab-header title lives in the tab bar, OUTSIDE this leaf's content
+        // container, so a containerEl.querySelector never found it and the tab
+        // stayed stale (e.g. "Untitled Manuscript" after a book is activated).
+        // Ask Obsidian to re-read getDisplayText() the official way instead.
+        (this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.();
     }
 
     private scheduleBeatLabelAdjustment(delayMs = 0): void {
