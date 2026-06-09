@@ -1279,8 +1279,11 @@ export class InquiryView extends ItemView {
             providerSupportsCitations: engine.provider !== 'none' && engine.provider !== 'ollama'
                 ? providerSupportsCitations(engine.provider)
                 : false,
-            recentRun: this.buildEngineRecentRunSnapshot(),
-            cacheWindow: this.buildEngineCacheWindowSnapshot()
+            // "Last run cost" / "Cache created" come from baked session data. With
+            // no real key (Demo Mode) they're stale dev metadata — suppress them so
+            // a keyless vault doesn't claim a warm cache or a prior run cost.
+            recentRun: engine.hasCredential ? this.buildEngineRecentRunSnapshot() : undefined,
+            cacheWindow: engine.hasCredential ? this.buildEngineCacheWindowSnapshot() : undefined
         });
 
         // ── Guard (error/failure guidance) ──
