@@ -62,7 +62,7 @@ const WELCOME_COPY = {
     workflow: {
         lead: 'Starting a new vault? Consider the following workflow:',
         steps: [
-            { icon: 'compass', text: 'Set your novel folder inside the vault with Book Manager.' },
+            { icon: 'compass', text: 'Set your novel folder inside the vault with [Book Manager].', link: 'book-manager' },
             { icon: 'file-plus', text: 'Add scenes with `Create note`, or scaffold quickly with `Book Designer`.' },
             { icon: 'layers', text: 'Populate scenes and then expand with subplots, beat systems and more.' },
             { icon: 'map-pin', text: 'Decide early: How many acts? What is the span of time? Consider helpful context markers with backdrop notes or micro-backdrops.' },
@@ -518,6 +518,10 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         cls: 'ert-welcome-workflow-image',
         attr: { src: WELCOME_AUTHOR_IMAGE, alt: '', 'aria-hidden': 'true' }
     });
+    // Maps a step's `link` key to the action its [bracketed] phrase triggers.
+    const stepLinkActions: Record<string, () => void> = {
+        'book-manager': () => { void openBookManagerFromWelcome(plugin); }
+    };
     const workflowContent = workflow.createDiv({ cls: 'ert-welcome-workflow-content' });
     workflowContent.createDiv({ cls: 'ert-welcome-workflow-lead', text: WELCOME_COPY.workflow.lead });
     for (const step of WELCOME_COPY.workflow.steps) {
@@ -525,13 +529,18 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         const iconEl = stepEl.createDiv({ cls: 'ert-welcome-workflow-icon' });
         setIcon(iconEl, step.icon);
         const textEl = stepEl.createSpan({ cls: 'ert-welcome-workflow-text' });
-        step.text.split(/`([^`]+)`/g).forEach((part, index) => {
-            if (index % 2 === 1) {
-                textEl.createEl('code', { cls: 'ert-welcome-kbd', text: part });
+        const linkAction = 'link' in step ? stepLinkActions[step.link] : undefined;
+        // `code` → inline command chip; [link] → clickable action link.
+        for (const part of step.text.split(/(`[^`]+`|\[[^\]]+\])/g)) {
+            if (part.startsWith('`') && part.endsWith('`')) {
+                textEl.createEl('code', { cls: 'ert-welcome-kbd', text: part.slice(1, -1) });
+            } else if (part.startsWith('[') && part.endsWith(']')) {
+                const linkEl = textEl.createEl('a', { cls: 'ert-welcome-step-link', text: part.slice(1, -1), href: '#' });
+                plugin.registerDomEvent(linkEl, 'click', (evt) => { evt.preventDefault(); linkAction?.(); });
             } else if (part) {
                 textEl.appendText(part);
             }
-        });
+        }
     }
 
     // Closing notes + odds and ends

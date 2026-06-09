@@ -113,8 +113,8 @@
 
 .ert-welcome-workflow-image {
   flex-shrink: 0;
-  width: 140px;
-  height: 140px;
+  width: 420px;
+  height: 420px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
@@ -160,6 +160,18 @@
   font-size: 14px;
   line-height: 1.45;
   color: var(--text-muted);
+}
+
+/* Inline action link inside a workflow step. */
+.ert-welcome-step-link {
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ert-welcome-step-link:hover {
+  color: var(--text-accent-hover);
 }
 
 /* Inline command / palette chip (Obsidian inline-code styling). */
