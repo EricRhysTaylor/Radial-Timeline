@@ -1010,7 +1010,11 @@ export class InquiryView extends ItemView {
             onArtifactClick: () => this.briefingPopover.toggle(),
             onEngineEnter: () => this.enginePopover.show(),
             onEngineLeave: () => this.enginePopover.scheduleHide(),
-            onEngineClick: () => this.openAiSettings(),
+            // Open the engine popover (which carries the readiness strip — incl.
+            // the "key is missing, add one in AI settings" state — and an explicit
+            // Open AI Settings button) rather than jumping straight to Settings.
+            // Mirrors the sibling artifact button's toggle interaction.
+            onEngineClick: () => this.enginePopover.toggle(),
             onGlyphClick: () => {
                 if (this.isInquiryGuidanceLockout()) return;
                 this.handleGlyphClick();
