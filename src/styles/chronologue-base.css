@@ -139,11 +139,15 @@
   display: none;
 }
 
-/* Overlap-overlay system removed — overlapping backdrops now stack into
-   separate concentric lanes (see BackdropRing.ts buildBackdropRingLayout),
-   so there are no "overlap" segments to style. The .rt-backdrop-overlap*
-   classes and the #rt-backdrop-diagonal pattern were referenced only by
-   the old code path. */
+/* Depth-2 overlap overlay. The lane-assignment rule caps in-lane overlap
+   at depth 2, so the renderer emits one diagonal-stripe box per overlap
+   region (see renderOverlapOverlays in BackdropRing.ts). The pattern is
+   defined inline in that component using --rt-subplot-colors-0 and -1
+   so themes drive the colors. */
+.radial-timeline-container .rt-backdrop-overlap {
+  fill: url(#rt-backdrop-diagonal);
+  stroke: none;
+}
 
 /* Labels */
 .rt-backdrop-label {

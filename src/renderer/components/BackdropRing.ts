@@ -182,19 +182,29 @@ export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLay
         return { segments: [], laneCount: 0 };
     }
 
-    // 4. Greedy lane assignment, sorted by start angle.
-    //    Identical algorithm to BackdropMicroRings.ts — produces the
-    //    minimum number of lanes needed so that no two segments in the
-    //    same lane overlap angularly.
+    // 4. Greedy lane assignment, sorted chronologically (by start angle).
+    //    Hard rule: at no point inside the lane can 3+ backdrops be
+    //    simultaneously active. Pairwise depth-2 overlaps are fine — the
+    //    system renders them legibly. The constraint is therefore:
+    //
+    //        adding the candidate must not push the maximum depth at any
+    //        moment within the candidate's range above 2.
+    //
+    //    Equivalently: at every moment in the candidate's range, at most
+    //    ONE existing segment in the lane is currently active.
+    //
+    //    This lets a single lane hold many backdrops whose overlap pairs
+    //    are spread around the timeline. A new (inner) lane only opens
+    //    when the candidate would otherwise create a triple-stack.
+    //
+    //    Because we scan outer-to-inner and process chronologically, a
+    //    backdrop's typical lane reflects its position in time.
     const sortedByStart = rawSegments.slice().sort((a, b) => a.startAngle - b.startAngle);
     const lanes: BackdropSegment[][] = [];
     sortedByStart.forEach(segment => {
         let assigned = false;
         for (let laneIndex = 0; laneIndex < lanes.length; laneIndex++) {
-            const overlaps = lanes[laneIndex].some(existing =>
-                segment.startAngle < existing.endAngle && segment.endAngle > existing.startAngle
-            );
-            if (!overlaps) {
+            if (maxExistingDepthInRange(lanes[laneIndex], segment) < 2) {
                 segment.lane = laneIndex;
                 lanes[laneIndex].push(segment);
                 assigned = true;
@@ -208,6 +218,45 @@ export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLay
     });
 
     return { segments: sortedByStart, laneCount: lanes.length };
+}
+
+
+/**
+ * Sweep over a lane and return the maximum number of existing segments
+ * simultaneously active at any moment within [candidate.startAngle,
+ * candidate.endAngle].
+ *
+ * The lane-assignment rule allows placement when this returns < 2 — that
+ * is, when adding the candidate keeps the lane's depth at every moment
+ * within the candidate's range at or below 2.
+ *
+ * Returns 0 when no existing segment overlaps the candidate's range.
+ */
+function maxExistingDepthInRange(
+    lane: BackdropSegment[],
+    candidate: BackdropSegment
+): number {
+    type Event = { angle: number; delta: number };
+    const events: Event[] = [];
+    for (const seg of lane) {
+        const start = Math.max(seg.startAngle, candidate.startAngle);
+        const end = Math.min(seg.endAngle, candidate.endAngle);
+        if (start < end) {
+            events.push({ angle: start, delta: +1 });
+            events.push({ angle: end, delta: -1 });
+        }
+    }
+    if (events.length === 0) return 0;
+    // Sort by angle; at ties, process ends before starts so a segment
+    // ending exactly as another begins doesn't momentarily over-count.
+    events.sort((a, b) => a.angle - b.angle || a.delta - b.delta);
+    let active = 0;
+    let max = 0;
+    for (const ev of events) {
+        active += ev.delta;
+        if (active > max) max = active;
+    }
+    return max;
 }
 
 
@@ -233,6 +282,17 @@ export function renderBackdropRing({
     if (!layout.segments.length) return '';
 
     let svg = `<g class="rt-backdrop-ring">`;
+
+    // Diagonal-stripe pattern used to mark depth-2 overlap regions where
+    // two backdrops share a lane. Lane assignment guarantees depth never
+    // exceeds 2, so we only need one pattern. Colors come from the same
+    // CSS variables the subplot ring uses so themes stay consistent.
+    svg += `<defs>
+        <pattern id="rt-backdrop-diagonal" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect x="0" y="0" width="7" height="14" fill="var(--rt-subplot-colors-0)" fill-opacity="0.45" />
+            <rect x="7" y="0" width="7" height="14" fill="var(--rt-subplot-colors-1)" fill-opacity="0.45" />
+        </pattern>
+    </defs>`;
 
     // Background + borders per lane.
     for (let lane = 0; lane < layout.laneCount; lane++) {
@@ -323,6 +383,94 @@ export function renderBackdropRing({
         svg += `</g>`;
     });
 
+    // Overlay diagonal-stripe boxes over depth-2 overlap regions within
+    // each lane. Drawn AFTER the segments so they sit on top of both
+    // overlapping bands, visually announcing "two things here." The lane
+    // assignment rule guarantees these regions never have depth > 2, so
+    // a single overlay per region suffices — no stacking.
+    svg += renderOverlapOverlays(layout, availableRadius);
+
     svg += `</g>`;
     return svg;
+}
+
+
+/**
+ * For each lane, find the angular regions where exactly two segments are
+ * simultaneously active and emit a striped overlay box at each. Lanes
+ * with 0 or 1 segments produce no overlays. Depth is capped at 2 by the
+ * lane-assignment rule, so we never produce stacked overlays.
+ */
+function renderOverlapOverlays(
+    layout: BackdropRingLayout,
+    availableRadius: number
+): string {
+    let svg = '';
+    for (let laneIndex = 0; laneIndex < layout.laneCount; laneIndex++) {
+        const segs = layout.segments.filter(s => s.lane === laneIndex);
+        if (segs.length < 2) continue;
+
+        // Sweep over segment boundaries within this lane. Whenever the
+        // active count rises to 2, mark an overlap-start; when it drops
+        // back to 1, emit the accumulated overlap region.
+        type Event = { angle: number; delta: number };
+        const events: Event[] = [];
+        for (const seg of segs) {
+            events.push({ angle: seg.startAngle, delta: +1 });
+            events.push({ angle: seg.endAngle, delta: -1 });
+        }
+        // Process ends before starts at identical angles so a touching
+        // boundary doesn't register as a transient overlap.
+        events.sort((a, b) => a.angle - b.angle || a.delta - b.delta);
+
+        const laneCenter = availableRadius - laneIndex * BACKDROP_RING_HEIGHT;
+        const segmentHeight = BACKDROP_RING_HEIGHT - 2;
+        const halfHeight = segmentHeight / 2;
+        const innerR = laneCenter - halfHeight;
+        const outerR = laneCenter + halfHeight;
+
+        let active = 0;
+        let overlapStart: number | null = null;
+        for (const ev of events) {
+            const before = active;
+            active += ev.delta;
+            if (before < 2 && active >= 2) {
+                overlapStart = ev.angle;
+            } else if (before >= 2 && active < 2 && overlapStart !== null) {
+                const overlapEnd = ev.angle;
+                if (overlapEnd > overlapStart) {
+                    svg += buildOverlapBoxPath(overlapStart, overlapEnd, innerR, outerR);
+                }
+                overlapStart = null;
+            }
+        }
+    }
+    return svg;
+}
+
+
+function buildOverlapBoxPath(
+    startAngle: number,
+    endAngle: number,
+    innerR: number,
+    outerR: number
+): string {
+    const largeArcFlag = (endAngle - startAngle) > Math.PI ? 1 : 0;
+    const startInnerX = formatNumber(innerR * Math.cos(startAngle));
+    const startInnerY = formatNumber(innerR * Math.sin(startAngle));
+    const startOuterX = formatNumber(outerR * Math.cos(startAngle));
+    const startOuterY = formatNumber(outerR * Math.sin(startAngle));
+    const endInnerX = formatNumber(innerR * Math.cos(endAngle));
+    const endInnerY = formatNumber(innerR * Math.sin(endAngle));
+    const endOuterX = formatNumber(outerR * Math.cos(endAngle));
+    const endOuterY = formatNumber(outerR * Math.sin(endAngle));
+
+    const d =
+        `M ${startOuterX} ${startOuterY} ` +
+        `A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 ${largeArcFlag} 1 ${endOuterX} ${endOuterY} ` +
+        `L ${endInnerX} ${endInnerY} ` +
+        `A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 ${largeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
+        `Z`;
+
+    return `<path d="${d}" class="rt-backdrop-overlap" pointer-events="none" />`;
 }
