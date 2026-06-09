@@ -1,5 +1,5 @@
 import type { InquiryCanonicalQuestionTier } from '../../types/settings';
-import { setSvgAccessibleName } from '../../utils/tooltip';
+import { addTooltipData } from '../../utils/tooltip';
 import { polarToCartesian } from '../utils/inquiryGeometry';
 import type { InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
@@ -553,29 +553,33 @@ export class InquiryGlyph {
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');
                     marker.group.setAttribute('tabindex', '0');
-                    // Accessible name via <title>, NEVER aria-label: this is an
-                    // SVG <g>, and aria-label would trigger Obsidian's tooltip
+                    // Styled rt-tooltip via data-rt-tip (delegated handler on
+                    // the Inquiry root SVG). NEVER aria-label: this is an SVG
+                    // <g>, and aria-label would trigger Obsidian's tooltip
                     // handler -> HTMLElement.isShown() (which SVG lacks) ->
-                    // "e.isShown is not a function". See setSvgAccessibleName.
+                    // "e.isShown is not a function". NEVER <title> either: it
+                    // renders the plain native OS tooltip.
+                    let tip: string;
                     if (isProcessed && processedStatus === 'success') {
-                        setSvgAccessibleName(marker.group, 'Current result');
+                        tip = 'Current result';
                     } else if (isCached) {
-                        setSvgAccessibleName(marker.group, 'Open previous result');
+                        tip = 'Open previous result';
                     } else if (isPrior) {
-                        setSvgAccessibleName(marker.group, 'Prior result from another model; run selected model');
+                        tip = 'Prior result from another model; run selected model';
                     } else if (isStale) {
-                        setSvgAccessibleName(marker.group, 'Prior result — corpus changed, re-run to refresh');
+                        tip = 'Prior result — corpus changed, re-run to refresh';
                     } else {
-                        setSvgAccessibleName(marker.group, 'Run question');
+                        tip = 'Run question';
                     }
+                    addTooltipData(marker.group, tip, 'bottom');
+                    marker.group.setAttribute('data-rt-tip-offset-y', '6');
                 } else {
                     marker.group.removeAttribute('role');
                     marker.group.removeAttribute('tabindex');
-                    setSvgAccessibleName(marker.group, null);
+                    marker.group.removeAttribute('data-rt-tip');
+                    marker.group.removeAttribute('data-rt-tip-placement');
+                    marker.group.removeAttribute('data-rt-tip-offset-y');
                 }
-                marker.group.removeAttribute('data-rt-tip');
-                marker.group.removeAttribute('data-rt-tip-placement');
-                marker.group.removeAttribute('data-rt-tip-offset-y');
             });
         });
     }
