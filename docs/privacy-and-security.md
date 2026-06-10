@@ -15,6 +15,24 @@ Radial Timeline is a **desktop-only** Obsidian plugin. It is not intended for Ob
 - When AI is off, normal plugin use should not dispatch manuscript content to AI providers.
 - Remote model metadata, provider snapshot, and pricing refresh behavior is additionally governed by privacy/network settings in the AI panel.
 
+## Desktop integration (Pandoc export)
+
+The publishing pipeline shells out to programs already installed on the
+user's machine. The exact contract:
+
+- Shell execution happens only to invoke Pandoc (and its LaTeX engine) when
+  the user runs a manuscript export, and to probe for those binaries with
+  `which`/`where` during setup. Nothing is downloaded or executed otherwise.
+- Subprocesses receive a minimal allowlisted environment (PATH, home, temp,
+  locale, and TeX cache variables) built by `buildMinimalSubprocessEnv` in
+  `src/utils/exportFormats.ts` — never the full `process.env`, so credentials
+  present in the host session cannot leak to child processes.
+- The only environment variable the plugin reads directly is `PATH`. Install
+  locations on Windows are derived from `os.homedir()`, not from identity
+  variables like `USERPROFILE` or `LOCALAPPDATA`.
+- Files outside the vault are read or written only to save exports where the
+  user chooses and to locate the Pandoc executable.
+
 ## External services and network access
 
 Today, external requests may occur only in clearly scoped areas:

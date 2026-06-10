@@ -43,6 +43,11 @@ Location: `docs/engineering/standards/`
   feature or significant addition before it is release-ready. Invoke via the
   `/feature-audit` slash command.
 
+- **[release-process.md](standards/release-process.md)**
+  Authoritative release flow: two-phase `npm run release`, CI-built assets
+  with build-provenance attestation, dry-run testing, and failure modes.
+  Release assets are never built or uploaded locally.
+
 - **[writing-session-privacy.md](standards/writing-session-privacy.md)**
   Authoritative contract for projecting writing-session data to private,
   friends, and community audiences. Read before touching any code that
