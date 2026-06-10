@@ -2489,13 +2489,13 @@ body.rt-modal-open .ert-inquiry-svg {
   color: var(--rt-ai-error);
 }
 
-/* Calm read-only Demo Mode — neutral, not an error. */
-.ert-inquiry-engine-readiness.is-demo {
+/* Calm keyless read-only state — neutral, not an error. */
+.ert-inquiry-engine-readiness.is-readonly {
   border-color: color-mix(in srgb, var(--text-muted) 30%, transparent);
   background: var(--background-secondary);
 }
 
-.ert-inquiry-engine-readiness.is-demo .ert-inquiry-engine-readiness-status {
+.ert-inquiry-engine-readiness.is-readonly .ert-inquiry-engine-readiness-status {
   color: var(--text-muted);
 }
 

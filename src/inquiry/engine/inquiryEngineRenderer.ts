@@ -93,13 +93,13 @@ export function renderInquiryEngineReadinessStrip(args: {
     }
 
     const stateClass = args.readOnlyNoKey
-        ? 'is-demo'
+        ? 'is-readonly'
         : args.popoverState === 'ready'
             ? 'is-ready'
             : args.popoverState === 'multi-pass'
                 ? 'is-amber'
                 : 'is-error';
-    args.readinessEl.classList.remove('is-ready', 'is-amber', 'is-error', 'is-demo');
+    args.readinessEl.classList.remove('is-ready', 'is-amber', 'is-error', 'is-readonly');
     args.readinessEl.classList.add(stateClass);
 
     // No usable key → calm neutral strip (never the red "blocked" error), no
