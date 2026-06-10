@@ -3201,6 +3201,14 @@ export class InquiryView extends ItemView {
                 }
                 const priorByBase = this.sessionStore.getLatestByBaseKey(baseKey);
                 if (priorByBase && !this.isErrorResult(priorByBase.result)) {
+                    // With no key there is no "selected model" to re-run against,
+                    // and the saved session never key-matches (the current model
+                    // is empty). Treat a saved briefing as the available result
+                    // ("Open previous result"), not a foreign-model prior.
+                    if (this.isInquiryApiKeyMissing()) {
+                        cachedIds.add(prompt.id);
+                        continue;
+                    }
                     // Briefing history is not cache validity. Once a briefing
                     // exists for the same question/scope/target/form, keep the
                     // muted prior-run affordance visible until the author
@@ -6394,18 +6402,33 @@ export class InquiryView extends ItemView {
         await this.runInquiry(question, options);
     }
 
+    /**
+     * Latest non-error saved session for a question in the current scope, matched
+     * by question id. Model-agnostic — used when there's no key to key on (the
+     * exact session key includes the model, which is empty without a credential).
+     */
+    private findSavedSessionForQuestion(question: InquiryQuestion): InquirySession | undefined {
+        const scope = this.state.scope;
+        return this.sessionStore
+            .getRecentSessions(this.sessionStore.getSessionCount())
+            .find(s => !this.isErrorResult(s.result)
+                && s.result.questionId === question.id
+                && (s.scope ?? s.result.scope) === scope);
+    }
+
     private async runInquiry(
         question: InquiryQuestion,
         options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
         if (this.isInquiryApiKeyMissing()) {
+            // No key → no run. Open THIS question's saved briefing if it has one;
+            // otherwise point to the saved briefings (demo) or explain.
+            const saved = this.findSavedSessionForQuestion(question);
+            if (saved && this.reopenSessionByKey(saved.key)) return;
             if (this.isInquiryDemoMode()) {
-                // Demo Mode: a muted run opens the saved briefings to explore
-                // ("Select a Briefing to begin") rather than erroring.
                 this.briefingPopover.show();
                 return;
             }
-            // Read-only, no demo content: explain rather than no-op or throw.
             this.notifyInteraction(t('inquiry.interaction.noApiKey'));
             return;
         }
