@@ -37,7 +37,7 @@
 - Vitest: Pass (5.4s)
   Covered by `npm test` script.
 - npm run build: Pass (6.2s)
-  CSS bundled to /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/styles.css (1252747 bytes)
+  CSS bundled to /Users/ericrhystaylor/Documents/RT LLC/Plugin/radial-timeline/styles.css (1252747 bytes)
   Build copied to: Author/New/Fresh/Jane Austin/Sherlock Holmes/Timelapse/release
   Production build complete!
   
