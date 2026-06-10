@@ -122,6 +122,9 @@ Radial Timeline is a **desktop-only** Obsidian plugin.
 - API keys use Obsidian secret storage when available.
 - AI is optional and can be disabled with the **AI Off** toggle.
 - Vault content should only leave the vault when you explicitly use enabled external features.
+- Shell commands are run only to invoke Pandoc when you export a manuscript, and never otherwise.
+- Files outside the vault are read or written only to save exports where you choose and to locate the Pandoc executable.
+- Environment variables (`PATH`, and on Windows `LOCALAPPDATA`/`USERPROFILE`/`APPDATA`) are read solely to find a Pandoc install — never to identify you or your machine.
 
 See [Privacy & Security](docs/privacy-and-security.md) for the detailed posture.
 
