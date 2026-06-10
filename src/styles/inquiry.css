@@ -1332,6 +1332,16 @@
   fill: var(--ert-inquiry-ai-error);
 }
 
+/* Demo browse (keyless vault with saved briefings): zones that aren't the open
+   briefing read as DESATURATED grey but stay fully visible — they invite a
+   click. This replaces the run-lock dim (55% opacity), which made saved
+   briefings nearly invisible. The open/active zone keeps full colour. */
+.ert-inquiry-svg.is-demo-browse .ert-inquiry-zone-pod:not(.is-active),
+.ert-inquiry-svg.is-demo-browse .inq-zone-dot:not(.is-active) {
+  filter: saturate(0.35);
+  opacity: 0.95;
+}
+
 .ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill {
   stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 80%, #ffffff);
   animation: ert-inquiry-zone-pulse 1.1s ease;

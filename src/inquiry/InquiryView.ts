@@ -6020,12 +6020,20 @@ export class InquiryView extends ItemView {
         const lockout = this.isInquiryGuidanceLockout();
         const running = this.state.isRunning;
 
+        // Demo Mode is BROWSABLE: running is disabled, but the zones remain
+        // clickable to open their saved briefings (and visible, not run-locked
+        // faint). is-demo-browse marks the SVG so the zones desaturate rather
+        // than dim. Run-lock (pointer-events off + faint) applies only when you
+        // genuinely can't interact: actually running, or misconfigured.
+        const browsable = this.isInquiryDemoMode();
+        const runLocked = running || (runDisabled && !browsable);
         if (this.rootSvg) {
             // Red alert is reserved for genuine misconfiguration (not-configured /
             // no-scenes) — NOT the calm no-api-key read-only state, which disables
             // running but must never paint the ring red.
             this.rootSvg.classList.toggle('is-inquiry-blocked', blocked || lockout);
-            this.rootSvg.classList.toggle('is-run-locked', runDisabled || running);
+            this.rootSvg.classList.toggle('is-run-locked', runLocked);
+            this.rootSvg.classList.toggle('is-demo-browse', browsable);
             this.rootSvg.classList.toggle('is-no-scenes', state === 'no-scenes');
             this.rootSvg.classList.toggle('is-guidance-lockout', lockout);
         }
@@ -6036,7 +6044,7 @@ export class InquiryView extends ItemView {
         this.contentEl.classList.toggle('is-guidance-lockout', lockout);
 
         this.zonePromptElements.forEach(({ group }) => {
-            const disabled = runDisabled || running;
+            const disabled = runLocked;
             group.setAttribute('aria-disabled', disabled ? 'true' : 'false');
             group.setAttribute('tabindex', disabled ? '-1' : '0');
         });
