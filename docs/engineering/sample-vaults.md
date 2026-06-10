@@ -170,7 +170,7 @@ setting.
 | Surface | Behavior |
 |---|---|
 | Status bar (bottom-left) | Shows: `Demo Mode · read-only · add API key to run new analyses` |
-| Read-only AI surfaces (frontmatter Pulse Triplet / Gossamer scores, `Restore/` snapshots, past Inquiry sessions) | Fully accessible. No changes. |
+| Read-only AI surfaces (frontmatter Pulse Triplet / Gossamer scores, `Radial Timeline/Recover/` snapshots, past Inquiry sessions) | Fully accessible. No changes. |
 | "Run new Inquiry" button | Disabled. Tooltip: *"Add an API key in Settings → Models to run new analyses."* |
 | "Run Gossamer pass" button | Same — disabled, same tooltip. |
 | "Regenerate Pulse Triplet for this scene" | Same. |
@@ -220,7 +220,7 @@ shipped zip.
    value. The packager re-runs the QA gate and emits `dist/<display_name>/`.
 5. Manually spot-check the dist — open it as an Obsidian vault on a
    clean profile, confirm Demo Mode renders correctly without an API key,
-   confirm Inquiry sessions rehydrate from `Restore/`.
+   confirm Inquiry sessions rehydrate from `Radial Timeline/Recover/`.
 6. Zip the dist folder. Upload. Update the published-samples table above.
 7. Tag the plugin release notes: "Sample vaults compatible with this
    release: pride-and-prejudice@v1, sherlock-holmes@vN, …"

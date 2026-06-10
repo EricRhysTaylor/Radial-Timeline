@@ -370,11 +370,18 @@
   color: var(--text-muted);
   text-decoration: none;
   border-bottom: 1px dashed color-mix(in srgb, currentColor 48%, transparent);
+  transition: color 120ms ease, border-bottom-color 120ms ease;
 }
 
-.rt-welcome-card-secondary:hover {
+/* On hover, the dashed affordance disappears (it's no longer needed — the
+   pointer indicates the link is active) and any inherited <a> underline
+   from Obsidian's defaults is explicitly suppressed so only the color
+   change communicates the hover state. */
+.rt-welcome-card-secondary:hover,
+.rt-welcome-card-secondary:focus-visible {
   color: var(--text-accent);
-  border-bottom-color: currentColor;
+  border-bottom-color: transparent;
+  text-decoration: none;
 }
 
 .rt-welcome-links-wrapper {
@@ -1162,4 +1169,38 @@ body.rt-modal-open .radial-timeline-container * {
 
 .rt-input:focus {
   outline: 1px solid var(--interactive-accent);
+}
+
+/* Keycap rendering used in settings descriptions to show keyboard
+   shortcuts (e.g. ⌘ + P for the command palette). Renders <kbd> as a
+   bordered key-cap style; the separator span sits between with proper
+   spacing so ⌘ + P doesn't collapse into ⌘P. */
+.ert-welcome-keycaps {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  margin: 0 0.15em;
+  vertical-align: baseline;
+}
+
+.ert-welcome-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  padding: 0.05em 0.45em;
+  font-family: var(--font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.9em;
+  line-height: 1.2;
+  color: var(--text-normal);
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  box-shadow: inset 0 -1px 0 var(--background-modifier-border);
+}
+
+.ert-welcome-keycaps-sep {
+  color: var(--text-muted);
+  font-size: 0.9em;
 }

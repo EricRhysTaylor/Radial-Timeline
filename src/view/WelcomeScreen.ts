@@ -63,7 +63,7 @@ const WELCOME_COPY = {
         lead: 'Starting a new vault?',
         steps: [
             { icon: 'compass', text: 'Set your novel folder inside the vault with [Book Manager].', link: 'book-manager' },
-            { icon: 'file-plus', text: 'Open the Command Palette `⌘P` and run `Create note`, or scaffold quickly with `Book Designer`.' },
+            { icon: 'file-plus', text: 'Open the Command Palette `⌘ + P` and run `Create note`, or scaffold quickly with `Book Designer`.' },
             { icon: 'layers', text: 'Populate scenes and then expand with subplots, beat systems and more.' },
             { icon: 'map-pin', text: 'Decide early: How many acts? What is the span of time? Consider helpful context markers with backdrop notes or micro-backdrops.' },
             { icon: 'target', text: "Once you get in the rhythm, don't forget to track your writing session time and word count and set due dates for scenes or publish stages." }

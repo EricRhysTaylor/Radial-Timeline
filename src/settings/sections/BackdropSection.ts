@@ -45,7 +45,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
     descEl.appendText('Use the Command palette ');
     const keycaps = descEl.createSpan({ cls: 'ert-welcome-keycaps' });
     keycaps.createEl('kbd', { cls: 'ert-welcome-keycap', text: Platform.isMacOS ? '⌘' : 'Ctrl' });
-    keycaps.createSpan({ cls: 'ert-welcome-keycaps-sep', text: '+' });
+    keycaps.createSpan({ cls: 'ert-welcome-keycaps-sep', text: ' + ' });
     keycaps.createEl('kbd', { cls: 'ert-welcome-keycap', text: 'P' });
     descEl.appendText('. Or create a backdrop note using the \'class=Backdrop\'.');
 
