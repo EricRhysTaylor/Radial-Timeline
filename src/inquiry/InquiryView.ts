@@ -1264,7 +1264,8 @@ export class InquiryView extends ItemView {
             providerLabel: engine.provider === 'ollama' ? 'Local LLM' : engine.providerLabel,
             popoverState: this.resolveEnginePopoverState(readinessUi),
             blocked: !!engine.blocked,
-            demoMode: this.isInquiryDemoMode(),
+            readOnlyNoKey: this.isInquiryApiKeyMissing(),
+            hasSavedBriefings: this.hasInquirySessions(),
             corpusSummary: buildInquiryEngineCorpusSummary(
                 currentCorpus.corpus,
                 currentCorpus.requestTokens,

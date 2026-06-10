@@ -235,6 +235,38 @@ Capabilities are added only when the feature exists and is wired end-to-end.
 
 ---
 
+## 12. No Key Is a Capability Limit, Not an Error
+
+A missing/absent API key disables **running** a new Inquiry, but it is never an
+error or an alert. Alert/red visuals are reserved for genuine run errors and
+genuine misconfiguration (no books/sources, no scenes). Every alert/red surface
+MUST exclude the no-key case so a keyless (e.g. demo) vault stays calm.
+
+**Single source of truth:** `InquiryView.isInquiryApiKeyMissing()` — derived from
+`plugin.credentialPresence`, a REAL stored secret (`hasSecret`), never the
+always-present secret-ID alias (`rt.<provider>.api-key`).
+
+**Display is separate from capability.** `guidanceState` answers "what is shown"
+(`'results'` wins over `'no-api-key'` — a saved briefing renders normally without
+a key). `isInquiryApiKeyMissing()` / `isInquiryRunDisabled()` answer "what can
+run." These dimensions are orthogonal and must not be collapsed.
+
+Surfaces that MUST stay calm when `isInquiryApiKeyMissing()`:
+
+- ring colour (alert override) → red only for `not-configured` / `no-scenes`
+- engine badge pulse (`is-engine-pulse-red`)
+- minimap pressure / flow gauge (reset to neutral — no real estimate)
+- engine popover readiness strip (`is-demo` calm state, not `is-error`)
+- zone affordances: a saved briefing is the available result, not a foreign-model prior
+
+These surfaces have *different* alert conditions by design (misconfig vs error vs
+no-estimate), so they are deliberately NOT unified into one presentation value —
+that would either change behaviour or merely relocate four conditions (a failed
+refactor per the playbook). The only shared invariant is the no-key exclusion
+above, enforced by the source-grep guard in `InquiryView.noKeyCalm.test.ts`.
+
+---
+
 ## Philosophy
 
 Inquiry is designed for **large manuscripts and sagas**.
