@@ -255,6 +255,9 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
 	minifySyntax: prod,  // Eliminates dead code like if(false){...} in production
+	minifyWhitespace: prod,
+	minifyIdentifiers: prod,
+	keepNames: true,  // Preserve function/class .name despite identifier minification
 	outdir: destDirs[0].path,
 	define: {
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
