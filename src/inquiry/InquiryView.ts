@@ -3328,7 +3328,10 @@ export class InquiryView extends ItemView {
             priorPromptIds,
             stalePromptIds,
             onPromptSelect: (zone, promptId, event) => {
-                if (this.isInquiryRunDisabled()) return;
+                // No-key demo stays browsable: let the click through so runInquiry's
+                // no-key guard reopens this zone's saved briefing. Otherwise a
+                // run-disabled view swallows the click.
+                if (this.isInquiryRunDisabled() && !this.isInquiryDemoMode()) return;
                 if (this.state.isRunning) {
                     this.notifyInteraction(t('inquiry.interaction.running'));
                     return;
@@ -5894,7 +5897,9 @@ export class InquiryView extends ItemView {
         this.wasRunning = isRunning;
         this.rootSvg.classList.toggle('is-running', isRunning);
         this.previewGroup?.classList.toggle('is-running', isRunning);
-        this.glyph?.setZoneInteractionsEnabled(!isRunning && !runDisabled);
+        // Demo Mode is browsable: keep zone clicks live even though running is
+        // disabled, so clicking a zone opens its saved briefing.
+        this.glyph?.setZoneInteractionsEnabled(!isRunning && (!runDisabled || this.isInquiryDemoMode()));
         const isError = this.rootSvg.classList.contains('is-error');
         const hasResult = !!this.state.activeResult && !isError;
         this.rootSvg.classList.toggle('is-results', !isRunning && hasResult);

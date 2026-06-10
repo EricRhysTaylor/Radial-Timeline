@@ -1332,13 +1332,17 @@
   fill: var(--ert-inquiry-ai-error);
 }
 
-/* Demo browse (keyless vault with saved briefings): zones that aren't the open
-   briefing read as DESATURATED grey but stay fully visible — they invite a
-   click. This replaces the run-lock dim (55% opacity), which made saved
-   briefings nearly invisible. The open/active zone keeps full colour. */
+/* Demo browse (keyless vault with saved briefings): the whole dial reads as
+   DESATURATED grey but stays fully visible — it invites a click rather than
+   looking broken. This replaces the run-lock dim (55% opacity), which made
+   saved briefings nearly invisible. The big zone bands grey out together; the
+   open/active prompt marker keeps full colour as the focal point. */
+.ert-inquiry-svg.is-demo-browse .inq-zone-segment-path {
+  filter: saturate(0.3);
+}
 .ert-inquiry-svg.is-demo-browse .ert-inquiry-zone-pod:not(.is-active),
 .ert-inquiry-svg.is-demo-browse .inq-zone-dot:not(.is-active) {
-  filter: saturate(0.35);
+  filter: saturate(0.3);
   opacity: 0.95;
 }
 
