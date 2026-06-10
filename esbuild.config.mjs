@@ -1,9 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
+import { builtinModules as builtins } from "node:module";
 import fs from "fs";
 import path from "path";
-import fsExtra from 'fs-extra';
 import { bundleCSS } from './scripts/bundle-css.mjs';
 
 const banner = `/*

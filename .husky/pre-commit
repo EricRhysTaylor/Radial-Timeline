@@ -1,1 +1,2 @@
-npx lint-staged
+files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^src/.*\.(ts|js)$' || true)
+[ -z "$files" ] || node code-quality-check.mjs $files
