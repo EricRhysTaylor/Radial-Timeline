@@ -1264,6 +1264,7 @@ export class InquiryView extends ItemView {
             providerLabel: engine.provider === 'ollama' ? 'Local LLM' : engine.providerLabel,
             popoverState: this.resolveEnginePopoverState(readinessUi),
             blocked: !!engine.blocked,
+            demoMode: this.isInquiryDemoMode(),
             corpusSummary: buildInquiryEngineCorpusSummary(
                 currentCorpus.corpus,
                 currentCorpus.requestTokens,
@@ -1369,8 +1370,11 @@ export class InquiryView extends ItemView {
         // say "unavailable" with no indication of *why* and the user
         // has no path to diagnose. The popover is the canonical error
         // surface (red), matching the months-long pattern.
+        // With no key the token count is EXPECTED to be unavailable — that's a
+        // calm capability limit, not a diagnosable failure, so don't raise the red
+        // guard for it (Demo Mode stays calm).
         const corpus = this.getCurrentCorpusContext();
-        if (corpus.requestEstimateMethod === 'unavailable' && corpus.requestEstimateFailureMessage) {
+        if (corpus.requestEstimateMethod === 'unavailable' && corpus.requestEstimateFailureMessage && !this.isInquiryApiKeyMissing()) {
             const reason = formatTokenCountFailureReason(corpus.requestEstimateFailureMessage)
                 || 'provider token count failed';
             return {
@@ -4098,8 +4102,10 @@ export class InquiryView extends ItemView {
             return;
         }
         const hasError = this.isErrorState();
-        const red = hasError
-            || readinessUi.readiness.state === 'blocked';
+        // A missing key is a calm capability limit, not an error — don't pulse red
+        // for it (Demo Mode / keyless vaults stay calm).
+        const red = (hasError || readinessUi.readiness.state === 'blocked')
+            && !this.isInquiryApiKeyMissing();
         this.engineBadgeGroup.classList.remove('is-engine-pulse-amber');
         this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', red);
     }
@@ -4409,7 +4415,9 @@ export class InquiryView extends ItemView {
         // Force reuse state to idle so endcaps aren't painted green from a persisted
         // cache session whose fingerprint hasn't yet been validated against the
         // freshly-loaded corpus. The post-settle update will paint the real state.
-        if (readinessUi.pending) {
+        // Pending OR no key → reset to a neutral gauge. Without a key there's no
+        // real estimate to show, and a missing key is calm, not an alert.
+        if (readinessUi.pending || this.isInquiryApiKeyMissing()) {
             this.minimap.resetPressureGauge();
             this.minimap.updateReuseStatus(null);
             return;
@@ -5559,7 +5567,11 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         const hasError = this.isErrorResult(result);
         const errorRing = hasError ? this.state.mode : null;
-        const ringOverrideColor = this.isInquiryRunDisabled() ? this.getInquiryAlertColor() : undefined;
+        // Alert-red the ring ONLY for genuine misconfiguration (not-configured /
+        // no-scenes), never for a missing key — that's a calm Demo-Mode capability
+        // limit, not an error. (No key is not an error; see resolveGuidanceState.)
+        const ringAlert = this.guidanceState === 'not-configured' || this.guidanceState === 'no-scenes';
+        const ringOverrideColor = ringAlert ? this.getInquiryAlertColor() : undefined;
 
         this.glyph?.update({
             scopeLabel: this.getScopeLabel(),

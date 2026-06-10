@@ -2479,6 +2479,16 @@ body.rt-modal-open .ert-inquiry-svg {
   color: var(--rt-ai-error);
 }
 
+/* Calm read-only Demo Mode — neutral, not an error. */
+.ert-inquiry-engine-readiness.is-demo {
+  border-color: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  background: var(--background-secondary);
+}
+
+.ert-inquiry-engine-readiness.is-demo .ert-inquiry-engine-readiness-status {
+  color: var(--text-muted);
+}
+
 .ert-inquiry-engine-readiness-message {
   font-size: 11px;
   color: var(--text-muted);

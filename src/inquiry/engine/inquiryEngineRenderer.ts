@@ -74,6 +74,10 @@ export function renderInquiryEngineReadinessStrip(args: {
     recentRun?: EngineRecentRunSnapshot;
     /** Active provider cache window for the current corpus, if any. Drives the TTL countdown pill. */
     cacheWindow?: EngineCacheWindowSnapshot;
+    /** Calm read-only Demo Mode (no key + saved briefings). Renders a neutral
+     *  "Read-only demo" strip instead of the red "blocked / no eligible model"
+     *  error — a missing key is a capability limit, not a failure. */
+    demoMode?: boolean;
     /** Wall-clock for testability. Defaults to Date.now() when omitted. */
     now?: number;
 }): void {
@@ -86,13 +90,26 @@ export function renderInquiryEngineReadinessStrip(args: {
         return;
     }
 
-    const stateClass = args.popoverState === 'ready'
-        ? 'is-ready'
-        : args.popoverState === 'multi-pass'
-            ? 'is-amber'
-            : 'is-error';
-    args.readinessEl.classList.remove('is-ready', 'is-amber', 'is-error');
+    const stateClass = args.demoMode
+        ? 'is-demo'
+        : args.popoverState === 'ready'
+            ? 'is-ready'
+            : args.popoverState === 'multi-pass'
+                ? 'is-amber'
+                : 'is-error';
+    args.readinessEl.classList.remove('is-ready', 'is-amber', 'is-error', 'is-demo');
     args.readinessEl.classList.add(stateClass);
+
+    // Calm read-only Demo Mode: neutral strip, no red "blocked" error, no
+    // cache/cost pills. The popover header already names the Demo Vault.
+    if (args.demoMode) {
+        args.readinessStatusEl.setText('Read-only demo');
+        args.readinessCorpusEl.setText(args.corpusSummary);
+        args.readinessMessageEl.setText('Saved briefings are ready to explore. Add a key in AI settings to run new analyses.');
+        args.readinessScopeEl.setText(args.runScopeLabel);
+        args.readinessActionsEl.empty();
+        return;
+    }
 
     const isLocalLlm = args.providerLabel === 'Ollama' || args.providerLabel === 'Local LLM';
     const statusText = args.blocked
