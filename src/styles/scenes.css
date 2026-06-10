@@ -647,9 +647,7 @@
 
 /* Default shown state - uses darker/saturated version of subplot color */
 .rt-subplot-dominance-flag.is-shown path {
-  /* Fallback */
-  fill: var(--flag-color);
-  /* Modern browsers: darken and saturate for better visibility */
+  /* Darken and saturate the subplot color for better visibility */
   fill: color-mix(in srgb, var(--flag-color), black 20%);
   filter: saturate(1.5);
 }

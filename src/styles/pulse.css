@@ -2,7 +2,6 @@
 .pulse-text {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   font-weight: normal;
-  text-transform: none;
   fill: #666666;
   /* Default color for the <text> element */
   white-space: nowrap;
