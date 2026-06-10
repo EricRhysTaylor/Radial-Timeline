@@ -3,7 +3,7 @@
 ## Working Directory
 
 Always work directly in the main repository at:
-`/Users/ericrhystaylor/Documents/Code Projects/radial-timeline`
+`/Users/ericrhystaylor/Documents/RT LLC/Plugin/radial-timeline`
 
 Do NOT use git worktrees. Do NOT work from `~/.claude-worktrees/`. If you find yourself in a worktree path, switch to the main repo path above before making any changes.
 
