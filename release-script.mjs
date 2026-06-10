@@ -315,67 +315,35 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
     }
 }
 
-// Build @font-face rules
-function buildEmbeddedFontsCss() {
-    const srcPath = 'src/assets/embeddedFonts.ts';
-    let css = '';
-    try {
-        const ts = readFileSync(srcPath, 'utf8');
-        const objMatch = ts.match(/EMBEDDED_FONTS\s*=\s*\{([\s\S]*?)\}\s*;/);
-        if (!objMatch) return '';
-        const body = objMatch[1];
-        const familyRe = /(\w+)\s*:\s*\{([\s\S]*?)\}/g;
-        let fm;
-        while ((fm = familyRe.exec(body)) !== null) {
-            const family = fm[1];
-            const block = fm[2];
-            const readVal = (key) => {
-                const m = block.match(new RegExp(key + ":\\s*'([\\s\\S]*?)'"));
-                return m && m[1] && m[1].trim().length > 0 ? m[1].trim() : null;
-            };
-            const normal = readVal('normal');
-            const bold = readVal('bold');
-            const italic = readVal('italic');
-            const boldItalic = readVal('boldItalic');
-            const addFace = (style, weight, b64) => {
-                if (!b64) return;
-                css += `@font-face{font-family:'${family}';font-style:${style};font-weight:${weight};font-display:swap;src:url(data:font/woff2;base64,${b64}) format('woff2')}` + "\n";
-            };
-            addFace('normal', 400, normal);
-            addFace('normal', 700, bold);
-            addFace('italic', 400, italic);
-            addFace('italic', 700, boldItalic);
-        }
-    } catch {
-        return '';
-    }
-    return css.trim();
-}
+// CI build: dispatch the release-build workflow (build + attestation + asset
+// upload happen on GitHub-hosted runners so assets carry provenance).
+function runReleaseWorkflowAndWait(version) {
+    runCommand(
+        `gh workflow run release-build.yml --ref master -f version=${version}`,
+        "Dispatching release build workflow on GitHub"
+    );
 
-function injectEmbeddedFontsIntoReleaseCss() {
-    const releaseCssPath = 'release/styles.css';
-    const markerStart = '/* __EMBEDDED_FONTS_START__ */';
-    const markerEnd = '/* __EMBEDDED_FONTS_END__ */';
-    let css;
-    try {
-        css = readFileSync(releaseCssPath, 'utf8');
-    } catch (e) {
-        console.warn('⚠️  Could not read release/styles.css to inject fonts:', e.message);
-        return;
+    console.log('\n⏳ Waiting for workflow run to register...');
+    let runId = null;
+    for (let attempt = 0; attempt < 10 && !runId; attempt++) {
+        execSync('sleep 3');
+        try {
+            const json = execSync(
+                'gh run list --workflow=release-build.yml --limit 1 --json databaseId,status,createdAt',
+                { encoding: 'utf8' }
+            );
+            const runs = JSON.parse(json);
+            if (runs.length > 0 && runs[0].status !== 'completed') {
+                runId = runs[0].databaseId;
+            }
+        } catch { /* retry */ }
     }
-    const startIdx = css.indexOf(markerStart);
-    const endIdx = css.indexOf(markerEnd);
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-        css = css.slice(0, startIdx) + css.slice(endIdx + markerEnd.length);
+    if (!runId) {
+        console.error('❌ Could not find the dispatched workflow run. Check: gh run list --workflow=release-build.yml');
+        process.exit(1);
     }
-    const faces = buildEmbeddedFontsCss();
-    if (!faces) {
-        writeFileSync(releaseCssPath, css);
-        return;
-    }
-    const block = `\n${markerStart}\n${faces}\n${markerEnd}\n`;
-    writeFileSync(releaseCssPath, css + block);
-    console.log('✅ Injected embedded @font-face rules into release/styles.css');
+
+    runCommand(`gh run watch ${runId} --exit-status`, `Building, attesting, and uploading assets in CI (run ${runId})`);
 }
 
 async function performBuildAndUpload(version, isDraft = false) {
@@ -423,14 +391,10 @@ async function performBuildAndUpload(version, isDraft = false) {
     runCommand("npm run release:prep", "Running release preflight");
     runCommand("npm run verify", "Verifying release (build + checks)");
 
-    // 4. Build release-only assets with beta commands removed.
-    runCommand("RT_RELEASE_BUILD=1 node esbuild.config.mjs production", "Building release-gated assets");
-    injectEmbeddedFontsIntoReleaseCss();
-
-    // 5. Upload Assets
-    console.log(`\n📤 Uploading assets to release ${version}...`);
-    const assets = "release/main.js release/manifest.json release/styles.css";
-    runCommand(`gh release upload ${version} ${assets} --clobber`, "Uploading assets", false, true);
+    // 4. Build, attest, and upload in CI. GitHub-hosted runners build the
+    // assets from the pushed tag and sign a provenance attestation for each,
+    // so the scorecard can verify the assets came from this repo's source.
+    runReleaseWorkflowAndWait(version);
 
     // 5. Publish (if it was a draft)
     if (isDraft) {

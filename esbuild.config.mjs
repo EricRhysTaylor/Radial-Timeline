@@ -68,11 +68,12 @@ function verifyWritableDir(dir) {
 	}
 }
 
-// Use a relative output directory when running in CI
-if (isCI) {
-	destDirs = [{ path: "./build", name: "build" }];
-} else if (isReleaseBuild) {
+// Release builds always target ./release (including in CI, where the
+// attestation workflow builds and uploads the release assets).
+if (isReleaseBuild) {
 	destDirs = [{ path: "./release", name: "release" }];
+} else if (isCI) {
+	destDirs = [{ path: "./build", name: "build" }];
 } else {
 	// Local development paths
 	destDirs = [
