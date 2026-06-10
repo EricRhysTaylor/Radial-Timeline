@@ -12,9 +12,10 @@ import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
 import { createHash } from 'crypto'; // SAFE: exact retired starter sample fingerprinting
+import * as os from 'os'; // SAFE: Node os for home-directory resolution (no env identity reads)
 import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
 import { DEFAULT_SETTINGS } from '../defaults';
-import { getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem, getPandocFolder } from '../../utils/exportFormats';
+import { buildMinimalSubprocessEnv, getStructuredFontDiagnostic, validatePandocLayout, slugifyToFileStem, getPandocFolder } from '../../utils/exportFormats';
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
@@ -97,9 +98,8 @@ function fileExistsSync(absPath: string): boolean {
 function getKnownPandocPaths(): string[] {
     const isWin = Platform.isWin;
     if (isWin) {
-        const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\Default\\AppData\\Local';
-        const appData = process.env.APPDATA || 'C:\\Users\\Default\\AppData\\Roaming';
-        const userProfile = process.env.USERPROFILE || 'C:\\Users\\Default';
+        const userProfile = os.homedir();
+        const localAppData = path.join(userProfile, 'AppData', 'Local');
         return [
             'C:\\Program Files\\Pandoc\\pandoc.exe',                       // Default installer
             'C:\\Program Files (x86)\\Pandoc\\pandoc.exe',                 // 32-bit installer
@@ -121,7 +121,7 @@ function getKnownPandocPaths(): string[] {
 function getKnownLatexPaths(): { engine: string; paths: string[] }[] {
     const isWin = Platform.isWin;
     if (isWin) {
-        const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\Default\\AppData\\Local';
+        const localAppData = path.join(os.homedir(), 'AppData', 'Local');
         // MiKTeX and TeX Live common install locations on Windows
         const miktexBins = [
             'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64',
@@ -159,8 +159,8 @@ function getEnrichedPath(): string {
     const existing = process.env.PATH || '';
 
     if (isWin) {
-        const localAppData = process.env.LOCALAPPDATA || '';
-        const userProfile = process.env.USERPROFILE || '';
+        const userProfile = os.homedir();
+        const localAppData = path.join(userProfile, 'AppData', 'Local');
         const extra = [
             'C:\\Program Files\\Pandoc',
             'C:\\Program Files (x86)\\Pandoc',
@@ -214,7 +214,7 @@ async function scanSystemPaths(): Promise<ScanResult> {
 
     // ── Phase 2: Fallback `which`/`where` with enriched PATH ────────────────
     if (!result.pandocPath || !result.latexPath) {
-        const env = { ...process.env, PATH: getEnrichedPath() };
+        const env = buildMinimalSubprocessEnv(getEnrichedPath());
         const whichCmd = Platform.isWin ? 'where' : 'which';
 
         if (!result.pandocPath) {
@@ -1670,7 +1670,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
     pandocIntroPanel.style.order = '10';
     const pandocHeading = addProRow(new Setting(pandocIntroPanel))
         .setName('Export & publishing')
-        .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below.')
+        .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below. Exports run the Pandoc and LaTeX programs already installed on your computer — nothing else is downloaded or executed.')
         .setHeading();
     addHeadingIcon(pandocHeading, 'book-open-text');
     addWikiLink(pandocHeading, 'Settings#publish');

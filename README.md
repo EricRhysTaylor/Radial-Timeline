@@ -124,7 +124,7 @@ Radial Timeline is a **desktop-only** Obsidian plugin.
 - Vault content should only leave the vault when you explicitly use enabled external features.
 - Shell commands are run only to invoke Pandoc when you export a manuscript, and never otherwise.
 - Files outside the vault are read or written only to save exports where you choose and to locate the Pandoc executable.
-- Environment variables (`PATH`, and on Windows `LOCALAPPDATA`/`USERPROFILE`/`APPDATA`) are read solely to find a Pandoc install — never to identify you or your machine.
+- The only environment variable read directly is `PATH`, used to locate Pandoc. Subprocesses receive a minimal allowlisted environment (PATH, home, temp, and locale/TeX variables) — never the full set, so credentials in your session can't leak to child processes.
 
 See [Privacy & Security](docs/privacy-and-security.md) for the detailed posture.
 

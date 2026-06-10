@@ -263,6 +263,9 @@ const context = await esbuild.context({
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
 		// 'EMBEDDED_RELEASE_NOTES': // REMOVED: Managed via direct import in code
 		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development'),
+		// Test/CI seam only — compiled out of production so shipped code never
+		// reads this env var (vitest runs on source and keeps the live read).
+		...(prod ? { 'process.env.RT_FONT_CATALOG': 'undefined' } : {}),
 		'__RT_DEV__': String(!prod),  // false for production, true for dev
 		'__RT_RELEASE__': String(isReleaseBuild)
 	}

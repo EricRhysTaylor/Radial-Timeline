@@ -7,6 +7,25 @@ This project is released under the **Radial Timeline Source-Available Non-Commer
 
 For the canonical license text, see: [`LICENSE`](https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE)
 
+### What the license means in practice
+
+The license is built around one idea: **the plugin is free for writers — including professional writers — but the software itself is not for resale or redistribution.** The table below is a plain-English summary; the LICENSE file is the legally binding text.
+
+| You want to… | Allowed? |
+|---|---|
+| Use the plugin for personal, educational, or professional writing | ✅ Yes |
+| Write and **sell** novels, scripts, games, or any creative work made with it | ✅ Yes — your creative work is 100% yours (§4) |
+| Read the source code to understand how it works | ✅ Yes |
+| Modify the source code for your own private use | ✅ Yes |
+| Suggest features, report bugs, or submit pull requests | ✅ Yes (§5 governs contributions) |
+| Redistribute the plugin, modified or not (mirrors, bundles, forks for public use) | ❌ Not without written permission |
+| Sell, sublicense, rent, or otherwise commercially exploit the software | ❌ Not without written permission |
+| Publish a derivative or substantially similar plugin, product, or service | ❌ Not without written permission |
+| Offer the software as a hosted/SaaS/multi-user service | ❌ Not without written permission |
+| Use the "Radial Timeline" or "Inquiry View" names, logos, or branding | ❌ Not without written permission |
+
+In short: **what you write belongs to you, commercially and completely. The tool belongs to its author.** For commercial licensing, redistribution rights, enterprise use, or partnerships, contact Eric Rhys Taylor (see the LICENSE file).
+
 ---
 
 <a name="notice"></a>

@@ -825,12 +825,31 @@ function templateNeedsUnicodeEngine(templatePath?: string): boolean {
     return diagnostics.usesFontspec;
 }
 
+// Environment variables a Pandoc/LaTeX subprocess legitimately needs. Spawned
+// processes receive ONLY these keys — never the full process.env, which can
+// carry credentials from the host session.
+const SUBPROCESS_ENV_ALLOWLIST = [
+    'PATH', 'HOME', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL', 'LC_CTYPE',
+    'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'APPDATA', 'LOCALAPPDATA',
+    'ProgramData', 'SystemRoot', 'windir', 'ComSpec', 'PATHEXT',
+    'TEXMFHOME', 'TEXMFVAR', 'TEXMFCACHE', 'FONTCONFIG_PATH', 'FONTCONFIG_FILE'
+];
+
+export function buildMinimalSubprocessEnv(pathOverride?: string): NodeJS.ProcessEnv {
+    const env: NodeJS.ProcessEnv = {};
+    for (const key of SUBPROCESS_ENV_ALLOWLIST) {
+        const value = process.env[key];
+        if (value !== undefined) env[key] = value;
+    }
+    if (pathOverride) env.PATH = pathOverride;
+    return env;
+}
+
 function getEngineCandidatePaths(engine: PdfEngine): string[] {
     if (getCurrentPlatform() === 'win') {
-        const userProfile = process.env.USERPROFILE || 'C:\\Users\\Public';
-        const localAppData = process.env.LOCALAPPDATA || `${userProfile}\\AppData\\Local`;
-        const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-        const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+        const localAppData = path.join(os.homedir(), 'AppData', 'Local');
+        const programFiles = 'C:\\Program Files';
+        const programFilesX86 = 'C:\\Program Files (x86)';
         return [
             `${programFiles}\\MiKTeX\\miktex\\bin\\x64\\${engine}.exe`,
             `${programFiles}\\MiKTeX\\miktex\\bin\\${engine}.exe`,
@@ -911,7 +930,7 @@ export async function runPandocOnContent(
     }
 
     await new Promise<void>((resolve, reject) => {
-        const env = { ...process.env };
+        const env = buildMinimalSubprocessEnv();
         const pathSeparator = getCurrentPlatform() === 'win' ? ';' : ':';
         const extraPaths = getCurrentPlatform() === 'win'
             ? ['C:\\Program Files\\MiKTeX\\miktex\\bin\\x64', 'C:\\Program Files\\texlive\\2024\\bin\\win32']
