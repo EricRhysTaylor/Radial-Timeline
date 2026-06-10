@@ -54,3 +54,7 @@ tmp/publishing-pdf-qa/
 
 # Local verification hold marker — presence makes backup.mjs a no-op. Never committed.
 .rt-verification-hold
+
+# Local reference copies — not part of the plugin; Obsidian scorecard scans repo CSS
+app.css
+vault-restore-point/
