@@ -20,9 +20,16 @@
 
 Radial Timeline® arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.
 
-**Before:** Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.
-
-**After:** One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture.
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top" style="padding-right: 12px;">
+      <p><strong>Before:</strong> Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
+    </td>
+    <td width="50%" valign="top" style="padding-left: 12px;">
+      <p><strong>After:</strong> One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture.</p>
+    </td>
+  </tr>
+</table>
 
 Radial Timeline® captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
 
