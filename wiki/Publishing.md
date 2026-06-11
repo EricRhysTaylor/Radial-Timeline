@@ -18,7 +18,7 @@ This page covers:
 - Export checks and template readiness
 - Exporting
 
-> **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [Setting Up Pandoc Export](Getting-Started#setting-up-pandoc-export) for the one-time install.
+> **Prerequisites**: Pandoc installed, and LaTeX installed for PDF output. See [Exporting a Manuscript](#exporting-a-manuscript) for the export workflow and checks.
 
 ---
 
@@ -278,7 +278,7 @@ The export panel lets you:
 
 Files land in `Radial Timeline/Export/` unless you've set a custom export folder.
 
-For the end-to-end export workflow and troubleshooting (Pandoc install, LaTeX issues), see [Export Workflow](Getting-Started#exporting-a-manuscript).
+For the end-to-end export workflow and troubleshooting, start here and use the checks in the export panel to catch missing Pandoc, LaTeX, templates, or fonts before rendering.
 
 ---
 

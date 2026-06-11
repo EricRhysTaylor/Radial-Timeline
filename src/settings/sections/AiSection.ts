@@ -160,7 +160,7 @@ export function renderAiSection(params: {
     setIcon(badgeIcon, 'cpu');
     badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.ai.hero.badgeText') });
     const badgeWikiLink = badge.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#ai',
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings-AI',
         cls: ERT_CLASSES.BADGE_PILL_WIKI,
         attr: {
             'aria-label': t('settings.ai.hero.wikiAriaLabel'),
@@ -796,7 +796,7 @@ export function renderAiSection(params: {
         .setName(t('settings.ai.apiKeys.name'))
         .setHeading();
     addHeadingIcon(apiKeysHeader, 'key');
-    addWikiLink(apiKeysHeader, 'Settings#ai');
+    addWikiLink(apiKeysHeader, 'Settings-AI#api-keys');
     applyErtHeaderLayout(apiKeysHeader);
     const configurationBody = apiKeysFold.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
 

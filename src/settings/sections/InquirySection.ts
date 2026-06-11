@@ -193,14 +193,14 @@ export function renderInquirySection(params: SectionParams): void {
     const promptsBody = createSection(containerEl, {
         title: t('settings.inquiry.prompts.name'),
         icon: 'list',
-        wiki: 'Settings#inquiry-prompts'
+        wiki: 'Settings-Inquiry#prompts'
     });
     renderPromptConfiguration(promptsBody);
 
     const sourcesBody = createSection(containerEl, {
         title: t('settings.inquiry.sources.name'),
         icon: 'search',
-        wiki: 'Settings#inquiry-sources',
+        wiki: 'Settings-Inquiry#sources',
         role: 'inquiry-setting:sources-heading'
     });
 
@@ -1808,7 +1808,7 @@ export function renderInquirySection(params: SectionParams): void {
         title: t('settings.inquiry.corpus.name'),
         desc: t('settings.inquiry.corpus.desc'),
         icon: 'layout-grid',
-        wiki: 'Settings#inquiry-corpus'
+        wiki: 'Settings-Inquiry#corpus'
     });
     renderCorpusCcSettings(corpusBody);
 
@@ -1816,7 +1816,7 @@ export function renderInquirySection(params: SectionParams): void {
         title: t('settings.inquiry.config.name'),
         desc: t('settings.inquiry.config.desc'),
         icon: 'settings',
-        wiki: 'Settings#inquiry'
+        wiki: 'Settings-Inquiry'
     });
 
     new Settings(configBody)

@@ -1,23 +1,30 @@
 This page covers scene properties (core and advanced), beat notes, and backdrop notes. Radial Timeline reads these from **Obsidian properties** at the top of each note. If you prefer to keep things light, you can start with only the minimal properties and fill in the rest later.
 
-## Minimal Scene (Required Fields)
+## Core Scene Scaffold
 
 ```yaml
+ID: scn_00000000          # Auto-generated stable scene reference
 Class: Scene              # Type: Scene
 Act: 1                    # Which act (1-3)
 When:                     # Story chronology date (YYYY-MM-DD 12:34pm)
 Duration:                 # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
+Chapter:                  # Optional chapter marker for publishing and perimeter placards
 Synopsis:                 # Concise present-tense snapshot for hovers/outlines (1-3 sentences)
 Summary:                  # Extended scene expansion (events, emotional turns, subtext, outcome)
+Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Subplot: Main Plot        # Single subplot (or use array format below for multiple)
 Character:                # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
-Status: Todo              # Scene status (Todo/Working/Complete)
+Words:                    # Optional word count/statistics
+Runtime:                  # Optional runtime estimate or override
 Publish Stage: Zero       # Progress stage (Zero/Author/House/Press)
+Status: Todo              # Scene status (Todo/Working/Complete)
 Due:                      # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
-Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag
+Summary Update:           # Summary refresh flag
 ```
+
+Book Designer and Create note generate the core scaffold above. `ID` is inserted automatically for stable scene citations, and the scene properties editor can maintain the current core and advanced field order.
 
 **For multiple subplots or characters, use YAML list format:**
 ```yaml
@@ -52,11 +59,15 @@ You can control how POV is displayed in **Settings → Core → Point of view**.
 Advanced scene properties add optional fields for deeper workflows (Dramatica, custom analysis, and more). This profile is **customizable**.
 
 ```yaml
+ID: scn_00000000
 Class: Scene
 Act: 1
 When: 2085-01-01 1:30pm
 Duration: 6 hours
+Chapter:
 Synopsis: What happens in a few lines.
+Summary: The longer scene summary.
+Pending Edits:
 Subplot:
   - Subplot 1
   - Subplot 2
@@ -64,10 +75,13 @@ Character:
   - "Character 1"
 Place:
   - "Earth"
-Status: Todo
 Publish Stage: Zero
+Status: Todo
 Due:
-Pending Edits:
+Pulse Update: No
+Summary Update:
+Words:
+Runtime:
 Iteration:                            # Edit iteration count (deprecated: was "Revision")
 Type:                                 # Optional scene role or classification
 Shift:                                # Optional value shift or polarity change
@@ -75,10 +89,6 @@ Questions:                            # Analysis Block
 Reader Emotion:
 Internal: How do the characters change?
 Total Time:
-Words:                                # Statistics
-Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
-Pulse Update: No
-Summary Update:
 ```
 
 <a name="advanced-yaml-editor"></a>

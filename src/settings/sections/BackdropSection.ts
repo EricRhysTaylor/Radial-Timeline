@@ -23,7 +23,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         .setName('Backdrop & micro context rings')
         .setHeading();
     addHeadingIcon(backdropHeading, 'layers-3');
-    addWikiLink(backdropHeading, 'Settings#backdrop');
+    addWikiLink(backdropHeading, 'Settings-Core#backdrop-and-micro-backdrops');
     applyErtHeaderLayout(backdropHeading);
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });

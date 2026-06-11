@@ -773,7 +773,7 @@ export function renderProgressSection(params: {
         .setName('Progress and status')
         .setHeading();
     addHeadingIcon(progressHeading, 'activity');
-    addWikiLink(progressHeading, 'Settings#progress-status');
+    addWikiLink(progressHeading, 'Settings-Core#progress-and-status');
     applyErtHeaderLayout(progressHeading);
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });

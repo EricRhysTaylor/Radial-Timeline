@@ -23,7 +23,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         .setName(t('settings.configuration.heading'))
         .setHeading();
     addHeadingIcon(configurationHeading, 'pyramid');
-    addWikiLink(configurationHeading, 'Settings#configuration');
+    addWikiLink(configurationHeading, 'Settings-Advanced#configuration');
     applyErtHeaderLayout(configurationHeading);
 
     const configurationBody = containerEl.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });

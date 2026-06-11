@@ -1673,7 +1673,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below. Exports run the Pandoc and LaTeX programs already installed on your computer — nothing else is downloaded or executed.')
         .setHeading();
     addHeadingIcon(pandocHeading, 'book-open-text');
-    addWikiLink(pandocHeading, 'Settings#publish');
+    addWikiLink(pandocHeading, 'Publishing');
     applyErtHeaderLayout(pandocHeading);
 
     const systemConfigPanel = section.createDiv({

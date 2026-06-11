@@ -101,7 +101,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Right Icon (Wiki Link) - Manually constructed for ERT styling
     const wikiLink = badge.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Author-Progress-Report',
         cls: ERT_CLASSES.BADGE_PILL_WIKI,
         attr: {
             'aria-label': t('settings.authorProgress.hero.wikiAriaLabel'),
@@ -294,7 +294,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setDesc(t('settings.authorProgress.configuration.desc'))
         .setHeading();
     addHeadingIcon(stylingHeading, 'settings');
-    addWikiLink(stylingHeading, 'Settings#social-media-styling');
+    addWikiLink(stylingHeading, 'Author-Progress-Report#progress-tracking');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
 
@@ -646,7 +646,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setDesc(t('settings.authorProgress.styling.desc'))
         .setHeading();
     addHeadingIcon(themeHeading, 'swatch-book');
-    addWikiLink(themeHeading, 'Settings#social-media-theme');
+    addWikiLink(themeHeading, 'Author-Progress-Report#styling-options');
     const themeControl = themeHeading.controlEl;
     const themeBody = themeBlock.createDiv({ cls: 'ert-typography-stack' });
 
@@ -1724,7 +1724,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             .setName(t('settings.authorProgress.publishing.name'))
             .setHeading();
         addHeadingIcon(automationHeader, 'rss');
-        addWikiLink(automationHeader, 'Settings#social-media-publishing');
+        addWikiLink(automationHeader, 'Author-Progress-Report#export-and-refresh');
         applyErtHeaderLayout(automationHeader);
 
         const frequencySetting = new Setting(automationCard)

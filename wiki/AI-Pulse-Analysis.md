@@ -27,7 +27,7 @@ Pulse currently works best with the hosted AI providers:
 *   **OpenAI GPT**
 *   **Google Gemini**
 
-Local/OpenAI-compatible setups are documented under [Settings → AI](Settings-AI#local--openai-compatible). For Pulse itself, use the hosted providers above for now.
+Local/OpenAI-compatible setups are documented under [Settings → AI → Local LLM](Settings-AI#local-llm). For Pulse itself, use the hosted providers above for now.
 
 For the command-specific batch workflows, see:
 

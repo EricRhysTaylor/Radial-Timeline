@@ -73,7 +73,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         .setName('Chronologue mode discontinuity & duration')
         .setHeading();
     addHeadingIcon(chronoHeading, 'clock-8');
-    addWikiLink(chronoHeading, 'Settings#chronologue');
+    addWikiLink(chronoHeading, 'Settings-Core#chronologue-mode-settings');
     applyErtHeaderLayout(chronoHeading);
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });

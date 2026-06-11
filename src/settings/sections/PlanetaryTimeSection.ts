@@ -119,7 +119,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
         .setName(t('planetary.heading'))
         .setHeading();
     addHeadingIcon(planetaryHeading, 'earth');
-    addWikiLink(planetaryHeading, 'Settings#planetary-time');
+    addWikiLink(planetaryHeading, 'Settings-Core#planetary-time');
     applyErtHeaderLayout(planetaryHeading);
 
     let sectionExpanded = plugin.settings.planetarySectionExpanded ?? true;

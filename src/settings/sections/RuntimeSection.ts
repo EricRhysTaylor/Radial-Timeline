@@ -112,7 +112,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         .setName(t('settings.runtime.header.name'))
         .setHeading()
         .setDesc(t('settings.runtime.header.desc'));
-    addWikiLink(runtimeHeader, 'Settings#runtime-estimation');
+    addWikiLink(runtimeHeader, 'Settings-Core#runtime-estimation');
     const runtimeHeaderLayout = applyErtHeaderLayout(runtimeHeader);
     if (runtimeHeaderLayout) {
         runtimeHeaderLayout.header.removeClass(ERT_CLASSES.HEADER_NO_LEFT);

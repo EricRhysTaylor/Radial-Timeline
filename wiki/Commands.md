@@ -13,11 +13,11 @@ Type `Radial Timeline` to filter the list.
 
 ## Command Index
 
-These are the main command-palette entries, listed in the same order as the palette screenshot:
+These are the main command-palette entries.
 
 1. **Open** — opens the [Radial Timeline View](Radial-Timeline-View).
 2. **[Create note…](#create-note)**
-3. **Open inquiry** — opens the [Inquiry View](Inquiry-View).
+3. **Open inquiry** — opens the [Inquiry View](Inquiry).
 4. **[Book Designer](Book-Designer)** ← standalone guide
 5. **[Timeline order](#timeline-order)** *(beta)*
 6. **[Timeline audit](#timeline-audit)** *(beta)*
@@ -36,11 +36,14 @@ These are the main command-palette entries, listed in the same order as the pale
 
 ## Conditional Visibility
 
-Some commands only appear in the palette when their required feature is enabled:
+Some commands are hidden until their required feature is enabled. Others remain visible but stop with a setup message if prerequisites are missing:
 
-*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis, Inquiry omnibus pass) require **AI LLM features** enabled in [Settings → AI](Settings-AI).
+*   **Scene pulse analysis** and **Summary refresh** appear only when **AI LLM features** are enabled in [Settings → AI](Settings-AI).
+*   **Gossamer analysis** is visible, but the run requires an active beat system, story beats, scene content, and usable AI settings.
 *   **Runtime estimator** requires **Pro** access. Runtime configuration lives in [Settings → Core](Settings-Core#runtime-estimation).
-*   **Planetary time calculator** requires **Planetary time** enabled in [Settings → Core](Settings-Core).
+*   **Planetary time calculator** is visible, but it needs at least one configured planetary profile before it can produce a conversion.
+*   **Timeline order** and **Timeline audit** show a release-pending notice in public release builds and are usable in development/testing builds.
+*   **Inquiry omnibus pass** appears only in development/testing builds.
 
 ---
 
@@ -71,7 +74,7 @@ Related: [Scene Properties (Core + Advanced)](YAML-Frontmatter).
 Opens the timeline order normalizer (Timeline Repair wizard).
 
 > [!NOTE]
-> Currently undergoing beta testing. Available only in development/testing builds for now.
+> Currently undergoing beta testing. Public release builds show this command as release-pending; development/testing builds can open the workflow.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/panel-timeline-order.png" alt="Timeline order command panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
@@ -91,7 +94,7 @@ Related: [Chronologue Mode](Chronologue-Mode).
 Opens the timeline audit panel.
 
 > [!NOTE]
-> Currently undergoing beta testing. Available only in development/testing builds for now.
+> Currently undergoing beta testing. Public release builds show this command as release-pending; development/testing builds can open the workflow.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/panel-timeline-audit.png" alt="Timeline audit panel" style="width: 560px; max-width: 100%; border-radius: 8px;" />
@@ -148,7 +151,7 @@ Run modes: flagged scenes, missing summaries only, missing/weak/stale, or regene
 
 This command is separate from scene pulse analysis: **Pulse** writes short structured editorial feedback per scene; **Summary refresh** writes longer summary text for corpus-level use.
 
-Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Inquiry View](Inquiry-View).
+Related: [AI Pulse Triplet Analysis](AI-Pulse-Analysis), [Inquiry View](Inquiry).
 
 ---
 
@@ -193,7 +196,7 @@ Opens the runtime estimation panel.
 
 Used for novels, audiobooks, and screenplays. The panel works with runtime profiles and can estimate duration across different scopes and filters. Available only when **Pro** is active.
 
-Related: [Pro → Runtime estimation](Pro#runtime-estimation), [Chronologue Runtime sub-mode](Chronologue-Mode#runtime-sub-mode).
+Related: [Settings → Core → Runtime estimation](Settings-Core#runtime-estimation), [Chronologue Runtime sub-mode](Chronologue-Mode#runtime-sub-mode).
 
 ---
 
@@ -211,7 +214,7 @@ Runs all enabled Inquiry questions in one batch.
 
 Executes enabled questions across the Inquiry zones and returns a combined set of findings for the current corpus. Works with the active scope (Book or Saga). Depending on provider and engine path, the run may execute as a combined omnibus flow or as sequential provider calls behind the scenes.
 
-Related: [Inquiry View](Inquiry-View), [Running an Inquiry](Inquiry#running-an-inquiry).
+Related: [Inquiry View](Inquiry), [Running an Inquiry](Inquiry#running-an-inquiry).
 
 ---
 

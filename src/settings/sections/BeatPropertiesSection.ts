@@ -166,7 +166,7 @@ export function renderBeatPropertiesSection(params: {
         .setName(t('settings.beats.acts.name'))
         .setHeading();
     addHeadingIcon(actsHeading, 'chart-pie');
-    addWikiLink(actsHeading, 'Settings#acts');
+    addWikiLink(actsHeading, 'Settings-Core#acts');
     applyErtHeaderLayout(actsHeading);
 
     const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
@@ -854,7 +854,7 @@ export function renderBeatPropertiesSection(params: {
         .setName(t('settings.beats.storyBeatsSystem.name'))
         .setHeading();
     addHeadingIcon(beatsHeading, 'activity');
-    addWikiLink(beatsHeading, 'Settings#story-beats');
+    addWikiLink(beatsHeading, 'Settings-Core#story-beats-system');
     applyErtHeaderLayout(beatsHeading);
 
     // Wrapper keeps tabs + panel as a single stack item (no stack gap between them)

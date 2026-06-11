@@ -220,7 +220,7 @@ export function renderSceneNormalizerSection(params: {
         .setName('Scene note maintenance');
     headerRow.settingEl.addClass('ert-scene-properties-row', 'ert-scene-maintenance-row');
     addHeadingIcon(headerRow, 'shield-check');
-    addWikiLink(headerRow, 'Settings#yaml-templates');
+    addWikiLink(headerRow, 'Settings-Core#scene-properties');
     applyErtHeaderLayout(headerRow);
     const policyBadgeEl = createBadge(headerRow.controlEl, buildPolicyBadge());
     const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel', 'ert-settings-hidden'] });

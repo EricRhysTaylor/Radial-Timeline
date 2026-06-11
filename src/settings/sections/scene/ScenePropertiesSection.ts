@@ -83,7 +83,7 @@ export function renderScenePropertiesSection(params: {
         .setName('Scene properties')
         .setHeading();
     addHeadingIcon(sectionHeading, 'form');
-    addWikiLink(sectionHeading, 'Settings#yaml-templates');
+    addWikiLink(sectionHeading, 'Settings-Core#scene-properties');
     applyErtHeaderLayout(sectionHeading);
 
     const sectionStack = parentEl.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack', 'ert-scene-settings-stack'] });

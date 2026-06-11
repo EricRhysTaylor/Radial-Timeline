@@ -52,7 +52,7 @@ export function renderPovSection(params: {
         .setName(t('settings.pov.heading'))
         .setHeading();
     addHeadingIcon(povHeading, 'eye');
-    addWikiLink(povHeading, 'Settings#pov');
+    addWikiLink(povHeading, 'Settings-Core#point-of-view');
     applyErtHeaderLayout(povHeading);
 
     const povModeOptions: Record<GlobalPovMode, string> = {

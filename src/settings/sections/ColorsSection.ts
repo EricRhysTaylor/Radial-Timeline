@@ -362,7 +362,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
         .setDesc('Used for completed scenes, stage matrix, act labels and more.')
         .setHeading();
     addHeadingIcon(pubHeading, 'paintbrush-vertical');
-    addWikiLink(pubHeading, 'Settings#publishing-stage-colors');
+    addWikiLink(pubHeading, 'Settings-Core#progress-stage-colors');
     pubHeading.descEl?.addClass('ert-color-section-desc');
     applyErtHeaderLayout(pubHeading);
     const stageGrid = pubSection.createDiv({ cls: 'ert-color-grid' });
@@ -428,7 +428,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
         .setDesc('Subplot ring colors used for rings 1 through 16 moving inward.')
         .setHeading();
     addHeadingIcon(subplotHeading, 'paintbrush-vertical');
-    addWikiLink(subplotHeading, 'Settings#subplot-ring-colors');
+    addWikiLink(subplotHeading, 'Settings-Core#subplot-ring-colors');
     subplotHeading.descEl?.addClass('ert-color-section-desc');
     applyErtHeaderLayout(subplotHeading);
     const subplotGrid = subplotSection.createDiv({ cls: 'ert-color-grid' });

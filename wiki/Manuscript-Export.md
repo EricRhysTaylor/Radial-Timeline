@@ -29,4 +29,4 @@ The selected novel PDF layout is remembered per book. Narrative Mode uses that s
 ## Related Docs
 
 *   [Publishing](Publishing)
-*   [Workflow Overview](Getting-Started#exporting-a-manuscript)
+*   [Publishing → Exporting a Manuscript](Publishing#exporting-a-manuscript)
