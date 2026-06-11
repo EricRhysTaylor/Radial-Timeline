@@ -21,6 +21,7 @@
 		"check-obsidian": "node scripts/check-obsidian-version.mjs",
 		"review:obsidian": "node scripts/check-obsidian-review-readiness.mjs",
 		"release:eyeball": "node scripts/release-eyeball-check.mjs",
+		"release:i18n": "node scripts/check-i18n-release.mjs",
 		"release:prep": "node scripts/release-preflight.mjs",
 		"gates": "node scripts/run-gates.mjs",
 		"gates:legacy": "node scripts/check-model-updates.mjs --quiet && node scripts/check-api-features.mjs --summary && node scripts/validate-pricing.mjs && node check-css-duplicates.mjs --quiet && npm run build-only && node code-quality-check.mjs --all && npm run css-drift -- --maintenance && node scripts/compliance-check.mjs --maintenance && npm run audit:spec-coverage && npm test",

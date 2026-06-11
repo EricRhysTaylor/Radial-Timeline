@@ -23,6 +23,7 @@ const now = new Date();
 const primaryAudit = isFriday(now) ? 'auditFriday' : 'auditDaily';
 
 run(`npm run ${primaryAudit}`, `Running ${primaryAudit}`);
+run('npm run release:i18n', 'Checking i18n release alignment');
 run('npm run review:obsidian', 'Running Obsidian review readiness');
 run('npm run release:eyeball', 'Printing eyeball checklist');
 

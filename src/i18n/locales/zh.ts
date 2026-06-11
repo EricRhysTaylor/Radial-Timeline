@@ -7,7 +7,8 @@
 /**
  * Simplified Chinese translations (简体中文)
  *
- * Covers `zh`, `zh-cn`, `zh-hans` (the i18n module strips region codes).
+ * Covers Simplified Chinese: `zh`, `zh-cn`, `zh-hans`, and `zh-sg`.
+ * Traditional Chinese variants fall back to English until a dedicated locale exists.
  * Missing keys automatically fall back to English.
  *
  * To add or refine translations:

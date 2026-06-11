@@ -31,8 +31,17 @@ type DeepPartial<T> = {
     [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
-// All available locales - add new languages here
-const locales: Record<string, DeepPartial<TranslationKeys>> = {
+export const SUPPORTED_LOCALES = ['en', 'ja', 'zh', 'ko', 'de'] as const;
+export type SupportedLocale = typeof SUPPORTED_LOCALES[number];
+
+const localeAliases: Record<string, SupportedLocale> = {
+    'zh-cn': 'zh',
+    'zh-hans': 'zh',
+    'zh-sg': 'zh',
+};
+
+// All available locales - add new languages here and to SUPPORTED_LOCALES.
+const locales: Record<SupportedLocale, DeepPartial<TranslationKeys>> = {
     en,
     ja,
     zh,
@@ -40,6 +49,10 @@ const locales: Record<string, DeepPartial<TranslationKeys>> = {
     de,
     // ar,
 };
+
+function isSupportedLocale(locale: string): locale is SupportedLocale {
+    return locale in locales;
+}
 
 // Cache the current locale to avoid repeated lookups
 let cachedLocale: string | null = null;
@@ -50,10 +63,16 @@ let cachedTranslations: TranslationKeys | null = null;
  */
 function getCurrentLocale(): string {
     // Obsidian uses moment.js for localization
-    const locale = moment.locale();
-    // Handle locale variants (e.g., 'zh-cn' -> 'zh')
+    const locale = moment.locale().toLowerCase();
+    if (isSupportedLocale(locale)) return locale;
+    if (locale in localeAliases) return localeAliases[locale];
+
     const baseLocale = locale.split('-')[0];
-    return baseLocale;
+    if (baseLocale !== 'zh' && isSupportedLocale(baseLocale)) {
+        return baseLocale;
+    }
+
+    return locale;
 }
 
 /**
@@ -107,7 +126,7 @@ function getTranslations(): TranslationKeys {
     cachedLocale = locale;
     
     // Start with English (complete), overlay locale-specific translations
-    if (locale === 'en' || !locales[locale]) {
+    if (locale === 'en' || !isSupportedLocale(locale)) {
         cachedTranslations = en;
     } else {
         // Merge: English base + locale overrides

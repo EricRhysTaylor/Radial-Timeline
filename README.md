@@ -1,5 +1,9 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="72"><br><br>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png" alt="Radial Timeline logo" width="72">
+  </picture><br><br>
   <strong>R A D I A L &nbsp; T I M E L I N E ™</strong><br>
   <sub>by Eric Rhys Taylor</sub>
   <br><br>
@@ -10,13 +14,13 @@
 
 ## What It Does
 
-Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.
+Radial Timeline® arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.
 
 **Before:** Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.
 
 **After:** One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture.
 
-Radial Timeline™ captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
+Radial Timeline® captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
 
 1. **Narrative time**: the sequence you reveal events to readers.
 2. **Chronological time**: when events happen in your story's world.
@@ -75,6 +79,10 @@ Radial Timeline is a **desktop-only** Obsidian plugin.
 - Supported target: Obsidian Desktop
 - Not intended for: Obsidian Mobile
 - Some publishing and file-reveal workflows depend on desktop filesystem and native shell access
+
+## Language Support
+
+Radial Timeline ships complete English interface text and partial interface translations for Japanese, Simplified Chinese, Korean, and German. Missing translated strings fall back to English. Traditional Chinese variants fall back to English until a dedicated Traditional Chinese locale is available.
 
 ## Privacy & Security
 
@@ -144,13 +152,14 @@ Reviewed and approved for the Obsidian Community Plugins directory. Developed wi
 
 ## License & Intellectual Property
 
-Radial Timeline™ © 2025 Eric Rhys Taylor
+Radial Timeline® © 2025 Eric Rhys Taylor
 Released under the **Radial Timeline Source-Available Non-Commercial License**.
 
 - You may install and use the software for personal, educational, or professional creative work.
 - You may use the software to create commercial creative works such as books, scripts, outlines, and related authored content.
 - Redistribution, public forks, hosted versions, and commercial exploitation of the software itself are prohibited without written permission.
-- The "Radial Timeline" name is a trademark of Eric Rhys Taylor.
+- Radial Timeline is protected by U.S. Copyright Registration TX0009593938 and U.S. Trademark Registration No. 8,251,843.
+- The Radial Timeline visualization system is the subject of U.S. Provisional Patent Application No. 63/951,412 and is marked Patent Pending.
 
 See the [Legal page](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Legal) on the wiki for a plain-English permission table, the [License](https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE) text, and the [Notice](https://github.com/EricRhysTaylor/radial-timeline/blob/master/NOTICE) file.
 

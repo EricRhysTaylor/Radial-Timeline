@@ -1,9 +1,11 @@
 <a name="license"></a>
 ## License
 
-Radial Timeline™ © 2025 Eric Rhys Taylor
+Radial Timeline® © 2025 Eric Rhys Taylor
 
 This project is released under the **Radial Timeline Source-Available Non-Commercial License**.
+
+Radial Timeline is protected by U.S. Copyright Registration TX0009593938 and U.S. Trademark Registration No. 8,251,843. The Radial Timeline visualization system is the subject of U.S. Provisional Patent Application No. 63/951,412 and is marked Patent Pending.
 
 For the canonical license text, see: [`LICENSE`](https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE)
 
@@ -22,7 +24,8 @@ The license is built around one idea: **the plugin is free for writers — inclu
 | Sell, sublicense, rent, or otherwise commercially exploit the software | ❌ Not without written permission |
 | Publish a derivative or substantially similar plugin, product, or service | ❌ Not without written permission |
 | Offer the software as a hosted/SaaS/multi-user service | ❌ Not without written permission |
-| Use the "Radial Timeline" or "Inquiry View" names, logos, or branding | ❌ Not without written permission |
+| Use the "Radial Timeline" name, logo, or registered trademark to brand forks, distributions, related software, products, or services | ❌ Not without written permission |
+| Copy, commercialize, or publish a substantially similar implementation of the patent-pending Radial Timeline visualization system | ❌ Not without written permission |
 
 In short: **what you write belongs to you, commercially and completely. The tool belongs to its author.** For commercial licensing, redistribution rights, enterprise use, or partnerships, contact Eric Rhys Taylor (see the LICENSE file).
 
