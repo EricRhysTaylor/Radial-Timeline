@@ -7,13 +7,23 @@
 // to scripts/eslint-obsidian-enforced-baseline.json so existing debt is frozen
 // without turning every gate red.
 import tsparser from '@typescript-eslint/parser';
+import tseslint from '@typescript-eslint/eslint-plugin';
 import { defineConfig } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
+import { RT_SENTENCE_CASE_OPTIONS } from './eslint.config.mjs';
 
 export const ENFORCED_OBSIDIAN_RULES = [
   'obsidianmd/no-static-styles-assignment',
   'obsidianmd/prefer-window-timers',
+  'obsidianmd/ui/sentence-case',
+  '@typescript-eslint/no-unnecessary-type-assertion',
+  '@typescript-eslint/no-floating-promises',
 ];
+
+// Rules that take options; everything else is plain 'error'.
+const RULE_OPTIONS = {
+  'obsidianmd/ui/sentence-case': ['error', RT_SENTENCE_CASE_OPTIONS],
+};
 
 export default defineConfig([
   {
@@ -33,6 +43,7 @@ export default defineConfig([
     files: ['src/**/*.ts'],
     plugins: {
       obsidianmd,
+      '@typescript-eslint': tseslint,
     },
     languageOptions: {
       parser: tsparser,
@@ -41,6 +52,6 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    rules: Object.fromEntries(ENFORCED_OBSIDIAN_RULES.map(rule => [rule, 'error'])),
+    rules: Object.fromEntries(ENFORCED_OBSIDIAN_RULES.map(rule => [rule, RULE_OPTIONS[rule] ?? 'error'])),
   },
 ]);

@@ -56,6 +56,8 @@ const RT_IGNORE_WORDS = [
 
 // Whole strings the rule should skip: URL/model-id/date/color placeholders,
 // keyboard shortcuts, stylized SVG labels, and sentence fragments.
+// eslint.obsidian.enforced.config.mjs imports RT_SENTENCE_CASE_OPTIONS so the
+// report lane and the enforced ratchet lane agree on the vocabulary.
 const RT_IGNORE_REGEX = [
   '^https?://',
   '^e\\.g\\.',
@@ -72,6 +74,14 @@ const RT_IGNORE_REGEX = [
   '^advanced workflows',
   'StoryLine',
 ];
+
+export const RT_SENTENCE_CASE_OPTIONS = {
+  enforceCamelCaseLower: true,
+  brands: RT_BRANDS,
+  acronyms: RT_ACRONYMS,
+  ignoreWords: RT_IGNORE_WORDS,
+  ignoreRegex: RT_IGNORE_REGEX,
+};
 
 export default defineConfig([
   {
@@ -98,13 +108,7 @@ export default defineConfig([
       },
     },
     rules: {
-      'obsidianmd/ui/sentence-case': ['error', {
-        enforceCamelCaseLower: true,
-        brands: RT_BRANDS,
-        acronyms: RT_ACRONYMS,
-        ignoreWords: RT_IGNORE_WORDS,
-        ignoreRegex: RT_IGNORE_REGEX,
-      }],
+      'obsidianmd/ui/sentence-case': ['error', RT_SENTENCE_CASE_OPTIONS],
     },
   },
 ]);
