@@ -15,6 +15,7 @@ type DomShim = {
 
 type TestGlobal = typeof globalThis & {
     document?: DomShim;
+    activeDocument?: DomShim;
     window?: { setTimeout: typeof setTimeout };
 };
 
@@ -24,6 +25,10 @@ if (!testGlobal.document) {
     testGlobal.document = {
         createElement: () => ({ textContent: '' })
     };
+}
+// Obsidian defines activeDocument as a global tracking the focused window
+if (!testGlobal.activeDocument) {
+    testGlobal.activeDocument = testGlobal.document;
 }
 if (!testGlobal.window) {
     testGlobal.window = {
