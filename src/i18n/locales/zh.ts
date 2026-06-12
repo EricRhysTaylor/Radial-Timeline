@@ -76,11 +76,11 @@ export const zh: DeepPartial<TranslationKeys> = {
             heading: '高级设置',
             aiOutputFolder: {
                 name: '日志',
-                desc: '运行日志、归档、快照和移动历史保存在 Radial Timeline/Logs。',
+                desc: '运行日志、归档、快照和移动历史。',
             },
             manuscriptOutputFolder: {
                 name: '导出文件夹',
-                desc: '手稿、大纲和索引卡导出（Markdown、PDF、节拍表、索引卡）保存在 Radial Timeline/Export。',
+                desc: '手稿、大纲和索引卡导出（Markdown、PDF、节拍表、索引卡）的目标文件夹。必须是 Vault 内的文件夹。',
             },
             autoExpand: {
                 name: '自动展开被截断的场景标题',

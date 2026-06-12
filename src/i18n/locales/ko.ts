@@ -74,11 +74,11 @@ export const ko: DeepPartial<TranslationKeys> = {
             heading: '고급 설정',
             aiOutputFolder: {
                 name: '로그',
-                desc: '실행 로그, 아카이브, 스냅샷, 이동 이력은 Radial Timeline/Logs에 저장됩니다.',
+                desc: '실행 로그, 아카이브, 스냅샷, 이동 이력.',
             },
             manuscriptOutputFolder: {
                 name: '내보내기 폴더',
-                desc: '원고, 아웃라인, 인덱스 카드 내보내기 (Markdown, PDF, 비트 시트, 인덱스 카드)는 Radial Timeline/Export에 저장됩니다.',
+                desc: '원고, 아웃라인, 인덱스 카드 내보내기 (Markdown, PDF, 비트 시트, 인덱스 카드)의 대상 폴더입니다. Vault 내부의 폴더여야 합니다.',
             },
             autoExpand: {
                 name: '잘린 장면 제목 자동 확장',

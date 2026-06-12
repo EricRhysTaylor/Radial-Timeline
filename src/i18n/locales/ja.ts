@@ -75,11 +75,11 @@ export const ja: DeepPartial<TranslationKeys> = {
             heading: '詳細設定',
             aiOutputFolder: {
                 name: 'ログ',
-                desc: '実行ログ、アーカイブ、スナップショット、Move History は Radial Timeline/Logs に保存されます。',
+                desc: '実行ログ、アーカイブ、スナップショット、Move History。',
             },
             manuscriptOutputFolder: {
                 name: 'エクスポートフォルダ',
-                desc: '原稿、アウトライン、インデックスカードのエクスポート（Markdown、PDF、ビートシート、インデックスカード）は Radial Timeline/Export に保存されます。',
+                desc: '原稿、アウトライン、インデックスカードのエクスポート先（Markdown、PDF、ビートシート、インデックスカード）。Vault 内のフォルダを指定してください。',
             },
             autoExpand: {
                 name: 'クリップされたシーンタイトルを自動展開',
