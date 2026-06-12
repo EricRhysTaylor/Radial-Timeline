@@ -121,8 +121,8 @@ function createActiveDocumentShape(): string {
 /**
  * Create the mode selector grid element
  */
-function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
-    const grid = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+function createModeSelectorGrid(view: ModeToggleView, doc: Document): SVGGElement {
+    const grid = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
     grid.setAttribute('class', 'rt-mode-selector-grid');
     grid.setAttribute('id', 'mode-selector');
 
@@ -135,22 +135,22 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         const x = startX + index * spacePerIcon;
 
         // Create outer group for positioning (translate only)
-        const optionGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const optionGroup = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
         optionGroup.setAttribute('class', 'rt-mode-option');
         optionGroup.setAttribute('data-mode', mode.id);
         optionGroup.setAttribute('transform', `translate(${x}, ${MODE_SELECTOR_POS_Y})`);
 
         // Create inner group for hover scaling (CSS transform will apply here)
-        const innerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const innerGroup = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
         innerGroup.setAttribute('class', 'rt-mode-option-content');
 
         // Create path element - scaled to inactive size (native)
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const path = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createInactiveDocumentShape());
 
         // Acronym letter in bottom-left, mirroring the top-left number label
-        const letter = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const letter = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
         letter.setAttribute('class', 'rt-mode-acronym-text');
         letter.setAttribute('x', String(LETTER_X));
         letter.setAttribute('y', String(LETTER_Y));
@@ -159,7 +159,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         letter.textContent = mode.acronym;
 
         // Create number label (1, 2, 3, 4) at top left corner - Native Size
-        const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const numberLabel = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
         numberLabel.setAttribute('class', 'rt-mode-number-label');
         numberLabel.setAttribute('x', String(ICON_NUMBER_X));
         numberLabel.setAttribute('y', String(ICON_NUMBER_Y));
@@ -175,7 +175,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     });
 
     // Add mode title text above the first icon
-    const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const titleText = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
     titleText.setAttribute('class', 'rt-mode-title-text');
     titleText.setAttribute('x', String(MODE_TITLE_POS_X));
     titleText.setAttribute('y', String(MODE_TITLE_POS_Y));
@@ -312,9 +312,10 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
  * Initialize mode selector controls for a view
  */
 export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGElement): void {
+    const doc = svg.ownerDocument;
 
     // Create mode selector grid
-    const modeSelector = createModeSelectorGrid(view);
+    const modeSelector = createModeSelectorGrid(view, doc);
     svg.appendChild(modeSelector);
 
     // Update initial state
@@ -340,7 +341,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             return; // Different view is active, don't intercept
         }
         // If focus is inside an input/textarea/select or a contenteditable element, don't intercept
-        const activeEl = document.activeElement as HTMLElement | null;
+        const activeEl = doc.activeElement as HTMLElement | null;
         if (activeEl) {
             const tag = activeEl.tagName.toUpperCase();
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || activeEl.isContentEditable) {
@@ -357,9 +358,9 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     };
 
     // SAFE: Document-level listener cleaned up via view.register() below
-    document.addEventListener('keydown', handleKeyPress);
+    doc.addEventListener('keydown', handleKeyPress);
     view.register(() => {
-        document.removeEventListener('keydown', handleKeyPress);
+        doc.removeEventListener('keydown', handleKeyPress);
     });
 
     // Register hover handlers for visual feedback (color changes only, no scaling)

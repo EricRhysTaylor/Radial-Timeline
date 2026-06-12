@@ -54,7 +54,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
     }
 
     const svgRoot = container.querySelector('svg.radial-timeline-svg') as SVGSVGElement | null;
-    const isHidden = !svgRoot || svgRoot.getBoundingClientRect().width === 0 || document.visibilityState === 'hidden';
+    const isHidden = !svgRoot || svgRoot.getBoundingClientRect().width === 0 || container.ownerDocument.visibilityState === 'hidden';
     const MAX_ATTEMPTS = 10;
     const signature = getLabelSignature(container);
 
@@ -183,7 +183,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
 
             let separator = container.querySelector(`#plot-separator-${data.pathId}`) as SVGTextElement;
             if (!separator) {
-                separator = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                separator = container.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
                 separator.setAttribute('id', `plot-separator-${data.pathId}`);
                 separator.setAttribute('class', 'rt-storybeat-title rt-plot-dash-separator');
                 separator.setAttribute('text-anchor', 'middle');

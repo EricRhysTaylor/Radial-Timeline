@@ -448,7 +448,7 @@ export function renderScenePropertiesSection(params: {
                         if (alertObj && areAlertMigrationsComplete(alertObj, template)) {
                             dismissAlert(migration.alertId, plugin.settings);
                             await plugin.saveSettings();
-                            const alertEl = document.querySelector(`[data-alert-id="${migration.alertId}"]`);
+                            const alertEl = migrateBtn.ownerDocument.querySelector(`[data-alert-id="${migration.alertId}"]`);
                             if (alertEl) alertEl.remove();
                             new Notice('Migration complete. Alert dismissed.');
                         }

@@ -102,6 +102,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         return;
     }
 
+    // Resolve the document owning this SVG so popout windows work correctly
+    const doc = svg.ownerDocument;
+
     let shiftModeActive = false;
     let alienModeActive = false;
     let runtimeModeActive = false;
@@ -130,7 +133,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     const subplotColors: string[] = [];
     for (let i = 0; i < 16; i++) {
         const varName = `--rt-subplot-colors-${i}`;
-        const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        const computed = getComputedStyle(doc.documentElement).getPropertyValue(varName).trim();
         subplotColors[i] = computed || '#EFBDEB';
     }
 
@@ -470,7 +473,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
                         while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                         alienLines.forEach((line, i) => {
-                            const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                            const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                             tspan.setAttribute('x', '0');
                             tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
                             tspan.textContent = line;
@@ -491,7 +494,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                     if (earthLabel.includes('\n')) {
                         earthLabel.split('\n').forEach((line, i) => {
-                            const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                            const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                             tspan.setAttribute('x', '0');
                             tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
                             tspan.textContent = line;
@@ -578,7 +581,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 if (isFirst) {
                     // First label shows "00:00"
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
-                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     tspan.setAttribute('x', '0');
                     tspan.setAttribute('dy', '0');
                     tspan.textContent = '00:00';
@@ -586,7 +589,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 } else if (isLast) {
                     // Last label shows total runtime
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
-                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     tspan.setAttribute('x', '0');
                     tspan.setAttribute('dy', '0');
                     tspan.textContent = totalRuntimeLabel;
@@ -599,7 +602,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                         : 0;
                     const runtimeLabel = formatRuntimeValue(cumulativeBeforeScene);
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
-                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     tspan.setAttribute('x', '0');
                     tspan.setAttribute('dy', '0');
                     tspan.textContent = runtimeLabel;
@@ -617,7 +620,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                     if (earthLabel.includes('\n')) {
                         earthLabel.split('\n').forEach((line, i) => {
-                            const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                            const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                             tspan.setAttribute('x', '0');
                             tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
                             tspan.textContent = line;
@@ -750,7 +753,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             return;
         }
         // If focus is inside an input/textarea/select or a contenteditable element, don't intercept
-        const activeEl = document.activeElement as HTMLElement | null;
+        const activeEl = doc.activeElement as HTMLElement | null;
         if (activeEl) {
             const tag = activeEl.tagName.toUpperCase();
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || activeEl.isContentEditable) {
@@ -791,7 +794,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             return;
         }
         // If focus is inside an input/textarea/select or a contenteditable element, don't intercept
-        const activeElUp = document.activeElement as HTMLElement | null;
+        const activeElUp = doc.activeElement as HTMLElement | null;
         if (activeElUp) {
             const tagUp = activeElUp.tagName.toUpperCase();
             if (tagUp === 'INPUT' || tagUp === 'TEXTAREA' || tagUp === 'SELECT' || activeElUp.isContentEditable) {
@@ -815,19 +818,19 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     };
 
     // SAFE: Document-level listeners cleaned up via view.register() below
-    document.addEventListener('keydown', handleKeyDown);
+    doc.addEventListener('keydown', handleKeyDown);
     // SAFE: Cleanup handled by view.register() below
-    document.addEventListener('keyup', handleKeyUp);
+    doc.addEventListener('keyup', handleKeyUp);
     view.register(() => {
-        document.removeEventListener('keydown', handleKeyDown);
-        document.removeEventListener('keyup', handleKeyUp);
+        doc.removeEventListener('keydown', handleKeyDown);
+        doc.removeEventListener('keyup', handleKeyUp);
     });
 
     // Store cleanup function for mode switching (removes buttons immediately)
     (view as any)._chronologueShiftCleanup = () => {
         // Remove keyboard listeners
-        document.removeEventListener('keydown', handleKeyDown);
-        document.removeEventListener('keyup', handleKeyUp);
+        doc.removeEventListener('keydown', handleKeyDown);
+        doc.removeEventListener('keyup', handleKeyUp);
 
         // Explicitly remove buttons and slider to ensure instant disappearance on mode switch
         if (shiftButton && shiftButton.parentNode) {
@@ -1096,14 +1099,14 @@ function createShiftButtonShape(): string {
  * Create the shift button element
  */
 function createShiftButton(): SVGGElement {
-    const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const button = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
     button.setAttribute('class', 'rt-shift-mode-button');
     button.setAttribute('id', 'shift-mode-toggle');
 
     button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y})`);
 
     // Create path element
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const path = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', createShiftButtonShape());
     path.setAttribute('class', 'rt-shift-button-bg');
     path.setAttribute('fill', 'var(--interactive-normal)');
@@ -1111,7 +1114,7 @@ function createShiftButton(): SVGGElement {
     path.setAttribute('stroke-width', '2');
 
     // Create text element with up arrow
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const text = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '48.5'); // Center of button (97/2)
     text.setAttribute('y', '45'); // Near bottom like page icons (55 - 12 + 2px offset)
     text.setAttribute('text-anchor', 'middle');
@@ -1156,7 +1159,7 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
  * Create the ALT button element (Left of Shift)
  */
 function createAltButton(): SVGGElement {
-    const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const button = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
     button.setAttribute('class', 'rt-shift-mode-button rt-alt-button');
     button.setAttribute('id', 'alt-mode-toggle');
 
@@ -1172,15 +1175,15 @@ function createAltButton(): SVGGElement {
     button.setAttribute('transform', `translate(${posX}, ${posY})`);
 
     // Create path element
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', createAltButtonShape()); 
+    const path = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', createAltButtonShape());
     path.setAttribute('class', 'rt-shift-button-bg');
     path.setAttribute('fill', 'var(--interactive-normal)');
     path.setAttribute('stroke', 'var(--text-normal)');
     path.setAttribute('stroke-width', '2');
 
     // Create text element
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const text = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '21.5'); // Center of 43
     text.setAttribute('y', '36'); // Near bottom like page icons (46 - 12 + 2px offset)
     text.setAttribute('text-anchor', 'middle');
@@ -1259,7 +1262,7 @@ function createRtButtonShape(): string {
  * @param noData - if true, button shows warning state (no Runtime YAML data found)
  */
 function createRtButton(contentType: RuntimeContentType, noData: boolean = false): SVGGElement {
-    const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const button = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
     button.setAttribute('class', 'rt-shift-mode-button rt-runtime-button');
     button.setAttribute('id', 'runtime-mode-toggle');
 
@@ -1284,7 +1287,7 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     button.setAttribute('data-base-y', String(basePosY));
 
     // Create rounded rect background (same style as SHIFT/ALT buttons)
-    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const bg = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
     bg.setAttribute('d', createRtButtonShape());
     bg.setAttribute('class', 'rt-shift-button-bg rt-runtime-icon-bg');
     bg.setAttribute('fill', 'var(--interactive-normal)');
@@ -1294,7 +1297,7 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     // Create foreignObject to embed the Lucide icon
     // pointer-events: none ensures hover/click events go to the parent SVG group
     // which has the tooltip target class - prevents tooltip getting stuck
-    const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    const foreignObject = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
     foreignObject.setAttribute('x', '0');
     foreignObject.setAttribute('y', '0');
     foreignObject.setAttribute('width', String(RT_SIZE));
@@ -1303,7 +1306,7 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     foreignObject.style.pointerEvents = 'none';
 
     // Create the icon wrapper div
-    const iconWrapper = document.createElement('div');
+    const iconWrapper = activeDocument.createElement('div');
     iconWrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     iconWrapper.className = 'rt-runtime-icon-wrapper';
     iconWrapper.style.cssText = `
@@ -1618,9 +1621,10 @@ function showElapsedTime(
         const y2 = arcRadius * Math.sin(arcEndAngle);
         const arcPath = `M ${x1} ${y1} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} ${sweepFlag} ${x2} ${y2}`;
 
-        const arcGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const doc = svg.ownerDocument;
+        const arcGroup = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
         arcGroup.setAttribute('class', 'rt-elapsed-time-arc');
-        const arcPathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const arcPathElement = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
         arcPathElement.setAttribute('d', arcPath);
         arcPathElement.setAttribute('class', 'rt-elapsed-arc-path');
         arcGroup.appendChild(arcPathElement);
@@ -1633,7 +1637,7 @@ function showElapsedTime(
             const innerY = innerRadius * Math.sin(angle);
             const outerX = outerRadius * Math.cos(angle);
             const outerY = outerRadius * Math.sin(angle);
-            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            const marker = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
             marker.setAttribute('x1', `${innerX}`);
             marker.setAttribute('y1', `${innerY}`);
             marker.setAttribute('x2', `${outerX}`);
@@ -1686,10 +1690,10 @@ function showElapsedTime(
 }
 
 function createElapsedTimeLabel(x: number, y: number, value: string, midpointAngle?: number): SVGGElement {
-    const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const labelGroup = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
     labelGroup.setAttribute('class', 'rt-elapsed-time-group');
 
-    const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const labelText = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
     labelText.setAttribute('y', `${y}`);
     labelText.setAttribute('dominant-baseline', 'middle');
     labelText.setAttribute('fill', 'var(--interactive-accent)');

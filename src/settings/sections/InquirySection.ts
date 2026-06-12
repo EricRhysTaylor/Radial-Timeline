@@ -531,7 +531,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const renderClassTable = (configs: InquiryClassConfig[], counts: Record<string, number>, classSources?: Record<string, Set<string>>) => {
         // Build into a temporary container then replace in one go to avoid empty-then-rebuild flicker.
-        const container = document.createElement('div');
+        const container = classTableWrap.ownerDocument.createElement('div');
         container.className = classTableWrap.className;
         const buildRow = (extraClasses: string[] = []) =>
             container.createDiv({ cls: ['ert-controlGroup__row', ...extraClasses] });
@@ -741,7 +741,7 @@ export function renderInquirySection(params: SectionParams): void {
         resolution: InquiryBookResolution,
         containerClassCounts: Record<string, Record<string, number>>
     ) => {
-        const container = document.createElement('div');
+        const container = booksForInquiryList.ownerDocument.createElement('div');
         container.className = booksForInquiryList.className;
         const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.booksTable.sequence') });
@@ -1245,7 +1245,7 @@ export function renderInquirySection(params: SectionParams): void {
             preview.removeClass('is-dragging');
             preview.style.setProperty('--ert-inquiry-drag-preview-width', `${Math.ceil(rect.width)}px`);
             preview.style.setProperty('--ert-inquiry-drag-preview-height', `${Math.ceil(rect.height)}px`);
-            document.body.appendChild(preview);
+            row.ownerDocument.body.appendChild(preview);
 
             const offsetX = event.clientX > 0 ? Math.max(24, event.clientX - rect.left) : 28;
             const offsetY = event.clientY > 0 ? Math.max(20, event.clientY - rect.top) : 28;
@@ -1718,11 +1718,12 @@ export function renderInquirySection(params: SectionParams): void {
         header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.corpusTable.threshold') });
         header.createDiv({ cls: 'ert-controlGroup__cell' });
 
+        const doc = table.ownerDocument;
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
-            emptyMax: document.createElement('input'),
-            sketchyMin: document.createElement('input'),
-            mediumMin: document.createElement('input'),
-            substantiveMin: document.createElement('input')
+            emptyMax: doc.createElement('input'),
+            sketchyMin: doc.createElement('input'),
+            mediumMin: doc.createElement('input'),
+            substantiveMin: doc.createElement('input')
         };
 
         const renderRow = (label: string, key: keyof InquiryCorpusThresholds, operator = '>=') => {

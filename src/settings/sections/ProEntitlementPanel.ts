@@ -15,25 +15,26 @@ interface ProEntitlementPanelParams {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function buildProHeroLogo(parent: HTMLElement): () => void {
+    const doc = parent.ownerDocument;
     const wrap = parent.createDiv({ cls: 'ert-pro-hero-logoRow' });
-    const svg = document.createElementNS(SVG_NS, 'svg');
+    const svg = doc.createElementNS(SVG_NS, 'svg');
     svg.setAttr('class', 'ert-pro-hero-logo');
     svg.setAttr('viewBox', '0 0 2048 2048');
     svg.setAttr('preserveAspectRatio', 'xMidYMid meet');
     svg.setAttr('aria-hidden', 'true');
 
-    const defs = document.createElementNS(SVG_NS, 'defs');
-    const gradient = document.createElementNS(SVG_NS, 'linearGradient');
+    const defs = doc.createElementNS(SVG_NS, 'defs');
+    const gradient = doc.createElementNS(SVG_NS, 'linearGradient');
     gradient.setAttr('id', 'ert-pro-hero-logo-gradient');
     gradient.setAttr('x1', '0%');
     gradient.setAttr('y1', '0%');
     gradient.setAttr('x2', '100%');
     gradient.setAttr('y2', '100%');
 
-    const start = document.createElementNS(SVG_NS, 'stop');
+    const start = doc.createElementNS(SVG_NS, 'stop');
     start.setAttr('offset', '0%');
     start.setAttr('stop-color', '#d946ef');
-    const end = document.createElementNS(SVG_NS, 'stop');
+    const end = doc.createElementNS(SVG_NS, 'stop');
     end.setAttr('offset', '100%');
     end.setAttr('stop-color', '#8b5cf6');
     gradient.append(start, end);
@@ -41,7 +42,7 @@ function buildProHeroLogo(parent: HTMLElement): () => void {
     svg.append(defs);
 
     RT_LOGO_PATHS.forEach((pathData) => {
-        const path = document.createElementNS(SVG_NS, 'path');
+        const path = doc.createElementNS(SVG_NS, 'path');
         path.setAttr('d', pathData);
         path.setAttr('fill', 'url(#ert-pro-hero-logo-gradient)');
         svg.append(path);

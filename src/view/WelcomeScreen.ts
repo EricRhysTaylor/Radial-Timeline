@@ -105,30 +105,31 @@ const openRadialTimelineSettings = (
 };
 
 const appendWelcomeBackgroundLogo = (parent: HTMLElement): void => {
-    const svg = document.createElementNS(SVG_NS, 'svg');
+    const doc = parent.ownerDocument;
+    const svg = doc.createElementNS(SVG_NS, 'svg');
     svg.setAttr('viewBox', `${RT_LOGO_VIEWBOX.x} ${RT_LOGO_VIEWBOX.y} ${RT_LOGO_VIEWBOX.width} ${RT_LOGO_VIEWBOX.height}`);
     svg.setAttr('preserveAspectRatio', 'xMidYMid meet');
     svg.setAttr('aria-hidden', 'true');
 
-    const defs = document.createElementNS(SVG_NS, 'defs');
-    const gradient = document.createElementNS(SVG_NS, 'linearGradient');
+    const defs = doc.createElementNS(SVG_NS, 'defs');
+    const gradient = doc.createElementNS(SVG_NS, 'linearGradient');
     gradient.setAttr('id', 'rt-welcome-bg-logo-gradient');
     gradient.setAttr('x1', '0%');
     gradient.setAttr('y1', '0%');
     gradient.setAttr('x2', '0%');
     gradient.setAttr('y2', '100%');
 
-    const start = document.createElementNS(SVG_NS, 'stop');
+    const start = doc.createElementNS(SVG_NS, 'stop');
     start.setAttr('offset', '0%');
     start.setAttr('stop-color', '#ffffff');
     start.setAttr('stop-opacity', '0.01');
 
-    const middle = document.createElementNS(SVG_NS, 'stop');
+    const middle = doc.createElementNS(SVG_NS, 'stop');
     middle.setAttr('offset', '50%');
     middle.setAttr('stop-color', '#ffffff');
     middle.setAttr('stop-opacity', '0.125');
 
-    const end = document.createElementNS(SVG_NS, 'stop');
+    const end = doc.createElementNS(SVG_NS, 'stop');
     end.setAttr('offset', '100%');
     end.setAttr('stop-color', '#ffffff');
     end.setAttr('stop-opacity', '0.01');
@@ -138,7 +139,7 @@ const appendWelcomeBackgroundLogo = (parent: HTMLElement): void => {
     svg.append(defs);
 
     RT_LOGO_PATHS.forEach((pathData) => {
-        const path = document.createElementNS(SVG_NS, 'path');
+        const path = doc.createElementNS(SVG_NS, 'path');
         path.setAttr('d', pathData);
         path.setAttr('fill', 'url(#rt-welcome-bg-logo-gradient)');
         svg.append(path);
@@ -395,7 +396,7 @@ const openBookManagerFromWelcome = async (plugin: RadialTimelinePlugin): Promise
     // Settings render async after the tab opens; scroll the Books heading into
     // view once it exists so the link lands on the right section.
     window.setTimeout(() => {
-        document.querySelector('.ert-books-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        activeDocument.querySelector('.ert-books-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
 };
 

@@ -558,7 +558,7 @@ export class OuterRingDragController {
     }
 
     private findDropTarget(evt: PointerEvent): DropTarget | null {
-        const fromPoint = document.elementFromPoint(evt.clientX, evt.clientY);
+        const fromPoint = this.svg.ownerDocument.elementFromPoint(evt.clientX, evt.clientY);
         if (!fromPoint) return null;
         
         // First check for void cells (empty act areas or empty subplot rings)
@@ -608,7 +608,7 @@ export class OuterRingDragController {
             this.dropTick = existing;
             return existing;
         }
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const path = this.svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.classList.add('rt-drop-target-tick', 'ert-hidden');
         path.setAttribute('d', '');
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
@@ -628,7 +628,7 @@ export class OuterRingDragController {
             this.dropArc = existing;
             return existing;
         }
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const path = this.svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.classList.add('rt-drop-target-arc', 'ert-hidden');
         path.setAttribute('d', '');
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
@@ -1378,9 +1378,10 @@ export class OuterRingDragController {
     private createDragIndicator(): void {
         if (this.dragIndicator?.isConnected) return;
         const ns = 'http://www.w3.org/2000/svg';
-        const g = document.createElementNS(ns, 'g');
+        const doc = this.svg.ownerDocument;
+        const g = doc.createElementNS(ns, 'g');
         g.classList.add('rt-drag-reorder-indicator');
-        const path = document.createElementNS(ns, 'path');
+        const path = doc.createElementNS(ns, 'path');
         path.setAttribute('d', OuterRingDragController.INDICATOR_ICON);
         g.appendChild(path);
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
@@ -1430,7 +1431,7 @@ export class OuterRingDragController {
     private resolvePublishStageColorFromGroup(group: SVGGElement): string {
         const readCssVariable = (name: string): string | undefined => {
             try {
-                const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                const value = getComputedStyle(group.ownerDocument.documentElement).getPropertyValue(name).trim();
                 return value || undefined;
             } catch (_error) {
                 return undefined;
@@ -1470,7 +1471,7 @@ export class OuterRingDragController {
     private resolveSubplotColorFromGroup(group: SVGGElement): string | undefined {
         const readCssVariable = (name: string): string | undefined => {
             try {
-                const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                const value = getComputedStyle(group.ownerDocument.documentElement).getPropertyValue(name).trim();
                 return value || undefined;
             } catch (_error) {
                 return undefined;

@@ -274,7 +274,7 @@ export class RendererService {
         existing.forEach(node => {
             const parent = node.parentNode;
             if (!parent) return node.remove();
-            const textNode = document.createTextNode(node.textContent || '');
+            const textNode = svg.ownerDocument.createTextNode(node.textContent || '');
             parent.replaceChild(textNode, node);
         });
 

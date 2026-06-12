@@ -257,7 +257,7 @@ function resolvePrimarySubplotFromGroup(group: Element): string | undefined {
 function resolveSubplotColorFromGroup(view: SceneContextMenuView, group: Element): string | undefined {
     const readCssVariable = (name: string): string | undefined => {
         try {
-            const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            const value = getComputedStyle(group.ownerDocument.documentElement).getPropertyValue(name).trim();
             return value || undefined;
         } catch {
             return undefined;

@@ -355,7 +355,7 @@ export function renderAiSection(params: {
             }
         });
         if (index < list.length - 1) {
-            anchor.after(document.createTextNode(' · '));
+            anchor.after(anchor.ownerDocument.createTextNode(' · '));
         }
     });
     costEstimateFootnote.appendText('. ');
@@ -2635,17 +2635,18 @@ export function renderAiSection(params: {
         keyPlaceholder: string;
         docsUrl: string;
     }): void => {
-        const providerDesc = document.createDocumentFragment();
-        const span = document.createElement('span');
+        const doc = options.section.ownerDocument;
+        const providerDesc = doc.createDocumentFragment();
+        const span = doc.createElement('span');
         span.textContent = `Choose a name to store your ${options.providerName} API key in this vault's secret storage. `;
-        const link = document.createElement('a');
+        const link = doc.createElement('a');
         link.href = options.docsUrl;
         link.textContent = 'Get key';
         link.target = '_blank';
         link.rel = 'noopener';
         providerDesc.appendChild(span);
         providerDesc.appendChild(link);
-        providerDesc.appendChild(document.createTextNode(' Use a short name like "openai-main" so you can reuse it later. Note: saved Obsidian Secret Keys (distinct from Provider API keys) can only be used across the plugins you have installed in the same vault.'));
+        providerDesc.appendChild(doc.createTextNode(' Use a short name like "openai-main" so you can reuse it later. Note: saved Obsidian Secret Keys (distinct from Provider API keys) can only be used across the plugins you have installed in the same vault.'));
 
         const secretIdSetting = new Settings(options.section)
             .setName(`Vault secret name (${options.providerName})`)
@@ -2680,9 +2681,9 @@ export function renderAiSection(params: {
             refreshActiveCostComparisonRowState(options.provider, next);
             const ai = ensureCanonicalAiSettings();
             const secretId = getCredentialSecretId(ai, options.provider).trim();
-            const desc = document.createDocumentFragment();
+            const desc = doc.createDocumentFragment();
 
-            const stateBlock = document.createElement('div');
+            const stateBlock = doc.createElement('div');
             stateBlock.className = `ert-ai-provider-key-state is-${next}`;
             const icon = stateBlock.createSpan({ cls: 'ert-ai-provider-key-state__icon' });
             setIcon(icon, next === 'ready' ? 'shield-check' : 'shield-alert');
@@ -2720,7 +2721,7 @@ export function renderAiSection(params: {
             if ((next === 'ready' || next === 'network_blocked') && secretStorageAvailable) {
                 const actions = body.createSpan({ cls: 'ert-ai-provider-key-actions' });
 
-                const replaceBtn = document.createElement('button');
+                const replaceBtn = doc.createElement('button');
                 replaceBtn.className = 'ert-ai-provider-key-action';
                 replaceBtn.type = 'button';
                 replaceBtn.textContent = t('settings.ai.credential.replaceKeyButton');
@@ -2732,7 +2733,7 @@ export function renderAiSection(params: {
                 actions.appendChild(replaceBtn);
 
                 if (secretId) {
-                    const copyBtn = document.createElement('button');
+                    const copyBtn = doc.createElement('button');
                     copyBtn.className = 'ert-ai-provider-key-action';
                     copyBtn.type = 'button';
                     copyBtn.textContent = t('settings.ai.credential.copyKeyNameButton');

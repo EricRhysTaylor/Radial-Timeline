@@ -5,7 +5,7 @@ export class ThemeService {
     constructor(private plugin: RadialTimelinePlugin) { }
 
     applyCssVariables(): void {
-        const root = document.documentElement;
+        const root = activeDocument.documentElement;
         const { publishStageColors, subplotColors } = this.plugin.settings;
 
         Object.entries(publishStageColors).forEach(([stage, color]) => {

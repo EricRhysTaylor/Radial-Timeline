@@ -1347,7 +1347,7 @@ export class InquiryView extends ItemView {
     }
 
     private scrollAndPulseAiSetting(target: AiSettingsFocus, shouldScroll: boolean): void {
-        const el = document.querySelector(`[data-ert-role="ai-setting:${target}"]`);
+        const el = activeDocument.querySelector(`[data-ert-role="ai-setting:${target}"]`);
         if (!(el instanceof HTMLElement)) return;
         if (shouldScroll) {
             el.scrollIntoView({ block: 'center' });
@@ -2896,7 +2896,7 @@ export class InquiryView extends ItemView {
     }
 
     private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
-        const holder = document.createElement('span');
+        const holder = defs.ownerDocument.createElement('span');
         setIcon(holder, iconName);
         const source = holder.querySelector('svg');
         if (!source) {
@@ -5543,7 +5543,7 @@ export class InquiryView extends ItemView {
     }
 
     private getStyleSource(): Element {
-        return this.contentEl ?? this.rootSvg ?? document.documentElement;
+        return this.contentEl ?? this.rootSvg ?? activeDocument.documentElement;
     }
 
     private isTFile(file: TAbstractFile | null): file is TFile {
@@ -6237,13 +6237,13 @@ export class InquiryView extends ItemView {
     }
 
     private scrollInquirySetting(target: 'sources-heading' | 'class-scope' | 'scan-roots' | 'class-presets'): void {
-        const el = document.querySelector(`[data-ert-role="inquiry-setting:${target}"]`);
+        const el = activeDocument.querySelector(`[data-ert-role="inquiry-setting:${target}"]`);
         if (!(el instanceof HTMLElement)) return;
         el.scrollIntoView({ block: 'start' });
     }
 
     private startRunningAnimations(): void {
-        const styleSource: Element = this.contentEl ?? this.rootSvg ?? document.documentElement;
+        const styleSource: Element = this.contentEl ?? this.rootSvg ?? activeDocument.documentElement;
         const isPro = hasProFeatureAccess(this.plugin);
         this.minimap.startRunningAnimations(
             styleSource,
@@ -10060,7 +10060,7 @@ export class InquiryView extends ItemView {
         const existing = this.previewHero.querySelector('title');
         if (existing) existing.remove();
         if ((result.refNormalizationCount ?? 0) > 0) {
-            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            const title = this.previewHero.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'title');
             title.textContent = t('inquiry.findings.referencesNormalized');
             this.previewHero.appendChild(title);
         }

@@ -561,7 +561,8 @@ export class BookDesignerModal extends Modal {
         const templates = this.getTemplateList();
         const hasTemplates = templates.length > 0;
 
-        const placeholder = document.createElement('option');
+        const doc = selectEl.ownerDocument;
+        const placeholder = doc.createElement('option');
         placeholder.value = '';
         placeholder.text = hasTemplates ? t('bookDesigner.fields.sceneLayouts.newOption') : t('bookDesigner.fields.sceneLayouts.emptyOption');
         placeholder.disabled = false;
@@ -569,7 +570,7 @@ export class BookDesignerModal extends Modal {
         selectEl.appendChild(placeholder);
 
         templates.forEach(t => {
-            const opt = document.createElement('option');
+            const opt = doc.createElement('option');
             opt.value = t.id;
             opt.text = t.name;
             if (this.activeTemplateId && this.activeTemplateId === t.id) {

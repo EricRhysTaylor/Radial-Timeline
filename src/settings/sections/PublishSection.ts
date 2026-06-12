@@ -2549,7 +2549,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                             return;
                         }
                         const hint = fontDiag.installHint;
-                        const fragment = document.createDocumentFragment();
+                        const fragment = installBtn.ownerDocument.createDocumentFragment();
                         const wrapper = fragment.createDiv();
                         wrapper.createDiv({
                             text: `${fontDiag.primaryFontName}: ${hint?.message ?? 'Install instructions unavailable.'}`,
@@ -3550,7 +3550,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     if (canScroll && current.scrollHeight > current.clientHeight) return current;
                     current = current.parentElement;
                 }
-                return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null;
+                return el.ownerDocument.scrollingElement instanceof HTMLElement ? el.ownerDocument.scrollingElement : null;
             };
             const restoreSectionAnchor = (
                 sectionKey: string,

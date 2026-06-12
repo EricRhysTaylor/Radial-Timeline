@@ -363,7 +363,7 @@ export function createTimelineSVG(
         const idx = resolveSubplotColorIndex(subplotName);
         const normalized = idx % 16;
         const varName = `--rt-subplot-colors-${normalized}`;
-        const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        const computed = getComputedStyle(activeDocument.documentElement).getPropertyValue(varName).trim();
         return computed || '#EFBDEB';
     };
     const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';

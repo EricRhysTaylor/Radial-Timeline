@@ -377,14 +377,14 @@ export class InquiryBriefingModal extends Modal {
         this.themeObserver = new MutationObserver(() => {
             this.applyTheme();
         });
-        this.themeObserver.observe(document.body, {
+        this.themeObserver.observe(this.modalEl.ownerDocument.body, {
             attributes: true,
             attributeFilter: ['class']
         });
     }
 
     private resolveEffectiveTheme(): 'dark' | 'light' {
-        return document.body.classList.contains('theme-dark') ? 'dark' : 'light';
+        return this.modalEl.ownerDocument.body.classList.contains('theme-dark') ? 'dark' : 'light';
     }
 
     private applyTheme(): void {
@@ -459,8 +459,9 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private buildSceneReferenceNode(label: string, anchorId?: string, style: 'callout' | 'headline' = 'callout'): HTMLElement {
+        const doc = this.contentEl.ownerDocument;
         if (style === 'headline') {
-            const textEl = document.createElement('span');
+            const textEl = doc.createElement('span');
             textEl.className = 'rt-briefing-scene-inline';
             textEl.textContent = label;
             return textEl;
@@ -468,7 +469,7 @@ export class InquiryBriefingModal extends Modal {
         const [numberPart, ...titleParts] = label.split(' ');
         const titlePart = titleParts.join(' ').trim();
         const interactive = !!anchorId;
-        const el = document.createElement(interactive ? 'a' : 'span');
+        const el = doc.createElement(interactive ? 'a' : 'span');
         el.className = 'rt-briefing-scene-ref';
         if (interactive && el instanceof HTMLAnchorElement) {
             el.href = '#';
@@ -478,12 +479,12 @@ export class InquiryBriefingModal extends Modal {
             });
             el.setAttribute('aria-label', `Jump to ${label}`);
         }
-        const numberEl = document.createElement('span');
+        const numberEl = doc.createElement('span');
         numberEl.className = 'rt-briefing-scene-ref-num';
         numberEl.textContent = numberPart;
         el.append(numberEl);
         if (titlePart) {
-            const titleEl = document.createElement('span');
+            const titleEl = doc.createElement('span');
             titleEl.className = 'rt-briefing-scene-ref-title';
             titleEl.textContent = titlePart;
             el.append(titleEl);
@@ -492,15 +493,16 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private buildUnresolvedSceneReferenceNode(rawRef: string, style: 'callout' | 'headline' = 'callout'): HTMLElement {
+        const doc = this.contentEl.ownerDocument;
         if (style === 'headline') {
-            const textEl = document.createElement('span');
+            const textEl = doc.createElement('span');
             textEl.className = 'rt-briefing-scene-inline rt-briefing-scene-inline--unresolved';
             textEl.textContent = rawRef;
             return textEl;
         }
-        const el = document.createElement('span');
+        const el = doc.createElement('span');
         el.className = 'rt-briefing-scene-ref rt-briefing-scene-ref--unresolved';
-        const textEl = document.createElement('span');
+        const textEl = doc.createElement('span');
         textEl.className = 'rt-briefing-scene-ref-title';
         textEl.textContent = rawRef;
         el.append(textEl);
@@ -508,7 +510,7 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private buildQuoteNode(text: string, mode: 'single' | 'double'): HTMLElement {
-        const el = document.createElement('span');
+        const el = this.contentEl.ownerDocument.createElement('span');
         el.className = `rt-briefing-quote rt-briefing-quote--${mode}`;
         el.textContent = text;
         return el;
@@ -531,14 +533,15 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private printBriefing(): void {
-        const previousTitle = document.title;
+        const doc = this.contentEl.ownerDocument;
+        const previousTitle = doc.title;
         const nextTitle = this.resolvePrintTitle();
         const printHost = this.createPrintHost();
         let restored = false;
         const restore = (): void => {
             if (restored) return;
             restored = true;
-            document.title = previousTitle;
+            doc.title = previousTitle;
             printHost.remove();
             window.removeEventListener('afterprint', restore);
             printMedia?.removeEventListener?.('change', mediaListener);
@@ -551,8 +554,8 @@ export class InquiryBriefingModal extends Modal {
             if (!event.matches) restore();
         };
 
-        document.title = nextTitle;
-        document.body.appendChild(printHost);
+        doc.title = nextTitle;
+        doc.body.appendChild(printHost);
         window.addEventListener('afterprint', restore, { once: true });
         printMedia?.addEventListener?.('change', mediaListener);
         window.requestAnimationFrame(() => {
@@ -563,7 +566,7 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private createPrintHost(): HTMLElement {
-        const host = document.createElement('div');
+        const host = this.contentEl.ownerDocument.createElement('div');
         host.className = 'print rt-briefing-print-root';
         host.setAttribute('aria-hidden', 'true');
 

@@ -96,7 +96,7 @@ export function renderRings(ctx: RingRenderContext): string {
         try {
             // In node env or non-browser this might fail or return empty.
             // Assuming this runs in browser context where document exists.
-            const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            const computed = getComputedStyle(activeDocument.documentElement).getPropertyValue(varName).trim();
             return computed || '#EFBDEB';
         } catch (e) {
             return '#EFBDEB';

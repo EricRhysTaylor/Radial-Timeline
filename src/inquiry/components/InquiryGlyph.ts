@@ -117,7 +117,8 @@ export class InquiryGlyph {
 
     constructor(container: SVGElement, props: InquiryGlyphProps) {
         this.props = props;
-        this.root = document.createElementNS(SVG_NS, 'g');
+        const doc = container.ownerDocument;
+        this.root = doc.createElementNS(SVG_NS, 'g');
         this.root.classList.add('ert-inquiry-glyph');
         container.appendChild(this.root);
 
@@ -138,9 +139,9 @@ export class InquiryGlyph {
         this.flowBadgeIcon = this.flowGroup.querySelector('.ert-inquiry-ring-badge-icon') as SVGUseElement;
         this.depthBadgeIcon = this.depthGroup.querySelector('.ert-inquiry-ring-badge-icon') as SVGUseElement;
 
-        const labelGroup = document.createElementNS(SVG_NS, 'g');
+        const labelGroup = doc.createElementNS(SVG_NS, 'g');
         labelGroup.classList.add('ert-inquiry-glyph-label-group');
-        this.labelHit = document.createElementNS(SVG_NS, 'rect');
+        this.labelHit = doc.createElementNS(SVG_NS, 'rect');
         this.labelHit.classList.add('ert-inquiry-glyph-hit');
         const labelInnerRadius = Math.max(0, DEPTH_RADIUS - (DEPTH_STROKE / 2) - 3);
         const labelWidth = labelInnerRadius * 2;
@@ -153,7 +154,7 @@ export class InquiryGlyph {
         this.labelHit.setAttribute('rx', labelRadius.toFixed(2));
         this.labelHit.setAttribute('ry', labelRadius.toFixed(2));
 
-        this.labelText = document.createElementNS(SVG_NS, 'text');
+        this.labelText = doc.createElementNS(SVG_NS, 'text');
         this.labelText.classList.add('ert-inquiry-glyph-label');
         this.labelText.setAttribute('x', '0');
         this.labelText.setAttribute('y', '0');
@@ -273,13 +274,14 @@ export class InquiryGlyph {
         hitStrokeWidth: number,
         badgeRadius: number
     ): SVGGElement {
-        const group = document.createElementNS(SVG_NS, 'g');
+        const doc = this.root.ownerDocument;
+        const group = doc.createElementNS(SVG_NS, 'g');
         group.classList.add('ert-inquiry-ring', `ert-inquiry-ring--${kind}`);
 
         const track = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-track');
-        const progress = document.createElementNS(SVG_NS, 'g');
+        const progress = doc.createElementNS(SVG_NS, 'g');
         progress.classList.add('ert-inquiry-ring-progress');
-        const arc = document.createElementNS(SVG_NS, 'path');
+        const arc = doc.createElementNS(SVG_NS, 'path');
         arc.classList.add('ert-inquiry-ring-arc');
         progress.appendChild(arc);
         const hit = this.buildCircle(radius, hitStrokeWidth, 'ert-inquiry-ring-hit');
@@ -294,7 +296,8 @@ export class InquiryGlyph {
     }
 
     private buildZoneRing(): SVGGElement {
-        const group = document.createElementNS(SVG_NS, 'g');
+        const doc = this.root.ownerDocument;
+        const group = doc.createElementNS(SVG_NS, 'g');
         group.classList.add('inq-zones', 'ert-inquiry-zones');
 
         const midR = ZONE_SEGMENT_RADIUS;
@@ -322,7 +325,7 @@ export class InquiryGlyph {
             const axisRotationDeg = layout?.axisRotationDeg ?? ZONE_SEGMENT_AXIS_ROTATION_DEG;
             const zoneRadius = Math.hypot(zoneX, zoneY);
             const zoneAngle = Math.atan2(zoneY, zoneX);
-            const zoneGroup = document.createElementNS(SVG_NS, 'g');
+            const zoneGroup = doc.createElementNS(SVG_NS, 'g');
             zoneGroup.classList.add(
                 'inq-zone-segment-wrap',
                 `inq-zone-segment-wrap--${zone.id}`,
@@ -332,9 +335,9 @@ export class InquiryGlyph {
             zoneGroup.setAttribute('transform', 'scale(1)');
             this.zoneControlGroups.set(zone.id, zoneGroup);
 
-            const translateGroup = document.createElementNS(SVG_NS, 'g');
+            const translateGroup = doc.createElementNS(SVG_NS, 'g');
             translateGroup.setAttribute('transform', `translate(${zoneX.toFixed(2)} ${zoneY.toFixed(2)})`);
-            const axisGroup = document.createElementNS(SVG_NS, 'g');
+            const axisGroup = doc.createElementNS(SVG_NS, 'g');
             axisGroup.setAttribute('transform', `rotate(${axisRotationDeg})`);
             const zoneNode = zoneTemplate.cloneNode(true) as SVGGElement;
             const zonePath = zoneNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
@@ -363,20 +366,20 @@ export class InquiryGlyph {
                 const dotAngle = startAngleRad + (step * i);
                 const dotX = numberRadius * Math.cos(dotAngle);
                 const dotY = numberRadius * Math.sin(dotAngle);
-                const dotGroup = document.createElementNS(SVG_NS, 'g');
+                const dotGroup = doc.createElementNS(SVG_NS, 'g');
                 dotGroup.classList.add('inq-zone-dot', `inq-zone-dot--${zone.id}`);
                 dotGroup.setAttribute('transform', `translate(${dotX.toFixed(2)} ${dotY.toFixed(2)})`);
                 dotGroup.setAttribute('role', 'note');
 
-                const dotHit = document.createElementNS(SVG_NS, 'circle');
+                const dotHit = doc.createElementNS(SVG_NS, 'circle');
                 dotHit.classList.add('inq-zone-dot-hit');
                 dotHit.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
 
-                const dotCircle = document.createElementNS(SVG_NS, 'circle');
+                const dotCircle = doc.createElementNS(SVG_NS, 'circle');
                 dotCircle.classList.add('inq-zone-dot-circle');
                 dotCircle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
 
-                const dotText = document.createElementNS(SVG_NS, 'text');
+                const dotText = doc.createElementNS(SVG_NS, 'text');
                 dotText.classList.add('inq-zone-dot-text');
                 dotText.setAttribute('text-anchor', 'middle');
                 dotText.setAttribute('dominant-baseline', 'central');
@@ -392,7 +395,7 @@ export class InquiryGlyph {
                     [ZONE_DOT_RETICLE_OFFSET, 0, ZONE_DOT_RETICLE_OFFSET + ZONE_DOT_RETICLE_LEN, 0]      // right
                 ];
                 for (const [x1, y1, x2, y2] of reticlePositions) {
-                    const tick = document.createElementNS(SVG_NS, 'line');
+                    const tick = doc.createElementNS(SVG_NS, 'line');
                     tick.classList.add('inq-zone-dot-reticle');
                     tick.setAttribute('x1', String(x1));
                     tick.setAttribute('y1', String(y1));
@@ -445,10 +448,10 @@ export class InquiryGlyph {
         });
 
         if (DEBUG_INQUIRY_ZONES) {
-            const debugGroup = document.createElementNS(SVG_NS, 'g');
+            const debugGroup = doc.createElementNS(SVG_NS, 'g');
             debugGroup.classList.add('inq-zone-debug');
             [innerR, midR, outerR].forEach(radius => {
-                const circle = document.createElementNS(SVG_NS, 'circle');
+                const circle = doc.createElementNS(SVG_NS, 'circle');
                 circle.setAttribute('r', radius.toFixed(2));
                 circle.setAttribute('fill', 'none');
                 circle.setAttribute('stroke', '#ffb400');
@@ -585,16 +588,17 @@ export class InquiryGlyph {
     }
 
     private buildZoneSegmentTemplate(): SVGGElement {
-        const group = document.createElementNS(SVG_NS, 'g');
+        const doc = this.root.ownerDocument;
+        const group = doc.createElementNS(SVG_NS, 'g');
         group.classList.add('inq-zone-segment-template');
         const offsetX = -(ZONE_SEGMENT_VIEWBOX_WIDTH * ZONE_SEGMENT_SCALE) / 2;
         const offsetY = -(ZONE_SEGMENT_VIEWBOX_HEIGHT * ZONE_SEGMENT_SCALE) / 2;
         group.setAttribute('transform', `translate(${offsetX} ${offsetY})`);
 
-        const scaleGroup = document.createElementNS(SVG_NS, 'g');
+        const scaleGroup = doc.createElementNS(SVG_NS, 'g');
         scaleGroup.setAttribute('transform', `scale(${ZONE_SEGMENT_SCALE})`);
 
-        const path = document.createElementNS(SVG_NS, 'path');
+        const path = doc.createElementNS(SVG_NS, 'path');
         path.classList.add('inq-zone-segment-path');
         path.setAttribute('d', ZONE_SEGMENT_PATH);
         path.setAttribute('fill', ZONE_SEGMENT_FILL);
@@ -603,7 +607,7 @@ export class InquiryGlyph {
         path.setAttribute('pointer-events', 'auto');
         scaleGroup.appendChild(path);
 
-        const glass = document.createElementNS(SVG_NS, 'path');
+        const glass = doc.createElementNS(SVG_NS, 'path');
         glass.classList.add('inq-zone-segment-glass');
         glass.setAttribute('d', ZONE_SEGMENT_PATH);
         glass.setAttribute('fill', 'url(#ert-inquiry-zone-glass)');
@@ -623,24 +627,25 @@ export class InquiryGlyph {
     }
 
     private buildBadgeGroup(badgeRadius: number): SVGGElement {
-        const group = document.createElementNS(SVG_NS, 'g');
+        const doc = this.root.ownerDocument;
+        const group = doc.createElementNS(SVG_NS, 'g');
         group.classList.add('ert-inquiry-ring-badge');
         group.setAttribute('stroke', 'none');
 
-        const circle = document.createElementNS(SVG_NS, 'circle');
+        const circle = doc.createElementNS(SVG_NS, 'circle');
         circle.classList.add('ert-inquiry-ring-badge-circle');
         circle.setAttribute('r', String(badgeRadius));
         circle.setAttribute('stroke', 'none');
         circle.setAttribute('stroke-width', '0');
 
-        const text = document.createElementNS(SVG_NS, 'text');
+        const text = doc.createElementNS(SVG_NS, 'text');
         text.classList.add('ert-inquiry-ring-badge-text');
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'central');
         text.setAttribute('alignment-baseline', 'central');
         text.setAttribute('dy', '0');
 
-        const icon = document.createElementNS(SVG_NS, 'use');
+        const icon = doc.createElementNS(SVG_NS, 'use');
         icon.classList.add('ert-inquiry-ring-badge-icon');
         icon.setAttribute('href', '#ert-icon-x');
         icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#ert-icon-x');
@@ -653,7 +658,7 @@ export class InquiryGlyph {
     }
 
     private buildCircle(radius: number, strokeWidth: number, cls: string): SVGCircleElement {
-        const circle = document.createElementNS(SVG_NS, 'circle');
+        const circle = this.root.ownerDocument.createElementNS(SVG_NS, 'circle');
         circle.classList.add(cls);
         circle.setAttribute('cx', '0');
         circle.setAttribute('cy', '0');

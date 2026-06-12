@@ -325,7 +325,7 @@ export function renderGeneralSection(params: {
             preview.removeClass('is-dragging');
             preview.style.setProperty('--ert-book-drag-preview-width', `${Math.ceil(rect.width)}px`);
             preview.style.setProperty('--ert-book-drag-preview-height', `${Math.ceil(rect.height)}px`);
-            document.body.appendChild(preview);
+            rowEl.ownerDocument.body.appendChild(preview);
 
             const offsetX = event.clientX > 0 ? Math.max(20, event.clientX - rect.left) : 24;
             const offsetY = event.clientY > 0 ? Math.max(18, event.clientY - rect.top) : 24;
@@ -667,7 +667,7 @@ export function renderGeneralSection(params: {
 
                 const openFolderSuggest = () => {
                     window.setTimeout(() => {
-                        if (document.activeElement !== inputEl) return;
+                        if (inputEl.ownerDocument.activeElement !== inputEl) return;
                         try { folderSuggest.open(); } catch { }
                     }, 0);
                 };
@@ -687,7 +687,7 @@ export function renderGeneralSection(params: {
                     }
                     blurCommitTimer = window.setTimeout(() => {
                         blurCommitTimer = null;
-                        if (document.activeElement === inputEl) return;
+                        if (inputEl.ownerDocument.activeElement === inputEl) return;
                         void handleBlur();
                     }, 0);
                 });

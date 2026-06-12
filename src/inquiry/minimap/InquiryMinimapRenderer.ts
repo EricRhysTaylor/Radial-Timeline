@@ -114,7 +114,7 @@ export function getExecutionColorRgb(styleSource: Element, variableName: string,
 }
 
 export function getProAccentColor(): RgbColor {
-    const root = document.documentElement;
+    const root = activeDocument.documentElement;
     const styles = getComputedStyle(root);
     const rgbVar = styles.getPropertyValue('--rt-pro-color-rgb');
     const rgbFromVar = parseRgbColor(rgbVar);
@@ -171,7 +171,7 @@ export function getBackbonePressureColors(
         };
     }
 
-    const themeBase = parseRgbColor(getComputedStyle(document.documentElement).getPropertyValue('--interactive-accent'))
+    const themeBase = parseRgbColor(getComputedStyle(styleSource.ownerDocument.documentElement).getPropertyValue('--interactive-accent'))
         ?? getBackboneTargetColors(isPro).gradient[0]
         ?? { r: 87, g: 151, b: 245 };
     return {
@@ -525,7 +525,7 @@ export class InquiryMinimapRenderer {
 
     private applyRunningBackboneColor(): void {
         if (!this.minimapBackboneGlow) return;
-        const styleSource = this.runningStyleSource ?? document.documentElement;
+        const styleSource = this.runningStyleSource ?? activeDocument.documentElement;
         const color = getExecutionColorValue(styleSource, '--rt-ai-warning', '#ff9900');
         this.minimapBackboneGlow.style.fill = color;
         if (this.minimapBackboneShine) {
@@ -691,7 +691,7 @@ export class InquiryMinimapRenderer {
             }
             const elapsed = now - (this.runningAnimationStart ?? now);
             onFrame?.(elapsed);
-            if (document.body.classList.contains('rt-modal-open')) {
+            if (activeDocument.body.classList.contains('rt-modal-open')) {
                 this.runningAnimationFrame = window.requestAnimationFrame(animate);
                 return;
             }

@@ -206,7 +206,7 @@ function getMasterSubplotOrder(svg: SVGSVGElement): string[] {
 function resolveSubplotColorByIndex(subplotColorIndex: number): string {
     const normalized = Number.isFinite(subplotColorIndex) ? Math.max(0, subplotColorIndex) % 16 : 0;
     try {
-        const computed = getComputedStyle(document.documentElement)
+        const computed = getComputedStyle(activeDocument.documentElement)
             .getPropertyValue(`--rt-subplot-colors-${normalized}`)
             .trim();
         return computed || '#EFBDEB';

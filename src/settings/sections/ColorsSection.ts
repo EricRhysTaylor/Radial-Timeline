@@ -63,32 +63,33 @@ function renderWorkingPatternPreview(
 function renderPatternIntoSvg(svgEl: SVGSVGElement, pattern: HeroPattern, stageColor: string): void {
     while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
     const NS = 'http://www.w3.org/2000/svg';
-    const defs = document.createElementNS(NS, 'defs');
-    const pat = document.createElementNS(NS, 'pattern');
+    const doc = svgEl.ownerDocument;
+    const defs = doc.createElementNS(NS, 'defs');
+    const pat = doc.createElementNS(NS, 'pattern');
     pat.setAttribute('id', `ert-pattern-preview-${pattern.id}`);
     pat.setAttribute('patternUnits', 'userSpaceOnUse');
     pat.setAttribute('width', String(pattern.tileW));
     pat.setAttribute('height', String(pattern.tileH));
     // Use status Working hex as the field; stage color as the motif tint — same as Defs.ts.
-    const fieldRect = document.createElementNS(NS, 'rect');
+    const fieldRect = doc.createElementNS(NS, 'rect');
     fieldRect.setAttribute('width', String(pattern.tileW));
     fieldRect.setAttribute('height', String(pattern.tileH));
     fieldRect.setAttribute('fill', '#FFB1B1');
     fieldRect.setAttribute('opacity', '0.82');
     pat.appendChild(fieldRect);
-    const tintG = document.createElementNS(NS, 'g');
+    const tintG = doc.createElementNS(NS, 'g');
     tintG.setAttribute('fill', stageColor);
     tintG.setAttribute('fill-opacity', String(pattern.fillOpacity));
     if (pattern.fillRule) tintG.setAttribute('fill-rule', pattern.fillRule);
     for (const shape of pattern.shapes) {
-        const node = document.createElementNS(NS, shape.tag);
+        const node = doc.createElementNS(NS, shape.tag);
         for (const [k, v] of Object.entries(shape.attrs)) node.setAttribute(k, v);
         tintG.appendChild(node);
     }
     pat.appendChild(tintG);
     defs.appendChild(pat);
     svgEl.appendChild(defs);
-    const rect = document.createElementNS(NS, 'rect');
+    const rect = doc.createElementNS(NS, 'rect');
     rect.setAttribute('width', '100%');
     rect.setAttribute('height', '100%');
     rect.setAttribute('fill', `url(#ert-pattern-preview-${pattern.id})`);

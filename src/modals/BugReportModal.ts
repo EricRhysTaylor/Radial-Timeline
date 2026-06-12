@@ -53,11 +53,11 @@ export class BugReportModal extends ErtModal {
         this.mountBody();
         this.mountActions();
 
-        document.addEventListener('paste', this.handlePaste);
+        this.contentEl.ownerDocument.addEventListener('paste', this.handlePaste);
     }
 
     onClose(): void {
-        document.removeEventListener('paste', this.handlePaste);
+        this.contentEl.ownerDocument.removeEventListener('paste', this.handlePaste);
         this.teardownDrag();
         this.dragbarEl?.remove();
         this.dragbarEl = undefined;
@@ -312,8 +312,9 @@ export class BugReportModal extends ErtModal {
         const move = (e: MouseEvent) => this.handleDragMove(e);
         const up = () => this.teardownDrag();
         this.dragHandlers = { move, up };
-        document.addEventListener('mousemove', move);
-        document.addEventListener('mouseup', up);
+        const doc = this.modalEl.ownerDocument;
+        doc.addEventListener('mousemove', move);
+        doc.addEventListener('mouseup', up);
         this.modalEl.classList.add('ert-bug-report-shell--dragging');
         ev.preventDefault();
     };
@@ -336,8 +337,9 @@ export class BugReportModal extends ErtModal {
 
     private teardownDrag(): void {
         if (!this.dragHandlers) return;
-        document.removeEventListener('mousemove', this.dragHandlers.move);
-        document.removeEventListener('mouseup', this.dragHandlers.up);
+        const doc = this.modalEl.ownerDocument;
+        doc.removeEventListener('mousemove', this.dragHandlers.move);
+        doc.removeEventListener('mouseup', this.dragHandlers.up);
         this.dragHandlers = null;
         this.modalEl.classList.remove('ert-bug-report-shell--dragging');
     }

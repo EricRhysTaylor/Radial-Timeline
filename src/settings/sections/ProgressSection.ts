@@ -35,14 +35,15 @@ function renderQuoteBlock(
  * @param size - Icon size in pixels (default 16)
  */
 function createTargetTickIcon(color: string, size = 16): SVGElement {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const doc = activeDocument;
+    const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', String(size));
     svg.setAttribute('height', String(size));
     svg.setAttribute('viewBox', '0 0 16 16');
     svg.classList.add('ert-target-tick-icon');
 
     // Vertical line (pointing up like the timeline tick)
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const line = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', '8');
     line.setAttribute('y1', '14');
     line.setAttribute('x2', '8');
@@ -51,7 +52,7 @@ function createTargetTickIcon(color: string, size = 16): SVGElement {
     line.setAttribute('stroke-width', '2');
 
     // Empty square at top (the marker)
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const rect = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', '4');
     rect.setAttribute('y', '1');
     rect.setAttribute('width', '8');
@@ -73,14 +74,15 @@ function createTargetTickIcon(color: string, size = 16): SVGElement {
  * @param size - Icon size in pixels (default 16)
  */
 function createEstimateTickIcon(color: string, size = 16): SVGElement {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const doc = activeDocument;
+    const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', String(size));
     svg.setAttribute('height', String(size));
     svg.setAttribute('viewBox', '0 0 16 16');
     svg.classList.add('ert-estimate-tick-icon');
 
     // Vertical line (pointing up)
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const line = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', '8');
     line.setAttribute('y1', '14');
     line.setAttribute('x2', '8');
@@ -89,7 +91,7 @@ function createEstimateTickIcon(color: string, size = 16): SVGElement {
     line.setAttribute('stroke-width', '2');
 
     // Filled circle at top (the dot marker)
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const circle = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', '8');
     circle.setAttribute('cy', '4');
     circle.setAttribute('r', '3');

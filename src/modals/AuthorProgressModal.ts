@@ -475,7 +475,7 @@ export class AuthorProgressModal extends Modal {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_SOCIAL} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`
             });
             const label = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL });
-            label.append(document.createTextNode(option.label));
+            label.append(label.ownerDocument.createTextNode(option.label));
             btn.setAttr('title', option.detail);
             if (isActive) {
                 btn.setAttr('aria-pressed', 'true');

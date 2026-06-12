@@ -18,7 +18,7 @@ export class HoverHighlighter {
 
     register(): void {
         // File explorer hover
-        this.plugin.registerDomEvent(document, 'mouseover', (evt: MouseEvent) => {
+        this.plugin.registerDomEvent(activeDocument, 'mouseover', (evt: MouseEvent) => {
             const target = evt.target as HTMLElement;
             const fileItem = target.closest('.nav-file-title');
             if (!fileItem) return;
@@ -33,7 +33,7 @@ export class HoverHighlighter {
             }
         });
 
-        this.plugin.registerDomEvent(document, 'mouseout', (evt: MouseEvent) => {
+        this.plugin.registerDomEvent(activeDocument, 'mouseout', (evt: MouseEvent) => {
             const target = evt.target as HTMLElement;
             const fileItem = target.closest('.nav-file-title');
             if (!fileItem) return;
@@ -48,7 +48,7 @@ export class HoverHighlighter {
         });
 
         // Tab hover
-        this.plugin.registerDomEvent(document, 'mouseover', (evt: MouseEvent) => {
+        this.plugin.registerDomEvent(activeDocument, 'mouseover', (evt: MouseEvent) => {
             const tabHeader = (evt.target as HTMLElement).closest('.workspace-tab-header');
             if (!tabHeader) return;
             const tabId = tabHeader.getAttribute('data-tab-id');
@@ -65,7 +65,7 @@ export class HoverHighlighter {
             }
         });
 
-        this.plugin.registerDomEvent(document, 'mouseout', (evt: MouseEvent) => {
+        this.plugin.registerDomEvent(activeDocument, 'mouseout', (evt: MouseEvent) => {
             const tabHeader = (evt.target as HTMLElement).closest('.workspace-tab-header');
             if (!tabHeader) return;
             const tabId = tabHeader.getAttribute('data-tab-id');

@@ -1110,7 +1110,8 @@ export class ManuscriptOptionsModal extends Modal {
         this.exportTemplateDropdown.empty();
 
         const templates = this.getTemplateList();
-        const placeholder = document.createElement('option');
+        const doc = this.exportTemplateDropdown.ownerDocument;
+        const placeholder = doc.createElement('option');
         placeholder.value = '';
         placeholder.text = 'Create new preset';
         placeholder.disabled = false;
@@ -1118,7 +1119,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.exportTemplateDropdown.appendChild(placeholder);
 
         templates.forEach(template => {
-            const option = document.createElement('option');
+            const option = doc.createElement('option');
             option.value = template.id;
             option.text = template.name;
             if (this.selectedExportProfileId && this.selectedExportProfileId === template.id) {

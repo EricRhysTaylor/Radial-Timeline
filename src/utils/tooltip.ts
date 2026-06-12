@@ -62,7 +62,7 @@ export function setSvgAccessibleName(el: Element, name: string | null): void {
         if (existing.textContent !== name) existing.textContent = name;
         return;
     }
-    const title = document.createElementNS(SVG_NS, 'title');
+    const title = el.ownerDocument.createElementNS(SVG_NS, 'title');
     title.textContent = name;
     el.insertBefore(title, el.firstChild);
 }
@@ -75,7 +75,7 @@ let hideTimeout: number | null = null;
 function getTooltipKeyPeers(target: Element): Element[] {
     const key = target.getAttribute('data-tooltip-key');
     if (!key) return [];
-    return Array.from(document.querySelectorAll(`[data-tooltip-key="${key}"]`));
+    return Array.from(target.ownerDocument.querySelectorAll(`[data-tooltip-key="${key}"]`));
 }
 
 function clearActiveTooltipTarget(target: Element | null): void {
@@ -404,9 +404,9 @@ export function cleanupTooltipAnchors(): void {
 function ensureCustomTooltip() {
     if (customTooltipEl) return;
 
-    customTooltipEl = document.createElement('div');
+    customTooltipEl = activeDocument.createElement('div');
     customTooltipEl.classList.add('rt-tooltip');
-    document.body.appendChild(customTooltipEl);
+    activeDocument.body.appendChild(customTooltipEl);
 }
 
 function updateTooltipWidth(): void {

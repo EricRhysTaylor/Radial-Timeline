@@ -15,7 +15,7 @@
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export function createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
-    return document.createElementNS(SVG_NS, tag);
+    return activeDocument.createElementNS(SVG_NS, tag);
 }
 
 export function createSvgGroup(parent: SVGElement, cls: string, x?: number, y?: number): SVGGElement {

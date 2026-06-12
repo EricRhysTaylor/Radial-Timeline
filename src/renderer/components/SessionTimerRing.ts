@@ -134,12 +134,12 @@ export function buildTabTimerDiscSvg(params: {
 }): SVGSVGElement {
     const ns = 'http://www.w3.org/2000/svg';
     const radius = TAB_TIMER_DISC_RADIUS;
-    const svg = document.createElementNS(ns, 'svg');
+    const svg = activeDocument.createElementNS(ns, 'svg');
     svg.setAttribute('class', `svg-icon ert-tab-timer-disc${params.paused ? ' is-paused' : ''}`);
     svg.setAttribute('viewBox', '-12 -12 24 24');
     svg.setAttribute('aria-hidden', 'true');
 
-    const track = document.createElementNS(ns, 'circle');
+    const track = svg.ownerDocument.createElementNS(ns, 'circle');
     track.setAttribute('cx', '0');
     track.setAttribute('cy', '0');
     track.setAttribute('r', formatNumber(radius));
@@ -148,7 +148,7 @@ export function buildTabTimerDiscSvg(params: {
 
     const wedge = tabTimerWedgePath(radius, params.progress, params.direction);
     if (wedge) {
-        const fill = document.createElementNS(ns, 'path');
+        const fill = svg.ownerDocument.createElementNS(ns, 'path');
         fill.setAttribute('d', wedge);
         fill.setAttribute('class', 'ert-tab-timer-disc__fill');
         svg.appendChild(fill);

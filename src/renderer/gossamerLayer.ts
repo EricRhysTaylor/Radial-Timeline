@@ -12,7 +12,7 @@ export interface PolarConfig {
 
 // Helper to get CSS variable value
 function getCSSVar(varName: string, fallback: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
+  return getComputedStyle(activeDocument.documentElement).getPropertyValue(varName).trim() || fallback;
 }
 
 // Helper to map score [0..100] into a band near the outer ring

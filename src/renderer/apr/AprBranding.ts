@@ -46,7 +46,7 @@ let aprMetricsCanvas: HTMLCanvasElement | null | undefined;
 function getAprMetricsContext(): CanvasRenderingContext2D | null {
     if (typeof document === 'undefined') return null;
     if (aprMetricsCanvas === undefined) {
-        aprMetricsCanvas = document.createElement('canvas');
+        aprMetricsCanvas = activeDocument.createElement('canvas');
     }
     return aprMetricsCanvas?.getContext('2d') ?? null;
 }
@@ -216,7 +216,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     let measuredUnitWidth: number | null = null;
     if (canMeasure) {
         try {
-            const span = document.createElement('span');
+            const doc = activeDocument;
+            const span = doc.createElement('span');
             const inlineStyle = [
                 'position:absolute',
                 'visibility:hidden',
@@ -229,10 +230,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             ].join(';');
             span.setAttribute('style', inlineStyle);
             span.textContent = unitPattern;
-            document.body.appendChild(span);
+            doc.body.appendChild(span);
             // Use actual measured width without inflation factor
             const unitWidth = span.getBoundingClientRect().width;
-            document.body.removeChild(span);
+            doc.body.removeChild(span);
             if (unitWidth > 0) {
                 measuredUnitWidth = unitWidth;
             }

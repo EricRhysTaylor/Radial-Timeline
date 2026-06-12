@@ -237,7 +237,7 @@ export function renderSceneNormalizerSection(params: {
         resultsSection.toggleClass('ert-settings-hidden', resultsEl.childElementCount === 0);
     };
     const refreshMaintenanceCopy = () => {
-        policyBadgeEl.querySelector('.ert-badgePill__text')?.replaceChildren(document.createTextNode(buildPolicyBadge()));
+        policyBadgeEl.querySelector('.ert-badgePill__text')?.replaceChildren(policyBadgeEl.ownerDocument.createTextNode(buildPolicyBadge()));
         updateButtons();
         if (auditResult && sceneAudit) renderResults();
     };

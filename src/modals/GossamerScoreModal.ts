@@ -297,7 +297,8 @@ export class GossamerScoreModal extends Modal {
 
   // Helper to create Lucide circle-x SVG icon
   private createCircleXIcon(): SVGElement {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const doc = this.contentEl.ownerDocument;
+    const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '14');
     svg.setAttribute('height', '14');
     svg.setAttribute('viewBox', '0 0 24 24');
@@ -307,21 +308,21 @@ export class GossamerScoreModal extends Modal {
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
 
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const circle = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', '12');
     circle.setAttribute('cy', '12');
     circle.setAttribute('r', '10');
     circle.setAttribute('stroke-width', '2');
     svg.appendChild(circle);
 
-    const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const line1 = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
     line1.setAttribute('x1', '15');
     line1.setAttribute('y1', '9');
     line1.setAttribute('x2', '9');
     line1.setAttribute('y2', '15');
     svg.appendChild(line1);
 
-    const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const line2 = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
     line2.setAttribute('x1', '9');
     line2.setAttribute('y1', '9');
     line2.setAttribute('x2', '15');

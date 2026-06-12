@@ -459,7 +459,7 @@ export class AuthorProgressRenderService {
 
             const targetWidth = Math.max(1, Math.round(width));
             const targetHeight = Math.max(1, Math.round(height));
-            const canvas = document.createElement('canvas');
+            const canvas = activeDocument.createElement('canvas');
             canvas.width = targetWidth;
             canvas.height = targetHeight;
             const ctx = canvas.getContext('2d');

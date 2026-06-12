@@ -244,18 +244,19 @@ export class RadialTimelineView extends ItemView {
         if (!headerEl) return;
 
         if (!this.bookSwitcherEl) {
+            const doc = headerEl.ownerDocument;
             const actionsEl = headerEl.querySelector('.view-actions');
-            const wrapper = document.createElement('div');
+            const wrapper = doc.createElement('div');
             wrapper.className = 'rt-book-switcher';
 
-            const searchShell = document.createElement('div');
+            const searchShell = doc.createElement('div');
             searchShell.className = 'ert-timeline-search';
 
-            const searchBtn = document.createElement('button');
+            const searchBtn = doc.createElement('button');
             searchBtn.className = 'ert-timeline-search__button clickable-icon';
             searchBtn.type = 'button';
 
-            const searchInput = document.createElement('input');
+            const searchInput = doc.createElement('input');
             searchInput.className = 'ert-timeline-search__input';
             searchInput.type = 'search';
             searchInput.placeholder = 'Search timeline';
@@ -288,17 +289,17 @@ export class RadialTimelineView extends ItemView {
                 }
             });
 
-            const legendBtn = document.createElement('button');
+            const legendBtn = doc.createElement('button');
             legendBtn.className = 'ert-timeline-legend__trigger clickable-icon';
             legendBtn.type = 'button';
             legendBtn.setAttribute('aria-expanded', 'false');
             setIcon(legendBtn, 'asterisk');
 
-            const legendPanel = document.createElement('div');
+            const legendPanel = doc.createElement('div');
             legendPanel.className = 'ert-timeline-legend';
             legendPanel.setAttribute('role', 'tooltip');
 
-            const select = document.createElement('select');
+            const select = doc.createElement('select');
             select.className = 'rt-book-switcher__select';
             this.registerDomEvent(select, 'change', async () => {
                 const nextId = select.value;
@@ -316,7 +317,7 @@ export class RadialTimelineView extends ItemView {
                 this.updateViewTitle();
             });
 
-            const manageBtn = document.createElement('button');
+            const manageBtn = doc.createElement('button');
             manageBtn.className = 'rt-book-switcher__manage ert-timeline-title-action clickable-icon';
             manageBtn.type = 'button';
             manageBtn.setAttribute('aria-label', 'Manage books');
@@ -333,7 +334,7 @@ export class RadialTimelineView extends ItemView {
                 }
             });
 
-            const commandPaletteBtn = document.createElement('button');
+            const commandPaletteBtn = doc.createElement('button');
             commandPaletteBtn.className = 'ert-timeline-title-action clickable-icon';
             commandPaletteBtn.type = 'button';
             commandPaletteBtn.setAttribute('aria-label', 'Radial Timeline commands');
@@ -345,7 +346,7 @@ export class RadialTimelineView extends ItemView {
                 this.openRadialTimelineCommands();
             });
 
-            const exportBtn = document.createElement('button');
+            const exportBtn = doc.createElement('button');
             exportBtn.className = 'ert-timeline-title-action clickable-icon';
             exportBtn.type = 'button';
             exportBtn.setAttribute('aria-label', 'Manuscript export');
@@ -357,11 +358,11 @@ export class RadialTimelineView extends ItemView {
                 this.plugin.openManuscriptExportModal();
             });
 
-            const sessionBtn = document.createElement('button');
+            const sessionBtn = doc.createElement('button');
             sessionBtn.className = 'ert-timeline-session clickable-icon';
             sessionBtn.type = 'button';
             sessionBtn.setAttribute('aria-label', 'Start writing session');
-            const sessionLabel = document.createElement('span');
+            const sessionLabel = doc.createElement('span');
             sessionLabel.className = 'ert-timeline-session__label';
             this.renderWritingSessionIdleIcon(sessionLabel);
             sessionBtn.appendChild(sessionLabel);
@@ -371,10 +372,10 @@ export class RadialTimelineView extends ItemView {
                 this.toggleWritingSessionPanel();
             });
 
-            const sessionPanel = document.createElement('div');
+            const sessionPanel = doc.createElement('div');
             sessionPanel.className = 'ert-timeline-session-panel ert-hidden';
             sessionPanel.setAttribute('role', 'dialog');
-            document.body.appendChild(sessionPanel);
+            doc.body.appendChild(sessionPanel);
             this.register(() => sessionPanel.remove());
 
             let hideLegendTimer: number | null = null;
@@ -398,7 +399,7 @@ export class RadialTimelineView extends ItemView {
                 }
                 hideLegendTimer = window.setTimeout(() => {
                     hideLegendTimer = null;
-                    if (legendPanel.matches(':hover') || legendBtn.matches(':hover') || legendPanel.contains(document.activeElement)) {
+                    if (legendPanel.matches(':hover') || legendBtn.matches(':hover') || legendPanel.contains(doc.activeElement)) {
                         return;
                     }
                     hideLegend();
@@ -420,12 +421,12 @@ export class RadialTimelineView extends ItemView {
             });
             this.registerDomEvent(legendPanel, 'mouseenter', showLegend);
             this.registerDomEvent(legendPanel, 'mouseleave', scheduleLegendHide);
-            this.registerDomEvent(document.body, 'click', (evt: MouseEvent) => {
+            this.registerDomEvent(doc.body, 'click', (evt: MouseEvent) => {
                 const target = evt.target as Node | null;
                 if (target && (legendPanel.contains(target) || legendBtn.contains(target))) return;
                 hideLegend();
             });
-            this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+            this.registerDomEvent(doc, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Escape') hideLegend();
             });
             this.register(() => {
@@ -490,13 +491,13 @@ export class RadialTimelineView extends ItemView {
                     this.writingSessionRingPulseTimeout = undefined;
                 }
             });
-            this.registerDomEvent(document.body, 'click', (evt: MouseEvent) => {
+            this.registerDomEvent(doc.body, 'click', (evt: MouseEvent) => {
                 const target = evt.target as Node | null;
                 if (!target) return;
                 if (sessionPanel.contains(target) || sessionBtn.contains(target)) return;
                 this.hideWritingSessionPanel();
             });
-            this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+            this.registerDomEvent(doc, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Escape') this.hideWritingSessionPanel();
             });
             this.syncTimelineSearchControl();
@@ -877,7 +878,8 @@ export class RadialTimelineView extends ItemView {
             return;
         }
 
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const doc = target.ownerDocument;
+        const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.classList.add('svg-icon', 'lucide', 'lucide-metronome-icon', 'lucide-metronome', 'ert-timeline-session__icon');
         svg.setAttribute('viewBox', '0 0 24 24');
         svg.setAttribute('aria-hidden', 'true');
@@ -892,12 +894,12 @@ export class RadialTimelineView extends ItemView {
             'm12 17 6.59-6.59',
             'm15.05 5.7-.218-.691a3 3 0 0 0-5.663 0L4.418 19.695A1 1 0 0 0 5.37 21h13.253a1 1 0 0 0 .951-1.31L18.45 16.2',
         ].forEach((d) => {
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const path = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', d);
             svg.appendChild(path);
         });
 
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const circle = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', '20');
         circle.setAttribute('cy', '9');
         circle.setAttribute('r', '2');
@@ -1568,7 +1570,7 @@ export class RadialTimelineView extends ItemView {
         const ringLayer = doc.documentElement.firstElementChild;
         const timelineRoot = svg.querySelector('#timeline-root');
         if (!ringLayer || !timelineRoot) return;
-        const imported = document.importNode(ringLayer, true);
+        const imported = svg.ownerDocument.importNode(ringLayer, true);
         imported.setAttribute('aria-hidden', 'true');
         if (options.pulseColor) {
             imported.classList.add('is-count-pulse');
@@ -1701,7 +1703,7 @@ export class RadialTimelineView extends ItemView {
     }
 
     private seedCommandPaletteQuery(query: string, attempt = 0): void {
-        const input = document.querySelector<HTMLInputElement>('.prompt-input');
+        const input = activeDocument.querySelector<HTMLInputElement>('.prompt-input');
         if (!input) {
             if (attempt < 8) {
                 window.setTimeout(() => this.seedCommandPaletteQuery(query, attempt + 1), 25);
@@ -1730,15 +1732,16 @@ export class RadialTimelineView extends ItemView {
 
         this.timelineLegendPanel.empty();
 
-        const surface = document.createElement('div');
+        const doc = this.timelineLegendPanel.ownerDocument;
+        const surface = doc.createElement('div');
         surface.className = 'ert-timeline-legend__surface';
 
-        const header = document.createElement('div');
+        const header = doc.createElement('div');
         header.className = 'ert-timeline-legend__header';
-        const title = document.createElement('div');
+        const title = doc.createElement('div');
         title.className = 'ert-timeline-legend__title';
         title.textContent = 'Timeline Keys';
-        const badge = document.createElement('div');
+        const badge = doc.createElement('div');
         badge.className = 'ert-timeline-legend__mode';
         badge.textContent = this.getTimelineLegendModeLabel(mode);
         header.appendChild(title);
@@ -1746,23 +1749,23 @@ export class RadialTimelineView extends ItemView {
         surface.appendChild(header);
 
         this.getTimelineLegendSections(mode).forEach(section => {
-            const sectionEl = document.createElement('section');
+            const sectionEl = doc.createElement('section');
             sectionEl.className = 'ert-timeline-legend__section';
 
-            const sectionTitle = document.createElement('div');
+            const sectionTitle = doc.createElement('div');
             sectionTitle.className = 'ert-timeline-legend__section-title';
             sectionTitle.textContent = section.title;
             sectionEl.appendChild(sectionTitle);
 
             section.rows.forEach(row => {
-                const rowEl = document.createElement('div');
+                const rowEl = doc.createElement('div');
                 rowEl.className = 'ert-timeline-legend__row';
 
-                const iconEl = document.createElement('span');
+                const iconEl = doc.createElement('span');
                 iconEl.className = 'ert-timeline-legend__icon';
                 if (row.swatch) {
                     iconEl.classList.add('ert-timeline-legend__icon--swatch');
-                    const swatchEl = document.createElement('span');
+                    const swatchEl = doc.createElement('span');
                     swatchEl.className = 'ert-timeline-legend__swatch';
                     if (row.swatch.fill) swatchEl.style.setProperty('--ert-legend-swatch-fill', row.swatch.fill);
                     if (row.swatch.stroke) swatchEl.style.setProperty('--ert-legend-swatch-stroke', row.swatch.stroke);
@@ -1773,15 +1776,15 @@ export class RadialTimelineView extends ItemView {
                     setIcon(iconEl, row.icon);
                 }
 
-                const copyEl = document.createElement('span');
+                const copyEl = doc.createElement('span');
                 copyEl.className = 'ert-timeline-legend__copy';
-                const labelEl = document.createElement('span');
+                const labelEl = doc.createElement('span');
                 labelEl.className = 'ert-timeline-legend__label';
                 labelEl.textContent = row.label;
                 copyEl.appendChild(labelEl);
 
                 if (row.detail) {
-                    const detailEl = document.createElement('span');
+                    const detailEl = doc.createElement('span');
                     detailEl.className = 'ert-timeline-legend__detail';
                     if (row.detailSegments) {
                         row.detailSegments.forEach(segment => {
@@ -1940,15 +1943,16 @@ export class RadialTimelineView extends ItemView {
 
         const books = this.plugin.settings.books || [];
         const sagaAvailable = isSagaScopeAvailable(this.plugin.settings);
+        const doc = select.ownerDocument;
         if (sagaAvailable) {
-            const sagaOption = document.createElement('option');
+            const sagaOption = doc.createElement('option');
             sagaOption.value = SAGA_SCOPE_OPTION;
             sagaOption.textContent = 'Saga';
             select.appendChild(sagaOption);
         }
 
         books.forEach(book => {
-            const option = document.createElement('option');
+            const option = doc.createElement('option');
             option.value = book.id;
             option.textContent = book.title?.trim() || DEFAULT_BOOK_TITLE;
             select.appendChild(option);
@@ -2421,8 +2425,9 @@ export class RadialTimelineView extends ItemView {
         this.sceneData = scenes;
 
         // Performance optimization: Create DocumentFragment to minimize reflows
-        const fragment = document.createDocumentFragment();
-        const timelineContainer = document.createElement("div");
+        const doc = container.ownerDocument;
+        const fragment = doc.createDocumentFragment();
+        const timelineContainer = doc.createElement("div");
         timelineContainer.className = "radial-timeline-container";
         fragment.appendChild(timelineContainer);
         
@@ -2434,7 +2439,7 @@ export class RadialTimelineView extends ItemView {
 
             // Expose the dominant publish-stage colour to CSS so rules can use var(--rt-max-publish-stage-color)
             if (calculatedMaxStageColor) {
-                document.documentElement.style.setProperty('--rt-max-publish-stage-color', calculatedMaxStageColor);
+                doc.documentElement.style.setProperty('--rt-max-publish-stage-color', calculatedMaxStageColor);
             }
             
             // Render directly into the container
@@ -2723,7 +2728,8 @@ export class RadialTimelineView extends ItemView {
         const rowHeight = 52;
         const panelHeight = 28 + (entries.length * rowHeight);
 
-        const foreignObject = document.createElementNS(svgNs, 'foreignObject');
+        const doc = svg.ownerDocument;
+        const foreignObject = doc.createElementNS(svgNs, 'foreignObject');
         foreignObject.setAttribute('x', String(panelX));
         foreignObject.setAttribute('y', String(panelY));
         foreignObject.setAttribute('width', String(panelWidth));
@@ -2731,19 +2737,19 @@ export class RadialTimelineView extends ItemView {
         foreignObject.setAttribute('class', 'rt-recent-moves-fo');
         foreignObject.style.pointerEvents = 'none';
 
-        const panel = document.createElementNS(xhtmlNs, 'section');
+        const panel = doc.createElementNS(xhtmlNs, 'section');
         panel.className = 'rt-recent-moves';
         panel.style.setProperty('--rt-recent-moves-fade-center-x', `${-panelX}px`);
         panel.style.setProperty('--rt-recent-moves-fade-center-y', `${-panelY}px`);
         panel.style.setProperty('--rt-recent-moves-fade-radius', `${MONTH_LABEL_RADIUS}px`);
         panel.style.setProperty('--rt-recent-moves-fade-width', '110px');
 
-        const header = document.createElementNS(xhtmlNs, 'div');
+        const header = doc.createElementNS(xhtmlNs, 'div');
         header.className = 'rt-recent-moves__header';
         header.textContent = 'Recent moves';
         panel.appendChild(header);
 
-        const list = document.createElementNS(xhtmlNs, 'div');
+        const list = doc.createElementNS(xhtmlNs, 'div');
         list.className = 'rt-recent-moves__list';
         panel.appendChild(list);
 
@@ -2806,7 +2812,8 @@ export class RadialTimelineView extends ItemView {
         // Header row remains ~44px; even with zero runs we still show the signal selector + pill.
         const panelHeight = 44 + (runs.length === 0 ? 0 : listHeight);
 
-        const foreignObject = document.createElementNS(svgNs, 'foreignObject');
+        const doc = svg.ownerDocument;
+        const foreignObject = doc.createElementNS(svgNs, 'foreignObject');
         foreignObject.setAttribute('x', String(panelX));
         foreignObject.setAttribute('y', String(panelY));
         foreignObject.setAttribute('width', String(panelWidth));
@@ -2814,18 +2821,18 @@ export class RadialTimelineView extends ItemView {
         foreignObject.setAttribute('class', 'rt-gossamer-runs-fo');
         foreignObject.style.pointerEvents = 'none';
 
-        const panel = document.createElementNS(xhtmlNs, 'section');
+        const panel = doc.createElementNS(xhtmlNs, 'section');
         panel.className = 'rt-gossamer-runs';
         panel.style.setProperty('--rt-gossamer-runs-fade-center-x', `${-panelX}px`);
         panel.style.setProperty('--rt-gossamer-runs-fade-center-y', `${-panelY}px`);
         panel.style.setProperty('--rt-gossamer-runs-fade-radius', `${MONTH_LABEL_RADIUS}px`);
         panel.style.setProperty('--rt-gossamer-runs-fade-width', '110px');
 
-        const controlsRow = document.createElementNS(xhtmlNs, 'div');
+        const controlsRow = doc.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';
 
         // Pill: two states only — "LATEST" (latest only) or "{n} PLOTS" (everything else).
-        const button = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+        const button = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
         button.setAttribute('role', 'button');
         button.setAttribute('tabindex', '0');
@@ -2835,7 +2842,7 @@ export class RadialTimelineView extends ItemView {
             this.plugin.gossamerLatestOnly ? 'Click to show all plots' : 'Click to show latest only',
             'bottom'
         );
-        const buttonLabel = document.createElementNS(xhtmlNs, 'span');
+        const buttonLabel = doc.createElementNS(xhtmlNs, 'span');
         if (runs.length === 0) {
             buttonLabel.textContent = '0 PLOTS';
         } else if (this.plugin.gossamerLatestOnly) {
@@ -2847,13 +2854,13 @@ export class RadialTimelineView extends ItemView {
         controlsRow.appendChild(button);
 
         // Signal selector — 4 lucide icons, one per signal.
-        const signalSelector = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+        const signalSelector = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         signalSelector.className = 'rt-gossamer-runs__signals';
         signalSelector.setAttribute('role', 'tablist');
         const signalButtons: Array<{ el: HTMLDivElement; signal: GossamerSignalType }> = [];
         GOSSAMER_SIGNAL_TYPES.forEach((signalId) => {
             const meta = GOSSAMER_SIGNAL_METADATA[signalId];
-            const btn = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+            const btn = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
             btn.className = 'rt-gossamer-runs__signal';
             btn.setAttribute('role', 'tab');
             btn.setAttribute('tabindex', '0');
@@ -2866,7 +2873,7 @@ export class RadialTimelineView extends ItemView {
                 // Obsidian's global icon styling (and potential re-renders).
                 // Our own class alone is enough for our CSS to size it.
                 const svgNs2 = 'http://www.w3.org/2000/svg';
-                const iconSvg = document.createElementNS(svgNs2, 'svg');
+                const iconSvg = doc.createElementNS(svgNs2, 'svg');
                 iconSvg.setAttribute('viewBox', '0 0 24 24');
                 iconSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                 iconSvg.setAttribute('class', 'rt-gossamer-runs__signal-icon');
@@ -2877,7 +2884,7 @@ export class RadialTimelineView extends ItemView {
                 iconSvg.setAttribute('stroke-width', '2');
                 iconSvg.setAttribute('stroke-linecap', 'round');
                 iconSvg.setAttribute('stroke-linejoin', 'round');
-                const path = document.createElementNS(svgNs2, 'path');
+                const path = doc.createElementNS(svgNs2, 'path');
                 path.setAttribute('d', meta.inlineIconPath);
                 iconSvg.appendChild(path);
                 btn.appendChild(iconSvg);
@@ -2895,7 +2902,7 @@ export class RadialTimelineView extends ItemView {
         // Cache-window pill — shown while a prior run's manuscript cache is still
         // live, so switching signals here reuses it. Self-ticking; hidden when no
         // window is open. (xhtml element so it lives inside the foreignObject.)
-        const cachePill = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+        const cachePill = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         cachePill.className = 'ert-gossamer-cache-pill';
         cachePill.setAttribute('data-state', 'idle');
         controlsRow.appendChild(cachePill);
@@ -2909,19 +2916,19 @@ export class RadialTimelineView extends ItemView {
         panel.appendChild(controlsRow);
 
         if (runs.length > 0) {
-            const list = document.createElementNS(xhtmlNs, 'div');
+            const list = doc.createElementNS(xhtmlNs, 'div');
             list.className = 'rt-gossamer-runs__list rt-gossamer-runs__list--inline';
             displayedRuns.forEach((record, idx) => {
                 list.appendChild(this.buildGossamerRunToggleRow(record));
                 if (idx === 0 && displayedRuns.length > 1 && record.isLatest) {
-                    const divider = document.createElementNS(xhtmlNs, 'div');
+                    const divider = doc.createElementNS(xhtmlNs, 'div');
                     divider.className = 'rt-gossamer-runs__divider';
                     list.appendChild(divider);
                 }
             });
             panel.appendChild(list);
         } else {
-            const empty = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+            const empty = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
             empty.className = 'rt-gossamer-runs__empty';
             empty.textContent = `No ${GOSSAMER_SIGNAL_METADATA[activeSignal].label.toLowerCase()} runs yet.`;
             panel.appendChild(empty);
@@ -2982,10 +2989,11 @@ export class RadialTimelineView extends ItemView {
 
     private buildGossamerRunToggleRow(record: GossamerRunRecord): HTMLElement {
         const xhtmlNs = 'http://www.w3.org/1999/xhtml';
-        const row = document.createElementNS(xhtmlNs, 'label');
+        const doc = this.containerEl.ownerDocument;
+        const row = doc.createElementNS(xhtmlNs, 'label');
         row.className = 'rt-gossamer-runs__checkbox-row';
 
-        const checkbox = document.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
+        const checkbox = doc.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
         checkbox.type = 'checkbox';
         const selectedIds = this.plugin.gossamerLatestOnly
             ? this.plugin.gossamerRunInventory.filter((run) => run.isLatest).map((run) => run.id)
@@ -2995,7 +3003,7 @@ export class RadialTimelineView extends ItemView {
         checkbox.checked = selectedIds.includes(record.id);
         row.appendChild(checkbox);
 
-        const text = document.createElementNS(xhtmlNs, 'span');
+        const text = doc.createElementNS(xhtmlNs, 'span');
         text.textContent = record.label;
         row.appendChild(text);
 
@@ -3052,31 +3060,32 @@ export class RadialTimelineView extends ItemView {
 
     private buildRecentMoveRow(entry: StructuralMoveHistoryEntry): HTMLElement {
         const xhtmlNs = 'http://www.w3.org/1999/xhtml';
-        const row = document.createElementNS(xhtmlNs, 'div');
+        const doc = this.containerEl.ownerDocument;
+        const row = doc.createElementNS(xhtmlNs, 'div');
         row.className = 'rt-recent-moves__item';
 
-        const header = document.createElementNS(xhtmlNs, 'div');
+        const header = doc.createElementNS(xhtmlNs, 'div');
         header.className = 'rt-recent-moves__header-row';
 
-        const icon = document.createElementNS(xhtmlNs, 'div');
+        const icon = doc.createElementNS(xhtmlNs, 'div');
         icon.className = 'rt-recent-moves__icon';
         setIcon(icon as unknown as HTMLElement, 'arrow-right-to-line');
         header.appendChild(icon);
 
-        const summary = document.createElementNS(xhtmlNs, 'div');
+        const summary = doc.createElementNS(xhtmlNs, 'div');
         summary.className = 'rt-recent-moves__summary';
         const [sourceLabel, targetLabel] = entry.summary.split('|').map((part) => part.trim());
         if (sourceLabel && targetLabel) {
-            const source = document.createElementNS(xhtmlNs, 'span');
+            const source = doc.createElementNS(xhtmlNs, 'span');
             source.textContent = sourceLabel;
             summary.appendChild(source);
 
-            const cornerIcon = document.createElementNS(xhtmlNs, 'span');
+            const cornerIcon = doc.createElementNS(xhtmlNs, 'span');
             cornerIcon.className = 'rt-recent-moves__inline-icon';
             setIcon(cornerIcon as unknown as HTMLElement, 'corner-up-right');
             summary.appendChild(cornerIcon);
 
-            const target = document.createElementNS(xhtmlNs, 'span');
+            const target = doc.createElementNS(xhtmlNs, 'span');
             target.textContent = targetLabel;
             summary.appendChild(target);
         } else {
@@ -3085,7 +3094,7 @@ export class RadialTimelineView extends ItemView {
         header.appendChild(summary);
         row.appendChild(header);
 
-        const meta = document.createElementNS(xhtmlNs, 'div');
+        const meta = doc.createElementNS(xhtmlNs, 'div');
         meta.className = 'rt-recent-moves__meta';
         const parts = [this.formatRecentMoveAge(entry.timestamp)];
         if (entry.sourceContext && entry.destinationContext) {

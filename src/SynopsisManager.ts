@@ -140,20 +140,21 @@ export default class SynopsisManager {
     kind: 'subplot' | 'character',
     items: Array<{ text: string; color: string; povLabel?: string }>
   ): void {
+    const doc = textEl.ownerDocument;
     while (textEl.firstChild) {
       textEl.removeChild(textEl.firstChild);
     }
 
     items.forEach((item, index) => {
       if (kind === 'subplot') {
-        const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         tspan.setAttribute('data-item-type', 'subplot');
         tspan.style.setProperty('--rt-dynamic-color', item.color);
         tspan.textContent = item.text;
         textEl.appendChild(tspan);
       } else {
         let baselineRaised = false;
-        const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        const tspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         tspan.setAttribute('data-item-type', 'character');
         tspan.style.setProperty('--rt-dynamic-color', item.color);
         if (item.povLabel) {
@@ -163,7 +164,7 @@ export default class SynopsisManager {
         textEl.appendChild(tspan);
 
         if (item.povLabel) {
-          const povTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          const povTspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           povTspan.setAttribute('class', 'rt-pov-marker');
           povTspan.setAttribute('dy', '-8px');
           povTspan.style.setProperty('--rt-dynamic-color', item.color);
@@ -173,7 +174,7 @@ export default class SynopsisManager {
         }
 
         if (index < items.length - 1) {
-          const comma = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          const comma = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           comma.setAttribute('fill', 'var(--text-muted)');
           if (baselineRaised) {
             comma.setAttribute('dy', '8px');
@@ -181,7 +182,7 @@ export default class SynopsisManager {
           comma.textContent = ', ';
           textEl.appendChild(comma);
         } else if (baselineRaised) {
-          const resetTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          const resetTspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           resetTspan.setAttribute('dy', '8px');
           resetTspan.textContent = '';
           textEl.appendChild(resetTspan);
@@ -189,7 +190,7 @@ export default class SynopsisManager {
       }
 
       if (kind === 'subplot' && index < items.length - 1) {
-        const comma = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        const comma = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         comma.setAttribute('fill', 'var(--text-muted)');
         comma.textContent = ', ';
         textEl.appendChild(comma);
@@ -202,7 +203,7 @@ export default class SynopsisManager {
     kind: 'subplot' | 'character',
     items: Array<{ text: string; color: string; povLabel?: string }>
   ): number {
-    const existingChildren = document.createDocumentFragment();
+    const existingChildren = textEl.ownerDocument.createDocumentFragment();
     while (textEl.firstChild) {
       existingChildren.appendChild(textEl.firstChild);
     }
@@ -793,7 +794,7 @@ export default class SynopsisManager {
 
     // Extract the content from the wrapper div
     const container = doc.querySelector('div');
-    const fragment = document.createDocumentFragment();
+    const fragment = doc.createDocumentFragment();
 
     if (container) {
       // Move all child nodes to our fragment
@@ -869,6 +870,7 @@ export default class SynopsisManager {
    * Returns a metadata text element if date/duration exist, otherwise null
    */
   private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string, sceneNumber?: number | null, sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
+    const ownerDoc = titleTextElement.ownerDocument;
     if (titleContent.includes('<tspan')) {
 
       // For pre-formatted HTML with tspans, parse safely
@@ -877,16 +879,16 @@ export default class SynopsisManager {
       const textNode = doc.querySelector('text');
 
       if (!textNode) {
-        const fallbackTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        const fallbackTspan = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "tspan");
         fallbackTspan.setAttribute("fill", titleColor);
-        fallbackTspan.appendChild(document.createTextNode(titleContent));
+        fallbackTspan.appendChild(ownerDoc.createTextNode(titleContent));
         titleTextElement.appendChild(fallbackTspan);
         return null;
       }
 
       const cloneInlineTspan = (source: Node): Node => {
         if (source.nodeType === Node.TEXT_NODE) {
-          return document.createTextNode(source.textContent ?? '');
+          return ownerDoc.createTextNode(source.textContent ?? '');
         }
 
         if (source.nodeType !== Node.ELEMENT_NODE || (source as Element).tagName.toLowerCase() !== 'tspan') {
@@ -894,7 +896,7 @@ export default class SynopsisManager {
         }
 
         const tspan = source as Element;
-        const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        const svgTspan = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "tspan");
 
         Array.from(tspan.attributes).forEach(attr => {
           svgTspan.setAttribute(attr.name, attr.value);
@@ -920,7 +922,7 @@ export default class SynopsisManager {
 
         } else if (node.nodeType === Node.TEXT_NODE) {
           if (node.textContent) {
-            titleTextElement.appendChild(document.createTextNode(node.textContent));
+            titleTextElement.appendChild(ownerDoc.createTextNode(node.textContent));
           }
         }
       });
@@ -933,7 +935,7 @@ export default class SynopsisManager {
 
       // Add scene number if it exists
       if (titleParts.sceneNumber) {
-        const numTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        const numTspan = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "tspan");
         numTspan.classList.add('rt-scene-title-bold');
         numTspan.setAttribute("data-item-type", "title");
         numTspan.style.setProperty('--rt-dynamic-color', titleColor);
@@ -943,7 +945,7 @@ export default class SynopsisManager {
       }
 
       // Add main title
-      const mainTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      const mainTspan = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "tspan");
       mainTspan.classList.add('rt-scene-title-bold');
       mainTspan.setAttribute("data-item-type", "title");
       mainTspan.style.setProperty('--rt-dynamic-color', titleColor);
@@ -955,7 +957,7 @@ export default class SynopsisManager {
       // Create separate date/time and duration element (Column 2 of title row)
       // This is the mini-block positioned to the right of the main scene title
       if (titleParts.date || titleParts.duration) {
-        const metadataElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const metadataElement = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "text");
         metadataElement.setAttribute("class", "rt-info-text rt-title-text-main rt-title-date-time");
         metadataElement.setAttribute("x", "0");
         metadataElement.setAttribute("y", "0"); // Same baseline as title, layout handled later
@@ -965,7 +967,7 @@ export default class SynopsisManager {
 
         // Row 1: Date/time (at baseline, same as title)
         if (titleParts.date) {
-          const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          const dateTspan = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "tspan");
           dateTspan.setAttribute('class', 'rt-date-text');
           dateTspan.setAttribute('data-item-type', 'date');
           dateTspan.setAttribute('data-column-role', 'date');
@@ -976,7 +978,7 @@ export default class SynopsisManager {
 
         // Row 2: Duration (on new line, aligned with date start)
         if (titleParts.duration) {
-          const durationTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          const durationTspan = ownerDoc.createElementNS("http://www.w3.org/2000/svg", "tspan");
           durationTspan.setAttribute('class', 'rt-duration-text');
           durationTspan.setAttribute('data-item-type', 'duration');
           durationTspan.setAttribute('data-column-role', 'duration');
@@ -1021,7 +1023,7 @@ export default class SynopsisManager {
     }
     let titleColor = beatStageColor || defaultTitleColor;
     if (scene.itemType === 'Backdrop') {
-      const maxStageColor = getComputedStyle(document.documentElement)
+      const maxStageColor = getComputedStyle(activeDocument.documentElement)
         .getPropertyValue('--rt-max-publish-stage-color')
         .trim();
       titleColor = maxStageColor || 'var(--rt-max-publish-stage-color)';
@@ -1037,7 +1039,7 @@ export default class SynopsisManager {
       const resolveCssVariable = (index: number): string => {
         const normalizedIndex = Math.max(0, index) % 15;
         const varName = `--rt-subplot-colors-${normalizedIndex}`;
-        const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        const value = getComputedStyle(activeDocument.documentElement).getPropertyValue(varName).trim();
         if (!value) {
           throw new Error(`CSS variable ${varName} is not defined for subplot coloring.`);
         }
@@ -1053,7 +1055,7 @@ export default class SynopsisManager {
           return resolved;
         }
 
-        const sceneGroup = document.getElementById(sceneIdentifier)?.closest('.scene-group') as HTMLElement | null;
+        const sceneGroup = activeDocument.getElementById(sceneIdentifier)?.closest('.scene-group') as HTMLElement | null;
         if (!sceneGroup) {
           throw new Error(`Scene group not found for synopsis ${sceneIdentifier}.`);
         }
@@ -1072,7 +1074,7 @@ export default class SynopsisManager {
       return resolveCssVariable(index);
     };
 
-    const styleSource = getComputedStyle(document.documentElement);
+    const styleSource = getComputedStyle(activeDocument.documentElement);
     const synopsisLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-line-height'));
     const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
     const metadataLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-metadata-line-height'));
@@ -1081,6 +1083,7 @@ export default class SynopsisManager {
 
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
+    const doc = containerGroup.ownerDocument;
 
     // Store publish stage color on synopsis for hover title color updates in Progress mode
     containerGroup.setAttribute('data-stage-color', titleColor);
@@ -1091,7 +1094,7 @@ export default class SynopsisManager {
 
     // Add the title at origin (0,0) - stage color moved to child tspans
     const titleContent = decodedContentLines[0];
-    const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    const titleTextElement = doc.createElementNS("http://www.w3.org/2000/svg", "text");
     titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
@@ -1151,13 +1154,13 @@ export default class SynopsisManager {
     const appendPlanetaryLine = (text: string) => {
       const y = (1 + extraLineCount) * metadataLineHeight;
       const indentX = 6; // indent text inward
-      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const group = doc.createElementNS("http://www.w3.org/2000/svg", "g");
       const textEl = createText(0, y, 'rt-info-text rt-title-text-secondary rt-planetary-time-text', text);
       // Force indent via dx attribute (more reliable than x for relative offset)
       textEl.setAttribute('dx', String(indentX));
       textEl.style.fill = titleColor; // Use scene publish stage color
 
-      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      const rect = doc.createElementNS("http://www.w3.org/2000/svg", "rect");
       rect.setAttribute('class', 'rt-planetary-outline');
       rect.style.stroke = titleColor; // Use scene publish stage color for border too
 
@@ -1229,7 +1232,7 @@ export default class SynopsisManager {
       const isGossamerSpacer = contentLines[i].includes('<gossamer-spacer>');
 
       const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
-      const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      const synopsisLineElement = doc.createElementNS("http://www.w3.org/2000/svg", "text");
 
       if (isGossamerSpacer) {
         // Add a visual gap before Gossamer momentum line (like scenes have before pulse)
@@ -1251,7 +1254,7 @@ export default class SynopsisManager {
         const gossamerContent = contentLines[i].replace(/<gossamer>/g, '').replace(/<\/gossamer>/g, '');
 
         // Create tspan for score (bold, colored)
-        const gossamerTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        const gossamerTspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         gossamerTspan.classList.add('rt-scene-title-bold');
         gossamerTspan.setAttribute("data-item-type", "title");
         gossamerTspan.style.setProperty('--rt-dynamic-color', titleColor);
@@ -1287,19 +1290,19 @@ export default class SynopsisManager {
           const justificationPart = pulseContent.substring(dashIndex + 3);
 
           // Score tspan (grade styling, beat-stage color)
-          const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          const scoreTspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           scoreTspan.classList.add('gossamer-grade');
           scoreTspan.textContent = scorePart;
           synopsisLineElement.appendChild(scoreTspan);
 
           // Em dash + justification (same grade styling to keep line consistent)
-          const justificationTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          const justificationTspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           justificationTspan.classList.add('gossamer-grade');
           justificationTspan.textContent = ' — ' + justificationPart;
           synopsisLineElement.appendChild(justificationTspan);
         } else {
           // Just the score (no justification)
-          const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          const scoreTspan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           scoreTspan.classList.add('gossamer-grade');
           scoreTspan.textContent = pulseContent;
           synopsisLineElement.appendChild(scoreTspan);
@@ -1344,7 +1347,7 @@ export default class SynopsisManager {
 
       // Helper function to add a spacer element
       const addSpacer = (yPosition: number, height: number) => {
-        const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const spacerElement = doc.createElementNS("http://www.w3.org/2000/svg", "text");
         spacerElement.setAttribute("class", "synopsis-spacer");
         spacerElement.setAttribute("x", "0");
         spacerElement.setAttribute("y", String(yPosition));
@@ -1419,7 +1422,7 @@ export default class SynopsisManager {
         : '';
       if (this.plugin.settings.enableAiSceneAnalysis && pulseReviewWarning) {
         const y = currentMetadataY;
-        const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const lineGroup = doc.createElementNS("http://www.w3.org/2000/svg", "g");
         lineGroup.setAttribute("class", "rt-hover-metadata-line is-pulse-review-warning");
         lineGroup.setAttribute("data-hover-key", "Pulse Review Warning");
 
@@ -1430,7 +1433,7 @@ export default class SynopsisManager {
         const textX = hasIcon ? (iconSize + iconGap) : 0;
 
         if (iconSvg) {
-          const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          const iconG = doc.createElementNS("http://www.w3.org/2000/svg", "g");
           iconG.setAttribute("class", "rt-hover-metadata-icon-g");
           iconG.setAttribute("stroke", "currentColor");
           iconG.setAttribute("stroke-linecap", "round");
@@ -1444,7 +1447,7 @@ export default class SynopsisManager {
           lineGroup.appendChild(iconG);
         }
 
-        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const textEl = doc.createElementNS("http://www.w3.org/2000/svg", "text");
         textEl.setAttribute("class", "rt-hover-metadata-text");
         textEl.setAttribute("x", String(textX));
         textEl.setAttribute("y", String(y));
@@ -1515,7 +1518,7 @@ export default class SynopsisManager {
           if (!valueStr) return; // Skip if formatted value is empty
 
           // Create a group for this advanced YAML line
-          const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          const lineGroup = doc.createElementNS("http://www.w3.org/2000/svg", "g");
           lineGroup.setAttribute("class", "rt-hover-metadata-line");
           lineGroup.setAttribute("data-hover-key", field.key);
 
@@ -1530,7 +1533,7 @@ export default class SynopsisManager {
           // Get the Lucide icon SVG
           if (iconSvg) {
             // Native SVG approach: Extract paths and transform
-            const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            const iconG = doc.createElementNS("http://www.w3.org/2000/svg", "g");
             iconG.setAttribute("class", "rt-hover-metadata-icon-g");
             iconG.setAttribute("stroke", "currentColor");
             iconG.setAttribute("stroke-linecap", "round");
@@ -1594,7 +1597,7 @@ export default class SynopsisManager {
         const subplots = decodedMetadataItems[0].split(', ').filter((s: string) => s.trim().length > 0);
 
         if (subplots.length > 0) {
-          const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          const subplotTextElement = doc.createElementNS("http://www.w3.org/2000/svg", "text");
           subplotTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           subplotTextElement.setAttribute("x", "0");
           // Use the calculated subplotStartY
@@ -1611,13 +1614,13 @@ export default class SynopsisManager {
           subplots.forEach((subplot: string, j: number) => {
             const color = getSubplotColor(subplot.trim(), sceneId);
             const subplotText = subplot.trim();
-            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+            const tspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
             tspan.setAttribute("data-item-type", "subplot");
             tspan.style.setProperty('--rt-dynamic-color', color);
             tspan.textContent = subplotText;
             subplotTextElement.appendChild(tspan);
             if (j < subplots.length - 1) {
-              const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+              const comma = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
               comma.setAttribute("fill", "var(--text-muted)");
               comma.textContent = ", ";
               subplotTextElement.appendChild(comma);
@@ -1637,7 +1640,7 @@ export default class SynopsisManager {
         if (characterList.length > 0) {
           const CHARACTER_COLOR_DEFAULT = '#666666';
           const CHARACTER_COLOR_POV = '#000000';
-          const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          const characterTextElement = doc.createElementNS("http://www.w3.org/2000/svg", "text");
           characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           characterTextElement.setAttribute("x", "0");
           characterTextElement.setAttribute("y", String(characterY));
@@ -1672,7 +1675,7 @@ export default class SynopsisManager {
             const color = povLabel ? CHARACTER_COLOR_POV : CHARACTER_COLOR_DEFAULT;
 
             if (cleanedText) {
-              const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              const tspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               tspan.setAttribute("data-item-type", "character");
               tspan.style.setProperty('--rt-dynamic-color', color);
               if (povLabel) {
@@ -1683,7 +1686,7 @@ export default class SynopsisManager {
             }
 
             if (povLabel) {
-              const povTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              const povTspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               povTspan.setAttribute("class", "rt-pov-marker");
               povTspan.setAttribute("dy", "-8px");
               povTspan.style.setProperty('--rt-dynamic-color', color);
@@ -1694,7 +1697,7 @@ export default class SynopsisManager {
 
             // Add comma after this character (if not the last one)
             if (j < characterList.length - 1) {
-              const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+              const comma = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
               comma.setAttribute("fill", "var(--text-muted)");
               if (baselineRaised) {
                 comma.setAttribute("dy", "8px");
@@ -1702,7 +1705,7 @@ export default class SynopsisManager {
               comma.textContent = ", ";
               characterTextElement.appendChild(comma);
             } else if (baselineRaised) {
-              const resetTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              const resetTspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               resetTspan.setAttribute("dy", "8px");
               resetTspan.textContent = "";
               characterTextElement.appendChild(resetTspan);
@@ -1957,7 +1960,7 @@ export default class SynopsisManager {
     const metadataSpacing = 14 * fontScale; // Default horizontal gap between title and metadata block
 
     // Get pulse line height from CSS for beats text
-    const styleSource = getComputedStyle(document.documentElement);
+    const styleSource = getComputedStyle(synopsis.ownerDocument.documentElement);
     const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
     const pulseLineHeight = pulseLineHeightRaw * fontScale;
 
@@ -2537,6 +2540,7 @@ export default class SynopsisManager {
    * @param parentElement The SVG element to append processed nodes to
    */
   private processContentWithTspans(content: string, parentElement: SVGElement): void {
+    const ownerDoc = parentElement.ownerDocument;
     // First decode any HTML entities in the content
     let processedContent = content;
 
@@ -2571,14 +2575,14 @@ export default class SynopsisManager {
       if (!textValue.trim()) {
         return;
       }
-      const svgTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      const svgTspan = ownerDoc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       svgTspan.textContent = textValue;
       parentElement.appendChild(svgTspan);
     };
 
     const cloneSvgInlineNode = (source: Node): Node => {
       if (source.nodeType === Node.TEXT_NODE) {
-        return document.createTextNode(source.textContent ?? '');
+        return ownerDoc.createTextNode(source.textContent ?? '');
       }
 
       if (source.nodeType !== Node.ELEMENT_NODE) {
@@ -2591,7 +2595,7 @@ export default class SynopsisManager {
         throw new Error(`Unsupported element <${element.tagName}> in synopsis content.`);
       }
 
-      const svgTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      const svgTspan = ownerDoc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       Array.from(element.attributes).forEach(attr => {
         svgTspan.setAttribute(attr.name, attr.value);
       });
@@ -2636,6 +2640,7 @@ export default class SynopsisManager {
    * @param spacerSize Size of the spacer to add after this beats section.
    */
   private formatBeatsText(beatsText: string, beatKey: 'previousSceneAnalysis' | 'currentSceneAnalysis' | 'nextSceneAnalysis', parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
+    const doc = parentGroup.ownerDocument;
     // START: Restore line splitting logic
     if (!beatsText || typeof beatsText !== 'string' || beatsText === 'undefined' || beatsText === 'null') {
       return 0;
@@ -2861,7 +2866,7 @@ export default class SynopsisManager {
 
       // First visual line: title seg 0 plus optional comment seg 0 with slash
       const makeLine = (titlePart: string | null, commentPart: string | null) => {
-        const lineText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const lineText = doc.createElementNS("http://www.w3.org/2000/svg", "text");
         lineText.setAttribute("class", "pulse-text");
         lineText.setAttribute("data-pulse-section", beatKey);
         lineText.setAttribute("x", "0");
@@ -2869,13 +2874,13 @@ export default class SynopsisManager {
         lineText.setAttribute("text-anchor", "start");
 
         if (titlePart !== null) {
-          const tt = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          const tt = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
           tt.setAttribute("class", titleClass);
           tt.textContent = titlePart;
           lineText.appendChild(tt);
         }
         if (commentPart !== null) {
-          const ct = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          const ct = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
           ct.setAttribute("class", commentClass);
           ct.textContent = (titlePart ? " / " : "") + commentPart;
           lineText.appendChild(ct);
@@ -2904,7 +2909,7 @@ export default class SynopsisManager {
     // Add spacer at the end of this section if needed
     if (spacerSize > 0) {
       const addSpacer = (yPosition: number, height: number) => {
-        const spacer = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        const spacer = doc.createElementNS("http://www.w3.org/2000/svg", "rect");
         spacer.setAttribute("class", "synopsis-spacer");
         spacer.setAttribute("x", "0");
         spacer.setAttribute("y", String(yPosition));

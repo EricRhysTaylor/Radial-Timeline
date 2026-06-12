@@ -69,7 +69,7 @@ async function streamToBlob(stream: MediaStream): Promise<Blob | null> {
     try {
         const track = stream.getVideoTracks()[0];
         if (!track) return null;
-        const video = document.createElement('video');
+        const video = activeDocument.createElement('video');
         video.srcObject = stream;
         video.muted = true;
         await video.play();
@@ -77,7 +77,7 @@ async function streamToBlob(stream: MediaStream): Promise<Blob | null> {
         await new Promise((resolve) => window.setTimeout(resolve, 120));
         const width = video.videoWidth || 1280;
         const height = video.videoHeight || 720;
-        const canvas = document.createElement('canvas');
+        const canvas = activeDocument.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');

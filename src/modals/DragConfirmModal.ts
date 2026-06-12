@@ -179,7 +179,7 @@ export class DragConfirmModal extends ErtModal {
         const doc = parser.parseFromString(svgString, 'image/svg+xml');
         if (doc.documentElement) {
             container.empty();
-            container.appendChild(document.importNode(doc.documentElement, true));
+            container.appendChild(container.ownerDocument.importNode(doc.documentElement, true));
         }
     }
 

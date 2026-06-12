@@ -1011,7 +1011,7 @@ function renderCampaignDetails(
     });
 
     const syncRefreshDisplay = (val: number) => {
-        if (document.activeElement !== refreshValueInput) refreshValueInput.value = String(val);
+        if (refreshValueInput.ownerDocument.activeElement !== refreshValueInput) refreshValueInput.value = String(val);
     };
 
     const commitRefreshValue = async (val: number) => {

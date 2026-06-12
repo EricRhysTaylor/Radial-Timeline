@@ -136,10 +136,10 @@ export function updateTargetDateTick(
         const newElements = Array.from(doc.documentElement.children);
         
         newElements.forEach(el => {
-            const imported = document.importNode(el, true);
+            const imported = svg.ownerDocument.importNode(el, true);
             timelineRoot.appendChild(imported);
         });
-        
+
         return true;
     } catch (error) {
         console.error('[DynamicLayerUpdater] Failed to update target date tick:', error);
@@ -184,10 +184,10 @@ export function updateEstimationElements(
         const newElements = Array.from(doc.documentElement.children);
         
         newElements.forEach(el => {
-            const imported = document.importNode(el, true);
+            const imported = svg.ownerDocument.importNode(el, true);
             timelineRoot.appendChild(imported);
         });
-        
+
         return true;
     } catch (error) {
         console.error('[DynamicLayerUpdater] Failed to update estimation elements:', error);

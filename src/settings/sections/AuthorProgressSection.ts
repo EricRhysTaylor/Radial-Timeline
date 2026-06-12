@@ -61,16 +61,17 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL} ${ERT_CLASSES.STACK}`
     });
     const rerenderSection = () => {
+        const doc = containerEl.ownerDocument;
         const scrollContainer = getScrollContainer(containerEl);
         const scrollTop = scrollContainer?.scrollTop ?? null;
-        const pageScrollTop = document.scrollingElement?.scrollTop ?? null;
+        const pageScrollTop = doc.scrollingElement?.scrollTop ?? null;
         containerEl.empty();
         renderAuthorProgressSection({ app, plugin, containerEl });
         window.requestAnimationFrame(() => {
             if (scrollContainer && scrollTop !== null) {
                 scrollContainer.scrollTop = scrollTop;
-            } else if (document.scrollingElement && pageScrollTop !== null) {
-                document.scrollingElement.scrollTop = pageScrollTop;
+            } else if (doc.scrollingElement && pageScrollTop !== null) {
+                doc.scrollingElement.scrollTop = pageScrollTop;
             }
         });
     };
@@ -166,11 +167,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const currentSize = plugin.settings.authorProgress?.defaults.aprSize || 'medium';
     const setSizeLabel = (el: HTMLElement, dimension: string, suffix?: string) => {
+        const doc = el.ownerDocument;
         el.textContent = '';
-        el.append(document.createTextNode(dimension));
-        el.append(document.createTextNode('²'));
+        el.append(doc.createTextNode(dimension));
+        el.append(doc.createTextNode('²'));
         if (suffix) {
-            el.append(document.createTextNode(` — ${suffix}`));
+            el.append(doc.createTextNode(` — ${suffix}`));
         }
     };
     let dimLabel: HTMLElement | null = null;
@@ -728,7 +730,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
 
     // Font availability check — canvas measurement against monospace baseline
-    const fontCheckCtx = (typeof document !== 'undefined' ? document.createElement('canvas') : null)?.getContext('2d') ?? null;
+    const fontCheckCtx = containerEl.ownerDocument.createElement('canvas').getContext('2d') ?? null;
     const fontCheckSample = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let fontCheckBaseline: number | null = null;
     const isFontAvailable = (fontName: string): boolean => {
@@ -897,7 +899,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const normalizedValue = normalized === 'Inter' ? 'default' : normalized;
             return !FONT_OPTIONS.some(opt => opt.value === normalizedValue) && normalizedValue !== 'default';
         };
-        const fontCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+        const doc = drop.selectEl.ownerDocument;
+        const fontCanvas = doc.createElement('canvas');
         const fontContext = fontCanvas?.getContext('2d') ?? null;
         const fontSample = 'abcdefghijklmnopqrstuvwxyz0123456789';
         const isFontLoaded = (value: string): boolean => {
@@ -912,9 +915,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const measured = fontContext.measureText(fontSample).width;
             const metricsMatch = measured === baseline;
             if (metricsMatch) return false;
-            if (typeof document === 'undefined' || !('fonts' in document)) return true;
+            if (!('fonts' in doc)) return true;
             try {
-                return document.fonts.check(`16px "${trimmed}"`) || document.fonts.check(`16px ${trimmed}`);
+                return doc.fonts.check(`16px "${trimmed}"`) || doc.fonts.check(`16px ${trimmed}`);
             } catch {
                 return false;
             }

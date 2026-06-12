@@ -101,11 +101,12 @@ export class FileTrackingService {
     }
 
     private installModalStateObserver(): void {
-        if (this.modalStateObserver || !document.body) return;
+        const doc = activeDocument;
+        if (this.modalStateObserver || !doc.body) return;
 
         this.syncModalOpenBodyClass();
         this.modalStateObserver = new MutationObserver(() => this.scheduleModalStateSync());
-        this.modalStateObserver.observe(document.body, { childList: true, subtree: true });
+        this.modalStateObserver.observe(doc.body, { childList: true, subtree: true });
 
         this.plugin.register(() => {
             if (this.modalStateObserver) {
@@ -116,7 +117,7 @@ export class FileTrackingService {
                 window.cancelAnimationFrame(this.modalStateSyncRaf);
                 this.modalStateSyncRaf = undefined;
             }
-            document.body.classList.remove('rt-modal-open');
+            doc.body.classList.remove('rt-modal-open');
         });
     }
 
@@ -129,8 +130,9 @@ export class FileTrackingService {
     }
 
     private syncModalOpenBodyClass(): void {
-        if (!document.body) return;
-        document.body.classList.toggle('rt-modal-open', this.isModalOpen());
+        const doc = activeDocument;
+        if (!doc.body) return;
+        doc.body.classList.toggle('rt-modal-open', this.isModalOpen());
     }
 
     private handleFileRename(file: TAbstractFile, oldPath: string): void {
@@ -150,16 +152,17 @@ export class FileTrackingService {
      */
     private isModalOpen(): boolean {
         try {
+            const doc = activeDocument;
             // Check for standard modal container with content
-            const modalContainer = document.body.querySelector('.modal-container');
+            const modalContainer = doc.body.querySelector('.modal-container');
             if (modalContainer && modalContainer.childElementCount > 0) return true;
-            
+
             // Check for modal background overlay (present when any modal is open)
-            const modalBg = document.body.querySelector('.modal-bg');
+            const modalBg = doc.body.querySelector('.modal-bg');
             if (modalBg) return true;
-            
+
             // Check for the modal element itself
-            const modal = document.body.querySelector('.modal');
+            const modal = doc.body.querySelector('.modal');
             if (modal) return true;
             
             return false;
@@ -174,7 +177,7 @@ export class FileTrackingService {
      */
     private isSettingsTabOpen(): boolean {
         try {
-            return document.body.querySelector('.ert-settings-root') != null;
+            return activeDocument.body.querySelector('.ert-settings-root') != null;
         } catch {
             return false;
         }

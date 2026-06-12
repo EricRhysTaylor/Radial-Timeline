@@ -512,13 +512,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     // Small delay to let the editor expand, then scroll to the migration row or advanced card
                     window.setTimeout(() => {
                         // Try to scroll to the specific migration row first
-                        const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
+                        const migrationRow = viewBtn.ownerDocument.querySelector('.ert-yaml-row--needs-migration');
                         if (migrationRow) {
                             migrationRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             return;
                         }
                         // Fallback: scroll to the advanced template card
-                        const advancedCard = document.querySelector('.ert-advanced-template-card');
+                        const advancedCard = viewBtn.ownerDocument.querySelector('.ert-advanced-template-card');
                         if (advancedCard) {
                             advancedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }

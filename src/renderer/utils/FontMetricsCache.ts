@@ -94,16 +94,17 @@ export function ensureNumberSquareCache(fontScale: number = 1): void {
  */
 function measureWithTemporarySvg(config: FontMetricsCacheConfig, chars: string): CachedMetrics {
     // Create temporary SVG container (hidden, used only for measurement)
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const doc = activeDocument;
+    const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '0');
     svg.setAttribute('height', '0');
     svg.style.position = 'absolute'; // SAFE: inline style used for temporary measurement element
     svg.style.visibility = 'hidden'; // SAFE: inline style used for temporary measurement element
     svg.style.pointerEvents = 'none'; // SAFE: inline style used for temporary measurement element
-    document.body.appendChild(svg);
+    doc.body.appendChild(svg);
 
     // Create measurement text element with dynamic font config
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const text = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.style.fontFamily = config.fontFamily; // SAFE: inline style used for dynamic font measurement
     text.style.fontSize = `${config.fontSize}px`; // SAFE: inline style used for dynamic font measurement
     text.style.fontWeight = String(config.fontWeight); // SAFE: inline style used for dynamic font measurement
@@ -136,7 +137,7 @@ function measureWithTemporarySvg(config: FontMetricsCacheConfig, chars: string):
     }
 
     // Clean up
-    document.body.removeChild(svg);
+    doc.body.removeChild(svg);
 
     return {
         charWidths,

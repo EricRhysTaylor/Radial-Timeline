@@ -27,7 +27,7 @@ export function renderSvgFromString(
     registerCleanup: CleanupRegistrar = () => {}
 ): SVGSVGElement | null {
     try {
-        const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const svgElement = container.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
         const parser = new DOMParser();
         const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
         const parserError = svgDoc.querySelector('parsererror');
@@ -64,7 +64,7 @@ export function renderSvgFromString(
 }
 
 function wrapInFragment(node: SVGSVGElement): DocumentFragment {
-    const fragment = document.createDocumentFragment();
+    const fragment = node.ownerDocument.createDocumentFragment();
     fragment.appendChild(node);
     return fragment;
 }
@@ -93,7 +93,8 @@ function buildFallbackSvg(
     registerCleanup: CleanupRegistrar
 ): SVGSVGElement | null {
     try {
-        const fallbackSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const ownerDoc = container.ownerDocument;
+        const fallbackSvg = ownerDoc.createElementNS('http://www.w3.org/2000/svg', 'svg');
         setCriticalAttributes(fallbackSvg, null);
 
         const svgBodyMatch = svgContent.match(/<svg[^>]*>([\s\S]*)<\/svg>/i);
@@ -110,7 +111,7 @@ function buildFallbackSvg(
                     const endIdx = Math.min(startIdx + CHUNK_SIZE, nodes.length);
                     for (let i = startIdx; i < endIdx; i++) {
                         const element = nodes[i];
-                        const newElement = document.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
+                        const newElement = ownerDoc.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
                         Array.from(element.attributes).forEach(attr => newElement.setAttribute(attr.name, attr.value));
                         newElement.textContent = element.textContent;
                         fallbackSvg.appendChild(newElement);
@@ -128,7 +129,7 @@ function buildFallbackSvg(
                 };
 
                 if (elementNodes.length > 100) {
-                    const loadingText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    const loadingText = ownerDoc.createElementNS('http://www.w3.org/2000/svg', 'text');
                     loadingText.setAttribute('x', '0');
                     loadingText.setAttribute('y', '0');
                     loadingText.setAttribute('class', 'loading-message');
@@ -148,7 +149,7 @@ function buildFallbackSvg(
                     });
                 } else {
                     elementNodes.forEach(element => {
-                        const newElement = document.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
+                        const newElement = ownerDoc.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
                         Array.from(element.attributes).forEach(attr => newElement.setAttribute(attr.name, attr.value));
                         newElement.textContent = element.textContent;
                         fallbackSvg.appendChild(newElement);

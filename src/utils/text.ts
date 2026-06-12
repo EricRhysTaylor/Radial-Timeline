@@ -18,7 +18,7 @@ export function decodeHtmlEntities(text: string): string {
     const span = doc.querySelector('span');
     return span?.textContent ?? '';
   } catch {
-    const span = document.createElement('span');
+    const span = activeDocument.createElement('span');
     span.textContent = text;
     return span.textContent ?? '';
   }
@@ -95,8 +95,8 @@ export function renderSceneTitleFragment(
   title: string,
   searchTerm: string
 ): DocumentFragment {
-  const fragment = document.createDocumentFragment();
-  const main = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+  const fragment = activeDocument.createDocumentFragment();
+  const main = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
   main.setAttribute('class', 'rt-scene-title-bold');
   main.setAttribute('data-item-type', 'title');
 
@@ -105,15 +105,15 @@ export function renderSceneTitleFragment(
     let last = 0;
     let m: RegExpExecArray | null;
     while ((m = regex.exec(title))) {
-      if (m.index > last) main.appendChild(document.createTextNode(title.slice(last, m.index)));
-      const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      if (m.index > last) main.appendChild(activeDocument.createTextNode(title.slice(last, m.index)));
+      const hl = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       hl.setAttribute('class', 'rt-search-term');
       // No fill attribute; inherit from parent via --rt-dynamic-color
       hl.textContent = m[0];
       main.appendChild(hl);
       last = m.index + m[0].length;
     }
-    if (last < title.length) main.appendChild(document.createTextNode(title.slice(last)));
+    if (last < title.length) main.appendChild(activeDocument.createTextNode(title.slice(last)));
   } else {
     main.textContent = title;
   }
@@ -135,10 +135,10 @@ export function renderSceneMetadataFragment(
   duration: string | undefined,
   searchTerm: string
 ): DocumentFragment {
-  const fragment = document.createDocumentFragment();
+  const fragment = activeDocument.createDocumentFragment();
 
   if (date) {
-    const dateT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    const dateT = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
     dateT.setAttribute('class', 'rt-date-text');
     dateT.setAttribute('data-item-type', 'date');
     dateT.setAttribute('dy', '-8px');
@@ -150,22 +150,22 @@ export function renderSceneMetadataFragment(
       let last = 0;
       let m: RegExpExecArray | null;
       while ((m = regex.exec(date))) {
-        if (m.index > last) dateT.appendChild(document.createTextNode(date.slice(last, m.index)));
-        const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        if (m.index > last) dateT.appendChild(activeDocument.createTextNode(date.slice(last, m.index)));
+        const hl = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         hl.setAttribute('class', 'rt-search-term');
         // Don't set fill attribute - will inherit from parent's CSS custom property
         hl.textContent = m[0];
         dateT.appendChild(hl);
         last = m.index + m[0].length;
       }
-      if (last < date.length) dateT.appendChild(document.createTextNode(date.slice(last)));
+      if (last < date.length) dateT.appendChild(activeDocument.createTextNode(date.slice(last)));
     } else {
       dateT.textContent = date;
     }
     fragment.appendChild(dateT);
 
     if (duration) {
-      const durationT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      const durationT = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       durationT.setAttribute('class', 'rt-duration-text');
       durationT.setAttribute('data-item-type', 'duration');
       durationT.setAttribute('x', '0'); // x=0 is correct now, relative to new <text> element
@@ -175,13 +175,13 @@ export function renderSceneMetadataFragment(
       durationT.textContent = duration;
       fragment.appendChild(durationT);
 
-      const resetAfterDuration = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      const resetAfterDuration = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       resetAfterDuration.setAttribute('x', '0');
       resetAfterDuration.setAttribute('dy', '8px');
       resetAfterDuration.textContent = '';
       fragment.appendChild(resetAfterDuration);
     } else {
-      const resetAfterDate = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      const resetAfterDate = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       resetAfterDate.setAttribute('dy', '8px');
       resetAfterDate.textContent = '';
       fragment.appendChild(resetAfterDate);

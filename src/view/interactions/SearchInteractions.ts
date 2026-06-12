@@ -37,7 +37,7 @@ export function clearSearchHighlightsInRoot(root: ParentNode): void {
             node.remove();
             return;
         }
-        const textNode = document.createTextNode(node.textContent || '');
+        const textNode = node.ownerDocument.createTextNode(node.textContent || '');
         parent.replaceChild(textNode, node);
     });
 }
@@ -52,6 +52,7 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
     };
 
     const highlightTspan = (tspan: Element, originalText: string, fillColor: string | null) => {
+        const doc = tspan.ownerDocument;
         while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
         
         const regex = new RegExp(`(${escapedPattern})`, 'gi');
@@ -60,9 +61,9 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
         
         while ((match = regex.exec(originalText)) !== null) {
             if (match.index > lastIndex) {
-                tspan.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
+                tspan.appendChild(doc.createTextNode(originalText.substring(lastIndex, match.index)));
             }
-            const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            const highlightSpan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
             highlightSpan.setAttribute('class', 'rt-search-term');
             if (fillColor) highlightSpan.setAttribute('fill', fillColor);
             highlightSpan.textContent = match[0];
@@ -70,7 +71,7 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
             lastIndex = match.index + match[0].length;
         }
         if (lastIndex < originalText.length) {
-            tspan.appendChild(document.createTextNode(originalText.substring(lastIndex)));
+            tspan.appendChild(doc.createTextNode(originalText.substring(lastIndex)));
         }
     };
 
@@ -122,6 +123,7 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = (textEl as SVGTextElement).getAttribute('fill');
         
+        const doc = textEl.ownerDocument;
         while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
         const regex = new RegExp(`(${escapedPattern})`, 'gi');
         let lastIndex = 0;
@@ -129,9 +131,9 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
         
         while ((match = regex.exec(originalText)) !== null) {
             if (match.index > lastIndex) {
-                textEl.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
+                textEl.appendChild(doc.createTextNode(originalText.substring(lastIndex, match.index)));
             }
-            const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            const highlightSpan = doc.createElementNS('http://www.w3.org/2000/svg', 'tspan');
             highlightSpan.setAttribute('class', 'rt-search-term');
             if (fillColor) highlightSpan.setAttribute('fill', fillColor);
             highlightSpan.textContent = match[0];
@@ -139,7 +141,7 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
             lastIndex = match.index + match[0].length;
         }
         if (lastIndex < originalText.length) {
-            textEl.appendChild(document.createTextNode(originalText.substring(lastIndex)));
+            textEl.appendChild(doc.createTextNode(originalText.substring(lastIndex)));
         }
     });
 
