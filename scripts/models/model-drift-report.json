@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-06-11T23:05:01.717Z",
+  "checkedAt": "2026-06-12T00:07:42.002Z",
   "mode": "report",
   "snapshotBefore": {
-    "generatedAt": "2026-06-10T19:55:20.420Z"
+    "generatedAt": "2026-06-11T23:05:01.709Z"
   },
   "snapshotAfter": {
     "generatedAt": "2026-06-11T23:05:01.709Z"
@@ -13,37 +13,18 @@
       "removed": []
     },
     "anthropic": {
-      "added": [
-        "claude-fable-5"
-      ],
+      "added": [],
       "removed": []
     },
     "google": {
-      "added": [
-        "gemini-3.5-live-translate-preview"
-      ],
+      "added": [],
       "removed": []
     }
   },
   "aliasChanges": [],
-  "anthropicNewestChanged": {
-    "from": {
-      "id": "claude-opus-4-8",
-      "displayName": "Claude Opus 4.8",
-      "createdAt": "2026-05-28T00:00:00Z"
-    },
-    "to": {
-      "id": "claude-fable-5",
-      "displayName": "Claude Fable 5",
-      "createdAt": "2026-06-07T00:00:00Z"
-    }
-  },
+  "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [],
-  "hasActionableChanges": true,
-  "recommendedFollowUps": [
-    "Review scripts/models/latest-models.json and scripts/models/model-drift-report.json for provider catalog drift.",
-    "If a new provider model should ship in RT, update scripts/models/registry.json and src/ai/registry/builtinModels.ts.",
-    "If RT surfaces cost or positioning for the model, update src/ai/cost/providerPricing.ts."
-  ]
+  "hasActionableChanges": false,
+  "recommendedFollowUps": []
 }
