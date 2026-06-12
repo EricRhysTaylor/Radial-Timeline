@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { App, Modal } from 'obsidian';
+import { App, Component, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { EmbeddedReleaseNotesEntry } from '../types';
 import { DEFAULT_RELEASES_URL, parseReleaseVersion } from '../utils/releases';
@@ -44,6 +44,8 @@ function buildHeroPreview(body?: string): string | null {
 }
 
 export class ReleaseNotesModal extends Modal {
+    private markdownComponent: Component | null = null;
+
     private readonly entries: EmbeddedReleaseNotesEntry[];
     private readonly featuredEntry: EmbeddedReleaseNotesEntry;
     private readonly plugin: RadialTimelinePlugin;
@@ -104,11 +106,15 @@ export class ReleaseNotesModal extends Modal {
         });
 
         const bodyHost = contentEl.createDiv({ cls: 'ert-release-notes-body ert-stack' });
+        this.markdownComponent?.unload();
+        this.markdownComponent = new Component();
+        this.markdownComponent.load();
         await renderReleaseNotesList(
             bodyHost,
             this.entries,
             this.featuredEntry,
             this.plugin,
+            this.markdownComponent,
             'ert-release-notes',
             'ert-panel ert-panel--glass'
         );
@@ -119,6 +125,8 @@ export class ReleaseNotesModal extends Modal {
     }
 
     onClose(): void {
+        this.markdownComponent?.unload();
+        this.markdownComponent = null;
         this.contentEl.empty();
     }
 }

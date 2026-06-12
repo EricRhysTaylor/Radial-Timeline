@@ -4,39 +4,29 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
+import { STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, SceneNumberInfo } from '../utils/constants';
 import {
     GRID_CELL_BASE,
     GRID_CELL_WIDTH_EXTRA,
     GRID_CELL_GAP_X,
     GRID_CELL_GAP_Y,
     GRID_HEADER_OFFSET_Y,
-    GRID_LINE_HEIGHT,
 } from './layout/LayoutConstants';
 import { renderRings, type RingRenderContext } from './renderers/RingRenderer';
 import { computeGridData } from './utils/GridData';
-import { renderNumberSquares, type NumberSquareRenderContext, type NumberSquareVisualResolver } from './renderers/NumberSquareRenderer';
+import { renderNumberSquares, type NumberSquareRenderContext } from './renderers/NumberSquareRenderer';
 import type { BookPublishingPreferences, ExportProfile, PandocLayoutTemplate, RadialTimelineSettings, TimelineItem } from '../types';
-import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle, isOverdueDateString } from '../utils/date';
-import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber } from '../utils/text';
+import { dateToAngle } from '../utils/date';
 import {
     extractGradeFromScene,
-    getSceneState,
-    buildSquareClasses,
-    buildTextClasses,
-    extractPosition,
     isBeatNote,
     isSceneItem,
     type PluginRendererFacade
 } from '../utils/sceneHelpers';
-import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
-import { normalizeBeatName } from '../utils/gossamer';
+import { makeSceneId } from '../utils/numberSquareHelpers';
 import { buildChronologueOuterLabels, renderChronologueOverlays, renderOuterLabelTexts, renderChronologueOuterTicks } from './utils/Chronologue';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
-import { getMostAdvancedStageColor } from '../utils/colour';
 import { computeCacheableValues } from './utils/Precompute';
-import { arcPath } from './layout/Paths';
 import {
     SVG_SIZE,
     INNER_RADIUS,
@@ -49,26 +39,12 @@ import {
     MONTH_TICK_START,
     ACT_LABEL_RADIUS,
     CHRONOLOGUE_DURATION_ARC_RADIUS,
-    ELAPSED_ARC_RADIUS,
-    ELAPSED_TICK_LENGTH,
     MICRO_RING_GAP,
     MICRO_RING_WIDTH,
     PROGRESS_RING_RADIUS_OFFSET,
-    SCENE_TITLE_INSET,
-    SYNOPSIS_INSET,
-    BEAT_TEXT_RADIUS,
-    TEXTPATH_START_NUDGE_RAD,
-    MAX_TEXT_WIDTH,
-    PLOT_PIXEL_WIDTH,
-    BEAT_FONT_PX,
-    ESTIMATE_FUDGE_RENDER,
-    PADDING_RENDER_PX,
-    ANGULAR_GAP_PX
+    MAX_TEXT_WIDTH
 } from './layout/LayoutConstants';
-import { computePositions, getEffectiveScenesForRing, type PositionInfo } from './utils/SceneLayout';
 import { startPerfSegment } from './utils/Performance';
-import { getFillForScene } from './utils/SceneFill';
-import { estimatePixelsFromTitle } from './utils/LabelMetrics';
 import { renderCenterGrid } from './components/Grid';
 import { renderNarrativeChapterMarkers, type NarrativePartMarker, type OuterRingChapterBoundaryGeometry } from './components/ChapterMarkers';
 import { renderMonthLabelDefs } from './components/Months';
@@ -76,18 +52,13 @@ import { renderSubplotLabels } from './components/SubplotLabels';
 import { renderSubplotDominanceIndicators } from './components/SubplotDominanceIndicators';
 import { renderDefs } from './components/Defs';
 import { renderEstimatedDateElements } from './components/Progress';
-import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
-import { renderBeatSlice } from './components/BeatSlices';
 import { renderActBorders } from './components/Acts';
 import { renderActLabels } from './components/ActLabels';
 import { renderTargetDateTick, type TargetTickEnhancedData } from './components/ProgressTicks';
 import { renderProgressRing, resolveProgressEstimate, resolveProgressRingDate } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
-import { renderSceneGroup } from './components/Scenes';
-import { renderBeatGroup } from './components/Beats';
 import { renderCalendarSpokesLayer } from './utils/MonthSpokes';
-import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
-import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
+import { shouldShowSubplotRings, shouldShowAllScenesInOuterRing } from './modules/ModeRenderingHelpers';
 import { collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
 import { appendSynopsisElementForScene } from './utils/SynopsisBuilder';
 import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
@@ -127,12 +98,6 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
     Due: 'Due — tasks or scenes with a past-due date',
     Completed: 'Completed — tasks or scenes finished'
 };
-
-function computeSceneTitleInset(fontScale: number): number {
-    if (!Number.isFinite(fontScale) || fontScale <= 1) return SCENE_TITLE_INSET;
-    const extraInset = (fontScale - 1) * 18;
-    return SCENE_TITLE_INSET + extraInset;
-}
 
 function resolveActiveNovelPandocLayout(settings: RadialTimelineSettings): PandocLayoutTemplate | null {
     const layouts = Array.isArray(settings.pandocLayouts) ? settings.pandocLayouts : [];
@@ -304,7 +269,6 @@ export function createTimelineSVG(
     options?: { aprNeedsRefresh?: boolean; milestone?: MilestoneInfo | null }
 ): { svgString: string; maxStageColor: string } {
     const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
-    const sceneCount = scenes.length;
     const size = SVG_SIZE;
     const innerRadius = INNER_RADIUS;
     const monthLabelRadius = MONTH_LABEL_RADIUS;
@@ -316,7 +280,6 @@ export function createTimelineSVG(
     const fontScale = getReadabilityMultiplier(settings);
     const maxTextWidth = MAX_TEXT_WIDTH * fontScale;
     const readabilityClass = `rt-font-scale-${readabilityScale}`;
-    const sceneTitleInset = computeSceneTitleInset(fontScale);
 
     // Synopses are hidden by CSS until hover - no need to log anything
 
@@ -329,9 +292,6 @@ export function createTimelineSVG(
         scenesByActAndSubplot,
         masterSubplotOrder,
         colorIndexBySubplot,
-        totalPlotNotes,
-        plotIndexByKey,
-        plotsBySubplot,
         ringWidths,
         ringStartRadii,
         lineInnerRadius,
@@ -366,7 +326,6 @@ export function createTimelineSVG(
         const computed = getComputedStyle(activeDocument.documentElement).getPropertyValue(varName).trim();
         return computed || '#EFBDEB';
     };
-    const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
 
     // Determine sorting method (needed for later logic; pulled out for readability)
     const timelineSegments = buildTimelineSegments(plugin.settings as any);
@@ -404,9 +363,6 @@ export function createTimelineSVG(
         : isProgressMode
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT
             : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
-
-    // Fixed beat text radius based on readability scale (independent of subplot outer radius)
-    const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale];
 
     const standardMonths = Array.from({ length: 12 }, (_, i) => {
         const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
@@ -512,10 +468,7 @@ export function createTimelineSVG(
         scenes,
         plugin.calculateCompletionEstimate(scenes)
     );
-    const circumference = 2 * Math.PI * progressRadius;
-    // const progressLength = circumference * yearProgress; // No longer needed for arc calc
     const currentYearStartAngle = -Math.PI / 2; // Start at 12 o'clock
-    const currentYearEndAngle = currentYearStartAngle + (2 * Math.PI * yearProgress);
 
     // Define rainbow gradients for the segments
     // In APR mode, keep the ring? Yes, "Full rings and scenes preserved".
@@ -615,8 +568,6 @@ export function createTimelineSVG(
 
     // Open rotatable container – scenes and act labels/borders only
     svg += `<g id="timeline-rotatable">`;
-    // Track last story beat label end-angle per act to prevent overlap when laying out labels
-    const lastBeatEndByAct: { [key: string]: number } = {};
 
     // Only show Act labels when using manuscript order (not When date sorting)
     if (!sortByWhen) {
@@ -692,13 +643,6 @@ export function createTimelineSVG(
 
     // (Act labels moved earlier to be under story beat labels)
 
-    // Add color key with decorative elements
-    const keyX = size / 2 - 200; // Position from right edge
-    const keyY = -size / 2 + 50; // Position from top
-    const swatchSize = 20;
-    const textOffset = 30;
-    const lineHeight = GRID_LINE_HEIGHT; // Reduced for tighter spacing
-
     // Calculate grid data (status counts, grid counts, estimates, runtime)
     const {
         statusCounts,
@@ -712,27 +656,6 @@ export function createTimelineSVG(
 
     // Save status counts for completion estimate
     plugin.latestStatusCounts = statusCounts;
-
-    // Add center color key
-    const centerRadius = innerRadius * 0.7; // Slightly smaller than innerRadius
-    const centerKeySize = 20; // Size of color swatches
-    const centerLineHeight = 44; // 36px icon/square + 4px top/bottom padding for breathing room
-
-    // Separate stage colors and status colors
-    const stageColorEntries = Object.entries(PUBLISH_STAGE_COLORS);
-    const ICON_ID_MAP: Record<string, string> = {
-        Zero: 'icon-circle-slash',
-        Author: 'icon-smile',
-        House: 'icon-house',
-        Press: 'icon-printer'
-    };
-    const statusColorEntries = Object.entries(STATUS_COLORS)
-        .filter(([status]) => status !== 'Empty' && status !== 'Complete');
-
-    // Calculate heights for alignment
-    const maxEntries = Math.max(stageColorEntries.length, statusColorEntries.length);
-    const totalHeight = maxEntries * centerLineHeight;
-    const startY = -totalHeight / 2 + centerLineHeight / 2;
 
     // --- Stage × Status Grid (center) ---
     // define arrays for grid rendering
@@ -754,17 +677,6 @@ export function createTimelineSVG(
 
     const currentYearLabel = String(new Date().getFullYear());
     const headerY = startYGrid - (cellGapY + GRID_HEADER_OFFSET_Y);
-
-
-
-    // Determine the most advanced stage index present in the grid
-    let maxStageIdxForGrid = -1;
-    for (let i = 0; i < stagesForGrid.length; i++) {
-        const rc = gridCounts[stagesForGrid[i]];
-        const rowTotal = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0) + (rc.Completed || 0);
-        if (rowTotal > 0) maxStageIdxForGrid = i;
-    }
-
 
 
 

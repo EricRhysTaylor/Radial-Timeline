@@ -145,7 +145,6 @@ export class TimelineMetricsService {
         // Stragglers are scenes at lower stages that are NOT complete (haven't finished their stage)
         
         const processedPaths = new Set<string>();
-        let completedAtActiveStage = 0;
         let incompleteAtActiveStage = 0;
         let completedAtLowerStages = 0; // These are PENDING work for active stage
         let stragglerCount = 0; // incomplete scenes in stages LOWER than active (not ready yet)
@@ -174,7 +173,6 @@ export class TimelineMetricsService {
             if (sceneStageIndex === activeStageIndex) {
                 // Scene is AT the active stage
                 if (isSceneComplete) {
-                    completedAtActiveStage++;
                     currentStatusCounts['Completed'] = (currentStatusCounts['Completed'] || 0) + 1;
                 } else {
                     incompleteAtActiveStage++;

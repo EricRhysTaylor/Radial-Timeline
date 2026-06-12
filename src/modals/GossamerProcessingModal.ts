@@ -94,7 +94,7 @@ export class GossamerProcessingModal extends ErtModal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl } = this;
+        const { titleEl } = this;
         titleEl.setText('');
         this.applyShell({ width: '800px', containerClasses: ['ert-gossamer-processing-modal'] });
         if (this.modalEl) {

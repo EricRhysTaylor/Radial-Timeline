@@ -1,8 +1,8 @@
 /*
  * Plot System Presets for Gossamer Scoring
  */
-import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
-import type { BeatDefinition, BeatLibraryCategory, RadialTimelineSettings } from '../types/settings';
+import { normalizeBeatNameInput } from './beatsInputNormalize';
+import type { BeatDefinition, BeatLibraryCategory } from '../types/settings';
 
 export interface PlotBeatInfo {
   name: string;

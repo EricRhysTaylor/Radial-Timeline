@@ -48,8 +48,6 @@ export function renderGossamerLayer(
   // Build a map of beat statuses for rendering (use exact beat names)
   const beatStatusMap = new Map(run.beats.map(b => [b.beat, b.status]));
   
-  // Build a map of out-of-range beats (for thicker red spokes)
-  const outOfRangeBeats = new Set(run.beats.filter(b => b.isOutOfRange).map(b => b.beat));
 
   const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
   const projectStageColor = publishStageColors
@@ -615,67 +613,6 @@ function sampleBezierCurve(points: { x: number; y: number }[], samplesPerSegment
   return result;
 }
 
-/**
- * Reverse an SVG path by reversing the command sequence and swapping control points.
- * This preserves the exact curve shapes, just traced in the opposite direction.
- */
-function reverseSvgPath(path: string): string {
-  // Parse path into segments
-  const segments: Array<{ cmd: string; coords: number[] }> = [];
-  const regex = /([MLC])\s*([\d.\s,-]+)/g;
-  let match;
-  
-  while ((match = regex.exec(path)) !== null) {
-    const cmd = match[1];
-    const coords = match[2].trim().split(/[\s,]+/).map(parseFloat);
-    segments.push({ cmd, coords });
-  }
-  
-  if (segments.length === 0) return '';
-  
-  // Extract all points with their control points
-  const points: Array<{ x: number; y: number; cp1?: { x: number; y: number }; cp2?: { x: number; y: number } }> = [];
-  
-  segments.forEach((seg, idx) => {
-    if (seg.cmd === 'M' || seg.cmd === 'L') {
-      points.push({ x: seg.coords[0], y: seg.coords[1] });
-    } else if (seg.cmd === 'C') {
-      // Cubic bezier: cp1x, cp1y, cp2x, cp2y, x, y
-      const prevPoint = points[points.length - 1];
-      if (prevPoint) {
-        prevPoint.cp2 = { x: seg.coords[0], y: seg.coords[1] }; // Control point leaving previous point
-      }
-      points.push({
-        x: seg.coords[4],
-        y: seg.coords[5],
-        cp1: { x: seg.coords[2], y: seg.coords[3] } // Control point entering this point
-      });
-    }
-  });
-  
-  if (points.length < 2) return `L ${fmt(points[0].x)} ${fmt(points[0].y)}`;
-  
-  // Build reversed path
-  let reversedPath = `L ${fmt(points[points.length - 1].x)} ${fmt(points[points.length - 1].y)}`;
-  
-  // Trace backwards through points
-  for (let i = points.length - 1; i > 0; i--) {
-    const current = points[i];
-    const prev = points[i - 1];
-    
-    // If we have control points, use cubic bezier
-    if (current.cp1 && prev.cp2) {
-      // When reversing: cp1 and cp2 swap roles
-      reversedPath += ` C ${fmt(current.cp1.x)} ${fmt(current.cp1.y)}, ${fmt(prev.cp2.x)} ${fmt(prev.cp2.y)}, ${fmt(prev.x)} ${fmt(prev.y)}`;
-    } else {
-      // No control points, just line
-      reversedPath += ` L ${fmt(prev.x)} ${fmt(prev.y)}`;
-    }
-  }
-  
-  return reversedPath;
-}
-
 function fmt(n: number): string { return n.toFixed(6).replace(/\.0+$/, ''); }
 
 function toPoints(series: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): { x: number; y: number }[] {
@@ -687,76 +624,6 @@ function toPoints(series: { beat: string; score: number }[], angles: Map<string,
     pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
   });
   return pts;
-}
-
-// Centripetal Catmull-Rom spline interpolation to avoid overshoot/self-intersection.
-// Returns a denser polyline that smoothly follows the input points.
-function interpolateCentripetal(points: { x: number; y: number }[], samplesPerSeg: number = 8): { x: number; y: number }[] {
-  // Collapse consecutive duplicates to avoid zero-length segments/NaNs
-  const dedup: { x: number; y: number }[] = [];
-  for (const p of points) {
-    if (dedup.length === 0 || dedup[dedup.length - 1].x !== p.x || dedup[dedup.length - 1].y !== p.y) {
-      dedup.push(p);
-    }
-  }
-  if (dedup.length <= 2) return dedup.slice();
-
-  const alpha = 0.5; // centripetal
-  const eps = 1e-6;
-  const result: { x: number; y: number }[] = [];
-
-  const tj = (pi: { x: number; y: number }, pj: { x: number; y: number }, tPrev: number): number => {
-    const dx = pj.x - pi.x;
-    const dy = pj.y - pi.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    return tPrev + Math.pow(Math.max(dist, eps), alpha);
-  };
-
-  // Duplicate endpoints for boundary handling
-  const pts = [dedup[0], ...dedup, dedup[dedup.length - 1]];
-
-  for (let i = 0; i < pts.length - 3; i++) {
-    const p0 = pts[i];
-    const p1 = pts[i + 1];
-    const p2 = pts[i + 2];
-    const p3 = pts[i + 3];
-
-    const t0 = 0;
-    const t1 = tj(p0, p1, t0);
-    const t2 = tj(p1, p2, t1);
-    const t3 = tj(p2, p3, t2);
-
-    // Guard against degenerate parameter intervals
-    if (t1 - t0 < eps || t2 - t1 < eps || t3 - t2 < eps) continue;
-
-    for (let s = 0; s <= samplesPerSeg; s++) {
-      const t = t1 + ((t2 - t1) * s) / samplesPerSeg;
-
-      const a1x = ((t1 - t) / (t1 - t0)) * p0.x + ((t - t0) / (t1 - t0)) * p1.x;
-      const a1y = ((t1 - t) / (t1 - t0)) * p0.y + ((t - t0) / (t1 - t0)) * p1.y;
-
-      const a2x = ((t2 - t) / (t2 - t1)) * p1.x + ((t - t1) / (t2 - t1)) * p2.x;
-      const a2y = ((t2 - t) / (t2 - t1)) * p1.y + ((t - t1) / (t2 - t1)) * p2.y;
-
-      const a3x = ((t3 - t) / (t3 - t2)) * p2.x + ((t - t2) / (t3 - t2)) * p3.x;
-      const a3y = ((t3 - t) / (t3 - t2)) * p2.y + ((t - t2) / (t3 - t2)) * p3.y;
-
-      const b1x = ((t2 - t) / (t2 - t0)) * a1x + ((t - t0) / (t2 - t0)) * a2x;
-      const b1y = ((t2 - t) / (t2 - t0)) * a1y + ((t - t0) / (t2 - t0)) * a2y;
-
-      const b2x = ((t3 - t) / (t3 - t1)) * a2x + ((t - t1) / (t3 - t1)) * a3x;
-      const b2y = ((t3 - t) / (t3 - t1)) * a2y + ((t - t1) / (t3 - t1)) * a3y;
-
-      const cx = ((t2 - t) / (t2 - t1)) * b1x + ((t - t1) / (t2 - t1)) * b2x;
-      const cy = ((t2 - t) / (t2 - t1)) * b1y + ((t - t1) / (t2 - t1)) * b2y;
-
-      if (result.length === 0 || result[result.length - 1].x !== cx || result[result.length - 1].y !== cy) {
-        result.push({ x: cx, y: cy });
-      }
-    }
-  }
-
-  return result.length >= 2 ? result : dedup;
 }
 
 function buildOverlayPath(points: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): string | null {

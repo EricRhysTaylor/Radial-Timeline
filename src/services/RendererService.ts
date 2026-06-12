@@ -3,7 +3,6 @@
  * Abstraction layer for all SVG rendering.
  * Decouples logic from Obsidian-specific view implementation.
  */
-import type { App } from 'obsidian';
 import type { TimelineItem } from '../types';
 import type RadialTimelinePlugin from '../main';
 import { addHighlightRectangles as addHighlightRectanglesExt } from '../view/interactions';
@@ -14,7 +13,6 @@ import { renderTargetDateTick, type TargetTickEnhancedData } from '../renderer/c
 import { renderEstimatedDateElements, renderEstimationArc } from '../renderer/components/Progress';
 import { renderCenterGrid } from '../renderer/components/Grid';
 import { computeGridData } from '../renderer/utils/GridData';
-import { ELAPSED_ARC_RADIUS } from '../renderer/layout/LayoutConstants';
 import {
     GRID_CELL_BASE,
     GRID_CELL_WIDTH_EXTRA,
@@ -24,10 +22,10 @@ import {
 } from '../renderer/layout/LayoutConstants';
 import { dateToAngle } from '../utils/date';
 // Import new DOM updaters
-import { updateSceneColors, updateSceneFills, updateSceneOpenClasses, updateSceneSearchHighlights } from '../renderer/dom/SceneDOMUpdater';
-import { updateNumberSquareStates, updateNumberSquareGrades } from '../renderer/dom/NumberSquareDOMUpdater';
+import { updateSceneColors, updateSceneFills } from '../renderer/dom/SceneDOMUpdater';
+import { updateNumberSquareStates } from '../renderer/dom/NumberSquareDOMUpdater';
 import { updateSynopsisText, updateSynopsisVisibility } from '../renderer/dom/SynopsisDOMUpdater';
-import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/dom/SubplotLabelDOMUpdater';
+import { updateSubplotLabels } from '../renderer/dom/SubplotLabelDOMUpdater';
 import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
 import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
 import { PluginRendererFacade, isBeatNote, isSceneItem } from '../utils/sceneHelpers';

@@ -9,7 +9,6 @@
 import { App, ButtonComponent, DropdownComponent, Notice, setIcon } from 'obsidian';
 import { ErtModal } from '../ui/ErtModal';
 import type RadialTimelinePlugin from '../main';
-import type { TimelineItem } from '../types';
 import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimator';
 import { isNonSceneItem } from '../utils/sceneHelpers';
 import { ERT_CLASSES } from '../ui/classes';

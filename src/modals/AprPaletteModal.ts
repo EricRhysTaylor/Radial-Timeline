@@ -109,7 +109,7 @@ export class AprPaletteModal extends Modal {
                 swatch.style.backgroundColor = color; // SAFE: inline style used for dynamic color preview swatch
             });
             
-            const applyBtn = new ButtonComponent(paletteCard)
+            new ButtonComponent(paletteCard)
                 .setButtonText('Apply')
                 .setCta()
                 .onClick(() => applyPalette(palette));

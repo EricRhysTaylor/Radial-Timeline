@@ -8,9 +8,7 @@ import type {
 } from '../../types/settings';
 import type {
     FindingRole,
-    InquiryFinding,
     InquiryRoleValidation,
-    InquiryResult,
     InquiryScope,
     InquiryZone
 } from '../state';

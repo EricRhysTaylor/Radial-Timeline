@@ -384,7 +384,7 @@ describe('AI settings models table', () => {
         const capsSource = readFileSync(resolve(process.cwd(), 'src/ai/caps/computeCaps.ts'), 'utf8');
         const settingsSource = readFileSync(resolve(process.cwd(), 'src/ai/settings/aiSettings.ts'), 'utf8');
         const validateSource = readFileSync(resolve(process.cwd(), 'src/ai/settings/validateAiSettings.ts'), 'utf8');
-        expect(source.includes('import { computeCaps, resolveCitationsEnabled }')).toBe(true);
+        expect(source.includes('import { resolveCitationsEnabled }')).toBe(true);
         expect(source.includes('const citationsOn = resolveCitationsEnabled(')).toBe(true);
         expect(source.includes('citationsEnabled: resolveCitationsEnabled(')).toBe(true);
         expect(capsSource.includes('export function resolveCitationsEnabled(')).toBe(true);
@@ -485,7 +485,6 @@ describe('AI settings models table', () => {
         expect(source.includes("accessTierDropdown.addOption('custom', 'Custom');")).toBe(true);
         expect(source.includes("accessTierName.textContent = isOllama ? 'Setup' : 'Access';")).toBe(true);
         expect(source.includes('Use Auto for standard Local LLM setup. Switch to Custom only when you need to override backend or transport settings.')).toBe(true);
-        expect(source.includes('shouldRevealLocalLlmOverrideSettings')).toBe(true);
         expect(source.includes('shouldRevealLocalLlmTransportSettings')).toBe(true);
     });
 

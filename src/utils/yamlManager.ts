@@ -14,13 +14,13 @@
  * - Progress callbacks
  * - Structured result objects
  */
-import { type App, type TFile, parseYaml, stringifyYaml, getFrontMatterInfo } from 'obsidian';
+import { type App, type TFile, stringifyYaml } from 'obsidian';
 import {
     type FrontmatterSafetyResult,
     scanFrontmatterSafety,
 } from './yamlSafety';
 import { normalizeFrontmatterKeys } from './frontmatter';
-import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from './frontmatterDocument';
+import { buildFrontmatterDocument } from './frontmatterDocument';
 import {
     formatAliasConflictMessage,
     prepareFrontmatterRewrite,
@@ -107,18 +107,6 @@ function isSafeForModification(
 ): boolean {
     if (!safetyResult) return true;
     return safetyResult.status !== 'dangerous';
-}
-
-/**
- * FrontMatterInfo type matching what Obsidian's getFrontMatterInfo returns.
- * Obsidian's type is not fully exported, so we define the shape we need.
- */
-interface FMInfo {
-    exists: boolean;
-    frontmatter: string;
-    from: number;
-    to: number;
-    position?: { end?: { offset?: number } };
 }
 
 // ─── Delete operations ──────────────────────────────────────────────────

@@ -7,12 +7,11 @@ import type {
     InquiryPromptConfig,
     InquiryPromptSlot,
     SceneInclusion,
-    InquirySourcesPreset,
-    InquirySourcesSettings
+    InquirySourcesPreset
 } from '../../types/settings';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
-import { t, getFormattingLocale } from '../../i18n';
+import { t } from '../../i18n';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { hasProFeatureAccess } from '../featureGate';
@@ -72,7 +71,6 @@ const listToText = (values?: string[]): string =>
 const CORE_CLASSES = ['scene', 'outline'];
 const PRESET_MATCH_ORDER: InquirySourcesPreset[] = ['default', 'light', 'deep'];
 
-const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const getContributionLabel = (mode: SceneInclusion): string => {
     switch (mode) {
         case 'excluded': return t('settings.inquiry.contribution.excluded');
@@ -160,7 +158,7 @@ const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null 
 };
 
 export function renderInquirySection(params: SectionParams): void {
-    const { app, plugin, containerEl, attachFolderSuggest } = params;
+    const { app, plugin, containerEl } = params;
     containerEl.addClass('ert-settings-inquiry-root');
 
     const createSection = (

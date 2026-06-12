@@ -17,7 +17,7 @@
 import type { InquiryScope } from '../state';
 import type { InquiryEstimateSnapshot } from './inquiryEstimateSnapshot';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
-import type { AIProviderId, AIRunAdvancedContext, ModelInfo } from '../../ai/types';
+import type { AIProviderId, AIRunAdvancedContext } from '../../ai/types';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type {
     TokenTier,

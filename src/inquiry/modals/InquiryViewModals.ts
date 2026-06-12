@@ -12,8 +12,7 @@ import { SIGMA_CHAR } from '../constants/inquiryUi';
 import type {
     InquiryOmnibusModalOptions,
     InquiryOmnibusPlan,
-    InquiryPurgePreviewItem,
-    InquiryQuestion
+    InquiryPurgePreviewItem
 } from '../types/inquiryViewTypes';
 import type { InquiryScope, InquiryZone } from '../state';
 

@@ -4,6 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
+import type { Component } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_RELEASES_URL } from '../../utils/releases';
 import { renderReleaseNotesList } from '../../utils/releaseNotesRenderer';
@@ -11,9 +12,10 @@ import { renderReleaseNotesList } from '../../utils/releaseNotesRenderer';
 interface ReleaseNotesSectionArgs {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
+    component: Component;
 }
 
-export async function renderReleaseNotesSection({ plugin, containerEl }: ReleaseNotesSectionArgs): Promise<void> {
+export async function renderReleaseNotesSection({ plugin, containerEl, component }: ReleaseNotesSectionArgs): Promise<void> {
     const entries = plugin.getReleaseNotesEntries();
     containerEl.createEl('hr', { cls: 'ert-settings-separator' });
     const section = containerEl.createDiv({ cls: 'ert-settings-release-notes' });
@@ -33,6 +35,7 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
         entries,
         featuredEntry,
         plugin,
+        component,
         'ert-settings-release-notes',
         '',
         {

@@ -1,6 +1,6 @@
 import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { resolveBookTitle, resolveProjectPath } from '../../renderer/apr/aprHelpers';
+import { resolveBookTitle } from '../../renderer/apr/aprHelpers';
 import { AuthorProgressRenderService } from './AuthorProgressRenderService';
 import { writeManagedOutput } from '../../utils/logVaultOps';
 
@@ -89,7 +89,6 @@ export class AuthorProgressPublishService {
     private createPresetNoteContent(svgPath: string): string {
         const authorProgress = this.plugin.settings.authorProgress;
         const settings = authorProgress?.defaults;
-        const projectPath = resolveProjectPath(null, this.plugin.settings.books, this.plugin.settings.sourcePath);
         const bookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
         const authorName = settings?.authorName || '';
 

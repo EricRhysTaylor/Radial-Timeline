@@ -33,7 +33,6 @@ import {
     type SpreadValidationContext,
 } from '../publishing/layoutVisuals';
 import { buildSpreadValidationContext, collectSpreadWarningTooltips } from '../publishing/spreadValidationContext';
-import { SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE } from '../utils/timelineChapters';
 import { ERT_CLASSES } from '../ui/classes';
 import type {
     BookProfile,

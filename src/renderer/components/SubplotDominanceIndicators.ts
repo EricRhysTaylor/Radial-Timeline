@@ -1,5 +1,5 @@
 import type { TimelineItem } from '../../types';
-import { formatNumber, escapeXml } from '../../utils/svg';
+import { escapeXml } from '../../utils/svg';
 
 export interface SubplotDominanceState {
     hasSharedOverlap: boolean;

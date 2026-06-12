@@ -1,18 +1,15 @@
-/* global __RT_DEV__, __RT_RELEASE__ */
+/* global __RT_DEV__ */
 /*
  * Radial Timeline Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, addIcon } from "obsidian";
+import { Plugin, Notice, TAbstractFile, WorkspaceLeaf, addIcon } from "obsidian";
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { TimelineService } from './services/TimelineService';
 import { SceneDataService } from './services/SceneDataService';
-import { escapeRegExp } from './utils/regex';
-import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
-import { decodeHtmlEntities, parseSceneTitle } from './utils/text';
-import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
+import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex } from './utils/colour';
 import SynopsisManager from './SynopsisManager';
 import { RadialTimelineView } from './view/TimeLineView';
 import { InquiryView } from './inquiry/InquiryView';
@@ -25,8 +22,6 @@ import { OutputProfileStore } from './ai/cost/outputProfile';
 import { INQUIRY_VIEW_TYPE } from './inquiry/constants';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
-import { parseWhenField } from './utils/date';
-import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
 import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
@@ -57,11 +52,10 @@ import { hasSecret } from './ai/credentials/secretStorage';
 import type { AIProviderId } from './ai/types';
 import { migrateAuthorProgressSettings } from './authorProgress/authorProgressConfig';
 import { migrateBeatSettings, stripLegacyBeatSettings } from './migrations/beatSettings';
-import { isDefaultEmbedPath } from './utils/aprPaths';
 import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, getSagaBooks, getTimelineScope, isSagaScopeAvailable, normalizeBookProfile, shouldSeedBookProfileFromLegacySettings } from './utils/books';
 import { adaptPandocLayoutsToPublishingModel } from './utils/publishingModel';
 import { convertExportProfileToLegacyManuscriptExportTemplate, migratePublishingModelState } from './utils/publishingMigration';
-import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
+import { initVersionCheckService } from './services/VersionCheckService';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { PublishingValidationService } from './services/PublishingValidationService';
 import { TimelineAuditAiService } from './services/TimelineAuditAiService';
@@ -80,7 +74,6 @@ import { DisposableRegistry } from './core/disposable';
 
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
 
 const DEV_PLAINTEXT_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
     { label: 'OpenAI key signature', regex: /sk-[A-Za-z0-9_-]{10,}/ },
@@ -969,7 +962,6 @@ export default class RadialTimelinePlugin extends Plugin {
         }
 
         const beatSettingsMigration = migrateBeatSettings(this.settings);
-        let schemaOntologyMigrated = beatSettingsMigration.schemaNormalized;
 
         // ─── Migrate legacy backdropYamlTemplate → backdropYamlTemplates ────
         let backdropTemplateMigrated = false;
@@ -1007,7 +999,6 @@ export default class RadialTimelinePlugin extends Plugin {
         if (this.settings.backdropYamlTemplates?.base?.includes('Synopsis:')) {
             this.settings.backdropYamlTemplates.base = this.settings.backdropYamlTemplates.base.replace(/^Synopsis:/gm, 'Context:');
             backdropTemplateMigrated = true;
-            schemaOntologyMigrated = true;
         }
         if (this.settings.backdropHoverMetadataFields === undefined) {
             this.settings.backdropHoverMetadataFields = [];
@@ -1134,7 +1125,8 @@ export default class RadialTimelinePlugin extends Plugin {
         // Inquiry sessions live in the vault sidecar (single source of truth),
         // never in data.json. Strip the in-memory mirror before writing so the
         // brief store has exactly one persisted home.
-        const { inquirySessionCache: _inquirySessionCache, ...persistedSettings } = this.settings;
+        const persistedSettings = { ...this.settings };
+        delete persistedSettings.inquirySessionCache;
         await this.saveData(persistedSettings);
     }
 

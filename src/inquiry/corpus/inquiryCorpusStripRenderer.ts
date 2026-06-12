@@ -8,7 +8,6 @@ import {
     CC_HEADER_ICON_GAP,
     CC_HEADER_ICON_OFFSET,
     CC_HEADER_ICON_SIZE,
-    CC_LABEL_HINT_SIZE,
     CC_PAGE_BASE_SIZE,
     CC_PAGE_MIN_SIZE,
     CC_RIGHT_MARGIN,
@@ -114,8 +113,6 @@ function buildCorpusLegendPanel(
     const rowHeight = 32;
     const iconColX = 24;
     const labelColX = 48;
-    const fontSize = 16;
-    const sectionFontSize = 13;
     // Use canonical corpus cell dimensions (CC_PAGE_BASE_SIZE = 16)
     const noteW = CC_PAGE_BASE_SIZE;
     const noteH = Math.round(CC_PAGE_BASE_SIZE * 1.45);
@@ -128,7 +125,6 @@ function buildCorpusLegendPanel(
     const questionR = 9;
     const questionProText = 'var(--ert-pro-accent-color)';
     const questionZone = 'var(--ert-inquiry-zone-setup)';
-    const questionZoneStroke = 'var(--ert-inquiry-zone-setup-stroke)';
     const questionMutedStroke = `color-mix(in srgb, ${questionZone} 30%, transparent)`;
     const questionMutedText = `color-mix(in srgb, ${questionZone} 35%, transparent)`;
 

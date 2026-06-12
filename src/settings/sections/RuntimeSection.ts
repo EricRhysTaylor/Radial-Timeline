@@ -339,8 +339,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             const selectedProfile = currentProfiles.find(p => p.id === selectedProfileId) || currentProfiles[0];
             const currentDefault = currentProfiles.find(p => p.id === plugin.settings.defaultRuntimeProfileId);
             const isDefault = selectedProfile && selectedProfile.id === plugin.settings.defaultRuntimeProfileId;
-            const defaultNote = isDefault ? t('settings.runtime.profile.defaultSuffix') : '';
-
             const headerSetting = addProRow(new Setting(headerContainer))
                 .setName(t('settings.runtime.profile.name'))
                 .setDesc(t('settings.runtime.profile.desc', { current: currentDefault?.label || t('settings.runtime.profile.noneFallback') }));

@@ -1774,8 +1774,6 @@ export class BookDesignerModal extends Modal {
 
         new Notice(t('bookDesigner.notices.generating', { count: this.scenesToGenerate }));
 
-        // Ensure we don't divide by zero if user sets range < count
-        const rangeMax = Math.max(this.targetRangeMax, this.scenesToGenerate);
         const assignments = this.getWorkingAssignments();
 
         // Collect scene numbers per act for beat distribution

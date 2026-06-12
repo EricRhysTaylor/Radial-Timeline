@@ -2,8 +2,6 @@ import type { App, TextComponent } from 'obsidian';
 import { Setting as ObsidianSetting, normalizePath, Notice, Modal, ButtonComponent, setIcon, setTooltip, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { BookProfile } from '../../types/settings';
-import { t } from '../../i18n';
-import { DEFAULT_SETTINGS } from '../defaults';
 import { ModalFolderSuggest } from '../FolderSuggest';
 import { DEFAULT_BOOK_TITLE, createBookId, getBookSequenceNumber, normalizeBookProfile } from '../../utils/books';
 import {

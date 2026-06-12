@@ -81,7 +81,7 @@ export async function maybeHandleZeroDraftClick(options: ZeroDraftOptions): Prom
                     return false;
                 }
                 return true;
-            } catch (e) {
+            } catch {
                 new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
                 return false;
             }

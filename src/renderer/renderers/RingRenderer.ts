@@ -5,7 +5,6 @@ import {
     isBeatNote,
     type PluginRendererFacade,
     sortScenes,
-    extractPosition,
     extractGradeFromScene
 } from '../../utils/sceneHelpers';
 import { makeSceneId } from '../../utils/numberSquareHelpers';
@@ -98,7 +97,7 @@ export function renderRings(ctx: RingRenderContext): string {
             // Assuming this runs in browser context where document exists.
             const computed = getComputedStyle(activeDocument.documentElement).getPropertyValue(varName).trim();
             return computed || '#EFBDEB';
-        } catch (e) {
+        } catch {
             return '#EFBDEB';
         }
     };
@@ -408,7 +407,6 @@ export function renderRings(ctx: RingRenderContext): string {
                     let sceneClasses = "rt-scene-path rt-scene-arc";
                     if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += " rt-scene-is-open";
 
-                    const dyOffset = 0;
 
                     svg += `
                         ${renderSceneGroup({

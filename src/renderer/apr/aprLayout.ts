@@ -71,8 +71,6 @@ export const CENTER_OPTICS = {
 // =============================================================================
 
 const px = (outerPx: number, ratio: number) => outerPx * ratio;
-const roundToHalf = (value: number) => Math.round(value * 2) / 2;
-const stroke = (outerPx: number, ratio: number) => roundToHalf(outerPx * ratio);
 const clampPx = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 // =============================================================================

@@ -101,7 +101,7 @@ export function renderPovSection(params: {
         attr: { 'data-preview': 'pov' }
     });
     const previewHeader = previewContainer.createDiv({ cls: 'ert-previewFrame__header' });
-    const previewHeading = previewHeader.createDiv({
+    previewHeader.createDiv({
         cls: 'ert-planetary-preview-heading ert-previewFrame__title',
         text: t('settings.pov.preview.heading')
     });

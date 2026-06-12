@@ -1,6 +1,6 @@
 import type { InquiryEstimateSnapshot } from '../services/inquiryEstimateSnapshot';
 import type { CorpusManifest, CorpusManifestEntry, InquiryRunTrace } from '../runner/types';
-import type { InquiryResult, InquiryFinding, InquiryZone } from '../state';
+import type { InquiryResult } from '../state';
 import type { SceneInclusion } from '../../types/settings';
 import type { TokenTier } from '../types';
 import { extractTokenUsage, formatActualUsageCost, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
@@ -157,7 +157,6 @@ export function buildInquiryLogContent(args: {
     contentLogWritten?: boolean;
 }): string {
     const { result, trace, manifest, deps } = args;
-    const title = args.logTitle ?? 'Inquiry Log';
     const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
     const questionLabel = deps.getQuestionLabel(result);
     const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';

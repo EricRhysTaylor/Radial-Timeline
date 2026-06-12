@@ -70,9 +70,6 @@ export function renderChronologueTimelineArc(
     
     // Calculate time span
     const timeSpan = calculateTimeSpan(validDates);
-    const earliestDate = validDates.reduce((earliest, current) =>
-        current.getTime() < earliest.getTime() ? current : earliest
-    );
     
     let svg = '';
     
@@ -176,9 +173,7 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
     const runtimeLabels: string[] = []; // Runtime tick labels (mm:ss) at arc ends
 
     const TWO_PI = Math.PI * 2;
-    const EDGE_MARGIN_RAD = Math.PI / 360; // 0.5 degree margin from tick mark
     const STUB_FILL_RATIO = 0.20; // Red stub fills 20% of scene arc
-    const TICK_LABEL_RADIUS = arcRadius + 12; // Position labels slightly outside arc
     const TICK_MARK_LENGTH = 6; // Short tick mark at arc end
 
     sortedEntries.forEach((entry, idx) => {
@@ -326,15 +321,6 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         ${durationPaths.join('')}
         ${labelsGroup}
     </g>`;
-}
-
-function calculateMedian(values: number[]): number {
-    const sorted = [...values].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 0) {
-        return (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-    return sorted[mid];
 }
 
 /**

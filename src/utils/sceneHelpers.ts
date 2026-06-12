@@ -194,7 +194,7 @@ export function extractGradeFromScene(
         if (gradeMatch && gradeMatch[1]) {
             sceneGrades.set(gradeKey, gradeMatch[1].toUpperCase());
         }
-    } catch (e) {
+    } catch {
         // Silently handle errors per plugin guidelines
     }
 }

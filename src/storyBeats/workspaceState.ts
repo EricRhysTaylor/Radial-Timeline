@@ -491,7 +491,7 @@ export function updateLoadedBeatTab(
     if (!existing) return undefined;
     const updated = updater(cloneLoadedTab(existing));
     updated.dirty = computeTabDirty(settings, updated);
-    const nextWorkspace = setWorkspace(settings, {
+    setWorkspace(settings, {
         ...workspace,
         tabsById: {
             ...workspace.tabsById,
@@ -508,7 +508,7 @@ export function unloadBeatTab(settings: RadialTimelineSettings, tabId: string): 
     const nextTabs = { ...workspace.tabsById };
     delete nextTabs[tabId];
     const nextActiveTabId = workspace.activeTabId === tabId ? nextIds[0] : workspace.activeTabId;
-    const nextWorkspace = setWorkspace(settings, {
+    setWorkspace(settings, {
         loadedTabIds: nextIds,
         tabsById: nextTabs,
         activeTabId: nextActiveTabId,

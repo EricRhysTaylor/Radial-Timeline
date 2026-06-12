@@ -65,7 +65,7 @@ async function collectDurationCapOptions(
 }
 
 export function renderChronologueSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
-    const { app, plugin, containerEl } = params;
+    const { plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
     const activePlanetaryLabel = getActivePlanetaryProfile(plugin.settings)?.label?.trim() || 'Planetary';
 

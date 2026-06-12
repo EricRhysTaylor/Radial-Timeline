@@ -1,10 +1,10 @@
-/* global __RT_DEV__, __RT_RELEASE__ */
+/* global __RT_RELEASE__ */
 /*
  * CommandRegistrar
  * Encapsulates all command+ribbon registration.
  */
 
-import { App, Notice, TFile } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, PublishingValidationSnapshot } from '../types';
 import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, updateSceneWordCounts } from '../utils/manuscript';

@@ -1,7 +1,6 @@
 import { App, ButtonComponent, Modal, Notice, TFile, normalizePath, setIcon, setTooltip, Setting as Settings } from 'obsidian';
 import { ERT_CLASSES } from '../../../ui/classes';
 import type RadialTimelinePlugin from '../../../main';
-import { DEFAULT_SETTINGS } from '../../defaults';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../../wikiLink';
 import {
     collectFilesForAuditWithScope,
@@ -243,8 +242,7 @@ export function renderSceneNormalizerSection(params: {
     };
     parentEl.addEventListener('ert:scene-advanced-maintenance-changed', refreshMaintenanceCopy);
 
-    let checkBtn: ButtonComponent | undefined;
-    checkBtn = new ButtonComponent(headerRow.controlEl)
+    new ButtonComponent(headerRow.controlEl)
         .setButtonText('Check notes')
         .onClick(() => void runCheckScenes());
 

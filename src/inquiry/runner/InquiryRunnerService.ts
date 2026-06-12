@@ -15,14 +15,11 @@ import type {
     InquiryOmnibusInput,
     InquiryOmnibusQuestion,
     InquiryRunExecutionOptions,
-    InquiryRunProgressEvent,
     InquiryRunTrace,
     InquiryRunner,
     InquiryRunnerInput
 } from './types';
 import { getAIClient } from '../../ai/runtime/aiClient';
-import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
-import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import type { AIRunPreparedEstimate, AIRunResult, AIProviderId } from '../../ai/types';
 import { extractTokenUsage } from '../../ai/usage/providerUsage';
 import { readSceneId } from '../../utils/sceneIds';

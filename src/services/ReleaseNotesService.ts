@@ -3,8 +3,8 @@
  * Handles embedded/remote release notes management, caching, and state.
  */
 
-import { requestUrl, App } from 'obsidian';
-import { compareReleaseVersionsDesc, parseReleaseVersion } from '../utils/releases';
+import { App } from 'obsidian';
+import { compareReleaseVersionsDesc } from '../utils/releases';
 import type { EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, RadialTimelineSettings } from '../types';
 import { ReleaseNotesModal } from '../modals/ReleaseNotesModal';
 import type RadialTimelinePlugin from '../main';

@@ -277,14 +277,14 @@ function extractJsonFromContent(content: string): unknown {
     const candidate = fenced ? fenced[1] : content;
     try {
         return JSON.parse(candidate.trim());
-    } catch (err) {
+    } catch {
         // Try lenient parse by trimming leading/trailing text
         const firstBrace = candidate.indexOf('{');
         const lastBrace = candidate.lastIndexOf('}');
         if (firstBrace >= 0 && lastBrace > firstBrace) {
             try {
                 return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
-            } catch (e) {
+            } catch {
                 return null;
             }
         }
@@ -312,32 +312,6 @@ async function estimateSceneWithAi(
     const contentType = settings.contentType || 'novel';
     const isScreenplay = contentType === 'screenplay';
     
-    // Build context for AI
-    const payload = {
-        sceneTitle: scene.title,
-        contentType,
-        localEstimate: {
-            totalSeconds: localResult.totalSeconds,
-            formattedTime: formatRuntimeValue(localResult.totalSeconds),
-            wordCount: localResult.dialogueWords + localResult.actionWords,
-            dialogueWords: localResult.dialogueWords,
-            actionWords: localResult.actionWords,
-            directiveSeconds: localResult.directiveSeconds,
-            directives: localResult.directiveCounts,
-        },
-        settings: {
-            narrationWpm: settings.narrationWpm,
-            dialogueWpm: settings.dialogueWpm,
-            actionWpm: settings.actionWpm,
-            beatSeconds: settings.beatSeconds,
-            pauseSeconds: settings.pauseSeconds,
-            longPauseSeconds: settings.longPauseSeconds,
-            momentSeconds: settings.momentSeconds,
-            silenceSeconds: settings.silenceSeconds,
-        },
-        sceneContent: scene.body,
-    };
-
     const systemPrompt = isScreenplay
         ? `You are an expert script supervisor estimating screen time for screenplay scenes. Analyze the scene content, considering dialogue pacing, action sequences, visual beats, and dramatic pauses. The local algorithm provides a baseline using word counts and parenthetical timings. Your job is to refine this estimate based on your understanding of how the scene would actually play on screen. Return ONLY valid JSON.`
         : `You are an expert audiobook producer estimating narration time. Analyze the scene content, considering dialogue pacing, descriptive passages, emotional beats, and natural reading rhythm. The local algorithm provides a baseline using word counts and timing directives. Your job is to refine this estimate based on how a professional narrator would actually perform this scene. Return ONLY valid JSON.`;

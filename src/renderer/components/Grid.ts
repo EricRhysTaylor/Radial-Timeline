@@ -42,7 +42,6 @@ export function renderCenterGrid(params: {
     cellGapX,
     cellGapY,
     headerY,
-    runtimeContentType = 'novel',
   } = params;
 
   const gridWidth = statusesForGrid.length * cellWidth + (statusesForGrid.length - 1) * cellGapX;

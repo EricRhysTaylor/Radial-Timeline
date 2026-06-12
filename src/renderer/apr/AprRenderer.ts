@@ -6,7 +6,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES } from './AprConstants';
+import { APR_COLORS, APR_TEXT_COLORS } from './AprConstants';
 import { computeAprLayout } from './aprLayout';
 import { getAprPreset, type AprSize, type AprPreset } from './aprPresets';
 import { renderDefs } from '../components/Defs';
@@ -81,7 +81,6 @@ type RingData = {
     outerR: number;
 };
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
 // Portable SVG helpers: bypass CSS vars for standalone exports (Figma, Illustrator, etc.)
 const resolveColor = (portable: boolean) =>
@@ -169,7 +168,6 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const svgSize = layout.outerPx;
     const innerRadius = layout.ringInnerR;
     const outerRadius = layout.ringOuterR;
-    const spokeWidth = layout.strokes.spoke;
     const borderWidth = layout.strokes.ring;
     const actSpokeWidth = layout.strokes.actSpoke;
     const patternScale = layout.patternScale;
@@ -578,22 +576,6 @@ function resolveStageLabel(stageLabel?: string): { label: string; key: string } 
     const match = STAGE_ORDER.find(stage => stage.toLowerCase() === raw.toLowerCase());
     const resolved = (match ?? raw) || 'Zero';
     return { label: resolved.toUpperCase(), key: resolved };
-}
-
-function normalizeTimestamp(value?: number | string | Date): number | undefined {
-    if (!value) return undefined;
-    if (value instanceof Date) {
-        const ms = value.getTime();
-        return Number.isFinite(ms) ? ms : undefined;
-    }
-    if (typeof value === 'number') {
-        return Number.isFinite(value) ? value : undefined;
-    }
-    if (typeof value === 'string') {
-        const ms = Date.parse(value);
-        return Number.isFinite(ms) ? ms : undefined;
-    }
-    return undefined;
 }
 
 function resolveRevealCountdownDays(_enabled?: boolean): number | undefined {

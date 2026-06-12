@@ -9,7 +9,7 @@ const CANONICAL_KEY_LABELS: Record<string, string> = {
 };
 
 export function renderMetadataSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
-    const { app, plugin, containerEl } = params;
+    const { plugin, containerEl } = params;
     const pendingMappings: { id: number; systemKey: string }[] = [];
     let nextPendingId = 1;
     const remapPanel = containerEl.createDiv({ cls: [ERT_CLASSES.PANEL, 'ert-frontmatter-remap-panel', ERT_CLASSES.STACK] });

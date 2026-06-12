@@ -3,7 +3,7 @@ import { t } from '../../i18n';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
-import { getPlotSystem, STARTER_BEAT_SETS } from '../../utils/beatsSystems';
+import { getPlotSystem } from '../../utils/beatsSystems';
 import { buildBeatDecimalPrefixes, createBeatNotesFromSet, getBeatConfigForSystem } from '../../utils/beatsTemplates';
 import { getBeatSystemStructuralStatus } from '../../storyBeats/beatSystemStatus';
 import type { BeatLibraryItem, BeatSystemConfig, BeatDefinition, LoadedBeatTab } from '../../types/settings';
@@ -15,7 +15,6 @@ import type { HoverMetadataField, SavedBeatSystem } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
 import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
-import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
 import { comparePrefixTokens, extractPrefixToken } from '../../utils/prefixOrder';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
@@ -40,7 +39,6 @@ import {
 import {
     type NoteType,
     extractKeysInOrder as sharedExtractKeysInOrder,
-    safeParseYaml as sharedSafeParseYaml,
     getBaseKeys,
     getCustomKeys,
     getCustomDefaults,
@@ -65,7 +63,7 @@ import {
 import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
-import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
+import { formatSafetyIssues } from '../../utils/yamlSafety';
 import { SHARED_CHAPTER_FIELD_KEY } from '../../utils/timelineChapters';
 import { IMPACT_FULL } from '../SettingImpact';
 import { renderScenePropertiesSection } from './scene/ScenePropertiesSection';
@@ -86,18 +84,15 @@ import {
     unloadBeatTab,
     updateLoadedBeatTab,
 } from '../../storyBeats/workspaceState';
-import { parseDescriptionParts, splitOverviewParagraphs, KNOWN_LABELS } from '../../utils/descriptionParser';
+import { parseDescriptionParts } from '../../utils/descriptionParser';
 import { resolveSnapshotsLogsRoot } from '../../ai/log';
-import type { FieldEntry, FieldEntryValue, BeatRow, BeatNoteCustomContentSummary } from './beats/types';
+import type { FieldEntry, BeatRow, BeatNoteCustomContentSummary } from './beats/types';
 import { BEAT_SYSTEM_COPY } from './beats/beatSystemCopy';
 import { dirtyState, type InnerStage } from './beats/dirtyState';
 import {
     extractKeysInOrder,
     safeParseYaml,
-    mergeOrders,
     buildYamlFromEntries,
-    buildYamlWithRequired,
-    entriesFromTemplate,
 } from './beats/yamlHelpers';
 import { SystemEditModal } from '../../modals/SystemEditModal';
 
@@ -116,14 +111,6 @@ function isMeaningfulFrontmatterValue(value: unknown): boolean {
     if (Array.isArray(value)) return value.some((entry) => isMeaningfulFrontmatterValue(entry));
     return true;
 }
-
-const SCENE_AI_SCHEMA_KEYS = [
-    'Pulse Update',
-    'Summary Update',
-    'previousSceneAnalysis',
-    'currentSceneAnalysis',
-    'nextSceneAnalysis'
-] as const;
 
 // ── Module-level UI state (survives re-renders within the same plugin session) ──
 
@@ -257,22 +244,6 @@ export function renderBeatPropertiesSection(params: {
     const getActiveCustomName = (fallback = 'Custom') => getActiveBeatWorkspaceName(fallback);
     const getActiveCustomDescription = () => getActiveBeatWorkspaceDescription();
     const getActiveCustomBeats = () => getActiveBeatWorkspaceBeats();
-    const setActiveCustomName = (name: string) => {
-        const activeTabId = getActiveBeatWorkspaceTabId();
-        if (!activeTabId) return;
-        updateLoadedBeatTab(plugin.settings, activeTabId, (tab) => ({
-            ...tab,
-            name: normalizeBeatSetNameInput(name, 'Custom'),
-        }));
-    };
-    const setActiveCustomDescription = (description: string) => {
-        const activeTabId = getActiveBeatWorkspaceTabId();
-        if (!activeTabId) return;
-        updateLoadedBeatTab(plugin.settings, activeTabId, (tab) => ({
-            ...tab,
-            description,
-        }));
-    };
     const setActiveCustomBeats = (beats: BeatDefinition[]) => {
         const activeTabId = getActiveBeatWorkspaceTabId();
         if (!activeTabId) return;
@@ -450,11 +421,6 @@ export function renderBeatPropertiesSection(params: {
     /** Capture the current state as the set baseline via the reactive store. */
     const captureSetBaseline = (setId: string) => {
         dirtyState.setBaseline(setId, snapshotHash());
-    };
-
-    /** Clear set baseline (switching to a fresh/unsaved system). */
-    const clearSetBaseline = () => {
-        dirtyState.clearBaseline();
     };
 
     /** Convenience: true when the loaded set has been modified from its baseline. */
@@ -832,7 +798,7 @@ export function renderBeatPropertiesSection(params: {
             });
         });
 
-    const actLabelsSetting = new Settings(actsStack)
+    new Settings(actsStack)
         .setName(t('settings.beats.actLabels.name'))
         .setDesc(t('settings.beats.actLabels.desc'))
         .addText(text => {
@@ -889,22 +855,16 @@ export function renderBeatPropertiesSection(params: {
 
     // ── Content panels (toggled by stage switcher) ───────────────────
     const templatePreviewContainer = beatSystemCard.createDiv({ cls: ['ert-beat-template-preview', ERT_CLASSES.STACK] });
-    const templatePreviewTitle = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-title ert-settings-hidden' });
-    const templatePreviewDesc = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-desc ert-settings-hidden' });
-    const templatePreviewExamples = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-examples ert-settings-hidden' });
-    const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta ert-settings-hidden' });
+    templatePreviewContainer.createDiv({ cls: 'ert-beat-template-title ert-settings-hidden' });
+    templatePreviewContainer.createDiv({ cls: 'ert-beat-template-desc ert-settings-hidden' });
+    templatePreviewContainer.createDiv({ cls: 'ert-beat-template-examples ert-settings-hidden' });
+    templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta ert-settings-hidden' });
     const templatePreviewStatus = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
     const templatePreviewIssues = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-issues ert-settings-hidden' });
     const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
     const customConfigContainer = beatSystemCard.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
-
-    /** Check if current system was loaded from a starter set and hasn't been modified. */
-    const isStarterSetActive = (): boolean => {
-        const activeId = getActiveSavedSystemId();
-        return STARTER_BEAT_SETS.some(ps => ps.id === activeId);
-    };
 
     const appendPreviewStatus = (
         parent: HTMLElement,
@@ -1814,10 +1774,6 @@ export function renderBeatPropertiesSection(params: {
         });
     };
 
-    const renderTemplatePreview = (system: string) => {
-        renderPreviewContent(system);
-    };
-
     // Keep action controls in a stable container so stage toggles do not leak stale button state.
     const designActionsContainer = beatSystemCard.createDiv();
     let createTemplatesButton: ButtonComponent | undefined;
@@ -2196,7 +2152,7 @@ export function renderBeatPropertiesSection(params: {
 
     // ─── BEAT YAML EDITOR — always visible in Fields stage ─────────────
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
-    const beatYamlSetting = new Settings(beatYamlSection)
+    new Settings(beatYamlSection)
         .setName(t('settings.beats.beatFields.name'))
         .setDesc(t('settings.beats.beatFields.desc'));
     // Force editor enabled so Fields content is always visible
@@ -2731,14 +2687,8 @@ export function renderBeatPropertiesSection(params: {
         let failed = 0;
         const errors: string[] = [];
 
-        // Respect the user's Obsidian "Deleted files" preference:
-        // 'system' → OS trash (macOS Trash / Windows Recycle Bin)
-        // anything else → vault .trash/ folder
-        let systemTrash = false;
-        try {
-            systemTrash = (app.vault as any).getConfig?.('trashOption') === 'system';
-        } catch { /* fallback to .trash/ */ }
-
+        // app.fileManager.trashFile respects the user's Obsidian "Deleted files"
+        // preference ('system' → OS trash, anything else → vault .trash/ folder).
         for (const file of files) {
             try {
                 await app.fileManager.trashFile(file);
@@ -2886,7 +2836,6 @@ export function renderBeatPropertiesSection(params: {
         _unsubSetsDirty = null;
         savedControlsContainer.empty();
 
-        const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
 
         // Build unified lookup of all loadable systems (starter + user-saved)
         const allLoadable = new Map<string, LoadableEntry>();
@@ -2917,29 +2866,6 @@ export function renderBeatPropertiesSection(params: {
             } as const);
         };
 
-        const getDeleteSetRiskSummary = (systemId: string) => {
-            const config = plugin.settings.beatSystemConfigs?.[getCustomBeatConfigKey(systemId)];
-            const system = savedSystems.find((entry) => entry.id === systemId);
-            const beatCount = system?.beats.length ?? 0;
-            const hasDescription = !!system?.description?.trim();
-            const baseKeys = getBaseKeys('Beat', plugin.settings);
-            const advancedKeys = extractKeysInOrder(config?.beatYamlAdvanced ?? '').filter((key) => !baseKeys.includes(key));
-            const hoverFieldCount = config?.beatHoverMetadataFields?.length ?? 0;
-            const risks: string[] = [];
-            if (beatCount > 0) risks.push(`${beatCount} stored beat definition${beatCount !== 1 ? 's' : ''}`);
-            if (hasDescription) risks.push('saved description text');
-            if (advancedKeys.length > 0) risks.push(`${advancedKeys.length} custom field definition${advancedKeys.length !== 1 ? 's' : ''}`);
-            if (hoverFieldCount > 0) risks.push(`${hoverFieldCount} hover metadata field${hoverFieldCount !== 1 ? 's' : ''}`);
-            return {
-                beatCount,
-                hasDescription,
-                advancedKeyCount: advancedKeys.length,
-                hoverFieldCount,
-                hasStoredContent: risks.length > 0,
-                risks,
-            };
-        };
-
         const getSelectedEntryBeatNoteFiles = (entry: LoadableEntry | null): TFile[] => {
             const structuralStatus = getSelectedEntryDeploymentStatus(entry);
             if (!structuralStatus) return [];
@@ -2954,27 +2880,6 @@ export function renderBeatPropertiesSection(params: {
             }
 
             return [...filesByPath.values()].sort((a, b) => a.path.localeCompare(b.path));
-        };
-
-        const resetActiveCustomToBlank = () => {
-            loadBeatTabFromLibraryItem(plugin.settings, {
-                id: BLANK_LIBRARY_ITEM_ID,
-                kind: 'blank',
-                category: 'blank',
-                icon: 'square',
-                name: 'Blank custom',
-                description: '',
-                beats: [],
-                config: { beatYamlAdvanced: '', beatHoverMetadataFields: [] },
-            });
-            clearSetBaseline();
-        };
-
-        const removeSavedSetDefinition = (systemId: string) => {
-            plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== systemId);
-            if (plugin.settings.beatSystemConfigs) {
-                delete plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(systemId)];
-            }
         };
 
         const openBuiltInResetModal = async (entry: LoadableEntry) => {

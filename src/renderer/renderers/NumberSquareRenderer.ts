@@ -14,7 +14,6 @@ import {
     renderInnerRingsNumberSquaresAllScenes,
     renderNumberSquaresStandard
 } from '../components/NumberSquares';
-import { parseSceneTitle } from '../../utils/text';
 import type { SceneNumberInfo } from '../../utils/constants';
 import { getConfiguredActCount } from '../../utils/acts';
 import { getTimelineScope } from '../../utils/books';

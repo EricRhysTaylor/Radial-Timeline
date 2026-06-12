@@ -36,7 +36,6 @@ const cacheStore = new Map<string, GeminiCacheEntry>();
 const GEMINI_MIN_CACHE_TOKENS = 32_768;
 /** Rough chars-per-token estimate (same formula used by aiClient.estimateTokens). */
 const CHARS_PER_TOKEN = 4;
-const GEMINI_MIN_CACHE_CHARS = GEMINI_MIN_CACHE_TOKENS * CHARS_PER_TOKEN;
 
 /** Default cache TTL: 15 minutes. Long enough for multi-question sessions. */
 const DEFAULT_TTL_SECONDS = 900;

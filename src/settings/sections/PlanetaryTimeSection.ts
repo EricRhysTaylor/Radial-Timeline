@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Setting as Settings, TextAreaComponent, TextComponent, DropdownComponent, ButtonComponent, setIcon, setTooltip } from 'obsidian';
+import { App, Modal, Notice, Setting as Settings, TextAreaComponent, TextComponent, ButtonComponent, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
@@ -170,8 +170,6 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
         .setName(t('planetary.active.name'))
         .setDesc(t('planetary.active.desc'));
 
-    let selector: DropdownComponent | undefined;
-
     // Add active calendar icon (shows when a profile is selected)
     const activeIcon = bodyEl.createDiv({ cls: 'ert-planetary-validation-icon' });
     setIcon(activeIcon, 'orbit');
@@ -195,7 +193,6 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
         selectorSetting.setName(t('planetary.active.name'));
         selectorSetting.setDesc(t('planetary.active.desc'));
         selectorSetting.addDropdown(dropdown => {
-            selector = dropdown;
             dropdown.addOption('', t('planetary.active.disabled'));
             // Add Mars template option
             const hasMars = profiles.some(p => p.id === MARS_TEMPLATE_ID);

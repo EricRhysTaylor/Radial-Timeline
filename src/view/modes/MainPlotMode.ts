@@ -1,7 +1,6 @@
 import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
-import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
 
@@ -33,14 +32,12 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     setupSceneContextMenu(view as any, svg);
 
     let currentGroup: Element | null = null;
-    let currentSceneId: string | null = null;
     let rafId: number | null = null;
     let suspendHoverUntilPointerMove = false;
 
     const clearSelection = () => {
         manager.onSceneLeave();
         currentGroup = null;
-        currentSceneId = null;
     };
 
     const getSceneIdFromGroup = (group: Element): string | null => {
@@ -65,7 +62,6 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
         svg.classList.add('scene-hover');
         
         currentGroup = g;
-        currentSceneId = sid;
         
         // Use manager for hover interactions (handles title expansion and styling)
         // Pass mouse event to position synopsis immediately and prevent flicker

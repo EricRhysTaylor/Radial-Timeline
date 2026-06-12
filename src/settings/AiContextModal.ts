@@ -1,4 +1,4 @@
-import { App, Modal, ButtonComponent, DropdownComponent, TextComponent, Notice } from 'obsidian';
+import { App, Modal, ButtonComponent, DropdownComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { AiContextTemplate } from '../types/settings';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';

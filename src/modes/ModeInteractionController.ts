@@ -78,7 +78,7 @@ export class ModeInteractionController {
         this.handlers.forEach(handler => {
             try {
                 handler.removeFunction();
-            } catch (e) {
+            } catch {
                 // Error removing handler
             }
         });

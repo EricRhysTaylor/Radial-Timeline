@@ -3,7 +3,6 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import type { TimelineItem } from '../../types';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
-import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { OuterRingDragController, isDragInProgress, isDragInteractionActive, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
@@ -93,14 +92,12 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     setupSceneContextMenu(view as any, svg);
 
     let currentGroup: Element | null = null;
-    let currentSceneId: string | null = null;
     let rafId: number | null = null;
     let suspendHoverUntilPointerMove = false;
 
     const clearSelection = () => {
         manager.onSceneLeave();
         currentGroup = null;
-        currentSceneId = null;
     };
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'rt-scene-open-begin', () => {
@@ -136,7 +133,6 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         if (!sid) return;
         svg.classList.add('scene-hover');
         currentGroup = g;
-        currentSceneId = sid;
         
         // Use manager for hover interactions - pass mouse event to position synopsis immediately
         manager.onSceneHover(g, sid, e);

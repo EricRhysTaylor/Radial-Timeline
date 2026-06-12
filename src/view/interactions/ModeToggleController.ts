@@ -62,7 +62,6 @@ const MODE_OPTIONS = buildModeOptions();
 // Inactive icon dimensions (~30% smaller than the original 43x60 source path).
 // All values are whole pixels — no fractional positioning.
 const ICON_WIDTH = 30;
-const ICON_HEIGHT = 42;
 const ICON_NUMBER_X = 6;
 const ICON_NUMBER_Y = 8;
 // Single-letter acronym, anchored bottom-left (mirrors the top-left number label).
@@ -71,7 +70,6 @@ const LETTER_Y = 34;   // 42 - 8, mirror of ICON_NUMBER_Y
 
 // Active mode dimensions (1.2x of the inactive size, also whole pixels).
 const ICON_WIDTH_ACTIVE = 36;
-const ICON_HEIGHT_ACTIVE = 50;
 const ICON_NUMBER_X_ACTIVE = 7;
 const ICON_NUMBER_Y_ACTIVE = 10;
 const LETTER_X_ACTIVE = 7;

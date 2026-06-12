@@ -136,7 +136,7 @@ export function renderTargetDateTick(params: {
                             fill="transparent"
                         />
                     </g>`;
-            } catch (e) {
+            } catch {
                 // Error parsing target date - skip this stage
             }
         }
@@ -187,7 +187,7 @@ export function renderTargetDateTick(params: {
                             />
                         </g>`;
                 }
-            } catch (e) {
+            } catch {
                 // Error parsing target date - skip
             }
         }

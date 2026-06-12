@@ -6,27 +6,19 @@
 import RadialTimelinePlugin from './main';
 import { Vault, Notice } from 'obsidian';
 import { SceneAnalysisProcessingModal, type ProcessingMode } from './modals/SceneAnalysisProcessingModal';
-import { updateSceneAnalysis } from './sceneAnalysis/FileUpdater';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
 import {
     calculateSceneCount,
-    calculateFlaggedCount,
-    compareScenesByOrder,
     getAllSceneData,
     getSubplotNamesFromFM,
     hasBeenProcessedForBeats,
     hasProcessableContent,
     getPulseUpdateFlag
 } from './sceneAnalysis/data';
-import { callAiProvider } from './sceneAnalysis/aiProvider';
-import { parsePulseAnalysisResponse } from './sceneAnalysis/responseParsing';
-import type { ParsedSceneAnalysis, SceneData } from './sceneAnalysis/types';
-import { buildSceneAnalysisPrompt } from './ai/prompts/sceneAnalysis';
 import {
     processWithModal,
     processSubplotWithModal,
-    processEntireSubplotWithModalInternal,
-    getActiveContextPrompt
+    processEntireSubplotWithModalInternal
 } from './sceneAnalysis/Processor';
 import { t } from './i18n';
 
@@ -37,90 +29,6 @@ export {
     purgeBeatsByManuscriptOrder,
     purgeBeatsBySubplotName
 } from './sceneAnalysis/Maintenance';
-
-type FMInfo = {
-    exists: boolean;
-    frontmatter?: string;
-    position?: { start?: { offset: number }, end?: { offset: number } };
-};
-
-async function updateSceneFile(
-    vault: Vault, 
-    scene: SceneData, 
-    parsedAnalysis: ParsedSceneAnalysis, 
-    plugin: RadialTimelinePlugin,
-    modelIdUsed: string | null
-): Promise<boolean> {
-
-    try {
-        // Helper to convert a multi-line "- item" string into array of strings
-        const toArray = (block: string): string[] => {
-            return block
-                .split('\n')
-                .map(s => s.replace(/^\s*-\s*/, '').trim())
-                .filter(Boolean);
-        };
-
-        // Atomically update frontmatter
-        await plugin.app.fileManager.processFrontMatter(scene.file, (fm) => {
-            // Use a typed record view for safe index operations
-            const fmObj = fm as Record<string, unknown>;
-            delete fmObj['1beats'];
-            delete fmObj['2beats'];
-            delete fmObj['3beats'];
-
-            // Always record last update timestamp/model in Pulse Last Updated.
-            // Use friendly local time format instead of ISO
-            const now = new Date();
-            const timestamp = now.toLocaleString(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-            const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
-            fmObj['Pulse Last Updated'] = updatedValue;
-
-            // After a successful update, always set the processing flag to No/False
-            const pulseKeys = [
-                'Pulse Update',
-                'PulseUpdate',
-                'pulseupdate',
-                'Beats Update',
-                'BeatsUpdate',
-                'beatsupdate',
-                'Review Update',
-                'ReviewUpdate',
-                'reviewupdate'
-            ];
-            let updatedFlag = false;
-            for (const key of pulseKeys) {
-                if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
-                    fmObj[key] = false;
-                    updatedFlag = true;
-                }
-            }
-            if (!updatedFlag) {
-                fmObj['Pulse Update'] = false;
-            }
-
-            const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
-            const b2 = parsedAnalysis['currentSceneAnalysis']?.trim();
-            const b3 = parsedAnalysis['nextSceneAnalysis']?.trim();
-            
-            if (b1) fmObj['previousSceneAnalysis'] = toArray(b1);
-            if (b2) fmObj['currentSceneAnalysis'] = toArray(b2);
-            if (b3) fmObj['nextSceneAnalysis'] = toArray(b3);
-        });
-        return true;
-    } catch (error) {
-        console.error(`[updateSceneFile] Error updating file:`, error);
-        new Notice(t('sceneAnalysis.maintenance.saveError', { file: scene.file.basename }));
-        return false;
-    }
-}
 
 export async function processByManuscriptOrder(
     plugin: RadialTimelinePlugin,
@@ -172,7 +80,7 @@ export async function processEntireSubplotWithModal(
                 // Initial: count all scenes (entire subplot processes everything)
                 return validScenes.length;
             }
-        } catch (error) {
+        } catch {
             return 0;
         }
     };
@@ -199,9 +107,8 @@ export async function processEntireSubplotWithModal(
         subplotName, // pass subplot name for resume functionality
         true // isEntireSubplot = true
     );
-    
+
     // Override the modal's onOpen to skip confirmation and start processing immediately
-    const originalOnOpen = modal.onOpen.bind(modal);
     modal.onOpen = function() {
         // Show the modal first
         const { contentEl, titleEl, modalEl } = this;
@@ -278,7 +185,7 @@ export async function processBySubplotNameWithModal(
                 return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(pulseUpdate);
             });
             return validScenes.length;
-        } catch (error) {
+        } catch {
             return 0;
         }
     };
@@ -302,9 +209,8 @@ export async function processBySubplotNameWithModal(
         subplotName, // pass subplot name for resume functionality
         false // isEntireSubplot = false (flagged scenes only)
     );
-    
+
     // Override the modal's onOpen to skip confirmation and start processing immediately
-    const originalOnOpen = modal.onOpen.bind(modal);
     modal.onOpen = function() {
         // Show the modal first
         const { contentEl, titleEl, modalEl } = this;

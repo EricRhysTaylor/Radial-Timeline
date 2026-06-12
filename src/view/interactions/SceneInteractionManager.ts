@@ -21,7 +21,6 @@ import {
     redistributeAngles,
     buildArcPath,
     buildTextPath,
-    HOVER_EXPAND_FACTOR,
     SCENE_TITLE_INSET
 } from './SceneTitleExpansion';
 

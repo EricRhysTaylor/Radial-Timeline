@@ -3,15 +3,11 @@
  * Scene maintenance utilities (template creation, YAML test, purge helpers)
  */
 
-import { App, Notice, stringifyYaml, Modal, ButtonComponent, TFile, getFrontMatterInfo, parseYaml, type Vault, normalizePath } from 'obsidian';
+import { App, Notice, stringifyYaml, Modal, ButtonComponent, TFile, getFrontMatterInfo, parseYaml, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
-import { openOrRevealFileByPath } from '../utils/fileUtils';
 import { getAllSceneData, getSubplotNamesFromFM } from './data';
 import type { SceneData, ParsedSceneAnalysis } from './types';
 import { parsePulseAnalysisResponse } from './responseParsing';
-import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
-import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { snapshotFrontmatterFields } from '../utils/logVaultOps';
 import { t } from '../i18n';
 

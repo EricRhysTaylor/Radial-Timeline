@@ -20,7 +20,6 @@ import {
   MAX_TEXT_WIDTH,
   INNER_RADIUS
 } from './renderer/layout/LayoutConstants';
-import { adjustBeatLabelsAfterRender } from './renderer/dom/BeatLabelAdjuster';
 import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
 import { parseWhenField } from './utils/date';
 import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
@@ -1001,7 +1000,7 @@ export default class SynopsisManager {
    * @returns An SVG group element containing the formatted synopsis
    */
   generateElement(scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
-    const { stageClass, titleColor: defaultTitleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
+    const { titleColor: defaultTitleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     const fontScale = this.getReadabilityScale();
 
     // Determine beat-specific Gossamer stage color (latest Gossamer run), fallback to publish stage color
@@ -1976,7 +1975,6 @@ export default class SynopsisManager {
     const baseY = parseFloat(translateMatch[2]);
 
     let textRows = buildTextRows(textElements);
-    let didWrap = false;
 
     if (shouldRewrap) {
       const mainWrapped = this.applyMainSynopsisWrap({
@@ -1994,7 +1992,6 @@ export default class SynopsisManager {
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
-        didWrap = true;
       }
 
       const pendingWrapped = this.applyPendingEditsWrap({
@@ -2012,7 +2009,6 @@ export default class SynopsisManager {
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
-        didWrap = true;
       }
 
       // Pulse triplet rows intentionally skip inner-radius wrapping.
@@ -2034,7 +2030,6 @@ export default class SynopsisManager {
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
-        didWrap = true;
       }
 
       const listWrapped = this.applyWrappedListLineWrap({
@@ -2052,7 +2047,6 @@ export default class SynopsisManager {
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
-        didWrap = true;
       }
     }
 
@@ -2081,10 +2075,6 @@ export default class SynopsisManager {
     textRows.forEach((rowElements, rowIndex) => {
       const primaryEl = rowElements[0] ?? null;
 
-      // Track which line height is used for this row (needed for inset scaling)
-      // Row 0 (title) uses titleLineHeight; others determined by content type
-      let currentRowLineHeight = rowIndex === 0 ? titleLineHeight : synopsisLineHeight;
-
       // Calculate absolute position for this row with variable line heights
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
@@ -2097,19 +2087,15 @@ export default class SynopsisManager {
         if (rowIndex === 1) {
           // Always use title spacing right after the title line
           yOffset += titleLineHeight;
-          currentRowLineHeight = titleLineHeight;
         } else if (isGossamerLine && isPrevLineSynopsis) {
           // Fixed manual gap before the Gossamer score line
           yOffset += scorePreGap;
-          currentRowLineHeight = scorePreGap;
         } else if (isBeatsText || isPrevLineBeats) {
           // Use pulse line height for beats/analysis text
           yOffset += pulseLineHeight;
-          currentRowLineHeight = pulseLineHeight;
         } else {
           // Default spacing between regular synopsis/metadata lines
           yOffset += synopsisLineHeight;
-          currentRowLineHeight = synopsisLineHeight;
         }
       }
 
@@ -2231,7 +2217,7 @@ export default class SynopsisManager {
               currentWidth = len + 12; // text len + indent(6) + pad(6)
               prev.setAttribute('width', String(currentWidth));
             }
-          } catch (e) { /* ignore */ }
+          } catch { /* ignore */ }
 
           prev.setAttribute('x', String(targetX - currentWidth));
           prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET * fontScale));
@@ -2261,7 +2247,7 @@ export default class SynopsisManager {
             if (len > 0) {
               prev.setAttribute('width', String(len + 12));
             }
-          } catch (e) { /* ignore */ }
+          } catch { /* ignore */ }
 
           prev.setAttribute('x', String(x));
           prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET * fontScale));
@@ -2779,7 +2765,6 @@ export default class SynopsisManager {
       let commentClass = 'pulse-text'; // Default comment class
       let signDetected: string | null = null; // Store the detected sign (+, -, ?)
       let useSlashSeparator = false; // Flag to control adding " / "
-      let detectedGrade: string | null = null; // Declare detectedGrade here
 
       // Check for body text wrapper from non-grade line splitting FIRST
       const bodyWrapMatch = rawContent.match(/^\[BODY\]\s*(.*)$/);
@@ -2792,15 +2777,6 @@ export default class SynopsisManager {
         // Apply grade formatting to wrapped grade segments
         titleClass = 'pulse-text-grade';
         commentClass = 'pulse-text-grade';
-
-        // Find the grade from the first line for border logic
-        if (lines.length > 0) {
-          const firstLineContent = lines[0].replace(/^-\s*/, '');
-          const firstLineGradeMatch = firstLineContent.match(/^\s*\d+(\.\d+)?\s+([ABC])(?![A-Za-z0-9])/i);
-          if (firstLineGradeMatch) {
-            detectedGrade = firstLineGradeMatch[2].toUpperCase();
-          }
-        }
       } else if (bodyWrapMatch) {
         // This is a wrapped line from a regular line.
         titleText = bodyWrapMatch[1];
@@ -2849,10 +2825,6 @@ export default class SynopsisManager {
 
         if (gradeMatch) {
           // This line itself has a grade - apply grade formatting
-          const gradeLetterMatch = titleText.match(/\s+([ABC])/i);
-          if (gradeLetterMatch && gradeLetterMatch[1]) {
-            detectedGrade = gradeLetterMatch[1].toUpperCase();
-          }
           titleClass = 'pulse-text-grade';
           commentClass = 'pulse-text-grade';
         }

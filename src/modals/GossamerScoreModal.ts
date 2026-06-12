@@ -569,7 +569,7 @@ export class GossamerScoreModal extends Modal {
 
         // Add count indicator if there are many scores
         if (totalScores > 10) {
-          const countSpan = existingScoresEl.createSpan({
+          existingScoresEl.createSpan({
             text: t('gossamer.scoreModal.scoreCount', { count: totalScores }),
             cls: 'ert-gossamer-score-count'
           });
@@ -1080,7 +1080,7 @@ export class GossamerScoreModal extends Modal {
       : allFiles;
 
     const filesToSnapshot: TFile[] = [];
-    for (const [beatTitle, gossamerNums] of deletions) {
+    for (const [beatTitle] of deletions) {
       // Find Plot note by title (same logic as saveGossamerScores)
       let file = null;
       const targetKey = normalizeBeatName(beatTitle);

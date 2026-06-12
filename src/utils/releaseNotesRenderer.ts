@@ -5,6 +5,7 @@
  */
 
 import { MarkdownRenderer } from 'obsidian';
+import type { Component } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { EmbeddedReleaseNotesEntry } from '../types';
 import { parseReleaseVersion, formatPublishedDate } from './releases';
@@ -29,6 +30,7 @@ export async function renderReleaseNotesList(
     entries: EmbeddedReleaseNotesEntry[],
     featuredEntry: EmbeddedReleaseNotesEntry,
     plugin: RadialTimelinePlugin,
+    component: Component,
     cssPrefix: string,
     detailClasses: string = '',
     options: ReleaseNotesRenderOptions = {}
@@ -84,6 +86,6 @@ export async function renderReleaseNotesList(
         }
 
         const entryBody = details.createDiv({ cls: `${cssPrefix}-details-body markdown-preview-view` });
-        await MarkdownRenderer.render(plugin.app, entry.body ?? '', entryBody, '', plugin);
+        await MarkdownRenderer.render(plugin.app, entry.body ?? '', entryBody, '', component);
     }
 }

@@ -5,7 +5,6 @@ import {
     getCustomKeys,
     getTemplateParts,
     safeParseYaml,
-    type FieldEntryValue,
 } from '../utils/yamlTemplateNormalize';
 import type {
     ScenePropertyDefinition,

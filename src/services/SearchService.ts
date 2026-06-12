@@ -45,7 +45,7 @@ const formatDateForDisplay = (when: Date | undefined): string => {
             }
         }
         return dateStr;
-    } catch (e) {
+    } catch {
         return '';
     }
 };

@@ -1,7 +1,7 @@
 /*
  * Create Beat Set Modal - Confirmation dialog
  */
-import { Modal, App, ButtonComponent, Notice } from 'obsidian';
+import { Modal, App, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeBeatSetNameInput } from '../utils/beatsInputNormalize';
 

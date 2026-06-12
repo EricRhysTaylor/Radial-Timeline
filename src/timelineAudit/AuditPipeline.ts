@@ -28,8 +28,7 @@ import type {
     TimelineAuditSceneInput,
     TimelineAuditStatus,
     TimelineAuditSuggestion,
-    TimelineAuditTimeBucket,
-    TimelineAuditWrittenPosition
+    TimelineAuditTimeBucket
 } from './types';
 
 interface WorkingFinding extends TimelineAuditFinding {
@@ -923,7 +922,12 @@ async function runAiInference(
 }
 
 function finalizeFinding(finding: WorkingFinding): TimelineAuditFinding {
-    const { cues: _cues, notes, detectionSources: _detectionSources, ...baseFinding } = finding;
+    const { notes } = finding;
+    const workingCopy: Partial<WorkingFinding> = { ...finding };
+    delete workingCopy.cues;
+    delete workingCopy.notes;
+    delete workingCopy.detectionSources;
+    const baseFinding = workingCopy as Omit<WorkingFinding, 'cues' | 'notes' | 'detectionSources'>;
     let status: TimelineAuditStatus = 'aligned';
     if (finding.issues.some((issue) => issue.severity === 'contradiction')) {
         status = 'contradiction';

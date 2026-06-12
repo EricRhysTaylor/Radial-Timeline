@@ -1,8 +1,8 @@
 import type { SceneInclusion } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
-import type { InquiryFinding, InquiryResult, InquiryScope, InquiryStaleReason, InquiryTokenUsageScope } from '../state';
+import type { InquiryFinding, InquiryResult, InquiryStaleReason, InquiryTokenUsageScope } from '../state';
 import { SIGMA_CHAR } from '../constants/inquiryUi';
-import type { InquiryBriefModel, InquirySceneDossier } from '../types/inquiryViewTypes';
+import type { InquiryBriefModel } from '../types/inquiryViewTypes';
 import type { InquirySession } from '../sessionTypes';
 import type { InquiryCorpusItem } from '../services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../../utils/modelResolver';

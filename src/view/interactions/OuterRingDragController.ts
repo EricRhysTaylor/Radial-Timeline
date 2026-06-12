@@ -1,4 +1,4 @@
-import { Notice, App } from 'obsidian';
+import { Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import {
     applySceneNumberUpdates,
@@ -818,9 +818,6 @@ export class OuterRingDragController {
         const sourceActNumber = sourceActIdx + 1;
         const actChanged = targetActNumber !== undefined && targetActNumber !== sourceActNumber;
 
-        // Determine target item type
-        const targetItemType = targetGroup?.getAttribute('data-item-type') as 'Scene' | 'Beat' | null;
-
         // Determine target subplot from target scene's subplot-index
         const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
         const targetSubplotIdx = Number(targetGroup?.getAttribute('data-subplot-index') ?? 0);
@@ -838,9 +835,7 @@ export class OuterRingDragController {
         }
 
         const sourceOriginalNumber = order[fromIdx]?.numberText ?? '';
-        const targetOriginalNumber = order[toIdx]?.numberText ?? '';
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
-        const targetLabel = (targetItemType === 'Beat') ? 'beat' : 'scene';
         const sourceDescriptor = this.formatItemDescriptor(moved);
         const targetDescriptor = this.formatItemDescriptor(order[toIdx]);
         const sourceContext = this.formatContext(sourceActNumber, sourceSubplot);
@@ -1011,8 +1006,7 @@ export class OuterRingDragController {
         const sourceNextNumber = isNoOpReorder
             ? (sourceOriginalNumber || fallbackSourceNumber)
             : (nextNumberByPath.get(this.sourcePath) || fallbackSourceNumber);
-        const sourceDisplayNumber = sourceOriginalNumber || sourceNextNumber;
-        
+
         // Get current subplots for the item
         const currentSubplots = await this.getSceneSubplots(this.sourcePath);
         const hasMainPlot = currentSubplots.includes('Main Plot');
@@ -1435,7 +1429,7 @@ export class OuterRingDragController {
             try {
                 const value = getComputedStyle(group.ownerDocument.documentElement).getPropertyValue(name).trim();
                 return value || undefined;
-            } catch (_error) {
+            } catch {
                 return undefined;
             }
         };
@@ -1475,7 +1469,7 @@ export class OuterRingDragController {
             try {
                 const value = getComputedStyle(group.ownerDocument.documentElement).getPropertyValue(name).trim();
                 return value || undefined;
-            } catch (_error) {
+            } catch {
                 return undefined;
             }
         };

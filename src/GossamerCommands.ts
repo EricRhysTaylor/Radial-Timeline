@@ -6,16 +6,14 @@ import {
   applyGossamerRunMetadata,
   appendGossamerScore,
   buildAllGossamerRuns,
-  buildRunFromDefault,
   collectGossamerManagedSnapshot,
   createGossamerRunId,
   detectDominantStage,
-  extractBeatOrder,
   GossamerRun,
   normalizeBeatName,
   willAppendGossamerPrune
 } from './utils/gossamer';
-import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
+import { Notice, TFile, normalizePath } from 'obsidian';
 import { t } from './i18n';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
@@ -47,7 +45,6 @@ import {
   resolveGossamerLogFolder
 } from './gossamer/logs';
 import { resolveSelectedBeatModelFromSettings } from './utils/beatSystemState';
-import { isPathInFolderScope } from './utils/pathScope';
 import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
 import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
@@ -248,109 +245,6 @@ async function writeGossamerLog(
   }
 
   return summaryFile;
-}
-
-// Helper to find Beat note by beat title (prefers Beat over Plot)
-function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
-  for (const file of files) {
-    if (file.basename === beatTitle || file.basename === beatTitle.replace(/^\d+\s+/, '')) {
-      const cache = app.metadataCache.getFileCache(file);
-      const fm = cache?.frontmatter;
-      if (fm && (fm.Class === 'Beat' || fm.class === 'Beat' || fm.Class === 'Plot' || fm.class === 'Plot')) {
-        return file;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Save Gossamer scores to Beat note frontmatter with appending (G1=oldest, newest=highest number)
- * Also saves the dominant publish stage at the time of the run.
- */
-async function saveGossamerScores(
-  plugin: RadialTimelinePlugin,
-  scores: Map<string, number>, // beatTitle → score
-  signal: GossamerSignalType,
-  dominantStage?: string // Optional pre-computed stage
-): Promise<void> {
-  const bookScope = (plugin.settings.sourcePath || '').trim();
-  const files = plugin.app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
-  let updateCount = 0;
-  
-  // Detect dominant stage if not provided
-  let stage = dominantStage || 'Zero';
-  if (!dominantStage) {
-    try {
-      const scenes = await plugin.getSceneData();
-      stage = detectDominantStage(scenes);
-    } catch (e) {
-      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', sanitizeLogPayload(e).sanitized);
-    }
-  }
-  const runId = createGossamerRunId();
-  const createdAt = new Date().toISOString();
-
-  const filesToSnapshot = [...scores.keys()]
-    .map((beatTitle) => findBeatNoteByTitle(files, beatTitle, plugin.app))
-    .filter((file): file is TFile => !!file)
-    .filter((file) => {
-      const frontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
-      if (!frontmatter) return false;
-      return willAppendGossamerPrune(frontmatter) || Object.keys(collectGossamerManagedSnapshot(frontmatter)).length > 0;
-    });
-  const snapshotPath = await archiveGossamerFrontmatterFields(plugin.app, filesToSnapshot, {
-    operation: 'gossamer-save',
-    selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
-    meta: {
-      scope: 'beat-note',
-      beatCount: filesToSnapshot.length
-    }
-  });
-  
-  for (const [beatTitle, newScore] of scores) {
-    const file = findBeatNoteByTitle(files, beatTitle, plugin.app);
-    if (!file) {
-      continue;
-    }
-    
-    try {
-      await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-        const fm = yaml as Record<string, any>;
-        
-        // Append new score to end (G1=oldest, newest=highest number)
-        const { nextIndex, updated } = appendGossamerScore(fm);
-        Object.assign(fm, updated);
-        
-        // Set new score at next available index
-        fm[`Gossamer${nextIndex}`] = newScore;
-        applyGossamerRunMetadata(fm, nextIndex, {
-          runId,
-          createdAt,
-          provider: 'manual',
-          model: 'Manual entry',
-          stage,
-          signal
-        });
-
-        // Clean up old/deprecated fields
-        delete fm.GossamerLocation;
-        delete fm.GossamerNote;
-        delete fm.GossamerRuns;
-        delete fm.GossamerLatestRun;
-      });
-      
-      updateCount++;
-    } catch (e) {
-      console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, sanitizeLogPayload(e).sanitized);
-    }
-  }
-  
-  if (updateCount > 0) {
-    const parts = [t('gossamer.service.updatedBeatScores', { count: updateCount, stage })];
-    if (snapshotPath) parts.push(t('gossamer.service.archivedWithPath', { path: snapshotPath }));
-    new Notice(parts.join(' '));
-  }
 }
 
 /**
@@ -1342,8 +1236,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', sanitizeLogPayload(e).sanitized);
     }
     
-    const geminiBookScope = (plugin.settings.sourcePath || '').trim();
-    const files = plugin.app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, geminiBookScope));
     let updateCount = 0;
     const unmatchedBeats: string[] = [];
     const runId = createGossamerRunId();

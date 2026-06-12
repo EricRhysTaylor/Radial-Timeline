@@ -1,4 +1,4 @@
-import { SVG_SIZE, INNER_RADIUS, APR_BRANDING_RADIUS, APR_BRANDING_FONT_SIZE } from '../layout/LayoutConstants';
+import { INNER_RADIUS, APR_BRANDING_RADIUS, APR_BRANDING_FONT_SIZE } from '../layout/LayoutConstants';
 import { escapeXml } from '../../utils/svg';
 import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 
@@ -29,7 +29,6 @@ export function renderAprOverlay(params: {
     // 2. Perimeter Branding - in the space between rings and edge
     // Use APR_BRANDING_RADIUS (640px) - between rings (520px outer) and edge (800px)
     const brandingR = APR_BRANDING_RADIUS;
-    const outerR = (SVG_SIZE / 2) - 15; // 785px - just inside the edge for RT branding
 
     // Build repeating title text - escape for XML safety
     const separator = ' ~ ';
@@ -51,7 +50,6 @@ export function renderAprOverlay(params: {
 
     // Use the defined APR branding font size (38px) - much larger for readability
     const brandingFontSize = APR_BRANDING_FONT_SIZE;
-    const rtFontSize = 18; // RT branding also larger
 
     // Branding arcs at the dedicated branding radius (between rings and edge)
     const topArcPath = `M -${brandingR} 0 A ${brandingR} ${brandingR} 0 0 1 ${brandingR} 0`;

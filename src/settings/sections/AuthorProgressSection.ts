@@ -1,4 +1,4 @@
-import { App, Setting, Notice, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
+import { App, Setting, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorProgressConfig';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
@@ -650,8 +650,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeControl = themeHeading.controlEl;
     const themeBody = themeBlock.createDiv({ cls: 'ert-typography-stack' });
 
-    // Palette tracking & color picker refs
-    let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
+    // Color picker refs
     let bookTitleColorPickerRef: ColorSwatchHandle | undefined;
     let bookTitleTextRef: TextComponent | undefined;
     let authorColorPickerRef: ColorSwatchHandle | undefined;
@@ -694,7 +693,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 percentNumberTextRef?.setValue(palette.percentNumber);
                 percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
                 percentSymbolTextRef?.setValue(palette.percentSymbol);
-                lastAppliedPalette = palette;
             },
             paletteSeedColor
         );
@@ -705,7 +703,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         cls: ERT_CLASSES.ICON_BTN,
         attr: { type: 'button', 'aria-label': 'Show styling controls' }
     });
-    const stylingExpanded = plugin.settings.authorProgress?.defaults.aprStylingExpanded ?? false;
     const refreshStylingToggle = () => {
         const expanded = plugin.settings.authorProgress?.defaults.aprStylingExpanded ?? false;
         setIcon(stylingToggleBtn, expanded ? 'chevron-down' : 'chevron-right');

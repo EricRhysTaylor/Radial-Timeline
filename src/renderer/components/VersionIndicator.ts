@@ -83,7 +83,6 @@ const ICON_HITAREA_HALF_WIDTH = ICON_HITAREA_SIZE / 2;
 
 /** Extra padding for the unified hit area (px) */
 const HITAREA_HORIZONTAL_PADDING = 12;
-const HITAREA_VERTICAL_PADDING = 10;
 
 function estimateTextHalfWidth(text: string): number {
     const trimmed = text.trim();

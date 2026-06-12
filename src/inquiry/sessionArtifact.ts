@@ -66,7 +66,8 @@ function stripTransient(session: InquirySession): PersistedInquirySession {
     // Only `lastAccessed` is transient; the provider-cache fields are durable
     // so the armed/warm state is restored after a restart (stale windows are
     // filtered by the `> now` checks at every read site).
-    const { lastAccessed: _lastAccessed, ...durable } = session;
+    const durable: PersistedInquirySession & { lastAccessed?: number } = { ...session };
+    delete durable.lastAccessed;
     return durable;
 }
 

@@ -109,7 +109,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     let alienModeActive = false;
     let runtimeModeActive = false;
     let selectedScenes: TimelineItem[] = []; // Locked scenes (stay selected)
-    let hoveredScenePath: string | null = null; // Currently hovered scene (encoded path)
     let elapsedTimeClickCount = 0;
 
     // Calculate outerRadius from SVG viewBox or use default
@@ -273,7 +272,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         // Clean up selections, elapsed arc, and scene highlights
         selectedScenes = [];
         rebuildSelectedPathsSet();
-        hoveredScenePath = null;
         elapsedTimeClickCount = 0;
         removeElapsedTimeArc(svg);
         removeSceneHighlights(svg);
@@ -300,7 +298,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         // Clear selected scenes and elapsed time arc (same as shift mode)
         selectedScenes = [];
         rebuildSelectedPathsSet();
-        hoveredScenePath = null;
         elapsedTimeClickCount = 0;
         removeElapsedTimeArc(svg);
         removeSceneHighlights(svg);
@@ -368,7 +365,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             const hoveredGroup = hoveredGroups[0];
             const scenePathEncoded = hoveredGroup.getAttribute('data-path');
             if (scenePathEncoded) {
-                hoveredScenePath = scenePathEncoded;
                 hoveredGroup.classList.add('rt-shift-hover');
                 // Activate matching number square with subplot color
                 const sid = getSceneIdFromGroup(hoveredGroup);
@@ -395,7 +391,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
             selectedScenes = [];
             rebuildSelectedPathsSet(); // Rebuild Set after clearing
-            hoveredScenePath = null;
             elapsedTimeClickCount = 0;
             removeElapsedTimeArc(svg);
             removeSceneHighlights(svg);
@@ -418,9 +413,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
             // Remove scene-hover class from SVG if present
             svg.classList.remove('scene-hover');
-
-            // If the cursor is still hovering a scene group, re-trigger standard hover handling
-            const hoveredSceneGroup = svg.querySelector('.rt-scene-group[data-item-type="Scene"]:hover');
         }
     };
 
@@ -905,7 +897,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
             if (!isLocked) {
                 // Add hover class - CSS handles the visual styling
-                hoveredScenePath = scenePathEncoded;
                 g.classList.add('rt-shift-hover');
 
                 // Activate number square
@@ -936,7 +927,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
             if (!isLocked) {
                 // Remove hover class
-                hoveredScenePath = null;
                 g.classList.remove('rt-shift-hover');
 
                 // Deactivate number square
@@ -1137,9 +1127,6 @@ function createShiftButton(): SVGGElement {
  * Update shift button visual state
  */
 function updateShiftButtonState(button: SVGGElement, active: boolean): void {
-    const bg = button.querySelector('.rt-shift-button-bg') as SVGElement;
-    const text = button.querySelector('.rt-shift-button-text') as SVGElement;
-
     // Get current transform to preserve position
     const currentTransform = button.getAttribute('transform') || '';
     const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
@@ -1608,12 +1595,7 @@ function showElapsedTime(
         const sweepFlag = 1;
         const largeArcFlag = sweep > Math.PI ? 1 : 0;
 
-        const baseOuterRadius = Math.max(
-            geometry1.outerRadius ?? defaultOuterRadius,
-            geometry2.outerRadius ?? defaultOuterRadius,
-            defaultOuterRadius
-        );
-        const arcRadius = ELAPSED_ARC_RADIUS; // Use absolute radius directly 
+        const arcRadius = ELAPSED_ARC_RADIUS; // Use absolute radius directly
 
         const x1 = arcRadius * Math.cos(arcStartAngle);
         const y1 = arcRadius * Math.sin(arcStartAngle);

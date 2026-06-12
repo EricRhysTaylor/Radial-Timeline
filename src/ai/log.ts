@@ -12,7 +12,7 @@ import {
     formatExactUsdCost
 } from './cost/estimateCorpusCost';
 import { getActivePricingTable } from './cost/providerPricing';
-import { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
+import { type TokenUsage } from './usage/providerUsage';
 
 export { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
 

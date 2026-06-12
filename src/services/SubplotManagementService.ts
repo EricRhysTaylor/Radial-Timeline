@@ -72,8 +72,6 @@ export class SubplotManagementService {
             let processed = false;
             
             await this.app.fileManager.processFrontMatter(file, (fm) => {
-                const normalizedFm = normalizeFrontmatterKeys(fm);
-                
                 // Get current subplots
                 // Check both "Subplot" and "subplot" keys (processFrontMatter gives raw object)
                 // We'll standardise on writing to "Subplot"

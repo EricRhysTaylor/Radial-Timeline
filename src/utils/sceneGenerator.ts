@@ -1,4 +1,4 @@
-/* global __RT_DEV__, __RT_RELEASE__ */
+/* global __RT_DEV__ */
 /*
  * Utility for generating scene content from templates
  */

@@ -14,7 +14,6 @@ export function renderSubplotLabels(params: {
   const subplotCount = masterSubplotOrder.length;
   const ringsToUse = Math.min(subplotCount, totalRings);
   let svg = '';
-  const act = 3; // Act 3 top
   for (let ringOffset = 0; ringOffset < ringsToUse; ringOffset++) {
     const ring = totalRings - ringOffset - 1;
     const subplot = masterSubplotOrder[ringOffset];

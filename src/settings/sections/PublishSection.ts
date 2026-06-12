@@ -1,4 +1,4 @@
-/* global __RT_DEV__, __RT_RELEASE__ */
+/* global __RT_RELEASE__ */
 /*
  * Radial Timeline Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
@@ -28,12 +28,11 @@ import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue, parseMatterMetaFromFrontmatter } from '../../utils/matterMeta';
 import { resolveBookPages, applyBookPageOrder, inferRoleFromFilename, ROLE_SIDE, type BookPageRole, type MatterNoteSummary, type ResolvedPage } from '../../utils/bookPagesResolver';
-import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
+import { getSceneFilesByOrder } from '../../utils/manuscript';
 import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
 import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
 import { isProActive } from '../proEntitlement';
 import {
-    SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE,
     buildTimelineChapterResolverItems,
     collapseTimelineChapterMarkersByResolvedBoundary,
     resolveTimelineChapterMarkers
@@ -262,9 +261,6 @@ function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
 // SAMPLE TEMPLATE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const STARTER_PUBLISHING_SETUP_TITLE = 'Create starter publishing setup';
-const STARTER_PUBLISHING_SETUP_BUTTON = 'Create starter publishing setup';
-const STARTER_PUBLISHING_SETUP_BUSY = 'Creating starter publishing setup…';
 const STARTER_PUBLISHING_SETUP_ALREADY_EXISTS = 'Starter publishing files already exist.';
 
 const AUTO_CONFIGURE_BUTTON = 'Auto configure publishing';
@@ -842,13 +838,6 @@ function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): ActiveBookMetaSt
     return { found: true, path: selected.path, sourceFolder, bookMeta: selected.meta };
 }
 
-interface ActiveBookMatterSummary {
-    sourceFolder: string;
-    frontCount: number;
-    backCount: number;
-    totalCount: number;
-}
-
 interface PdfLayoutSummary {
     validCount: number;
     totalCount: number;
@@ -868,44 +857,11 @@ interface PublishingProgressContext {
     pandocPathValid: boolean;
 }
 
-function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMatterSummary {
-    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
-    if (!sourceFolder) {
-        return { sourceFolder: '', frontCount: 0, backCount: 0, totalCount: 0 };
-    }
-
-    const mappings = getActiveFrontmatterMappings(plugin.settings);
-
-    let frontCount = 0;
-    let backCount = 0;
-    for (const file of plugin.app.vault.getMarkdownFiles()) {
-        if (!isPathInFolderScope(file.path, sourceFolder)) continue;
-        const cache = plugin.app.metadataCache.getFileCache(file);
-        const raw = cache?.frontmatter;
-        if (!raw) continue;
-        const normalized = normalizeFrontmatterKeys(raw, mappings);
-        const matterClass = normalizeMatterClassValue(normalized.Class);
-        if (!matterClass) continue;
-        if (matterClass === 'backmatter') {
-            backCount += 1;
-        } else {
-            frontCount += 1;
-        }
-    }
-
-    return {
-        sourceFolder,
-        frontCount,
-        backCount,
-        totalCount: frontCount + backCount
-    };
-}
-
 /**
  * Sync collector for the Book Pages resolver. Walks markdown files in the
  * active book's source folder and returns matter note summaries (role +
  * BodyMode + path + title). Cheap enough for settings render — uses the
- * same metadata cache as `getActiveBookMatterSummary`.
+ * same metadata cache.
  */
 function getActiveBookMatterNoteSummaries(plugin: RadialTimelinePlugin): MatterNoteSummary[] {
     const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();

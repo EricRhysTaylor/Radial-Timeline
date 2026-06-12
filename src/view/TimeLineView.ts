@@ -4,14 +4,10 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 // --- Imports and constants added for standalone module ---
-import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, TFile, Notice, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { t } from '../i18n';
-import { escapeRegExp } from '../utils/regex';
 import type { TimelineItem } from '../types';
-import { SceneNumberInfo } from '../utils/constants';
-import ZeroDraftModal from '../modals/ZeroDraftModal';
-import { parseSceneTitleComponents } from '../utils/text';
 import { renderSvgFromString } from '../utils/svgDom';
 import { openOrRevealFileByPath } from '../utils/fileUtils';
 import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController, setupVersionIndicatorController, setupHelpIconController, setupTooltips } from './interactions';
@@ -32,15 +28,12 @@ import {
 } from '../renderer/layout/LayoutConstants';
 import { buildSessionTimerRingState, renderSessionTimerRingLayer, buildTabTimerDiscSvg } from '../renderer/components/SessionTimerRing';
 import { renderSessionLogList } from '../renderer/components/SessionLogList';
-import { 
-    createSnapshot, 
-    detectChanges, 
-    describeChanges, 
-    type TimelineSnapshot, 
-    ChangeType 
+import {
+    createSnapshot,
+    detectChanges,
+    type TimelineSnapshot,
+    ChangeType
 } from '../renderer/ChangeDetection';
-import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
-import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { WritingSessionCompletionModal } from '../modals/WritingSessionCompletionModal';
 import { isMatterNote } from '../utils/sceneHelpers';
 import { DEFAULT_BOOK_TITLE, getTimelineScope, getTimelineScopeTitle, isSagaScopeAvailable } from '../utils/books';
@@ -85,8 +78,6 @@ interface SessionStatusDisplay {
 // - Existing SVG/rendering primitives may still reference legacy rt-* islands.
 // - Do not introduce fresh rt-* class creation for new chrome here unless it is explicitly allowlisted.
 
-// CONSTANTS: Scene expansion constants
-const HOVER_EXPAND_FACTOR = 1.05; // expansion multiplier when text doesn't fit
 const TIMELINE_LEGEND_MODES = new Set(['progress', 'narrative', 'chronologue']);
 
 interface TimelineLegendRow {
@@ -224,11 +215,11 @@ export class RadialTimelineView extends ItemView {
         try {
             this.modeManager = createModeManager(plugin, this);
             this.interactionController = createInteractionController(this);
-        } catch (e) {
+        } catch {
             // Mode management initialization failed
         }
     }
-    
+
     getViewType(): string {
         return TIMELINE_VIEW_TYPE;
     }
@@ -1330,9 +1321,6 @@ export class RadialTimelineView extends ItemView {
     private renderActiveWritingSessionPanel(panel: HTMLElement, active: ActiveWritingSession): void {
         const service = this.plugin.getWritingSessionService();
         const elapsedMs = service.getActiveElapsedMs();
-        const goalMs = active.goalMinutes ? active.goalMinutes * 60000 : undefined;
-        const countdownElapsedMs = this.getCountdownSegmentElapsedMs(active, elapsedMs);
-        const remainingMs = goalMs ? Math.max(0, goalMs - countdownElapsedMs) : undefined;
         const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
         const clockProgressStep = this.getActiveSessionProgressStep(active, elapsedMs);
         const clockText = statusDisplay.tone === 'complete'
@@ -2137,7 +2125,6 @@ export class RadialTimelineView extends ItemView {
             this.plugin.settings.currentMode = 'narrative';
         }
 
-        const perfStart = performance.now();
         const container = this.containerEl.children[1] as HTMLElement;
         
         // First update the tracking of open files
@@ -2146,7 +2133,6 @@ export class RadialTimelineView extends ItemView {
         // Get the scene data using the plugin's method
         this.plugin.getTimelineSceneData()
             .then(async (sceneData) => {
-                const dataLoadTime = performance.now() - perfStart;
                 const timelineSceneData = sceneData.filter(item => !isMatterNote(item));
 
                 // If in Gossamer mode, the change might be a score update. We must
@@ -2246,10 +2232,8 @@ export class RadialTimelineView extends ItemView {
                 container.appendChild(loadingEl);
                 
                 // Render the timeline with the scene data
-                const renderStart = performance.now();
                 this.renderTimeline(container, this.sceneData);
-                const renderTime = performance.now() - renderStart;
-                
+
                 // Remove loading message
                 loadingEl.remove();
                 
@@ -2267,7 +2251,7 @@ export class RadialTimelineView extends ItemView {
 
             })
             .catch(error => {
-                const errorEl = container.createEl("div", {
+                container.createEl("div", {
                     cls: "rt-error-message",
                     text: `Error: ${error.message}`
                 });
@@ -2434,7 +2418,6 @@ export class RadialTimelineView extends ItemView {
         
         try {
             // Generate the SVG content and get the max stage color
-            const startTime = performance.now();
             const renderer = this.rendererService ?? this.plugin.getRendererService();
             const { svgString, maxStageColor: calculatedMaxStageColor } = renderer.renderTimeline(scenes);
 
@@ -2798,7 +2781,6 @@ export class RadialTimelineView extends ItemView {
         if (this.currentMode !== 'gossamer') return;
 
         const runs = this.plugin.gossamerRunInventory || [];
-        const visibleRuns = this.plugin.gossamerVisibleRunInventory || [];
         const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? 'momentum';
 
         const xhtmlNs = 'http://www.w3.org/1999/xhtml';
@@ -3158,11 +3140,11 @@ export class RadialTimelineView extends ItemView {
                     // The hover effect disappears naturally when mouse leaves.
                 }
             }
-        } catch (error) {
+        } catch {
             // Silently handle file highlighting errors
         }
     }
-    
+
     // Property to track tab highlight timeout
     private _tabHighlightTimeout: number | null = null;
     

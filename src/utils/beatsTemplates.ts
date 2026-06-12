@@ -4,7 +4,7 @@
  * Compatibility aliases here are limited to the export/template boundary.
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS, PlotSystemPreset, PlotBeatInfo, getPlotSystem } from './beatsSystems';
+import { PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS, PlotSystemPreset, PlotBeatInfo, getPlotSystem } from './beatsSystems';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
 import { mergeTemplateParts } from './templateMerge';
@@ -14,7 +14,6 @@ import { formatBeatDecimalPrefix } from './prefixOrder';
 import {
   getActiveBeatWorkspaceConfigKey,
   getActiveLoadedBeatTab,
-  getLoadedBeatTabConfigKey,
 } from '../storyBeats/workspaceState';
 import { resolveSelectedBeatModelFromSettings } from './beatSystemState';
 
@@ -444,7 +443,7 @@ export async function createBeatNotesFromSet(
     if (!folder) {
       try {
         await vault.createFolder(targetFolder);
-      } catch (e) {
+      } catch {
         // Folder might already exist
       }
     }

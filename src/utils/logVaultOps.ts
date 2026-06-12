@@ -140,7 +140,6 @@ export async function trashFiles(app: App, files: TFile[], options: TrashFilesOp
     let failed = 0;
     const errors: string[] = [];
 
-    const systemTrash = useSystemTrash(app);
     for (const file of uniqueFiles) {
         try {
             await app.fileManager.trashFile(file);

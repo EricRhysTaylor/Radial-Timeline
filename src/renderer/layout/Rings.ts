@@ -8,7 +8,7 @@ export function computeRingGeometry(params: {
   monthTextInset: number;
   fixedRings?: Array<{ index: number; width: number }>;
 }) {
-  const { size, innerRadius, subplotOuterRadius, outerRadius, numRings, monthTickTerminal, monthTextInset, fixedRings } = params;
+  const { innerRadius, subplotOuterRadius, outerRadius, numRings, monthTextInset, fixedRings } = params;
   // Guard against zero rings to avoid NaNs downstream
   if (!Number.isFinite(numRings) || numRings <= 0) {
     const lineInnerRadius = innerRadius;

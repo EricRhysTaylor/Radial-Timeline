@@ -1,7 +1,7 @@
 import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade, shouldDisplayMissingWhenWarning } from '../../utils/sceneHelpers';
-import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
+import { getScenePrefixNumber, getNumberSquareSize } from '../../utils/text';
 import { getReadabilityMultiplier } from '../../utils/readability';
 import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquareHelpers';
 import { getTimelineScope } from '../../utils/books';
@@ -116,8 +116,6 @@ export function renderNumberSquaresUnified(params: {
         endAngle = ((actIndex + 1) * 2 * Math.PI) / totalActs - Math.PI / 2;
       }
 
-      const innerR = ringStartRadii[ring];
-      const outerR = innerR + ringWidths[ring];
       const totalAngularSpace = endAngle - startAngle;
       const sceneAngularSize = filteredScenes.length > 0 ? totalAngularSpace / filteredScenes.length : 0;
       let currentAngle = startAngle;
@@ -285,7 +283,6 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     }
     const innerR = ringStartRadii[ring];
     const outerR = innerR + ringWidths[ring];
-    const middleRadius = (innerR + outerR) / 2;
     const totalAngularSpace = endAngle - startAngle;
     const sceneAngularSize = filteredScenesForIndex.length > 0 ? totalAngularSpace / filteredScenesForIndex.length : 0;
     let currentAngle = startAngle;

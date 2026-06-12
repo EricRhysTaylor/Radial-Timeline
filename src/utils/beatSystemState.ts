@@ -1,5 +1,5 @@
 import type { BeatDefinition, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
-import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
+import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
 import { getActiveBook } from './books';
 
 export const DEFAULT_CUSTOM_BEAT_SYSTEM_ID = 'default';

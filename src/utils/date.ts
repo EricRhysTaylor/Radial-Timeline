@@ -971,7 +971,6 @@ export function generateChronologicalTicks(
     // Calculate time span if not provided (for intelligent labeling)
     const validDates = validScenes.map(s => s.date);
     const span = timeSpan || calculateTimeSpan(validDates);
-    const earliestDate = validDates[0]; // Already chronologically sorted
 
     // Special case: Only one scene - just show that date at the top
     if (validScenes.length === 1) {
@@ -1014,7 +1013,6 @@ export function generateChronologicalTicks(
     // Ensure step evenly divides the scene count for balanced distribution
     const MAX_MAJOR_TICKS = 20;
     let step = 1;
-    let numMajorTicks = numScenes;
 
     if (numScenes > MAX_MAJOR_TICKS) {
         // Calculate step that gives us approximately MAX_MAJOR_TICKS major ticks
@@ -1024,7 +1022,6 @@ export function generateChronologicalTicks(
         // Find a step that evenly divides numScenes (or gets close)
         // Try to find the largest divisor <= step that gives us <= MAX_MAJOR_TICKS
         let bestStep = step;
-        let bestMajorCount = Math.ceil((numScenes - 1) / step) + 1; // +1 for first scene
 
         // Try divisors near our target step
         for (let testStep = step; testStep >= 1; testStep--) {
@@ -1032,13 +1029,11 @@ export function generateChronologicalTicks(
             if (testMajorCount <= MAX_MAJOR_TICKS && (numScenes - 1) % testStep === 0) {
                 // Found a step that evenly divides!
                 bestStep = testStep;
-                bestMajorCount = testMajorCount;
                 break;
             }
         }
 
         step = bestStep;
-        numMajorTicks = bestMajorCount;
     }
 
     // Build promote set using sorted indices (chronological order)
@@ -1097,7 +1092,6 @@ export function generateChronologicalTicks(
         // Analyze gap before this scene to determine label type
         const gapMs = sceneGaps[sceneIndex];
         const gapHours = gapMs / (1000 * 60 * 60);
-        const gapDays = gapHours / 24;
 
         // First scene: Always anchor with full context
         if (isFirst) {

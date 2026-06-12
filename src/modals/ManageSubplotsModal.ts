@@ -5,7 +5,7 @@
  * that matches the Gossamer/Pulse aesthetic.
  */
 
-import { App, Modal, ButtonComponent, Notice } from 'obsidian';
+import { App, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { SubplotManagementService, SubplotStats } from '../services/SubplotManagementService';
 import { scheduleFocusAfterPaint } from '../utils/domFocus';

@@ -301,7 +301,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
 
     const addRow = addSection.createDiv({ cls: 'ert-campaign-add-row' });
 
-    const newCampaignSetting = new Setting(addRow)
+    new Setting(addRow)
         .setName('New campaign')
         .setDesc('Create a new campaign that targets a specific platform or audience.')
         .addButton(button => {

@@ -1,4 +1,4 @@
-import { normalizePath, type TAbstractFile, TFile, TFolder, type Vault } from 'obsidian';
+import { normalizePath, type TAbstractFile, TFolder, type Vault } from 'obsidian';
 
 export interface DraftTarget {
   destinationPath: string;

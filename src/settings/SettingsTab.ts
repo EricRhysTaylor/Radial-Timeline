@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Component, setIcon, TextComponent, normalizePath } from 'obsidian';
+import { App, Component, Notice, PluginSettingTab, setIcon, TextComponent, normalizePath } from 'obsidian';
 import { renderGeneralSection } from './sections/GeneralSection';
 import { renderCompletionEstimatePreview, renderProgressSection } from './sections/ProgressSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
@@ -26,7 +26,6 @@ import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
 import {
     getActiveRefactorAlerts,
     getAllNotificationsForHistory,
-    isAlertDismissed,
     applyAlertMigrations,
     cleanupAdvancedTemplate,
     advancedTemplateNeedsCleanup,
@@ -45,6 +44,14 @@ import { getLocalLlmSettings } from '../ai/localLlm/settings';
 import { CORE_ALERTS_SECTION_KEY, type RadialTimelineSettingsTabId } from './settingsAnchors';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
+    private releaseNotesComponent: Component | null = null;
+
+    hide(): void {
+        this.releaseNotesComponent?.unload();
+        this.releaseNotesComponent = null;
+        super.hide();
+    }
+
     plugin: RadialTimelinePlugin;
     private _providerSections: { anthropic?: HTMLElement; google?: HTMLElement; openai?: HTMLElement; ollama?: HTMLElement } = {};
     private _keyValidateTimers: Partial<Record<'anthropic' | 'google' | 'openai' | 'ollama', number>> = {};
@@ -1093,7 +1100,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         colorsWorkingPatternSection = colorsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="colors-working-pattern"]`);
 
         const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
-        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
+        this.releaseNotesComponent?.unload();
+        this.releaseNotesComponent = new Component();
+        this.releaseNotesComponent.load();
+        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection, component: this.releaseNotesComponent });
 
         // Order mirrors the on-page section order so the links read top-to-bottom.
         this.renderCoreQuickLinks(quickLinksRow, [

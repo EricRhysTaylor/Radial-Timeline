@@ -1,12 +1,9 @@
 import {
-    App,
-    ButtonComponent,
     ItemView,
     Menu,
     Notice,
     Platform,
     setIcon,
-    setTooltip,
     TAbstractFile,
     TFile,
     TFolder,
@@ -102,28 +99,22 @@ import { cleanEvidenceBody } from './utils/evidenceCleaning';
 import { countWords as countManuscriptWords } from '../utils/manuscript';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
-import {
-    extractTokenUsage,
-    formatDuration,
-} from '../ai/log';
+import { extractTokenUsage } from '../ai/log';
 import {
     InquiryGlyph,
     FLOW_RADIUS,
     FLOW_STROKE,
     ZONE_RING_THICKNESS,
-    ZONE_SEGMENT_RADIUS,
-    ZONE_SEGMENT_HALF_HEIGHT
+    ZONE_SEGMENT_RADIUS
 } from './components/InquiryGlyph';
-import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
 // computeCaps, INPUT_TOKEN_GUARD_FACTOR: now used in inquiryReadinessBuilder.ts
 import { resolveCitationsEnabled } from '../ai/caps/computeCaps';
 import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
-import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
-import type { AIProviderId, AiSettingsV1, ModelInfo, AccessTier, RTCorpusTokenEstimate, AIRunAdvancedContext } from '../ai/types';
+import type { AIProviderId, AiSettingsV1, AccessTier, RTCorpusTokenEstimate, AIRunAdvancedContext } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -141,7 +132,7 @@ import { getSequencedBooks } from '../utils/books';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { hasProFeatureAccess } from '../settings/featureGate';
-import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
+import { InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
 import {
     isPathIncludedByInquiryBooks,
     resolveBookManagerInquiryBooks
@@ -156,7 +147,6 @@ import {
     predictTimingFromEntry,
     type EvidenceModeKey
 } from './services/inquiryTimingPrediction';
-import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
 import { buildInquiryBookAnchorId, scopeEntriesToActiveInquiryTarget } from './services/canonicalInquiryCorpus';
 import type {
     TokenTier,
@@ -174,9 +164,7 @@ import {
     buildAdvisoryInputKey,
     formatTokenEstimate as formatTokenEstimatePure,
     getTokenTier as getTokenTierPure,
-    getTokenTierFromSnapshot as getTokenTierFromSnapshotPure,
-    INQUIRY_INPUT_TOKENS_AMBER,
-    INQUIRY_INPUT_TOKENS_RED
+    getTokenTierFromSnapshot as getTokenTierFromSnapshotPure
 } from './services/inquiryReadinessBuilder';
 import { buildPendingCorpusEstimateFromManifestEntries } from './services/buildExactCorpusEstimate';
 import {
@@ -202,10 +190,9 @@ import {
     getFrontmatterScope as getFrontmatterScopePure,
     normalizeInquirySources as normalizeInquirySourcesPure
 } from './services/InquiryCorpusService';
-import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren, SVG_NS } from './minimap/svgUtils';
+import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren } from './minimap/svgUtils';
 import {
     InquiryMinimapRenderer,
-    MINIMAP_GROUP_Y,
     MIN_PROCESSING_MS,
     toRgbString,
     getExecutionColorValue,
@@ -257,7 +244,6 @@ import { buildInquiryContentLogContent, buildInquiryLogContent } from './render/
 import {
     CC_PAGE_BASE_SIZE,
     GLYPH_EMPTY_STATE_STUB,
-    GLYPH_OFFSET_Y,
     GLYPH_PLACEHOLDER_DEPTH,
     GLYPH_PLACEHOLDER_FLOW,
     GUIDANCE_ALERT_LINE_HEIGHT,
@@ -265,44 +251,9 @@ import {
     GUIDANCE_TEXT_Y,
     MODE_ICON_OFFSET_Y,
     MODE_ICON_VIEWBOX,
-    PREVIEW_FOOTER_HEIGHT,
-    PREVIEW_PANEL_MINIMAP_GAP,
-    PREVIEW_PANEL_WIDTH,
-    PREVIEW_PILL_HEIGHT,
-    SCENE_DOSSIER_ANCHOR_BODY_GAP,
-    SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
-    SCENE_DOSSIER_ANCHOR_MAX_WIDTH,
-    SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
-    SCENE_DOSSIER_BODY_ROW_GAP,
-    SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
-    SCENE_DOSSIER_BRACE_BASELINE_OFFSET,
-    SCENE_DOSSIER_BRACE_INSET,
-    SCENE_DOSSIER_BRACE_SIZE,
     SCENE_DOSSIER_CANVAS_Y,
-    SCENE_DOSSIER_CENTER_Y,
-    SCENE_DOSSIER_FOCUS_RADIUS,
-    SCENE_DOSSIER_FOOTER_GAP,
-    SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
-    SCENE_DOSSIER_FOOTER_SIZE,
-    SCENE_DOSSIER_FOOTER_Y_OFFSET,
-    SCENE_DOSSIER_HEADER_LINE_HEIGHT,
-    SCENE_DOSSIER_HEADER_SIZE,
-    SCENE_DOSSIER_HEADER_Y_OFFSET,
     SCENE_DOSSIER_HIDE_DELAY_MS,
     SCENE_DOSSIER_HOVER_DELAY_MS,
-    SCENE_DOSSIER_MIN_HEIGHT,
-    SCENE_DOSSIER_PADDING_Y,
-    SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO,
-    SCENE_DOSSIER_SIDE_PADDING,
-    SCENE_DOSSIER_SOURCE_GAP,
-    SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
-    SCENE_DOSSIER_SOURCE_Y_OFFSET,
-    SCENE_DOSSIER_TEXT_GROUP_Y,
-    SCENE_DOSSIER_TEXT_MAX_WIDTH,
-    SCENE_DOSSIER_TITLE_ANCHOR_GAP,
-    SCENE_DOSSIER_TITLE_MAX_WIDTH,
-    SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-    SCENE_DOSSIER_WIDTH,
     VIEWBOX_MAX,
     VIEWBOX_MIN,
     VIEWBOX_SIZE
@@ -317,7 +268,6 @@ import {
     INQUIRY_GUIDANCE_DOC_URL,
     INQUIRY_NOTES_MAX,
     INQUIRY_PROMPT_OVERHEAD_CHARS,
-    INQUIRY_REQUIRED_CAPABILITIES,
     REHYDRATE_HIGHLIGHT_MS,
     REHYDRATE_PULSE_MS,
     SIGMA_CHAR,
@@ -336,7 +286,6 @@ import type {
     CorpusCcHeader,
     CorpusCcSlot,
     CorpusCcStats,
-    EngineChoice,
     EngineFailureGuidance,
     InquiryBriefModel,
     InquiryGlyphSeed,
@@ -360,7 +309,6 @@ import {
 } from './pendingEditsSafety';
 import { prepareFrontmatterRewrite, verifyFrontmatterRewrite } from '../utils/frontmatterWriteSafety';
 import {
-    buildManifestTocLines,
     buildSceneDossierHeader,
     buildStaleShortLabel,
     buildStaleTooltipLines,
@@ -369,7 +317,6 @@ import {
     formatApiErrorReason,
     formatAuthorFacingErrorDetail,
     formatAuthorFacingErrorHero,
-    formatBriefLabel,
     formatElapsedRunClock,
     formatInquiryBriefId,
     formatInquiryBriefLink,
@@ -387,7 +334,6 @@ import {
     formatTokenUsageVisibility,
     getDocumentStatusFields,
     getOrdinalSuffix,
-    normalizeInquiryHeadline,
     readFrontmatterWordCount,
     renderInquiryBrief,
     resolveFindingChipLabel,

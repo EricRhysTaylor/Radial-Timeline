@@ -785,9 +785,6 @@ export function buildAllGossamerRuns(
   let minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null = null;
   
   if (historical.length > 0) {
-    // Collect all runs (current + historical)
-    const allRuns = [current, ...historical.map(h => ({ beats: h.points.map(p => ({ ...p, status: 'present' as const, notes: '' })) }))];
-    
     // Get all beat names from current run
     const beatNames = current.beats.map(b => b.beat);
     

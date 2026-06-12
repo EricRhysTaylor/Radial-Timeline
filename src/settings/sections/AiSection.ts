@@ -14,8 +14,7 @@ import { formatGossamerCacheClock, formatGossamerCacheCostHint } from '../../gos
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
-import { selectModel } from '../../ai/router/selectModel';
-import { computeCaps, resolveCitationsEnabled } from '../../ai/caps/computeCaps';
+import { resolveCitationsEnabled } from '../../ai/caps/computeCaps';
 import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { getLocalLlmClient } from '../../ai/localLlm/client';
@@ -69,22 +68,12 @@ import type { LocalLlmModelEntry } from '../../ai/localLlm/transport';
 import type { LocalLlmBackendId } from '../../ai/types';
 import {
     CACHE_ARMED_PILL_TEXT,
-    MAX_PREVIEW_SIGNALS,
-    PREVIEW_SIGNAL_PRIORITY,
-    buildOutlineCapacityLine,
-    buildReferenceCapacityLine,
-    buildScenesCapacityLine,
-    buildTokenCapacityLine,
     estimateTokensFromChars,
-    formatApproxTokens,
-    formatCorpusBreakdownToken,
     formatCorpusStructureSummary,
     formatCorpusTokenSummary,
-    formatInquiryCount,
     formatPreviewCacheObservedLabel,
     formatPreviewCacheRemaining,
     formatPreviewReasonLabel,
-    formatPromptToken,
     mergePreviewCachePills,
     resolvePreviewSignals
 } from './aiSettingsPreview';
@@ -380,20 +369,6 @@ export function renderAiSection(params: {
         return plugin.settings.aiSettings;
     };
 
-    const getSelectedProvider = (): Exclude<AIProviderId, 'none'> => {
-        const provider = ensureCanonicalAiSettings().provider;
-        // Sequential === checks let TypeScript narrow via control flow.
-        // Array.includes() doesn't narrow, so the previous form silently
-        // returned the broad AIProviderId (including 'none') here.
-        if (provider === 'anthropic'
-            || provider === 'google'
-            || provider === 'openai'
-            || provider === 'ollama') {
-            return provider;
-        }
-        return 'openai';
-    };
-
     const getOllamaBaseUrl = (): string => {
         const configuredBaseUrl = getLocalLlmSettings(ensureCanonicalAiSettings()).baseUrl.trim();
         return configuredBaseUrl ? configuredBaseUrl : 'http://localhost:11434/v1';
@@ -536,38 +511,6 @@ export function renderAiSection(params: {
 
     let isSyncingRoutingUi = false;
 
-    const attachAiCollapseButton = (detailsEl: HTMLDetailsElement, summaryEl: HTMLElement): void => {
-        const rawSummaryLabel = summaryEl.textContent?.trim();
-        const summaryLabel = rawSummaryLabel ? rawSummaryLabel : 'section';
-        detailsEl.addClass('ert-ai-collapsible');
-        summaryEl.empty();
-        summaryEl.addClass('ert-ai-collapsible-summary');
-        summaryEl.createSpan({ cls: 'ert-ai-collapsible-summary-label', text: summaryLabel });
-        const toggleButton = summaryEl.createEl('button', {
-            cls: `${ERT_CLASSES.ICON_BTN} ert-ai-fold-toggle`,
-            attr: { type: 'button' }
-        });
-
-        const refreshToggle = (): void => {
-            const expanded = detailsEl.open;
-            const action = expanded ? 'Collapse' : 'Expand';
-            setIcon(toggleButton, expanded ? 'chevron-down' : 'chevron-right');
-            setTooltip(toggleButton, `${action} ${summaryLabel}`);
-            toggleButton.setAttribute('aria-label', `${action} ${summaryLabel}`);
-            toggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            summaryEl.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        };
-
-        toggleButton.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            detailsEl.open = !detailsEl.open;
-            refreshToggle();
-        });
-        detailsEl.addEventListener('toggle', refreshToggle);
-        refreshToggle();
-    };
-
     const largeHandlingSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.STACK} ert-ai-large-handling`
     });
@@ -582,11 +525,6 @@ export function renderAiSection(params: {
         const labelEl = cell.createDiv({ cls: 'ert-ai-capacity-label', text: label });
         const valueEl = cell.createDiv({ cls: 'ert-ai-capacity-value' });
         return { cellEl: cell, valueEl, labelEl };
-    };
-    const setTokenDisplay = (el: HTMLElement, numericText: string, unitText: string): void => {
-        el.empty();
-        el.createSpan({ cls: 'ert-ai-token-value', text: numericText });
-        el.createSpan({ cls: 'ert-ai-token-unit', text: unitText });
     };
     const renderCapacitySections = (
         container: HTMLElement,
@@ -2953,19 +2891,6 @@ export function renderAiSection(params: {
         const selectedModelKey = buildLocalLlmModelIdentity(getLocalLlmBackendId(), getOllamaBaseUrl(), selectedModelId);
         return !localLlmLoadedModels.some(model => buildLocalLlmModelIdentity(getLocalLlmBackendId(), getOllamaBaseUrl(), model.id) === selectedModelKey);
     };
-
-    const hasLocalLlmValidationFailure = (): boolean => {
-        if (localLlmModelLoadError || localLlmValidationError) return true;
-        if (!localLlmValidationReport) return false;
-        return !localLlmValidationReport.reachable.ok
-            || !localLlmValidationReport.modelAvailable.ok
-            || !localLlmValidationReport.basicCompletion.ok
-            || !localLlmValidationReport.structuredJson.ok
-            || !localLlmValidationReport.repairPath.ok;
-    };
-
-    const shouldRevealLocalLlmOverrideSettings = (): boolean =>
-        getLocalLlmConfigurationMode() === 'custom' || hasLocalLlmValidationFailure() || hasLocalLlmSelectedModelMismatch();
 
     const shouldRevealLocalLlmTransportSettings = (): boolean => {
         if (getLocalLlmConfigurationMode() === 'custom') return true;

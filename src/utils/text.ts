@@ -152,7 +152,6 @@ export function splitIntoBalancedLinesOptimal(text: string, maxWidth: number, fo
   
   const lines: string[] = [];
   let currentLine = '';
-  let currentLength = 0;
   
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
@@ -167,10 +166,8 @@ export function splitIntoBalancedLinesOptimal(text: string, maxWidth: number, fo
     if (wouldExceedTarget && currentLine && !wouldCreateOrphan) {
       lines.push(currentLine);
       currentLine = word;
-      currentLength = word.length;
     } else {
       currentLine = testLine;
-      currentLength = testLine.length;
     }
   }
   
