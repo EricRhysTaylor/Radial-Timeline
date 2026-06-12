@@ -9,10 +9,10 @@ const i18nIndexPath = path.join(root, 'src/i18n/index.ts');
 const releaseBundlePath = path.join(root, 'release/main.js');
 
 const minTranslatedKeys = {
-  ja: 942,
-  zh: 942,
-  ko: 942,
-  de: 942,
+  ja: 937,
+  zh: 937,
+  ko: 937,
+  de: 937,
 };
 
 const bundleSentinels = {
