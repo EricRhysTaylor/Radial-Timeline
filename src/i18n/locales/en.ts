@@ -1775,7 +1775,7 @@ export const en: TranslationKeys = {
             },
             manuscriptOutputFolder: {
                 name: 'Export folder',
-                desc: 'Manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards).',
+                desc: 'Destination for manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards). Must be a folder inside your vault.',
                 placeholder: 'Radial Timeline/Export',
             },
             outlineOutputFolder: {

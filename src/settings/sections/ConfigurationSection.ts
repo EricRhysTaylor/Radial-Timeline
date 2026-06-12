@@ -1,10 +1,13 @@
-import { App, Setting as Settings } from 'obsidian';
+import { App, Setting as Settings, normalizePath } from 'obsidian';
 import type { TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { addPathChip } from '../pathChip';
+import { ModalFolderSuggest } from '../FolderSuggest';
+import { DEFAULT_SETTINGS } from '../defaults';
+import { resolveExportOutputFolder, escapesVaultRoot } from '../../utils/aiOutput';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { countContentLogFiles, resolveLogsRoot } from '../../ai/log';
@@ -54,7 +57,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
 
     const outputFolder = resolveLogsRoot();
-    const exportFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
+    const exportFolderDefault = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export';
 
     // Logs
     const logsRow = createDenseRow(logsContainer, {
@@ -64,14 +67,65 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     });
     addPathChip(logsRow, app, outputFolder);
 
-    // Export folder is no longer user-configurable — shown here as an
-    // informational readout so users know where exports land.
+    // Export folder is user-configurable. Manuscript, outline, and cue-card
+    // exports land here. Writes go through the vault API, so the value must
+    // stay inside the vault (validated on commit). The reveal chip mirrors
+    // the live value so users can jump to the folder in the file explorer.
     const exportRow = createDenseRow(logsContainer, {
         title: t('settings.configuration.manuscriptOutputFolder.name'),
         description: t('settings.configuration.manuscriptOutputFolder.desc'),
-        control: () => {}
+        control: (setting) => {
+            setting.addText(text => {
+                const inputEl = text.inputEl;
+                text.setPlaceholder(exportFolderDefault);
+                text.setValue(plugin.settings.manuscriptOutputFolder || '');
+                inputEl.addClass('ert-input');
+
+                const resetState = () => {
+                    inputEl.removeClass('ert-setting-input-success');
+                    inputEl.removeClass('ert-setting-input-error');
+                };
+                const flashError = () => {
+                    inputEl.addClass('ert-setting-input-error');
+                    window.setTimeout(() => inputEl.removeClass('ert-setting-input-error'), 2000);
+                };
+                const commit = async (raw: string) => {
+                    resetState();
+                    const trimmed = raw.trim();
+                    const normalized = trimmed ? normalizePath(trimmed) : '';
+                    if (normalized && escapesVaultRoot(normalized)) {
+                        flashError();
+                        return;
+                    }
+                    const nextFolder = normalized || exportFolderDefault;
+                    plugin.settings.manuscriptOutputFolder = nextFolder;
+                    // Outline exports share the destination; keep the legacy
+                    // field in sync so a stale value can't diverge.
+                    plugin.settings.outlineOutputFolder = nextFolder;
+                    await plugin.saveSettings();
+                    text.setValue(normalized);
+                    refreshExportChip(resolveExportOutputFolder(plugin));
+                    inputEl.addClass('ert-setting-input-success');
+                    window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1000);
+                };
+
+                new ModalFolderSuggest(app, inputEl, (path) => { void commit(path); });
+                plugin.registerDomEvent(inputEl, 'blur', () => { void commit(text.getValue()); });
+                plugin.registerDomEvent(inputEl, 'keydown', (evt: KeyboardEvent) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        inputEl.blur();
+                    }
+                });
+            });
+        }
     });
-    addPathChip(exportRow, app, exportFolder);
+    const refreshExportChip = (folder: string): void => {
+        const existing = exportRow.controlEl.querySelector<HTMLElement>(':scope > .ert-path-chips');
+        if (existing) existing.remove();
+        addPathChip(exportRow, app, folder);
+    };
+    refreshExportChip(resolveExportOutputFolder(plugin));
 
     const apiLoggingSetting = createDenseRow(logsContainer, {
         title: 'Enable AI content logs',

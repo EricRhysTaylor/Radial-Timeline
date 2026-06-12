@@ -24,5 +24,5 @@ Advanced is currently grouped into three areas:
 ### Logs
 
 *   **AI output folder**: Readout of the main RT logs location.
-*   **Export folder**: Readout of the manuscript/export destination.
+*   **Export folder**: Destination for manuscript, outline, and cue-card exports. Editable — type or pick any folder inside your vault; the chip beside the field reveals it in the file explorer.
 *   **Enable AI content logs**: When enabled, full prompts, materials, and API responses are written as content logs.
