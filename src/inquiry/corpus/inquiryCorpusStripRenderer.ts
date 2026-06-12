@@ -622,7 +622,7 @@ export function renderInquiryCorpusStrip(args: {
         legendTrigger.addEventListener('mouseenter', () => legendPanel.classList.add('is-legend-visible'));
         legendTrigger.addEventListener('mouseleave', () => {
             // Short delay so user can move mouse to the panel itself
-            setTimeout(() => {
+            window.setTimeout(() => {
                 if (!legendPanel.matches(':hover')) {
                     legendPanel.classList.remove('is-legend-visible');
                 }

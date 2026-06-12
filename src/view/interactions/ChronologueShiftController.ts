@@ -692,7 +692,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             updateDateLabelsForRuntimeMode(true);
             
             // Defer the expensive timeline refresh to next frame for snappy button response
-            const rafId = requestAnimationFrame(() => {
+            const rafId = window.requestAnimationFrame(() => {
                 if (view.plugin.refreshTimelineIfNeeded) {
                     view.plugin.refreshTimelineIfNeeded(null);
                 }

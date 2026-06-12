@@ -456,12 +456,6 @@
   font-style: italic;
 }
 
-/* Fixed size for date/duration tspans (does not follow the synopsis font scale) */
-.rt-date-text,
-.rt-duration-text {
-  font-size: 14px;
-}
-
 /*Beats text styling*/
 .rt-title-text-secondary {
   font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));

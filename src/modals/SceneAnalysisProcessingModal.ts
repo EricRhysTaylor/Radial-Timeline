@@ -741,7 +741,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         };
 
         // Initial count (defer to next frame so modal paints immediately)
-        const rafId = requestAnimationFrame(() => {
+        const rafId = window.requestAnimationFrame(() => {
             updateCount();
         });
         this.pendingRafId = rafId;

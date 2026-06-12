@@ -3,12 +3,12 @@
     "obsidianmd/no-static-styles-assignment",
     "obsidianmd/prefer-window-timers"
   ],
-  "total": 24,
+  "total": 0,
   "byRule": {
     "obsidianmd/no-static-styles-assignment": 0,
-    "obsidianmd/prefer-window-timers": 24
+    "obsidianmd/prefer-window-timers": 0
   },
-  "updatedAt": "2026-06-12T01:48:12.207Z",
+  "updatedAt": "2026-06-12T02:00:15.485Z",
   "mode": "ratchet",
   "note": "Fails when selected eslint-plugin-obsidianmd rule counts increase."
 }

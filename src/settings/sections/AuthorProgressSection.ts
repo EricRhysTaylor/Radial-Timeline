@@ -2179,7 +2179,7 @@ class CustomBgPresetModal extends Modal {
             text.setPlaceholder('e.g. My Blog').setValue(initialLabel);
             text.onChange((val) => { pickedLabel = val.trim(); });
             // Auto-focus the name input for quick entry
-            setTimeout(() => text.inputEl.focus(), 50);
+            window.setTimeout(() => text.inputEl.focus(), 50);
         });
 
         // Action buttons

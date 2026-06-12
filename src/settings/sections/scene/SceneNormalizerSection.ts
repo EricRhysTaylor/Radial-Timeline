@@ -576,7 +576,7 @@ export function renderSceneNormalizerSection(params: {
             if (targetFiles.length === 0) return;
             const result = await insertMissingCoreFields({ app, settings: plugin.settings, files: targetFiles, audit: sceneAudit });
             new Notice(result.updated > 0 ? `Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}.` : 'No changes made.');
-            setTimeout(() => { void runCheckScenes(); }, 750);
+            window.setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
     addAdvancedBtn = new ButtonComponent(maintenanceGroup)
@@ -587,7 +587,7 @@ export function renderSceneNormalizerSection(params: {
             if (targetFiles.length === 0) return;
             const result = await insertMissingAdvancedFields({ app, settings: plugin.settings, files: targetFiles, audit: sceneAudit });
             new Notice(result.updated > 0 ? `Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}.` : 'No changes made.');
-            setTimeout(() => { void runCheckScenes(); }, 750);
+            window.setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
     addIdsBtn = new ButtonComponent(maintenanceGroup)
@@ -609,7 +609,7 @@ export function renderSceneNormalizerSection(params: {
                 unit: 'scene',
                 skippedLabel: 'already had IDs',
             }));
-            setTimeout(() => { void runCheckScenes(); }, 750);
+            window.setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
     reorderBtn = new ButtonComponent(maintenanceGroup)
@@ -670,7 +670,7 @@ export function renderSceneNormalizerSection(params: {
                 audit: sceneAudit,
             });
             new Notice(result.reordered > 0 ? `Reordered ${result.reordered} scene${result.reordered !== 1 ? 's' : ''}.` : 'No changes made.');
-            setTimeout(() => { void runCheckScenes(); }, 750);
+            window.setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
     removeAdvancedBtn = new ButtonComponent(cleanupGroup)
@@ -715,7 +715,7 @@ export function renderSceneNormalizerSection(params: {
             if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} scene${result.deleted !== 1 ? 's' : ''}`);
             if (deletionSnapshotPath) parts.push(`Snapshot: ${deletionSnapshotPath}`);
             new Notice(parts.join(', ') || 'No changes made.');
-            setTimeout(() => { void runCheckScenes(); }, 750);
+            window.setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
     fixDuplicateBtn = new ButtonComponent(cleanupGroup)
@@ -739,7 +739,7 @@ export function renderSceneNormalizerSection(params: {
                 failed: result.failed,
                 unit: 'scene',
             }));
-            setTimeout(() => { void runCheckScenes(); }, 750);
+            window.setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
     refreshMaintenanceCopy();

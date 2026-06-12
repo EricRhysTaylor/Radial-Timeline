@@ -61,7 +61,7 @@ function buildProHeroLogo(parent: HTMLElement): () => void {
         }
     };
 
-    requestAnimationFrame(fitLogoToBounds);
+    window.requestAnimationFrame(fitLogoToBounds);
     if (typeof ResizeObserver !== 'undefined') {
         const observer = new ResizeObserver(() => fitLogoToBounds());
         observer.observe(svg);

@@ -2688,8 +2688,8 @@ export class RadialTimelineView extends ItemView {
                     // Use DOUBLE requestAnimationFrame to ensure DOM is fully painted
                     let gossamerOuterRafId: number | null = null;
                     let gossamerInnerRafId: number | null = null;
-                    gossamerOuterRafId = requestAnimationFrame(() => {
-                        gossamerInnerRafId = requestAnimationFrame(() => {
+                    gossamerOuterRafId = window.requestAnimationFrame(() => {
+                        gossamerInnerRafId = window.requestAnimationFrame(() => {
                             this.setupGossamerEventListeners(svg);
                             gossamerOuterRafId = null;
                             gossamerInnerRafId = null;

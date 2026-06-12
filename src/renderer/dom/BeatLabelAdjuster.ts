@@ -70,7 +70,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
     }
 
     if (isHidden && attempt < MAX_ATTEMPTS) {
-        const rafId = requestAnimationFrame(() => adjustBeatLabelsAfterRender(container, attempt + 1));
+        const rafId = window.requestAnimationFrame(() => adjustBeatLabelsAfterRender(container, attempt + 1));
         state.retryId = rafId;
         beatLabelAdjustState.set(container, state);
         return;

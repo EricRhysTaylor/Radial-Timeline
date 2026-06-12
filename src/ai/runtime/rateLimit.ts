@@ -11,7 +11,7 @@ export class AIRateLimiter {
         if (recent.length >= requestsPerMinute) {
             const earliest = recent[0];
             const waitMs = Math.max(0, windowMs - (now - earliest));
-            await new Promise(resolve => setTimeout(resolve, waitMs));
+            await new Promise(resolve => window.setTimeout(resolve, waitMs));
         }
 
         const after = (this.history.get(key) || []).filter(ts => Date.now() - ts < windowMs);

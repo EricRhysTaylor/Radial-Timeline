@@ -4780,7 +4780,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         // ─── Fix duplicate IDs action ────────────────────────────────────
@@ -4837,7 +4837,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         // ─── Backfill action ─────────────────────────────────────────────
@@ -4920,7 +4920,7 @@ export function renderBeatPropertiesSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Wait for Obsidian metadata cache to re-index before refreshing audit
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         const handleFillEmptyValues = async () => {
@@ -4982,7 +4982,7 @@ export function renderBeatPropertiesSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Wait for Obsidian metadata cache to re-index before refreshing audit
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         const handleMigrateDeprecatedFields = async () => {
@@ -5059,7 +5059,7 @@ export function renderBeatPropertiesSection(params: {
                 new Notice(parts.join(', ') || 'No changes made.');
             }
 
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         // ─── Delete custom fields action ────────────────────────────────
@@ -5282,7 +5282,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) msgParts.push(`${result.failed} failed`);
             new Notice(msgParts.join(', ') || 'No changes made.');
 
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         // ─── Reorder fields action ──────────────────────────────────────
@@ -5405,7 +5405,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => runAudit(), 750);
         };
 
         // Allow the YAML fields editor to refresh the fill plan when defaults change

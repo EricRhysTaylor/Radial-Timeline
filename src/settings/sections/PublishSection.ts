@@ -3563,9 +3563,9 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                     if (!scrollParent || !nextHeader) return;
                     scrollParent.scrollTop += nextHeader.getBoundingClientRect().top - previousHeaderTop;
                 };
-                requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
                     restore();
-                    requestAnimationFrame(restore);
+                    window.requestAnimationFrame(restore);
                 });
             };
             const toggleSection = () => {
