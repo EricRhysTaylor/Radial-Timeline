@@ -26,7 +26,9 @@ describe('settings section navigation anchors', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
         expect(source.includes("{ label: 'Beats', target: beatsStorySection }")).toBe(true);
         expect(source.includes("{ label: 'Properties', target: scenePropertiesSection }")).toBe(true);
-        expect(source.includes("{ label: 'Readme', target: readmeSection }")).toBe(true);
+        // The README is no longer rendered in settings — it lives on GitHub and
+        // the Obsidian directory only.
+        expect(source.includes('readmeSection')).toBe(false);
         expect(source.includes("{ label: 'Story beats', target: beatsStorySection }")).toBe(false);
         expect(source.includes("{ label: 'Scene properties', target: scenePropertiesSection }")).toBe(false);
     });

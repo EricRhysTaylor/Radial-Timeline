@@ -15,19 +15,6 @@ const prod = process.argv[2] === "production";
 const isCI = process.env.CI === 'true';
 const isReleaseBuild = process.env.RT_RELEASE_BUILD === '1';
 
-// --- Read README content --- START ---
-const readmePath = path.resolve('README.md'); // Get absolute path to README
-let readmeContent = '';
-try {
-	readmeContent = fs.readFileSync(readmePath, 'utf-8');
-	// console.log('Read README.md for embedding.'); // Suppressed for cleaner build output
-} catch (err) {
-	logErrorDetails('Failed to read README.md for embedding:', err);
-	readmeContent = 'Error: Could not load README content.'; // Fallback content
-}
-// --- Read README content --- END ---
-
-
 // --- Read release notes content REMOVED: Managed via direct import in code ---
 
 // Define source and destination paths
@@ -260,7 +247,6 @@ const context = await esbuild.context({
 	keepNames: true,  // Preserve function/class .name despite identifier minification
 	outdir: destDirs[0].path,
 	define: {
-		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
 		// 'EMBEDDED_RELEASE_NOTES': // REMOVED: Managed via direct import in code
 		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development'),
 		// Test/CI seam only — compiled out of production so shipped code never

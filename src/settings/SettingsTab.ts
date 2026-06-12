@@ -10,7 +10,6 @@ import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import RadialTimelinePlugin from '../main';
 import { renderColorsSection } from './sections/ColorsSection';
-import { renderReadmeSection } from './sections/ReadmeSection';
 import { renderConfigurationSection } from './sections/ConfigurationSection';
 import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
@@ -47,7 +46,6 @@ import { CORE_ALERTS_SECTION_KEY, type RadialTimelineSettingsTabId } from './set
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
-    private readmeComponent: Component | null = null;
     private _providerSections: { anthropic?: HTMLElement; google?: HTMLElement; openai?: HTMLElement; ollama?: HTMLElement } = {};
     private _keyValidateTimers: Partial<Record<'anthropic' | 'google' | 'openai' | 'ollama', number>> = {};
     private _anthropicKeyInput?: HTMLInputElement;
@@ -1098,9 +1096,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
         void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
 
-        const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
-        renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
-
         // Order mirrors the on-page section order so the links read top-to-bottom.
         this.renderCoreQuickLinks(quickLinksRow, [
             { label: 'Books', target: generalSection },
@@ -1112,8 +1107,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             { label: 'Planet Calendar', target: planetarySection },
             { label: 'Backdrop', target: backdropSection },
             { label: 'Colors', target: colorsWorkingPatternSection },
-            { label: 'Release Notes', target: releaseNotesSection },
-            { label: 'Readme', target: readmeSection }
+            { label: 'Release Notes', target: releaseNotesSection }
         ]);
 
         const inquirySection = inquiryBody.createDiv({
@@ -1161,10 +1155,4 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.applyElementBlockLayout(containerEl);
     }
 
-    hide() {
-        if (this.readmeComponent) {
-            this.readmeComponent.unload();
-            this.readmeComponent = null;
-        }
-    }
 }

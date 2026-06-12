@@ -75,10 +75,6 @@ import { seedProEntitlement } from './settings/proEntitlementSeed';
 import { hasProFeatureAccess } from './settings/featureGate';
 import { DisposableRegistry } from './core/disposable';
 
-
-// Declare the variable that will be injected by the build process
-declare const EMBEDDED_README_CONTENT: string;
-
 // Import the new scene analysis function <<< UPDATED IMPORT
 
 // Constants for the view
