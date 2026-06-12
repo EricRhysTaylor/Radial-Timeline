@@ -1,5 +1,6 @@
 import { App, Setting as Settings } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import type { ReadabilityScale } from '../../types/settings';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -89,6 +90,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 plugin.settings.manuscriptOutputFolder = nextFolder;
                 // Outline exports share the destination; keep the legacy
                 // field in sync so a stale value can't diverge.
+                // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional legacy-sync write, mirrors main.ts migration
                 plugin.settings.outlineOutputFolder = nextFolder;
                 await plugin.saveSettings();
                 refreshExportChip(resolveExportOutputFolder(plugin));
@@ -205,7 +207,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 drop.addOption('large', t('settings.configuration.readability.large'));
                 drop.setValue(plugin.settings.readabilityScale ?? 'normal');
                 drop.onChange(async (value) => {
-                    plugin.settings.readabilityScale = value as any;
+                    plugin.settings.readabilityScale = value as ReadabilityScale;
                     await plugin.saveSettings();
                     clearFontMetricsCaches(); // Clear cached measurements for new scale
                     plugin.onSettingChanged(IMPACT_FULL); // Tier 3: font sizes/spacing change across entire timeline

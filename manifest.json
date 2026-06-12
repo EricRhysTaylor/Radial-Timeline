@@ -2,7 +2,7 @@
 	"id": "radial-timeline",
 	"name": "Radial timeline",
 	"version": "6.2.4",
-	"minAppVersion": "1.6.6",
+	"minAppVersion": "1.7.2",
 	"description": "Visualize longform writing projects as an interactive radial timeline that displays scenes organized by act, subplot, and narrative or chronological order for a complete view of the project.",
 	"author": "Eric Rhys Taylor",
 	"authorUrl": "https://github.com/EricRhysTaylor",

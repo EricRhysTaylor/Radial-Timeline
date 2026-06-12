@@ -8,8 +8,6 @@ import RadialTimelinePlugin from '../main';
 
 /**
  * FolderSuggest encapsulates folder suggestions for the source path setting.
- * It uses Vault.getAllFolders when available (minAppVersion 1.6.6),
- * falling back to getAllLoadedFiles for older app versions.
  */
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
   private plugin: RadialTimelinePlugin;
@@ -23,9 +21,7 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 
   getSuggestions(query: string): TFolder[] {
     const q = query?.toLowerCase() ?? '';
-    // Prefer Vault.getAllFolders when available
-    const folders = (this.app.vault as any).getAllFolders?.() as TFolder[] | undefined
-      ?? this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
+    const folders = this.app.vault.getAllFolders();
     if (!q) return folders;
     return folders.filter(f => f.path.toLowerCase().includes(q));
   }
@@ -38,10 +34,7 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
     const inputEl = this.text.inputEl;
     // Update the text field immediately for user feedback
     const normalized = normalizePath(folder.path);
-    try { this.text.setValue(normalized); } catch {}
-    if ((this as any).inputEl) {
-      try { (this as any).inputEl.value = normalized; } catch {}
-    }
+    this.text.setValue(normalized);
 
     // Validate and remember; only save the setting once on success
     void this.plugin.validateAndRememberPath(normalized).then(async (ok) => {
@@ -57,8 +50,8 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
         window.setTimeout(() => inputEl.removeClass('setting-input-error'), 2000);
       }
       // Close suggestions and focus input
-      try { this.close(); } catch {}
-      try { inputEl.focus(); } catch {}
+      this.close();
+      inputEl.focus();
     });
   }
 }
@@ -81,8 +74,7 @@ export class ModalFolderSuggest extends AbstractInputSuggest<TFolder> {
 
   getSuggestions(query: string): TFolder[] {
     const q = query?.toLowerCase() ?? '';
-    const folders = (this.app.vault as any).getAllFolders?.() as TFolder[] | undefined
-      ?? this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
+    const folders = this.app.vault.getAllFolders();
     if (!q) return folders;
     return folders.filter(f => f.path.toLowerCase().includes(q));
   }
@@ -93,10 +85,10 @@ export class ModalFolderSuggest extends AbstractInputSuggest<TFolder> {
 
   selectSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent): void {
     const normalized = normalizePath(folder.path);
-    try { this.inputRef.value = normalized; } catch {}
+    this.inputRef.value = normalized;
     this.onChoose(normalized);
-    try { this.close(); } catch {}
-    try { this.inputRef.focus(); } catch {}
+    this.close();
+    this.inputRef.focus();
   }
 }
 
