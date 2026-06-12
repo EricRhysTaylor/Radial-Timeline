@@ -703,7 +703,6 @@ body.rt-modal-open .radial-timeline-container * {
   outline: none;
   box-shadow: none;
   font-weight: inherit;
-  cursor: pointer;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;

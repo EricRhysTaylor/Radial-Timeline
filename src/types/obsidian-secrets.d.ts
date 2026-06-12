@@ -1,4 +1,4 @@
-/* global BaseComponent */
+/* global BaseComponent -- resolves to the obsidian module class inside this declare-module augmentation */
 import 'obsidian';
 
 declare module 'obsidian' {

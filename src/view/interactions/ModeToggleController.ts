@@ -1,7 +1,9 @@
 import { Notice } from 'obsidian';
 import { resetGossamerModeState } from '../../GossamerCommands';
 import { TimelineMode } from '../../modes/ModeDefinition';
-import type { RadialTimelineView } from '../TimeLineView';
+// Value import used only inside event handlers (call-time), keeping the
+// TimeLineView <-> controller cycle inert at module init.
+import { RadialTimelineView } from '../TimeLineView';
 import { getToggleableModes } from '../../modes/ModeRegistry';
 import {
     MODE_SELECTOR_POS_X,
@@ -316,7 +318,7 @@ export function setupModeToggleController(view: RadialTimelineView, svg: SVGSVGE
     // Register keyboard shortcuts (1, 2, 3, 4)
     const handleKeyPress = async (e: KeyboardEvent) => {
         // Only handle shortcuts when the radial timeline is the active view
-        const activeView = view.app.workspace.activeLeaf?.view;
+        const activeView = view.app.workspace.getActiveViewOfType(RadialTimelineView);
         if (activeView !== view) {
             return; // Different view is active, don't intercept
         }

@@ -1,4 +1,4 @@
-/* global __RT_DEV__ */
+/* global __RT_DEV__ -- build-time flags injected by esbuild define; see esbuild.config.mjs */
 /*
  * Radial Timeline Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
