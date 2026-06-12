@@ -1,18 +1,20 @@
-<div align="center">
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png">
+    <!-- Fallback img is the WHITE logo: renderers that ignore <picture> (e.g. the
+         community.obsidian.md listing page, which is dark-themed) show this one. -->
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="360" style="border-radius: 0;">
+  </picture>
+</p>
+<p align="center" style="font-family: sans-serif; font-size: 26px; margin-top: 12px; margin-bottom: 4px;">
+  <span style="font-weight: 100; letter-spacing: 10px;">Radial Timeline™</span>
+</p>
+<p align="center" style="font-family: sans-serif; font-size: 16px; margin-top: 0; margin-bottom: 10px;">
+  by Eric Rhys Taylor
+</p>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png">
-  <!-- Fallback img is the WHITE logo: renderers that ignore <picture> (e.g. the
-       community.obsidian.md listing page, which is dark-themed) show this one. -->
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="360">
-</picture>
-
-<br>
-
-<h1>Radial Timeline™<br><sub>by Eric Rhys Taylor</sub></h1>
-
-<p>
+<p align="center">
   <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
   <a href="https://obsidian.md/plugins?id=radial-timeline"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin downloads"></a>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=LICENSE&message=NON-COMMERCIAL&colorA=363a4f&colorB=b7bdf8" alt="License — non-commercial software license"></a>
@@ -20,8 +22,6 @@
   <a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aclosed+label%3Aenhancement"><img src="https://img.shields.io/github/issues-closed/EricRhysTaylor/radial-timeline/enhancement?colorA=363a4f&colorB=4a90e2&style=for-the-badge&label=closed%20enhancements" alt="Closed enhancements on GitHub"></a>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aissue+is%3Aopen+label%3Abug"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline/bug?colorA=363a4f&colorB=e93147&style=for-the-badge&label=bugs" alt="Open bugs on GitHub"></a>
 </p>
-
-</div>
 
 ## What It Does
 
