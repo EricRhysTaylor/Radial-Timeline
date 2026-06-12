@@ -691,7 +691,7 @@ export class InquiryMinimapRenderer {
             }
             const elapsed = now - (this.runningAnimationStart ?? now);
             onFrame?.(elapsed);
-            if (activeDocument.body.classList.contains('rt-modal-open')) {
+            if (styleSource.ownerDocument.body.classList.contains('rt-modal-open')) {
                 this.runningAnimationFrame = window.requestAnimationFrame(animate);
                 return;
             }

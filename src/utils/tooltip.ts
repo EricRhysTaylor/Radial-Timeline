@@ -401,12 +401,15 @@ export function cleanupTooltipAnchors(): void {
 
 // --- Internal Implementation ---
 
-function ensureCustomTooltip() {
-    if (customTooltipEl) return;
+function ensureCustomTooltip(doc: Document) {
+    // One tooltip exists at a time, in the document of the current hover
+    // target — recreate it when the user hovers in a different window.
+    if (customTooltipEl?.ownerDocument === doc) return;
 
-    customTooltipEl = activeDocument.createElement('div');
+    customTooltipEl?.remove();
+    customTooltipEl = doc.createElement('div');
     customTooltipEl.classList.add('rt-tooltip');
-    activeDocument.body.appendChild(customTooltipEl);
+    doc.body.appendChild(customTooltipEl);
 }
 
 function updateTooltipWidth(): void {
@@ -509,7 +512,7 @@ function showCustomTooltip(
     anchorPoint?: TooltipAnchorPoint,
     rtOnly = false
 ) {
-    if (!customTooltipEl) ensureCustomTooltip();
+    ensureCustomTooltip(target.ownerDocument);
     if (!customTooltipEl) return;
 
     // Cancel pending hide

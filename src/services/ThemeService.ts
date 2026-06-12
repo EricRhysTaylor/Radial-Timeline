@@ -1,11 +1,18 @@
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { getOpenDocuments } from '../utils/documents';
 
 export class ThemeService {
     constructor(private plugin: RadialTimelinePlugin) { }
 
+    /** Apply RT CSS variables to the main window and every open popout window. */
     applyCssVariables(): void {
-        const root = activeDocument.documentElement;
+        getOpenDocuments(this.plugin.app.workspace).forEach((doc) => this.applyCssVariablesToDocument(doc));
+    }
+
+    /** Apply RT CSS variables to one window's document (e.g. a popout that just opened). */
+    applyCssVariablesToDocument(doc: Document): void {
+        const root = doc.documentElement;
         const { publishStageColors, subplotColors } = this.plugin.settings;
 
         Object.entries(publishStageColors).forEach(([stage, color]) => {

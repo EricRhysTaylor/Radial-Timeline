@@ -544,6 +544,8 @@ export default class RadialTimelinePlugin extends Plugin {
         this.statusBarService = new StatusBarService(this);
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
+        // Popout windows have their own document — apply RT CSS variables as each opens.
+        this.registerEvent(this.app.workspace.on('window-open', (win) => this.themeService.applyCssVariablesToDocument(win.doc)));
         this.timelineMetricsService = new TimelineMetricsService(this);
         this.writingSessionService = new WritingSessionService(this);
         // Normalize session settings once and reconcile any session abandoned

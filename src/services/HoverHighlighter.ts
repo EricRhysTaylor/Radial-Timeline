@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { SceneHighlighter } from './SceneHighlighter';
+import { bindToAllDocuments } from '../utils/documents';
 
 /**
  * Handles hover interactions between Obsidian file explorer/tab hover and the timeline.
@@ -17,69 +18,9 @@ export class HoverHighlighter {
     ) {}
 
     register(): void {
-        // File explorer hover
-        this.plugin.registerDomEvent(activeDocument, 'mouseover', (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const fileItem = target.closest('.nav-file-title');
-            if (!fileItem) return;
-            const navFile = fileItem.closest('.nav-file');
-            if (!navFile) return;
-            const filePath = navFile.getAttribute('data-path');
-            if (!filePath) return;
-            if (this.currentHoverPath === filePath) return;
-            this.currentHoverPath = filePath;
-            if (this.highlighter.isSceneFile(filePath)) {
-                this.highlighter.highlight(filePath, true);
-            }
-        });
-
-        this.plugin.registerDomEvent(activeDocument, 'mouseout', (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const fileItem = target.closest('.nav-file-title');
-            if (!fileItem) return;
-            const navFile = fileItem.closest('.nav-file');
-            if (!navFile) return;
-            const filePath = navFile.getAttribute('data-path');
-            if (!filePath || this.currentHoverPath !== filePath) return;
-            this.currentHoverPath = null;
-            if (this.highlighter.isSceneFile(filePath)) {
-                this.highlighter.highlight(filePath, false);
-            }
-        });
-
-        // Tab hover
-        this.plugin.registerDomEvent(activeDocument, 'mouseover', (evt: MouseEvent) => {
-            const tabHeader = (evt.target as HTMLElement).closest('.workspace-tab-header');
-            if (!tabHeader) return;
-            const tabId = tabHeader.getAttribute('data-tab-id');
-            if (!tabId) return;
-            const leaf = this.app.workspace.getLeafById(tabId);
-            if (!leaf) return;
-            const state = leaf.getViewState();
-            const filePath = state?.state?.file as string | undefined;
-            if (!filePath || state?.type !== 'markdown') return;
-            if (this.currentTabHoverPath === filePath) return;
-            this.currentTabHoverPath = filePath;
-            if (this.highlighter.isSceneFile(filePath)) {
-                this.highlighter.highlight(filePath, true);
-            }
-        });
-
-        this.plugin.registerDomEvent(activeDocument, 'mouseout', (evt: MouseEvent) => {
-            const tabHeader = (evt.target as HTMLElement).closest('.workspace-tab-header');
-            if (!tabHeader) return;
-            const tabId = tabHeader.getAttribute('data-tab-id');
-            if (!tabId) return;
-            const leaf = this.app.workspace.getLeafById(tabId);
-            if (!leaf) return;
-            const state = leaf.getViewState();
-            const filePath = state?.state?.file as string | undefined;
-            if (!filePath || state?.type !== 'markdown' || this.currentTabHoverPath !== filePath) return;
-            this.currentTabHoverPath = null;
-            if (this.highlighter.isSceneFile(filePath)) {
-                this.highlighter.highlight(filePath, false);
-            }
-        });
+        // Hover targets (file explorer rows, tab headers) exist per window —
+        // listen on every open document, including popouts opened later.
+        bindToAllDocuments(this.plugin, (doc) => this.registerHoverListeners(doc));
 
         // File open highlighting
         this.plugin.registerEvent(this.app.workspace.on('file-open', (file) => {
@@ -100,5 +41,71 @@ export class HoverHighlighter {
                 }
             }
         }));
+    }
+
+    private registerHoverListeners(doc: Document): void {
+        // File explorer hover
+        this.plugin.registerDomEvent(doc, 'mouseover', (evt: MouseEvent) => {
+            const target = evt.target as HTMLElement;
+            const fileItem = target.closest('.nav-file-title');
+            if (!fileItem) return;
+            const navFile = fileItem.closest('.nav-file');
+            if (!navFile) return;
+            const filePath = navFile.getAttribute('data-path');
+            if (!filePath) return;
+            if (this.currentHoverPath === filePath) return;
+            this.currentHoverPath = filePath;
+            if (this.highlighter.isSceneFile(filePath)) {
+                this.highlighter.highlight(filePath, true);
+            }
+        });
+
+        this.plugin.registerDomEvent(doc, 'mouseout', (evt: MouseEvent) => {
+            const target = evt.target as HTMLElement;
+            const fileItem = target.closest('.nav-file-title');
+            if (!fileItem) return;
+            const navFile = fileItem.closest('.nav-file');
+            if (!navFile) return;
+            const filePath = navFile.getAttribute('data-path');
+            if (!filePath || this.currentHoverPath !== filePath) return;
+            this.currentHoverPath = null;
+            if (this.highlighter.isSceneFile(filePath)) {
+                this.highlighter.highlight(filePath, false);
+            }
+        });
+
+        // Tab hover
+        this.plugin.registerDomEvent(doc, 'mouseover', (evt: MouseEvent) => {
+            const tabHeader = (evt.target as HTMLElement).closest('.workspace-tab-header');
+            if (!tabHeader) return;
+            const tabId = tabHeader.getAttribute('data-tab-id');
+            if (!tabId) return;
+            const leaf = this.app.workspace.getLeafById(tabId);
+            if (!leaf) return;
+            const state = leaf.getViewState();
+            const filePath = state?.state?.file as string | undefined;
+            if (!filePath || state?.type !== 'markdown') return;
+            if (this.currentTabHoverPath === filePath) return;
+            this.currentTabHoverPath = filePath;
+            if (this.highlighter.isSceneFile(filePath)) {
+                this.highlighter.highlight(filePath, true);
+            }
+        });
+
+        this.plugin.registerDomEvent(doc, 'mouseout', (evt: MouseEvent) => {
+            const tabHeader = (evt.target as HTMLElement).closest('.workspace-tab-header');
+            if (!tabHeader) return;
+            const tabId = tabHeader.getAttribute('data-tab-id');
+            if (!tabId) return;
+            const leaf = this.app.workspace.getLeafById(tabId);
+            if (!leaf) return;
+            const state = leaf.getViewState();
+            const filePath = state?.state?.file as string | undefined;
+            if (!filePath || state?.type !== 'markdown' || this.currentTabHoverPath !== filePath) return;
+            this.currentTabHoverPath = null;
+            if (this.highlighter.isSceneFile(filePath)) {
+                this.highlighter.highlight(filePath, false);
+            }
+        });
     }
 }

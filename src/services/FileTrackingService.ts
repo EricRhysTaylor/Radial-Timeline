@@ -1,8 +1,9 @@
 import type RadialTimelinePlugin from '../main';
 import { TFile, TAbstractFile, MarkdownView } from 'obsidian';
+import { bindToAllDocuments, getOpenDocuments } from '../utils/documents';
 
 export class FileTrackingService {
-    private modalStateObserver?: MutationObserver;
+    private modalStateObservers = new Map<Document, MutationObserver>();
     private modalStateSyncRaf?: number;
 
     constructor(private plugin: RadialTimelinePlugin) {}
@@ -52,16 +53,16 @@ export class FileTrackingService {
 
     registerWorkspaceListeners(): void {
         this.plugin.app.workspace.onLayoutReady(() => {
-            this.installModalStateObserver();
+            this.installModalStateObservers();
             this.plugin.setCSSColorVariables();
             this.updateOpenFilesTracking();
         });
 
         this.plugin.registerEvent(this.plugin.app.workspace.on('layout-change', () => {
             // Avoid refreshing while a modal or the plugin settings tab is open (prevents flicker).
-            if (this.isModalOpen() || this.isSettingsTabOpen()) {
+            if (this.isAnyModalOrSettingsOpen()) {
                 window.setTimeout(() => {
-                    if (!this.isModalOpen() && !this.isSettingsTabOpen()) {
+                    if (!this.isAnyModalOrSettingsOpen()) {
                         const refreshedForOpenFiles = this.updateOpenFilesTracking();
                         if (!refreshedForOpenFiles) {
                             this.plugin.refreshTimelineIfNeeded(null);
@@ -100,39 +101,54 @@ export class FileTrackingService {
         }));
     }
 
-    private installModalStateObserver(): void {
-        const doc = activeDocument;
-        if (this.modalStateObserver || !doc.body) return;
+    private installModalStateObservers(): void {
+        // Modals open in whichever window is active — observe every open
+        // document (including popouts opened later) so the rt-modal-open
+        // body class tracks the document the modal actually lives in.
+        bindToAllDocuments(this.plugin, (doc) => this.observeModalState(doc));
 
-        this.syncModalOpenBodyClass();
-        this.modalStateObserver = new MutationObserver(() => this.scheduleModalStateSync());
-        this.modalStateObserver.observe(doc.body, { childList: true, subtree: true });
+        this.plugin.registerEvent(this.plugin.app.workspace.on('window-close', (win) => {
+            this.modalStateObservers.get(win.doc)?.disconnect();
+            this.modalStateObservers.delete(win.doc);
+        }));
 
         this.plugin.register(() => {
-            if (this.modalStateObserver) {
-                this.modalStateObserver.disconnect();
-                this.modalStateObserver = undefined;
-            }
+            this.modalStateObservers.forEach((observer, doc) => {
+                observer.disconnect();
+                doc.body.classList.remove('rt-modal-open');
+            });
+            this.modalStateObservers.clear();
             if (this.modalStateSyncRaf) {
                 window.cancelAnimationFrame(this.modalStateSyncRaf);
                 this.modalStateSyncRaf = undefined;
             }
-            doc.body.classList.remove('rt-modal-open');
         });
+    }
+
+    private observeModalState(doc: Document): void {
+        if (this.modalStateObservers.has(doc) || !doc.body) return;
+
+        this.syncModalOpenBodyClass(doc);
+        const observer = new MutationObserver(() => this.scheduleModalStateSync());
+        observer.observe(doc.body, { childList: true, subtree: true });
+        this.modalStateObservers.set(doc, observer);
     }
 
     private scheduleModalStateSync(): void {
         if (this.modalStateSyncRaf) return;
         this.modalStateSyncRaf = window.requestAnimationFrame(() => {
             this.modalStateSyncRaf = undefined;
-            this.syncModalOpenBodyClass();
+            this.modalStateObservers.forEach((_observer, doc) => this.syncModalOpenBodyClass(doc));
         });
     }
 
-    private syncModalOpenBodyClass(): void {
-        const doc = activeDocument;
-        if (!doc.body) return;
-        doc.body.classList.toggle('rt-modal-open', this.isModalOpen());
+    private syncModalOpenBodyClass(doc: Document): void {
+        doc.body.classList.toggle('rt-modal-open', this.isModalOpen(doc));
+    }
+
+    private isAnyModalOrSettingsOpen(): boolean {
+        return getOpenDocuments(this.plugin.app.workspace)
+            .some((doc) => this.isModalOpen(doc) || this.isSettingsTabOpen(doc));
     }
 
     private handleFileRename(file: TAbstractFile, oldPath: string): void {
@@ -150,9 +166,8 @@ export class FileTrackingService {
      * This prevents timeline refreshes while a modal is visible, which causes UI flicker.
      * Checks multiple selectors to catch settings modal, plugins modal, and standard modals.
      */
-    private isModalOpen(): boolean {
+    private isModalOpen(doc: Document): boolean {
         try {
-            const doc = activeDocument;
             // Check for standard modal container with content
             const modalContainer = doc.body.querySelector('.modal-container');
             if (modalContainer && modalContainer.childElementCount > 0) return true;
@@ -175,9 +190,9 @@ export class FileTrackingService {
      * Detect if the Radial Timeline settings tab is currently open.
      * Skips layout-change-driven refresh while the user is in settings to avoid panel flicker.
      */
-    private isSettingsTabOpen(): boolean {
+    private isSettingsTabOpen(doc: Document): boolean {
         try {
-            return activeDocument.body.querySelector('.ert-settings-root') != null;
+            return doc.body.querySelector('.ert-settings-root') != null;
         } catch {
             return false;
         }
