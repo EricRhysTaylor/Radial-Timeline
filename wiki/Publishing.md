@@ -235,7 +235,7 @@ The exporter:
 4. Emits scene prose separated by ornaments inside each chapter.
 5. Hands the assembled markdown to Pandoc, which produces a PDF.
 
-Output goes to `Radial Timeline/Export/` by default. The export destination is shown in **Settings → Advanced → Configuration**.
+Output always goes to `Radial Timeline/Export/` inside your vault. This location is fixed and not configurable; the read-only path shown in **Settings → Advanced → Configuration → Export folder** is informational only — clicking it reveals the folder in Obsidian's file explorer. To keep exports elsewhere (for example a Google Drive folder), point a sync/symlink at `Radial Timeline/Export/`, or copy the generated files out after exporting.
 
 ### Minimum viable Signature manuscript
 
@@ -276,7 +276,7 @@ The export panel lets you:
 - Review export checks for missing templates, missing fonts, template compatibility, and layout-specific warnings
 - Preview the selected layout's page structure before generating a PDF
 
-Files land in `Radial Timeline/Export/` unless you've set a custom export folder.
+Files land in `Radial Timeline/Export/` inside your vault. This destination is fixed and not user-configurable.
 
 For the end-to-end export workflow and troubleshooting, start here and use the checks in the export panel to catch missing Pandoc, LaTeX, templates, or fonts before rendering.
 
