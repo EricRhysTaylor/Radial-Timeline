@@ -14,7 +14,7 @@ export class StatusBarService {
                     this.plugin.activeBeatsModal.open();
                 }
             });
-            this.beatsStatusBarItem.style.cursor = 'pointer';
+            this.beatsStatusBarItem.addClass('ert-cursor-pointer');
             this.beatsStatusBarItem.title = 'Click to view progress';
         }
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;

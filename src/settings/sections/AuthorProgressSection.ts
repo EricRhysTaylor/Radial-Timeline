@@ -305,13 +305,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     type AprProgressMode = 'stage' | 'date' | 'full';
     const progressTrackingCard = stylingBody.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush ${ERT_CLASSES.STACK}` });
 
-    const progressModeGrid = progressTrackingCard.createDiv({ cls: ERT_CLASSES.GRID_FORM });
-    progressModeGrid.style.gridTemplateColumns = 'minmax(0, 0.85fr) auto minmax(0, 1.15fr)';
-    progressModeGrid.style.columnGap = 'var(--ert-gap-md)';
+    const progressModeGrid = progressTrackingCard.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ert-apr-progressModeGrid` });
 
     const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-    const stageBadgeRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
-    stageBadgeRow.style.alignSelf = 'flex-start';
+    const stageBadgeRow = stageCell.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-apr-stageBadgeRow` });
     const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'TRACKING STAGE' });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
     const stageSubNote = stageCell.createDiv({ cls: `${ERT_CLASSES.FIELD_NOTE} ert-apr-stageSubNote` });

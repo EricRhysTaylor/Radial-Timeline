@@ -84,5 +84,5 @@ export function setupVersionIndicatorController(view: VersionIndicatorView, svg:
     view.registerDomEvent(versionIndicator as unknown as HTMLElement, 'click', handleClick);
     
     // Set cursor to pointer for the entire indicator area
-    versionIndicator.style.cursor = 'pointer';
+    versionIndicator.classList.add('ert-cursor-pointer');
 }

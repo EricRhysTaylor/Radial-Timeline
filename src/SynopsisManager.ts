@@ -2320,8 +2320,8 @@ export default class SynopsisManager {
       iconG.setAttribute('stroke-width', '2');
       iconG.setAttribute('stroke-linecap', 'round');
       iconG.setAttribute('stroke-linejoin', 'round');
-      iconG.style.stroke = "";
-      iconG.style.fill = "";
+      iconG.style.removeProperty('stroke');
+      iconG.style.removeProperty('fill');
     });
   }
 

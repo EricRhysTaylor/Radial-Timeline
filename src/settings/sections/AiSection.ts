@@ -2664,10 +2664,8 @@ export function renderAiSection(params: {
         let secureKeyInput: HTMLInputElement | null = null;
         const setSettingRowVisible = (setting: Settings, visible: boolean): void => {
             if (visible) {
-                setting.settingEl.style.removeProperty('display');
                 setting.settingEl.removeAttribute('hidden');
             } else {
-                setting.settingEl.style.setProperty('display', 'none', 'important');
                 setting.settingEl.setAttribute('hidden', '');
             }
             setting.settingEl.toggleClass('ert-settings-hidden', !visible);

@@ -98,9 +98,7 @@ function measureWithTemporarySvg(config: FontMetricsCacheConfig, chars: string):
     const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '0');
     svg.setAttribute('height', '0');
-    svg.style.position = 'absolute'; // SAFE: inline style used for temporary measurement element
-    svg.style.visibility = 'hidden'; // SAFE: inline style used for temporary measurement element
-    svg.style.pointerEvents = 'none'; // SAFE: inline style used for temporary measurement element
+    svg.classList.add('ert-offscreen-measure');
     doc.body.appendChild(svg);
 
     // Create measurement text element with dynamic font config

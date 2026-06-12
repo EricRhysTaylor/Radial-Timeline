@@ -1303,7 +1303,7 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     foreignObject.setAttribute('width', String(RT_SIZE));
     foreignObject.setAttribute('height', String(RT_SIZE));
     foreignObject.setAttribute('class', 'rt-runtime-icon-container');
-    foreignObject.style.pointerEvents = 'none';
+    foreignObject.classList.add('ert-pointer-events-none');
 
     // Create the icon wrapper div
     const iconWrapper = activeDocument.createElement('div');

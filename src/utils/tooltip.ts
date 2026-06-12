@@ -543,8 +543,8 @@ function showCustomTooltip(
             customTooltipEl.style.setProperty('--rt-tooltip-tone-color', toneColor);
         }
     }
-    customTooltipEl.style.left = '0px';
-    customTooltipEl.style.top = '0px';
+    customTooltipEl.style.removeProperty('left');
+    customTooltipEl.style.removeProperty('top');
     updateTooltipWidth();
 
     customTooltipEl.classList.add(`rt-placement-${placement}`);

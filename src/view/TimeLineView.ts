@@ -2735,7 +2735,7 @@ export class RadialTimelineView extends ItemView {
         foreignObject.setAttribute('width', String(panelWidth));
         foreignObject.setAttribute('height', String(panelHeight));
         foreignObject.setAttribute('class', 'rt-recent-moves-fo');
-        foreignObject.style.pointerEvents = 'none';
+        foreignObject.classList.add('ert-pointer-events-none');
 
         const panel = doc.createElementNS(xhtmlNs, 'section');
         panel.className = 'rt-recent-moves';
@@ -2819,7 +2819,7 @@ export class RadialTimelineView extends ItemView {
         foreignObject.setAttribute('width', String(panelWidth));
         foreignObject.setAttribute('height', String(panelHeight));
         foreignObject.setAttribute('class', 'rt-gossamer-runs-fo');
-        foreignObject.style.pointerEvents = 'none';
+        foreignObject.classList.add('ert-pointer-events-none');
 
         const panel = doc.createElementNS(xhtmlNs, 'section');
         panel.className = 'rt-gossamer-runs';

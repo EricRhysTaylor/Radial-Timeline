@@ -1660,13 +1660,13 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
     // PANDOC & EXPORT SETTINGS
     // ─────────────────────────────────────────────────────────────────────────
     const publishingStagesPanel = section.createDiv({ cls: `${ERT_CLASSES.STACK}` });
-    publishingStagesPanel.style.order = '5';
+    publishingStagesPanel.addClass('ert-publish-order--stages');
     const statusShell = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-shell' });
     const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
     const setupActionRow = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-action' });
 
     const pandocIntroPanel = section.createDiv({ cls: ERT_CLASSES.STACK });
-    pandocIntroPanel.style.order = '10';
+    pandocIntroPanel.addClass('ert-publish-order--pandoc-intro');
     const pandocHeading = addProRow(new Setting(pandocIntroPanel))
         .setName('Export & publishing')
         .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below. Exports run the Pandoc and LaTeX programs already installed on your computer — nothing else is downloaded or executed.')
@@ -1679,7 +1679,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}`,
         attr: { [ERT_DATA.SECTION]: 'export-check' }
     });
-    systemConfigPanel.style.order = '50';
+    systemConfigPanel.addClass('ert-publish-order--export-check');
     // Hidden by default — revealed when validation fails or user expands Advanced
     systemConfigPanel.addClass('is-hidden');
     const revealSystemConfig = () => {
@@ -1831,7 +1831,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'pdf-style' }
     });
-    layoutPanel.style.order = '40';
+    layoutPanel.addClass('ert-publish-order--pdf-style');
     const layoutHeading = addProRow(new Setting(layoutPanel))
         .setName('PDF Style')
         .setDesc('Choose the style used for exported PDFs. Built-in and custom styles are listed below.')
@@ -3077,7 +3077,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-details' }
     });
-    bookMetaPreviewPanel.style.order = '20';
+    bookMetaPreviewPanel.addClass('ert-publish-order--book-details');
     const previewBody = bookMetaPreviewPanel.createDiv({ cls: 'ert-bookmeta-preview-body' });
     const renderBookMetaPreview = () => {
         previewBody.empty();
@@ -3597,9 +3597,6 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                 const isOverridden = !!fieldDef.role && overriddenRoles.has(fieldDef.role);
                 const overrideClass = isOverridden ? ' is-overridden' : '';
                 const row = list.createDiv({ cls: `ert-bookmeta-matter-row${fieldDef.tone ? ` ert-bookmeta-matter-row--${fieldDef.tone}` : ''}${overrideClass}` });
-                if (isOverridden) {
-                    row.style.opacity = '0.6'; // SAFE: calm awareness, not alarm — no red, no strikethrough
-                }
                 const textCol = row.createDiv({ cls: `ert-bookmeta-matter-field${fieldDef.tone ? ` ert-bookmeta-matter-field--${fieldDef.tone}` : ''}` });
                 renderBookMetaValue(
                     textCol,
@@ -3782,7 +3779,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-pages' }
     });
-    publishingSetupPanel.style.order = '30';
+    publishingSetupPanel.addClass('ert-publish-order--book-pages');
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
         .setName('Book Pages')
         .setDesc('Review and reorder the pages that will be included in your manuscript.')
@@ -4315,7 +4312,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
 
     // ── "Advanced configuration" disclosure toggle ─────────────────────────
     const advancedToggle = section.createDiv({ cls: 'ert-advanced-config-toggle' });
-    advancedToggle.style.order = '49';
+    advancedToggle.addClass('ert-publish-order--advanced-toggle');
     const advancedLink = advancedToggle.createEl('a', {
         cls: 'ert-advanced-config-link',
         text: 'Advanced configuration',

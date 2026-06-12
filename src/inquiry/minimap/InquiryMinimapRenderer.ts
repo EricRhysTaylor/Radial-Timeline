@@ -680,7 +680,7 @@ export class InquiryMinimapRenderer {
         this.backboneOscillationPhaseOffset = Math.PI / 2;
         this.setRunningBackboneProgress(0);
         if (this.minimapBaseline) {
-            this.minimapBaseline.style.stroke = '';
+            this.minimapBaseline.style.removeProperty('stroke');
         }
         this.minimapEndCapStart?.style.removeProperty('fill');
         this.minimapEndCapEnd?.style.removeProperty('fill');
@@ -1061,7 +1061,7 @@ export class InquiryMinimapRenderer {
         const overCapacityTone: 'amber' | 'red' = usesMultiPassPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext, readinessUi.safeInputBudget, formatTokenEstimate);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
-        this.minimapBaseline.style.stroke = '';
+        this.minimapBaseline.style.removeProperty('stroke');
         this.minimapEndCapStart?.style.removeProperty('fill');
         this.minimapEndCapEnd?.style.removeProperty('fill');
 

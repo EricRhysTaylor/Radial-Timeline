@@ -39,5 +39,5 @@ export function setupHelpIconController(view: HelpIconView, svg: SVGSVGElement):
     }
     
     // Set cursor to pointer
-    helpIcon.style.cursor = 'pointer';
+    helpIcon.classList.add('ert-cursor-pointer');
 }

@@ -2341,6 +2341,9 @@
 
 .rt-tooltip {
   position: fixed;
+  /* Default to origin; show logic clears stale inline left/top before measuring */
+  left: 0;
+  top: 0;
   z-index: 9999;
   /* High z-index to sit above everything */
   background-color: var(--background-modifier-message);

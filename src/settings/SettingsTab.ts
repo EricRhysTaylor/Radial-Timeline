@@ -168,10 +168,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 const htmlIcon = icon as HTMLElement;
                 if (isSelected) {
                     htmlIcon.removeAttribute('aria-disabled');
-                    htmlIcon.style.pointerEvents = '';
+                    htmlIcon.classList.remove('ert-pointer-events-none');
                 } else {
                     htmlIcon.setAttribute('aria-disabled', 'true');
-                    htmlIcon.style.pointerEvents = 'none';
+                    htmlIcon.classList.add('ert-pointer-events-none');
                 }
             });
         });

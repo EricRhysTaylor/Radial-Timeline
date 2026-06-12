@@ -927,6 +927,60 @@
   stroke-width: 2;
 }
 
+/* Corpus legend icon primitives (stroke colors that vary per row stay inline) */
+.ert-inquiry-cc-legend-question-ring {
+  fill: none;
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-cc-legend-mouse-body {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.ert-inquiry-cc-legend-mouse-divider {
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.ert-inquiry-cc-legend-mouse-button {
+  fill: currentColor;
+  opacity: 0.22;
+  stroke: none;
+}
+
+.ert-inquiry-cc-legend-mode-full {
+  fill: #00ff00;
+}
+
+.ert-inquiry-cc-legend-mode-summary-ring {
+  fill: none;
+  stroke: #3b82ff;
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-cc-legend-mode-summary-dot {
+  fill: #3b82ff;
+}
+
+.ert-inquiry-cc-legend-mode-exclude {
+  fill: none;
+  stroke: #ff4d4f;
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-cc-legend-tier-fill {
+  fill: color-mix(in srgb, var(--text-normal) 40%, transparent);
+}
+
+.ert-inquiry-cc-legend-alert-line {
+  stroke: #ff4d4f;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 .ert-inquiry-cc-legend-label {
   font-size: 16px;
   font-weight: 500;

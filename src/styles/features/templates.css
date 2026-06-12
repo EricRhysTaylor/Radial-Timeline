@@ -266,6 +266,10 @@
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
 }
 
+.ert-ui.ert-scope--settings .ert-custom-beat-placeholder-text {
+  grid-column: 5 / -1;
+}
+
 .ert-ui.ert-scope--settings .ert-beat-range-input {
   width: 80px;
   text-align: center;

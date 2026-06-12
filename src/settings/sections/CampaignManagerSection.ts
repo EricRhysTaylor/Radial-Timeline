@@ -824,7 +824,6 @@ function renderCampaignDetails(
         };
 
         const styleGrid = styleBlock.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ert-campaign-style-grid` });
-        styleGrid.style.gridTemplateColumns = 'minmax(0, 1.2fr) minmax(0, 1fr)';
 
         const createStyleCard = (title: string, description: string) => {
             const cardEl = styleGrid.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-panel--muted ${ERT_CLASSES.STACK} ert-campaign-style-card` });

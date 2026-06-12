@@ -254,6 +254,26 @@
   display: none;
 }
 
+/* Global single-purpose utilities (replace inline styles; usable outside ert-ui scopes) */
+.ert-cursor-pointer {
+  cursor: pointer;
+}
+
+.ert-pointer-events-none {
+  pointer-events: none;
+}
+
+.ert-setting-dimmed {
+  opacity: 0.6;
+}
+
+/* Off-screen element used only for text measurement */
+.ert-offscreen-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .ert-ui.ert-scope--settings .ert-metrics-sample {
   position: absolute;
   visibility: hidden;
@@ -1265,6 +1285,10 @@
   color: var(--text-faint);
 }
 
+.ert-ui.ert-scope--settings .ert-controlGroup__cell--span {
+  grid-column: 1 / -1;
+}
+
 .ert-ui.ert-scope--settings .ert-controlGroup__cell--mono {
   font-family: var(--font-monospace);
   font-variant-numeric: tabular-nums;
@@ -2031,6 +2055,15 @@
 .ert-ui .ert-apr-stageSubNote {
   color: var(--text-faint);
   font-style: italic;
+}
+
+.ert-ui .ert-apr-progressModeGrid {
+  grid-template-columns: minmax(0, 0.85fr) auto minmax(0, 1.15fr);
+  column-gap: var(--ert-gap-md);
+}
+
+.ert-ui .ert-apr-stageBadgeRow {
+  align-self: flex-start;
 }
 
 .ert-ui .ert-apr-flow__tick-line {
@@ -4600,6 +4633,11 @@
   line-height: 1.4;
 }
 
+.ert-ui .ert-modal-subtitle--quiet {
+  opacity: 0.7;
+  margin-top: 8px;
+}
+
 .ert-ui .ert-manuscript-modal-description {
   max-width: 58rem;
 }
@@ -6599,6 +6637,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-style-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: var(--ert-gap-md);
 }
 
@@ -7837,6 +7876,15 @@
   background: color-mix(in srgb, var(--background-modifier-border) 86%, transparent);
 }
 
+/* Visual order of the publish section panels (DOM order differs from display order) */
+.ert-ui.ert-scope--settings .ert-publish-order--stages { order: 5; }
+.ert-ui.ert-scope--settings .ert-publish-order--pandoc-intro { order: 10; }
+.ert-ui.ert-scope--settings .ert-publish-order--book-details { order: 20; }
+.ert-ui.ert-scope--settings .ert-publish-order--book-pages { order: 30; }
+.ert-ui.ert-scope--settings .ert-publish-order--pdf-style { order: 40; }
+.ert-ui.ert-scope--settings .ert-publish-order--advanced-toggle { order: 49; }
+.ert-ui.ert-scope--settings .ert-publish-order--export-check { order: 50; }
+
 .ert-ui.ert-scope--settings .ert-publishing-status-shell {
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
   border-radius: 12px;
@@ -8766,6 +8814,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-sm);
+}
+
+/* Overridden fields read as calm awareness, not alarm — no red, no strikethrough */
+.ert-ui.ert-scope--settings .ert-bookmeta-matter-row.is-overridden {
+  opacity: 0.6;
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-matter-row {

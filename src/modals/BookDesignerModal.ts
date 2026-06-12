@@ -92,7 +92,7 @@ class SaveTemplateModal extends Modal {
             .onClick(() => this.close());
 
         footer.querySelectorAll('button').forEach(btn => {
-            btn.style.cursor = 'pointer';
+            btn.classList.add('ert-cursor-pointer');
         });
     }
 
@@ -147,7 +147,7 @@ class DeleteTemplateModal extends Modal {
             .onClick(() => this.close());
 
         footer.querySelectorAll('button').forEach(btn => {
-            btn.style.cursor = 'pointer';
+            btn.classList.add('ert-cursor-pointer');
         });
     }
 }
@@ -213,7 +213,7 @@ class GenerateDemoProjectModal extends Modal {
             .onClick(() => this.close());
 
         footer.querySelectorAll('button').forEach(btn => {
-            btn.style.cursor = 'pointer';
+            btn.classList.add('ert-cursor-pointer');
         });
     }
 
@@ -979,7 +979,6 @@ export class BookDesignerModal extends Modal {
         const actSetting = structCard.createDiv({ cls: 'ert-manuscript-setting-row ert-manuscript-card-block ert-manuscript-acts-row' });
         actSetting.createDiv({ cls: 'ert-manuscript-setting-label', text: t('bookDesigner.fields.acts.label') });
         const actChecks = actSetting.createDiv({ cls: 'ert-manuscript-checkbox-row' });
-        actChecks.style.flexWrap = 'wrap';
         const actCountForUi = this.getMaxActs();
 
         Array.from({ length: actCountForUi }, (_, i) => i + 1).forEach(num => {
@@ -1224,7 +1223,7 @@ export class BookDesignerModal extends Modal {
 
         // Add cursor pointer to footer buttons
         footer.querySelectorAll('button').forEach(btn => {
-            btn.style.cursor = 'pointer';
+            btn.classList.add('ert-cursor-pointer');
         });
 
     }

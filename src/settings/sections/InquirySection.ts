@@ -751,11 +751,10 @@ export function renderInquirySection(params: SectionParams): void {
 
         if (!resolution.candidates.length) {
             const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-            const emptyCell = emptyRow.createDiv({
-                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
+            emptyRow.createDiv({
+                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint', 'ert-controlGroup__cell--span'],
                 text: t('settings.inquiry.booksTable.empty')
             });
-            emptyCell.style.gridColumn = '1 / -1';
         } else {
             resolution.candidates.forEach(book => {
                 const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });

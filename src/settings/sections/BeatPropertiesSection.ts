@@ -1234,8 +1234,7 @@ export function renderBeatPropertiesSection(params: {
                     placeholder.createDiv({ cls: 'ert-beat-row-info ert-beat-row-info--empty' });
                     placeholder.createDiv({ cls: 'ert-beat-ordinal ert-beat-ordinal--empty', text: '' });
                     placeholder.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
-                    const placeholderText = placeholder.createDiv({ cls: 'ert-custom-beat-placeholder-text', text: `Drop beat into ${actLabels[actIdx]}` });
-                    placeholderText.style.gridColumn = '5 / -1';
+                    placeholder.createDiv({ cls: 'ert-custom-beat-placeholder-text', text: `Drop beat into ${actLabels[actIdx]}` });
 
                     plugin.registerDomEvent(placeholder, 'dragover', (e) => {
                         e.preventDefault();
@@ -5195,9 +5194,7 @@ export function renderBeatPropertiesSection(params: {
                 }
 
                 // Base fields preserved notice
-                const preserveNotice = body.createDiv({ cls: 'ert-modal-subtitle' });
-                preserveNotice.style.opacity = '0.7';
-                preserveNotice.style.marginTop = '8px';
+                const preserveNotice = body.createDiv({ cls: 'ert-modal-subtitle ert-modal-subtitle--quiet' });
                 preserveNotice.setText(`Base fields preserved: ${[...baseKeySet].join(', ')}`);
 
                 // Typed confirmation for valued fields
@@ -5522,7 +5519,7 @@ export function renderBeatPropertiesSection(params: {
                 setting.setName('Beat notes');
                 baseDesc = 'Add at least one beat above to create beat notes.';
                 setting.setDesc(baseDesc);
-                setting.settingEl.style.opacity = '0.6';
+                setting.settingEl.addClass('ert-setting-dimmed');
             }
         } else {
             setting.setName(`Beat notes in your vault for ${selectedSystem}`);

@@ -149,9 +149,8 @@ function buildCorpusLegendPanel(
         circle.setAttribute('cx', String(cx));
         circle.setAttribute('cy', String(cy));
         circle.setAttribute('r', String(questionR));
-        circle.style.fill = 'none';
+        circle.classList.add('ert-inquiry-cc-legend-question-ring');
         circle.style.stroke = options.stroke;
-        circle.style.strokeWidth = '1.2';
         if (options.dasharray) {
             circle.style.strokeDasharray = options.dasharray;
         }
@@ -209,9 +208,7 @@ function buildCorpusLegendPanel(
                         body.setAttribute('height', String(mouseH));
                         body.setAttribute('rx', String(radius));
                         body.setAttribute('ry', String(radius));
-                        body.style.fill = 'none';
-                        body.style.stroke = 'currentColor';
-                        body.style.strokeWidth = '1.6';
+                        body.classList.add('ert-inquiry-cc-legend-mouse-body');
                         g.appendChild(body);
 
                         const divider = createSvgElement('line');
@@ -219,9 +216,7 @@ function buildCorpusLegendPanel(
                         divider.setAttribute('y1', String(mouseY + 2));
                         divider.setAttribute('x2', String(cx));
                         divider.setAttribute('y2', String(mouseY + mouseH * 0.42));
-                        divider.style.stroke = 'currentColor';
-                        divider.style.strokeWidth = '1.4';
-                        divider.style.strokeLinecap = 'round';
+                        divider.classList.add('ert-inquiry-cc-legend-mouse-divider');
                         g.appendChild(divider);
 
                         const rightButton = createSvgElement('path');
@@ -236,9 +231,7 @@ function buildCorpusLegendPanel(
                                 'Z'
                             ].join(' ')
                         );
-                        rightButton.style.fill = 'currentColor';
-                        rightButton.style.opacity = '0.22';
-                        rightButton.style.stroke = 'none';
+                        rightButton.classList.add('ert-inquiry-cc-legend-mouse-button');
                         g.appendChild(rightButton);
                     }
                 }
@@ -253,7 +246,7 @@ function buildCorpusLegendPanel(
                         const c = createSvgElement('circle');
                         c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
                         c.setAttribute('r', String(circleR));
-                        c.style.fill = '#00ff00';
+                        c.classList.add('ert-inquiry-cc-legend-mode-full');
                         g.appendChild(c);
                     }
                 },
@@ -263,12 +256,12 @@ function buildCorpusLegendPanel(
                         const outer = createSvgElement('circle');
                         outer.setAttribute('cx', String(cx)); outer.setAttribute('cy', String(cy));
                         outer.setAttribute('r', String(circleR));
-                        outer.style.fill = 'none'; outer.style.stroke = '#3b82ff'; outer.style.strokeWidth = '1.2';
+                        outer.classList.add('ert-inquiry-cc-legend-mode-summary-ring');
                         g.appendChild(outer);
                         const dot = createSvgElement('circle');
                         dot.setAttribute('cx', String(cx)); dot.setAttribute('cy', String(cy));
                         dot.setAttribute('r', String(innerR));
-                        dot.style.fill = '#3b82ff';
+                        dot.classList.add('ert-inquiry-cc-legend-mode-summary-dot');
                         g.appendChild(dot);
                     }
                 },
@@ -278,7 +271,7 @@ function buildCorpusLegendPanel(
                         const c = createSvgElement('circle');
                         c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
                         c.setAttribute('r', String(circleR));
-                        c.style.fill = 'none'; c.style.stroke = '#ff4d4f'; c.style.strokeWidth = '1.2';
+                        c.classList.add('ert-inquiry-cc-legend-mode-exclude');
                         g.appendChild(c);
                     }
                 }
@@ -332,7 +325,7 @@ function buildCorpusLegendPanel(
                         f.setAttribute('x', String(cx - noteW / 2 + xInset)); f.setAttribute('y', String(cy - noteH / 2 + yInset));
                         f.setAttribute('width', String(noteW - xInset * 2)); f.setAttribute('height', String(noteH - yInset * 2));
                         f.setAttribute('rx', '1'); f.setAttribute('ry', '1');
-                        f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
+                        f.classList.add('ert-inquiry-cc-legend-tier-fill');
                         g.appendChild(f);
                     }
                 },
@@ -346,7 +339,7 @@ function buildCorpusLegendPanel(
                         f.setAttribute('y', String(cy + noteH / 2 - yInset - fillH));
                         f.setAttribute('width', String(noteW - xInset * 2)); f.setAttribute('height', String(fillH));
                         f.setAttribute('rx', '1'); f.setAttribute('ry', '1');
-                        f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
+                        f.classList.add('ert-inquiry-cc-legend-tier-fill');
                         g.appendChild(f);
                     }
                 },
@@ -360,7 +353,7 @@ function buildCorpusLegendPanel(
                         f.setAttribute('y', String(cy + noteH / 2 - yInset - fillH));
                         f.setAttribute('width', String(noteW - xInset * 2)); f.setAttribute('height', String(fillH));
                         f.setAttribute('rx', '1'); f.setAttribute('ry', '1');
-                        f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
+                        f.classList.add('ert-inquiry-cc-legend-tier-fill');
                         g.appendChild(f);
                     }
                 },
@@ -382,12 +375,12 @@ function buildCorpusLegendPanel(
                         const l1 = createSvgElement('line');
                         l1.setAttribute('x1', String(cx - noteW / 2 + xInset)); l1.setAttribute('y1', String(cy - noteH / 2 + yInset));
                         l1.setAttribute('x2', String(cx + noteW / 2 - xInset)); l1.setAttribute('y2', String(cy + noteH / 2 - yInset));
-                        l1.style.stroke = '#ff4d4f'; l1.style.strokeWidth = '2'; l1.style.strokeLinecap = 'round';
+                        l1.classList.add('ert-inquiry-cc-legend-alert-line');
                         g.appendChild(l1);
                         const l2 = createSvgElement('line');
                         l2.setAttribute('x1', String(cx + noteW / 2 - xInset)); l2.setAttribute('y1', String(cy - noteH / 2 + yInset));
                         l2.setAttribute('x2', String(cx - noteW / 2 + xInset)); l2.setAttribute('y2', String(cy + noteH / 2 - yInset));
-                        l2.style.stroke = '#ff4d4f'; l2.style.strokeWidth = '2'; l2.style.strokeLinecap = 'round';
+                        l2.classList.add('ert-inquiry-cc-legend-alert-line');
                         g.appendChild(l2);
                     }
                 }
