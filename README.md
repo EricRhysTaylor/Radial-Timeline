@@ -8,9 +8,9 @@
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="360">
 </picture>
 
-# Radial Timeline™
+<br>
 
-by Eric Rhys Taylor
+<h1>Radial Timeline™<br><sub>by Eric Rhys Taylor</sub></h1>
 
 <p>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
@@ -23,8 +23,6 @@ by Eric Rhys Taylor
 
 </div>
 
----
-
 ## What It Does
 
 Radial Timeline® arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.
@@ -35,14 +33,12 @@ Radial Timeline® arranges your scenes by act, subplot, narrative or chronologic
 
 Radial Timeline® captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
 
-1. **Narrative time**: the sequence you reveal events to readers.
-2. **Chronological time**: when events happen in your story's world.
-3. **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete, and Overdue.
-4. **Progress stages**: manuscript revision stages from Zero draft through Press-ready.
+- **Narrative time**: the sequence you reveal events to readers.
+- **Chronological time**: when events happen in your story's world.
+- **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete, and Overdue.
+- **Progress stages**: manuscript revision stages from Zero draft through Press-ready.
 
 The mode buttons run in this order: Progress, Narrative, Chronologue, and Gossamer. Narrative and Chronologue keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or progress stage colors, switch to Progress Mode, where the combined outer ring is replaced by a single-subplot view and scenes inherit the author-status and progress-stage palette.
-
----
 
 ## Docs (How-to & Setup)
 
@@ -54,16 +50,12 @@ If you want the "how-to" details (setup, sets, properties, reordering, advanced 
 - [Commands](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Commands)
 - [YAML Frontmatter](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/YAML-Frontmatter)
 
----
-
 ## Sets, Properties, and Templates
 
 - **Sets** define the structural fields used in your notes.
 - **Properties** are custom metadata fields added to notes.
 - **Presets** are starter configurations for campaigns or workflows.
 - **Templates** are used only for export formatting (e.g., Pandoc).
-
----
 
 ## Watch
 
@@ -78,22 +70,18 @@ Ongoing series on the [Radial Timeline YouTube channel](https://www.youtube.com/
 - **Volume 5 — Author Progress Report (APR)**: [Author Progress Report (APR) Volume 5](https://youtu.be/euJ2qOUZgco?si=hjx3aegx7bka7Z61)
 - **Volume 6 — Gossamer Mode**: [Gossamer Mode Volume 6](https://youtu.be/DOUVYXFwigM?si=vBuzvxPteXVjVFmM)
 
----
-
 ## Installation
 
 **From Obsidian**
 
-1. Open settings → community plugins.
-2. Click browse and search for "radial timeline".
-3. Click install and then enable.
+- Open settings → community plugins.
+- Click browse and search for "radial timeline".
+- Click install and then enable.
 
 **Manual installation**
 
-1. Download the latest main.js, styles.css, and manifest.json from the [releases](https://github.com/EricRhysTaylor/radial-timeline/releases) page.
-2. Extract the files to your vault's .obsidian/plugins/radial-timeline (may be hidden by file system).
-
----
+- Download the latest main.js, styles.css, and manifest.json from the [releases](https://github.com/EricRhysTaylor/radial-timeline/releases) page.
+- Extract the files to your vault's .obsidian/plugins/radial-timeline (may be hidden by file system).
 
 ## Desktop & Platform Support
 
@@ -103,13 +91,9 @@ Radial Timeline is a **desktop-only** Obsidian plugin.
 - Not intended for: Obsidian Mobile
 - Some publishing and file-reveal workflows depend on desktop filesystem and native shell access
 
----
-
 ## Language Support
 
 Radial Timeline ships complete English interface text and partial interface translations for Japanese, Simplified Chinese, Korean, and German. Missing translated strings fall back to English. Traditional Chinese variants fall back to English until a dedicated Traditional Chinese locale is available.
-
----
 
 ## Privacy & Security
 
@@ -123,8 +107,6 @@ Radial Timeline ships complete English interface text and partial interface tran
 
 See [Privacy & Security](docs/privacy-and-security.md) for the detailed posture.
 
----
-
 ## External Services & Network Access
 
 Radial Timeline may contact external services only in specific optional workflows:
@@ -135,13 +117,9 @@ Radial Timeline may contact external services only in specific optional workflow
 
 Upcoming **Social Connections** for the website launch is planned as an explicit integration surface and should remain opt-in, documented, and separately controllable.
 
----
-
 ## Known Conflicts
 
 **Plugin conflicts**: If you experience visual glitches or strange behavior (such as the timeline overlapping with other UI elements), it may be due to a conflict with another plugin. Try disabling other plugins to isolate the issue. Please see [known plugin conflicts](https://github.com/EricRhysTaylor/Radial-Timeline/issues?q=label%3A%22Plugin+Conflict%22).
-
----
 
 ## Technical Notes
 
@@ -152,8 +130,6 @@ The radial timeline is designed for high pixel density displays (around 200 ppi 
 - Tablets.
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings.
-
----
 
 ## Acknowledgments
 
@@ -175,21 +151,15 @@ If you're experiencing visual quality issues on Windows, please check your displ
 
 All bundled fonts ship with their original license files in `assets/fonts/`.
 
----
-
 ## Feedback and Support
 
 Check out the [Discussions](https://github.com/EricRhysTaylor/Radial-Timeline/discussions) group. If you encounter issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/radial-timeline/issues).
-
----
 
 ## Author
 
 Created by Eric Rhys Taylor
 
 Reviewed and approved for the Obsidian Community Plugins directory. Developed with best practices in mind.
-
----
 
 ## License & Intellectual Property
 
@@ -204,9 +174,6 @@ Released under the **Radial Timeline Source-Available Non-Commercial License**.
 
 See the [Legal page](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Legal) on the wiki for a plain-English permission table, the [License](https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE) text, and the [Notice](https://github.com/EricRhysTaylor/radial-timeline/blob/master/NOTICE) file.
 
----
-
 ## Disclaimer & Limitation of Liability
 
 This software is provided "as is" without warranty of any kind, express or implied.
-The author makes no guarantees regarding performance, reliability, or compatibility with third-party plugins, APIs, or services.
