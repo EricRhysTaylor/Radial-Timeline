@@ -604,7 +604,7 @@ export class RuntimeProcessingModal extends ErtModal {
         const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
-        this.progressBarEl.style.setProperty('--progress-width', '0%');
+        this.progressBarEl.setCssProps({ '--progress-width': '0%' });
 
         this.progressTextEl = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         this.progressTextEl.setText(t('sceneAnalysis.runtimeModal.progress.sceneProgress', { current: 0, total: 0, percentage: 0 }));
@@ -722,7 +722,7 @@ export class RuntimeProcessingModal extends ErtModal {
 
     private showCompletionSummary(message: string, aiResult?: RuntimeProcessResult['aiResult']): void {
         if (this.progressBarEl) {
-            this.progressBarEl.style.setProperty('--progress-width', '100%');
+            this.progressBarEl.setCssProps({ '--progress-width': '100%' });
             this.progressBarEl.addClass('ert-progress-complete');
         }
 

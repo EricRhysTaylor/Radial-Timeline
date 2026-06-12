@@ -69,9 +69,7 @@ export class TimelineAuditModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-timeline-audit-modal-shell');
-            modalEl.style.width = '960px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '960px', maxWidth: '96vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-timeline-audit-modal');

@@ -98,8 +98,7 @@ export class GossamerProcessingModal extends ErtModal {
         titleEl.setText('');
         this.applyShell({ width: '800px', containerClasses: ['ert-gossamer-processing-modal'] });
         if (this.modalEl) {
-            this.modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            this.modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
+            this.modalEl.setCssStyles({ maxWidth: '90vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         // Show confirmation view first
@@ -252,7 +251,7 @@ export class GossamerProcessingModal extends ErtModal {
         const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
-        this.progressBarEl.style.setProperty('--progress-width', '0%');
+        this.progressBarEl.setCssProps({ '--progress-width': '0%' });
 
         // Status section
         const statusSection = progressCard.createDiv({ cls: 'ert-gossamer-proc-status-section' });
@@ -457,7 +456,7 @@ export class GossamerProcessingModal extends ErtModal {
             this.progressBarEl.removeClass('ert-gossamer-progress-active');
             this.progressBarEl.addClass('ert-progress-complete');
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
-            this.progressBarEl.style.setProperty('--progress-width', '100%');
+            this.progressBarEl.setCssProps({ '--progress-width': '100%' });
         }
     }
 
@@ -556,7 +555,7 @@ export class GossamerProcessingModal extends ErtModal {
             this.progressBarEl.removeClass('ert-gossamer-progress-active');
             this.progressBarEl.addClass('ert-progress-complete');
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
-            this.progressBarEl.style.setProperty('--progress-width', '0%');
+            this.progressBarEl.setCssProps({ '--progress-width': '0%' });
         }
 
         this.addError(error);
@@ -648,7 +647,7 @@ export class GossamerProcessingModal extends ErtModal {
             this.progressBarEl.addClass('ert-progress-complete');
             if (success) {
                 // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
-                this.progressBarEl.style.setProperty('--progress-width', '100%');
+                this.progressBarEl.setCssProps({ '--progress-width': '100%' });
             }
         }
 

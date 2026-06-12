@@ -46,8 +46,7 @@ class ConfirmationModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '520px', maxWidth: '92vw' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
 
@@ -172,9 +171,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Use generic modal base + scene analysis specific styling
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '720px', maxWidth: '92vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('ert-scene-analysis-modal');
@@ -494,8 +491,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Set modal width using Obsidian's approach
         if (modalEl) {
-            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '720px', maxWidth: '92vw' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         this.renderProcessingHero(contentEl);
@@ -937,7 +933,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
         // Start at 0% for smooth animation
-        this.progressBarEl.style.setProperty('--progress-width', '0%');
+        this.progressBarEl.setCssProps({ '--progress-width': '0%' });
 
         this.progressTextEl = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         this.progressTextEl.setText(this.progressSnapshotText);
@@ -1434,7 +1430,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         contentEl.querySelectorAll('.ert-scene-analysis-meta').forEach(el => el.remove());
 
         if (this.progressBarEl) {
-            this.progressBarEl.style.setProperty('--progress-width', '100%');
+            this.progressBarEl.setCssProps({ '--progress-width': '100%' });
             this.progressBarEl.removeClass('ert-progress-complete', 'ert-progress-error');
             if (this.errorCount > 0) {
                 this.progressBarEl.addClass('ert-progress-error');

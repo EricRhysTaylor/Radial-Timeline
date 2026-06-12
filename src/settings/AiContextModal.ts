@@ -28,8 +28,7 @@ class TextInputModal extends Modal {
         
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '480px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '480px', maxWidth: '92vw' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('ert-modal-container');
         contentEl.addClass('ert-modal--textInput');
@@ -134,9 +133,7 @@ export class AiContextModal extends Modal {
         // Use generic modal base + AI Context specific styling
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '660px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '660px', maxWidth: '92vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         titleEl.setText('');
         contentEl.addClass('ert-modal-container', 'ert-modal--aiContext', 'ert-stack');

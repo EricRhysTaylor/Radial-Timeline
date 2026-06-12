@@ -63,8 +63,7 @@ class CampaignNameModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-campaign-name-modal');
-            modalEl.style.width = '420px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw';
+            modalEl.setCssStyles({ width: '420px', maxWidth: '92vw' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack');
@@ -783,8 +782,7 @@ function renderCampaignDetails(
 
                 if (modalEl) {
                     modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-campaign-name-modal');
-                    modalEl.style.width = '420px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-                    modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+                    modalEl.setCssStyles({ width: '420px', maxWidth: '92vw' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
                 }
 
                 contentEl.addClass('ert-modal-container', 'ert-stack');

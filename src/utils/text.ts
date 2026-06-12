@@ -142,7 +142,7 @@ export function renderSceneMetadataFragment(
     dateT.setAttribute('class', 'rt-date-text');
     dateT.setAttribute('data-item-type', 'date');
     dateT.setAttribute('dy', '-8px');
-    (dateT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
+    (dateT as SVGTSpanElement).setCssProps({ '--rt-dynamic-color': '#888888' });
     (dateT as SVGTSpanElement).style.setProperty('font-size', '14px');
 
     if (searchTerm) {
@@ -170,7 +170,7 @@ export function renderSceneMetadataFragment(
       durationT.setAttribute('data-item-type', 'duration');
       durationT.setAttribute('x', '0'); // x=0 is correct now, relative to new <text> element
       durationT.setAttribute('dy', '16px');
-      (durationT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
+      (durationT as SVGTSpanElement).setCssProps({ '--rt-dynamic-color': '#888888' });
       (durationT as SVGTSpanElement).style.setProperty('font-size', '14px');
       durationT.textContent = duration;
       fragment.appendChild(durationT);

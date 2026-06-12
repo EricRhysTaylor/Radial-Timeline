@@ -429,9 +429,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         // Apply generic modal shell + modal-specific class
         if (modalEl) {
-            modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '800px', maxWidth: '92vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         }
         contentEl.classList.add('ert-modal-container', 'ert-stack', 'ert-manuscript-modal');

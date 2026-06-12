@@ -160,9 +160,7 @@ export class TimelineRepairModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-timeline-repair-modal-shell');
-            modalEl.style.width = '900px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '95vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.setCssStyles({ width: '900px', maxWidth: '95vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-timeline-repair-modal');
@@ -568,7 +566,7 @@ export class TimelineRepairModal extends Modal {
         const progressContainer = progressCard.createDiv({ cls: 'ert-pulse-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'ert-pulse-progress-bg' });
         const progressBar = progressBg.createDiv({ cls: 'ert-pulse-progress-bar' });
-        progressBar.style.setProperty('--progress-width', '0%');
+        progressBar.setCssProps({ '--progress-width': '0%' });
 
         const progressText = progressCard.createDiv({ cls: 'ert-pulse-progress-text' });
         progressText.setText(t('timelineRepairModal.analyzing.preparing'));
@@ -596,15 +594,15 @@ export class TimelineRepairModal extends Modal {
                         switch (phase) {
                             case 'pattern':
                                 statusEl.setText(t('timelineRepairModal.analyzing.phasePattern'));
-                                progressBar.style.setProperty('--progress-width', '30%');
+                                progressBar.setCssProps({ '--progress-width': '30%' });
                                 break;
                             case 'cues':
                                 statusEl.setText(t('timelineRepairModal.analyzing.phaseCues'));
-                                progressBar.style.setProperty('--progress-width', '70%');
+                                progressBar.setCssProps({ '--progress-width': '70%' });
                                 break;
                             case 'complete':
                                 statusEl.setText(t('timelineRepairModal.analyzing.phaseComplete'));
-                                progressBar.style.setProperty('--progress-width', '100%');
+                                progressBar.setCssProps({ '--progress-width': '100%' });
                                 break;
                         }
                     },

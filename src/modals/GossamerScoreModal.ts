@@ -339,9 +339,7 @@ export class GossamerScoreModal extends Modal {
 
     // Set modal width using new generic system
     if (modalEl) {
-      modalEl.style.width = '980px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxWidth = '98vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxHeight = '92vh'; // Prevent button clipping at bottom
+      modalEl.setCssStyles({ width: '980px', maxWidth: '98vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
     }
 
@@ -1157,9 +1155,7 @@ export class GossamerScoreModal extends Modal {
       contentEl.empty();
 
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-      modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.setCssStyles({ width: '680px', maxWidth: '92vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
       contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
 
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -1408,9 +1404,7 @@ class NormalizeConfirmationModal extends Modal {
       // SAFE: Modal sizing via inline styles (Obsidian pattern). Match the
       // Gossamer score modal's constraints so this confirm dialog doesn't
       // stretch edge-to-edge.
-      modalEl.style.width = '540px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.setCssStyles({ width: '540px', maxWidth: '90vw', maxHeight: '92vh' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
       contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-gossamer-score-modal', 'ert-purge-confirm-modal');
 

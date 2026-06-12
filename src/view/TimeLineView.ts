@@ -2742,7 +2742,7 @@ export class RadialTimelineView extends ItemView {
         panel.style.setProperty('--rt-recent-moves-fade-center-x', `${-panelX}px`);
         panel.style.setProperty('--rt-recent-moves-fade-center-y', `${-panelY}px`);
         panel.style.setProperty('--rt-recent-moves-fade-radius', `${MONTH_LABEL_RADIUS}px`);
-        panel.style.setProperty('--rt-recent-moves-fade-width', '110px');
+        panel.setCssProps({ '--rt-recent-moves-fade-width': '110px' });
 
         const header = doc.createElementNS(xhtmlNs, 'div');
         header.className = 'rt-recent-moves__header';
@@ -2826,7 +2826,7 @@ export class RadialTimelineView extends ItemView {
         panel.style.setProperty('--rt-gossamer-runs-fade-center-x', `${-panelX}px`);
         panel.style.setProperty('--rt-gossamer-runs-fade-center-y', `${-panelY}px`);
         panel.style.setProperty('--rt-gossamer-runs-fade-radius', `${MONTH_LABEL_RADIUS}px`);
-        panel.style.setProperty('--rt-gossamer-runs-fade-width', '110px');
+        panel.setCssProps({ '--rt-gossamer-runs-fade-width': '110px' });
 
         const controlsRow = doc.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';

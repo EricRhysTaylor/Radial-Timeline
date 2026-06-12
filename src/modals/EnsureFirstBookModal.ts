@@ -30,7 +30,7 @@ class FirstBookSetupModal extends ErtModal {
         contentEl.empty();
         this.applyShell({ width: '460px' });
         if (this.modalEl) {
-            this.modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            this.modalEl.setCssStyles({ maxWidth: '92vw' }); // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
