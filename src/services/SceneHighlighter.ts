@@ -1,6 +1,5 @@
 import type { TimelineItem } from '../types';
 import type RadialTimelinePlugin from '../main';
-import type { RadialTimelineView } from '../view/TimeLineView';
 
 export class SceneHighlighter {
     constructor(private plugin: RadialTimelinePlugin) {}

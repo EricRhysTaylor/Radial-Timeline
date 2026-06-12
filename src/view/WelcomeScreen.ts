@@ -14,7 +14,7 @@ import {
     normalizeInquirySources
 } from '../inquiry/services/InquiryCorpusService';
 import { markBookManagerAutoloadHighlight } from '../settings/bookManagerAutoloadHighlight';
-import type { BookProfile, InquiryClassConfig, InquirySourcesSettings } from '../types/settings';
+import type { InquiryClassConfig, InquirySourcesSettings } from '../types/settings';
 import {
     DEFAULT_BOOK_TITLE,
     createBookId,

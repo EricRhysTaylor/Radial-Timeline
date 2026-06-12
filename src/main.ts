@@ -27,7 +27,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
-import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
+import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { getAllRefactorAlertIds } from './settings/refactorAlerts';
 import { autoAdoptDetectedBeatsIfEmpty } from './storyBeats/workspaceState';

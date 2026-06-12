@@ -1,6 +1,6 @@
 import { setIcon, Setting, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
+import type { RuntimeRateProfile } from '../../types';
 import type { WritingSessionTargetMode } from '../../types/settings';
 import { ERT_CLASSES } from '../../ui/classes';
 import { t } from '../../i18n';

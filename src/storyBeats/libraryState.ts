@@ -1,4 +1,4 @@
-import type { BeatDefinition, BeatLibraryCategory, BeatLibraryItem, BeatSourceKind, BeatSystemConfig, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
+import type { BeatDefinition, BeatLibraryItem, BeatSourceKind, BeatSystemConfig, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { getPlotSystem, PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS } from '../utils/beatsSystems';
 import { DEFAULT_CUSTOM_BEAT_SYSTEM_ID, getCustomBeatConfigKey } from '../utils/beatSystemState';
 

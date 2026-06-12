@@ -1,4 +1,4 @@
-import type { BeatDefinition, BeatWorkspaceState, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
+import type { BeatDefinition, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
 import { getActiveBook } from './books';
 
