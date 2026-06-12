@@ -5,7 +5,7 @@
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png">
   <!-- Fallback img is the WHITE logo: renderers that ignore <picture> (e.g. the
        community.obsidian.md listing page, which is dark-themed) show this one. -->
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="72">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="360">
 </picture>
 
 # Radial Timeline™
