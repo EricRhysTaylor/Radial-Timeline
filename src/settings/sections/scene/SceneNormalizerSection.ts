@@ -719,7 +719,7 @@ export function renderSceneNormalizerSection(params: {
         });
 
     fixDuplicateBtn = new ButtonComponent(cleanupGroup)
-        .setButtonText('Fix Duplicate IDs')
+        .setButtonText('Fix duplicate IDs')
         .setWarning()
         .onClick(async () => {
             if (!sceneAudit) return;

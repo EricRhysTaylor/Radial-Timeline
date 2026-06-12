@@ -161,7 +161,7 @@ export class BugReportModal extends ErtModal {
         this.updateSendEnabled();
 
         const emailBtn = new ButtonComponent(actions)
-            .setButtonText('Email Client')
+            .setButtonText('Email client')
             .setTooltip('Open your default mail app with the report prefilled — no GitHub account needed.')
             .onClick(() => void this.handleSend('email'));
         emailBtn.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'ert-bug-report-secondary');

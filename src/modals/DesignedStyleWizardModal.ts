@@ -587,7 +587,7 @@ export class DesignedStyleWizardModal extends Modal {
         nameRow.createEl('label', { cls: 'ert-style-wizard__meta-label', text: 'Style name' });
         const nameInput = new TextComponent(nameRow);
         nameInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-style-wizard__meta-input');
-        nameInput.setPlaceholder('My Custom Style');
+        nameInput.setPlaceholder('My custom style');
         nameInput.setValue(this.styleName);
         nameInput.onChange((value) => {
             this.styleName = value;
@@ -1587,7 +1587,7 @@ export class DesignedStyleWizardModal extends Modal {
 
         const literalInput = parent.createEl('input', {
             cls: 'ert-input ert-style-wizard__corner-literal',
-            attr: { type: 'text', placeholder: 'literal text' },
+            attr: { type: 'text', placeholder: 'Literal text' },
         });
         literalInput.value = literalValue;
         literalInput.toggleClass('ert-hidden', currentValue !== '__literal__');

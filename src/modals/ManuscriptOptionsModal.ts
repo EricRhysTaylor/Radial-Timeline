@@ -637,7 +637,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.filterCard.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Scene filter' });
         const filterContainer = this.filterCard.createDiv({ cls: 'ert-manuscript-input-container ert-manuscript-scope-input' });
         this.subplotDropdown = new DropdownComponent(filterContainer)
-            .addOption('All Subplots', 'All Subplots')
+            .addOption('All Subplots', 'All subplots')
             .setValue('All Subplots')
             .onChange(async (value) => {
                 this.subplot = value;
@@ -2944,7 +2944,7 @@ Sarah stood at the window, watching the world wake up.`;
             });
 
             this.subplotDropdown.selectEl.textContent = '';
-            this.subplotDropdown.addOption('All Subplots', 'All Subplots');
+            this.subplotDropdown.addOption('All Subplots', 'All subplots');
             const openCount = this.openScenePathsSnapshot.size;
             if (openCount > 0) {
                 this.subplotDropdown.addOption(OPEN_SCENES_FILTER, `Open Scenes (${openCount})`);

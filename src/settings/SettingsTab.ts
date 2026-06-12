@@ -642,7 +642,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             href: options.wikiHref,
             cls: ERT_CLASSES.BADGE_PILL_WIKI,
             attr: {
-                'aria-label': 'Read more in the Wiki',
+                'aria-label': 'Read more in the wiki',
                 'target': '_blank',
                 'rel': 'noopener'
             }

@@ -149,13 +149,13 @@ export class InquiryCancelRunModal extends Modal {
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(actions)
-            .setButtonText('Keep Running')
+            .setButtonText('Keep running')
             .onClick(() => {
                 this.resolveOnce(false);
                 this.close();
             });
         new ButtonComponent(actions)
-            .setButtonText('Cancel Run')
+            .setButtonText('Cancel run')
             .setWarning()
             .onClick(() => {
                 this.resolveOnce(true);
@@ -462,7 +462,7 @@ export class InquiryOmnibusModal extends Modal {
         if (this.actionsEl) {
             this.actionsEl.empty();
             new ButtonComponent(this.actionsEl)
-                .setButtonText('Abort Run')
+                .setButtonText('Abort run')
                 .onClick(() => {
                     this.abortRequested = true;
                     if (this.progressMicroEl) {

@@ -17,7 +17,7 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
     const entries = plugin.getReleaseNotesEntries();
     containerEl.createEl('hr', { cls: 'ert-settings-separator' });
     const section = containerEl.createDiv({ cls: 'ert-settings-release-notes' });
-    section.createEl('h2', { text: "What's New" });
+    section.createEl('h2', { text: "What's new" });
 
     if (!entries || entries.length === 0) {
         const fallback = section.createEl('p');

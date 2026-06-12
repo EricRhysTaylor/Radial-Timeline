@@ -4625,7 +4625,7 @@ export function renderBeatPropertiesSection(params: {
                     let reason: string;
                     switch (activeChip.kind) {
                         case 'critical':
-                            reason = 'Missing Reference ID';
+                            reason = 'Missing reference ID';
                             break;
                         case 'duplicate':
                             reason = entry.duplicateReferenceId
@@ -4678,7 +4678,7 @@ export function renderBeatPropertiesSection(params: {
                     pillEl.addEventListener('click', async () => {
                         await openOrRevealFile(app, entry.file, false);
                         if (activeChip.kind === 'critical') {
-                            new Notice('Missing Reference ID');
+                            new Notice('Missing reference ID');
                         } else if (activeChip.kind === 'duplicate') {
                             new Notice(reason);
                         } else if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
@@ -5720,7 +5720,7 @@ export function renderBeatPropertiesSection(params: {
     async function mergeExistingBeatNotes(): Promise<void> {
         const activeTab = getActiveBeatWorkspaceTab();
         if (!activeTab || activeTab.sourceKind === 'builtin') {
-            new Notice('Merge is available for Custom beat systems only.');
+            new Notice('Merge is available for custom beat systems only.');
             return;
         }
         const storyStructureName = activeTab.name;

@@ -57,7 +57,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             // Text input for User Key
             setting.addText(text => {
                 text.inputEl.addClass('ert-input--lg');
-                text.setPlaceholder('Your Key (e.g. StoryLine)')
+                text.setPlaceholder('Your key (e.g. StoryLine)')
                     .setValue(userKey)
                     .onChange(async (_newValue) => {
                         // We defer saving until blur to avoid partial state
@@ -134,7 +134,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             // Delete button
             setting.addButton(button => button
                 .setIcon('trash')
-                .setTooltip('Delete Mapping')
+                .setTooltip('Delete mapping')
                 .onClick(async () => {
                     if (plugin.settings.frontmatterMappings) {
                         delete plugin.settings.frontmatterMappings[userKey];
@@ -151,7 +151,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             // Text input for User Key (starts empty; required to persist)
             setting.addText(text => {
                 text.inputEl.addClass('ert-input--lg');
-                text.setPlaceholder('Your Key (required to save)');
+                text.setPlaceholder('Your key (required to save)');
                 text.setValue('');
                 
                 const handleBlur = async () => {
@@ -220,7 +220,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             // Delete draft button
             setting.addButton(button => button
                 .setIcon('trash')
-                .setTooltip('Discard Draft')
+                .setTooltip('Discard draft')
                 .onClick(() => {
                     const idx = pendingMappings.indexOf(pending);
                     if (idx >= 0) pendingMappings.splice(idx, 1);
@@ -231,7 +231,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
         // Add New Mapping Button
         new Settings(mappingListContainer)
             .addButton(button => button
-                .setButtonText('Add New Mapping')
+                .setButtonText('Add new mapping')
                 .onClick(async () => {
                     // Find first available canonical key (includes drafts to avoid duplicate suggestions)
                     const currentUsed = new Set([

@@ -276,7 +276,7 @@ export class AuthorProgressModal extends Modal {
         const headerRow = headerMain.createDiv({ cls: ERT_CLASSES.INLINE });
         const headerIcon = headerRow.createSpan({ cls: ERT_CLASSES.SECTION_ICON });
         setIcon(headerIcon, 'layers');
-        headerRow.createEl('h4', { text: 'Campaign Status', cls: ERT_CLASSES.SECTION_TITLE });
+        headerRow.createEl('h4', { text: 'Campaign status', cls: ERT_CLASSES.SECTION_TITLE });
 
         const headerActions = header.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
         const proPill = headerActions.createSpan({
@@ -430,7 +430,7 @@ export class AuthorProgressModal extends Modal {
             const targetRow = container.createDiv({ cls: 'ert-apr-target-row' });
             targetRow.createSpan({ text: 'Target', cls: ERT_CLASSES.LABEL });
             const targetSelect = targetRow.createEl('select', { cls: 'dropdown ert-input' });
-            targetSelect.createEl('option', { value: 'default', text: 'Default Report' });
+            targetSelect.createEl('option', { value: 'default', text: 'Default report' });
             campaigns.forEach(campaign => {
                 targetSelect.createEl('option', { value: campaign.id, text: `Campaign: ${campaign.name}` });
             });
@@ -525,7 +525,7 @@ export class AuthorProgressModal extends Modal {
         const targetRow = container.createDiv({ cls: 'ert-apr-target-row' });
         targetRow.createSpan({ text: 'Target', cls: ERT_CLASSES.LABEL });
         const targetSelect = targetRow.createEl('select', { cls: 'dropdown ert-input' });
-        targetSelect.createEl('option', { value: 'default', text: 'Default Report' });
+        targetSelect.createEl('option', { value: 'default', text: 'Default report' });
         campaigns.forEach(campaign => {
             targetSelect.createEl('option', { value: campaign.id, text: `Campaign: ${campaign.name}` });
         });

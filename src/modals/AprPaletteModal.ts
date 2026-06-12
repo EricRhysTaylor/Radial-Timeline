@@ -58,7 +58,7 @@ export class AprPaletteModal extends Modal {
 
         // Generate from Color Section (moved to top)
         const generateCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-apr-palette-generate' });
-        generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'ert-section-title' });
+        generateCard.createEl('h4', { text: 'Generate from book title color', cls: 'ert-section-title' });
 
         const currentBookColor = this.seedColor?.trim() || this.defaults?.aprBookAuthorColor || '#6FB971';
         const schemes: Array<{ value: 'analogous' | 'complementary' | 'triadic' | 'monochromatic'; label: string }> = [
@@ -93,7 +93,7 @@ export class AprPaletteModal extends Modal {
 
         // Preset Palettes Section
         const presetsCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-apr-palette-presets' });
-        presetsCard.createEl('h4', { text: 'Preset Palettes', cls: 'ert-section-title' });
+        presetsCard.createEl('h4', { text: 'Preset palettes', cls: 'ert-section-title' });
         presetsCard.createDiv({ text: 'Choose from curated color combinations.', cls: 'ert-section-desc' });
 
         const presets = getPresetPalettes();

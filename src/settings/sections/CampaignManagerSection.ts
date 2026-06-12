@@ -305,7 +305,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         .setName('New campaign')
         .setDesc('Create a new campaign that targets a specific platform or audience.')
         .addButton(button => {
-            button.setButtonText('Add Campaign');
+            button.setButtonText('Add campaign');
             button.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
             button.onClick(async () => {
                 const modal = new CampaignNameModal(app, {
@@ -352,7 +352,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // QUICK TEMPLATES
     // ─────────────────────────────────────────────────────────────────────────
     const templatesSection = card.createDiv({ cls: 'ert-campaign-templates' });
-    templatesSection.createEl('h5', { text: 'Campaign Presets', cls: 'ert-kicker' });
+    templatesSection.createEl('h5', { text: 'Campaign presets', cls: 'ert-kicker' });
 
     const templateRow = templatesSection.createDiv({ cls: ERT_CLASSES.INLINE });
 

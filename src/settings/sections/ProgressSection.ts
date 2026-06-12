@@ -284,7 +284,7 @@ export function renderCompletionEstimatePreview(params: {
             if (!scenes) {
                 const loadingMessage = 'Loading progress estimates...';
                 renderSummaryRow({
-                    title: 'Completion Estimate',
+                    title: 'Completion estimate',
                     subtitle: loadingMessage
                 });
                 if (!isExpanded) {
@@ -294,7 +294,7 @@ export function renderCompletionEstimatePreview(params: {
                 }
                 previewContainer.addClass('ert-completion-preview-empty');
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                heading.setText('Completion Estimate');
+                heading.setText('Completion estimate');
                 const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                 body.createDiv({ cls: 'ert-completion-no-data', text: loadingMessage });
                 schedulePreviewFetch();
@@ -313,7 +313,7 @@ export function renderCompletionEstimatePreview(params: {
                 }
                 previewContainer.addClass('ert-completion-preview-empty');
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                heading.setText('Completion Estimate');
+                heading.setText('Completion estimate');
                 const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                 body.createDiv({ cls: 'ert-completion-empty-hint', text: 'Create scenes to see progress calculations.' });
                 return;
@@ -332,7 +332,7 @@ export function renderCompletionEstimatePreview(params: {
 
                 if (!milestone || !milestone.type.includes('complete')) {
                     renderSummaryRow({
-                        title: 'Completion Estimate',
+                        title: 'Completion estimate',
                         subtitle: 'Complete some scenes to see progress calculations.'
                     });
                     if (!isExpanded) {
@@ -341,7 +341,7 @@ export function renderCompletionEstimatePreview(params: {
                     }
                     // Not actually complete - show a simple "no estimate available" message
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                    heading.setText('Completion Estimate');
+                    heading.setText('Completion estimate');
                     const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                     body.createDiv({ cls: 'ert-completion-no-data', text: 'Complete some scenes to see progress calculations.' });
                     return;
@@ -358,7 +358,7 @@ export function renderCompletionEstimatePreview(params: {
                     setIcon(bgIcon, 'shell');
 
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                    heading.setText('Book Complete');
+                    heading.setText('Book complete');
 
                     const pressCelebrations = [
                         { title: "You wrote a book.", subtitle: "Let that sink in." },
@@ -378,7 +378,7 @@ export function renderCompletionEstimatePreview(params: {
                     completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-zero-complete') {
                     renderSummaryRow({
-                        title: 'Zero Draft Complete',
+                        title: 'Zero draft complete',
                         subtitle: 'The first full draft exists.'
                     });
                     if (!isExpanded) {
@@ -392,7 +392,7 @@ export function renderCompletionEstimatePreview(params: {
                     setIcon(bgIcon, 'sprout');
 
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                    heading.setText('Zero Draft Complete');
+                    heading.setText('Zero draft complete');
 
                     const zeroCelebrations = [
                         { title: "The seed is planted.", subtitle: "A complete zero draft. That's the hardest part." },
@@ -412,7 +412,7 @@ export function renderCompletionEstimatePreview(params: {
                     completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-author-complete') {
                     renderSummaryRow({
-                        title: 'Author Stage Complete',
+                        title: 'Author stage complete',
                         subtitle: 'Your author revision stage is complete.'
                     });
                     if (!isExpanded) {
@@ -426,7 +426,7 @@ export function renderCompletionEstimatePreview(params: {
                     setIcon(bgIcon, 'tree-pine');
 
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                    heading.setText('Author Stage Complete');
+                    heading.setText('Author stage complete');
 
                     const authorCelebrations = [
                         { title: "The sapling stands.", subtitle: "Author revisions complete. Your vision is taking shape." },
@@ -446,7 +446,7 @@ export function renderCompletionEstimatePreview(params: {
                     completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-house-complete') {
                     renderSummaryRow({
-                        title: 'House Stage Complete',
+                        title: 'House stage complete',
                         subtitle: 'Editorial revision is complete.'
                     });
                     if (!isExpanded) {
@@ -460,7 +460,7 @@ export function renderCompletionEstimatePreview(params: {
                     setIcon(bgIcon, 'trees');
 
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-                    heading.setText('House Stage Complete');
+                    heading.setText('House stage complete');
 
                     const houseCelebrations = [
                         { title: "The forest grows.", subtitle: "House edits complete. The manuscript is maturing." },
@@ -590,7 +590,7 @@ export function renderCompletionEstimatePreview(params: {
         } catch (e) {
             previewContainer.empty();
             const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-            heading.setText('Completion Estimate');
+            heading.setText('Completion estimate');
             const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
             body.createDiv({ cls: 'ert-completion-error', text: 'Error calculating estimate.' });
             console.error('Completion estimate preview error:', e);

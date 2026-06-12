@@ -1833,7 +1833,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
     });
     layoutPanel.addClass('ert-publish-order--pdf-style');
     const layoutHeading = addProRow(new Setting(layoutPanel))
-        .setName('PDF Style')
+        .setName('PDF style')
         .setDesc('Choose the style used for exported PDFs. Built-in and custom styles are listed below.')
         .setHeading();
     addHeadingIcon(layoutHeading, 'book-open');
@@ -2888,7 +2888,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
         button.buttonEl.addClass(ERT_CLASSES.PILL_BTN, ERT_CLASSES.PILL_BTN_PRO);
         if (__RT_RELEASE__) {
             button.setDisabled(true);
-            button.setTooltip('BETA release pending—Design a new PDF style from scratch with a live preview.');
+            button.setTooltip('BETA release pending—design a new PDF style from scratch with a live preview.');
             button.onClick(() => { /* no-op: BETA release pending */ });
             return;
         }

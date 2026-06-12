@@ -1740,7 +1740,7 @@ export class RadialTimelineView extends ItemView {
         header.className = 'ert-timeline-legend__header';
         const title = doc.createElement('div');
         title.className = 'ert-timeline-legend__title';
-        title.textContent = 'Timeline Keys';
+        title.textContent = 'Timeline keys';
         const badge = doc.createElement('div');
         badge.className = 'ert-timeline-legend__mode';
         badge.textContent = this.getTimelineLegendModeLabel(mode);

@@ -231,7 +231,7 @@ export function renderScenePropertiesSection(params: {
         const templateObj = safeParseYaml(currentTemplate);
 
         if (enabledFields.length === 0) {
-            hoverPreviewHeading.setText('Scene Hover Preview (none enabled)');
+            hoverPreviewHeading.setText('Scene hover preview (none enabled)');
             hoverPreviewBody.createDiv({
                 text: 'Enable fields in advanced properties to preview what scene hover reveals will look like.',
                 cls: 'ert-hover-preview-empty'

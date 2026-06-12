@@ -619,9 +619,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
     };
 
-    modeDropdown.addOption('stage', 'Stage Tracking');
-    modeDropdown.addOption('full', 'Full Manuscript');
-    modeDropdown.addOption('date', 'Date Goal');
+    modeDropdown.addOption('stage', 'Stage tracking');
+    modeDropdown.addOption('full', 'Full manuscript');
+    modeDropdown.addOption('date', 'Date goal');
     void refreshTrackingState();
 
     const getActiveStyleSettings = (): AprStyleSettings => aprStyleService.resolveDesignerStyle();

@@ -589,7 +589,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const backupText = backupNotice.createDiv({ cls: 'rt-welcome-backup-text' });
     const backupPara = backupText.createDiv();
     backupPara.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
-    backupPara.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
+    backupPara.createEl('a', { text: 'Obsidian backup guide', href: 'https://help.obsidian.md/backup' });
     backupPara.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });
     backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
     backupPara.createSpan({ text: ' or ' });

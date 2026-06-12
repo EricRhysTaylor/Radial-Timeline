@@ -8,7 +8,7 @@ export function createInquiryEngineActionButtons(container: HTMLElement): Inquir
 
     const settingsButton = actionsRow.createEl('button', {
         cls: 'ert-inquiry-engine-action-button',
-        text: 'Open AI Settings',
+        text: 'Open AI settings',
         attr: { type: 'button' }
     });
 

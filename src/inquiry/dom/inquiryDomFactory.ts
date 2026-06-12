@@ -355,7 +355,7 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     });
     const briefingSaveStateButton = briefingSessionStateEl.createEl('button', {
         cls: 'ert-inquiry-briefing-save-state',
-        text: 'Save Session State'
+        text: 'Save session state'
     });
     addTooltipData(
         briefingSaveStateButton,
@@ -364,7 +364,7 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     );
     const briefingRestoreButton = briefingSessionStateEl.createEl('button', {
         cls: 'ert-inquiry-briefing-restore',
-        text: 'Restore Sessions'
+        text: 'Restore sessions'
     });
     addTooltipData(
         briefingRestoreButton,

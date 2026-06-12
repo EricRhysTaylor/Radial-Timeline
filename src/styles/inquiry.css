@@ -952,22 +952,22 @@
 }
 
 .ert-inquiry-cc-legend-mode-full {
-  fill: #00ff00;
+  fill: var(--ert-inquiry-corpus-mode-full);
 }
 
 .ert-inquiry-cc-legend-mode-summary-ring {
   fill: none;
-  stroke: #3b82ff;
+  stroke: var(--ert-inquiry-corpus-mode-summary);
   stroke-width: 1.2;
 }
 
 .ert-inquiry-cc-legend-mode-summary-dot {
-  fill: #3b82ff;
+  fill: var(--ert-inquiry-corpus-mode-summary);
 }
 
 .ert-inquiry-cc-legend-mode-exclude {
   fill: none;
-  stroke: #ff4d4f;
+  stroke: var(--ert-inquiry-corpus-mode-excluded);
   stroke-width: 1.2;
 }
 
@@ -976,7 +976,7 @@
 }
 
 .ert-inquiry-cc-legend-alert-line {
-  stroke: #ff4d4f;
+  stroke: var(--ert-inquiry-corpus-mode-excluded);
   stroke-width: 2;
   stroke-linecap: round;
 }

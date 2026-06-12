@@ -92,7 +92,7 @@ export function addWikiLinkToElement(el: HTMLElement, wikiPage: string): void {
         href: `https://github.com/EricRhysTaylor/radial-timeline/wiki/${pageName}`,
         cls: 'ert-wiki-link',
         attr: {
-            'aria-label': 'Read more in the Wiki',
+            'aria-label': 'Read more in the wiki',
             'target': '_blank',
             'rel': 'noopener'
         }

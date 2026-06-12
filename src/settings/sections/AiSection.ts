@@ -3752,11 +3752,11 @@ export function renderAiSection(params: {
         cls: 'ert-config-group-modal-link',
         attr: {
             type: 'button',
-            'aria-label': 'Open Summary refresh modal'
+            'aria-label': 'Open summary refresh modal'
         }
     });
     setIcon(summaryRefreshOpenButton, 'panel-top-open');
-    setTooltip(summaryRefreshOpenButton, 'Open Summary refresh modal');
+    setTooltip(summaryRefreshOpenButton, 'Open summary refresh modal');
     plugin.registerDomEvent(summaryRefreshOpenButton, 'click', (evt: MouseEvent) => {
         evt.preventDefault();
         const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
