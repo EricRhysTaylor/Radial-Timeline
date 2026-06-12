@@ -1,20 +1,23 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png" alt="Radial Timeline logo" width="72">
-  </picture><br><br>
-  <strong>R A D I A L &nbsp; T I M E L I N E ™</strong><br>
-  <sub>by Eric Rhys Taylor</sub>
-  <br><br>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo-light.png">
+  <!-- Fallback img is the WHITE logo: renderers that ignore <picture> (e.g. the
+       community.obsidian.md listing page, which is dark-themed) show this one. -->
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline logo" width="72">
+</picture>
+
+# Radial Timeline™
+
+by Eric Rhys Taylor
+
+<p>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
   <a href="https://obsidian.md/plugins?id=radial-timeline"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin downloads"></a>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=LICENSE&message=NON-COMMERCIAL&colorA=363a4f&colorB=b7bdf8" alt="License — non-commercial software license"></a>
-  <br>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline/enhancement?colorA=363a4f&colorB=00bfa5&style=for-the-badge&label=enhancements" alt="Open enhancements on GitHub"></a>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aclosed+label%3Aenhancement"><img src="https://img.shields.io/github/issues-closed/EricRhysTaylor/radial-timeline/enhancement?colorA=363a4f&colorB=4a90e2&style=for-the-badge&label=closed%20enhancements" alt="Closed enhancements on GitHub"></a>
   <a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aissue+is%3Aopen+label%3Abug"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline/bug?colorA=363a4f&colorB=e93147&style=for-the-badge&label=bugs" alt="Open bugs on GitHub"></a>
-</div>
+</p>
 
 ---
 
@@ -22,16 +25,9 @@
 
 Radial Timeline® arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.
 
-<table width="100%">
-  <tr>
-    <td width="50%" valign="top" style="padding-right: 12px;">
-      <p><strong>Before:</strong> Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
-    </td>
-    <td width="50%" valign="top" style="padding-left: 12px;">
-      <p><strong>After:</strong> One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture.</p>
-    </td>
-  </tr>
-</table>
+| **Before** | **After** |
+| --- | --- |
+| Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline. | One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture. |
 
 Radial Timeline® captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
 
