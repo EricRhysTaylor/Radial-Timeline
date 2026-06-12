@@ -2373,10 +2373,11 @@ body.rt-modal-open .ert-inquiry-svg {
   top: 18px;
   right: auto;
   width: 260px;
-  /* Keep the popover within the viewport so its inner list scrolls instead
-     of pushing the underlying Inquiry view. The 36px buffer covers the
-     panel's 18px top offset plus a small bottom gap. */
-  max-height: calc(100vh - 36px);
+  /* Cap against the Inquiry root (the positioned ancestor), not the window:
+     the leaf content is shorter than 100vh by Obsidian's tab/status chrome,
+     so a viewport cap still overflowed the view and forced it to scroll.
+     The 36px buffer covers the 18px top offset plus a small bottom gap. */
+  max-height: calc(100% - 36px);
   display: flex;
   flex-direction: column;
   background: var(--background-secondary);
@@ -2404,7 +2405,8 @@ body.rt-modal-open .ert-inquiry-svg {
   top: 18px;
   left: auto;
   width: 320px;
-  max-height: calc(100vh - 36px);
+  /* See .ert-inquiry-briefing-panel: cap against the view, not the window. */
+  max-height: calc(100% - 36px);
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 16px;
@@ -3228,6 +3230,8 @@ body.rt-modal-open .ert-inquiry-svg {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Pin the footer: only the session list above shrinks and scrolls. */
+  flex-shrink: 0;
 }
 
 .ert-inquiry-briefing-footer.ert-hidden {
