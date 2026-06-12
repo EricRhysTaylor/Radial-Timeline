@@ -77,7 +77,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Shift — compare elapsed time between scenes and surface discontinuity gaps</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/mode-gossamer.jpeg" alt="Gossamer Mode: beat-level scoring with multiple signals, saved runs, and momentum ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <img src="images/mode-gossamer.jpeg" alt="Gossamer Mode: beat-level scoring with multiple signals, saved traces, and momentum ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Mode — compare Momentum, Tension, Activity, and Interiority across beats</div>
   </div>
 </div>

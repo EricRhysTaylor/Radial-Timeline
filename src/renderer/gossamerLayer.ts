@@ -394,7 +394,7 @@ export function renderGossamerLayer(
   // 1. Band (behind everything)
   // 2. Historical runs (oldest to newest)
   // 3. Main current line
-  // 4. Spokes (behind score text but in front of plots)
+  // 4. Spokes (behind score text but in front of traces)
   // 5. Beat outlines
   // 6. Historical dots (small, non-interactive)
   // 7. Range boundary markers (text with white stroke)

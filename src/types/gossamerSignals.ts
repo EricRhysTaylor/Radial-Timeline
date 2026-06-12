@@ -4,7 +4,7 @@
  * A Gossamer run measures one of four narrative signals. Each signal has its own
  * scoring rubric; the shared scaffold + signal-specific block together form the
  * prompt sent to the AI. Runs are tagged with `signalType` so histories for
- * different signals never mix on the plot.
+ * different signals never mix in the trace display.
  *
  * Legacy runs (written before signals existed) have no stored signal and are
  * read as `momentum`.

@@ -200,10 +200,10 @@ function readGossamerSlotMetadata(source: Record<string, unknown>, index: number
 }
 
 function formatGossamerRunTimestamp(value: string | undefined, fallbackIndex: number): string {
-  if (!value) return `Run ${fallbackIndex}`;
+  if (!value) return `Trace ${fallbackIndex}`;
 
   const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return `Run ${fallbackIndex}`;
+  if (!Number.isFinite(parsed)) return `Trace ${fallbackIndex}`;
 
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -213,7 +213,7 @@ function formatGossamerRunTimestamp(value: string | undefined, fallbackIndex: nu
       minute: '2-digit'
     }).format(new Date(parsed));
   } catch {
-    return `Run ${fallbackIndex}`;
+    return `Trace ${fallbackIndex}`;
   }
 }
 
@@ -221,7 +221,7 @@ function buildGossamerRunModelLabel(metadata: GossamerSlotMetadata): string {
   if (metadata.model) return getModelDisplayName(metadata.model);
   if (metadata.provider === 'manual') return 'Manual entry';
   if (metadata.provider) return metadata.provider;
-  return 'Legacy run';
+  return 'Legacy trace';
 }
 
 function parseGossamerRunIndex(fieldName: string): number {
@@ -399,7 +399,7 @@ export function buildRunFromGossamerField(
         incompleteBeats: [],
       },
       meta: {
-        label: `Run ${runIndex}`,
+        label: `Trace ${runIndex}`,
         date: new Date().toISOString(),
         model: selectedBeatModel,
         beatSystem: selectedBeatModel,
@@ -429,7 +429,7 @@ export function buildRunFromGossamerField(
         incompleteBeats: [],
       },
       meta: {
-        label: `Run ${runIndex}`,
+        label: `Trace ${runIndex}`,
         date: new Date().toISOString(),
         model: selectedBeatModel,
         beatSystem: selectedBeatModel,
@@ -525,7 +525,7 @@ export function buildRunFromGossamerField(
       incompleteBeats,
     },
     meta: { 
-      label: fieldName.startsWith('Gossamer') ? `Run ${fieldName.replace('Gossamer', '')}` : fieldName,
+      label: fieldName.startsWith('Gossamer') ? `Trace ${fieldName.replace('Gossamer', '')}` : fieldName,
       date: metadata.createdAt ?? new Date().toISOString(),
       model: selectedBeatModel,
       beatSystem: selectedBeatModel,
@@ -630,7 +630,7 @@ export function buildRunFromDefault(
       incompleteBeats: []
     },
     meta: {
-      label: 'Latest Run',
+      label: 'Latest Trace',
       date: new Date().toISOString(),
       model: selectedBeatModel,
       beatSystem: selectedBeatModel
@@ -760,7 +760,7 @@ export function buildAllGossamerRuns(
   const current = currentRecord
     ? cloneRunWithMeta(currentRecord.run, {
         ...(currentRecord.run.meta || {}),
-        label: currentRecord.isLatest ? 'Latest Run' : currentRecord.label,
+        label: currentRecord.isLatest ? 'Latest Trace' : currentRecord.label,
         model: selectedBeatModel,
         beatSystem: selectedBeatModel
       })
@@ -831,7 +831,7 @@ export function buildAllGossamerRuns(
   const hasHistoricalScores = historical.some(run => run.points.some(point => typeof point.score === 'number' && !Number.isNaN(point.score)));
   const hasAnyScores = hasAnyCurrentScores || hasHistoricalScores;
   const visibleModelCount = new Set(
-    visibleRuns.map((record) => record.runModel || record.provider || 'Legacy run')
+    visibleRuns.map((record) => record.runModel || record.provider || 'Legacy trace')
   ).size;
   
   return {

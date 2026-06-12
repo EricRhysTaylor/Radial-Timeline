@@ -435,24 +435,24 @@ AI-generated extended scene analysis (≈200–300 words, configurable) for inqu
 
 Momentum scores for beat analysis in Gossamer view.
 
-- **Gossamer1** is the oldest score (first analysis run)
-- **Gossamer2-30** store subsequent runs in chronological order
+- **Gossamer1** is the oldest score (first trace)
+- **Gossamer2-30** store subsequent traces in chronological order
 - The **highest numbered field** contains the most recent score (e.g., Gossamer5 is newer than Gossamer3)
 - Supports up to 30 historical tracking points
-- Each new Gossamer analysis run appends to the next sequential number
+- Each new Gossamer analysis appends a trace to the next sequential number
 
 ```yaml
-Gossamer1: 4     # First run (oldest)
-Gossamer2: 8     # Second run
-Gossamer3: 12    # Third run (most recent in this example)
+Gossamer1: 4     # First trace (oldest)
+Gossamer2: 8     # Second trace
+Gossamer3: 12    # Third trace (most recent in this example)
 ```
 
 After running a fourth analysis with score 15:
 ```yaml
-Gossamer1: 4     # First run (oldest)
-Gossamer2: 8     # Second run
-Gossamer3: 12    # Third run
-Gossamer4: 15    # Fourth run (now the most recent)
+Gossamer1: 4     # First trace (oldest)
+Gossamer2: 8     # Second trace
+Gossamer3: 12    # Third trace
+Gossamer4: 15    # Fourth trace (now the most recent)
 ```
 
 ---
@@ -460,10 +460,10 @@ Gossamer4: 15    # Fourth run (now the most recent)
 ### GossamerStage1-30
 **Optional for Beats** | Type: String (Zero/Author/House/Press)
 
-Tracks the dominant progress stage when each Gossamer run was created. Automatically saved alongside Gossamer scores.
+Tracks the dominant progress stage when each Gossamer trace was created. Automatically saved alongside Gossamer scores.
 
-- Each `GossamerStageN` corresponds to the same run as `GossamerN`
-- Used for stage-based coloring of historical Gossamer runs
+- Each `GossamerStageN` corresponds to the same trace as `GossamerN`
+- Used for stage-based coloring of historical Gossamer traces
 - **Zero** (purple): Default starting stage
 - **Author** (blue): Unlocks when all scenes complete Author stage
 - **House** (orange): Unlocks when all scenes complete House stage
@@ -471,14 +471,14 @@ Tracks the dominant progress stage when each Gossamer run was created. Automatic
 
 ```yaml
 Gossamer1: 4
-GossamerStage1: Zero      # First run was during Zero stage
+GossamerStage1: Zero      # First trace was during Zero stage
 Gossamer2: 8
-GossamerStage2: Zero      # Second run still during Zero stage
+GossamerStage2: Zero      # Second trace still during Zero stage
 Gossamer3: 12
-GossamerStage3: Author    # Third run after completing Author stage
+GossamerStage3: Author    # Third trace after completing Author stage
 ```
 
-In Gossamer Mode, historical runs display in their stage color with saturation gradients—older runs within the same stage appear more muted, while newer runs appear more vibrant.
+In Gossamer Mode, historical traces display in their stage color with saturation gradients—older traces within the same stage appear more muted, while newer traces appear more vibrant.
 
 ---
 

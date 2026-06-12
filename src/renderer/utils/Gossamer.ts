@@ -63,7 +63,7 @@ export function renderGossamerOverlay({
 
     const beatSlicesByName = (plugin as any)._beatSlices || new Map();
 
-    // Render spokes before the gossamer plots so they sit beneath the data layer
+    // Render spokes before the gossamer traces so they sit beneath the data layer
     const numActs = Math.max(3, Math.floor((plugin.settings as any).actCount ?? 3));
     svg += renderGossamerMonthSpokes({ innerRadius, outerRadius: actualOuterRadius, numActs });
 

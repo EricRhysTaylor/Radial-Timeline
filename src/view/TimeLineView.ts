@@ -2831,7 +2831,7 @@ export class RadialTimelineView extends ItemView {
         const controlsRow = doc.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';
 
-        // Pill: two states only — "LATEST" (latest only) or "{n} PLOTS" (everything else).
+        // Pill: two states only — "LATEST" (latest only) or "{n} TRACES" (everything else).
         const button = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
         button.setAttribute('role', 'button');
@@ -2839,16 +2839,16 @@ export class RadialTimelineView extends ItemView {
         button.setAttribute('data-state', this.plugin.gossamerLatestOnly ? 'latest' : 'all');
         applyTooltip(
             button,
-            this.plugin.gossamerLatestOnly ? 'Click to show all plots' : 'Click to show latest only',
+            this.plugin.gossamerLatestOnly ? 'Click to show all traces' : 'Click to show latest only',
             'bottom'
         );
         const buttonLabel = doc.createElementNS(xhtmlNs, 'span');
         if (runs.length === 0) {
-            buttonLabel.textContent = '0 PLOTS';
+            buttonLabel.textContent = '0 TRACES';
         } else if (this.plugin.gossamerLatestOnly) {
             buttonLabel.textContent = 'LATEST';
         } else {
-            buttonLabel.textContent = `${runs.length} PLOTS`;
+            buttonLabel.textContent = `${runs.length} TRACES`;
         }
         button.appendChild(buttonLabel);
         controlsRow.appendChild(button);
@@ -2930,7 +2930,7 @@ export class RadialTimelineView extends ItemView {
         } else {
             const empty = doc.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
             empty.className = 'rt-gossamer-runs__empty';
-            empty.textContent = `No ${GOSSAMER_SIGNAL_METADATA[activeSignal].label.toLowerCase()} runs yet.`;
+            empty.textContent = `No ${GOSSAMER_SIGNAL_METADATA[activeSignal].label.toLowerCase()} traces yet.`;
             panel.appendChild(empty);
         }
 

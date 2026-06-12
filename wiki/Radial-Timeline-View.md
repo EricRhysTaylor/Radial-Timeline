@@ -31,7 +31,7 @@ A radial manuscript workspace with four modes:
 *   use the timeline legend to read scene actions and mode-specific controls
 *   compare subplot balance and structure
 *   check chronology and elapsed time
-*   score beats and compare Gossamer runs
+*   score beats and compare Gossamer traces
 *   review scene-level AI feedback via [AI Pulse Triplet Analysis](AI-Pulse-Analysis)
 
 ## Modes At A Glance

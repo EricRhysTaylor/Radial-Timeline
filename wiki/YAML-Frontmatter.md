@@ -112,9 +112,9 @@ Act: 1
 Purpose: Why this beat exists in the structure (1-2 sentences, avoid retelling scene events).
 Beat Model: Save The Cat
 Range: 0-20
-Gossamer1: 12                 # First run (oldest) - Up to 30 evaluation passes
+Gossamer1: 12                 # First trace (oldest) - Up to 30 saved traces
 Gossamer1 Justification:
-Gossamer2: 21                 # Second run (most recent in this example)
+Gossamer2: 21                 # Second trace (most recent in this example)
 Gossamer2 Justification:
 ```
 

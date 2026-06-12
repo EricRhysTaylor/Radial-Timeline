@@ -1,8 +1,8 @@
-Gossamer Mode visualizes beat-level scoring across your active story beat system. It supports four signals — **Momentum**, **Tension**, **Activity**, and **Interiority** — so you can compare not just how your story moves, but what kind of pressure or interior charge each beat carries.
+Gossamer Mode visualizes beat-level scoring across your active story beat system. Each saved scoring pass draws a **trace** — a line connecting your beat scores around the timeline. It supports four signals — **Momentum**, **Tension**, **Activity**, and **Interiority** — so you can compare not just how your story moves, but what kind of pressure or interior charge each beat carries.
 
 *   **Four signals**: Score **Momentum**, **Tension**, **Activity**, or **Interiority** against the same beat system.
-*   **Run history**: Compare saved runs across up to 30 slots per beat to track how the shape changes over time.
-*   **Top-left plots panel**: Switch signals, show **LATEST** or all plots, and toggle individual saved runs on or off.
+*   **Trace history**: Compare saved traces across up to 30 slots per beat to track how the shape changes over time.
+*   **Top-left traces panel**: Switch signals, show **LATEST** or all traces, and toggle individual saved traces on or off.
 *   **Ideal Range**: Beat `Range` values provide a visual target for **Momentum** only. They are not sent to the AI.
 *   **Manual score entry**: Enter scores for the current signal yourself, with or without external AI assistance.
 *   **Justification capture**: Each score line now records a brief justification so you know what the score was based on.
@@ -13,8 +13,8 @@ Gossamer Mode visualizes beat-level scoring across your active story beat system
 **Settings**: [Story beats system](Settings-Core#story-beats-system)
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/mode-gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400px; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer — saved runs, signal switching, and beat-level scoring</div>
+  <img src="images/mode-gossamer.jpeg" alt="Gossamer with saved traces and signal controls" style="width: 400px; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer — saved traces, signal switching, and beat-level scoring</div>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">

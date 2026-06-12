@@ -877,7 +877,7 @@ export function createTimelineSVG(
         publishStageColors: PUBLISH_STAGE_COLORS
     });
 
-    // Add synopses LAST so they appear on top of everything (including gossamer plots and Chronologue arcs)
+    // Add synopses LAST so they appear on top of everything (including gossamer traces and Chronologue arcs)
     svg += chronologueOverlaysHtml;
 
     // Render boundary date labels on top of chronologue arcs
