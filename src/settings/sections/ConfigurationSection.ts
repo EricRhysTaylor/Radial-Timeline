@@ -1,5 +1,4 @@
 import { App, Setting as Settings } from 'obsidian';
-import type { TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
@@ -18,7 +17,7 @@ import {
     resolveTimelineChapterMarkers
 } from '../../utils/timelineChapters';
 
-export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; attachFolderSuggest?: (text: TextComponent) => void; }): void {
+export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement }): void {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 

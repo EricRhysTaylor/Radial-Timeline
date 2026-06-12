@@ -978,8 +978,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderConfigurationSection({
             app: this.app,
             plugin: this.plugin,
-            containerEl: advancedConfigurationSection,
-            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+            containerEl: advancedConfigurationSection
         });
 
         const proStack = proContent.createDiv({ cls: ERT_CLASSES.STACK });

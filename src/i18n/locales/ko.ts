@@ -75,17 +75,10 @@ export const ko: DeepPartial<TranslationKeys> = {
             aiOutputFolder: {
                 name: '로그',
                 desc: '실행 로그, 아카이브, 스냅샷, 이동 이력은 Radial Timeline/Logs에 저장됩니다.',
-                placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
                 name: '내보내기 폴더',
                 desc: '원고, 아웃라인, 인덱스 카드 내보내기 (Markdown, PDF, 비트 시트, 인덱스 카드)는 Radial Timeline/Export에 저장됩니다.',
-                placeholder: 'Radial Timeline/Export',
-            },
-            outlineOutputFolder: {
-                name: '아웃라인 내보내기 폴더 (레거시)',
-                desc: '레거시 설정. 아웃라인 내보내기는 공유 내보내기 폴더를 사용합니다. 기본값: Radial Timeline/Export.',
-                placeholder: 'Radial Timeline/Export',
             },
             autoExpand: {
                 name: '잘린 장면 제목 자동 확장',

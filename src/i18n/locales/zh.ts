@@ -77,17 +77,10 @@ export const zh: DeepPartial<TranslationKeys> = {
             aiOutputFolder: {
                 name: '日志',
                 desc: '运行日志、归档、快照和移动历史保存在 Radial Timeline/Logs。',
-                placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
                 name: '导出文件夹',
                 desc: '手稿、大纲和索引卡导出（Markdown、PDF、节拍表、索引卡）保存在 Radial Timeline/Export。',
-                placeholder: 'Radial Timeline/Export',
-            },
-            outlineOutputFolder: {
-                name: '大纲导出文件夹（旧版）',
-                desc: '旧版设置。大纲导出使用共享的导出文件夹。默认：Radial Timeline/Export。',
-                placeholder: 'Radial Timeline/Export',
             },
             autoExpand: {
                 name: '自动展开被截断的场景标题',

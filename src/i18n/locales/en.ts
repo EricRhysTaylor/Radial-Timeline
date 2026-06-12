@@ -71,17 +71,10 @@ export interface TranslationKeys {
             aiOutputFolder: {
                 name: string;
                 desc: string;
-                placeholder: string;
             };
             manuscriptOutputFolder: {
                 name: string;
                 desc: string;
-                placeholder: string;
-            };
-            outlineOutputFolder: {
-                name: string;
-                desc: string;
-                placeholder: string;
             };
             synopsisMaxLines: {
                 name: string;
@@ -1771,17 +1764,10 @@ export const en: TranslationKeys = {
             aiOutputFolder: {
                 name: 'Logs',
                 desc: 'Runtime logs, archives, snapshots, and move history.',
-                placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
                 name: 'Export folder',
                 desc: 'Destination for manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards). Must be a folder inside your vault.',
-                placeholder: 'Radial Timeline/Export',
-            },
-            outlineOutputFolder: {
-                name: 'Outline export folder (legacy)',
-                desc: 'Legacy setting. Outline exports now use the shared Export folder. Default: Radial Timeline/Export.',
-                placeholder: 'Radial Timeline/Export',
             },
             synopsisMaxLines: {
                 name: 'Synopsis max words',

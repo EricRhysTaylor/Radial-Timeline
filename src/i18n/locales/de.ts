@@ -75,17 +75,10 @@ export const de: DeepPartial<TranslationKeys> = {
             aiOutputFolder: {
                 name: 'Logs',
                 desc: 'Ausführungslogs, Archive, Snapshots und Move History werden in Radial Timeline/Logs gespeichert.',
-                placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
                 name: 'Export-Ordner',
                 desc: 'Manuskript-, Outline- und Indexkarten-Exporte (Markdown, PDF, Beat Sheets, Indexkarten) werden in Radial Timeline/Export gespeichert.',
-                placeholder: 'Radial Timeline/Export',
-            },
-            outlineOutputFolder: {
-                name: 'Outline-Export-Ordner (Legacy)',
-                desc: 'Legacy-Einstellung. Outline-Exporte verwenden den gemeinsamen Export-Ordner. Standard: Radial Timeline/Export.',
-                placeholder: 'Radial Timeline/Export',
             },
             autoExpand: {
                 name: 'Abgeschnittene Szenentitel automatisch ausklappen',
