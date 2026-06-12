@@ -18,17 +18,31 @@ import type { Plugin, Workspace } from 'obsidian';
 
 /** The main window's document plus every open popout window's document. */
 export function getOpenDocuments(workspace: Workspace): Document[] {
+    // rootSplit is null until Obsidian builds the workspace layout — plugins
+    // load before that. Calling this earlier is a contract violation; fail
+    // loudly instead of letting `.doc` throw a cryptic TypeError mid-onload.
+    if (!workspace.rootSplit) {
+        throw new Error('getOpenDocuments() requires the workspace layout; call it after onLayoutReady');
+    }
     const docs = new Set<Document>([workspace.rootSplit.doc]);
     workspace.iterateAllLeaves((leaf) => docs.add(leaf.view.containerEl.ownerDocument));
     return [...docs];
 }
 
 /**
- * Run `bind` once per open document — now, and again for each popout window
- * opened later. For one-shot per-document setup (listeners, observers); the
- * window-open subscription is cleaned up by the plugin lifecycle.
+ * Run `bind` once per open document — when the workspace layout is ready, and
+ * again for each popout window opened later. Safe to call during plugin
+ * onload: enumeration waits for onLayoutReady (which fires immediately if the
+ * layout already exists). For one-shot per-document setup (listeners,
+ * observers); subscriptions are cleaned up by the plugin lifecycle.
  */
 export function bindToAllDocuments(plugin: Plugin, bind: (doc: Document) => void): void {
-    getOpenDocuments(plugin.app.workspace).forEach(bind);
-    plugin.registerEvent(plugin.app.workspace.on('window-open', (win) => bind(win.doc)));
+    const bound = new Set<Document>();
+    const bindOnce = (doc: Document) => {
+        if (bound.has(doc)) return;
+        bound.add(doc);
+        bind(doc);
+    };
+    plugin.app.workspace.onLayoutReady(() => getOpenDocuments(plugin.app.workspace).forEach(bindOnce));
+    plugin.registerEvent(plugin.app.workspace.on('window-open', (win) => bindOnce(win.doc)));
 }
