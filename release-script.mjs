@@ -405,12 +405,26 @@ async function performBuildAndUpload(version, isDraft = false) {
             runCommand(`gh release edit ${version} --draft=false --latest`, "Publishing release");
             console.log(`\n🎉 Release ${version} published successfully!`);
             console.log(`📦 https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${version}`);
+            queueDirectoryScan();
         } else {
             console.log(`\n✅ Assets uploaded. Release ${version} remains a draft.`);
         }
     } else {
         console.log(`\n✅ Assets updated for existing release ${version}.`);
+        queueDirectoryScan();
     }
+}
+
+// The community directory does NOT notice new releases on its own — someone
+// has to hit the dashboard's "Check for new releases" endpoint, which queues
+// the official review scan. Opening this URL in the default browser (where
+// the Obsidian community session is logged in) performs the check.
+const DIRECTORY_CHECK_RELEASE_URL =
+    'https://community.obsidian.md/account/plugins/radial-timeline/check-release';
+
+function queueDirectoryScan() {
+    runCommand(`open "${DIRECTORY_CHECK_RELEASE_URL}"`, "Opening the directory's check-release page to queue the review scan", false, true);
+    console.log("   (If the page asks you to log in, log in and reload it — the scan queues on page load.)");
 }
 
 async function main() {
