@@ -9,16 +9,22 @@ Use this document for general coding rules. For settings UI, modal UI, and share
 
 ## SAFE Comment Markers
 When code intentionally violates a checker rule for a valid reason, annotate it:
-- `// SAFE: innerHTML used for [reason]`
 - `// SAFE: inline style used for [reason]`
 - `// SAFE: any type used for [reason]`
 - `// SAFE: Modal sizing via inline styles (Obsidian pattern)`
 
 These comments document intent and keep automated checks honest.
+`SAFE` markers do NOT apply to `innerHTML`/`outerHTML` — see DOM and Security.
 
 ## DOM and Security
 - Never use `eval()` or `new Function()`.
-- Avoid `innerHTML` and `outerHTML` unless the content is trusted and the line is explicitly marked `SAFE`.
+- Never assign `innerHTML` or `outerHTML` — no exceptions, no `SAFE` markers.
+  The Obsidian plugin scanner treats any `innerHTML` assignment as a hard
+  error regardless of comments or content provenance (escalated from
+  warning to error in the scanner ruleset, June 2026).
+- For trusted serialized SVG, use the helpers in `src/utils/svgDom.ts`
+  (`renderSvgFromString` for the main timeline, `mountSvgMarkup` for
+  previews/icons) — they go through `DOMParser` + `importNode`.
 - Prefer DOM creation APIs and text content assignment.
 
 ## Styling

@@ -21,6 +21,25 @@ import {
 // Scaling applied on click/activation
 const BUTTON_ACTIVE_SCALE = 1.2;
 
+// Saved Earth-label tspan structures, captured before alien/runtime modes rewrite a
+// textPath and replayed on restore. Keyed by the live textPath element so entries
+// vanish with the DOM they describe.
+const savedEarthLabelNodes = new WeakMap<Element, Node[]>();
+
+function saveEarthLabelNodes(textPath: Element): void {
+    if (!savedEarthLabelNodes.has(textPath)) {
+        savedEarthLabelNodes.set(textPath, Array.from(textPath.childNodes, node => node.cloneNode(true)));
+    }
+}
+
+function restoreEarthLabelNodes(textPath: Element): boolean {
+    const nodes = savedEarthLabelNodes.get(textPath);
+    if (!nodes) return false;
+    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+    nodes.forEach(node => textPath.appendChild(node.cloneNode(true)));
+    return true;
+}
+
 export interface ChronologueShiftView {
     registerDomEvent: (
         el: HTMLElement | Window | Document,
@@ -429,9 +448,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                         label.setAttribute('data-earth-label', textPath.textContent || '');
                     }
                 }
-                if (!label.getAttribute('data-earth-label-html')) {
-                    label.setAttribute('data-earth-label-html', textPath.innerHTML);
-                }
+                saveEarthLabelNodes(textPath);
 
                 const earthLabel = label.getAttribute('data-earth-label') || '';
                 const earthDate = new Date(earthDateStr);
@@ -469,11 +486,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 }
             } else {
                 // Restore Earth label
-                const earthLabelHtml = label.getAttribute('data-earth-label-html');
                 const earthLabel = label.getAttribute('data-earth-label');
-                if (earthLabelHtml) {
-                    textPath.innerHTML = earthLabelHtml; // SAFE: innerHTML used for restoring saved SVG tspan structure
-                } else if (earthLabel) {
+                if (!restoreEarthLabelNodes(textPath) && earthLabel) {
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                     if (earthLabel.includes('\n')) {
                         earthLabel.split('\n').forEach((line, i) => {
@@ -559,10 +573,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                         label.setAttribute('data-earth-label', textPath.textContent || '');
                     }
                 }
-                if (!label.getAttribute('data-earth-label-html')) {
-                    label.setAttribute('data-earth-label-html', textPath.innerHTML);
-                }
-                
+                saveEarthLabelNodes(textPath);
+
                 if (isFirst) {
                     // First label shows "00:00"
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
@@ -599,12 +611,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 }
             } else {
                 // Restore Earth label
-                const earthLabelHtml = label.getAttribute('data-earth-label-html');
                 const earthLabel = label.getAttribute('data-earth-label');
                 textPath.removeAttribute('data-runtime-hidden');
-                if (earthLabelHtml) {
-                    textPath.innerHTML = earthLabelHtml; // SAFE: innerHTML used for restoring saved SVG tspan structure
-                } else if (earthLabel) {
+                if (!restoreEarthLabelNodes(textPath) && earthLabel) {
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                     if (earthLabel.includes('\n')) {
                         earthLabel.split('\n').forEach((line, i) => {

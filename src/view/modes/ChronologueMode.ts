@@ -430,23 +430,36 @@ function showWhenFieldWarning(svg: SVGSVGElement, sceneGroup: Element, event: Mo
     hideWhenFieldWarning(svg);
 
     // Create warning tooltip
-    const warning = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const doc = svg.ownerDocument;
+    const warning = doc.createElementNS(svgNS, 'g');
     warning.setAttribute('class', 'rt-when-field-warning');
 
     const x = event.clientX;
     const y = event.clientY;
 
-    warning.innerHTML = ` // SAFE: innerHTML used for SVG element creation from trusted internal template
-        <rect x="${x - 60}" y="${y - 30}" width="120" height="20" 
-              rx="4" fill="var(--background-primary)" 
-              stroke="var(--text-error)" stroke-width="1"/>
-        <text x="${x}" y="${y - 15}" 
-              text-anchor="middle" dominant-baseline="middle"
-              font-family="var(--font-text)" font-size="10" font-weight="600"
-              fill="var(--text-error)">
-            Missing When field
-        </text>
-    `;
+    const rect = doc.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', String(x - 60));
+    rect.setAttribute('y', String(y - 30));
+    rect.setAttribute('width', '120');
+    rect.setAttribute('height', '20');
+    rect.setAttribute('rx', '4');
+    rect.setAttribute('fill', 'var(--background-primary)');
+    rect.setAttribute('stroke', 'var(--text-error)');
+    rect.setAttribute('stroke-width', '1');
+    warning.appendChild(rect);
+
+    const text = doc.createElementNS(svgNS, 'text');
+    text.setAttribute('x', String(x));
+    text.setAttribute('y', String(y - 15));
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('font-family', 'var(--font-text)');
+    text.setAttribute('font-size', '10');
+    text.setAttribute('font-weight', '600');
+    text.setAttribute('fill', 'var(--text-error)');
+    text.textContent = 'Missing When field';
+    warning.appendChild(text);
 
     svg.appendChild(warning);
 }

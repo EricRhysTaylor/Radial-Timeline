@@ -18,6 +18,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { t } from '../../i18n';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
 import { fitSelectToSelectedLabel } from '../selectSizing';
+import { mountSvgMarkup } from '../../utils/svgDom';
 export interface AuthorProgressSectionProps {
     app: App;
     plugin: RadialTimelinePlugin;
@@ -2080,10 +2081,9 @@ async function renderHeroPreview(
 
         // Create a wrapper to ensure SVG displays at natural size
         const svgWrapper = container.createDiv({ cls: 'ert-apr-svg-wrapper' });
-        svgWrapper.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+        const svgEl = mountSvgMarkup(svgWrapper, svgString);
 
         // Ensure the SVG has explicit dimensions for 1:1 display
-        const svgEl = svgWrapper.querySelector('svg');
         if (svgEl) {
             svgEl.setAttribute('width', String(width));
             svgEl.setAttribute('height', String(height));

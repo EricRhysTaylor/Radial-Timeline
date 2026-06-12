@@ -32,9 +32,9 @@ const BASELINE_PATH = path.join(projectRoot, 'scripts/compliance-baseline.json')
 const checks = [
   {
     id: 'innerHTML',
-    description: 'Avoid assigning to innerHTML; construct DOM nodes instead.',
+    description: 'Never assign to innerHTML; construct DOM nodes instead. No SAFE exception — the Obsidian plugin scanner rejects innerHTML regardless of comments.',
     regex: /\.innerHTML\s*=\s*/,
-    allowSafeComment: true,
+    allowSafeComment: false,
     severity: 'error',
   },
   {
@@ -96,9 +96,9 @@ const checks = [
   },
   {
     id: 'outerHTML',
-    description: 'Avoid assigning to outerHTML; construct DOM nodes instead.',
+    description: 'Never assign to outerHTML; construct DOM nodes instead. No SAFE exception — the Obsidian plugin scanner rejects outerHTML regardless of comments.',
     regex: /\.outerHTML\s*=\s*/,
-    allowSafeComment: true,
+    allowSafeComment: false,
     severity: 'error',
   },
   {

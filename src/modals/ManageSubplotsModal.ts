@@ -10,10 +10,6 @@ import type RadialTimelinePlugin from '../main';
 import { SubplotManagementService, SubplotStats } from '../services/SubplotManagementService';
 import { scheduleFocusAfterPaint } from '../utils/domFocus';
 
-// SVGs
-const ERASER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser-icon lucide-eraser"><path d="M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21"/><path d="m5.082 11.09 8.828 8.828"/></svg>`;
-const PENCIL_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-line-icon lucide-pencil-line"><path d="M13 21h8"/><path d="m15 5 4 4"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>`;
-
 export class ManageSubplotsModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private service: SubplotManagementService;
@@ -100,27 +96,20 @@ export class ManageSubplotsModal extends Modal {
 
             // Rename Button
             const renameBtn = new ButtonComponent(actions)
+                .setIcon('pencil-line')
                 .setTooltip('Rename')
                 .setDisabled(subplot.name === "Main Plot")
                 .onClick(() => this.handleRename(subplot.name));
-            
-            // Create separate element for SVG to avoid innerHTML on button
-            const pencilIcon = document.createElement('span');
-            pencilIcon.innerHTML = PENCIL_ICON; // SAFE: innerHTML used for SVG icon
-            renameBtn.buttonEl.appendChild(pencilIcon);
-            
+
             renameBtn.buttonEl.classList.add('ert-pulse-icon-button', 'ert-manage-subplots-btn');
 
             // Delete Button (Disable for Main Plot)
             const isMainPlot = subplot.name === "Main Plot";
             const deleteBtn = new ButtonComponent(actions)
+                .setIcon('eraser')
                 .setTooltip(isMainPlot ? 'Main Plot cannot be deleted' : 'Delete')
                 .setDisabled(isMainPlot)
                 .onClick(() => this.handleDelete(subplot.name));
-            
-            const eraserIcon = document.createElement('span');
-            eraserIcon.innerHTML = ERASER_ICON; // SAFE: innerHTML used for SVG icon
-            deleteBtn.buttonEl.appendChild(eraserIcon);
 
             deleteBtn.buttonEl.classList.add('ert-pulse-icon-button', 'ert-manage-subplots-btn', 'ert-manage-subplots-delete-btn');
             

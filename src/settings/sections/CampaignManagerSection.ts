@@ -24,6 +24,7 @@ import { resolveBookTitle } from '../../renderer/apr/aprHelpers';
 import { ERT_CLASSES } from '../../ui/classes';
 import { fitSelectToSelectedLabel } from '../selectSizing';
 import { scheduleFocusAfterPaint } from '../../utils/domFocus';
+import { mountSvgMarkup } from '../../utils/svgDom';
 import { getActiveBook } from '../../utils/books';
 
 export interface CampaignManagerProps {
@@ -1378,7 +1379,9 @@ async function renderTeaserStagesPreviews(
                 portableSvg: true
             });
 
-            svgContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+            if (!mountSvgMarkup(svgContainer, svgString)) {
+                svgContainer.createEl('span', { text: '⚠', cls: 'ert-stageCard__error' });
+            }
         } catch {
             svgContainer.createEl('span', { text: '⚠', cls: 'ert-stageCard__error' });
         }

@@ -6,6 +6,21 @@ import { t } from '../i18n';
 
 type CleanupRegistrar = (cleanup: () => void) => void;
 
+/**
+ * Parse a complete serialized `<svg>` document and append it to a container.
+ * Returns the mounted element as-is (no attribute rewriting), or null when
+ * the markup fails to parse.
+ */
+export function mountSvgMarkup(container: HTMLElement, svgMarkup: string): SVGSVGElement | null {
+    const doc = new DOMParser().parseFromString(svgMarkup, 'image/svg+xml');
+    if (doc.querySelector('parsererror') || doc.documentElement.tagName.toLowerCase() !== 'svg') {
+        return null;
+    }
+    const imported = container.ownerDocument.importNode(doc.documentElement, true);
+    container.appendChild(imported);
+    return imported as unknown as SVGSVGElement;
+}
+
 export function renderSvgFromString(
     svgContent: string,
     container: HTMLElement,

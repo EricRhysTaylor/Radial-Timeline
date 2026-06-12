@@ -32,27 +32,27 @@ export function updateYearProgressRing(svg: SVGSVGElement, progressRadius: numbe
         const timelineRoot = svg.querySelector('#timeline-root');
         if (!timelineRoot) return false;
         
-        // Create temporary container for new progress ring
-        const tempContainer = document.createElement('div');
-        tempContainer.innerHTML = renderProgressRing({ // SAFE: innerHTML used for SVG fragment generation from trusted source
-            progressRadius, 
-            yearProgress, 
-            currentYearStartAngle, 
-            segmentCount: 6 
+        const ringMarkup = renderProgressRing({
+            progressRadius,
+            yearProgress,
+            currentYearStartAngle,
+            segmentCount: 6
         });
-        
-        // Extract the generated elements and insert them at the beginning of timeline-root
-        // (so they appear below other elements but above the background)
+        if (!ringMarkup) return true;
+
+        // renderProgressRing returns a multi-root fragment; wrap it so it parses as one XML document
         const parser = new DOMParser();
-        const doc = parser.parseFromString(tempContainer.innerHTML, 'image/svg+xml');
+        const doc = parser.parseFromString(`<g xmlns="http://www.w3.org/2000/svg">${ringMarkup}</g>`, 'image/svg+xml');
+        if (doc.querySelector('parsererror')) return false;
         const newElements = Array.from(doc.documentElement.children);
-        
+
         // Insert at beginning of timeline-root (after defs but before scenes)
+        // (so they appear below other elements but above the background)
         newElements.forEach(el => {
-            const imported = document.importNode(el, true);
+            const imported = svg.ownerDocument.importNode(el, true);
             timelineRoot.insertBefore(imported, timelineRoot.firstChild);
         });
-        
+
         return true;
     } catch (error) {
         console.error('[DynamicLayerUpdater] Failed to update year progress ring:', error);
