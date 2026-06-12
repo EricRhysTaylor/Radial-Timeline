@@ -69,7 +69,7 @@ const RT_IGNORE_REGEX = [
   '^"Working"$',
   '^← Prev$',
   '^↑ SHIFT$',
-  '^0 PLOTS$',
+  '^0 TRACES$',
   'Year \\d+',
   '^advanced workflows',
   'StoryLine',
