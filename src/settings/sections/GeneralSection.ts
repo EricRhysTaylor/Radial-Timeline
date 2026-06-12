@@ -665,7 +665,7 @@ export function renderGeneralSection(params: {
                 const openFolderSuggest = () => {
                     window.setTimeout(() => {
                         if (inputEl.ownerDocument.activeElement !== inputEl) return;
-                        try { folderSuggest.open(); } catch { }
+                        try { folderSuggest.open(); } catch { /* suggest popup is best-effort */ }
                     }, 0);
                 };
 

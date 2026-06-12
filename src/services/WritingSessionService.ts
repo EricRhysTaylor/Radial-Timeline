@@ -731,9 +731,8 @@ export class WritingSessionService {
     }
 
     private async captureOpenSceneWordSnapshot(): Promise<ActiveWritingSession['wordSnapshot'] | undefined> {
-        const getSceneData = this.plugin.getSceneData;
-        if (typeof getSceneData !== 'function') return undefined;
-        const scenes: TimelineItem[] = await getSceneData.call(this.plugin).catch(() => []);
+        if (typeof this.plugin.getSceneData !== 'function') return undefined;
+        const scenes: TimelineItem[] = await this.plugin.getSceneData().catch(() => []);
         const scenePaths = new Set(scenes
             .filter(scene => Boolean(scene.path) && this.isSceneInActiveBook(scene))
             .map(scene => scene.path as string));

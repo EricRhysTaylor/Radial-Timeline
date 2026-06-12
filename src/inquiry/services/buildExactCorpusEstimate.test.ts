@@ -4,6 +4,7 @@ import {
     buildPendingCorpusEstimateFromManifestEntries
 } from './buildExactCorpusEstimate';
 import type { CorpusManifestEntry } from '../runner/types';
+import { TFile } from 'obsidian';
 
 function makeEntry(overrides: Partial<CorpusManifestEntry>): CorpusManifestEntry {
     return {
@@ -23,10 +24,10 @@ describe('buildExactCorpusEstimateFromManifestEntries', () => {
             makeEntry({ path: 'Refs/Character.md', class: 'character', mode: 'full' }),
             makeEntry({ path: 'Ignored.md', class: 'scene', mode: 'excluded' })
         ];
-        const files = new Map<string, { path: string }>([
-            ['Book/Scene 1.md', { path: 'Book/Scene 1.md' }],
-            ['Book/Outline.md', { path: 'Book/Outline.md' }],
-            ['Refs/Character.md', { path: 'Refs/Character.md' }]
+        const files = new Map<string, TFile>([
+            ['Book/Scene 1.md', new TFile('Book/Scene 1.md')],
+            ['Book/Outline.md', new TFile('Book/Outline.md')],
+            ['Refs/Character.md', new TFile('Refs/Character.md')]
         ]);
         const contents = new Map<string, string>([
             ['Book/Scene 1.md', '---\nTitle: Scene 1\n---\nBody text\n<!-- remove -->\n%% secret %%'],

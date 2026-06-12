@@ -1,3 +1,4 @@
+/* global __RT_DEV__, __RT_RELEASE__ */
 /*
  * CommandRegistrar
  * Encapsulates all command+ribbon registration.

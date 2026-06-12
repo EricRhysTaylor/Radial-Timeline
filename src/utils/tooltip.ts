@@ -107,7 +107,7 @@ function setActiveTooltipTarget(target: Element | null): void {
 }
 
 function isSvgLikeElement(element: Element): element is SVGElement {
-    if (element instanceof SVGElement) return true;
+    if (element.instanceOf(SVGElement)) return true;
     return element.namespaceURI === 'http://www.w3.org/2000/svg';
 }
 
@@ -175,7 +175,7 @@ export function tooltip(
         addTooltipData(element, balancedText, placement);
         return;
     }
-    if (element instanceof HTMLElement) {
+    if (element.instanceOf(HTMLElement)) {
         // Use native Obsidian tooltip for standard HTML UI elements
         setTooltip(element, balancedText, { placement });
     }

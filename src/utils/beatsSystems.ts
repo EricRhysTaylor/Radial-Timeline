@@ -533,42 +533,6 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
   },
 ];
 
-/**
- * Shared helper to construct the active custom system object from canonical settings.
- */
-export function getCustomSystemFromSettings(
-    settings: RadialTimelineSettings
-): PlotSystemPreset {
-    // Lazy import to break circular dep (workspaceState → NoteScopeResolver → frontmatter → defaults → beatsSystems).
-    const { getActiveLoadedBeatTab } = require('../storyBeats/workspaceState') as typeof import('../storyBeats/workspaceState');
-    const activeTab = getActiveLoadedBeatTab(settings);
-    const name = normalizeBeatSetNameInput(activeTab?.name ?? '', 'Custom');
-    const beatObjs = activeTab?.beats ?? [];
-
-    const beats = beatObjs
-        .map((b) => normalizeBeatNameInput(b.name, ''))
-        .filter(n => n.length > 0);
-    const beatDetails = beatObjs
-        .map((b) => ({ ...b, name: normalizeBeatNameInput(b.name, '') }))
-        .filter(b => b.name.length > 0)
-        .map(b => ({
-            name: b.name,
-            description: typeof b.purpose === 'string' ? b.purpose.trim() : '',
-            range: typeof b.range === 'string' ? b.range.trim() : '',
-            act: b.act,
-            id: b.id,
-        }));
-
-    return {
-        name,
-        category: 'blank',
-        icon: 'square',
-        beats,
-        beatDetails,
-        beatCount: beats.length
-    };
-}
-
 // ─── Deprecated aliases (remove after v5.2) ─────────────────────────
 
 /** @deprecated Use PlotSystemPreset */

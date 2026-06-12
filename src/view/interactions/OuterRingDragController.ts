@@ -257,7 +257,7 @@ export class OuterRingDragController {
         if (typeof (window as any).CSS !== 'undefined' && (window as any).CSS.escape) {
             return (window as any).CSS.escape(value);
         }
-        return value.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
+        return value.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
     }
 
     private getBasenameFromPath(path: string): string {
@@ -783,7 +783,7 @@ export class OuterRingDragController {
         const moved = order[fromIdx];
         const sourceSceneId = this.sourceSceneId;
         const targetEntry = order[toIdx];
-        const insertionRelation: 'before' = 'before';
+        const insertionRelation = 'before' as const;
         let reordered = [...order];
         let isNoOpReorder = false;
         if (moved.itemType === 'Scene' && targetEntry?.itemType === 'Scene') {
@@ -1027,7 +1027,9 @@ export class OuterRingDragController {
             const isMovingToExistingSubplot = currentSubplots.includes(targetSubplotName);
             
             if (isMovingToExistingSubplot) {
+                // Already on the target subplot — keep subplots unchanged.
             } else if (target.isOuterRing) {
+                // Outer-ring drops keep the current subplot assignment.
             } else {
                 if (hasMainPlot) {
                     newSubplots = ['Main Plot', targetSubplotName];

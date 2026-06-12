@@ -123,7 +123,7 @@ function normalizeSceneRef(item: BeatItem | undefined, section: string, index: n
 
 function sanitizeJsonControlCharacters(input: string): string {
     // Replace unescaped control characters (except common whitespace) with spaces so JSON.parse succeeds.
-    return input.replace(/[\u0000-\u001F]/g, char => {
+    return input.replace(/\p{Cc}/gu, char => {
         if (char === '\n' || char === '\r' || char === '\t') {
             return char;
         }

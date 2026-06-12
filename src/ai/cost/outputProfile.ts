@@ -137,7 +137,7 @@ export class OutputProfileStore {
     }
 
     private getFilePath(): string {
-        const configDir = (this.plugin.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
+        const configDir = this.plugin.app.vault.configDir;
         const pluginId = this.plugin.manifest.id;
         return normalizePath(`${configDir}/plugins/${pluginId}/${PROFILE_FILE_NAME}`);
     }

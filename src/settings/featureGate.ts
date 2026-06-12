@@ -1,3 +1,4 @@
+/* global __RT_DEV__, __RT_RELEASE__ */
 import type RadialTimelinePlugin from '../main';
 import { isProActive } from './proEntitlement';
 

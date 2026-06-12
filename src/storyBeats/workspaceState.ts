@@ -19,6 +19,7 @@ import { cloneBeatLibraryItem, getBeatLibraryItemBySource, getBuiltinBeatLibrary
 import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
 import { getActiveFrontmatterMappings, normalizeFrontmatterKeys, asBeatFrontmatter, readBeatPurpose } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
+import type { PlotSystemPreset } from '../utils/beatsSystems';
 
 /** Maps legacy manuscript Beat Model values to their current canonical names. */
 const LEGACY_MODEL_ALIASES: Record<string, string> = {
@@ -527,4 +528,39 @@ export function getActiveBeatWorkspaceSystemId(settings: RadialTimelineSettings)
 export function getActiveBeatWorkspaceConfigKey(settings: RadialTimelineSettings): string | undefined {
     const activeTab = getActiveLoadedBeatTab(settings);
     return activeTab ? getLoadedBeatTabConfigKey(activeTab) : undefined;
+}
+
+/**
+ * Shared helper to construct the active custom system object from canonical settings.
+ * Lives here (downstream of beatsSystems) so beatsSystems never imports back up the chain.
+ */
+export function getCustomSystemFromSettings(
+    settings: RadialTimelineSettings
+): PlotSystemPreset {
+    const activeTab = getActiveLoadedBeatTab(settings);
+    const name = normalizeBeatSetNameInput(activeTab?.name ?? '', 'Custom');
+    const beatObjs = activeTab?.beats ?? [];
+
+    const beats = beatObjs
+        .map((b) => normalizeBeatNameInput(b.name, ''))
+        .filter(n => n.length > 0);
+    const beatDetails = beatObjs
+        .map((b) => ({ ...b, name: normalizeBeatNameInput(b.name, '') }))
+        .filter(b => b.name.length > 0)
+        .map(b => ({
+            name: b.name,
+            description: typeof b.purpose === 'string' ? b.purpose.trim() : '',
+            range: typeof b.range === 'string' ? b.range.trim() : '',
+            act: b.act,
+            id: b.id,
+        }));
+
+    return {
+        name,
+        category: 'blank',
+        icon: 'square',
+        beats,
+        beatDetails,
+        beatCount: beats.length
+    };
 }

@@ -2734,7 +2734,7 @@ export function renderBeatPropertiesSection(params: {
 
         for (const file of files) {
             try {
-                await app.vault.trash(file, systemTrash);
+                await app.fileManager.trashFile(file);
                 trashed += 1;
             } catch (error) {
                 failed += 1;
@@ -3410,7 +3410,7 @@ export function renderBeatPropertiesSection(params: {
     const backdropReservedSystemKeys = new Set(['id', 'class']);
     const normalizeBackdropFieldKey = (value: string): string => {
         return (value || '')
-            .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+            .replace(/\p{Cc}+/gu, ' ')
             .replace(/:/g, ' - ')
             .replace(/\s+/g, ' ')
             .trim();

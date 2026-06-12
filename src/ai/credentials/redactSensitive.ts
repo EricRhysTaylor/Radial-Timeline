@@ -54,7 +54,7 @@ export function redactSensitiveValue(str: string): string {
         /(\bx-api-key\b\s*[:=]\s*["']?)([^"'\s,;]+)/gi,
         (_, prefix: string) => `${prefix}${REDACTED}`
     );
-    value = value.replace(/\bBearer\s+[A-Za-z0-9._~+\/=-]{8,}/gi, `Bearer ${REDACTED}`);
+    value = value.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, `Bearer ${REDACTED}`);
     value = value.replace(/sk-ant-[A-Za-z0-9_-]{10,}/g, REDACTED);
     value = value.replace(/sk-[A-Za-z0-9_-]{10,}/g, REDACTED);
     value = value.replace(/AIza[0-9A-Za-z_-]{16,}/g, REDACTED);

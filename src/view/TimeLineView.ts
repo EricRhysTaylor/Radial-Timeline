@@ -18,6 +18,8 @@ import { setupRotationController, setupSearchControls as setupSearchControlsExt,
 import { isShiftModeActive } from './interactions/ChronologueShiftController';
 import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
+import { getModeDefinition } from '../modes/ModeRegistry';
+import { TimelineMode } from '../modes/ModeDefinition';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
 import { renderWelcomeScreen } from './WelcomeScreen';
 import {
@@ -2055,7 +2057,6 @@ export class RadialTimelineView extends ItemView {
      */
     private setupInteractionsForMode(svg: SVGSVGElement): void {
         if (this.interactionController) {
-            const { getModeDefinition } = require('../modes/ModeRegistry');
             const modeDef = getModeDefinition(this.currentMode as any);
             void this.interactionController.setupMode(modeDef, svg);
         }
@@ -3187,8 +3188,6 @@ export class RadialTimelineView extends ItemView {
         
         // Use ModeInteractionController system
         if (this.interactionController) {
-            const { getModeDefinition } = require('../modes/ModeRegistry');
-            const { TimelineMode } = require('../modes/ModeDefinition');
             const modeDef = getModeDefinition(TimelineMode.GOSSAMER);
             void this.interactionController.setupMode(modeDef, svg);
         }

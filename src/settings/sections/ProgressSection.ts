@@ -676,7 +676,7 @@ export function renderCompletionEstimatePreview(params: {
                         if (stageDate >= monthStart && stageDate <= monthEnd) {
                             stageTargets.push({ stage, date: stageDate, isOverdue: stageDate < today });
                         }
-                    } catch { }
+                    } catch { /* skip unparsable stage dates */ }
                 }
 
                 const monthFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short' });

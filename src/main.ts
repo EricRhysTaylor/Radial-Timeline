@@ -1,3 +1,4 @@
+/* global __RT_DEV__, __RT_RELEASE__ */
 /*
  * Radial Timeline Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
@@ -85,7 +86,7 @@ const DEV_PLAINTEXT_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
     { label: 'OpenAI key signature', regex: /sk-[A-Za-z0-9_-]{10,}/ },
     { label: 'Anthropic key signature', regex: /sk-ant-[A-Za-z0-9_-]{10,}/ },
     { label: 'Google API key signature', regex: /AIza[0-9A-Za-z_-]{16,}/ },
-    { label: 'Bearer header token', regex: /\bBearer\s+[A-Za-z0-9._~+\/=-]{8,}/i },
+    { label: 'Bearer header token', regex: /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/i },
     { label: 'Header-like high-entropy secret', regex: /(authorization|x-api-key|apiKey|token|secret)["']?\s*[:=]\s*["'][A-Za-z0-9+/_=-]{40,}/i }
 ];
 function detectPlaintextCredentialPattern(serialized: string): string | null {

@@ -10,7 +10,7 @@ export function generateSceneId(hexLength: number = DEFAULT_HEX_LENGTH): string 
     const length = clampHexLength(hexLength);
     const byteLength = Math.ceil(length / 2);
     const bytes = new Uint8Array(byteLength);
-    const cryptoApi = globalThis.crypto;
+    const cryptoApi = window.crypto;
     if (cryptoApi?.getRandomValues) {
         cryptoApi.getRandomValues(bytes);
     } else {
@@ -102,7 +102,7 @@ export function ensureReferenceIdFrontmatter(
         ordered[key] = value;
     }
 
-    const changed = !!forcedId
+    const changed = forcedId
         ? (existingId !== forcedId || idKey !== CANONICAL_REFERENCE_ID_KEY || (!classKey && !!options.classFallback))
         : (!existingId || idKey !== CANONICAL_REFERENCE_ID_KEY || (!classKey && !!options.classFallback));
     return {

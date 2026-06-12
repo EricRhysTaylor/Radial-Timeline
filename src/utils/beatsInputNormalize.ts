@@ -3,7 +3,7 @@
  * Keeps matching, filenames, and settings edits consistent.
  */
 
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]+/g;
+const CONTROL_CHARS = /\p{Cc}+/gu;
 const HAS_ALNUM = /[A-Za-z0-9]/;
 
 function normalizeInlineText(value: string): string {
@@ -56,7 +56,7 @@ export function sanitizeBeatFilenameSegment(value: string, fallback = 'Beat'): s
 function normalizeForMatching(value: string): string {
   return normalizeInlineText(value)
     .replace(/&/g, ' and ')
-    .replace(/[\/\\\-_‐‑‒–—―]+/g, ' ')
+    .replace(/[/\\\-_‐‑‒–—―]+/g, ' ')
     .replace(/[^A-Za-z0-9\s]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

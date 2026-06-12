@@ -351,7 +351,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     textInput.inputEl.addClass('ert-setting-input-error');
                     window.setTimeout(() => textInput.inputEl.removeClass('ert-setting-input-error'), 2000);
                 }
-                try { textInput.inputEl.focus(); } catch { }
+                try { textInput.inputEl.focus(); } catch { /* focus is best-effort */ }
             });
         });
     }
@@ -651,7 +651,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Wrap hero title in a title row for inline/legacy layout
         const titleRow = hero.createDiv({ cls: 'ert-hero-titleRow' });
-        titleRow.createEl('h3', {
+        titleRow.createDiv({
             cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
             text: options.title
         });
@@ -670,7 +670,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const featuresSection = hero.createDiv({
                 cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
             });
-            featuresSection.createEl('h5', { text: options.kicker, cls: 'ert-kicker' });
+            featuresSection.createDiv({ text: options.kicker, cls: 'ert-kicker' });
             const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
             features.forEach(feature => {
                 const li = featuresList.createEl('li', {

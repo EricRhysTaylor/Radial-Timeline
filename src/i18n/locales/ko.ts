@@ -38,7 +38,7 @@ export const ko: DeepPartial<TranslationKeys> = {
         },
         pov: {
             heading: '시점',
-            global: {
+            vaultDefault: {
                 name: '전역 시점',
                 desc: '선택 사항. 적용할 기본 모드를 선택하세요. 장면 수준의 시점이 이 전역 설정을 재정의합니다.',
             },

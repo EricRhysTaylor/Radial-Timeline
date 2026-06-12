@@ -7,7 +7,7 @@ function cssEscape(value: string): string {
     if (typeof (window as any).CSS !== 'undefined' && (window as any).CSS.escape) {
         return (window as any).CSS.escape(value);
     }
-    return value.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
+    return value.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 }
 
 interface SearchView {

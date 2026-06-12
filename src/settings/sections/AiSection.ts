@@ -773,8 +773,9 @@ export function renderAiSection(params: {
     const detailsBtn = aiSettingsGroup.createDiv({ cls: 'ert-ai-details-link' });
     detailsBtn.createSpan({ text: 'How analysis passes work \u2192' });
     detailsBtn.addEventListener('click', () => {
-        const { AiPassStrategyDetailsModal } = require('../../modals/AiPassStrategyDetailsModal');
-        new AiPassStrategyDetailsModal(plugin.app).open();
+        void import('../../modals/AiPassStrategyDetailsModal').then(({ AiPassStrategyDetailsModal }) => {
+            new AiPassStrategyDetailsModal(plugin.app).open();
+        });
     });
 
     params.addAiRelatedElement(largeHandlingSection);
@@ -2920,7 +2921,7 @@ export function renderAiSection(params: {
     let localLlmLastValidatedAt: string | null = null;
     let localLlmValidationPending = false;
     let localLlmValidationPromise: Promise<void> | null = null;
-    let localLlmAutoValidationTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+    let localLlmAutoValidationTimer: number | null = null;
 
     const getDetectedLocalServerCandidates = (): Array<{ backend: LocalLlmBackendId; baseUrl: string; label: string }> => {
         const configured = getLocalLlmSettings(ensureCanonicalAiSettings());
@@ -3159,9 +3160,9 @@ export function renderAiSection(params: {
         const aiSettings = ensureCanonicalAiSettings();
         if (aiSettings.provider !== 'ollama' || !getLocalLlmSettings(aiSettings).enabled) return;
         if (localLlmAutoValidationTimer !== null) {
-            globalThis.clearTimeout(localLlmAutoValidationTimer);
+            window.clearTimeout(localLlmAutoValidationTimer);
         }
-        localLlmAutoValidationTimer = globalThis.setTimeout(() => {
+        localLlmAutoValidationTimer = window.setTimeout(() => {
             localLlmAutoValidationTimer = null;
             if (ensureCanonicalAiSettings().provider !== 'ollama') return;
             void detectLocalLlmServers({ quiet: true }).then(() => validateLocalLlm({ quiet: true }));

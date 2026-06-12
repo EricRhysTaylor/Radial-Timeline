@@ -28,6 +28,9 @@ export default defineConfig({
       ],
     },
     
+    // Tests run in Node; alias `window` to globalThis for popout-safe code
+    setupFiles: ['./tests/setup/window-shim.ts'],
+
     // Mock Obsidian API since we're testing in Node
     alias: {
       obsidian: './tests/mocks/obsidian.ts',

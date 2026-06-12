@@ -248,7 +248,7 @@ function menuTitle(label: string, active: boolean): string {
 
 function resolvePrimarySubplotFromGroup(group: Element): string | undefined {
     const subplotIndex = group.getAttribute('data-subplot-index');
-    const svg = group instanceof SVGElement ? group.ownerSVGElement : null;
+    const svg = group.instanceOf(SVGElement) ? group.ownerSVGElement : null;
     if (!svg || subplotIndex === null) return undefined;
     const label = svg.querySelector(`.rt-subplot-ring-label-text[data-subplot-index="${subplotIndex}"]`);
     return label?.getAttribute('data-subplot-name') ?? undefined;

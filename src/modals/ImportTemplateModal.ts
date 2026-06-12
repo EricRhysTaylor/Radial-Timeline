@@ -208,9 +208,10 @@ export class ImportTemplateModal extends Modal {
             this.candidate = null;
             console.error(error);
         } finally {
-            if (requestToken !== this.candidateRequestToken) return;
-            this.candidateLoading = false;
-            this.render();
+            if (requestToken === this.candidateRequestToken) {
+                this.candidateLoading = false;
+                this.render();
+            }
         }
     }
 

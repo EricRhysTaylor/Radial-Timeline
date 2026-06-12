@@ -34,7 +34,7 @@ export interface TranslationKeys {
         };
         pov: {
             heading: string;
-            global: {
+            vaultDefault: {
                 name: string;
                 desc: string;
             };
@@ -1727,7 +1727,7 @@ export const en: TranslationKeys = {
         },
         pov: {
             heading: 'Point of view',
-            global: {
+            vaultDefault: {
                 name: 'Global POV',
                 desc: 'Choose a default mode to apply. Scene level POV will override this global setting.',
             },

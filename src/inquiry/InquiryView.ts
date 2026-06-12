@@ -2340,7 +2340,7 @@ export class InquiryView extends ItemView {
     }
 
     private getInquiryAssetHref(fileName: string): string {
-        const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
+        const configDir = this.app.vault.configDir;
         const pluginId = this.plugin.manifest.id;
         const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/inquiry/assets/${fileName}`);
         // SAFE: vault.adapter.getResourcePath is required for converting vault paths to asset URLs (no Vault API alternative)
@@ -4065,7 +4065,7 @@ export class InquiryView extends ItemView {
         this.updateToggleButton(this.scopeToggleButton, this.state.scope === 'saga');
         if (this.scopeToggleIcon) {
             const icon = this.state.scope === 'saga' ? 'sigma' : 'columns-2';
-            if (this.scopeToggleIcon instanceof SVGUseElement) {
+            if (this.scopeToggleIcon.instanceOf(SVGUseElement)) {
                 this.setIconUse(this.scopeToggleIcon, icon);
             }
         }

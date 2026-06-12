@@ -1,3 +1,4 @@
+/* global __RT_DEV__, __RT_RELEASE__ */
 /*
  * Radial Timeline Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
@@ -7,6 +8,7 @@
  */
 
 import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent, TextComponent, Platform } from 'obsidian';
+import { accessSync, constants as fsConstants } from 'fs';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -80,9 +82,7 @@ interface ScanResult {
  */
 function fileExistsSync(absPath: string): boolean {
     try {
-         
-        const fs = require('fs') as typeof import('fs');
-        fs.accessSync(absPath, fs.constants.X_OK);
+        accessSync(absPath, fsConstants.X_OK);
         return true;
     } catch {
         return false;

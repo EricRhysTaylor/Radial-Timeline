@@ -902,7 +902,7 @@ export default class SynopsisManager {
           svgTspan.setAttribute(attr.name, attr.value);
         });
 
-        if (tspan instanceof HTMLElement || tspan instanceof SVGElement) {
+        if (tspan.instanceOf(HTMLElement) || tspan.instanceOf(SVGElement)) {
           const style = (tspan as HTMLElement).getAttribute('style');
           if (style) {
             svgTspan.setAttribute('style', style);
@@ -1733,7 +1733,7 @@ export default class SynopsisManager {
    * Update the position of a synopsis based on mouse position
    */
   updatePosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
-    if (!(synopsis instanceof SVGElement)) {
+    if (!synopsis.instanceOf(SVGElement)) {
       throw new Error('Synopsis element must be an SVGElement.');
     }
     if (!svg) {
@@ -2665,7 +2665,7 @@ export default class SynopsisManager {
       } else {
         // Split on commas that appear between beats (not within descriptions)
         // Pattern: split on ", " followed by text containing "+ /" or "- /" or "? /"
-        const beatSeparatorPattern = /,\s*(?=[^,]*[\+\-\?]\s*\/)/g;
+        const beatSeparatorPattern = /,\s*(?=[^,]*[+\-?]\s*\/)/g;
         const parts = trimmedText.split(beatSeparatorPattern);
 
         if (parts.length > 1) {

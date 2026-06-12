@@ -43,15 +43,15 @@ type JsonRecord = Record<string, unknown>;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
     return new Promise((resolve, reject) => {
-        const timer = globalThis.setTimeout(() => reject(new Error(message)), timeoutMs);
+        const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
         promise.then(
             value => {
-                globalThis.clearTimeout(timer);
+                window.clearTimeout(timer);
                 resolve(value);
             },
             error => {
-                globalThis.clearTimeout(timer);
-                reject(error);
+                window.clearTimeout(timer);
+                reject(error instanceof Error ? error : new Error(String(error)));
             }
         );
     });

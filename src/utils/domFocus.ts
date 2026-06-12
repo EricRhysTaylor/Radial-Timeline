@@ -48,7 +48,7 @@ export function scheduleFocusAfterPaint(
 
         state.rafId = null;
         el.focus({ preventScroll });
-        if (selectText && el instanceof HTMLInputElement) {
+        if (selectText && el.instanceOf(HTMLInputElement)) {
             el.select();
         }
     };

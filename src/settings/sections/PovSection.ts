@@ -71,8 +71,8 @@ export function renderPovSection(params: {
         void plugin.saveSettings();
     }
     const globalPovSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.pov.global.name'))
-        .setDesc(t('settings.pov.global.desc'))
+        .setName(t('settings.pov.vaultDefault.name'))
+        .setDesc(t('settings.pov.vaultDefault.desc'))
         .addDropdown(dropdown => {
             (Object.keys(povModeOptions) as GlobalPovMode[]).forEach((key) => {
                 dropdown.addOption(key, povModeOptions[key]);

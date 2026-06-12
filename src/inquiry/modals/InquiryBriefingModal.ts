@@ -103,13 +103,14 @@ export class InquiryBriefingModal extends Modal {
         pdfAction.addEventListener('click', () => {
             this.printBriefing();
         });
-        if (this.briefFile) {
+        const briefFile = this.briefFile;
+        if (briefFile) {
             const noteAction = actions.createEl('button', {
                 cls: 'rt-briefing-action',
                 text: 'Open Markdown'
             });
             noteAction.addEventListener('click', () => {
-                void this.openFileAndClose(this.briefFile as TFile);
+                void this.openFileAndClose(briefFile);
             });
         }
     }
@@ -255,7 +256,8 @@ export class InquiryBriefingModal extends Modal {
             });
             const labelRow = article.createDiv({ cls: 'rt-briefing-note-label-row' });
             labelRow.createDiv({ cls: 'rt-briefing-note-label', text: note.header });
-            if (note.anchorId && this.briefFile) {
+            const anchorTarget = this.briefFile;
+            if (note.anchorId && anchorTarget) {
                 const anchorAction = labelRow.createEl('a', {
                     cls: 'rt-briefing-note-link',
                     text: '↗',
@@ -267,7 +269,7 @@ export class InquiryBriefingModal extends Modal {
                 });
                 anchorAction.addEventListener('click', (event) => {
                     event.preventDefault();
-                    void this.openSubpathAndClose(this.briefFile as TFile, `#^${note.anchorId}`);
+                    void this.openSubpathAndClose(anchorTarget, `#^${note.anchorId}`);
                 });
             }
 
@@ -365,7 +367,7 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private resolveLogoHref(): string | null {
-        const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
+        const configDir = this.app.vault.configDir;
         const pluginId = this.plugin.manifest.id;
         const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/assets/rt-logo.png`);
         const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };

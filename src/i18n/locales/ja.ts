@@ -39,7 +39,7 @@ export const ja: DeepPartial<TranslationKeys> = {
         },
         pov: {
             heading: '視点',
-            global: {
+            vaultDefault: {
                 name: 'グローバルPOV',
                 desc: 'オプション。適用するデフォルトモードを選択します。シーンレベルのPOVはこのグローバル設定を上書きします。',
             },

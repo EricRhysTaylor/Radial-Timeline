@@ -37,7 +37,7 @@ function looksLikeInvalidTemplate(message: string): boolean {
 }
 
 function looksLikeMissingMetadata(message: string): boolean {
-    return /bookmeta|missing \"title\"|missing \"rights: year\"|missing metadata|missing required metadata/i.test(message);
+    return /bookmeta|missing "title"|missing "rights: year"|missing metadata|missing required metadata/i.test(message);
 }
 
 function looksLikeMissingFiles(message: string): boolean {

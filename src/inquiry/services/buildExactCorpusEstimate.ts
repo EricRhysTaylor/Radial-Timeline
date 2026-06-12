@@ -1,4 +1,5 @@
-import type { MetadataCache, TFile, Vault } from 'obsidian';
+import type { MetadataCache, Vault } from 'obsidian';
+import { TFile } from 'obsidian';
 import type { RTCorpusTokenBreakdown, RTCorpusTokenEstimate } from '../../ai/types';
 import type { CorpusManifestEntry } from '../runner/types';
 import { extractSummary, normalizeFrontmatterKeys } from '../../utils/frontmatter';
@@ -22,7 +23,7 @@ const toBreakdown = (
 });
 
 function isTFile(file: unknown): file is TFile {
-    return !!file && typeof (file as TFile).path === 'string';
+    return file instanceof TFile;
 }
 
 function normalizeMode(mode?: CorpusManifestEntry['mode']): 'excluded' | 'summary' | 'full' {

@@ -142,7 +142,7 @@ export async function trashFiles(app: App, files: TFile[], options: TrashFilesOp
     const systemTrash = useSystemTrash(app);
     for (const file of uniqueFiles) {
         try {
-            await app.vault.trash(file, systemTrash);
+            await app.fileManager.trashFile(file);
             trashed += 1;
         } catch (error) {
             failed += 1;

@@ -1,3 +1,4 @@
+/* global BaseComponent */
 import 'obsidian';
 
 declare module 'obsidian' {

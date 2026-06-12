@@ -18,8 +18,7 @@ const FORENSIC_ENV_FLAG = 'RT_COUNT_FORENSICS';
 
 export function isCountingForensicsEnabled(): boolean {
     const fromEnv = typeof process !== 'undefined' && process.env?.[FORENSIC_ENV_FLAG] === '1';
-    const fromGlobal = typeof globalThis !== 'undefined'
-        && (globalThis as { __RT_COUNT_FORENSICS__?: unknown }).__RT_COUNT_FORENSICS__ === true;
+    const fromGlobal = (window as { __RT_COUNT_FORENSICS__?: unknown }).__RT_COUNT_FORENSICS__ === true;
     return fromEnv || fromGlobal;
 }
 

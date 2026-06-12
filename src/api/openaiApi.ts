@@ -116,7 +116,7 @@ function isPendingBackgroundStatus(status: unknown): boolean {
 }
 
 async function sleep(ms: number): Promise<void> {
-    await new Promise(resolve => globalThis.setTimeout(resolve, ms));
+    await new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
 function buildOpenAiChatMessages(

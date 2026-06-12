@@ -38,7 +38,7 @@ export const de: DeepPartial<TranslationKeys> = {
         },
         pov: {
             heading: 'Perspektive',
-            global: {
+            vaultDefault: {
                 name: 'Globale Perspektive',
                 desc: 'Optional. Wählen Sie einen Standardmodus aus. Die Perspektive auf Szenenebene überschreibt diese globale Einstellung.',
             },

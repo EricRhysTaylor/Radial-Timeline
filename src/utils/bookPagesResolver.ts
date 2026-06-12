@@ -139,7 +139,7 @@ function stripFilenamePrefix(filenameOrPath: string): string {
     const base = filenameOrPath.split('/').pop() || filenameOrPath;
     const stem = base.replace(/\.md$/i, '');
     // Strip leading numeric prefix: "0.2 ", "200.1 ", "12 ", "001-", etc.
-    return stem.replace(/^\s*\d+(?:[.\-]\d+)*\s*[-_.\s]+/, '').trim();
+    return stem.replace(/^\s*\d+(?:[.-]\d+)*\s*[-_.\s]+/, '').trim();
 }
 
 /**

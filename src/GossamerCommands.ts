@@ -56,7 +56,7 @@ import { toBeatModelMatchKey } from './utils/beatsInputNormalize';
 import { getActiveFrontmatterMappings, asBeatFrontmatter, readBeatPurpose } from './utils/frontmatter';
 
 interface ResolvedGossamerEvidence {
-  document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
+  evidenceDocument: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
   label: string;
 }
 
@@ -73,7 +73,7 @@ const resolveGossamerEvidence = async (params: {
     metadataCache: params.plugin.app.metadataCache,
     frontmatterMappings: getActiveFrontmatterMappings(params.plugin.settings)
   });
-  return { document, label: 'Scene bodies' };
+  return { evidenceDocument: document, label: 'Scene bodies' };
 };
 
 type GossamerLogPayload = {
@@ -727,7 +727,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
         const setup = (v as any)?.setupGossamerEventListeners as ((svg: SVGSVGElement) => void) | undefined;
         if (typeof setup === 'function') setup(svg);
       }
-    } catch {}
+    } catch { /* selective refresh is best-effort */ }
     if (!didSelective) {
       // Fall back to full refresh if selective failed
       plugin.refreshTimelineIfNeeded(undefined);
@@ -994,7 +994,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     });
     const evidenceModeLabel = resolvedEvidence.label;
     modal.setStatus(t('gossamer.notices.assemblingEvidenceWithMode', { mode: evidenceModeLabel }));
-    const evidenceDocument = resolvedEvidence.document;
+    const evidenceDocument = resolvedEvidence.evidenceDocument;
 
     if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0 || evidenceDocument.includedScenes === 0) {
       modal.addError(t('gossamer.notices.noSceneBodyContent'));
@@ -1538,7 +1538,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       sceneFiles
     });
     const evidenceModeLabel = resolvedEvidence.label;
-    const evidenceDocument = resolvedEvidence.document;
+    const evidenceDocument = resolvedEvidence.evidenceDocument;
     const corpusEstimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN);
     const providerExecutionTokens = corpusEstimatedTokens + FORECAST_PROMPT_OVERHEAD_TOKENS;
     logCountingForensics({

@@ -286,7 +286,7 @@ export class RendererService {
                 plugin: this.plugin,
                 registerDomEvent: () => { /* no-op: highlights don't attach events */ }
             });
-        } catch {}
+        } catch { /* highlight refresh is best-effort */ }
         return true;
     }
 
@@ -484,7 +484,7 @@ export class RendererService {
                 estimateResult = resolveProgressEstimate(this.plugin as any, scenes, pluginAny.calculateCompletionEstimate(scenes));
                 enhancedData = this.calculateTargetTickEnhancedData(scenes, estimateResult);
             }
-        } catch {}
+        } catch { /* enhanced tick data is optional */ }
         
         const tickHtml = renderTargetDateTick({ plugin: this.plugin as any, progressRadius, dateToAngle, enhancedData }); // SAFE: any type used for plugin interface compatibility
 
@@ -499,7 +499,7 @@ export class RendererService {
                 }
                 estimationHtml += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
             }
-        } catch {}
+        } catch { /* estimation rendering is optional */ }
 
         const combined = `${estimationHtml}${segmentsHtml}${tickHtml}`;
 

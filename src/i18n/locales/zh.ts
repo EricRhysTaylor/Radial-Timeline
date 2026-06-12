@@ -40,7 +40,7 @@ export const zh: DeepPartial<TranslationKeys> = {
         },
         pov: {
             heading: '视角',
-            global: {
+            vaultDefault: {
                 name: '全局视角',
                 desc: '可选。选择默认应用的模式。场景级视角将覆盖此全局设置。',
             },

@@ -1785,7 +1785,9 @@ export function renderInquirySection(params: SectionParams): void {
                 syncInputs(thresholdDefaults);
                 return;
             }
-            Object.assign(thresholdDefaults, next);
+            (Object.keys(next) as Array<keyof InquiryCorpusThresholds>).forEach(key => {
+                thresholdDefaults[key] = next[key];
+            });
             plugin.settings.inquiryCorpusThresholds = { ...next };
             await plugin.saveSettings();
             syncInputs(next);

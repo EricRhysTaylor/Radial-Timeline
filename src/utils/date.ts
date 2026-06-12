@@ -334,7 +334,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
     const labels: TimeLabelInfo[] = [];
 
     switch (span.recommendedUnit) {
-        case 'minutes':
+        case 'minutes': {
             // Generate minute labels (max 90 labels for up to 90 minutes)
             const maxMinutes = Math.min(90, Math.ceil(span.minutes));
             const minuteStep = maxMinutes > 30 ? 5 : (maxMinutes > 15 ? 2 : 1); // 1min, 2min, or 5min intervals
@@ -348,8 +348,9 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
+        }
 
-        case 'hours':
+        case 'hours': {
             // Generate hourly labels (max 24 labels)
             const maxHours = Math.min(24, Math.ceil(span.hours));
             for (let i = 0; i <= maxHours; i++) {
@@ -362,8 +363,9 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
+        }
 
-        case 'days':
+        case 'days': {
             // Generate daily labels (max 7 labels)
             const maxDays = Math.min(7, Math.ceil(span.days));
             for (let i = 0; i <= maxDays; i++) {
@@ -376,8 +378,9 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
+        }
 
-        case 'weeks':
+        case 'weeks': {
             // Generate weekly labels (max 8 labels)
             const maxWeeks = Math.min(8, Math.ceil(span.weeks));
             for (let i = 0; i <= maxWeeks; i++) {
@@ -390,8 +393,9 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
+        }
 
-        case 'months':
+        case 'months': {
             // Generate monthly labels (max 12 labels)
             const maxMonths = Math.min(12, Math.ceil(span.months));
             for (let i = 0; i <= maxMonths; i++) {
@@ -404,8 +408,9 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
+        }
 
-        case 'years':
+        case 'years': {
             // Generate yearly labels (max 10 labels)
             const maxYears = Math.min(10, Math.ceil(span.years));
             for (let i = 0; i <= maxYears; i++) {
@@ -418,6 +423,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
+        }
     }
 
     return labels;
