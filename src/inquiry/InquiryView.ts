@@ -12016,6 +12016,6 @@ export class InquiryView extends ItemView {
             return;
         }
         explorerView.revealInFolder(file);
-        this.app.workspace.revealLeaf(explorerLeaf);
+        void this.app.workspace.revealLeaf(explorerLeaf);
     }
 }

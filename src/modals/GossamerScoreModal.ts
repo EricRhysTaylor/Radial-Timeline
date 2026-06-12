@@ -172,7 +172,7 @@ export class GossamerScoreModal extends Modal {
       return;
     }
     explorerView.revealInFolder(target);
-    this.plugin.app.workspace.revealLeaf(explorerLeaf);
+    void this.plugin.app.workspace.revealLeaf(explorerLeaf);
   }
 
   /** Cheap check: does any in-scope Beat note have at least one slot tagged with the active signal? */

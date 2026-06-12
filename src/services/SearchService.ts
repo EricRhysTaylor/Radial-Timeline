@@ -132,7 +132,7 @@ export class SearchService {
         // Get active planetary profile for planetary line search
         const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings);
         
-        this.plugin.getSceneData().then(scenes => {
+        void this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {
                 let planetaryLine: string | undefined;
                 // Add planetary line text if planetary time is enabled and scene has a When date

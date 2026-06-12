@@ -185,7 +185,7 @@ export class GossamerProcessingModal extends ErtModal {
         const selection = resolveConfiguredSelection(aiSettings, { feature: 'Gossamer' });
         const activeProvider = selection?.provider ?? aiSettings.provider;
         if (activeProvider !== 'none' && activeProvider !== 'ollama') {
-            getCredential(this.plugin, activeProvider).then(key => {
+            void getCredential(this.plugin, activeProvider).then(key => {
                 if (!key) {
                     const name = CANONICAL_PROVIDER_LABELS[activeProvider];
                     const warningEl = card.createDiv({ cls: 'ert-pulse-warning' });

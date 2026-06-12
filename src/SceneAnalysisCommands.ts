@@ -226,7 +226,7 @@ export async function processEntireSubplotWithModal(
         plugin.showBeatsStatusBar(0, 0);
         
         // Start the actual processing
-        (async () => {
+        void (async () => {
             try {
                 await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal);
                 
@@ -329,7 +329,7 @@ export async function processBySubplotNameWithModal(
         plugin.showBeatsStatusBar(0, 0);
         
         // Start the actual processing
-        (async () => {
+        void (async () => {
             try {
                 await processSubplotWithModal(plugin, vault, subplotName, modal);
                 

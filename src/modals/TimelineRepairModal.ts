@@ -237,7 +237,7 @@ export class TimelineRepairModal extends Modal {
     private async openCueInFreshTab(file: TFile, cueText: string): Promise<void> {
         const leaf = this.app.workspace.getLeaf('tab');
         await leaf.openFile(file, { active: true });
-        this.app.workspace.revealLeaf(leaf);
+        void this.app.workspace.revealLeaf(leaf);
 
         const attemptSelection = (): boolean => {
             const view = leaf.view;

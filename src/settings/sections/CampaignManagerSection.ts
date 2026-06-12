@@ -1239,7 +1239,7 @@ function renderCampaignDetails(
             // Show SVG previews of each reveal stage
             const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
             const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'ert-teaser__previewRow' });
-            renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, index, thresholds, renderTeaserContent);
+            void renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, index, thresholds, renderTeaserContent);
         }
     };
 

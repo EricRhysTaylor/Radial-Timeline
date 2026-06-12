@@ -56,7 +56,7 @@ export class InquiryService {
 
         const leaves = this.app.workspace.getLeavesOfType(INQUIRY_VIEW_TYPE);
         if (leaves.length > 0) {
-            this.app.workspace.revealLeaf(leaves[0]);
+            void this.app.workspace.revealLeaf(leaves[0]);
             return;
         }
 
@@ -65,7 +65,7 @@ export class InquiryService {
             type: INQUIRY_VIEW_TYPE,
             active: true
         });
-        this.app.workspace.revealLeaf(leaf);
+        void this.app.workspace.revealLeaf(leaf);
     }
 
     async runOmnibusPass(): Promise<void> {

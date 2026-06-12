@@ -601,7 +601,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
   if (!view) return;
   const current = getInteractionMode(view) === 'gossamer';
   if (current) {
-    exitGossamerMode(plugin);
+    void exitGossamerMode(plugin);
   } else {
     // ALWAYS rebuild run from fresh scene data (reads latest Gossamer1 scores from YAML)
     const scenes = await plugin.getSceneData();
@@ -647,7 +647,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     setBaseModeAllScenes(plugin);
     resetRotation(plugin);
     plugin.clearSearch();
-    enterGossamerMode(plugin);
+    void enterGossamerMode(plugin);
   }
 }
 
@@ -673,7 +673,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
     
     // Update settings
     plugin.settings.currentMode = 'gossamer';
-    plugin.saveSettings();
+    void plugin.saveSettings();
   }
   
   // Only do selective update if not using ModeManager
@@ -794,7 +794,7 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
   
   // Update settings
   plugin.settings.currentMode = restoredMode;
-  plugin.saveSettings();
+  void plugin.saveSettings();
   
   // Force an immediate full refresh when exiting Gossamer mode
   // Use direct refreshTimeline() to avoid debounce delay

@@ -70,10 +70,10 @@ export class CommandRegistrar {
 
     private registerRibbon(): void {
         this.plugin.addRibbonIcon('rt-logo', t('commands.openTimeline'), () => {
-            this.plugin.getTimelineService().activateView();
+            void this.plugin.getTimelineService().activateView();
         });
         this.inquiryRibbonIcon = this.plugin.addRibbonIcon('waves', t('commands.openInquiry'), () => {
-            this.plugin.getInquiryService().activateView();
+            void this.plugin.getInquiryService().activateView();
         });
         // Hide Inquiry ribbon if AI is disabled on load
         if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
@@ -86,14 +86,14 @@ export class CommandRegistrar {
             id: 'open-radial-timeline-view',
             name: t('commands.openTimeline'),
             callback: () => {
-                this.plugin.getTimelineService().activateView();
+                void this.plugin.getTimelineService().activateView();
             },
         });
         this.plugin.addCommand({
             id: 'open-inquiry-view',
             name: t('commands.openInquiry'),
             callback: () => {
-                this.plugin.getInquiryService().activateView();
+                void this.plugin.getInquiryService().activateView();
             },
         });
         if (!__RT_RELEASE__) {
@@ -188,7 +188,7 @@ export class CommandRegistrar {
             id: 'gossamer-score-manager',
             name: t('commands.gossamerScoreManager'),
             callback: () => {
-                openGossamerScoreEntry(this.plugin);
+                void openGossamerScoreEntry(this.plugin);
             }
         });
 
@@ -196,7 +196,7 @@ export class CommandRegistrar {
             id: 'gossamer-analysis',
             name: t('commands.gossamerAnalysis'),
             callback: () => {
-                runGossamerAiAnalysis(this.plugin);
+                void runGossamerAiAnalysis(this.plugin);
             }
         });
 

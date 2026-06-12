@@ -32,7 +32,7 @@ function revealFolderInExplorer(app: App, vaultPath: string): void {
         return;
     }
     explorerView.revealInFolder(folder);
-    app.workspace.revealLeaf(explorerLeaf);
+    void app.workspace.revealLeaf(explorerLeaf);
 }
 
 function getOrCreateChipContainer(setting: Setting): HTMLElement {

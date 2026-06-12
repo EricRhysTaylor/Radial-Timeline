@@ -27,7 +27,7 @@ export class SceneAnalysisService {
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
-                (async () => {
+                void (async () => {
                     if (!(await this.ensureApiKey())) return;
                     await this.processSynopsisAnalysis();
                 })();
@@ -43,7 +43,7 @@ export class SceneAnalysisService {
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
-                (async () => {
+                void (async () => {
                     if (!(await this.ensureApiKey())) return;
                     await this.processByManuscriptOrder();
                 })();
@@ -59,7 +59,7 @@ export class SceneAnalysisService {
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
-                (async () => {
+                void (async () => {
                     if (!(await this.ensureApiKey())) return;
                     const options = await this.getSubplotOptions();
                     new SubplotPickerModal(this.plugin.app, this, options).open();

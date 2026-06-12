@@ -1201,7 +1201,7 @@ export class BookDesignerModal extends Modal {
                 const tpl = this.getTemplateList().find(t => t.id === selectedId);
                 if (!tpl) return;
                 new DeleteTemplateModal(this.app, tpl.name, () => {
-                    this.deleteTemplate(selectedId);
+                    void this.deleteTemplate(selectedId);
                 }).open();
             });
         this.deleteTemplateBtn.buttonEl.addClass('ert-template-delete');
@@ -1214,7 +1214,7 @@ export class BookDesignerModal extends Modal {
             .setCta()
             .onClick(() => {
                 this.close();
-                this.generateBook();
+                void this.generateBook();
             });
 
         new ButtonComponent(footer)

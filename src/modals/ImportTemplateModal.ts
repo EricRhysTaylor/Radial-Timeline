@@ -28,7 +28,7 @@ class TemplateFileSuggestModal extends SuggestModal<TFile> {
     }
 
     onOpen(): void {
-        super.onOpen();
+        void super.onOpen();
         this.modalEl.addClass('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--template-pack');
         this.modalEl.removeClass('is-ui-settled');
         scheduleClassAfterPaint(this.modalEl, 'is-ui-settled');

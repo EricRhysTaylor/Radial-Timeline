@@ -50,7 +50,7 @@ export class ManageSubplotsModal extends Modal {
             .onClick(() => this.close());
         
         // Initial load
-        this.loadSubplots();
+        void this.loadSubplots();
     }
 
     async loadSubplots() {
@@ -265,7 +265,7 @@ class RenameSubplotModal extends Modal {
         
         // Handle Enter key
         inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') save();
+            if (e.key === 'Enter') void save();
             if (e.key === 'Escape') this.close();
         });
     }

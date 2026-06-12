@@ -313,8 +313,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             return;
         }
         
-        import('../../GossamerCommands').then(({ toggleGossamerMode }) => {
-            toggleGossamerMode(view.plugin);
+        void import('../../GossamerCommands').then(({ toggleGossamerMode }) => {
+            void toggleGossamerMode(view.plugin);
         });
     };
 

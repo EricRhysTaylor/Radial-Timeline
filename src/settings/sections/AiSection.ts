@@ -998,7 +998,7 @@ export function renderAiSection(params: {
             }
 
             await persistCanonical();
-            refreshRoutingUi();
+            void refreshRoutingUi();
             refreshDropdownKeyIndicators();
             if (nextProvider === 'ollama') {
                 markLocalLlmConfigurationDirty();
@@ -1028,7 +1028,7 @@ export function renderAiSection(params: {
                 renderLocalLlmModelList();
                 renderLocalLlmStatus();
                 queueLocalLlmAutoValidation();
-                refreshRoutingUi();
+                void refreshRoutingUi();
                 return;
             }
             if (value === 'auto') {
@@ -1037,7 +1037,7 @@ export function renderAiSection(params: {
                 aiSettings.modelPolicy = { type: 'pinned', pinnedAlias: value };
             }
             await persistCanonical();
-            refreshRoutingUi();
+            void refreshRoutingUi();
         });
     });
     params.addAiRelatedElement(modelOverrideSetting.settingEl);
@@ -1068,7 +1068,7 @@ export function renderAiSection(params: {
                 await persistCanonical();
                 renderLocalLlmModelList();
                 renderLocalLlmStatus();
-                refreshRoutingUi();
+                void refreshRoutingUi();
                 return;
             }
             const numTier = Number(value) as AccessTier;
@@ -1076,7 +1076,7 @@ export function renderAiSection(params: {
             else if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = numTier;
             else if (provider === 'google') aiSettings.aiAccessProfile.googleTier = numTier;
             await persistCanonical();
-            refreshRoutingUi();
+            void refreshRoutingUi();
         });
     });
     params.addAiRelatedElement(accessTierSetting.settingEl);
@@ -2560,7 +2560,7 @@ export function renderAiSection(params: {
                     if (migration.warnings.length) {
                         new Notice(migration.warnings[0]);
                     }
-                    refreshRoutingUi();
+                    void refreshRoutingUi();
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
                     new Notice(`Key migration failed: ${message}`);

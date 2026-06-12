@@ -266,7 +266,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     previewContainer.createDiv({ cls: `ert-apr-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: t('settings.authorProgress.preview.loading') });
 
     // Load and render preview asynchronously at actual size
-    renderHeroPreview(app, plugin, previewContainer, currentSize, teaserPreviewMode);
+    void renderHeroPreview(app, plugin, previewContainer, currentSize, teaserPreviewMode);
     refreshPreview = () => {
         const size = plugin.settings.authorProgress?.defaults.aprSize || 'medium';
         updateTeaserPreviewVisibility(size);
@@ -1598,7 +1598,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 plugin.settings.authorProgress.defaults.aprCustomBgPresets = presets;
                 await plugin.saveSettings();
                 renderCustomPills();
-                applyPreset(preset.color);
+                void applyPreset(preset.color);
             },
             onDelete: async () => {
                 if (!plugin.settings.authorProgress) return;

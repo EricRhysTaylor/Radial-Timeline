@@ -2771,7 +2771,7 @@ Sarah stood at the window, watching the world wake up.`;
         if (!explorerView.revealInFolder) return false;
 
         explorerView.revealInFolder(target);
-        this.app.workspace.revealLeaf(explorerLeaf);
+        void this.app.workspace.revealLeaf(explorerLeaf);
         return true;
     }
 

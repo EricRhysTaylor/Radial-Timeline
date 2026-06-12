@@ -207,7 +207,7 @@ export class RuntimeProcessingModal extends ErtModal {
             .onChange((value) => {
                 this.selectedScope = value as RuntimeScope;
                 this.updateScopeVisibility();
-                this.updateCount();
+                void this.updateCount();
             });
 
         // Subplot dropdown (disabled when not in subplot scope)
@@ -228,7 +228,7 @@ export class RuntimeProcessingModal extends ErtModal {
         
         this.subplotDropdown.onChange((value) => {
             this.selectedSubplot = value;
-            this.updateCount();
+            void this.updateCount();
         });
 
         // Current scene display (always visible, muted when not in current scope)
@@ -258,7 +258,7 @@ export class RuntimeProcessingModal extends ErtModal {
         checkbox.checked = this.overrideExisting;
         checkbox.addEventListener('change', () => {
             this.overrideExisting = checkbox.checked;
-            this.updateCount();
+            void this.updateCount();
         });
 
         const labelContainer = overrideRow.createDiv({ cls: 'ert-runtime-override-label' });
@@ -355,7 +355,7 @@ export class RuntimeProcessingModal extends ErtModal {
         checkbox.checked = checked;
         checkbox.addEventListener('change', () => {
             this.statusFilters[key] = checkbox.checked;
-            this.updateCount();
+            void this.updateCount();
         });
         wrapper.createEl('label', { text: label });
     }

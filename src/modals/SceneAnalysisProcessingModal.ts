@@ -520,7 +520,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 if (!isNaN(val) && val >= 75 && val <= 500) {
                     this.synopsisTargetWords = val;
                     this.plugin.settings.synopsisTargetWords = val;
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                     this.checkThresholdWarning(warningEl);
                 }
             };
@@ -557,8 +557,8 @@ export class SceneAnalysisProcessingModal extends Modal {
                 if (!isNaN(val) && val >= 10 && val <= 300) {
                     this.synopsisWeakThreshold = val;
                     this.plugin.settings.synopsisWeakThreshold = val;
-                    this.plugin.saveSettings();
-                    updateCount(); // Re-calculate scene counts with new threshold
+                    void this.plugin.saveSettings();
+                    void updateCount(); // Re-calculate scene counts with new threshold
                     this.checkThresholdWarning(warningEl);
                 }
             };
@@ -742,7 +742,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Initial count (defer to next frame so modal paints immediately)
         const rafId = window.requestAnimationFrame(() => {
-            updateCount();
+            void updateCount();
         });
         this.pendingRafId = rafId;
 
@@ -1315,7 +1315,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.plugin.settings.pulseTimingStats = stats;
         // Save in background (don't await to avoid blocking)
-        this.plugin.saveSettings();
+        void this.plugin.saveSettings();
     }
 
     public addError(message: string): void {

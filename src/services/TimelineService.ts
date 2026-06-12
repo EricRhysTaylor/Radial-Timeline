@@ -152,7 +152,7 @@ export class TimelineService implements Disposable {
 
         if (leaves.length > 0) {
             // View exists, just reveal it
-            this.app.workspace.revealLeaf(leaves[0]);
+            void this.app.workspace.revealLeaf(leaves[0]);
             return;
         }
 
@@ -164,6 +164,6 @@ export class TimelineService implements Disposable {
         });
 
         // Reveal the leaf
-        this.app.workspace.revealLeaf(leaf);
+        void this.app.workspace.revealLeaf(leaf);
     }
 }

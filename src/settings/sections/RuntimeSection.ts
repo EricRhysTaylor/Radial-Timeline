@@ -419,7 +419,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     inputEl.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            submit();
+                            void submit();
                         } else if (e.key === 'Escape') {
                             modal.close();
                         }

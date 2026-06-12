@@ -2057,7 +2057,7 @@ export class RadialTimelineView extends ItemView {
         if (this.interactionController) {
             const { getModeDefinition } = require('../modes/ModeRegistry');
             const modeDef = getModeDefinition(this.currentMode as any);
-            this.interactionController.setupMode(modeDef, svg);
+            void this.interactionController.setupMode(modeDef, svg);
         }
     }
     
@@ -3190,7 +3190,7 @@ export class RadialTimelineView extends ItemView {
             const { getModeDefinition } = require('../modes/ModeRegistry');
             const { TimelineMode } = require('../modes/ModeDefinition');
             const modeDef = getModeDefinition(TimelineMode.GOSSAMER);
-            this.interactionController.setupMode(modeDef, svg);
+            void this.interactionController.setupMode(modeDef, svg);
         }
     }
 }

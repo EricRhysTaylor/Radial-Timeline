@@ -565,7 +565,7 @@ export function renderSceneNormalizerSection(params: {
     copyBtn.addEventListener('click', () => {
         if (!auditResult) return;
         const report = formatAuditReport(auditResult, 'Scene');
-        navigator.clipboard.writeText(report).then(() => new Notice('Scene status report copied to clipboard.'));
+        void navigator.clipboard.writeText(report).then(() => new Notice('Scene status report copied to clipboard.'));
     });
 
     addCoreBtn = new ButtonComponent(maintenanceGroup)

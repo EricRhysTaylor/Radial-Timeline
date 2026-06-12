@@ -1253,7 +1253,7 @@ export function renderBeatPropertiesSection(params: {
                         moved.act = actNumber;
                         const insertIndex = actStartIndex[actIdx] ?? updated.length;
                         updated.splice(insertIndex, 0, moved);
-                        saveBeats(updated);
+                        void saveBeats(updated);
                         renderList();
                     });
                     continue;
@@ -1370,7 +1370,7 @@ export function renderBeatPropertiesSection(params: {
                         nameInput.value = newName;
                         const updated = [...orderedBeats];
                         updated[index] = { ...orderedBeats[index], name: newName, act: parseInt(act, 10) || 1 };
-                        saveBeats(updated);
+                        void saveBeats(updated);
                         renderList();
                     });
 
@@ -1383,7 +1383,7 @@ export function renderBeatPropertiesSection(params: {
                         const rangeVal = rangeInput.value.trim();
                         const updated = [...orderedBeats];
                         updated[index] = { ...orderedBeats[index], range: rangeVal || undefined };
-                        saveBeats(updated);
+                        void saveBeats(updated);
                     });
 
                     // Act select
@@ -1402,7 +1402,7 @@ export function renderBeatPropertiesSection(params: {
                         }
                         const actNum = clampBeatAct(parseInt(act, 10) || 1, maxActs);
                         updated[index] = { ...orderedBeats[index], name: currentName, act: actNum };
-                        saveBeats(updated);
+                        void saveBeats(updated);
                         renderList();
                     });
 
@@ -1412,7 +1412,7 @@ export function renderBeatPropertiesSection(params: {
                     delBtn.onclick = () => {
                         const updated = [...orderedBeats];
                         updated.splice(index, 1);
-                        saveBeats(updated);
+                        void saveBeats(updated);
                         renderList();
                     };
 
@@ -1435,7 +1435,7 @@ export function renderBeatPropertiesSection(params: {
                         const [moved] = updated.splice(from, 1);
                         moved.act = actNumber;
                         updated.splice(index, 0, moved);
-                        saveBeats(updated);
+                        void saveBeats(updated);
                         renderList();
                     });
 
@@ -1478,7 +1478,7 @@ export function renderBeatPropertiesSection(params: {
                     id,
                     range: rangeVal,
                 }];
-                saveBeats(updated);
+                void saveBeats(updated);
                 renderList();
             };
 
@@ -4076,7 +4076,7 @@ export function renderBeatPropertiesSection(params: {
                 .onClick(() => {
                     if (!auditResult) return;
                     const report = formatAuditReport(auditResult, noteType);
-                    navigator.clipboard.writeText(report).then(() => {
+                    void navigator.clipboard.writeText(report).then(() => {
                         new Notice(t('settings.beats.audit.copiedNotice'));
                     });
                 });
