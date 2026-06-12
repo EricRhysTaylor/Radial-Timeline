@@ -24,7 +24,7 @@ export function isCountingForensicsEnabled(): boolean {
 
 export function logCountingForensics(record: CountingForensicsRecord): void {
     if (!isCountingForensicsEnabled()) return;
-    console.info(`[RT Count Forensics][${record.path}:${record.phase}]`, {
+    console.warn(`[RT Count Forensics][${record.path}:${record.phase}]`, {
         ...record,
         filesIncluded: [...record.filesIncluded]
     });

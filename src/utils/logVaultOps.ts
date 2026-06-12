@@ -1,4 +1,5 @@
 import { App, TAbstractFile, TFile, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
+import { confirmWithErtModal } from '../modals/ErtConfirmModal';
 import { resolveSnapshotsLogsRoot } from '../ai/log';
 
 export interface TrashFilesOptions {
@@ -298,7 +299,11 @@ export async function writeManagedOutput(
             ? options.unmanagedOverwritePrompt(existing)
             : options.unmanagedOverwritePrompt
                 ?? `Overwrite existing output "${existing.path}"? Existing content will be archived to a log snapshot first.`;
-        const confirmed = typeof window !== 'undefined' ? window.confirm(prompt) : false;
+        const confirmed = await confirmWithErtModal(app, {
+            title: 'Overwrite existing output?',
+            message: prompt,
+            confirmText: 'Overwrite'
+        });
         if (!confirmed) {
             return {
                 path,

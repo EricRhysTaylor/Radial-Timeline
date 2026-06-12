@@ -4326,7 +4326,7 @@ export class InquiryView extends ItemView {
             getItemTitle: (item) => this.getMinimapItemTitleWithWordCount(item),
             balanceTooltipText,
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
-            onTickClick: async (item, event) => {
+            onTickClick: (item, event) => { void (async () => {
                 this.clearResultPreview();
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
@@ -4362,7 +4362,7 @@ export class InquiryView extends ItemView {
                     return;
                 }
                 this.drillIntoBook(item.id);
-            },
+            })(); },
             onTickContextMenu: (item, event) => {
                 this.handleMinimapTickContextMenu(item, event);
             },
@@ -8100,7 +8100,7 @@ export class InquiryView extends ItemView {
         this.state.isRunning = true;
         this.setApiStatus('running');
         this.refreshUI({ skipCorpus: true });
-        this.apiSimulationTimer = window.setTimeout(async () => {
+        this.apiSimulationTimer = window.setTimeout(() => { void (async () => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
             let result = this.buildSimulationResult(selectedPrompt, questionText, questionPromptForm, scopeLabel, manifest);
@@ -8149,7 +8149,7 @@ export class InquiryView extends ItemView {
                 questionZone: session.questionZone
             }, 'missing');
             this.setApiStatus('success');
-        }, SIMULATION_DURATION_MS);
+        })(); }, SIMULATION_DURATION_MS);
     }
 
     private pickSimulationPrompt(): InquiryQuestion | undefined {
@@ -8520,11 +8520,11 @@ export class InquiryView extends ItemView {
         return normalizeClassContributionPure(config);
     }
 
-    private normalizeEvidenceMode(mode?: SceneInclusion | CorpusManifestEntry['mode']): 'excluded' | 'summary' | 'full' {
+    private normalizeEvidenceMode(mode?: SceneInclusion): 'excluded' | 'summary' | 'full' {
         return normalizeEvidenceModePure(mode);
     }
 
-    private isModeActive(mode?: SceneInclusion | CorpusManifestEntry['mode']): boolean {
+    private isModeActive(mode?: SceneInclusion): boolean {
         return isModeActivePure(mode);
     }
 

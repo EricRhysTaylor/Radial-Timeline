@@ -697,7 +697,13 @@ body.rt-modal-open .radial-timeline-container * {
 }
 
 .rt-gossamer-runs .rt-gossamer-runs__button {
-  all: unset;
+  /* explicit button reset (the 'all' property is flagged by the plugin scanner) */
+  appearance: none;
+  margin: 0;
+  outline: none;
+  box-shadow: none;
+  font-weight: inherit;
+  cursor: pointer;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -1195,7 +1201,7 @@ body.rt-modal-open .radial-timeline-container * {
   justify-content: center;
   min-width: 1.6em;
   padding: 0.05em 0.45em;
-  font-family: var(--font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-family: var(--font-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.9em;
   line-height: 1.2;
   color: var(--text-normal);

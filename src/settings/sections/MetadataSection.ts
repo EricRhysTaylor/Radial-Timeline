@@ -94,7 +94,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 };
                 
                 // SAFE: addEventListener used for Settings (transient element, cleanup via DOM removal)
-                text.inputEl.addEventListener('blur', handleBlur);
+                text.inputEl.addEventListener('blur', () => { void handleBlur(); });
                 
                 // Treat Enter like blur so validation runs when user confirms
                 plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {

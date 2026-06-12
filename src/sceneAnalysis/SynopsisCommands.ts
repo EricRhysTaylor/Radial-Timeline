@@ -37,7 +37,9 @@ function isSummaryStale(scene: SceneData, plugin: RadialTimelinePlugin): boolean
     // Check Due date
     const dueRaw = scene.frontmatter.Due;
     if (dueRaw) {
-        const dueDate = new Date(String(dueRaw));
+        const dueDate = dueRaw instanceof Date
+            ? dueRaw
+            : new Date(typeof dueRaw === 'string' ? dueRaw : typeof dueRaw === 'number' ? String(dueRaw) : '');
         if (!isNaN(dueDate.getTime()) && dueDate > lastUpdated) return true;
     }
 
@@ -213,7 +215,8 @@ function wasSynopsisUpdatedToday(scene: SceneData, plugin: RadialTimelinePlugin,
 
 function normalizeErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message.trim();
-    return String(error ?? 'Unknown error').trim();
+    if (error === null || error === undefined) return 'Unknown error';
+    return (typeof error === 'object' ? JSON.stringify(error) : String(error)).trim();
 }
 
 function explainSummaryRefreshFailure(
@@ -340,7 +343,6 @@ export async function runSynopsisBatch(
     const allScenes = await getAllSceneData(plugin, vault, { files: scope.files });
     allScenes.sort(compareScenesByOrder);
     new Notice(t('sceneAnalysis.synopsis.notices.scopeMessage', { scope: scope.scopeSummary }));
-    console.info(`[SummaryRefresh] Scope: ${scope.scopeSummary}`);
 
     // Get settings with fallbacks
     const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;

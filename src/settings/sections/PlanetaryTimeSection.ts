@@ -203,7 +203,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 dropdown.addOption(MARS_TEMPLATE_ID, 'Mars (template)');
             }
             // Add user profiles
-            profiles.forEach(p => dropdown.addOption(p.id, p.label || 'Unnamed'));
+            profiles.forEach(p => { dropdown.addOption(p.id, p.label || 'Unnamed'); });
             dropdown.setValue(activeProfileId || '');
             dropdown.onChange(async (value) => {
                 // Handle Mars template selection
@@ -353,7 +353,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 const originalValue = current !== undefined ? String(current) : '';
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
-                text.inputEl.addEventListener('blur', async () => {
+                text.inputEl.addEventListener('blur', () => { void (async () => {
                     const value = text.getValue();
                     if (value === originalValue) return; // No change
                     const num = parseFloat(value);
@@ -363,7 +363,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                     }
                     (profile as any)[key] = num;
                     await saveProfile(profile, text.inputEl);
-                });
+                })(); });
             });
         };
 
@@ -376,13 +376,13 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 text.setValue(originalValue);
                 text.inputEl.addClass(sizeClass);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
-                text.inputEl.addEventListener('blur', async () => {
+                text.inputEl.addEventListener('blur', () => { void (async () => {
                     const value = text.getValue();
                     if (value === originalValue) return; // No change
                     (profile as any)[key] = value;
                     await saveProfile(profile, text.inputEl);
                     if (onSave) onSave();
-                });
+                })(); });
             });
         };
 
@@ -405,12 +405,12 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 const originalValue = (profile.monthNames || []).join('\n');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
-                text.inputEl.addEventListener('blur', async () => {
+                text.inputEl.addEventListener('blur', () => { void (async () => {
                     const value = text.getValue();
                     if (value === originalValue) return;
                     profile.monthNames = parseCommaNames(value);
                     await saveProfile(profile, text.inputEl);
-                });
+                })(); });
             });
 
         new Settings(fieldsContainer)
@@ -422,12 +422,12 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 const originalValue = (profile.weekdayNames || []).join('\n');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
-                text.inputEl.addEventListener('blur', async () => {
+                text.inputEl.addEventListener('blur', () => { void (async () => {
                     const value = text.getValue();
                     if (value === originalValue) return;
                     profile.weekdayNames = parseCommaNames(value);
                     await saveProfile(profile, text.inputEl);
-                });
+                })(); });
             });
     };
 

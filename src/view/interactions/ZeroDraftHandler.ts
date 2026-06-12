@@ -19,7 +19,7 @@ const normalizeYamlValue = (value: unknown): string | undefined => {
     if (typeof value === 'string') {
         return value.trim() || undefined;
     }
-    return String(value).trim() || undefined;
+    return (typeof value === 'object' ? JSON.stringify(value) : String(value)).trim() || undefined;
 };
 
 const isStageZero = (value: string | undefined): boolean => {
@@ -86,8 +86,8 @@ export async function maybeHandleZeroDraftClick(options: ZeroDraftOptions): Prom
                 return false;
             }
         },
-        onOverride: async () => {
-            await onOverrideOpen();
+        onOverride: () => {
+            void onOverrideOpen();
         }
     });
     modal.open();

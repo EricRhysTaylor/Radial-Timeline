@@ -267,7 +267,7 @@ function calculateTargetTickEnhancedData(
     };
     
     const normalizeStage = (raw: unknown): typeof STAGE_ORDER[number] => {
-        const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+        const v = (typeof raw === 'string' ? raw : 'Zero').trim().toLowerCase();
         const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
         return match ?? 'Zero';
     };
@@ -596,7 +596,7 @@ export function createTimelineSVG(
         const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));
         const sceneIndex = filteredScenesForIndex.indexOf(scene);
 
-        const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
+        const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${String(scene.when ?? '')}`;
         const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false, sceneUniqueKey);
 
         // Extract grade from 2beats using helper function

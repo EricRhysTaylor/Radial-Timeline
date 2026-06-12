@@ -188,5 +188,5 @@ export async function estimateInputTokens(request: EstimateInputTokensRequest): 
     }
 
     // Exhaustive check — should be unreachable.
-    throw new Error(`Unsupported provider for token counting: ${provider}`);
+    throw new Error(`Unsupported provider for token counting: ${String(provider)}`);
 }

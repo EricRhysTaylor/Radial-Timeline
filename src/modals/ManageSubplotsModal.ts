@@ -184,7 +184,7 @@ class SubplotDeletionConfirmModal extends Modal {
 
         new ButtonComponent(buttonRow)
             .setButtonText('Remove subplot')
-            .setWarning()
+            .setDestructive()
             .onClick(async () => {
                 await this.onConfirm();
                 this.close();

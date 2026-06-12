@@ -262,7 +262,7 @@ class PurgeConfirmationModal extends Modal {
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText(t('sceneAnalysis.maintenance.purge.buttonPurge'))
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 this.close();
                 this.onConfirm();
@@ -333,7 +333,7 @@ export async function purgeBeatsByManuscriptOrder(
                 t('sceneAnalysis.maintenance.purge.detailFields'),
                 t('sceneAnalysis.maintenance.purge.detailPulseUpdate')
             ],
-            async () => {
+            () => { void (async () => {
                 const notice = new Notice(t('sceneAnalysis.maintenance.purge.noticeStart'), 0);
                 const result = await purgeScenesBeats(plugin, vault, allScenes);
 
@@ -345,7 +345,7 @@ export async function purgeBeatsByManuscriptOrder(
                     parts.push(t('sceneAnalysis.maintenance.purge.archived', { path: result.snapshotPath }));
                 }
                 new Notice(parts.join(' '));
-            }
+            })(); }
         );
 
         modal.open();
@@ -376,7 +376,7 @@ export async function purgeBeatsBySubplotName(
                 t('sceneAnalysis.maintenance.purge.detailFields'),
                 t('sceneAnalysis.maintenance.purge.detailPulseLastUpdated')
             ],
-            async () => {
+            () => { void (async () => {
                 const notice = new Notice(t('sceneAnalysis.maintenance.purge.noticeStartSubplot', { name: subplotName }), 0);
                 const result = await purgeScenesBeats(plugin, vault, filtered);
 
@@ -388,7 +388,7 @@ export async function purgeBeatsBySubplotName(
                     parts.push(t('sceneAnalysis.maintenance.purge.archived', { path: result.snapshotPath }));
                 }
                 new Notice(parts.join(' '));
-            }
+            })(); }
         );
 
         modal.open();

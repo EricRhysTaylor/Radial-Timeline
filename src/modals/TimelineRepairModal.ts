@@ -575,7 +575,7 @@ export class TimelineRepairModal extends Modal {
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText(t('timelineRepairModal.analyzing.abortButton'))
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 this.abortController?.abort();
                 new Notice(t('timelineRepairModal.analyzing.abortedNotice'));

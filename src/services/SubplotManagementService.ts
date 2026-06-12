@@ -285,7 +285,7 @@ export class SubplotManagementService {
                 return ["Main Plot"];
             }
 
-            return [String(rawSubplots).trim()].filter(Boolean);
+            return [(typeof rawSubplots === 'object' ? JSON.stringify(rawSubplots) : String(rawSubplots)).trim()].filter(Boolean);
         } catch {
             return ["Main Plot"];
         }

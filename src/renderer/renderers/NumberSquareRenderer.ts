@@ -158,7 +158,7 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
             if (plugin.settings.enableAiSceneAnalysis) {
                 sortedCombined.forEach((sceneItem, combinedIdx) => {
                     if (isBeatNote(sceneItem)) return;
-                    const uniqueKey = sceneItem.path || `${sceneItem.title || ''}::${sceneItem.number ?? ''}::${sceneItem.when ?? ''}`;
+                    const uniqueKey = sceneItem.path || `${sceneItem.title || ''}::${sceneItem.number ?? ''}::${String(sceneItem.when ?? '')}`;
                     const combinedSceneId = makeSceneId(act, ringOuter, combinedIdx, true, true, uniqueKey);
                     extractGradeFromScene(sceneItem, combinedSceneId, sceneGrades, plugin);
                 });

@@ -227,7 +227,7 @@ export class TimelineAuditModal extends Modal {
             const actionRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
             new ButtonComponent(actionRow)
                 .setButtonText(t('timelineAuditModal.actions.abort'))
-                .setWarning()
+                .setDestructive()
                 .onClick(() => {
                     this.abortController?.abort();
                     this.running = false;

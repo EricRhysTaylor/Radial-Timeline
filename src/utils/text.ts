@@ -222,7 +222,8 @@ export type NormalizedStatus = 'Todo' | 'Working' | 'Due' | 'Completed';
 
 export function normalizeStatus(raw: unknown): NormalizedStatus | null {
   if (raw == null) return 'Todo';
-  const v = Array.isArray(raw) ? String(raw[0] ?? '').trim().toLowerCase() : String(raw).trim().toLowerCase();
+  const first = Array.isArray(raw) ? raw[0] ?? '' : raw;
+  const v = (typeof first === 'object' ? JSON.stringify(first) : String(first)).trim().toLowerCase();
   if (!v) return 'Todo';
   if (v === 'complete' || v === 'done' || v === 'completed') return 'Completed';
   if (v === 'working' || v === 'in progress' || v === 'progress') return 'Working';

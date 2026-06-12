@@ -206,7 +206,14 @@ export function renderBeatPropertiesSection(params: {
                 id?: unknown;
                 range?: unknown;
             };
-            const objName = normalizeBeatNameInput(typeof obj.name === 'string' ? obj.name : String(obj.name ?? ''), '');
+            const objName = normalizeBeatNameInput(
+                typeof obj.name === 'string'
+                    ? obj.name
+                    : typeof obj.name === 'object' && obj.name !== null
+                        ? JSON.stringify(obj.name)
+                        : String(obj.name ?? ''),
+                ''
+            );
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
             const objPurpose = typeof obj.purpose === 'string' ? obj.purpose.trim() : '';
             const objId = typeof obj.id === 'string' ? obj.id : undefined;
@@ -219,7 +226,7 @@ export function renderBeatPropertiesSection(params: {
                 range: objRange || undefined,
             };
         }
-        const raw = normalizeBeatNameInput(String(item ?? ''), '');
+        const raw = normalizeBeatNameInput(typeof item === 'object' && item !== null ? JSON.stringify(item) : String(item ?? ''), '');
         if (!raw) return { name: '', act: 1 };
         const m = raw.match(/^(.*?)\[(\d+)\]$/);
         if (m) {
@@ -1493,7 +1500,7 @@ export function renderBeatPropertiesSection(params: {
 
         refreshCustomBeatList = renderList;
         renderList();
-        refreshCustomBeats = refreshCustomBeatsData;
+        refreshCustomBeats = (allowFetch: boolean) => { void refreshCustomBeatsData(allowFetch); };
         void refreshCustomBeatsData(true);
     };
     renderCustomConfig();
@@ -2596,7 +2603,7 @@ export function renderBeatPropertiesSection(params: {
 
                     new ButtonComponent(actionsRow)
                         .setButtonText(t('settings.beats.resetModal.resetText'))
-                        .setWarning()
+                        .setDestructive()
                         .onClick(() => {
                             modal.close();
                             resolve(true);
@@ -2849,7 +2856,7 @@ export function renderBeatPropertiesSection(params: {
             const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
             const actionBtn = new ButtonComponent(footer)
                 .setButtonText(actionLabel)
-                .setWarning()
+                .setDestructive()
                 .setDisabled(true)
                 .onClick(() => {
                     if (confirmInput.value.trim() !== 'DELETE') {
@@ -3737,7 +3744,7 @@ export function renderBeatPropertiesSection(params: {
             const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(revertBtn, 'rotate-ccw');
             setTooltip(revertBtn, t('settings.beats.backdrop.revertTooltip'));
-            revertBtn.addEventListener('click', async () => {
+            revertBtn.addEventListener('click', () => { void (async () => {
                 if (!plugin.settings.backdropYamlTemplates) {
                     plugin.settings.backdropYamlTemplates = { base: backdropBaseTemplate, advanced: '' };
                 }
@@ -3746,21 +3753,21 @@ export function renderBeatPropertiesSection(params: {
                 await plugin.saveSettings();
                 rerenderBackdropYaml(ensureSharedChapterFieldEntries([]));
                 updateBackdropHoverPreview?.();
-            });
+            })(); });
         };
 
         rerenderBackdropYaml(backdropEntries);
     };
 
     // SAFE: Settings sections are standalone functions without Component lifecycle
-    backdropYamlToggleBtn.addEventListener('click', async () => {
+    backdropYamlToggleBtn.addEventListener('click', () => { void (async () => {
         const next = !(plugin.settings.enableBackdropYamlEditor ?? false);
         plugin.settings.enableBackdropYamlEditor = next;
         refreshBackdropYamlToggle();
         await plugin.saveSettings();
         renderBackdropYamlEditor();
         renderBackdropHoverPreview();
-    });
+    })(); });
 
     renderBackdropYamlEditor();
 
@@ -4518,10 +4525,10 @@ export function renderBeatPropertiesSection(params: {
                     pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });
                     pillEl.createSpan({ text: ` — empty: ${keys}`, cls: 'ert-audit-note-pill-reason' });
                     setTooltip(pillEl, `${entry.file.basename}: empty values in ${keys}`);
-                    pillEl.addEventListener('click', async () => {
+                    pillEl.addEventListener('click', () => { void (async () => {
                         await openOrRevealFile(app, entry.file, false);
                         new Notice(`Empty values: ${keys}`);
-                    });
+                    })(); });
                 }
             }
 
@@ -4675,7 +4682,7 @@ export function renderBeatPropertiesSection(params: {
                     pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });
                     setTooltip(pillEl, `${entry.file.basename}: ${reason}`);
 
-                    pillEl.addEventListener('click', async () => {
+                    pillEl.addEventListener('click', () => { void (async () => {
                         await openOrRevealFile(app, entry.file, false);
                         if (activeChip.kind === 'critical') {
                             new Notice('Missing reference ID');
@@ -4688,7 +4695,7 @@ export function renderBeatPropertiesSection(params: {
                         } else if (entry.semanticWarnings.length > 0) {
                             new Notice(`Warnings: ${entry.semanticWarnings.join(' | ')}`);
                         }
-                    });
+                    })(); });
                 }
 
                 // Pagination + Open all row
@@ -4718,11 +4725,11 @@ export function renderBeatPropertiesSection(params: {
                         cls: 'ert-audit-nav-btn',
                         attr: { type: 'button' }
                     });
-                    openAllBtn.addEventListener('click', async () => {
+                    openAllBtn.addEventListener('click', () => { void (async () => {
                         for (const e of activeChip.entries) {
                             await openOrRevealFile(app, e.file, true);
                         }
-                    });
+                    })(); });
                 }
             };
 
@@ -4780,7 +4787,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         // ─── Fix duplicate IDs action ────────────────────────────────────
@@ -4837,7 +4844,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         // ─── Backfill action ─────────────────────────────────────────────
@@ -4920,7 +4927,7 @@ export function renderBeatPropertiesSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Wait for Obsidian metadata cache to re-index before refreshing audit
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         const handleFillEmptyValues = async () => {
@@ -4982,7 +4989,7 @@ export function renderBeatPropertiesSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Wait for Obsidian metadata cache to re-index before refreshing audit
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         const handleMigrateDeprecatedFields = async () => {
@@ -5059,7 +5066,7 @@ export function renderBeatPropertiesSection(params: {
                 new Notice(parts.join(', ') || 'No changes made.');
             }
 
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         // ─── Delete custom fields action ────────────────────────────────
@@ -5117,7 +5124,7 @@ export function renderBeatPropertiesSection(params: {
                     } else {
                         valuedFieldCount++;
                         if (valuedFieldSamples.length < 8) {
-                            const valStr = Array.isArray(val) ? val.join(', ') : String(val);
+                            const valStr = Array.isArray(val) ? val.join(', ') : typeof val === 'object' ? JSON.stringify(val) : String(val);
                             valuedFieldSamples.push({
                                 key: field,
                                 value: valStr.length > 60 ? valStr.slice(0, 57) + '...' : valStr
@@ -5213,7 +5220,7 @@ export function renderBeatPropertiesSection(params: {
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
                 const deleteBtn = new ButtonComponent(footer)
                     .setButtonText('Delete custom fields')
-                    .setWarning()
+                    .setDestructive()
                     .onClick(() => {
                         if (hasValuedFields) {
                             if (confirmInput?.value.trim() !== deletePhrase) {
@@ -5282,7 +5289,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) msgParts.push(`${result.failed} failed`);
             new Notice(msgParts.join(', ') || 'No changes made.');
 
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         // ─── Reorder fields action ──────────────────────────────────────
@@ -5405,7 +5412,7 @@ export function renderBeatPropertiesSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            window.setTimeout(() => runAudit(), 750);
+            window.setTimeout(() => { void runAudit(); }, 750);
         };
 
         // Allow the YAML fields editor to refresh the fill plan when defaults change

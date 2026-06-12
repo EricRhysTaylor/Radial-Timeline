@@ -487,10 +487,10 @@ export function renderSceneNormalizerSection(params: {
                 pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });
                 pillEl.createSpan({ text: ` — ${reason}`, cls: 'ert-audit-note-pill-reason' });
                 setTooltip(pillEl, `${entry.file.basename}: ${reason}`);
-                pillEl.addEventListener('click', async () => {
+                pillEl.addEventListener('click', () => { void (async () => {
                     await openOrRevealFile(app, entry.file, false);
                     new Notice(reason);
-                });
+                })(); });
             }
 
             const navEl = detailsEl.createDiv({ cls: 'ert-audit-pagination' });
@@ -675,7 +675,7 @@ export function renderSceneNormalizerSection(params: {
 
     removeAdvancedBtn = new ButtonComponent(cleanupGroup)
         .setButtonText('Remove advanced properties')
-        .setWarning()
+        .setDestructive()
         .onClick(async () => {
             if (!sceneAudit) return;
             const targetFiles = checkedSceneFiles.filter((file) => {
@@ -720,7 +720,7 @@ export function renderSceneNormalizerSection(params: {
 
     fixDuplicateBtn = new ButtonComponent(cleanupGroup)
         .setButtonText('Fix duplicate IDs')
-        .setWarning()
+        .setDestructive()
         .onClick(async () => {
             if (!sceneAudit) return;
             const targetFiles = [...new Set(sceneAudit.notes.filter((note) => !!note.duplicateSceneId).map((note) => note.file))];

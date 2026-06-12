@@ -105,7 +105,7 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
         }
     });
 
-    view.registerDomEvent(svg as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
+    view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => { void (async () => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         e.stopPropagation();
@@ -135,5 +135,5 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
             }
             await openOrRevealFile((view.plugin as any).app, file);
         }
-    });
+    })(); });
 }

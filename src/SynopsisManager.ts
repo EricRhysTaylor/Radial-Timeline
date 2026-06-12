@@ -1497,7 +1497,7 @@ export default class SynopsisManager {
               return val.map(item => formatValue(item)).join(', ');
             }
 
-            let str = String(val);
+            let str = typeof val === 'object' && !(val instanceof Date) ? JSON.stringify(val) : String(val);
 
             // Strip wiki link brackets: [[Link]] -> Link, [[Path/Name]] -> Name
             str = str.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, (_match, link) => {

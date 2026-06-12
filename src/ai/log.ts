@@ -361,7 +361,10 @@ export function formatAiLogContent(
         try {
             return JSON.stringify(redactedValue, null, jsonSpacing);
         } catch {
-            return JSON.stringify(redactSensitiveValue(String(redactedValue)));
+            const fallbackText = typeof redactedValue === 'object' && redactedValue !== null
+                ? '[unserializable object]'
+                : String(redactedValue);
+            return JSON.stringify(redactSensitiveValue(fallbackText));
         }
     };
     const resolveExpectedSchema = (payload: unknown): { source: string; schema: unknown } | null => {

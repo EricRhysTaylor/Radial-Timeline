@@ -4,6 +4,7 @@ import { AiContextTemplate } from '../types/settings';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import { scheduleFocusAfterPaint } from '../utils/domFocus';
+import { confirmWithErtModal } from '../modals/ErtConfirmModal';
 
 /**
  * Simple text input modal to replace prompt()
@@ -160,9 +161,13 @@ export class AiContextModal extends Modal {
         this.dropdownComponent.selectEl.addClass('ert-input');
         this.updateDropdownOptions();
         this.dropdownComponent.setValue(this.currentTemplateId);
-        this.dropdownComponent.onChange((value) => {
+        this.dropdownComponent.onChange(async (value) => {
             if (this.isDirty) {
-                const discard = window.confirm('You have unsaved changes. Discard them?');
+                const discard = await confirmWithErtModal(this.app, {
+                    title: 'Discard changes?',
+                    message: 'You have unsaved changes. Discard them?',
+                    confirmText: 'Discard'
+                });
                 if (!discard) {
                     // Revert dropdown to previous selection
                     this.dropdownComponent?.setValue(this.currentTemplateId);
@@ -198,8 +203,8 @@ export class AiContextModal extends Modal {
         // Delete button
         this.deleteButton = new ButtonComponent(buttonRow)
             .setButtonText('Delete')
-            .setWarning()
-            .onClick(() => this.deleteTemplate());
+            .setDestructive()
+            .onClick(() => { void this.deleteTemplate(); });
 
         // Editor row
         const editorRow = contentEl.createDiv({ cls: 'ert-row ert-row--wideControl' });
@@ -242,9 +247,13 @@ export class AiContextModal extends Modal {
         // Close button
         new ButtonComponent(actionRow)
             .setButtonText('Cancel')
-            .onClick(() => {
+            .onClick(async () => {
                 if (this.isDirty) {
-                    const discard = window.confirm('You have unsaved changes. Discard them?');
+                    const discard = await confirmWithErtModal(this.app, {
+                        title: 'Discard changes?',
+                        message: 'You have unsaved changes. Discard them?',
+                        confirmText: 'Discard'
+                    });
                     if (!discard) return;
                 }
                 this.close();
@@ -400,11 +409,15 @@ export class AiContextModal extends Modal {
         modal.open();
     }
 
-    private deleteTemplate(): void {
+    private async deleteTemplate(): Promise<void> {
         const currentTemplate = this.getCurrentTemplate();
         if (!currentTemplate || currentTemplate.isBuiltIn) return;
         
-        const confirmed = window.confirm(`Delete template "${currentTemplate.name}"? This cannot be undone.`);
+        const confirmed = await confirmWithErtModal(this.app, {
+            title: `Delete template "${currentTemplate.name}"?`,
+            message: 'This cannot be undone.',
+            confirmText: 'Delete'
+        });
         if (!confirmed) return;
         
         // Remove template

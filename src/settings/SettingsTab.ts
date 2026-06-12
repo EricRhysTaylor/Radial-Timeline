@@ -253,7 +253,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const modelId = modelInput.value?.trim();
             if (!baseUrl || !modelId) return;
 
-            this._keyValidateTimers[provider] = window.setTimeout(async () => {
+            this._keyValidateTimers[provider] = window.setTimeout(() => { void (async () => {
                 delete this._keyValidateTimers[provider];
                 [baseInput, modelInput].forEach(el => {
                     el.removeClass('ert-setting-input-success');
@@ -287,7 +287,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                         window.setTimeout(() => el.removeClass('ert-setting-input-error'), 1400);
                     });
                 }
-            }, 800);
+            })(); }, 800);
             return;
         }
 
@@ -299,7 +299,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const key = await getCredential(this.plugin, provider);
         if (!key || key.length < 8) return;
 
-        this._keyValidateTimers[provider] = window.setTimeout(async () => {
+        this._keyValidateTimers[provider] = window.setTimeout(() => { void (async () => {
             delete this._keyValidateTimers[provider];
             inputEl.removeClass('ert-setting-input-success');
             inputEl.removeClass('ert-setting-input-error');
@@ -317,7 +317,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     window.setTimeout(() => inputEl.removeClass('ert-setting-input-error'), 1400);
                 }
             }
-        }, 800);
+        })(); }, 800);
     }
 
     private showPathSuggestions(currentValue: string, container: HTMLElement, textInput: TextComponent): void {

@@ -148,12 +148,12 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             value: colorValue,
             ariaLabel: `${config.title || 'Micro backdrop'} color`,
             plugin,
-            onChange: async (value) => {
+            onChange: (value) => { void (async () => {
                 if (!isValidHexColor(value)) return;
                 const normalized = value.startsWith('#') ? value : `#${value}`;
                 await updateMicroBackdrop(index, { color: normalized });
                 colorTextInput?.setValue(normalized);
-            }
+            })(); }
         });
 
         const hexInput = new TextComponent(colorControls);

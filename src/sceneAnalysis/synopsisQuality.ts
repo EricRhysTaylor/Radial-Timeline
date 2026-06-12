@@ -26,7 +26,7 @@ export function classifySynopsis(synopsis: unknown, weakThreshold: number = 75):
         return 'missing';
     }
 
-    const text = String(synopsis).trim();
+    const text = (typeof synopsis === 'object' ? JSON.stringify(synopsis) : String(synopsis)).trim();
     if (text === '') {
         return 'missing';
     }

@@ -530,7 +530,7 @@ export class RendererService {
         };
         
         const normalizeStage = (raw: unknown): typeof STAGE_ORDER[number] => {
-            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+            const v = (typeof raw === 'string' ? raw : 'Zero').trim().toLowerCase();
             const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
             return match ?? 'Zero';
         };

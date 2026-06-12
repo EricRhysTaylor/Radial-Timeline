@@ -94,7 +94,7 @@ describe('extractSummary', () => {
         expect(extractSummary({ Summary: 42 })).toBe('42');
         expect(extractSummary({ Summary: 0 })).toBe('0');
         expect(extractSummary({ Summary: false })).toBe('false');
-        expect(extractSummary({ Summary: { a: 1 } })).toBe('[object Object]');
+        expect(extractSummary({ Summary: { a: 1 } })).toBe('{"a":1}');
     });
 });
 

@@ -194,7 +194,7 @@ export class OuterRingDragController {
         this.createDragIndicator();
 
         this.view.registerDomEvent(window as unknown as HTMLElement, 'pointermove', (evt: PointerEvent) => this.onPointerMove(evt));
-        this.view.registerDomEvent(window as unknown as HTMLElement, 'pointerup', (evt: PointerEvent) => this.onPointerUp(evt));
+        this.view.registerDomEvent(window as unknown as HTMLElement, 'pointerup', (evt: PointerEvent) => { void this.onPointerUp(evt); });
         
         draggableGroups.forEach(group => {
             // Listen on the scene/beat path for pointer events (outer ring only)

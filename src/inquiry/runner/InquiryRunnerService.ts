@@ -1561,12 +1561,6 @@ export class InquiryRunnerService implements InquiryRunner {
             };
         }
 
-        console.info(
-            `[Inquiry] Chunked execution: ${chunkPlan.prompts.length} chunks to process `
-            + `(chunk budget ~${Math.round(chunkPlan.maxChunkTokens).toLocaleString()} tokens, `
-            + `evidence chars=${Math.round(chunkPlan.evidenceChars).toLocaleString()}, `
-            + `target passes=${chunkPlan.targetPasses ?? 'n/a'}).`
-        );
         const chunkOutputs: string[] = [];
         const totalPasses = chunkPlan.prompts.length + 1;
         const usageAccumulator = this.createUsageAccumulator(totalPasses);
@@ -1602,10 +1596,10 @@ export class InquiryRunnerService implements InquiryRunner {
                     + `, response_chars=${chunkRun.content?.length ?? 0}`;
                 console.warn(failureReason);
                 if (this.isChunkDebugEnabled() && i === 0) {
-                    console.info('[Inquiry] Chunk 1 prompt (full):');
-                    console.info(chunkPlan.prompts[i]);
-                    console.info('[Inquiry] Chunk 1 raw response (full):');
-                    console.info(chunkRun.content || '<empty>');
+                    console.warn('[Inquiry] Chunk 1 prompt (full):');
+                    console.warn(chunkPlan.prompts[i]);
+                    console.warn('[Inquiry] Chunk 1 raw response (full):');
+                    console.warn(chunkRun.content || '<empty>');
                 }
                 const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
                 return {
@@ -1712,7 +1706,7 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
-    private throwIfAborted(shouldAbort?: (() => boolean) | undefined): void {
+    private throwIfAborted(shouldAbort?: () => boolean): void {
         if (shouldAbort?.()) {
             throw new Error(t('inquiry.runner.runAborted'));
         }
@@ -2141,7 +2135,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
         if (partition.warnings.length > 0 || partition.unverified.length > 0) {
             const summaryCounts = computeCitationIntegritySummary(result);
-            console.info(
+            console.warn(
                 `[Inquiry] Citation integrity: verified=${summaryCounts.verifiedCount} rescued=${summaryCounts.rescuedCount} unverified=${summaryCounts.unverifiedCount} mismatch=${summaryCounts.mismatchCount}${summaryCounts.evidenceCompromised ? ' (EVIDENCE COMPROMISED)' : ''}`
             );
         }
@@ -2727,7 +2721,13 @@ export class InquiryRunnerService implements InquiryRunner {
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
         error?: unknown
     ): InquiryResult {
-        const message = error instanceof Error ? error.message : error ? String(error) : '';
+        const message = error instanceof Error
+            ? error.message
+            : !error
+                ? ''
+                : typeof error === 'object'
+                    ? JSON.stringify(error)
+                    : String(error);
         const summary = this.buildStubSummary(aiMeta.aiStatus, aiMeta.aiReason, message);
         const bullets = message ? [t('inquiry.findings.stubBulletNote', { message })] : [t('inquiry.findings.stubBulletPlaceholder')];
         const fallbackRefId = this.resolveFindingFallbackRefId(input);

@@ -73,9 +73,9 @@ export class PlanetaryTimeModal extends Modal {
         profileSetting.addDropdown(drop => {
             this.profileDropdown = drop;
             drop.addOption('', t('planetary.active.disabled'));
-            this.profiles.forEach(p => drop.addOption(p.id, p.label || 'Unnamed'));
+            this.profiles.forEach(p => { drop.addOption(p.id, p.label || 'Unnamed'); });
             drop.setValue(this.activeId || '');
-            drop.onChange(async (value) => {
+            drop.onChange((value) => { void (async () => {
                 this.activeId = value;
                 this.plugin.settings.activePlanetaryProfileId = value;
                 await this.plugin.saveSettings();
@@ -83,7 +83,7 @@ export class PlanetaryTimeModal extends Modal {
                 this.syncHeaderBadge();
                 this.renderInputs();
                 this.renderResult();
-            });
+            })(); });
         });
 
         const directionSetting = new Settings(contentEl)

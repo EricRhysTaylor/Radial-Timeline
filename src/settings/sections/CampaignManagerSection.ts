@@ -797,7 +797,7 @@ function renderCampaignDetails(
                 const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
                 new ButtonComponent(actions)
                     .setButtonText('Delete')
-                    .setWarning()
+                    .setDestructive()
                     .onClick(async () => {
                         const deletedProfile = styleService.deleteProfile(profile.id);
                         if (!deletedProfile) {

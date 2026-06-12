@@ -131,7 +131,7 @@ function stringifyForScan(value: unknown): string {
     try {
         return JSON.stringify(value);
     } catch {
-        return String(value);
+        return typeof value === 'object' && value !== null ? '[unserializable]' : String(value);
     }
 }
 

@@ -1378,19 +1378,6 @@ export async function assembleManuscript(
   for (const page of backPages) emitMatterPage(page);
   endMatterChrome();
 
-  if (isDevMode() && matterDiagnostics.length > 0) {
-    const orderedDiagnostics = matterDiagnostics.map((entry, index) => ({
-      prefixOrderIndex: index + 1,
-      ...entry
-    }));
-    console.info('[Matter Export Diagnostic]', {
-      front: orderedDiagnostics.filter(entry => entry.side === 'front'),
-      back: orderedDiagnostics.filter(entry => entry.side === 'back'),
-      bookMetaPath: bookMeta?.sourcePath || null,
-      totalMatter: orderedDiagnostics.length
-    });
-  }
-
   // Generate TOC and prepend to manuscript
   const toc = includeToc ? generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder, includeSceneIdInToc, sceneIdFormat) : '';
   const manuscriptText = toc + textParts.join('');

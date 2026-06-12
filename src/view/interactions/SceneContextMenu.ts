@@ -59,7 +59,7 @@ function getLocalDateString(date = new Date()): string {
 function normalizeScalar(value: unknown): string {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.length > 0 ? normalizeScalar(value[0]) : '';
-    return String(value).trim();
+    return (typeof value === 'object' ? JSON.stringify(value) : String(value)).trim();
 }
 
 function normalizeFrontmatterKey(key: string): string {

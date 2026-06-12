@@ -476,11 +476,11 @@ export function renderGeneralSection(params: {
             // Activate: click the row (title stopPropagation prevents conflict)
             if (!isActive) {
                 row.settingEl.addClass('ert-book-card--clickable');
-                row.settingEl.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+                row.settingEl.addEventListener('click', () => { void (async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                     if (dragState.index !== null) return;
                     await plugin.setActiveBookId(book.id);
                     renderBooksManager();
-                });
+                })(); });
                 // Prevent input/trash clicks from activating
                 row.controlEl.addEventListener('mousedown', (e) => e.stopPropagation()); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 row.controlEl.addEventListener('click', (e) => e.stopPropagation()); // SAFE: direct addEventListener; Settings lifecycle manages cleanup

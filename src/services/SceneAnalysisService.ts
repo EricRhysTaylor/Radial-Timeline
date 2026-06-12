@@ -276,7 +276,7 @@ class SubplotPickerModal extends Modal {
 
         new ButtonComponent(buttonRow)
             .setButtonText(t('sceneAnalysis.service.subplotPicker.purgeAll'))
-            .setWarning()
+            .setDestructive()
             .onClick(async () => {
                 try {
                     this.close();

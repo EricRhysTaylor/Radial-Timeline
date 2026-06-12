@@ -134,7 +134,7 @@ export class SceneDataService {
                     for (const subplot of subplots) {
                         const durationValue = metadata.Duration;
                         const duration = (durationValue !== undefined && durationValue !== null)
-                            ? String(durationValue)
+                            ? (typeof durationValue === 'object' ? JSON.stringify(durationValue) : String(durationValue))
                             : undefined;
 
                         const pulseUpdate = metadata["Pulse Update"];
@@ -185,7 +185,7 @@ export class SceneDataService {
                                 povField = trimmed;
                             }
                         } else if (rawPov !== undefined && rawPov !== null) {
-                            const converted = String(rawPov).trim();
+                            const converted = (typeof rawPov === 'object' ? JSON.stringify(rawPov) : String(rawPov)).trim();
                             if (converted.length > 0) {
                                 povField = converted;
                             }
@@ -193,7 +193,7 @@ export class SceneDataService {
 
                         const runtimeProfileRaw = metadata["Runtime Profile"] ?? metadata["RuntimeProfile"];
                         const runtimeProfile = runtimeProfileRaw !== undefined && runtimeProfileRaw !== null
-                            ? String(runtimeProfileRaw).trim()
+                            ? (typeof runtimeProfileRaw === 'object' ? JSON.stringify(runtimeProfileRaw) : String(runtimeProfileRaw)).trim()
                             : undefined;
                         const chapterTitle = readSharedChapterTitle(metadata);
 
@@ -224,14 +224,14 @@ export class SceneDataService {
                                     return raw.map(entry => String(entry)).join('\n');
                                 }
                                 if (raw !== undefined && raw !== null) {
-                                    return String(raw);
+                                    return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
                                 }
                                 return undefined;
                             })(),
                             Duration: duration,
                             Chapter: chapterTitle,
                             Runtime: metadata.Runtime !== undefined && metadata.Runtime !== null
-                                ? String(metadata.Runtime)
+                                ? (typeof metadata.Runtime === 'object' ? JSON.stringify(metadata.Runtime) : String(metadata.Runtime))
                                 : undefined,
                             RuntimeProfile: runtimeProfile && runtimeProfile.length > 0 ? runtimeProfile : undefined,
                             // AI Scene Analysis fields - handle both string and array formats from YAML
@@ -263,7 +263,7 @@ export class SceneDataService {
 
                     const durationValue = metadata.Duration;
                     const duration = (durationValue !== undefined && durationValue !== null)
-                        ? String(durationValue)
+                        ? (typeof durationValue === 'object' ? JSON.stringify(durationValue) : String(durationValue))
                         : undefined;
 
                     const isoDate = when ? when.toISOString().split('T')[0] : '';

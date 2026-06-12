@@ -3,6 +3,7 @@ export type PromptTemplateRenderer = (vars: Record<string, unknown>) => { system
 const toText = (value: unknown): string => {
     if (value === null || value === undefined) return '';
     if (typeof value === 'string') return value;
+    if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
 };
 

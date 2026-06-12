@@ -167,7 +167,7 @@ export function textInput(slot: HTMLElement, opts: TextInputOpts = {}): TextComp
 
 export function dropdown(slot: HTMLElement, opts: DropdownOpts): DropdownComponent {
   const dropdownComponent = new DropdownComponent(slot);
-  Object.entries(opts.options).forEach(([value, label]) => dropdownComponent.addOption(value, label));
+  Object.entries(opts.options).forEach(([value, label]) => { dropdownComponent.addOption(value, label); });
   if (opts.value !== undefined) dropdownComponent.setValue(opts.value);
   if (opts.onChange) dropdownComponent.onChange(opts.onChange);
   return dropdownComponent;

@@ -2521,7 +2521,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                         text: fontDiag.state === 'missing-bundled' ? 'Install bundled fonts' : 'How to install',
                     });
                     installBtn.type = 'button';
-                    installBtn.addEventListener('click', async (ev) => {
+                    installBtn.addEventListener('click', (ev) => { void (async () => {
                         ev.preventDefault();
                         if (fontDiag.state === 'missing-bundled') {
                             installBtn.disabled = true;
@@ -2566,7 +2566,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                             text: 'After installing, re-open Settings to refresh status.',
                         });
                         new Notice(fragment, 12000);
-                    });
+                    })(); });
                 }
             }
 
@@ -4370,14 +4370,7 @@ export function renderPublishSection({ app, plugin, containerEl }: PublishSectio
                 button.setButtonText('Repairing…');
                 try {
                     const result = await applyMatterRepairPlan(plugin, currentPlan);
-                    console.info('[Matter Repair]', {
-                        sourceFolder: result.sourceFolder,
-                        repaired: result.updated,
-                        attempted: result.attempted,
-                        unresolved: result.unresolved,
-                        repairedPaths: result.repairedPaths
-                    });
-                    new Notice(`Repaired ${result.updated} notes. See logs for details.`);
+                    new Notice(`Repaired ${result.updated} notes.`);
                     rerender();
                 } catch (e) {
                     const msg = (e as Error).message || String(e);

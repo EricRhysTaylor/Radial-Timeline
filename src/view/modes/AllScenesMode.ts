@@ -33,7 +33,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
     const encodedPath = group.getAttribute('data-path');
     if (encodedPath && encodedPath !== '') {
         const filePath = decodeURIComponent(encodedPath);
-        view.registerDomEvent(path as HTMLElement, 'click', async (evt: MouseEvent) => {
+        view.registerDomEvent(path as HTMLElement, 'click', (evt: MouseEvent) => { void (async () => {
             // Skip if drag controller is handling this interaction
             // The drag controller handles click-to-open for quick clicks and drag operations
             if (isDragInProgress() || wasRecentlyHandledByDrag()) return;
@@ -62,7 +62,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
             }
 
             await openOrRevealFile(view.plugin.app, file, false);
-        });
+        })(); });
 
         view.registerDomEvent(group as HTMLElement, 'mouseenter', () => {
             const itemType = group.getAttribute('data-item-type');

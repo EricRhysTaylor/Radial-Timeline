@@ -68,7 +68,7 @@ export function renderNumberSquaresUnified(params: {
     const uniqueKey =
       scene.path ||
       (scene.title
-        ? `${scene.title}::${scene.number ?? ''}::${scene.when ?? ''}`
+        ? `${scene.title}::${scene.number ?? ''}::${String(scene.when ?? '')}`
         : undefined);
 
     let posForOuter: { startAngle: number; endAngle: number } | undefined;
@@ -304,7 +304,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     }
     const uniqueKey =
       scene.path ||
-      (scene.title ? `${scene.title}::${scene.number ?? ''}::${scene.when ?? ''}` : undefined);
+      (scene.title ? `${scene.title}::${scene.number ?? ''}::${String(scene.when ?? '')}` : undefined);
     const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false, uniqueKey);
     extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
     const grade = sceneGrades.get(sceneId);

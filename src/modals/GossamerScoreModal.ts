@@ -254,7 +254,7 @@ export class GossamerScoreModal extends Modal {
       this.app,
       confirmMessage,
       normalizationIssues,
-      async () => {
+      () => { void (async () => {
         let changedCount = 0;
         const filesToSnapshot = beatsToNormalize
           .map((beat) => beat.path ? this.plugin.app.vault.getAbstractFileByPath(beat.path) : null)
@@ -291,7 +291,7 @@ export class GossamerScoreModal extends Modal {
         } else {
           new Notice(t('gossamer.scoreModal.normalizeNoFragments'));
         }
-      }
+      })(); }
     ).open();
   }
 
@@ -1170,7 +1170,7 @@ export class GossamerScoreModal extends Modal {
 
       new ButtonComponent(buttonContainer)
         .setButtonText(opts.confirmLabel)
-        .setWarning()
+        .setDestructive()
         .onClick(() => {
           modal.close();
           resolve(true);
@@ -1466,7 +1466,7 @@ class NormalizeConfirmationModal extends Modal {
     const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions ert-gossamer-confirm-actions' });
     new ButtonComponent(buttonRow)
       .setButtonText(t('gossamer.scoreModal.normalizeConfirmButton'))
-      .setWarning()
+      .setDestructive()
       .onClick(() => {
         this.close();
         this.onConfirm();

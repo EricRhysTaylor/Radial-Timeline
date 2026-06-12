@@ -630,7 +630,7 @@ export class RuntimeProcessingModal extends ErtModal {
 
         new ButtonComponent(buttonRow)
             .setButtonText(t('sceneAnalysis.runtimeModal.buttons.abort'))
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 this.abortController?.abort();
                 new Notice(t('sceneAnalysis.runtimeModal.notices.aborting'));

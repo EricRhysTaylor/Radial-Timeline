@@ -323,7 +323,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Tracked-stage dropdown sits inline to the right of the mode dropdown (stage mode only).
     const trackedStageDropdown = new DropdownComponent(modeControlRow);
     trackedStageDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
-    STAGE_ORDER.forEach(stage => trackedStageDropdown.addOption(stage, stage));
+    STAGE_ORDER.forEach(stage => { trackedStageDropdown.addOption(stage, stage); });
 
     // Scene goal — inline with the mode + tracked-stage dropdowns.
     const targetCountGroup = modeControlRow.createDiv({ cls: 'ert-apr-targetGroup' });
@@ -497,13 +497,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
     });
     // SAFE: settings sections manage their own listener cleanup via the Obsidian settings tab lifecycle.
-    targetCountResetBtn.addEventListener('click', async () => {
+    targetCountResetBtn.addEventListener('click', () => { void (async () => {
         if (!plugin.settings.authorProgress) return;
         plugin.settings.authorProgress.defaults.aprTargetSceneCount = undefined;
         await plugin.saveSettings();
         await refreshTrackingState();
         refreshPreview();
-    });
+    })(); });
 
     dateRangeInput.onChange(() => {
         clearDateInputState();
@@ -715,12 +715,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     };
     refreshStylingToggle();
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
-    stylingToggleBtn.addEventListener('click', async () => {
+    stylingToggleBtn.addEventListener('click', () => { void (async () => {
         if (!plugin.settings.authorProgress) return;
         plugin.settings.authorProgress.defaults.aprStylingExpanded = !(plugin.settings.authorProgress.defaults.aprStylingExpanded ?? false);
         refreshStylingToggle();
         await plugin.saveSettings();
-    });
+    })(); });
 
     applyErtHeaderLayout(themeHeading);
 
@@ -935,7 +935,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             while (drop.selectEl.firstChild) {
                 drop.selectEl.firstChild.remove();
             }
-            FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+            FONT_OPTIONS.forEach(font => { drop.addOption(font.value, font.label); });
             const normalized = value === 'Inter' ? 'default' : value;
             const hasOption = FONT_OPTIONS.some(opt => opt.value === normalized);
             if (!hasOption) {
@@ -1072,7 +1072,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const styleDrop = new DropdownComponent(rowEl);
         styleDrop.selectEl.addClass('ert-input', 'ert-typography-select');
-        WEIGHT_OPTIONS.forEach(opt => styleDrop.addOption(opt.value, opt.label));
+        WEIGHT_OPTIONS.forEach(opt => { styleDrop.addOption(opt.value, opt.label); });
         const currentWeight = (currentStyle[opts.weightKey] as number | undefined) ?? opts.weightDefault;
         const currentItalic = (currentStyle[opts.italicKey] as boolean | undefined) ?? opts.italicDefault ?? false;
         let isStyleUpdating = false;
@@ -1188,14 +1188,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 value: colorConfig.value,
                 ariaLabel: `${opts.label} color`,
                 plugin,
-                onChange: async (val) => {
+                onChange: (val) => { void (async () => {
                     if (isSyncing) return;
                     const next = val || colorConfig.fallback;
                     await setAprSetting(colorConfig.key, next as AuthorProgressDefaults[typeof colorConfig.key]);
                     colorText?.setValue(next);
                     colorConfig.onAfterChange?.(next);
                     updateAutoState();
-                }
+                })(); }
             });
             colorConfig.setPickerRef?.(colorPicker);
 
@@ -1225,7 +1225,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             : null;
 
         // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
-        autoButton?.addEventListener('click', async () => {
+        autoButton?.addEventListener('click', () => { void (async () => {
             if (!plugin.settings.authorProgress) return;
             const updates: Partial<AuthorProgressDefaults> = {};
             if (opts.color) {
@@ -1250,12 +1250,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             if (typographyRefs) {
                 typographyRefs.setFontValue(defaultFont);
                 typographyRefs.setStyleValue(defaultWeight, defaultItalic);
-                typographyRefs.sizeInputs.forEach(input => input.setValue(''));
+                typographyRefs.sizeInputs.forEach(input => { input.setValue(''); });
             }
             opts.color?.onAfterChange?.(opts.color.fallback);
             isSyncing = false;
             updateAutoState();
-        });
+        })(); });
 
         updateAutoState();
     };
@@ -1492,13 +1492,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         value: currentBg,
         ariaLabel: 'Background color',
         plugin,
-        onChange: async (val) => {
+        onChange: (val) => { void (async () => {
             const next = val || '#0d0d0f';
             await setAprSetting('aprBackgroundColor', next as AuthorProgressDefaults['aprBackgroundColor']);
             bgTextInput?.setValue(next);
             updateSourceLabel(next);
             refreshBorderSwatchFromBg?.();
-        }
+        })(); }
     });
     bgColorPicker = bgSwatch;
 
@@ -1541,7 +1541,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         btn.style.setProperty('--swatch-color', preset.color);
         btn.createSpan({ cls: 'ert-platform-swatch__color' });
         btn.createSpan({ cls: 'ert-platform-swatch__name', text: preset.label });
-        btn.addEventListener('click', () => applyPreset(preset.color));
+        btn.addEventListener('click', () => { void applyPreset(preset.color); });
     }
 
     // Separator between platform and custom presets
@@ -1570,7 +1570,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 btn.createSpan({ cls: 'ert-platform-swatch__name', text: saved.label });
 
                 // Click → apply the saved color
-                btn.addEventListener('click', () => applyPreset(saved.color));
+                btn.addEventListener('click', () => { void applyPreset(saved.color); });
 
                 // Long-press / right-click → open editor to rename or delete
                 btn.addEventListener('contextmenu', (e) => {
@@ -1646,12 +1646,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         value: initialEffective,
         ariaLabel: 'Spoke color',
         plugin,
-        onChange: async (val) => {
+        onChange: (val) => { void (async () => {
             if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
                 await setAprSetting('aprSpokeColor', (val || fallbackColor) as AuthorProgressDefaults['aprSpokeColor']);
                 spokeColorInputRef?.setValue(val);
             }
-        }
+        })(); }
     });
     spokeColorPickerRef = spokeColorPicker;
     spokeColorPicker.setDisabled(!isCustomMode);
@@ -2188,7 +2188,7 @@ class CustomBgPresetModal extends Modal {
         if (isEdit) {
             const deleteBtn = new ButtonComponent(actions)
                 .setButtonText('Delete')
-                .setWarning();
+                .setDestructive();
             deleteBtn.buttonEl.addClass('ert-btn--fit');
             deleteBtn.onClick(async () => {
                 await this.opts.onDelete();

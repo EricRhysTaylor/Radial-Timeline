@@ -666,7 +666,7 @@ export async function ensureBundledLayoutInstalledForExport(
                             try { await plugin.saveSettings(); } catch { /* non-fatal: history will be re-recorded next run */ }
                         }
                     }
-                    console.info(`[Radial Timeline] Overwrote on-disk ${layout.name} template with canonical spec-driven content.`);
+                    console.warn(`[Radial Timeline] Overwrote on-disk ${layout.name} template with canonical spec-driven content.`);
                 }
             } catch {
                 // Non-fatal: continue with standard install/validation flow.

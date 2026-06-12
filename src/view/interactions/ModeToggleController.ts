@@ -207,7 +207,7 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
             await modeManager.switchMode(modeId as TimelineMode);
             // Re-sync UI to the actual active mode (guarded switches may no-op)
             const finalMode = modeManager.getCurrentMode();
-            if (finalMode !== modeId) {
+            if (finalMode !== (modeId as TimelineMode)) {
                 updateModeSelectorState(modeSelector, finalMode);
             }
         } else {
@@ -236,7 +236,7 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
  * Update the visual state of the mode selector
  */
 function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string): void {
-    const activeIndex = MODE_OPTIONS.findIndex(m => m.id === currentMode);
+    const activeIndex = MODE_OPTIONS.findIndex(m => m.id === (currentMode as TimelineMode));
 
     // Calculate positions with different gaps
     let x = MODE_SELECTOR_POS_X;
@@ -269,7 +269,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         const numberLabel = modeElement.querySelector('.rt-mode-number-label') as SVGElement;
 
         const finalX = positions[index] + offset;
-        const isActive = mode.id === currentMode;
+        const isActive = mode.id === (currentMode as TimelineMode);
 
         modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
         modeElement.classList.toggle('rt-mode-current', isActive);
@@ -326,9 +326,9 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
         if (modeElement) {
             const clickTarget = (modeElement.querySelector('.rt-document-bg') ?? modeElement) as unknown as HTMLElement;
-            view.registerDomEvent(clickTarget, 'click', async (e: MouseEvent) => {
+            view.registerDomEvent(clickTarget, 'click', (e: MouseEvent) => {
                 e.stopPropagation();
-                await switchToMode(view, mode.id, modeSelector);
+                void switchToMode(view, mode.id, modeSelector);
             });
         }
     });
@@ -358,9 +358,10 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     };
 
     // SAFE: Document-level listener cleaned up via view.register() below
-    doc.addEventListener('keydown', handleKeyPress);
+    const handleKeyPressListener = (e: KeyboardEvent) => { void handleKeyPress(e); };
+    doc.addEventListener('keydown', handleKeyPressListener);
     view.register(() => {
-        doc.removeEventListener('keydown', handleKeyPress);
+        doc.removeEventListener('keydown', handleKeyPressListener);
     });
 
     // Register hover handlers for visual feedback (color changes only, no scaling)

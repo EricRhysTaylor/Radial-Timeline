@@ -165,7 +165,7 @@
 
 /* Labels */
 .rt-backdrop-label {
-  font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
+  font-family: 'hooge05_55Regular', SFMono-Regular, monospace;
   font-size: 20px;
   font-weight: normal;
   fill: white;

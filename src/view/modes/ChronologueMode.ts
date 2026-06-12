@@ -376,7 +376,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
  * Setup scene click interactions for opening files
  */
 function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement): void {
-    view.registerDomEvent(svg as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
+    view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => { void (async () => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]');
         if (!g) return;
 
@@ -419,7 +419,7 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
                 await openOrRevealFile((view.plugin as any).app, file);
             }
         }
-    });
+    })(); });
 }
 
 /**

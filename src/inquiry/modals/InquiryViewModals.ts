@@ -90,7 +90,7 @@ export class InquiryPurgeConfirmationModal extends Modal {
         if (affectedCount > 0) {
             new ButtonComponent(buttonRow)
                 .setButtonText(`Purge ${affectedCount} scene${affectedCount !== 1 ? 's' : ''}`)
-                .setWarning()
+                .setDestructive()
                 .onClick(async () => {
                     this.close();
                     await this.onConfirm();
@@ -156,7 +156,7 @@ export class InquiryCancelRunModal extends Modal {
             });
         new ButtonComponent(actions)
             .setButtonText('Cancel run')
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 this.resolveOnce(true);
                 this.close();

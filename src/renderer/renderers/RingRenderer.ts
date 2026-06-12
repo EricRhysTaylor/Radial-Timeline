@@ -194,7 +194,7 @@ export function renderRings(ctx: RingRenderContext): string {
 
                     // Extract grade
                     const sceneIndex = combined.length - 1;
-                    const uniqueKey = resolution.scene?.path || `${resolution.scene?.title || ''}::${resolution.scene?.number ?? ''}::${resolution.scene?.when ?? ''}`;
+                    const uniqueKey = resolution.scene?.path || `${resolution.scene?.title || ''}::${resolution.scene?.number ?? ''}::${String(resolution.scene?.when ?? '')}`;
                     const allScenesSceneId = makeSceneId(act, NUM_RINGS - 1, sceneIndex, true, true, uniqueKey);
                     extractGradeFromScene(resolution.scene, allScenesSceneId, sceneGrades, plugin);
                 });
@@ -243,7 +243,7 @@ export function renderRings(ctx: RingRenderContext): string {
 
                     const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
                     const arcPathStr = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
-                    const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
+                    const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${String(scene.when ?? '')}`;
                     const sceneId = makeSceneId(act, ring, idx, true, true, sceneUniqueKey);
 
                     if (!isBeatNote(scene) && scene.path) {
@@ -396,7 +396,7 @@ export function renderRings(ctx: RingRenderContext): string {
                     );
 
                     const arcPathStr = sceneArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
-                    const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
+                    const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${String(scene.when ?? '')}`;
                     const sceneId = makeSceneId(act, ring, idx, false, false, sceneUniqueKey);
 
                     const subplotIdxAttr = (() => {

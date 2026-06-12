@@ -1484,7 +1484,12 @@
 
 .ert-timeline-session-panel .ert-timeline-session-panel__ratio,
 .ert-timeline-session-panel button.ert-timeline-session-panel__ratio {
-  all: unset;
+  /* explicit button reset (the 'all' property is flagged by the plugin scanner) */
+  margin: 0;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
   display: inline-flex;

@@ -749,7 +749,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Update count when mode changes
         // Modal classes don't have registerDomEvent, use addEventListener
         modesSection.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', () => updateCount());
+            radio.addEventListener('change', () => { void updateCount(); });
         });
 
         // Action buttons
@@ -774,8 +774,8 @@ export class SceneAnalysisProcessingModal extends Modal {
                         const confirmModal = new ConfirmationModal(
                             this.app,
                             t('sceneAnalysis.processingModal.confirmLargeBatch', { count, minutes: Math.ceil(count * 0.1) }),
-                            async () => {
-                                await this.startProcessing();
+                            () => {
+                                void this.startProcessing();
                             }
                         );
                         confirmModal.open();
@@ -792,7 +792,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.taskType !== 'synopsis') {
             new ButtonComponent(buttonRow)
                 .setButtonText(t('sceneAnalysis.processingModal.buttons.purge'))
-                .setWarning()
+                .setDestructive()
                 .onClick(async () => {
                     try {
                         // Dynamic import to avoid circular dependency
@@ -965,7 +965,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.actionButtonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
             .setButtonText(t('sceneAnalysis.processingModal.buttons.abort'))
-            .setWarning()
+            .setDestructive()
             .onClick(() => this.abortProcessing());
     }
 
@@ -1584,14 +1584,14 @@ export class SceneAnalysisProcessingModal extends Modal {
                             if (this.subplotName) {
                                 const subplotName = this.subplotName;
                                 const isEntireSubplot = this.isEntireSubplot;
-                                window.setTimeout(async () => {
+                                window.setTimeout(() => { void (async () => {
                                     const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
                                     if (isEntireSubplot) {
                                         await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName, true);
                                     } else {
                                         await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, subplotName);
                                     }
-                                }, 100);
+                                })(); }, 100);
                             } else if (this.resumeCommandId) {
                                 this.plugin.settings._isResuming = true;
                                 await this.plugin.saveSettings();

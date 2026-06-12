@@ -859,7 +859,7 @@ function getAllViews(plugin: RadialTimelinePlugin): unknown[] | null {
     return null;
 }
 
-function getFirstView(plugin: RadialTimelinePlugin): unknown | null {
+function getFirstView(plugin: RadialTimelinePlugin): unknown {
     const timelineService = (plugin as any).timelineService;
     if (timelineService && typeof timelineService.getFirstTimelineView === 'function') {
         return timelineService.getFirstTimelineView();

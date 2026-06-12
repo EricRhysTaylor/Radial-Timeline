@@ -64,7 +64,7 @@ export class ZeroDraftModal extends Modal {
             const confirmBtn = new ButtonComponent(actionsRow)
                 .setButtonText(options.confirmText);
             if (options.confirmWarning) {
-                confirmBtn.setWarning();
+                confirmBtn.setDestructive();
             } else {
                 confirmBtn.setCta();
             }
@@ -141,7 +141,7 @@ export class ZeroDraftModal extends Modal {
         // Override button
         new ButtonComponent(buttonRow)
             .setButtonText('Override')
-            .setWarning()
+            .setDestructive()
             .onClick(async () => {
                 const current = (this.textareaEl.value || '').trim();
                 const isDirty = current !== this.originalText;

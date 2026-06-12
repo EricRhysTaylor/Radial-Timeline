@@ -212,12 +212,12 @@ export function renderScenePropertiesSection(params: {
     refreshAdvancedRowState();
     refreshAdvancedToggle();
 
-    advancedToggleButton.addEventListener('click', async () => {
+    advancedToggleButton.addEventListener('click', () => { void (async () => {
         plugin.settings.enableAdvancedYamlEditor = !(plugin.settings.enableAdvancedYamlEditor ?? false);
         refreshAdvancedToggle();
         await plugin.saveSettings();
         renderAdvancedEditor();
-    });
+    })(); });
 
     const renderHoverPreview = () => {
         hoverPreviewBody.empty();
@@ -593,7 +593,7 @@ export function renderScenePropertiesSection(params: {
                     body.createDiv({ text: 'This cannot be undone.', cls: 'ert-purge-warning' });
 
                     const footer = modal.contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
-                    new ButtonComponent(footer).setButtonText('Reset to default').setWarning().onClick(() => {
+                    new ButtonComponent(footer).setButtonText('Reset to default').setDestructive().onClick(() => {
                         modal.close();
                         resolve(true);
                     });

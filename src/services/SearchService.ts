@@ -1,5 +1,6 @@
 import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { RadialTimelineView } from '../view/TimeLineView';
 import { getActivePlanetaryProfile, convertFromEarth } from '../utils/planetaryTime';
 import type { TimelineItem } from '../types';
 
@@ -55,7 +56,7 @@ function appendSearchValue(fields: string[], value: unknown): void {
         value.forEach(item => appendSearchValue(fields, item));
         return;
     }
-    const text = String(value).trim();
+    const text = (typeof value === 'object' ? JSON.stringify(value) : String(value)).trim();
     if (text) fields.push(text);
 }
 
@@ -108,8 +109,8 @@ export class SearchService {
             views = this.plugin.getTimelineViews();
         }
 
-        const activeLeafView = this.app.workspace.activeLeaf?.view;
-        const targetView = views.find(view => view === activeLeafView) || views[0];
+        const activeTimelineView = this.app.workspace.getActiveViewOfType(RadialTimelineView);
+        const targetView = views.find(view => view === activeTimelineView) || views[0];
         if (!targetView) {
             new Notice('Open the timeline view to search scenes.');
             return;

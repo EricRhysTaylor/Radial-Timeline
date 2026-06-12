@@ -26,7 +26,7 @@ export class AuthorProgressModal extends Modal {
     private aprSize: 'small' | 'medium' | 'large';
     private lastFullSize: 'small' | 'medium' | 'large' = 'medium';
     private exportQuality: AprExportQuality = 'standard';
-    private selectedTargetId: 'default' | string = 'default';
+    private selectedTargetId: string = 'default';
 
     private statusSectionEl: HTMLElement | null = null;
     private campaignsSectionEl: HTMLElement | null = null;

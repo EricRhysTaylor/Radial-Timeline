@@ -319,8 +319,11 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     // Register via view (so cleanup works consistently)
-    view.registerDomEvent(svg as unknown as HTMLElement, 'click', beatSliceClick);
-    view.registerDomEvent(svg as unknown as HTMLElement, 'click', dotClick);
+    // Void wrappers keep a single listener reference for both add and removal.
+    const beatSliceClickListener = (e: MouseEvent) => { void beatSliceClick(e); };
+    const dotClickListener = (e: MouseEvent) => { void dotClick(e); };
+    view.registerDomEvent(svg as unknown as HTMLElement, 'click', beatSliceClickListener);
+    view.registerDomEvent(svg as unknown as HTMLElement, 'click', dotClickListener);
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', backgroundClick);
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', beatSliceOver);
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', beatSliceOut);
@@ -332,8 +335,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     view.registerGossamerHandler('pointerout::svg', beatSliceOut);
     view.registerGossamerHandler('pointerover::dot::svg', dotOver);
     view.registerGossamerHandler('pointerout::dot::svg', dotOut);
-    view.registerGossamerHandler('click::beat::svg', beatSliceClick);
-    view.registerGossamerHandler('click::dot::svg', dotClick);
+    view.registerGossamerHandler('click::beat::svg', beatSliceClickListener);
+    view.registerGossamerHandler('click::dot::svg', dotClickListener);
     view.registerGossamerHandler('click::bg::svg', backgroundClick);
 
     // Direct beat-group handlers for reliability

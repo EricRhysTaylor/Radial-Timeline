@@ -64,7 +64,7 @@ const INITIAL_SHOW_COUNT = 2;
 export function buildInquirySourcesViewModel(
     citations: InquiryCitation[] | undefined,
     evidenceDocumentMeta: EvidenceDocumentMeta[] | undefined,
-    findings?: InquiryFinding[] | undefined
+    findings?: InquiryFinding[]
 ): InquirySourcesViewModel {
     const empty: InquirySourcesViewModel = {
         items: [],

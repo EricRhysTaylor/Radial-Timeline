@@ -482,12 +482,6 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         try {
             const templateSync = await ensureSpecDrivenBundledFictionTemplatesCurrent(this);
-            if (templateSync.installed.length > 0 || templateSync.updated.length > 0) {
-                console.info(
-                    `[Radial Timeline] Synced bundled fiction PDF templates: `
-                    + `${templateSync.installed.length} installed, ${templateSync.updated.length} updated.`
-                );
-            }
             if (templateSync.failed.length > 0) {
                 console.warn(`[Radial Timeline] Failed to sync bundled PDF templates: ${templateSync.failed.join(', ')}.`);
             }

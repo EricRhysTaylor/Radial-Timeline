@@ -299,10 +299,10 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
         // Clear existing options before repopulating after add/remove.
         const select = dd.selectEl;
         while (select.firstChild) select.removeChild(select.firstChild);
-        HERO_PATTERNS.forEach(p => dd.addOption(p.id, p.name));
+        HERO_PATTERNS.forEach(p => { dd.addOption(p.id, p.name); });
         const customs = getCustoms();
         if (customs.length > 0) {
-            customs.forEach(p => dd.addOption(p.id, `★ ${p.name}`));
+            customs.forEach(p => { dd.addOption(p.id, `★ ${p.name}`); });
         }
         // Pro-only: special sentinel option opens the custom-pattern editor.
         // Picking it does not change the saved pattern — it just reveals the
@@ -381,7 +381,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
             ariaLabel: `${stage} stage color`,
             swatchClass: `ert-stage-${stage}`,
             plugin,
-            onChange: async (value) => {
+            onChange: (value) => { void (async () => {
                 if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
                     (plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
                     await plugin.saveSettings();
@@ -389,7 +389,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                     plugin.onSettingChanged(IMPACT_FULL);
                     textInputRef?.setValue(value);
                 }
-            }
+            })(); }
         });
 
         new Settings(control)
@@ -452,7 +452,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
             ariaLabel: `Subplot ring ${i + 1} color`,
             swatchClass: `ert-subplot-${i}`,
             plugin,
-            onChange: async (value) => {
+            onChange: (value) => { void (async () => {
                 if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
                     const next = [...(plugin.settings.subplotColors || DEFAULT_SETTINGS.subplotColors)];
                     next[i] = value;
@@ -462,7 +462,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                     plugin.onSettingChanged(IMPACT_FULL);
                     inputRef?.setValue(value);
                 }
-            }
+            })(); }
         });
 
         new Settings(control)

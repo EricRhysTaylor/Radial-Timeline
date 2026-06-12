@@ -182,7 +182,7 @@ class DeleteExportTemplateModal extends Modal {
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(actions)
             .setButtonText('Delete')
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 this.onConfirm();
                 this.close();
@@ -830,7 +830,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
         this.deleteTemplateButton = new ButtonComponent(templateActions)
             .setButtonText('Delete preset')
-            .setWarning()
+            .setDestructive()
             .setDisabled(true)
             .onClick(() => {
                 const selectedId = this.getCurrentTemplateSelection();

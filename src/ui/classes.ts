@@ -99,20 +99,12 @@ export const ERT_CLASSES = {
 export const ERT_CLASS_VALUES: string[] = Object.values(ERT_CLASSES);
 export const ERT_CLASS_SET: Set<string> = new Set(ERT_CLASS_VALUES);
 
-export type ErtVariant =
-  | typeof ERT_CLASSES.ROW_COMPACT
-  | typeof ERT_CLASSES.ROW_TIGHT
-  | typeof ERT_CLASSES.STACK_TIGHT
-  | typeof ERT_CLASSES.INLINE_SPLIT
-  | typeof ERT_CLASSES.SECTION_TIGHT
-  | typeof ERT_CLASSES.SECTION_HERO
-  | typeof ERT_CLASSES.SECTION_ACCENT
-  | typeof ERT_CLASSES.BADGE_PILL_PRO
-  | typeof ERT_CLASSES.BADGE_PILL_APR
-  | typeof ERT_CLASSES.BADGE_PILL_NEUTRAL
-  | typeof ERT_CLASSES.BADGE_PILL_SM
-  | typeof ERT_CLASSES.DEBUG
-  | string | undefined;
+/**
+ * Variant class string for ERT layout helpers. Common values come from
+ * `ERT_CLASSES` (e.g. ROW_COMPACT, STACK_TIGHT, SECTION_HERO, BADGE_PILL_*,
+ * DEBUG), but any class string is accepted.
+ */
+export type ErtVariant = string | undefined;
 
 export const ERT_DATA = {
   SECTION: 'data-ert-section',

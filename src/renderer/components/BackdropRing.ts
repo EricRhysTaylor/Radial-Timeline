@@ -314,7 +314,7 @@ export function renderBackdropRing({
         const td = `M ${tx1} ${ty1} A ${formatNumber(textRadius)} ${formatNumber(textRadius)} 0 ${largeArcFlag} 1 ${tx2} ${ty2}`;
 
         const pathId = `backdrop-arc-${idx}`;
-        const sceneUniqueKey = seg.scene.path || `${seg.scene.title || ''}::${seg.scene.number ?? ''}::${seg.scene.when ?? ''}`;
+        const sceneUniqueKey = seg.scene.path || `${seg.scene.title || ''}::${seg.scene.number ?? ''}::${String(seg.scene.when ?? '')}`;
         const sceneId = makeSceneId(0, 1, idx, true, true, sceneUniqueKey);
 
         appendSynopsisElementForScene({

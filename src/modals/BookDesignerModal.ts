@@ -897,7 +897,7 @@ export class BookDesignerModal extends Modal {
                         const parsed = parseInt(value);
                         if (!isNaN(parsed) && parsed > 0) {
                             this.scenesToGenerate = parsed;
-                            if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                            if (lengthSettingRef !== undefined) this.updateTargetDesc(lengthSettingRef);
                             if (!this.isApplyingTemplate) this.resetManualLayout();
                             this.schedulePreviewUpdate();
                         }
@@ -920,7 +920,7 @@ export class BookDesignerModal extends Modal {
                                 durationMs: 1700
                             });
                         }
-                        if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                        if (lengthSettingRef !== undefined) this.updateTargetDesc(lengthSettingRef);
                         this.schedulePreviewUpdate();
                     }
                 };
@@ -943,7 +943,7 @@ export class BookDesignerModal extends Modal {
                         const parsed = parseInt(value);
                         if (!isNaN(parsed) && parsed > 0) {
                             this.targetRangeMax = parsed;
-                            if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                            if (lengthSettingRef !== undefined) this.updateTargetDesc(lengthSettingRef);
                             this.schedulePreviewUpdate();
                         }
                     });
@@ -964,7 +964,7 @@ export class BookDesignerModal extends Modal {
                             durationMs: 1700
                         });
                     }
-                    if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                    if (lengthSettingRef !== undefined) this.updateTargetDesc(lengthSettingRef);
                     this.schedulePreviewUpdate();
                 };
                 text.inputEl.addEventListener('blur', commitTarget);
@@ -1195,7 +1195,7 @@ export class BookDesignerModal extends Modal {
         this.deleteTemplateBtn = new ButtonComponent(templateActions)
             .setButtonText(t('bookDesigner.buttons.deleteLayout'))
             .setDisabled(true)
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 const selectedId = this.getCurrentTemplateSelection();
                 if (!selectedId) return;

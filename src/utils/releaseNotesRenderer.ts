@@ -84,6 +84,6 @@ export async function renderReleaseNotesList(
         }
 
         const entryBody = details.createDiv({ cls: `${cssPrefix}-details-body markdown-preview-view` });
-        await MarkdownRenderer.renderMarkdown(entry.body ?? '', entryBody, '', plugin);
+        await MarkdownRenderer.render(plugin.app, entry.body ?? '', entryBody, '', plugin);
     }
 }
