@@ -10,7 +10,7 @@ function shortenVaultPath(vaultPath: string): string {
     return normalized;
 }
 
-function revealFolderInExplorer(app: App, vaultPath: string): void {
+export function revealFolderInExplorer(app: App, vaultPath: string): void {
     const normalized = normalizePath(vaultPath);
     const folder: TAbstractFile | null = app.vault.getAbstractFileByPath(normalized);
     if (!folder) {
@@ -50,8 +50,10 @@ export interface PathChipHandle {
 
 /**
  * Appends a clickable folder-path chip to a Setting's control area.
- * Click reveals the folder in Obsidian's file explorer. Multiple chips
- * on the same row sit side-by-side (and wrap if the row is narrow).
+ * Click reveals the folder in Obsidian's file explorer, unless an
+ * `onClick` override is provided (e.g. to open a location modal).
+ * Multiple chips on the same row sit side-by-side (and wrap if the
+ * row is narrow).
  * Chips are kept in their own container that is inserted before any
  * other control (toggle, dropdown, etc.) regardless of call order.
  *
@@ -62,7 +64,7 @@ export function addPathChip(
     setting: Setting,
     app: App,
     vaultPath: string,
-    options?: { label?: string; count?: string | number | null }
+    options?: { label?: string; count?: string | number | null; onClick?: () => void }
 ): PathChipHandle {
     const display = options?.label ?? shortenVaultPath(vaultPath);
     const container = getOrCreateChipContainer(setting);
@@ -71,7 +73,9 @@ export function addPathChip(
         attr: {
             href: '#',
             role: 'button',
-            'aria-label': `Reveal ${vaultPath} in file explorer`,
+            'aria-label': options?.onClick
+                ? `Change ${vaultPath}`
+                : `Reveal ${vaultPath} in file explorer`,
             title: vaultPath
         }
     });
@@ -79,8 +83,13 @@ export function addPathChip(
     const iconEl = chip.createSpan({ cls: 'ert-path-chip__icon' });
     setIcon(iconEl, 'folder');
     chip.createSpan({ cls: 'ert-path-chip__label', text: display });
+    const onClick = options?.onClick;
     chip.addEventListener('click', (evt) => {
         evt.preventDefault();
+        if (onClick) {
+            onClick();
+            return;
+        }
         revealFolderInExplorer(app, vaultPath);
     });
 

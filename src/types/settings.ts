@@ -823,9 +823,9 @@ export interface RadialTimelineSettings {
     validProjectPaths?: string[];  // Autocomplete history for Social Project Path field
     /** @deprecated Logging paths are internalized and no longer user-configurable. */
     aiOutputFolder?: string;
-    /** @deprecated Export folder is hardcoded to `Radial Timeline/Export`. Field kept only to read legacy data. */
+    /** Export destination for manuscript, outline, and cue-card exports. Defaults to `Radial Timeline/Export`. */
     manuscriptOutputFolder?: string;
-    /** @deprecated Outline exports use the shared Export folder. Field kept only to read legacy data. */
+    /** @deprecated Outline exports use the shared Export folder. Kept in sync with `manuscriptOutputFolder` so stale values can't diverge. */
     outlineOutputFolder?: string;
     inquirySources?: InquirySourcesSettings;
     inquiryPromptConfig?: InquiryPromptConfig;

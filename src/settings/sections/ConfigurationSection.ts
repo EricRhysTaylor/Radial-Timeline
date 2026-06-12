@@ -1,11 +1,11 @@
-import { App, Setting as Settings, normalizePath } from 'obsidian';
+import { App, Setting as Settings } from 'obsidian';
 import type { TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { addPathChip } from '../pathChip';
-import { ModalFolderSuggest } from '../FolderSuggest';
+import { FolderLocationModal } from '../../modals/FolderLocationModal';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { resolveExportOutputFolder, escapesVaultRoot } from '../../utils/aiOutput';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -69,61 +69,37 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
 
     // Export folder is user-configurable. Manuscript, outline, and cue-card
     // exports land here. Writes go through the vault API, so the value must
-    // stay inside the vault (validated on commit). The reveal chip mirrors
-    // the live value so users can jump to the folder in the file explorer.
+    // stay inside the vault (validated on save). The row stays clean — just
+    // the path chip, which opens a location modal with an autocomplete input.
     const exportRow = createDenseRow(logsContainer, {
         title: t('settings.configuration.manuscriptOutputFolder.name'),
         description: t('settings.configuration.manuscriptOutputFolder.desc'),
-        control: (setting) => {
-            setting.addText(text => {
-                const inputEl = text.inputEl;
-                text.setPlaceholder(exportFolderDefault);
-                text.setValue(plugin.settings.manuscriptOutputFolder || '');
-                inputEl.addClass('ert-input');
-
-                const resetState = () => {
-                    inputEl.removeClass('ert-setting-input-success');
-                    inputEl.removeClass('ert-setting-input-error');
-                };
-                const flashError = () => {
-                    inputEl.addClass('ert-setting-input-error');
-                    window.setTimeout(() => inputEl.removeClass('ert-setting-input-error'), 2000);
-                };
-                const commit = async (raw: string) => {
-                    resetState();
-                    const trimmed = raw.trim();
-                    const normalized = trimmed ? normalizePath(trimmed) : '';
-                    if (normalized && escapesVaultRoot(normalized)) {
-                        flashError();
-                        return;
-                    }
-                    const nextFolder = normalized || exportFolderDefault;
-                    plugin.settings.manuscriptOutputFolder = nextFolder;
-                    // Outline exports share the destination; keep the legacy
-                    // field in sync so a stale value can't diverge.
-                    plugin.settings.outlineOutputFolder = nextFolder;
-                    await plugin.saveSettings();
-                    text.setValue(normalized);
-                    refreshExportChip(resolveExportOutputFolder(plugin));
-                    inputEl.addClass('ert-setting-input-success');
-                    window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1000);
-                };
-
-                new ModalFolderSuggest(app, inputEl, (path) => { void commit(path); });
-                plugin.registerDomEvent(inputEl, 'blur', () => { void commit(text.getValue()); });
-                plugin.registerDomEvent(inputEl, 'keydown', (evt: KeyboardEvent) => {
-                    if (evt.key === 'Enter') {
-                        evt.preventDefault();
-                        inputEl.blur();
-                    }
-                });
-            });
-        }
+        control: () => {}
     });
+    const openExportLocationModal = (): void => {
+        new FolderLocationModal(app, {
+            title: t('settings.configuration.manuscriptOutputFolder.name'),
+            description: t('settings.configuration.manuscriptOutputFolder.desc'),
+            value: plugin.settings.manuscriptOutputFolder || '',
+            placeholder: exportFolderDefault,
+            validate: (normalized) => escapesVaultRoot(normalized)
+                ? 'Folder must stay inside your vault.'
+                : null,
+            onSave: async (normalized) => {
+                const nextFolder = normalized || exportFolderDefault;
+                plugin.settings.manuscriptOutputFolder = nextFolder;
+                // Outline exports share the destination; keep the legacy
+                // field in sync so a stale value can't diverge.
+                plugin.settings.outlineOutputFolder = nextFolder;
+                await plugin.saveSettings();
+                refreshExportChip(resolveExportOutputFolder(plugin));
+            }
+        }).open();
+    };
     const refreshExportChip = (folder: string): void => {
         const existing = exportRow.controlEl.querySelector<HTMLElement>(':scope > .ert-path-chips');
         if (existing) existing.remove();
-        addPathChip(exportRow, app, folder);
+        addPathChip(exportRow, app, folder, { onClick: openExportLocationModal });
     };
     refreshExportChip(resolveExportOutputFolder(plugin));
 
