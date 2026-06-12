@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "6.2.3",
+      "title": "6.2.3",
+      "body": "## Radial Timeline 6.2.3\n\nThis is a plugin-review compliance release. It clears every error reported by the Obsidian community plugin scanner and hardens the plugin for popout windows. It does not add new author-facing workflow features.\n\n### Improvements\n\n- Removed all `innerHTML` assignments from the plugin. Icons now use Obsidian's built-in Lucide icon API, and trusted SVG previews mount through a `DOMParser`-based helper, satisfying the scanner's strengthened source-code review.\n- Replaced global `document` references with `activeDocument`/`ownerDocument` across the codebase so the timeline, synopsis, and inquiry surfaces render correctly in popout windows.\n- Fixed a latent bug where the year-progress ring fragment failed to parse during dynamic updates, and removed stray comment text that was being injected into the Chronologue missing-When warning tooltip.\n- Capped Inquiry briefing/engine popovers to the view height so long inner lists scroll instead of overflowing.\n- Removed the embedded README from Core settings.\n- Refreshed the README header for the community listing (centered markdown-first header, larger logo, restored badges and before/after table).\n\n### Notes\n\n- Engineering doctrine now hard-bans `innerHTML`/`outerHTML` with no escape hatch; the internal compliance gate enforces the same rule the Obsidian scanner applies.\n- No new runtime feature surface is introduced in this patch.\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/6.2.3",
+      "publishedAt": "2026-06-12T01:25:28.999Z"
+    },
+    {
       "version": "6.2.2",
       "title": "6.2.2",
       "body": "## Radial Timeline 6.2.2\n\nThis is a focused Obsidian Plugins Page readiness release. It does not add new author-facing workflow features; it tightens the public listing, review disclosures, and release packaging around the current plugin build.\n\n### Improvements\n\n- Tightened README and directory-facing formatting so the Obsidian Plugins Page can render the plugin listing more cleanly.\n- Shortened the manifest description so it no longer starts by repeating the plugin name.\n- Clarified desktop support, privacy/security posture, external service use, and Pandoc export shell/file-system access in the README.\n- Hardened release packaging with full production minification, CI-built release assets, and GitHub build-provenance attestations.\n- Removed scorecard-noisy development dependencies and generated vault artifacts from the tracked repository.\n- Repointed local build and audit references after the repo moved to the `RT LLC/Plugin/radial-timeline` folder.\n\n### Notes\n\n- No new runtime feature surface is introduced in this patch.\n- This release is intended to support the updated Obsidian Plugins Page review and listing flow.",
@@ -99,14 +106,20 @@
     "isDraft": false
   },
   "latest": {
-    "version": "6.2.2",
-    "title": "6.2.2",
-    "body": "## Radial Timeline 6.2.2\n\nThis is a focused Obsidian Plugins Page readiness release. It does not add new author-facing workflow features; it tightens the public listing, review disclosures, and release packaging around the current plugin build.\n\n### Improvements\n\n- Tightened README and directory-facing formatting so the Obsidian Plugins Page can render the plugin listing more cleanly.\n- Shortened the manifest description so it no longer starts by repeating the plugin name.\n- Clarified desktop support, privacy/security posture, external service use, and Pandoc export shell/file-system access in the README.\n- Hardened release packaging with full production minification, CI-built release assets, and GitHub build-provenance attestations.\n- Removed scorecard-noisy development dependencies and generated vault artifacts from the tracked repository.\n- Repointed local build and audit references after the repo moved to the `RT LLC/Plugin/radial-timeline` folder.\n\n### Notes\n\n- No new runtime feature surface is introduced in this patch.\n- This release is intended to support the updated Obsidian Plugins Page review and listing flow.",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/6.2.2",
-    "publishedAt": "2026-06-10T22:19:30.828Z",
-    "isDraft": false
+    "version": "6.2.3",
+    "title": "6.2.3",
+    "body": "## Radial Timeline 6.2.3\n\nThis is a plugin-review compliance release. It clears every error reported by the Obsidian community plugin scanner and hardens the plugin for popout windows. It does not add new author-facing workflow features.\n\n### Improvements\n\n- Removed all `innerHTML` assignments from the plugin. Icons now use Obsidian's built-in Lucide icon API, and trusted SVG previews mount through a `DOMParser`-based helper, satisfying the scanner's strengthened source-code review.\n- Replaced global `document` references with `activeDocument`/`ownerDocument` across the codebase so the timeline, synopsis, and inquiry surfaces render correctly in popout windows.\n- Fixed a latent bug where the year-progress ring fragment failed to parse during dynamic updates, and removed stray comment text that was being injected into the Chronologue missing-When warning tooltip.\n- Capped Inquiry briefing/engine popovers to the view height so long inner lists scroll instead of overflowing.\n- Removed the embedded README from Core settings.\n- Refreshed the README header for the community listing (centered markdown-first header, larger logo, restored badges and before/after table).\n\n### Notes\n\n- Engineering doctrine now hard-bans `innerHTML`/`outerHTML` with no escape hatch; the internal compliance gate enforces the same rule the Obsidian scanner applies.\n- No new runtime feature surface is introduced in this patch.\n",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/6.2.3",
+    "publishedAt": "2026-06-12T01:25:28.999Z"
   },
   "patches": [
+    {
+      "version": "6.2.3",
+      "title": "6.2.3",
+      "body": "## Radial Timeline 6.2.3\n\nThis is a plugin-review compliance release. It clears every error reported by the Obsidian community plugin scanner and hardens the plugin for popout windows. It does not add new author-facing workflow features.\n\n### Improvements\n\n- Removed all `innerHTML` assignments from the plugin. Icons now use Obsidian's built-in Lucide icon API, and trusted SVG previews mount through a `DOMParser`-based helper, satisfying the scanner's strengthened source-code review.\n- Replaced global `document` references with `activeDocument`/`ownerDocument` across the codebase so the timeline, synopsis, and inquiry surfaces render correctly in popout windows.\n- Fixed a latent bug where the year-progress ring fragment failed to parse during dynamic updates, and removed stray comment text that was being injected into the Chronologue missing-When warning tooltip.\n- Capped Inquiry briefing/engine popovers to the view height so long inner lists scroll instead of overflowing.\n- Removed the embedded README from Core settings.\n- Refreshed the README header for the community listing (centered markdown-first header, larger logo, restored badges and before/after table).\n\n### Notes\n\n- Engineering doctrine now hard-bans `innerHTML`/`outerHTML` with no escape hatch; the internal compliance gate enforces the same rule the Obsidian scanner applies.\n- No new runtime feature surface is introduced in this patch.\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/6.2.3",
+      "publishedAt": "2026-06-12T01:25:28.999Z"
+    },
     {
       "version": "6.2.2",
       "title": "6.2.2",
