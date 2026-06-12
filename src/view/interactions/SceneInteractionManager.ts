@@ -473,7 +473,7 @@ export class SceneInteractionManager {
         
         // Use measurement element
         this.measurementText.textContent = titleText;
-        const hoveredComputed = getComputedStyle(hoveredSceneTitle as Element);
+        const hoveredComputed = getComputedStyle(hoveredSceneTitle);
         
         const fontFamily = hoveredComputed.fontFamily || 'sans-serif';
         const fontSize = hoveredComputed.fontSize || '18px';

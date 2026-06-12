@@ -692,7 +692,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
         const viewArg = {
           containerEl: (v as any).containerEl as HTMLElement,
           plugin,
-          sceneData: (v as any).sceneData as any,
+          sceneData: (v as any).sceneData,
           currentMode: 'gossamer' as const
         };
         didSelective = rs.updateGossamerLayer(viewArg);
@@ -711,7 +711,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
         });
         
         // Update mode toggle button to show it will return to the original mode
-        const modeToggle = svg.querySelector('#mode-toggle') as SVGGElement | null;
+        const modeToggle = svg.querySelector('#mode-toggle');
         if (modeToggle) {
           const originalMode = _previousBaseMode || 'narrative';
           modeToggle.setAttribute('data-current-mode', originalMode);
@@ -875,7 +875,7 @@ function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
 
 function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer' | undefined {
   if (hasKey(view, 'currentMode')) {
-    const val = (view as Record<string, unknown>).currentMode;
+    const val = (view).currentMode;
     if (val === 'narrative' || val === 'gossamer' || val === 'subplot') return val as any;
   }
   return undefined;
@@ -1056,7 +1056,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       // prefix is reused across the four per-signal runs (provider prompt caching).
       placeUserQuestionLast: true,
       returnType: 'json',
-      responseSchema: schema as unknown as Record<string, unknown>,
+      responseSchema: schema,
       // Bypass the user's active role template so a "literary fiction editor" or
       // "commercial genre editor" persona cannot bias a structural scoring pass.
       // aiClient swaps in a neutral "Gossamer Neutral Scoring" role; logs still

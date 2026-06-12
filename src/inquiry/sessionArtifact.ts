@@ -98,7 +98,7 @@ export function parseSessionArtifactVault(raw: string): InquiryVaultIdentity | n
         return null;
     }
     if (!isArtifact(parsed)) return null;
-    return cleanVaultIdentity((parsed as InquirySessionArtifact).vault) ?? null;
+    return cleanVaultIdentity((parsed).vault) ?? null;
 }
 
 /**

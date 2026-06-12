@@ -140,7 +140,7 @@ export function resolveBookScopedFiles(options: {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) return false;
         const fm = mappings
-            ? normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings)
+            ? normalizeFrontmatterKeys(cache.frontmatter, mappings)
             : (cache.frontmatter as Record<string, unknown>);
         return isMatchForNoteType(noteType, fm);
     });

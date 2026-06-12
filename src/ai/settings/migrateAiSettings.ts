@@ -130,7 +130,7 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
     const legacy = readLegacy(settings);
     const existing = settings.aiSettings;
     if (existing && typeof existing === 'object' && existing.schemaVersion === 1) {
-        const validated = validateAiSettings(existing as AiSettingsV1);
+        const validated = validateAiSettings(existing);
         return {
             aiSettings: validated.value,
             changed: JSON.stringify(validated.value) !== JSON.stringify(existing),

@@ -291,7 +291,7 @@ function resolveVaultAbsolutePath(plugin: RadialTimelinePlugin, vaultPath: strin
     const adapter = plugin.app.vault.adapter; // SAFE: adapter needed to resolve absolute path for Pandoc output
     const fileSystemAdapterCtor = FileSystemAdapter as unknown as (new (...args: unknown[]) => FileSystemAdapter) | undefined;
     if (fileSystemAdapterCtor && adapter instanceof fileSystemAdapterCtor) {
-        const basePath = (adapter as FileSystemAdapter).getBasePath();
+        const basePath = (adapter).getBasePath();
         return path.join(basePath, normalizePath(vaultPath));
     }
     return null;
@@ -990,7 +990,7 @@ export function buildOutlineExport(
     const runtimes = selection.runtimes ?? [];
     const wordCounts = selection.wordCounts ?? [];
 
-    const totalRuntimeSeconds = (runtimes as (number | null)[]).reduce<number>(
+    const totalRuntimeSeconds = (runtimes).reduce<number>(
         (sum, r) => sum + (r ?? 0),
         0
     );
@@ -1004,7 +1004,7 @@ export function buildOutlineExport(
         return (words / draftingWpm) / 60;
     };
 
-    const totalWords = (wordCounts as (number | null)[]).reduce<number>(
+    const totalWords = (wordCounts).reduce<number>(
         (sum, w) => sum + (w ?? 0),
         0
     );

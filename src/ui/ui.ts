@@ -52,7 +52,7 @@ const applyVariant = (el: HTMLElement, variant?: ErtVariant | ErtVariant[]) => {
     warnUnknownErtClasses(tokens, el);
     tokens.forEach(v => el.addClass(v));
   } else {
-    const token = variant as string;
+    const token = variant;
     warnUnknownErtClasses([token], el);
     el.addClass(token);
   }
@@ -212,7 +212,7 @@ export function colorSwatch(slot: HTMLElement, opts: ColorSwatchOpts = {}): Colo
   const colorComponent = new ColorComponent(slot);
   if (opts.value !== undefined) colorComponent.setValue(opts.value);
 
-  const inputEl = slot.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
+  const inputEl = slot.querySelector<HTMLInputElement>('input[type="color"]:last-of-type');
   if (inputEl) {
     inputEl.classList.add(ERT_CLASSES.COLOR_INPUT_HIDDEN);
     warnUnknownErtClasses([ERT_CLASSES.COLOR_INPUT_HIDDEN], inputEl);

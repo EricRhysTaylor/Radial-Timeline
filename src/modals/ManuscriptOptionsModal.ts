@@ -588,19 +588,19 @@ export class ManuscriptOptionsModal extends Modal {
         const singleOption = singleCol.createEl('label', { cls: 'ert-manuscript-split-option' });
         this.splitSingleInputEl = singleOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'single' }
-        }) as HTMLInputElement;
+        });
         singleOption.createSpan({ cls: 'ert-manuscript-split-option-label', text: 'Single file' });
 
         const partsCol = splitModeRow.createDiv({ cls: 'ert-manuscript-split-col ert-manuscript-split-col--parts' });
         const partsOption = partsCol.createEl('label', { cls: 'ert-manuscript-split-option ert-manuscript-split-option--parts' });
         this.splitPartsRadioInputEl = partsOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'parts' }
-        }) as HTMLInputElement;
+        });
         partsOption.createSpan({ cls: 'ert-manuscript-split-option-label', text: 'Split into parts' });
         this.splitPartsInputEl = partsOption.createEl('input', {
             cls: 'ert-input ert-input--xs ert-manuscript-split-parts-input',
             attr: { type: 'number', min: '2', max: '20', step: '1', value: String(this.splitParts) }
-        }) as HTMLInputElement;
+        });
 
         this.splitSingleInputEl.checked = true;
         this.splitSingleInputEl.addEventListener('change', () => {
@@ -707,7 +707,7 @@ export class ManuscriptOptionsModal extends Modal {
         // G) MANUSCRIPT OPTIONS
         this.publishingCard = container.createDiv({ cls: 'ert-glass-card ert-sub-card' });
         const publishingHeading = this.createSectionHeading(this.publishingCard, 'Manuscript options', 'settings');
-        this.publishingHeadingTextEl = publishingHeading.querySelector('.ert-sub-card-head-text') as HTMLElement | null || undefined;
+        this.publishingHeadingTextEl = publishingHeading.querySelector('.ert-sub-card-head-text') || undefined;
         const publishingBody = this.publishingCard.createDiv({ cls: 'ert-manuscript-advanced-body' });
 
         this.pdfSettingsCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
@@ -1815,7 +1815,7 @@ export class ManuscriptOptionsModal extends Modal {
             }
             const hasTemplateSelection = activeProfileId && layouts.some(l => l.id === activeProfileId);
             const defaultId = hasTemplateSelection
-                ? activeProfileId!
+                ? activeProfileId
                 : layouts[0].id;
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
@@ -2549,7 +2549,7 @@ Sarah stood at the window, watching the world wake up.`;
             selectedScenePaths: slice(this.scenePaths),
             selectedSceneTitles: slice(this.sceneTitles),
             selectedSceneActs: slice(this.sceneActs),
-            chapterMarkersByScenePath: this.chapterMarkersByScenePath as Record<string, unknown[]>,
+            chapterMarkersByScenePath: this.chapterMarkersByScenePath,
         });
     }
 
@@ -2990,7 +2990,7 @@ Sarah stood at the window, watching the world wake up.`;
             this.sceneNumbers = sceneNumbers;
             this.sceneWordCounts = wordCounts;
             this.sceneActs = acts;
-            this.chapterMarkersByScenePath = (result.chapterMarkersByScenePath ?? {}) as Record<string, unknown[]>;
+            this.chapterMarkersByScenePath = (result.chapterMarkersByScenePath ?? {});
             this.totalScenes = titles.length;
             this.rangeStart = 1;
             this.rangeEnd = Math.max(1, this.totalScenes);

@@ -76,7 +76,7 @@ export function getAprPreset(sizeOrKey: AprSize | AprPresetKey): AprPreset {
 export function getExportPreset(_designSize: AprSize, quality: AprExportQuality): AprPreset {
     const exportPx = APR_EXPORT_PX[quality];
     return {
-        key: 'lg450' as AprPresetKey,
+        key: 'lg450',
         outerPx: exportPx,
         enableText: true,
         enableCenterLabel: true,

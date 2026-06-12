@@ -81,7 +81,7 @@ export function resolveSelectedBeatModelFromSettings(
     settings: Pick<RadialTimelineSettings, 'books' | 'activeBookId'>
 ): string | undefined {
     const activeBook = getActiveBook(settings as RadialTimelineSettings);
-    const workspace = activeBook?.beatWorkspace as BeatWorkspaceState | undefined;
+    const workspace = activeBook?.beatWorkspace;
     const activeTabId = workspace?.activeTabId;
     if (activeTabId && workspace?.tabsById?.[activeTabId]) {
         const activeTabName = normalizeBeatSetNameInput(workspace.tabsById[activeTabId].name, '');

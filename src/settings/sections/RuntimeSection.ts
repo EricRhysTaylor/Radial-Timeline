@@ -50,7 +50,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             plugin.settings.runtimeRateProfiles = [buildProfileFromLegacy()];
         }
         if (!plugin.settings.defaultRuntimeProfileId) {
-            plugin.settings.defaultRuntimeProfileId = plugin.settings.runtimeRateProfiles![0].id;
+            plugin.settings.defaultRuntimeProfileId = plugin.settings.runtimeRateProfiles[0].id;
         }
     };
 

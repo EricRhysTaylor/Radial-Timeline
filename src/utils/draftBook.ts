@@ -44,7 +44,7 @@ function parseTrailingNumber(label: string): { stem: string; number: number | nu
   if (!match) return { stem: trimmed || 'Draft', number: null };
   const stem = (match[1] || '').trim() || 'Draft';
   const number = match[2] ? Number(match[2]) : null;
-  return { stem, number: Number.isFinite(number as number) ? number : null };
+  return { stem, number: Number.isFinite(number) ? number : null };
 }
 
 function normalizeDraftLabel(label: string): string {

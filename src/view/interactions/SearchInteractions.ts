@@ -158,7 +158,7 @@ export function applySearchTermHighlightsInRoot(root: ParentNode, searchTerm: st
 export function addHighlightRectangles(view: SearchView): void {
     if (!view.plugin.searchActive) return;
 
-    const svg = view.contentEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+    const svg = view.contentEl.querySelector('.radial-timeline-svg');
     applySearchTermHighlightsInRoot(view.contentEl, view.plugin.searchTerm);
 
     // Mark search-result classes on scene groups with matched paths
@@ -172,7 +172,7 @@ export function addHighlightRectangles(view: SearchView): void {
         if (!pathAttr) return;
         if (!view.plugin.searchResults.has(decodeURIComponent(pathAttr))) return;
 
-        const scenePath = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+        const scenePath = group.querySelector('.rt-scene-path');
         const sceneId = scenePath?.id;
         if (!sceneId) return;
 

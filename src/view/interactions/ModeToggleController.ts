@@ -204,7 +204,7 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
 
     try {
         if (modeManager) {
-            await modeManager.switchMode(modeId as TimelineMode as any);
+            await modeManager.switchMode(modeId as TimelineMode);
             // Re-sync UI to the actual active mode (guarded switches may no-op)
             const finalMode = modeManager.getCurrentMode();
             if (finalMode !== modeId) {
@@ -265,7 +265,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         if (!modeElement) return;
 
         const bg = modeElement.querySelector('.rt-document-bg') as SVGElement;
-        const letter = modeElement.querySelector('.rt-mode-acronym-text') as SVGElement | null;
+        const letter = modeElement.querySelector('.rt-mode-acronym-text');
         const numberLabel = modeElement.querySelector('.rt-mode-number-label') as SVGElement;
 
         const finalX = positions[index] + offset;

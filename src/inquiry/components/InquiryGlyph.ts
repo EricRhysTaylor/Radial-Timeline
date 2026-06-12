@@ -340,7 +340,7 @@ export class InquiryGlyph {
             const axisGroup = doc.createElementNS(SVG_NS, 'g');
             axisGroup.setAttribute('transform', `rotate(${axisRotationDeg})`);
             const zoneNode = zoneTemplate.cloneNode(true) as SVGGElement;
-            const zonePath = zoneNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
+            const zonePath = zoneNode.querySelector<SVGPathElement>('.inq-zone-segment-path');
             axisGroup.appendChild(zoneNode);
             translateGroup.appendChild(axisGroup);
             zoneGroup.appendChild(translateGroup);

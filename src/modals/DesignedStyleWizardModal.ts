@@ -654,7 +654,7 @@ export class DesignedStyleWizardModal extends Modal {
         // generic ("Design your own style") to template-specific
         // ("Customize Standard" + the per-template blurb) once we have an
         // archetype to anchor on.
-        const meta = this.contentEl.querySelector('.ert-style-wizard__meta') as HTMLElement | null;
+        const meta = this.contentEl.querySelector<HTMLElement>('.ert-style-wizard__meta');
         if (meta) this.renderMetaBlock(meta);
         this.renderRightColumn();
         this.renderPreview();
@@ -947,7 +947,7 @@ export class DesignedStyleWizardModal extends Modal {
         // Inject "Paper size" title into the reset bar already rendered by
         // renderActiveCategoryPanel — title on the left, reset icon on the
         // right, all on one row.
-        const resetBar = parent.querySelector('.ert-style-wizard__reset-bar') as HTMLElement | null;
+        const resetBar = parent.querySelector('.ert-style-wizard__reset-bar');
         if (resetBar) {
             const titleSpan = createSpan({
                 cls: 'ert-style-wizard__panel-title',
@@ -1517,7 +1517,7 @@ export class DesignedStyleWizardModal extends Modal {
         editorLabel.setText(activeText);
         this.headerFieldDropdown(
             editorRow,
-            this.spec.runningHeader[this.activeCornerKey] as DesignedHeaderField | undefined,
+            this.spec.runningHeader[this.activeCornerKey],
             (next) => {
                 const key = this.activeCornerKey;
                 this.mutateSpec((s) => {

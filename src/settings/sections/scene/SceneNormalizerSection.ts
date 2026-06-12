@@ -241,7 +241,7 @@ export function renderSceneNormalizerSection(params: {
         updateButtons();
         if (auditResult && sceneAudit) renderResults();
     };
-    parentEl.addEventListener('ert:scene-advanced-maintenance-changed', refreshMaintenanceCopy as EventListener);
+    parentEl.addEventListener('ert:scene-advanced-maintenance-changed', refreshMaintenanceCopy);
 
     let checkBtn: ButtonComponent | undefined;
     checkBtn = new ButtonComponent(headerRow.controlEl)
@@ -264,7 +264,7 @@ export function renderSceneNormalizerSection(params: {
         const removableAdvanced = shouldEnableRemoveAdvanced({
             settings: plugin.settings,
             scenes: checkedSceneFiles
-                .map((file) => app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined)
+                .map((file) => app.metadataCache.getFileCache(file)?.frontmatter)
                 .filter((frontmatter): frontmatter is Record<string, unknown> => !!frontmatter),
         });
 
@@ -681,7 +681,7 @@ export function renderSceneNormalizerSection(params: {
             const targetFiles = checkedSceneFiles.filter((file) => {
                 const note = sceneAudit?.notes.find((entry) => entry.file.path === file.path);
                 if (note?.safetyResult?.status === 'dangerous') return false;
-                const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+                const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
                 return !!frontmatter && shouldEnableRemoveAdvanced({
                     settings: plugin.settings,
                     scenes: [frontmatter],

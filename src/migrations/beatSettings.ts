@@ -291,7 +291,7 @@ export function migrateBeatSettings(settings: LegacyBeatSettings): BeatSettingsM
     }
 
     const legacySavedSystems: LegacySavedBeatSystem[] = Array.isArray(settings.savedBeatSystems)
-        ? (settings.savedBeatSystems as LegacySavedBeatSystem[])
+        ? (settings.savedBeatSystems)
         : [];
     const migratedSavedSystems = legacySavedSystems.map((system, index) => {
         const normalized = normalizeSavedBeatSystemEntry(system, `${Date.now()}-${index}`);

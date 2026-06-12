@@ -130,7 +130,7 @@ export class SearchService {
         this.syncTimelineSearchControls();
 
         // Get active planetary profile for planetary line search
-        const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings as any);
+        const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings);
         
         this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {

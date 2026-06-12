@@ -11,10 +11,10 @@ export function getRotationStepDegrees(segmentCount: number): number {
 }
 
 export function setupRotationController(view: RotationView, svg: SVGSVGElement): void {
-    const rotatable = svg.querySelector('#timeline-rotatable') as SVGGElement | null;
-    const toggle = svg.querySelector('#rotation-toggle') as SVGGElement | null;
-    const arrowUp = svg.querySelector('#rotation-arrow-up') as SVGUseElement | null;
-    const arrowDown = svg.querySelector('#rotation-arrow-down') as SVGUseElement | null;
+    const rotatable = svg.querySelector('#timeline-rotatable');
+    const toggle = svg.querySelector('#rotation-toggle');
+    const arrowUp = svg.querySelector('#rotation-arrow-up');
+    const arrowDown = svg.querySelector('#rotation-arrow-down');
     
     if (!rotatable || !toggle || !arrowUp || !arrowDown) {
         // Rotation elements not found - this is expected if the timeline hasn't rendered yet

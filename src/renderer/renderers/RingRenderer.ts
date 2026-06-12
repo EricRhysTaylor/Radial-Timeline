@@ -300,7 +300,7 @@ export function renderRings(ctx: RingRenderContext): string {
                             }
                             // Otherwise use the beat's own publish stage
                             const publishStage = scene['Publish Stage'] || 'Zero';
-                            const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
+                            const stageColor = PUBLISH_STAGE_COLORS[publishStage] || PUBLISH_STAGE_COLORS.Zero;
                             return `stroke="${stageColor}" stroke-width="2"`;
                         }
                         return '';

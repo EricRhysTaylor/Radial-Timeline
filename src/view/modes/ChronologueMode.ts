@@ -288,13 +288,13 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             const syn = synopsisBySceneId.get(sid);
             if (syn) {
                 // Calculate position BEFORE making visible to prevent flicker
-                view.plugin.synopsisManager.updatePosition(syn, e as unknown as MouseEvent, svg, sid);
+                view.plugin.synopsisManager.updatePosition(syn, e, svg, sid);
                 // Update title color based on Chronologue mode (use subplot color)
                 updateSynopsisTitleColor(syn, sid, 'chronologue');
                 syn.classList.add('rt-visible');
             }
             if (g.classList.contains('rt-chronologue-warning')) {
-                showWhenFieldWarning(svg, g, e as unknown as MouseEvent);
+                showWhenFieldWarning(svg, g, e);
             } else {
                 hideWhenFieldWarning(svg);
             }
@@ -319,7 +319,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const syn = synopsisBySceneId.get(sid);
         if (syn) {
             // Calculate position BEFORE making visible to prevent flicker in wrong location
-            view.plugin.synopsisManager.updatePosition(syn, e as unknown as MouseEvent, svg, sid);
+            view.plugin.synopsisManager.updatePosition(syn, e, svg, sid);
             // Update title color based on Chronologue mode (use subplot color)
             updateSynopsisTitleColor(syn, sid, 'chronologue');
             syn.classList.add('rt-visible');
@@ -332,7 +332,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 
         // Show warning for scenes without When field
         if (g.classList.contains('rt-chronologue-warning')) {
-            showWhenFieldWarning(svg, g, e as unknown as MouseEvent);
+            showWhenFieldWarning(svg, g, e);
         } else {
             hideWhenFieldWarning(svg);
         }

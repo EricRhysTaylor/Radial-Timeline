@@ -78,8 +78,8 @@ export function getBuiltinBeatLibraryItems(settings: Pick<RadialTimelineSettings
         const preset = getPlotSystem(systemName);
         return {
             id: getBuiltinItemId(systemName),
-            kind: 'builtin' as BeatSourceKind,
-            category: (preset?.category ?? 'narrative') as BeatLibraryCategory,
+            kind: 'builtin',
+            category: (preset?.category ?? 'narrative'),
             icon: preset?.icon,
             name: systemName,
             description: '',
@@ -92,7 +92,7 @@ export function getBuiltinBeatLibraryItems(settings: Pick<RadialTimelineSettings
 export function getStarterBeatLibraryItems(settings: Pick<RadialTimelineSettings, 'beatSystemConfigs'>): BeatLibraryItem[] {
     return STARTER_BEAT_SETS.map((system) => ({
         id: system.id,
-        kind: 'starter' as BeatSourceKind,
+        kind: 'starter',
         category: system.category,
         icon: system.icon,
         name: system.name,
@@ -115,8 +115,8 @@ export function getSavedBeatLibraryItems(
         .filter((system) => !isWorkspaceBeatSystemId(system.id))
         .map((system: SavedBeatSystem) => ({
             id: system.id,
-            kind: 'saved' as BeatSourceKind,
-            category: 'saved' as BeatLibraryCategory,
+            kind: 'saved',
+            category: 'saved',
             name: system.name,
             description: system.description,
             beats: system.beats.map(cloneBeatDefinition),

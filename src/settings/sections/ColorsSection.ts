@@ -142,7 +142,7 @@ function renderCustomPatternsCard(
             const item = list.createDiv({ cls: 'ert-custom-patterns-item' });
             const swatch = item.createSvg('svg', { attr: { viewBox: '0 0 60 24', width: '60', height: '24', preserveAspectRatio: 'none' } });
             swatch.addClass('ert-working-pattern-preview');
-            renderPatternIntoSvg(swatch, p as HeroPattern, previewStageColor);
+            renderPatternIntoSvg(swatch, p, previewStageColor);
             item.createSpan({ cls: 'ert-custom-patterns-item-name', text: p.name });
             const removeBtn = item.createEl('button', { cls: 'clickable-icon ert-custom-patterns-remove' });
             setIcon(removeBtn, 'trash-2');
@@ -290,7 +290,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     previewSvg.addClass('ert-working-pattern-preview');
     renderWorkingPatternPreview(previewSvg, currentPatternId, previewStageColor, plugin.settings.customWorkingPatterns);
 
-    const getCustoms = (): readonly HeroPattern[] => (plugin.settings.customWorkingPatterns ?? []) as readonly HeroPattern[];
+    const getCustoms = (): readonly HeroPattern[] => (plugin.settings.customWorkingPatterns ?? []);
 
     let dropdownRef: import('obsidian').DropdownComponent | undefined;
     const isPro = hasProFeatureAccess(plugin);

@@ -25,7 +25,7 @@ const getNormalizedFrontmatter = (
     frontmatterMappings?: Record<string, string>
 ): Record<string, unknown> => {
     const cache = metadataCache.getFileCache(file);
-    const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+    const frontmatter = cache?.frontmatter;
     if (!frontmatter) return {};
     return normalizeFrontmatterKeys(frontmatter, frontmatterMappings);
 };

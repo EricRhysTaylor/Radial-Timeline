@@ -15,11 +15,11 @@ interface HelpIconView {
  * - Opens the GitHub Wiki
  */
 export function setupHelpIconController(view: HelpIconView, svg: SVGSVGElement): void {
-    const helpIcon = svg.querySelector('#help-icon') as SVGGElement | null;
+    const helpIcon = svg.querySelector('#help-icon');
     if (!helpIcon) return;
 
     // Find the icon hit area
-    const hitArea = helpIcon.querySelector('.rt-help-icon-hitarea') as SVGRectElement | null;
+    const hitArea = helpIcon.querySelector('.rt-help-icon-hitarea');
     
     // Handler function
     const openWiki = (ev: Event) => {
@@ -33,7 +33,7 @@ export function setupHelpIconController(view: HelpIconView, svg: SVGSVGElement):
     }
 
     // Also handle click on the icon group itself
-    const iconGroup = helpIcon.querySelector('g') as SVGGElement | null;
+    const iconGroup = helpIcon.querySelector('g');
     if (iconGroup) {
         view.registerDomEvent(iconGroup as unknown as HTMLElement, 'click', openWiki);
     }

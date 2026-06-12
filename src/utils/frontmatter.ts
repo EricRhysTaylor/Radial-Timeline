@@ -315,12 +315,12 @@ export interface BackdropFrontmatter {
  */
 export function asBeatFrontmatter(fm: unknown): BeatFrontmatter | null {
   if (!fm || typeof fm !== 'object') return null;
-  return fm as BeatFrontmatter;
+  return fm;
 }
 
 export function asBackdropFrontmatter(fm: unknown): BackdropFrontmatter | null {
   if (!fm || typeof fm !== 'object') return null;
-  return fm as BackdropFrontmatter;
+  return fm;
 }
 
 /**

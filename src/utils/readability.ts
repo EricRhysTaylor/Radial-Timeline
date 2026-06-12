@@ -3,7 +3,7 @@ import { READABILITY_SCALES } from '../renderer/layout/LayoutConstants';
 
 export function getReadabilityScale(options?: { readabilityScale?: ReadabilityScale }): ReadabilityScale {
   const value = options?.readabilityScale;
-  if (value && value in READABILITY_SCALES) return value as ReadabilityScale;
+  if (value && value in READABILITY_SCALES) return value;
   return 'normal';
 }
 

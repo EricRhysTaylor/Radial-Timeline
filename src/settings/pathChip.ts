@@ -36,7 +36,7 @@ function revealFolderInExplorer(app: App, vaultPath: string): void {
 }
 
 function getOrCreateChipContainer(setting: Setting): HTMLElement {
-    const existing = setting.controlEl.querySelector(':scope > .ert-path-chips') as HTMLElement | null;
+    const existing = setting.controlEl.querySelector<HTMLElement>(':scope > .ert-path-chips');
     if (existing) return existing;
     const container = createDiv({ cls: 'ert-path-chips' });
     setting.controlEl.insertBefore(container, setting.controlEl.firstChild);

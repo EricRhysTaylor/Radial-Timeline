@@ -313,7 +313,7 @@ const ensureSampleBookProject = async (
         id: createBookId(),
         title: displayNameToBookTitle(config?.displayName, normalizedBookFolder),
         sourceFolder: normalizedBookFolder
-    } as BookProfile);
+    });
     plugin.settings.books = [...books, profile];
     await plugin.saveSettings();
     return profile.id;

@@ -134,7 +134,7 @@ export class ModeInteractionController {
     private async setupProgressHandlers(svg: SVGSVGElement): Promise<void> {
         // Import and use existing Main Plot mode setup
         const { setupMainPlotMode } = await import('../view/modes/MainPlotMode');
-        setupMainPlotMode(this.view as any, svg);
+        setupMainPlotMode(this.view, svg);
     }
     
     /**

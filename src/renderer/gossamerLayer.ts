@@ -338,7 +338,7 @@ export function renderGossamerLayer(
       }
       
       // Get the base color for this stage
-      const stageColor = publishStageColors[ov.stage as keyof typeof publishStageColors];
+      const stageColor = publishStageColors[ov.stage];
       if (!stageColor) {
         return ov.color || historicalColor;
       }

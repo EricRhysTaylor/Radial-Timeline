@@ -12,7 +12,7 @@ export function normalizeTimelineMode(value: unknown): { mode: TimelineMode | nu
     if (!trimmed) return { mode: null, changed: false };
 
     const normalized = trimmed.toLowerCase();
-    const canonical = Object.values(TimelineMode).find(mode => mode === normalized) as TimelineMode | undefined;
+    const canonical = Object.values(TimelineMode).find(mode => mode === normalized);
 
     if (canonical) {
         return { mode: canonical, changed: canonical !== value };

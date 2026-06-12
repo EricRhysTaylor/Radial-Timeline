@@ -39,7 +39,7 @@ export function getActiveBookMatterNoteSummaries(plugin: RadialTimelinePlugin): 
         .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' }));
     for (const file of files) {
         const cache = plugin.app.metadataCache.getFileCache(file);
-        const raw = cache?.frontmatter as Record<string, unknown> | undefined;
+        const raw = cache?.frontmatter;
         if (!raw) continue;
         const normalized = normalizeFrontmatterKeys(raw, mappings);
         const matterClass = normalizeMatterClassValue(normalized.Class);

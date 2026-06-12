@@ -226,6 +226,6 @@ export function getLatestGossamerSweepStageColor(
     }
   }
   
-  const color = publishStageColors[latestStage as keyof typeof publishStageColors] || publishStageColors.Zero;
+  const color = publishStageColors[latestStage] || publishStageColors.Zero;
   return { stage: latestStage, color };
 }

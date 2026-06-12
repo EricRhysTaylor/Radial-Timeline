@@ -80,7 +80,7 @@ interface ScanResult {
  */
 function fileExistsSync(absPath: string): boolean {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
         const fs = require('fs') as typeof import('fs');
         fs.accessSync(absPath, fs.constants.X_OK);
         return true;
@@ -653,7 +653,7 @@ function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
 
     for (const file of files) {
         const cache = plugin.app.metadataCache.getFileCache(file);
-        const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+        const rawFrontmatter = cache?.frontmatter;
         if (!rawFrontmatter) continue;
         const normalized = normalizeFrontmatterKeys(rawFrontmatter, mappings);
         const classValue = normalizeMatterClassValue(normalized.Class);
@@ -817,7 +817,7 @@ function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): ActiveBookMetaSt
         .map(file => {
             const cache = plugin.app.metadataCache.getFileCache(file);
             if (!cache?.frontmatter) return null;
-            const normalized = normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings);
+            const normalized = normalizeFrontmatterKeys(cache.frontmatter, mappings);
             if (normalized.Class !== 'BookMeta') return null;
             return {
                 path: file.path,
@@ -881,7 +881,7 @@ function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMat
     for (const file of plugin.app.vault.getMarkdownFiles()) {
         if (!isPathInFolderScope(file.path, sourceFolder)) continue;
         const cache = plugin.app.metadataCache.getFileCache(file);
-        const raw = cache?.frontmatter as Record<string, unknown> | undefined;
+        const raw = cache?.frontmatter;
         if (!raw) continue;
         const normalized = normalizeFrontmatterKeys(raw, mappings);
         const matterClass = normalizeMatterClassValue(normalized.Class);
@@ -919,7 +919,7 @@ function getActiveBookMatterNoteSummaries(plugin: RadialTimelinePlugin): MatterN
         .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' }));
     for (const file of files) {
         const cache = plugin.app.metadataCache.getFileCache(file);
-        const raw = cache?.frontmatter as Record<string, unknown> | undefined;
+        const raw = cache?.frontmatter;
         if (!raw) continue;
         const normalized = normalizeFrontmatterKeys(raw, mappings);
         const matterClass = normalizeMatterClassValue(normalized.Class);

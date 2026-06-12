@@ -100,7 +100,7 @@ export class RendererService {
      * Update scene colors for dominant subplot changes (DOM update)
      */
     updateSceneColorsDOM(container: HTMLElement, plugin: RadialTimelinePlugin, changedScenes: TimelineItem[]): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
         return updateSceneColors(svg, plugin as any, changedScenes); // SAFE: any type used for plugin interface compatibility
     }
@@ -109,7 +109,7 @@ export class RendererService {
      * Update scene fills for visual-only YAML changes (DOM update)
      */
     updateSceneFillsDOM(container: HTMLElement, plugin: RadialTimelinePlugin, changedScenes: TimelineItem[]): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
         return updateSceneFills(svg, plugin as any, changedScenes); // SAFE: any type used for plugin interface compatibility
     }
@@ -118,7 +118,7 @@ export class RendererService {
      * Update center stage/status matrix for visual YAML changes.
      */
     updateCenterGridDOM(container: HTMLElement, scenes: TimelineItem[]): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
 
         const existingGrid = svg.querySelector('.rt-center-stage-grid');
@@ -182,7 +182,7 @@ export class RendererService {
      * Accepts either (container, plugin) or (container, plugin, scenes) for compatibility
      */
     updateNumberSquaresDOM(container: HTMLElement, pluginOrScenes: RadialTimelinePlugin | TimelineItem[], scenes?: TimelineItem[]): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
         
         // Handle both signatures: (container, plugin) and (container, plugin, scenes)
@@ -200,7 +200,7 @@ export class RendererService {
      * Accepts either (container, scenes) or (container, plugin) for compatibility
      */
     updateSynopsisDOM(container: HTMLElement, pluginOrScenes: RadialTimelinePlugin | TimelineItem[]): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
         
         // Handle both signatures
@@ -219,7 +219,7 @@ export class RendererService {
      * Update subplot labels for mode changes (DOM update)
      */
     updateSubplotLabelsDOM(container: HTMLElement, newLabels: Map<string, string>): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
         return updateSubplotLabels(svg, newLabels);
     }
@@ -229,10 +229,10 @@ export class RendererService {
      * Adds/removes rt-scene-is-open classes on scene groups and associated number elements.
      */
     updateOpenClasses(container: HTMLElement, openPaths: Set<string>): boolean {
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
 
-        const sceneGroups = Array.from(svg.querySelectorAll('.rt-scene-group')) as Element[];
+        const sceneGroups = Array.from(svg.querySelectorAll('.rt-scene-group'));
         sceneGroups.forEach(group => {
             const encPath = group.getAttribute('data-path');
             const path = encPath ? decodeURIComponent(encPath) : '';
@@ -266,7 +266,7 @@ export class RendererService {
     updateSearchHighlights(containerEl: HTMLElement, searchTerm?: string): boolean {
         // Find actual container (may be wrapped)
         const container = containerEl.children[1] as HTMLElement | undefined ?? containerEl;
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
 
         // Remove existing inline tspan markers for synopsis text highlighting
@@ -285,7 +285,7 @@ export class RendererService {
                 contentEl: container,
                 plugin: this.plugin,
                 registerDomEvent: () => { /* no-op: highlights don't attach events */ }
-            } as any);
+            });
         } catch {}
         return true;
     }
@@ -296,7 +296,7 @@ export class RendererService {
     updateGossamerLayer(view: { containerEl: HTMLElement; plugin: RadialTimelinePlugin; sceneData?: TimelineItem[]; currentMode?: string }): boolean {
         const container = view.containerEl.children[1] as HTMLElement | undefined;
         if (!container) return false;
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
 
         const applyGossamerMask = () => {
@@ -322,7 +322,7 @@ export class RendererService {
         const captureGeometry = () => {
             let innerRadius: number | null = null;
             let outerRadius: number | null = null;
-            const existingGossamerSpoke = svg.querySelector('.rt-gossamer-spokes line') as SVGLineElement | null;
+            const existingGossamerSpoke = svg.querySelector('.rt-gossamer-spokes line');
             if (existingGossamerSpoke) {
                 const x1 = Number(existingGossamerSpoke.getAttribute('x1') || '0');
                 const y1 = Number(existingGossamerSpoke.getAttribute('y1') || '0');
@@ -331,7 +331,7 @@ export class RendererService {
                 innerRadius = Math.hypot(x1, y1);
                 outerRadius = Math.hypot(x2, y2);
             }
-            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
+            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]'));
             if (beatGroups.length > 0) {
                 if (innerRadius === null || !Number.isFinite(innerRadius)) {
                     const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
@@ -452,11 +452,11 @@ export class RendererService {
     updateProgressAndTicks(containerEl: HTMLElement | { containerEl?: HTMLElement }, _currentSceneId?: string | null): boolean {
         const rootEl = containerEl instanceof HTMLElement ? containerEl : containerEl.containerEl;
         if (!rootEl) return false;
-        const container = (rootEl.querySelector('.radial-timeline-container') as HTMLElement | null) ?? rootEl;
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        const container = (rootEl.querySelector('.radial-timeline-container')) ?? rootEl;
+        const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
 
-        const baseCircle = svg.querySelector('circle.progress-ring-base') as SVGCircleElement | null;
+        const baseCircle = svg.querySelector('circle.progress-ring-base');
         if (!baseCircle) return false;
         const progressRadius = Number(baseCircle.getAttribute('r') || '0');
         if (!Number.isFinite(progressRadius) || progressRadius <= 0) return false;

@@ -2528,7 +2528,7 @@ export function renderBeatPropertiesSection(params: {
             const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.newKeyPlaceholder') } });
 
             // 4. Value input
-            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.valuePlaceholder') } }) as HTMLInputElement;
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.valuePlaceholder') } });
 
             // 5. Buttons wrapper (holds add + revert)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
@@ -3070,7 +3070,7 @@ export function renderBeatPropertiesSection(params: {
         const selectEl = selectorRow.createEl('select', {
             cls: 'ert-input ert-input--lg',
             attr: { 'aria-label': 'Select a beat system set' }
-        }) as HTMLSelectElement;
+        });
 
         const appendOptionGroup = (label: string, items: LoadableEntry[]) => {
             if (items.length === 0) return;
@@ -3218,7 +3218,7 @@ export function renderBeatPropertiesSection(params: {
                     type: 'text',
                     cls: 'ert-input ert-input--full',
                     attr: { placeholder: t('settings.beats.saveModal.namePlaceholder') }
-                }) as HTMLInputElement;
+                });
                 nameInput.value = defaultName;
                 const actionsDiv = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
                 new ButtonComponent(actionsDiv).setButtonText(t('settings.beats.saveModal.saveText')).setCta().onClick(() => {
@@ -3693,7 +3693,7 @@ export function renderBeatPropertiesSection(params: {
             const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.newKeyPlaceholder') } });
 
             // 6. Value input (direct child)
-            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.valuePlaceholder') } }) as HTMLInputElement;
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.valuePlaceholder') } });
 
             // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });

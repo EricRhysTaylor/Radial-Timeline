@@ -181,8 +181,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             }
 
             // Cache number squares and text for this scene
-            const square = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) as SVGElement | null;
-            const text = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`) as SVGElement | null;
+            const square = svg.querySelector<SVGElement>(`.rt-number-square[data-scene-id="${sceneId}"]`);
+            const text = svg.querySelector<SVGElement>(`.rt-number-text[data-scene-id="${sceneId}"]`);
             if (square) numberSquareBySceneId.set(sceneId, square);
             if (text) numberTextBySceneId.set(sceneId, text);
         }

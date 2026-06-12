@@ -969,7 +969,7 @@ export class InquiryMinimapRenderer {
             return;
         }
         const barWidth = this.minimapLayout.length * Math.min(Math.max(fillRatio, 0), 1);
-        const overlayWidth = barWidth * Math.min(cachedRatio!, 1);
+        const overlayWidth = barWidth * Math.min(cachedRatio, 1);
         if (overlayWidth < 1) {
             // Proven reuse but too thin to paint a proportional bar — a small
             // marker is honest here because the payload DID confirm reuse.
@@ -1231,7 +1231,7 @@ export class InquiryMinimapRenderer {
                 tick.classList.remove('is-target', 'is-target-role-validation-warning');
                 tick.removeAttribute('data-target-tooltip');
             }
-            const icon = tick.querySelector('.ert-inquiry-minimap-tick-icon') as SVGSVGElement | null;
+            const icon = tick.querySelector<SVGSVGElement>('.ert-inquiry-minimap-tick-icon');
             if (icon) {
                 const itemKind = tick.getAttribute('data-item-kind');
                 const iconName: MinimapIconName = isEmpty && itemKind === 'scene' ? 'file-x-corner'

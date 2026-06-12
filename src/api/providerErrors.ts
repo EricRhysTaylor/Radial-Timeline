@@ -85,7 +85,7 @@ const isQuotaExceededMessage = (normalized: string): boolean => {
 
 export function classifyProviderError(err: unknown): ProviderErrorClassification {
     const envelope: ErrorEnvelope = typeof err === 'object' && err !== null
-        ? err as ErrorEnvelope
+        ? err
         : { error: typeof err === 'string' ? err : undefined };
 
     const message = extractMessage(err);

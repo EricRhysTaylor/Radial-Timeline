@@ -1472,9 +1472,9 @@ export class BookDesignerModal extends Modal {
         svg.setPointerCapture(evt.pointerId);
         if (this.previewHostEl) this.previewHostEl.addClass('ert-preview-dragging');
 
-        const moveHandler = (moveEvt: PointerEvent) => this.handleDragMove(moveEvt, svg as SVGSVGElement, dims);
+        const moveHandler = (moveEvt: PointerEvent) => this.handleDragMove(moveEvt, svg, dims);
         const upHandler = (upEvt: PointerEvent) => {
-            this.finishDrag(upEvt, svg as SVGSVGElement);
+            this.finishDrag(upEvt, svg);
             svg.removeEventListener('pointermove', moveHandler);
             svg.removeEventListener('pointerup', upHandler);
         };
@@ -1896,7 +1896,7 @@ export class BookDesignerModal extends Modal {
                     skippedScenes++;
                 }
             } catch (e) {
-                const msg = (e as any)?.message ?? '';
+                const msg = (e)?.message ?? '';
                 if (msg.includes('exists') || msg.includes('already exists')) {
                     skippedScenes++;
                 } else {

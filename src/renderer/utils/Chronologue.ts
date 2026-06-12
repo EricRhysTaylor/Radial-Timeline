@@ -208,7 +208,7 @@ export function renderChronologueOverlays({
                     masterSubplotOrder
                 });
             } catch (err) {
-                // eslint-disable-next-line no-console
+                 
                 console.error('[radial-timeline] renderBackdropRing failed; backdrop ring skipped this render.', err);
             }
         }

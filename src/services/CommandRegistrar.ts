@@ -956,7 +956,7 @@ export class CommandRegistrar {
             .map(file => {
                 const cache = this.app.metadataCache.getFileCache(file);
                 if (!cache?.frontmatter) return null;
-                const normalized = normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings);
+                const normalized = normalizeFrontmatterKeys(cache.frontmatter, mappings);
                 if (normalized.Class !== 'BookMeta') return null;
                 return {
                     path: file.path,
@@ -1129,7 +1129,7 @@ export class CommandRegistrar {
             };
             new Notice(`Created ${labelMap[type]} scene note: ${filename}`);
         } catch (error) {
-            const msg = (error as any)?.message || String(error);
+            const msg = (error)?.message || String(error);
             new Notice('Failed to create scene note: ' + msg);
         }
     }
@@ -1165,7 +1165,7 @@ export class CommandRegistrar {
             await leaf.openFile(newFile);
             new Notice(`Created ${defaultLabel.toLowerCase()} note: ${filename}`);
         } catch (error) {
-            const msg = (error as any)?.message || String(error);
+            const msg = (error)?.message || String(error);
             new Notice(`Failed to create ${classValue.toLowerCase()} note: ${msg}`);
         }
     }
@@ -1218,7 +1218,7 @@ export class CommandRegistrar {
             await leaf.openFile(newFile);
             new Notice(`Created BookMeta note: ${newFile.name}`);
         } catch (error) {
-            const msg = (error as any)?.message || String(error);
+            const msg = (error)?.message || String(error);
             new Notice(`Failed to create BookMeta note: ${msg}`);
         }
     }
@@ -1288,7 +1288,7 @@ export class CommandRegistrar {
             await leaf.openFile(newFile);
             new Notice(`Created backdrop note: ${filename}`);
         } catch (error) {
-            const msg = (error as any)?.message || String(error);
+            const msg = (error)?.message || String(error);
             new Notice('Failed to create backdrop note: ' + msg);
         }
     }
@@ -1325,7 +1325,7 @@ export class CommandRegistrar {
             await leaf.openFile(newFile);
             new Notice('Created beat note.');
         } catch (error) {
-            const msg = (error as any)?.message || String(error);
+            const msg = (error)?.message || String(error);
             new Notice('Failed to create beat note: ' + msg);
         }
     }

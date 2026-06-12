@@ -63,7 +63,7 @@ export function normalizeExportProfile(profile: Partial<ExportProfile>): ExportP
     const outputFormat = profile.outputFormat || (exportType === 'outline' ? 'markdown' : 'pdf');
     const cleanupFormat = outputFormat === 'pdf' ? 'pdf' : 'markdown';
     const name = isNonEmptyString(profile.name) ? profile.name.trim() : DEFAULT_EXPORT_PROFILE_NAME;
-    const templateProfileId = isNonEmptyString(profile.templateProfileId) ? profile.templateProfileId.trim() : (isNonEmptyString(profile.id) ? profile.id!.trim() : name);
+    const templateProfileId = isNonEmptyString(profile.templateProfileId) ? profile.templateProfileId.trim() : (isNonEmptyString(profile.id) ? profile.id.trim() : name);
     const order = profile.order || 'narrative';
     const subplot = isNonEmptyString(profile.subplot) ? profile.subplot.trim() : 'All Subplots';
 

@@ -65,7 +65,7 @@ export function normalizeMaterialMode(value: unknown, className: string): SceneI
         const raw = value.trim().toLowerCase();
         if (raw === 'digest') normalized = 'summary';
         if (raw === 'excluded' || raw === 'summary' || raw === 'full') {
-            normalized = raw as SceneInclusion;
+            normalized = raw;
         }
     }
     if (typeof value === 'boolean') {
@@ -171,7 +171,7 @@ export function getFrontmatterScope(
     if (typeof value !== 'string') return undefined;
     const normalizedValue = value.trim().toLowerCase();
     if (normalizedValue === 'book' || normalizedValue === 'saga') {
-        return normalizedValue as InquiryScope;
+        return normalizedValue;
     }
     return undefined;
 }
@@ -191,7 +191,7 @@ export function normalizeInquirySources(raw?: InquirySourcesSettings): InquirySo
             bookScope: normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),
             sagaScope: normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
             referenceScope: normalizeMaterialMode(
-                (config as InquiryClassConfig).referenceScope
+                (config).referenceScope
                 ?? (!isSynopsisCapableClass(config.className.toLowerCase()) ? true : false),
                 config.className.toLowerCase()
             )

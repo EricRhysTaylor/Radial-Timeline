@@ -416,7 +416,7 @@ export function formatExpectedPassesLabel(label: ExpectedPassesLabel): string {
 
 export function formatProviderInputSummary(summary: ProviderInputSummary): string {
     if (summary.kind === 'unavailable') return 'Estimated provider input · unavailable';
-    const tokens = formatPanelTokenShorthand({ source: summary.source, tokens: summary.tokens } as PanelTokenEstimate);
+    const tokens = formatPanelTokenShorthand({ source: summary.source, tokens: summary.tokens });
     if (summary.source === 'provider_count') {
         return `Estimated provider input · ${tokens}`;
     }

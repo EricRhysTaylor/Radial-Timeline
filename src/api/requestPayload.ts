@@ -67,10 +67,10 @@ function toOpenAiResponsesFormat(
     const schemaEnvelope = format.json_schema && typeof format.json_schema === 'object'
         ? format.json_schema
         : {};
-    const name = typeof (schemaEnvelope as Record<string, unknown>).name === 'string'
-        ? ((schemaEnvelope as Record<string, unknown>).name as string).trim()
+    const name = typeof (schemaEnvelope).name === 'string'
+        ? ((schemaEnvelope).name).trim()
         : '';
-    const schema = (schemaEnvelope as Record<string, unknown>).schema;
+    const schema = (schemaEnvelope).schema;
     return {
         type: 'json_schema',
         name: name || 'ai_result',

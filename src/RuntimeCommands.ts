@@ -381,7 +381,7 @@ Return JSON only: {"runtimeSeconds": number, "reasoning": "brief explanation"}`;
             featureModeInstructions: systemPrompt,
             userInput: userPrompt,
             returnType: 'json',
-            responseSchema: schema as unknown as Record<string, unknown>,
+            responseSchema: schema,
             overrides: {
                 temperature: 0.3,
                 maxOutputMode: 'auto',

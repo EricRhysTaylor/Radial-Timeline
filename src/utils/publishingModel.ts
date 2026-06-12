@@ -154,7 +154,7 @@ export function adaptPandocLayoutToTemplateProfile(layout: PandocLayoutTemplate)
         origin: getProfileOrigin(layout),
         name: layout.name,
         description,
-        usageContexts: [layout.preset as UsageContext],
+        usageContexts: [layout.preset],
         outputIntent,
         tier: getPandocLayoutTier(layout),
         templateKind: getPandocLayoutKind(layout),

@@ -240,7 +240,7 @@ export class RadialTimelineView extends ItemView {
     }
 
     private ensureBookSwitcher(): void {
-        const headerEl = this.containerEl.querySelector('.view-header') as HTMLElement | null;
+        const headerEl = this.containerEl.querySelector('.view-header');
         if (!headerEl) return;
 
         if (!this.bookSwitcherEl) {
@@ -452,8 +452,8 @@ export class RadialTimelineView extends ItemView {
                 headerEl.appendChild(wrapper);
             }
 
-            const navButtonsEl = headerEl.querySelector('.view-header-nav-buttons') as HTMLElement | null;
-            const titleContainerEl = headerEl.querySelector('.view-header-title-container') as HTMLElement | null;
+            const navButtonsEl = headerEl.querySelector('.view-header-nav-buttons');
+            const titleContainerEl = headerEl.querySelector('.view-header-title-container');
             if (navButtonsEl?.parentElement) {
                 navButtonsEl.parentElement.insertBefore(sessionBtn, navButtonsEl.nextSibling);
             } else if (titleContainerEl?.parentElement) {
@@ -1482,7 +1482,7 @@ export class RadialTimelineView extends ItemView {
     }
 
     private getRenderedTimelineSvg(): SVGSVGElement | null {
-        return this.containerEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        return this.containerEl.querySelector('.radial-timeline-svg');
     }
 
     private getSessionRingElapsedMs(elapsedMs: number, targetMinutes: number): number {
@@ -1969,7 +1969,7 @@ export class RadialTimelineView extends ItemView {
 
     private updateViewTitle(): void {
         const titleText = this.getDisplayText();
-        const headerTitle = this.containerEl.querySelector('.view-header-title') as HTMLElement | null;
+        const headerTitle = this.containerEl.querySelector('.view-header-title');
         if (headerTitle) headerTitle.textContent = titleText;
 
         // The tab-header title lives in the tab bar, OUTSIDE this leaf's content
@@ -1991,7 +1991,7 @@ export class RadialTimelineView extends ItemView {
 
         const run = () => {
             this.beatLabelAdjustTimeout = null;
-            const timelineContainer = this.containerEl.querySelector('.radial-timeline-container') as HTMLElement | null;
+            const timelineContainer = this.containerEl.querySelector<HTMLElement>('.radial-timeline-container');
             if (!timelineContainer) return;
             this.beatLabelAdjustRaf = window.requestAnimationFrame(() => {
                 this.beatLabelAdjustRaf = null;
@@ -2031,9 +2031,9 @@ export class RadialTimelineView extends ItemView {
     public setRotationState(rotated: boolean): void { this.rotationState = rotated; }
 
     public getSquareGroupForSceneId(svg: SVGSVGElement, sceneId: string): SVGGElement | null {
-        const rect = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) as SVGRectElement | null;
+        const rect = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
         if (!rect) return null;
-        const group = rect.closest('.number-square-group') as SVGGElement | null;
+        const group = rect.closest<SVGGElement>('.number-square-group');
         return group;
     }
 
@@ -2152,7 +2152,7 @@ export class RadialTimelineView extends ItemView {
                 // rebuild the run data here to ensure the renderer gets the latest scores.
                 if (this._currentMode === 'gossamer') {
                     const { syncGossamerPresentationState } = await import('../GossamerCommands');
-                    await syncGossamerPresentationState(this.plugin, timelineSceneData as any);
+                    await syncGossamerPresentationState(this.plugin, timelineSceneData);
                 }
                 
                 this.sceneData = timelineSceneData;
@@ -2222,7 +2222,7 @@ export class RadialTimelineView extends ItemView {
 
                     // Handle gossamer changes
                     if (changeResult.changeTypes.has(ChangeType.GOSSAMER)) {
-                        updated = this.rendererService.updateGossamerLayer(this as any) || updated;
+                        updated = this.rendererService.updateGossamerLayer(this) || updated;
                     }
                     
                     if (updated) {
@@ -2461,7 +2461,7 @@ export class RadialTimelineView extends ItemView {
                         svgElement.removeAttribute('data-chronologue-mode');
                     }
                     try {
-                        this.updateWritingSessionRing(svgElement as unknown as SVGSVGElement);
+                        this.updateWritingSessionRing(svgElement);
                     } catch (error) {
                         console.warn('[WritingSession] Failed to render session ring overlay.', error);
                     }
@@ -2484,7 +2484,7 @@ export class RadialTimelineView extends ItemView {
                     }
 
                     // Setup interactions based on current mode
-                    this.setupInteractionsForMode(svgElement as unknown as SVGSVGElement);
+                    this.setupInteractionsForMode(svgElement);
                 // Set CSS variables for subplot labels based on data attributes
                 const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
                 subplotLabelGroups.forEach((group) => {
@@ -2495,16 +2495,16 @@ export class RadialTimelineView extends ItemView {
                 });
                 
                 // Attach rotation toggle behavior (inline SVG scripts won't run here)
-                setupRotationController(this, svgElement as unknown as SVGSVGElement);
+                setupRotationController(this, svgElement);
 
                 // Attach mode toggle behavior
-                setupModeToggleController(this, svgElement as unknown as SVGSVGElement);
+                setupModeToggleController(this, svgElement);
 
                 // Attach version indicator click behavior
-                setupVersionIndicatorController(this, svgElement as unknown as SVGSVGElement);
+                setupVersionIndicatorController(this, svgElement);
 
                 // Attach help icon click behavior
-                setupHelpIconController(this, svgElement as unknown as SVGSVGElement);
+                setupHelpIconController(this, svgElement);
 
                 // Attach Author Progress Indicator click behavior - opens Settings Social tab
                 const aprIndicator = svgElement.querySelector('.rt-apr-indicator');
@@ -2656,7 +2656,7 @@ export class RadialTimelineView extends ItemView {
                 
             // Add the fragment to the container
             container.appendChild(fragment);
-            const svgForRecentMoves = timelineContainer.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+            const svgForRecentMoves = timelineContainer.querySelector<SVGSVGElement>('.radial-timeline-svg');
             if (svgForRecentMoves) {
                 this.renderRecentMovesPanel(svgForRecentMoves);
                 this.renderGossamerRunsPanel(svgForRecentMoves);
@@ -2838,7 +2838,7 @@ export class RadialTimelineView extends ItemView {
         button.setAttribute('tabindex', '0');
         button.setAttribute('data-state', this.plugin.gossamerLatestOnly ? 'latest' : 'all');
         applyTooltip(
-            button as unknown as HTMLElement,
+            button,
             this.plugin.gossamerLatestOnly ? 'Click to show all plots' : 'Click to show latest only',
             'bottom'
         );
@@ -2889,11 +2889,11 @@ export class RadialTimelineView extends ItemView {
                 iconSvg.appendChild(path);
                 btn.appendChild(iconSvg);
             } else {
-                setIcon(btn as unknown as HTMLElement, meta.icon);
+                setIcon(btn, meta.icon);
             }
             // Narrower balance width than default so the tooltip's native CSS wrap
             // can't re-break our last line into a widow (e.g. "count." alone).
-            applyTooltip(btn as unknown as HTMLElement, meta.tooltip, 'bottom', 300, { custom: true });
+            applyTooltip(btn, meta.tooltip, 'bottom', 300, { custom: true });
             signalSelector.appendChild(btn);
             signalButtons.push({ el: btn, signal: signalId });
         });
@@ -3069,7 +3069,7 @@ export class RadialTimelineView extends ItemView {
 
         const icon = doc.createElementNS(xhtmlNs, 'div');
         icon.className = 'rt-recent-moves__icon';
-        setIcon(icon as unknown as HTMLElement, 'arrow-right-to-line');
+        setIcon(icon, 'arrow-right-to-line');
         header.appendChild(icon);
 
         const summary = doc.createElementNS(xhtmlNs, 'div');
@@ -3082,7 +3082,7 @@ export class RadialTimelineView extends ItemView {
 
             const cornerIcon = doc.createElementNS(xhtmlNs, 'span');
             cornerIcon.className = 'rt-recent-moves__inline-icon';
-            setIcon(cornerIcon as unknown as HTMLElement, 'corner-up-right');
+            setIcon(cornerIcon, 'corner-up-right');
             summary.appendChild(cornerIcon);
 
             const target = doc.createElementNS(xhtmlNs, 'span');
@@ -3172,7 +3172,7 @@ export class RadialTimelineView extends ItemView {
         this.gossamerEventHandlers.forEach((handler, key) => {
             const [eventType] = key.split('::');
             // All handlers recorded here were attached to the SVG root via delegation
-            svg.removeEventListener(eventType, handler as EventListenerOrEventListenerObject);
+            svg.removeEventListener(eventType, handler);
         });
         this.gossamerEventHandlers.clear();
     }

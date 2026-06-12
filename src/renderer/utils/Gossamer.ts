@@ -31,7 +31,7 @@ export function renderGossamerOverlay({
     // Detect whether any timeline view is in Gossamer mode
     const views = (plugin as any).app.workspace.getLeavesOfType('radial-timeline');
     const isGossamerMode = views.some((leaf: { view: { currentMode?: string } }) => {
-        const view = leaf.view as { currentMode?: string };
+        const view = leaf.view;
         return view?.currentMode === 'gossamer';
     });
 
@@ -57,7 +57,7 @@ export function renderGossamerOverlay({
         if (!isBeatNote(scene) || !scene.title) return;
         const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
         const publishStage = scene['Publish Stage'] || 'Zero';
-        const stageColor = publishStageColors[publishStage as keyof typeof publishStageColors] || publishStageColors.Zero;
+        const stageColor = publishStageColors[publishStage] || publishStageColors.Zero;
         publishStageColorByBeat.set(titleWithoutNumber, stageColor);
     });
 

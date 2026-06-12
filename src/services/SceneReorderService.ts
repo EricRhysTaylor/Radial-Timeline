@@ -225,7 +225,7 @@ function dedupeAndCollectEligible(items: TimelineItem[], activeBeatPaths?: Set<s
         if (byPath.has(path)) return;
         const actFromNumber = item.actNumber;
         const parsedAct = Number(item.act ?? 1);
-        const actNumber = Number.isFinite(actFromNumber as number) && (actFromNumber as number) > 0
+        const actNumber = Number.isFinite(actFromNumber) && (actFromNumber as number) > 0
             ? (actFromNumber as number)
             : (Number.isFinite(parsedAct) && parsedAct > 0 ? parsedAct : 1);
         byPath.set(path, {

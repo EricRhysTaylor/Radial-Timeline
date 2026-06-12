@@ -45,7 +45,7 @@ export default class SynopsisManager {
   }
 
   private getReadabilityScale(): number {
-    return getReadabilityMultiplier(this.plugin.settings as any);
+    return getReadabilityMultiplier(this.plugin.settings);
   }
 
   private getLineInnerRadius(svg: SVGSVGElement | null): number {
@@ -57,7 +57,7 @@ export default class SynopsisManager {
     }
 
     // Fallback: derive from inner calendar spokes (lineInnerRadius - 5)
-    const spoke = svg.querySelector('.rt-inner-calendar-spoke') as SVGLineElement | null;
+    const spoke = svg.querySelector('.rt-inner-calendar-spoke');
     if (spoke) {
       const x1 = Number(spoke.getAttribute('x1') || '0');
       const y1 = Number(spoke.getAttribute('y1') || '0');
@@ -247,9 +247,9 @@ export default class SynopsisManager {
   }
 
   private resetAdvancedYamlWrap(synopsis: Element): void {
-    const lineGroups = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line')) as SVGGElement[];
+    const lineGroups = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line'));
     lineGroups.forEach(group => {
-      const textEls = Array.from(group.querySelectorAll('.rt-hover-metadata-text')) as SVGTextElement[];
+      const textEls = Array.from(group.querySelectorAll('.rt-hover-metadata-text'));
       if (textEls.length === 0) return;
 
       // Remove any previously wrapped continuation lines
@@ -268,10 +268,10 @@ export default class SynopsisManager {
   }
 
   private resetMainSynopsisWrap(synopsis: Element): void {
-    const wrapped = Array.from(synopsis.querySelectorAll('[data-synopsis-wrap="true"]')) as SVGTextElement[];
+    const wrapped = Array.from(synopsis.querySelectorAll('[data-synopsis-wrap="true"]'));
     wrapped.forEach(el => el.remove());
 
-    const lines = Array.from(synopsis.querySelectorAll('[data-synopsis-line="true"]')) as SVGTextElement[];
+    const lines = Array.from(synopsis.querySelectorAll<SVGTextElement>('[data-synopsis-line="true"]'));
     lines.forEach(line => {
       const raw = line.getAttribute('data-synopsis-raw');
       if (raw !== null) {
@@ -281,10 +281,10 @@ export default class SynopsisManager {
   }
 
   private resetPendingEditsWrap(synopsis: Element): void {
-    const wrapped = Array.from(synopsis.querySelectorAll('[data-pending-wrap="true"]')) as SVGTextElement[];
+    const wrapped = Array.from(synopsis.querySelectorAll('[data-pending-wrap="true"]'));
     wrapped.forEach(el => el.remove());
 
-    const lines = Array.from(synopsis.querySelectorAll('[data-pending-line="true"]')) as SVGTextElement[];
+    const lines = Array.from(synopsis.querySelectorAll<SVGTextElement>('[data-pending-line="true"]'));
     lines.forEach(line => {
       const raw = line.getAttribute('data-pending-raw');
       const prefix = line.getAttribute('data-pending-prefix') ?? '';
@@ -295,10 +295,10 @@ export default class SynopsisManager {
   }
 
   private resetWrappedListLines(synopsis: Element): void {
-    const wrapped = Array.from(synopsis.querySelectorAll('[data-list-wrap="true"]')) as SVGTextElement[];
+    const wrapped = Array.from(synopsis.querySelectorAll('[data-list-wrap="true"]'));
     wrapped.forEach(el => el.remove());
 
-    const lines = Array.from(synopsis.querySelectorAll('[data-list-wrap-kind]')) as SVGTextElement[];
+    const lines = Array.from(synopsis.querySelectorAll<SVGTextElement>('[data-list-wrap-kind]'));
     lines.forEach(line => {
       const listData = this.getWrappedListData(line);
       if (!listData) return;
@@ -607,7 +607,7 @@ export default class SynopsisManager {
         }
       }
 
-      const lineGroup = primaryEl.closest('.rt-hover-metadata-line') as SVGGElement | null;
+      const lineGroup = primaryEl.closest('.rt-hover-metadata-line');
       if (!lineGroup) continue;
       const raw = primaryEl.getAttribute('data-advanced-raw') ?? primaryEl.textContent ?? '';
       if (!raw.trim()) continue;
@@ -1414,7 +1414,7 @@ export default class SynopsisManager {
       }
 
       const pulseReviewWarningRaw = readFrontmatterFieldValue(
-        scene.rawFrontmatter as Record<string, unknown> | undefined,
+        scene.rawFrontmatter,
         'Pulse Review Warning'
       );
       const pulseReviewWarning = typeof pulseReviewWarningRaw === 'string'
@@ -1479,7 +1479,7 @@ export default class SynopsisManager {
 
         enabledHoverFields.forEach((field: HoverMetadataField) => {
           // Check if the scene has this key in its raw frontmatter
-          const sceneValue = readFrontmatterFieldValue(scene.rawFrontmatter as Record<string, unknown> | undefined, field.key);
+          const sceneValue = readFrontmatterFieldValue(scene.rawFrontmatter, field.key);
 
           // Skip if value is undefined, null, empty string, or empty array
           if (sceneValue === undefined || sceneValue === null) return;
@@ -1614,7 +1614,7 @@ export default class SynopsisManager {
           subplots.forEach((subplot: string, j: number) => {
             const color = getSubplotColor(subplot.trim(), sceneId);
             const subplotText = subplot.trim();
-            const tspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+            const tspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
             tspan.setAttribute("data-item-type", "subplot");
             tspan.style.setProperty('--rt-dynamic-color', color);
             tspan.textContent = subplotText;
@@ -1675,7 +1675,7 @@ export default class SynopsisManager {
             const color = povLabel ? CHARACTER_COLOR_POV : CHARACTER_COLOR_DEFAULT;
 
             if (cleanedText) {
-              const tspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              const tspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
               tspan.setAttribute("data-item-type", "character");
               tspan.style.setProperty('--rt-dynamic-color', color);
               if (povLabel) {
@@ -1686,7 +1686,7 @@ export default class SynopsisManager {
             }
 
             if (povLabel) {
-              const povTspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              const povTspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
               povTspan.setAttribute("class", "rt-pov-marker");
               povTspan.setAttribute("dy", "-8px");
               povTspan.style.setProperty('--rt-dynamic-color', color);
@@ -1705,7 +1705,7 @@ export default class SynopsisManager {
               comma.textContent = ", ";
               characterTextElement.appendChild(comma);
             } else if (baselineRaised) {
-              const resetTspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              const resetTspan = doc.createElementNS("http://www.w3.org/2000/svg", "tspan");
               resetTspan.setAttribute("dy", "8px");
               resetTspan.textContent = "";
               characterTextElement.appendChild(resetTspan);
@@ -1938,7 +1938,7 @@ export default class SynopsisManager {
       });
     };
 
-    let textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+    let textElements = Array.from(synopsis.querySelectorAll('text'));
     if (textElements.length === 0) return;
 
     applyTextAnchors(textElements);
@@ -1990,7 +1990,7 @@ export default class SynopsisManager {
         lineInnerRadius
       });
       if (mainWrapped) {
-        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        textElements = Array.from(synopsis.querySelectorAll('text'));
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
@@ -2008,7 +2008,7 @@ export default class SynopsisManager {
         lineInnerRadius
       });
       if (pendingWrapped) {
-        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        textElements = Array.from(synopsis.querySelectorAll('text'));
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
@@ -2030,7 +2030,7 @@ export default class SynopsisManager {
         lineInnerRadius
       });
       if (advancedWrapped) {
-        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        textElements = Array.from(synopsis.querySelectorAll('text'));
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
@@ -2048,7 +2048,7 @@ export default class SynopsisManager {
         lineInnerRadius
       });
       if (listWrapped) {
-        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        textElements = Array.from(synopsis.querySelectorAll('text'));
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
         textRows = buildTextRows(textElements);
@@ -2069,7 +2069,7 @@ export default class SynopsisManager {
     });
 
     if (budgetChanged) {
-      textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+      textElements = Array.from(synopsis.querySelectorAll('text'));
       if (textElements.length === 0) return;
       applyTextAnchors(textElements);
       textRows = buildTextRows(textElements);
@@ -2287,12 +2287,12 @@ export default class SynopsisManager {
   }
 
   private updateHoverMetadataIcons(synopsis: Element): void {
-    const lines = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line')) as SVGGElement[];
+    const lines = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line'));
     if (lines.length === 0) return;
 
     lines.forEach(line => {
-      const textEl = line.querySelector('.rt-hover-metadata-text') as SVGTextElement | null;
-      const iconG = line.querySelector('.rt-hover-metadata-icon-g') as SVGGElement | null;
+      const textEl = line.querySelector<SVGTextElement>('.rt-hover-metadata-text');
+      const iconG = line.querySelector<SVGGElement>('.rt-hover-metadata-icon-g');
       if (!textEl || !iconG) return;
 
       const { iconSize, iconGap, total } = this.getHoverIconOffsets(textEl);
@@ -2326,7 +2326,7 @@ export default class SynopsisManager {
   }
 
   private alignMetadataTspans(metadataText: SVGTextElement, columnX: number): void {
-    const tspans = Array.from(metadataText.querySelectorAll('tspan')) as SVGTSpanElement[];
+    const tspans = Array.from(metadataText.querySelectorAll('tspan'));
     tspans.forEach(tspan => {
       const role = tspan.getAttribute('data-column-role');
       if (role === 'date' || role === 'duration') {
@@ -2348,7 +2348,7 @@ export default class SynopsisManager {
     const scorePreGap = 46 * fontScale;
 
     const buildRows = (): SVGTextElement[][] => {
-      const elements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+      const elements = Array.from(synopsis.querySelectorAll('text'));
       const rows: SVGTextElement[][] = [];
       elements.forEach((textEl) => {
         if (textEl.getAttribute('data-metadata-block') === 'true' && rows.length > 0) {
@@ -2413,7 +2413,7 @@ export default class SynopsisManager {
       const rows = buildRows();
       if (rows.length === 0) return null;
 
-      const synopsisMin = Math.max(3, getSynopsisHoverLineLimit(this.plugin.settings as any));
+      const synopsisMin = Math.max(3, getSynopsisHoverLineLimit(this.plugin.settings));
       const pendingMin = 3;
 
       let synopsisCount = 0;
@@ -2497,21 +2497,21 @@ export default class SynopsisManager {
       };
 
       if (truncatedSynopsis) {
-        const lines = Array.from(synopsis.querySelectorAll('[data-synopsis-line="true"]')) as SVGTextElement[];
+        const lines = Array.from(synopsis.querySelectorAll<SVGTextElement>('[data-synopsis-line="true"]'));
         appendEllipsis(lines[lines.length - 1] ?? null);
       }
 
       if (truncatedPending) {
-        const lines = Array.from(synopsis.querySelectorAll('[data-pending-line="true"]')) as SVGTextElement[];
+        const lines = Array.from(synopsis.querySelectorAll<SVGTextElement>('[data-pending-line="true"]'));
         appendEllipsis(lines[lines.length - 1] ?? null);
       }
 
       if (truncatedAdvanced.size > 0) {
-        const groups = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line')) as SVGGElement[];
+        const groups = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line'));
         truncatedAdvanced.forEach(key => {
           const group = groups.find(g => (g.getAttribute('data-hover-key') || '') === key);
           if (!group) return;
-          const lines = Array.from(group.querySelectorAll('[data-advanced-line="true"]')) as SVGTextElement[];
+          const lines = Array.from(group.querySelectorAll<SVGTextElement>('[data-advanced-line="true"]'));
           appendEllipsis(lines[lines.length - 1] ?? null);
         });
       }

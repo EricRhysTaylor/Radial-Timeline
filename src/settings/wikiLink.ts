@@ -26,7 +26,7 @@ export function applyErtHeaderLayout(
     const nameEl = setting.nameEl;
     if (!nameEl) return null;
     const descEl = setting.descEl;
-    const infoEl = setting.settingEl.querySelector('.setting-item-info') as HTMLElement | null;
+    const infoEl = setting.settingEl.querySelector('.setting-item-info');
     if (!infoEl) return null;
 
     infoEl.empty();
@@ -50,14 +50,14 @@ export function applyErtHeaderLayout(
     const main = header.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
     const right = header.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
 
-    const iconEl = nameEl.querySelector('.ert-setting-heading-icon') as HTMLElement | null;
+    const iconEl = nameEl.querySelector('.ert-setting-heading-icon');
     if (iconEl) {
         left.appendChild(iconEl);
     } else {
         header.addClass(ERT_CLASSES.HEADER_NO_LEFT);
     }
 
-    const wikiLink = nameEl.querySelector('.ert-wiki-link, .ert-setting-heading-wikilink') as HTMLElement | null;
+    const wikiLink = nameEl.querySelector('.ert-wiki-link, .ert-setting-heading-wikilink');
     if (wikiLink) {
         wikiLink.classList.add('ert-wiki-link');
         right.appendChild(wikiLink);

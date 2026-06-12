@@ -44,9 +44,9 @@ const getCanonicalQuestionsForLoadout = (
 const getStarterCanonicalQuestions = (): Record<InquiryZone, InquiryCanonicalQuestionDefinition> => {
     const grouped = groupCanonicalQuestionsByZone(CORE_CANONICAL_QUESTIONS);
     return {
-        setup: grouped.setup[0]!,
-        pressure: grouped.pressure[0]!,
-        payoff: grouped.payoff[0]!
+        setup: grouped.setup[0],
+        pressure: grouped.pressure[0],
+        payoff: grouped.payoff[0]
     };
 };
 

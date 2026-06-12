@@ -19,7 +19,7 @@ export function parseReleaseVersion(version: string | undefined | null): Release
     const normalized = version.trim().replace(/^v/i, '');
     const match = normalized.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
     if (!match) return null;
-    const major = Number.parseInt(match[1]!, 10);
+    const major = Number.parseInt(match[1], 10);
     const minor = match[2] !== undefined ? Number.parseInt(match[2], 10) : null;
     const patch = match[3] !== undefined ? Number.parseInt(match[3], 10) : null;
     const majorLabel = minor !== null ? `${major}.${minor}` : `${major}`;

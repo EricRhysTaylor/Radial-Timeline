@@ -53,7 +53,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
                 file,
                 enableZeroDraftMode: view.plugin.settings.enableZeroDraftMode,
                 sceneTitle: file.basename || 'Scene',
-                onOverrideOpen: async () => openOrRevealFile(view.plugin.app as any, file, false)
+                onOverrideOpen: async () => openOrRevealFile(view.plugin.app, file, false)
             });
             if (zeroDraftHandled) {
                 evt.preventDefault();
@@ -61,7 +61,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
                 return;
             }
 
-            await openOrRevealFile(view.plugin.app as any, file, false);
+            await openOrRevealFile(view.plugin.app, file, false);
         });
 
         view.registerDomEvent(group as HTMLElement, 'mouseenter', () => {
@@ -76,7 +76,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
 }
 
 export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTMLElement, scenes: TimelineItem[]): void {
-    const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+    const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
     if (!svg) return;
     
     // Create scene interaction manager
@@ -110,7 +110,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     const getSceneIdFromGroup = (group: Element): string | null => {
-        const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+        const pathEl = group.querySelector('.rt-scene-path');
         return pathEl?.id || null;
     };
 
@@ -139,7 +139,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         currentSceneId = sid;
         
         // Use manager for hover interactions - pass mouse event to position synopsis immediately
-        manager.onSceneHover(g, sid, e as unknown as MouseEvent);
+        manager.onSceneHover(g, sid, e);
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
@@ -179,7 +179,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
 
         if (rafId !== null) return;
         rafId = window.requestAnimationFrame(() => {
-            manager.onMouseMove(e as unknown as MouseEvent);
+            manager.onMouseMove(e);
             rafId = null;
         });
     });

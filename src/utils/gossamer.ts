@@ -129,7 +129,7 @@ function readSignalForSlot(
 ): GossamerSignalType {
   const key = getGossamerSignalKey(index);
   for (const note of plotNotes) {
-    const value = readGossamerFieldValue(note as Record<string, unknown>, key);
+    const value = readGossamerFieldValue(note, key);
     if (typeof value === 'string' && value.trim().length > 0) {
       return coerceGossamerSignal(value);
     }
@@ -262,7 +262,7 @@ function getRunStageFromScenes(
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
   for (const note of plotNotes) {
-    const stage = readGossamerFieldValue(note as Record<string, unknown>, getGossamerStageKey(runIndex));
+    const stage = readGossamerFieldValue(note, getGossamerStageKey(runIndex));
     if (typeof stage === 'string') {
       const match = STAGE_ORDER.find((candidate) => candidate === stage);
       if (match) return match;
@@ -453,10 +453,10 @@ export function buildRunFromGossamerField(
     const beatTitle = (plotNote.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
     
     // Parse score from the specified field
-    const fieldValue = readGossamerFieldValue(plotNote as Record<string, unknown>, fieldName);
+    const fieldValue = readGossamerFieldValue(plotNote, fieldName);
     const parsedScore = parseGossamerScoreValue(fieldValue);
     if (!slotMetadata) {
-      const candidateMetadata = readGossamerSlotMetadata(plotNote as Record<string, unknown>, runIndex);
+      const candidateMetadata = readGossamerSlotMetadata(plotNote, runIndex);
       if (candidateMetadata.runId || candidateMetadata.createdAt || candidateMetadata.provider || candidateMetadata.model || candidateMetadata.stage) {
         slotMetadata = candidateMetadata;
       }
@@ -512,7 +512,7 @@ export function buildRunFromGossamerField(
   
   const presentCount = beats.filter(b => b.status === 'present').length;
   const metadata = slotMetadata ?? {
-    stage: getRunStageFromScenes(scenes as { itemType?: string; [key: string]: unknown }[], runIndex, selectedBeatModel)
+    stage: getRunStageFromScenes(scenes, runIndex, selectedBeatModel)
   };
   
   return {
@@ -574,11 +574,11 @@ export function buildRunFromDefault(
     let latestRunIndex = 0;
 
     for (let i = GOSSAMER_MAX_HISTORY; i >= 1; i--) {
-      const val = readGossamerFieldValue(note as Record<string, unknown>, getGossamerScoreKey(i));
+      const val = readGossamerFieldValue(note, getGossamerScoreKey(i));
       const parsed = parseGossamerScoreValue(val);
       if (parsed === undefined) continue;
       if (signalFilter) {
-        const slotSignalRaw = readGossamerFieldValue(note as Record<string, unknown>, getGossamerSignalKey(i));
+        const slotSignalRaw = readGossamerFieldValue(note, getGossamerSignalKey(i));
         const slotSignal = coerceGossamerSignal(slotSignalRaw);
         if (slotSignal !== signalFilter) continue;
       }
@@ -657,12 +657,12 @@ export function buildGossamerRunInventory(
 
   const runIndexes: number[] = [];
   for (let runIndex = 1; runIndex <= GOSSAMER_MAX_HISTORY; runIndex++) {
-    const hasAnyValue = plotNotes.some((note) => parseGossamerScoreValue(readGossamerFieldValue(note as Record<string, unknown>, getGossamerScoreKey(runIndex))) !== undefined);
+    const hasAnyValue = plotNotes.some((note) => parseGossamerScoreValue(readGossamerFieldValue(note, getGossamerScoreKey(runIndex))) !== undefined);
     if (hasAnyValue) runIndexes.push(runIndex);
   }
 
   const allRecords: GossamerRunRecord[] = runIndexes.map((runIndex) => {
-    const slotSignal = readSignalForSlot(plotNotes as Record<string, unknown>[], runIndex);
+    const slotSignal = readSignalForSlot(plotNotes, runIndex);
     const run = buildRunFromGossamerField(scenes, getGossamerScoreKey(runIndex), selectedBeatModel, true);
     const metadataFromRun = run.meta || {};
     const metadata: GossamerSlotMetadata = {
@@ -670,7 +670,7 @@ export function buildGossamerRunInventory(
       createdAt: metadataFromRun.createdAt,
       provider: metadataFromRun.provider,
       model: metadataFromRun.runModel,
-      stage: getRunStageFromScenes(scenes as { itemType?: string; [key: string]: unknown }[], runIndex, selectedBeatModel),
+      stage: getRunStageFromScenes(scenes, runIndex, selectedBeatModel),
       signal: slotSignal
     };
     return {
@@ -738,7 +738,7 @@ export function buildAllGossamerRuns(
     };
   }
   const runs = buildGossamerRunInventory(
-    scenes as { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[],
+    scenes,
     selectedBeatModel,
     signal
   );
@@ -764,7 +764,7 @@ export function buildAllGossamerRuns(
         model: selectedBeatModel,
         beatSystem: selectedBeatModel
       })
-    : buildRunFromDefault(scenes as { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel, signal);
+    : buildRunFromDefault(scenes, selectedBeatModel, signal);
   
   // Default gray color for runs without stage data (legacy fallback)
   const historicalColor = '#c0c0c0'; // Same as --rt-color-muted-gray

@@ -716,11 +716,11 @@ export async function getSceneFilesByOrder(
     const sceneSubplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
     subplots.push(sceneSubplot);
 
-    const rf = scene.rawFrontmatter as Record<string, unknown> | undefined;
+    const rf = scene.rawFrontmatter;
 
     // Prefer Synopsis, then scene.synopsis
     let synopsis: string | null = null;
-    if (rf && typeof rf.Synopsis === 'string') synopsis = rf.Synopsis as string;
+    if (rf && typeof rf.Synopsis === 'string') synopsis = rf.Synopsis;
     else if (scene.synopsis && scene.synopsis.trim().length > 0) synopsis = scene.synopsis;
     synopses.push(synopsis);
 

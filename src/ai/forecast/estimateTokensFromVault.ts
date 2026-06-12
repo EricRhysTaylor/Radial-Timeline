@@ -164,7 +164,7 @@ const getNormalizedFrontmatter = (
     frontmatterMappings?: Record<string, string>
 ): Record<string, unknown> => {
     const cache = metadataCache.getFileCache(file);
-    const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+    const frontmatter = cache?.frontmatter;
     if (!frontmatter) return {};
     return normalizeFrontmatterKeys(frontmatter, frontmatterMappings);
 };
@@ -349,7 +349,7 @@ export const buildCanonicalGossamerExecutionEstimate = async (
         featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list.',
         userInput: params.promptText,
         returnType: 'json',
-        responseSchema: getUnifiedBeatAnalysisJsonSchema() as unknown as Record<string, unknown>,
+        responseSchema: getUnifiedBeatAnalysisJsonSchema(),
         providerOverride: provider,
         overrides: {
             temperature: 0.7,

@@ -207,12 +207,12 @@ export class OuterRingDragController {
         // Delegated hover for the drag indicator — show tangent arrows on outer ring groups only
         this.view.registerDomEvent(this.svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
             if (this.dragging) return;
-            const group = (e.target as Element).closest('.rt-scene-group[data-draggable="true"]') as SVGGElement | null;
+            const group = (e.target as Element).closest<SVGGElement>('.rt-scene-group[data-draggable="true"]');
             if (group) this.showDragIndicator(group);
         });
         this.view.registerDomEvent(this.svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
             const toEl = e.relatedTarget as Element | null;
-            const group = (e.target as Element).closest('.rt-scene-group') as SVGGElement | null;
+            const group = (e.target as Element).closest('.rt-scene-group');
             // Only hide if leaving the scene group entirely
             if (group && toEl && group.contains(toEl)) return;
             this.hideDragIndicator();
@@ -563,7 +563,7 @@ export class OuterRingDragController {
         
         // First check for void cells (empty act areas or empty subplot rings)
         // Look for ANY void cell with data-act attribute (all rings)
-        const voidCell = fromPoint.closest('.rt-void-cell[data-act]') as SVGPathElement | null;
+        const voidCell = fromPoint.closest<SVGPathElement>('.rt-void-cell[data-act]');
         if (voidCell) {
             const act = Number(voidCell.getAttribute('data-act') ?? '');
             const ring = Number(voidCell.getAttribute('data-ring') ?? '');
@@ -584,7 +584,7 @@ export class OuterRingDragController {
         }
         
         // Check for scene or beat groups (any ring, not just outer)
-        const sceneGroup = fromPoint.closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Beat"]') as SVGGElement | null;
+        const sceneGroup = fromPoint.closest<SVGGElement>('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Beat"]');
         if (sceneGroup) {
             const sceneId = this.getSceneIdFromSceneGroup(sceneGroup);
             const act = Number(sceneGroup.getAttribute('data-act') ?? '0');

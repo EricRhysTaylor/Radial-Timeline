@@ -53,7 +53,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
         radius: number;
     }
 
-    const svgRoot = container.querySelector('svg.radial-timeline-svg') as SVGSVGElement | null;
+    const svgRoot = container.querySelector('svg.radial-timeline-svg');
     const isHidden = !svgRoot || svgRoot.getBoundingClientRect().width === 0 || container.ownerDocument.visibilityState === 'hidden';
     const MAX_ATTEMPTS = 10;
     const signature = getLabelSignature(container);

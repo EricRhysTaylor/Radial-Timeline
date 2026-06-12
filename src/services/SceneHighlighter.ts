@@ -14,7 +14,7 @@ export class SceneHighlighter {
             try {
                 const container = view.contentEl.querySelector('.radial-timeline-container');
                 if (!container) continue;
-                const svgElement = container.querySelector('svg') as SVGSVGElement | null;
+                const svgElement = container.querySelector('svg');
                 if (!svgElement) continue;
 
                 if (isHighlighting) {
@@ -82,7 +82,7 @@ export class SceneHighlighter {
         if (views.length === 0) return false;
 
         for (const view of views) {
-            const scenes = (view as RadialTimelineView)['sceneData'] || [];
+            const scenes = (view)['sceneData'] || [];
             if (scenes.length > 0) {
                 const match = scenes.find((scene: TimelineItem) => {
                     if (!scene.path) return false;
@@ -95,7 +95,7 @@ export class SceneHighlighter {
             } else {
                 const container = view.contentEl.querySelector('.radial-timeline-container');
                 if (!container) continue;
-                const svgElement = container.querySelector('svg') as SVGSVGElement | null;
+                const svgElement = container.querySelector('svg');
                 if (!svgElement) continue;
                 let encodedPath = encodeURIComponent(filePath);
                 let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);

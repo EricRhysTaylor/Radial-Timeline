@@ -340,7 +340,7 @@ export async function callAiProvider(
         if (!returnedAt) returnedAt = new Date();
         const logProvider = runResult
             ? (runResult.provider as PulseLogPayload['provider'])
-            : ((provider === 'none' ? 'openai' : provider) as PulseLogPayload['provider']);
+            : ((provider === 'none' ? 'openai' : provider));
 
         if (commandContext !== 'synopsis') {
             await writePulseLog(plugin, vault, {

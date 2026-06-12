@@ -726,7 +726,7 @@ export class PublishingValidationService {
             .map(file => {
                 const cache = this.plugin.app.metadataCache.getFileCache(file);
                 if (!cache?.frontmatter) return null;
-                const normalized = normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings);
+                const normalized = normalizeFrontmatterKeys(cache.frontmatter, mappings);
                 if (normalized.Class !== 'BookMeta') return null;
                 return {
                     path: file.path,
@@ -764,7 +764,7 @@ export class PublishingValidationService {
             .map(file => {
                 const cache = this.plugin.app.metadataCache.getFileCache(file);
                 if (!cache?.frontmatter) return null;
-                const normalized = normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings);
+                const normalized = normalizeFrontmatterKeys(cache.frontmatter, mappings);
                 const parsed = parseMatterMetaFromFrontmatter(normalized);
                 if (!parsed) return null;
                 return {

@@ -93,7 +93,7 @@ export function computeCacheableValues(
         try {
             backdropLayout = buildBackdropRingLayout(scenes);
         } catch (err) {
-            // eslint-disable-next-line no-console
+             
             console.error(
                 '[radial-timeline] buildBackdropRingLayout failed in precompute; backdrop ring will be skipped.',
                 err

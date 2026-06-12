@@ -618,7 +618,7 @@ export function renderInquiryCorpusStrip(args: {
         buildCorpusLegendPanel(refs.ccLegendPanel, args.createIconUse);
         // JS hover: toggle visibility class since panel is a sibling, not child, of trigger
         const legendPanel = refs.ccLegendPanel;
-        const legendTrigger = refs.ccLegendTrigger!;
+        const legendTrigger = refs.ccLegendTrigger;
         legendTrigger.addEventListener('mouseenter', () => legendPanel.classList.add('is-legend-visible'));
         legendTrigger.addEventListener('mouseleave', () => {
             // Short delay so user can move mouse to the panel itself

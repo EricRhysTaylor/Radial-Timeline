@@ -78,7 +78,7 @@ export function updateSceneFills(
             const sceneGroups = svg.querySelectorAll(`.rt-scene-group[data-path="${encodedPath}"]`);
             
             sceneGroups.forEach(group => {
-                const arc = group.querySelector('.rt-scene-arc') as SVGPathElement | null;
+                const arc = group.querySelector('.rt-scene-arc');
                 if (!arc) return;
                 const subplotColorIndex = Number(group.getAttribute('data-subplot-color-index') ?? 0);
                 const subplotColorResolver = () => resolveSubplotColorByIndex(subplotColorIndex);

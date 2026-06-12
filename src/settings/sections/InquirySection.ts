@@ -492,7 +492,7 @@ export function renderInquirySection(params: SectionParams): void {
         files.forEach(file => {
             if (!inRoots(file.path)) return;
             const cache = plugin.app.metadataCache.getFileCache(file);
-            const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            const frontmatter = cache?.frontmatter;
             if (!frontmatter) return;
             const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(plugin.settings));
             const rawClass = normalized['Class'];

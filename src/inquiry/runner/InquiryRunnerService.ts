@@ -2869,7 +2869,7 @@ export class InquiryRunnerService implements InquiryRunner {
     private normalizeFindingLens(value?: string): InquiryFinding['lens'] | undefined {
         const normalized = value ? value.toLowerCase().trim() : '';
         if (normalized === 'flow' || normalized === 'depth' || normalized === 'both') {
-            return normalized as InquiryFinding['lens'];
+            return normalized;
         }
         return undefined;
     }
@@ -2877,7 +2877,7 @@ export class InquiryRunnerService implements InquiryRunner {
     private normalizeFindingRole(value?: string): InquiryFinding['role'] | undefined {
         const normalized = value ? value.toLowerCase().trim() : '';
         if (normalized === 'target' || normalized === 'context') {
-            return normalized as InquiryFinding['role'];
+            return normalized;
         }
         return undefined;
     }
@@ -2892,7 +2892,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private getFrontmatter(file: TFile): Record<string, unknown> {
         const cache = this.metadataCache.getFileCache(file);
-        const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = cache?.frontmatter;
         if (!frontmatter) return {};
         return normalizeFrontmatterKeys(frontmatter, this.frontmatterMappings);
     }

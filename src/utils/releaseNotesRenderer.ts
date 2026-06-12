@@ -39,7 +39,7 @@ export async function renderReleaseNotesList(
     // Render all entries as collapsible details, with the featured entry expanded by default
     for (const entry of entries) {
         const versionLabel = parseReleaseVersion(entry.version)?.fullLabel ?? (entry.title || entry.version);
-        const details = containerEl.createEl('details', { cls: detailClassName }) as HTMLDetailsElement;
+        const details = containerEl.createEl('details', { cls: detailClassName });
 
         const isFeatured = entry.version === featuredEntry.version;
 

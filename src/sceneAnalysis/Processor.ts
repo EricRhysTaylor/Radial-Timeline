@@ -95,7 +95,7 @@ export function getTripletMetric(triplet: SceneTriplet): TripletMetric {
 
 function buildQueueItem(scene: SceneData): SceneQueueItem {
     const rawTitle = typeof scene.frontmatter?.Title === 'string'
-        ? scene.frontmatter.Title as string
+        ? scene.frontmatter.Title
         : scene.file.basename.replace(/\.md$/i, '');
     const parsed = parseSceneTitle(rawTitle, scene.sceneNumber ?? undefined);
     const label = parsed.number || (scene.sceneNumber != null ? String(scene.sceneNumber) : '') || rawTitle;

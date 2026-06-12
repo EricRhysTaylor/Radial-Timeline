@@ -22,7 +22,7 @@ export interface SynopsisScene {
 export function getPublishStageStyle(stageInput: unknown, publishStageColors: Record<string, string>): { stageClass: string; titleColor: string } {
   const stage = (stageInput as string) || 'Zero';
   const stageClass = `rt-title-stage-${String(stage).toLowerCase()}`;
-  const titleColor = publishStageColors[stage as keyof typeof publishStageColors] || '#808080';
+  const titleColor = publishStageColors[stage] || '#808080';
   return { stageClass, titleColor };
 }
 

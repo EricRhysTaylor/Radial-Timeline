@@ -295,7 +295,7 @@ export async function deleteAdvancedSceneFields(
             const note = audit.notes.find((entry) => entry.file.path === file.path);
             if (note?.safetyResult?.status === 'dangerous') return false;
             const cache = ctx.app.metadataCache.getFileCache(file);
-            const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            const frontmatter = cache?.frontmatter;
             if (!frontmatter) return false;
             return hasAdvancedFields({
                 frontmatter,

@@ -33,7 +33,7 @@ export function compareScenesByOrder(a: SceneData, b: SceneData): number {
 }
 
 export function getSubplotNamesFromFM(fm: Record<string, unknown>): string[] {
-    const value = (fm?.Subplot ?? fm?.subplot) as unknown;
+    const value = (fm?.Subplot ?? fm?.subplot);
     if (typeof value === 'string' && value.trim()) {
         return [value.trim()];
     }
@@ -58,7 +58,7 @@ export function getPulseUpdateFlag(fm: Record<string, unknown> | undefined): unk
     ];
     for (const key of keys) {
         if (Object.prototype.hasOwnProperty.call(fm, key)) {
-            return (fm as Record<string, unknown>)[key];
+            return (fm)[key];
         }
     }
     return undefined;
@@ -81,7 +81,7 @@ export function getSummaryUpdateFlag(fm: Record<string, unknown> | undefined): u
     ];
     for (const key of keys) {
         if (Object.prototype.hasOwnProperty.call(fm, key)) {
-            return (fm as Record<string, unknown>)[key];
+            return (fm)[key];
         }
     }
     return undefined;
@@ -91,8 +91,8 @@ export function getSummaryUpdateFlag(fm: Record<string, unknown> | undefined): u
 export const getSynopsisUpdateFlag = getSummaryUpdateFlag;
 
 function hasWordsContent(fm: Record<string, unknown>): boolean {
-    const w1 = fm?.words as unknown;
-    const w2 = (fm as Record<string, unknown>)['Words'] as unknown;
+    const w1 = fm?.words;
+    const w2 = (fm)['Words'];
 
     const parseWords = (val: unknown): number | undefined => {
         if (typeof val === 'number') return val;
@@ -124,7 +124,7 @@ export function hasProcessableContent(fm: Record<string, unknown> | undefined): 
 function wasProcessedToday(frontmatter: Record<string, unknown> | undefined): boolean {
     if (!frontmatter) return false;
 
-    const pulseLastUpdated = (frontmatter['Pulse Last Updated'] ?? frontmatter['Beats Last Updated']) as unknown;
+    const pulseLastUpdated = (frontmatter['Pulse Last Updated'] ?? frontmatter['Beats Last Updated']);
     if (!pulseLastUpdated || typeof pulseLastUpdated !== 'string') return false;
     const match = pulseLastUpdated.match(/^(.+?)\s+by\s+/);
     if (!match) return false;

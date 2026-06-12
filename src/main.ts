@@ -730,7 +730,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.settings.inquirySessionCache = {
             sessions: merged,
             max: DEFAULT_INQUIRY_HISTORY_LIMIT
-        } as RadialTimelineSettings['inquirySessionCache'];
+        };
 
         const legacyOnly = legacySessions.some(
             legacy => !vaultSessions.some(vaultSession => vaultSession.key === legacy.key)
@@ -813,7 +813,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         if (!hasBooks) {
             const legacySourcePath = (this.settings.sourcePath || '').trim();
-            const legacyTitle = typeof settingsAny.bookTitle === 'string' ? (settingsAny.bookTitle as string).trim() : '';
+            const legacyTitle = typeof settingsAny.bookTitle === 'string' ? (settingsAny.bookTitle).trim() : '';
             if (shouldSeedBookProfileFromLegacySettings({
                 sourcePath: legacySourcePath,
                 legacyTitle
@@ -870,7 +870,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     }
                 }
                 if (Object.keys(filtered).length > 0) {
-                    active.lastUsedPandocLayoutByPreset = filtered as BookProfile['lastUsedPandocLayoutByPreset'];
+                    active.lastUsedPandocLayoutByPreset = filtered;
                 }
                 this.settings.lastUsedPandocLayoutByPreset = {};
                 booksMigrated = true;
@@ -1140,7 +1140,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // never in data.json. Strip the in-memory mirror before writing so the
         // brief store has exactly one persisted home.
         const { inquirySessionCache: _inquirySessionCache, ...persistedSettings } = this.settings;
-        await this.saveData(persistedSettings as RadialTimelineSettings);
+        await this.saveData(persistedSettings);
     }
 
     // Helper method to validate and remember folder paths

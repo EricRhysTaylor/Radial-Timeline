@@ -89,9 +89,9 @@ export class FileTrackingService {
                     const svg = (v as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector?.('.radial-timeline-svg');
                     if (svg) {
                         // Pass null for currentSceneId if not available/relevant here, or fix signature
-                        this.plugin.getRendererService().updateProgressAndTicks(v as any, null);
+                        this.plugin.getRendererService().updateProgressAndTicks(v, null);
                         if ((v as any).currentMode === 'gossamer') {
-                            this.plugin.getRendererService().updateGossamerLayer(v as any);
+                            this.plugin.getRendererService().updateGossamerLayer(v);
                         }
                     }
                 });

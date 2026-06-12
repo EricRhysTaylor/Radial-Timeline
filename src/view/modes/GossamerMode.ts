@@ -11,7 +11,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     const getSceneIdFromGroup = (group: Element): string | null => {
-        const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+        const pathEl = group.querySelector('.rt-scene-path');
         return pathEl?.id || null;
     };
 
@@ -19,7 +19,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     const beatSliceOver = (e: PointerEvent) => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Beat"]');
         if (!g) return;
-        beatSliceEnter(g as SVGGElement, e);
+        beatSliceEnter(g, e);
     };
 
     // 1b. Beat Slice direct handlers for reliability
@@ -193,7 +193,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                 currentSynopsis = findSynopsisForScene(sid);
                 if (currentSynopsis) {
                     currentSynopsis.classList.add('rt-visible');
-                    view.plugin.synopsisManager.updatePosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                    view.plugin.synopsisManager.updatePosition(currentSynopsis, e, svg, sid);
                 }
             }
         }
@@ -328,13 +328,13 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', dotOut);
 
     // Track for manual cleanup when switching modes
-    view.registerGossamerHandler('pointerover::svg', beatSliceOver as EventListener);
-    view.registerGossamerHandler('pointerout::svg', beatSliceOut as EventListener);
-    view.registerGossamerHandler('pointerover::dot::svg', dotOver as EventListener);
-    view.registerGossamerHandler('pointerout::dot::svg', dotOut as EventListener);
-    view.registerGossamerHandler('click::beat::svg', beatSliceClick as EventListener);
-    view.registerGossamerHandler('click::dot::svg', dotClick as EventListener);
-    view.registerGossamerHandler('click::bg::svg', backgroundClick as EventListener);
+    view.registerGossamerHandler('pointerover::svg', beatSliceOver);
+    view.registerGossamerHandler('pointerout::svg', beatSliceOut);
+    view.registerGossamerHandler('pointerover::dot::svg', dotOver);
+    view.registerGossamerHandler('pointerout::dot::svg', dotOut);
+    view.registerGossamerHandler('click::beat::svg', beatSliceClick);
+    view.registerGossamerHandler('click::dot::svg', dotClick);
+    view.registerGossamerHandler('click::bg::svg', backgroundClick);
 
     // Direct beat-group handlers for reliability
     const beatGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]');

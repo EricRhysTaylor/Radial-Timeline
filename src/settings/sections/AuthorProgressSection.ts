@@ -419,7 +419,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const updateModeUI = (modeOverride?: AprProgressMode) => {
         isUpdatingMode = true;
-        const nextMode = modeOverride ?? (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
+        const nextMode = modeOverride ?? (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage');
         modeDropdown.setValue(nextMode);
         trackedStageDropdown.selectEl.toggleClass('ert-hidden', nextMode !== 'stage');
         dateRangeInput.inputEl.toggleClass('ert-hidden', nextMode !== 'date');
@@ -450,7 +450,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     modeDropdown.onChange(async (val) => {
         if (isUpdatingMode) return;
         if (!plugin.settings.authorProgress) return;
-        const nextMode = (val === 'date' || val === 'full' ? val : 'stage') as AprProgressMode;
+        const nextMode = (val === 'date' || val === 'full' ? val : 'stage');
         plugin.settings.authorProgress.defaults.aprProgressMode = nextMode;
         await plugin.saveSettings();
         await refreshTrackingState();
@@ -607,7 +607,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             seedDateRange();
         } catch {
             const trackedStage = plugin.settings.authorProgress?.defaults.aprTrackedStage ?? 'Zero';
-            const mode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
+            const mode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage');
             lastKnownSceneCount = 0;
             const storedTarget = plugin.settings.authorProgress?.defaults.aprTargetSceneCount;
             updateStageUI(mode, trackedStage, trackedStage, composeStageNote(mode));
@@ -674,7 +674,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const paletteDefaults = {
             ...(plugin.settings.authorProgress?.defaults ?? DEFAULT_SETTINGS.authorProgress?.defaults ?? buildDefaultAuthorProgressDefaults()),
             ...getActiveStyleSettings()
-        } as AuthorProgressDefaults;
+        };
         const modal = new AprPaletteModal(
             app,
             plugin,
@@ -836,7 +836,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (!plugin.settings.authorProgress) return;
         const isStyleKey = styleSettingKeys.has(key as keyof AprStyleSettings);
         if (isStyleKey) {
-            aprStyleService.updateDesignerStyle({ [key]: value } as Partial<AprStyleSettings>);
+            aprStyleService.updateDesignerStyle({ [key]: value });
         } else {
             plugin.settings.authorProgress.defaults[key] = value as AuthorProgressDefaults[K];
         }
@@ -1083,7 +1083,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await setAprSettings({
                 [opts.weightKey]: weight,
                 [opts.italicKey]: italic
-            } as Partial<AuthorProgressDefaults>);
+            });
             onUpdateAutoState();
         });
 
@@ -1672,7 +1672,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Exposed so the background-color controls can keep the border swatch in sync when mode is 'sync'.
     refreshBorderSwatchFromBg = () => {
         const style = getActiveStyleSettings();
-        const mode = (style.aprSpokeColorMode ?? 'dark') as 'dark' | 'light' | 'none' | 'sync' | 'custom';
+        const mode = (style.aprSpokeColorMode ?? 'dark');
         if (mode !== 'sync') return;
         const eff = effectiveBorderColor(mode, style.aprSpokeColor ?? fallbackColor, style.aprBackgroundColor ?? currentBg);
         spokeColorPickerRef?.setValue(eff);
@@ -1692,8 +1692,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeModeDropdown.onChange(async (val) => {
         const mode = (val as 'dark' | 'light' | 'none' | 'custom' | 'sync') || 'dark';
         await setAprSettings({
-            aprTheme: (mode === 'custom' || mode === 'sync') ? 'dark' : (mode as 'dark' | 'light' | 'none'),
-            aprSpokeColorMode: mode as AuthorProgressDefaults['aprSpokeColorMode']
+            aprTheme: (mode === 'custom' || mode === 'sync') ? 'dark' : (mode),
+            aprSpokeColorMode: mode
         });
 
         const isCustom = mode === 'custom';

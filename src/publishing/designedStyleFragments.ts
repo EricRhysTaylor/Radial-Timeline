@@ -37,8 +37,8 @@ function computeCornerOverrides(spec: DesignedStyleSpec): Array<[string, Designe
     applyHeaderPreset(clone, spec.runningHeader.mode);
     const overrides: Array<[string, DesignedHeaderField | undefined]> = [];
     for (const [pos, key] of HEADER_CORNER_POSITIONS) {
-        const liveField   = spec.runningHeader[key]   as DesignedHeaderField | undefined;
-        const presetField = clone.runningHeader[key]  as DesignedHeaderField | undefined;
+        const liveField   = spec.runningHeader[key];
+        const presetField = clone.runningHeader[key];
         const liveJson    = JSON.stringify(liveField   ?? null);
         const presetJson  = JSON.stringify(presetField ?? null);
         if (liveJson !== presetJson) {

@@ -175,7 +175,7 @@ export function renderAiSection(params: {
     const heroToggleInput = heroToggleWrap.createEl('input', {
         cls: 'ert-toggle-input',
         attr: { type: 'checkbox', 'aria-label': t('settings.ai.hero.toggleAriaLabel') }
-    }) as HTMLInputElement;
+    });
 
     const heroTitle = aiHero.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
@@ -694,7 +694,7 @@ export function renderAiSection(params: {
             let chars = 0;
             if (entry.mode === 'summary') {
                 const cache = app.metadataCache.getFileCache(file);
-                const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+                const rawFrontmatter = cache?.frontmatter;
                 const frontmatter = rawFrontmatter
                     ? normalizeFrontmatterKeys(rawFrontmatter, getActiveFrontmatterMappings(plugin.settings))
                     : {};
@@ -1138,7 +1138,7 @@ export function renderAiSection(params: {
     const resolvedPreviewPills = resolvedPreviewFrame.createDiv({ cls: 'ert-ai-resolved-preview-pills' });
     const resolvedPreviewCacheMeter = resolvedPreviewFrame.createEl('progress', {
         cls: 'ert-ai-resolved-preview-cache-meter ert-settings-hidden'
-    }) as HTMLProgressElement;
+    });
     resolvedPreviewCacheMeter.max = 1;
     resolvedPreviewCacheMeter.value = 0;
     const resolvedPreviewCacheMeterLabel = resolvedPreviewFrame.createDiv({
@@ -2090,7 +2090,7 @@ export function renderAiSection(params: {
         const sceneData = await plugin.getSceneData();
         const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
         const beatOrder = extractBeatOrder(
-            sceneData as Array<{ itemType?: string; subplot?: string; title?: string; "Beat Model"?: string }>,
+            sceneData,
             selectedBeatModel
         );
         const gossamerEstimate = await estimateGossamerTokens({
@@ -2126,7 +2126,7 @@ export function renderAiSection(params: {
         const gossamerOutputContractTokens = estimateTokensFromChars(
             buildOutputRulesText({
                 returnType: 'json',
-                responseSchema: getUnifiedBeatAnalysisJsonSchema() as unknown as Record<string, unknown>
+                responseSchema: getUnifiedBeatAnalysisJsonSchema()
             }).length
         );
         const gossamerDisplayCorpus = await buildDisplayCorpusEstimateFromManifestEntries(

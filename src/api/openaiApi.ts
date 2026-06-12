@@ -158,7 +158,7 @@ function toResponsesTextFormat(responseFormat: OpenAiResponseFormat): OpenAiResp
         return { type: 'json_object' };
     }
     const schemaEnvelope = responseFormat.json_schema && typeof responseFormat.json_schema === 'object'
-        ? responseFormat.json_schema as Record<string, unknown>
+        ? responseFormat.json_schema
         : {};
     const rawName = schemaEnvelope.name;
     const rawSchema = schemaEnvelope.schema;

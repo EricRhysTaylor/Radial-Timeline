@@ -60,28 +60,28 @@ export function createInquirySceneDossierLayer(parent: SVGElement, y: number): I
 
     const composition = createSvgGroup(group, 'ert-inquiry-scene-dossier-composition');
 
-    const focusCore = createSvgElement('circle') as SVGCircleElement;
+    const focusCore = createSvgElement('circle');
     focusCore.classList.add('ert-inquiry-scene-dossier-focus-core');
     focusCore.setAttribute('cx', '0');
     focusCore.setAttribute('cy', '0');
     focusCore.setAttribute('r', String(Math.round(SCENE_DOSSIER_FOCUS_RADIUS * 0.62)));
     composition.appendChild(focusCore);
 
-    const focusGlow = createSvgElement('circle') as SVGCircleElement;
+    const focusGlow = createSvgElement('circle');
     focusGlow.classList.add('ert-inquiry-scene-dossier-focus');
     focusGlow.setAttribute('cx', '0');
     focusGlow.setAttribute('cy', '0');
     focusGlow.setAttribute('r', String(SCENE_DOSSIER_FOCUS_RADIUS));
     composition.appendChild(focusGlow);
 
-    const focusOutline = createSvgElement('circle') as SVGCircleElement;
+    const focusOutline = createSvgElement('circle');
     focusOutline.classList.add('ert-inquiry-scene-dossier-focus-outline');
     focusOutline.setAttribute('cx', '0');
     focusOutline.setAttribute('cy', '0');
     focusOutline.setAttribute('r', String(SCENE_DOSSIER_FOCUS_RADIUS));
     composition.appendChild(focusOutline);
 
-    const bg = createSvgElement('rect') as SVGRectElement;
+    const bg = createSvgElement('rect');
     bg.classList.add('ert-inquiry-scene-dossier-bg');
     bg.setAttribute('x', String(-SCENE_DOSSIER_WIDTH / 2));
     bg.setAttribute('y', '0');
@@ -111,7 +111,7 @@ export function createInquirySceneDossierLayer(parent: SVGElement, y: number): I
     const bodySecondary = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
     bodySecondary.setAttribute('text-anchor', 'middle');
 
-    const bodyDivider = createSvgElement('line') as SVGLineElement;
+    const bodyDivider = createSvgElement('line');
     bodyDivider.classList.add('ert-inquiry-scene-dossier-divider', 'ert-hidden');
     coreGroup.appendChild(bodyDivider);
 

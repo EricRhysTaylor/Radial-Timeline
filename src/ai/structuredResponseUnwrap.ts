@@ -85,7 +85,7 @@ export function unwrapStructuredEnvelope<T = unknown>(
     const noChange: UnwrapResult<T> = { value: parsed as T, unwrappedKey: null };
 
     if (!isPlainObject(parsed)) return noChange;
-    const root = parsed as Record<string, unknown>;
+    const root = parsed;
     const rootKeys = Object.keys(root);
     if (rootKeys.length !== 1) return noChange;
 
@@ -95,7 +95,7 @@ export function unwrapStructuredEnvelope<T = unknown>(
 
     const inner = root[wrapperCandidate];
     if (!isPlainObject(inner)) return noChange;
-    const innerObj = inner as Record<string, unknown>;
+    const innerObj = inner;
 
     // Inner must contain every declared canonical key — that's how we know
     // we're looking at a wrapped version of the expected response, not a

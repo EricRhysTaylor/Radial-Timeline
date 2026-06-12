@@ -89,7 +89,7 @@ export async function buildExactCorpusEstimateFromManifestEntries(
         let chars = 0;
         if (mode === 'summary') {
             const cache = params.metadataCache.getFileCache(file);
-            const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            const rawFrontmatter = cache?.frontmatter;
             const frontmatter = rawFrontmatter
                 ? normalizeFrontmatterKeys(rawFrontmatter, params.frontmatterMappings)
                 : {};

@@ -28,7 +28,7 @@ export function updateNumberSquareStates(
             const sceneGroups = svg.querySelectorAll(`.rt-scene-group[data-path="${encodedPath}"]`);
             
             sceneGroups.forEach(group => {
-                const scenePath = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+                const scenePath = group.querySelector('.rt-scene-path');
                 const sceneId = scenePath?.id;
                 
                 const numberSquare = sceneId ? svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) : null;

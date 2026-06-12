@@ -175,7 +175,7 @@ export class InquiryCorpusResolver {
 
     private getFrontmatter(file: TFile): Record<string, unknown> | null {
         const cache = this.metadataCache.getFileCache(file);
-        const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = cache?.frontmatter;
         if (!frontmatter) return null;
         return normalizeFrontmatterKeys(frontmatter, this.frontmatterMappings);
     }

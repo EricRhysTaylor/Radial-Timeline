@@ -170,7 +170,7 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
     const overlapIndices = detectSceneOverlaps(sortedEntries.map(entry => ({
         when: entry.date,
         Duration: entry.scene.Duration
-    } as { when: Date; Duration?: string })));
+    })));
 
     const durationPaths: string[] = [];
     const runtimeLabels: string[] = []; // Runtime tick labels (mm:ss) at arc ends

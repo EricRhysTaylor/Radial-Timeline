@@ -44,7 +44,7 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     };
 
     const getSceneIdFromGroup = (group: Element): string | null => {
-        const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+        const pathEl = group.querySelector('.rt-scene-path');
         return pathEl?.id || null;
     };
 
@@ -69,7 +69,7 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
         
         // Use manager for hover interactions (handles title expansion and styling)
         // Pass mouse event to position synopsis immediately and prevent flicker
-        manager.onSceneHover(g, sid, e as unknown as MouseEvent);
+        manager.onSceneHover(g, sid, e);
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
@@ -92,7 +92,7 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
 
         if (rafId !== null) return;
         rafId = window.requestAnimationFrame(() => {
-            manager.onMouseMove(e as unknown as MouseEvent);
+            manager.onMouseMove(e);
             rafId = null;
         });
     });

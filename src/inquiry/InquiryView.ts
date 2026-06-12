@@ -723,7 +723,7 @@ export class InquiryView extends ItemView {
         options?: boolean | AddEventListenerOptions
     ): void {
         if (!element) return;
-        const listener = handler as unknown as EventListener;
+        const listener = handler;
         element.addEventListener(event, listener, options);
         this.register(() => element.removeEventListener(event, listener, options));
     }
@@ -765,7 +765,7 @@ export class InquiryView extends ItemView {
 
     private updateViewTitle(): void {
         const titleText = this.buildDynamicDisplayText();
-        const headerTitle = this.containerEl.querySelector('.view-header-title') as HTMLElement | null;
+        const headerTitle = this.containerEl.querySelector('.view-header-title');
         if (headerTitle && headerTitle.textContent !== titleText) {
             headerTitle.textContent = titleText;
         }
@@ -925,7 +925,7 @@ export class InquiryView extends ItemView {
         const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: t('inquiry.mobile.viewLatest') });
 
         bindInquiryMobileGateEvents({
-            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler, options),
             openFolderButton: openFolderBtn,
             openLatestButton: openLatestBtn,
             onOpenFolder: () => { void this.openArtifactsFolder(); },
@@ -985,7 +985,7 @@ export class InquiryView extends ItemView {
         this.buildPromptPreviewPanel(shell.canvasGroup);
         this.buildSceneDossierLayer(this.rootSvg, SCENE_DOSSIER_CANVAS_Y);
         bindInquiryDesktopShellEvents({
-            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler, options),
             registerSvgEvent: this.registerSvgEvent.bind(this),
             contentEl: this.contentEl,
             scopeToggleButton: this.scopeToggleButton,
@@ -1156,7 +1156,7 @@ export class InquiryView extends ItemView {
         this.briefingPopover.attach(this.briefingPanelEl);
 
         bindInquiryBriefingPanelEvents({
-            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler, options),
             briefingPanelEl: this.briefingPanelEl,
             briefingClearButton: this.briefingClearButton,
             briefingResetButton: this.briefingResetButton,
@@ -1216,7 +1216,7 @@ export class InquiryView extends ItemView {
         this.enginePopover.attach(this.enginePanelEl);
 
         bindInquiryEnginePanelEvents({
-            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler, options),
             enginePanelEl: this.enginePanelEl,
             onPointerEnter: () => this.enginePopover.cancelHide(),
             onPointerLeave: () => this.enginePopover.scheduleHide()
@@ -1309,7 +1309,7 @@ export class InquiryView extends ItemView {
         // ── 4. Action row ──
         const { settingsButton, logButton } = createInquiryEngineActionButtons(this.enginePanelListEl);
         bindInquiryEngineActionButtons({
-            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler, options),
             settingsButton,
             logButton,
             onSettingsClick: (event: MouseEvent) => {
@@ -1686,7 +1686,7 @@ export class InquiryView extends ItemView {
             hasBriefPath: !!session.briefPath
         });
         bindInquiryBriefingSessionItemEvents({
-            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler, options),
             item: refs.item,
             updateButton: refs.updateButton,
             openButton: refs.openButton,
@@ -1791,7 +1791,7 @@ export class InquiryView extends ItemView {
         for (const path of notesByMaterial.keys()) {
             const file = this.app.vault.getAbstractFileByPath(path);
             if (!file || !(file instanceof TFile)) continue;
-            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
             if (!frontmatter) continue;
             const validated = validatePendingEditsValue(frontmatter[targetField]);
             if (!validated.ok) continue;
@@ -3641,7 +3641,7 @@ export class InquiryView extends ItemView {
             transformGroup.appendChild(pathGroup);
             group.appendChild(transformGroup);
             iconGroup.appendChild(group);
-            return group as SVGSVGElement;
+            return group;
         };
 
         this.flowModeIconEl = createIcon('ert-inquiry-mode-icon--flow', FLOW_ICON_PATHS);
@@ -4247,7 +4247,7 @@ export class InquiryView extends ItemView {
     }
 
     private isSceneFile(file: TFile): boolean {
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return false;
         const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
         const classValues = this.extractClassValues(normalized);
@@ -5150,7 +5150,7 @@ export class InquiryView extends ItemView {
             }))
             .sort((a, b) => {
                 if (a.order !== b.order) return a.order - b.order;
-                return a.headerLabel!.localeCompare(b.headerLabel!, undefined, { numeric: true, sensitivity: 'base' });
+                return a.headerLabel.localeCompare(b.headerLabel, undefined, { numeric: true, sensitivity: 'base' });
             });
 
         return orderedGroups.map(({ order: _order, ...group }) => group);
@@ -5412,7 +5412,7 @@ export class InquiryView extends ItemView {
         return files.filter(file => {
             if (!inRoots(file.path)) return false;
             if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates, this.state.scope)) return false;
-            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
             if (!frontmatter) return false;
             const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
             const classValues = this.extractClassValues(normalized);
@@ -5421,7 +5421,7 @@ export class InquiryView extends ItemView {
     }
 
     private getOutlineScope(file: TFile): InquiryScope | undefined {
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return undefined;
         return this.getFrontmatterScope(frontmatter);
     }
@@ -5531,7 +5531,7 @@ export class InquiryView extends ItemView {
     }
 
     private getDocumentTitle(file: TFile): string {
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (frontmatter) {
             const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
             const rawTitle = normalized['Title'] ?? normalized['title'];
@@ -8004,7 +8004,7 @@ export class InquiryView extends ItemView {
         const cap = Number.isFinite(trace.outputTokenCap) ? Math.max(0, Math.floor(trace.outputTokenCap)) : 0;
         const expectedOutputTokens = Math.min(predicted, cap || predicted);
         const expectedPasses = Number.isFinite(trace.tokenEstimate?.expectedPassCount)
-            ? Math.max(1, Math.floor(trace.tokenEstimate.expectedPassCount as number))
+            ? Math.max(1, Math.floor(trace.tokenEstimate.expectedPassCount))
             : (Number.isFinite(trace.executionPassCount) ? Math.max(1, Math.floor(trace.executionPassCount as number)) : 1);
         const cacheReuseRatio = typeof trace.cachedStableRatio === 'number' && Number.isFinite(trace.cachedStableRatio)
             ? Math.min(1, Math.max(0, trace.cachedStableRatio))
@@ -8287,7 +8287,7 @@ export class InquiryView extends ItemView {
             if (!inRoots(file.path)) return;
             if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates, this.state.scope)) return;
             const cache = this.app.metadataCache.getFileCache(file);
-            const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            const frontmatter = cache?.frontmatter;
             if (!frontmatter) return;
             const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
             const classValues = this.extractClassValues(normalized);
@@ -11005,7 +11005,7 @@ export class InquiryView extends ItemView {
 
     private getNormalizedFrontmatter(file: TFile): Record<string, unknown> | null {
         const cache = this.app.metadataCache.getFileCache(file);
-        const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = cache?.frontmatter;
         if (!frontmatter) return null;
         return normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
     }

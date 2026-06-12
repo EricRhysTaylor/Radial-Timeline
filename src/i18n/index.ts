@@ -133,7 +133,7 @@ function getTranslations(): TranslationKeys {
         // Cast through unknown is safe because English provides all keys, locale just overrides some
         cachedTranslations = deepMerge(
             en as unknown as Record<string, unknown>,
-            locales[locale] as unknown as Record<string, unknown>
+            locales[locale]
         ) as unknown as TranslationKeys;
     }
     

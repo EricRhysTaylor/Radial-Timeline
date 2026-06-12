@@ -236,7 +236,7 @@ function withRunValidation(
 ): AIRunResult {
     const provider = result.provider;
     const adapterNotes = extractAdapterNotes(result.diagnostics);
-    const providerReuseCapable = provider === 'none' ? false : providerSupportsCorpusReuse(provider as AiProvider);
+    const providerReuseCapable = provider === 'none' ? false : providerSupportsCorpusReuse(provider);
     const actualUsageCaptured = provider !== 'none' && !!extractTokenUsage(provider, result.responseData);
     const validation: AIRunValidation = {
         schemaVersion: 1,

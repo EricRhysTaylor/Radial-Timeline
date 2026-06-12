@@ -361,7 +361,7 @@ function collectOutlineBookFolders(
 
     files.forEach(file => {
         const cache = metadataCache.getFileCache(file);
-        const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+        const frontmatter = cache?.frontmatter;
         if (!frontmatter) return;
         const normalized = normalizeFrontmatterKeys(frontmatter, frontmatterMappings);
 

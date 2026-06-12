@@ -183,7 +183,7 @@ export class GossamerScoreModal extends Modal {
       ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
     for (const file of files) {
-      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
       if (!fm) continue;
       if (fm.Class !== 'Beat' && fm.class !== 'Beat') continue;
       for (let i = 1; i <= 30; i++) {
@@ -206,7 +206,7 @@ export class GossamerScoreModal extends Modal {
       ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
     for (const file of files) {
-      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
       if (!fm) continue;
       if (fm.Class !== 'Beat' && fm.class !== 'Beat') continue;
       for (let i = 1; i <= 30; i++) {
@@ -227,7 +227,7 @@ export class GossamerScoreModal extends Modal {
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
       if (!file || !(file instanceof TFile)) continue;
 
-      const cache = this.plugin.app.metadataCache.getFileCache(file as any);
+      const cache = this.plugin.app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
       if (!fm) continue;
 

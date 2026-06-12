@@ -73,7 +73,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
         const { setBaseModeAllScenes, resetRotation, syncGossamerPresentationState } = await import('../../GossamerCommands');
         
         const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
-        const allRuns = await syncGossamerPresentationState(plugin, scenes as any);
+        const allRuns = await syncGossamerPresentationState(plugin, scenes);
         
         if (allRuns.current.beats.length === 0) {
             const systemHint = selectedBeatModel

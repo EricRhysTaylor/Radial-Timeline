@@ -46,10 +46,10 @@ function openRadialTimelineCoreAlerts(view: VersionIndicatorView): void {
  * - Bug icon: Opens GitHub issues for bug reporting
  */
 export function setupVersionIndicatorController(view: VersionIndicatorView, svg: SVGSVGElement): void {
-    const versionIndicator = svg.querySelector('#version-indicator') as SVGGElement | null;
+    const versionIndicator = svg.querySelector('#version-indicator');
     if (!versionIndicator) return;
 
-    const hitArea = versionIndicator.querySelector('.rt-version-hitarea') as SVGRectElement | null;
+    const hitArea = versionIndicator.querySelector('.rt-version-hitarea');
 
     // Strip any lingering tooltip/title attributes so hover shows only text swap
     versionIndicator.querySelectorAll('[title]').forEach((el) => el.removeAttribute('title'));

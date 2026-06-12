@@ -1249,7 +1249,7 @@ export class TimelineRepairModal extends Modal {
         if (cards.length === 0) return false;
 
         const focused = this.sceneListEl.querySelector('.ert-timeline-repair-scene-card:focus');
-        let currentIdx = focused ? Array.from(cards).indexOf(focused as HTMLElement) : -1;
+        let currentIdx = focused ? Array.from(cards).indexOf(focused) : -1;
 
         const newIdx = Math.max(0, Math.min(cards.length - 1, currentIdx + delta));
         (cards[newIdx] as HTMLElement).focus();
@@ -1264,7 +1264,7 @@ export class TimelineRepairModal extends Modal {
         if (!focused) return false;
 
         const cards = Array.from(this.sceneListEl.querySelectorAll('.ert-timeline-repair-scene-card'));
-        const cardIdx = cards.indexOf(focused as HTMLElement);
+        const cardIdx = cards.indexOf(focused);
 
         // Get the scene index from the filtered list
         const visibleEntries = this.getVisibleEntries();

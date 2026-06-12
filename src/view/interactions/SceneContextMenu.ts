@@ -204,7 +204,7 @@ async function writeChapterMarker(
     successMessage: string
 ): Promise<void> {
     const cache = view.plugin.app.metadataCache.getFileCache(file);
-    const existingChapterKey = findChapterFrontmatterKey(cache?.frontmatter as Record<string, unknown> | undefined);
+    const existingChapterKey = findChapterFrontmatterKey(cache?.frontmatter);
 
     if (!existingChapterKey) {
         const inserted = await insertMissingChapterFrontmatter(view, file, title);
@@ -306,7 +306,7 @@ async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, f
         const finalFile = view.plugin.app.vault.getAbstractFileByPath(result.finalPath);
         if (finalFile instanceof TFile) {
             refreshTimelineView(view, finalFile);
-            await openOrRevealFile(view.plugin.app as any, finalFile, false);
+            await openOrRevealFile(view.plugin.app, finalFile, false);
         } else {
             refreshTimelineView(view, file);
         }

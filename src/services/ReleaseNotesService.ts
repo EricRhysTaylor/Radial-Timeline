@@ -57,7 +57,7 @@ export class ReleaseNotesService {
 
     getLatestVersion(): string | null {
         const entries = this.getEntries();
-        return entries.length > 0 ? entries[0]!.version : null;
+        return entries.length > 0 ? entries[0].version : null;
     }
 
     async maybeShowReleaseNotesModal(app: App, plugin: RadialTimelinePlugin): Promise<void> {
@@ -66,7 +66,7 @@ export class ReleaseNotesService {
             throw new Error('Release bundle missing entries');
         }
 
-        const latestEntry = entries[0]!;
+        const latestEntry = entries[0];
         const latestVersion = latestEntry.version;
         if (!latestVersion) {
             throw new Error('Release bundle missing latest version');
@@ -88,7 +88,7 @@ export class ReleaseNotesService {
         if (entries.length === 0) {
             throw new Error('Release bundle missing entries');
         }
-        const featuredEntry = entries[0]!;
+        const featuredEntry = entries[0];
         const modal = new ReleaseNotesModal(app, plugin, entries, featuredEntry);
         modal.open();
     }
@@ -186,7 +186,7 @@ export class ReleaseNotesService {
     public getMajorVersion(): string {
         const entries = this.getEntries();
         // Assuming the latest version is the major version for now, or parse it
-        return entries.length > 0 ? entries[0]!.version.split('.')[0] : '0';
+        return entries.length > 0 ? entries[0].version.split('.')[0] : '0';
     }
 
     public async ensureReleaseNotesFresh(): Promise<void> {

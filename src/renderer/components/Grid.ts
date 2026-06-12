@@ -51,7 +51,7 @@ export function renderCenterGrid(params: {
   const renderGridCell = (stage: string, status: string, x: number, y: number, count: number, sceneNames: string[]): string => {
     let fillAttr = '';
     if (status === 'Completed') {
-      const solid = (PUBLISH_STAGE_COLORS[stage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+      const solid = (PUBLISH_STAGE_COLORS[stage] || '#888888');
       fillAttr = `fill="${solid}"`;
     } else if (status === 'Working') {
       fillAttr = `fill="url(#plaidWorking${stage})"`;
@@ -133,7 +133,7 @@ export function renderCenterGrid(params: {
       const completeRow = gridStageStates[stage]?.isComplete ?? false;
       if (completeRow) {
         const fillStage = isBookComplete ? 'Press' : stage;
-        const solid = (PUBLISH_STAGE_COLORS[fillStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+        const solid = (PUBLISH_STAGE_COLORS[fillStage] || '#888888');
         
         // Use smile face for ALL rows when final book completion is reached
         const iconId = isBookComplete ? 'icon-smile' : 'icon-bookmark-check';

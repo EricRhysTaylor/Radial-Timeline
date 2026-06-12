@@ -45,8 +45,8 @@ export function getFillForScene(
         if (isOuterAllScenes && subplotColorResolver) {
             return subplotColorResolver(subplotName);
         }
-        return publishStageColors[publishStage as keyof typeof publishStageColors]
-            || publishStageColors[fallbackStage as keyof typeof publishStageColors];
+        return publishStageColors[publishStage]
+            || publishStageColors[fallbackStage];
     }
     if (scene.due && isOverdueDateString(scene.due)) return statusColors.Due;
     if (norm === 'Working') return `url(#plaidWorking${publishStage})`;

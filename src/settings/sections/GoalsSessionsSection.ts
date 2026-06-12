@@ -19,7 +19,7 @@ function buildProfileFromLegacy(plugin: RadialTimelinePlugin): RuntimeRateProfil
     return {
         id: 'default',
         label: 'Default',
-        contentType: (plugin.settings.runtimeContentType || 'novel') as RuntimeContentType,
+        contentType: (plugin.settings.runtimeContentType || 'novel'),
         dialogueWpm: plugin.settings.runtimeDialogueWpm || 160,
         actionWpm: plugin.settings.runtimeActionWpm || 100,
         narrationWpm: plugin.settings.runtimeNarrationWpm || 150,

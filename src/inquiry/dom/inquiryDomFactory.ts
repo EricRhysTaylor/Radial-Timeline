@@ -96,13 +96,13 @@ export function createInquiryDesktopShell(args: {
 }): InquiryDesktopShellRefs {
     args.contentEl.addClass('ert-inquiry-root');
 
-    const svg = createSvgElement('svg') as SVGSVGElement;
+    const svg = createSvgElement('svg');
     svg.classList.add('ert-ui', 'ert-inquiry-svg');
     svg.setAttribute('viewBox', `${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     args.contentEl.appendChild(svg);
 
-    const defs = createSvgElement('defs') as SVGDefsElement;
+    const defs = createSvgElement('defs');
     args.populateDefs(defs);
     svg.appendChild(defs);
 
@@ -170,7 +170,7 @@ export function createInquiryDesktopShell(args: {
     const engineBadgeGroup = args.createIconButton(hudGroup, engineBadgeX, 0, iconSize, 'cpu', 'AI engine', 'ert-inquiry-engine-btn');
     engineBadgeGroup.querySelector('title')?.remove();
 
-    const engineTimerIcon = createSvgElement('use') as SVGUseElement;
+    const engineTimerIcon = createSvgElement('use');
     engineTimerIcon.classList.add('ert-inquiry-engine-timer-icon', 'ert-hidden');
     engineTimerIcon.setAttribute('x', String(engineBadgeX + iconSize + 9));
     engineTimerIcon.setAttribute('y', '15');
@@ -180,7 +180,7 @@ export function createInquiryDesktopShell(args: {
     engineTimerIcon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#ert-icon-flame-kindling');
     hudGroup.appendChild(engineTimerIcon);
 
-    const engineTimerLabel = createSvgElement('text') as SVGTextElement;
+    const engineTimerLabel = createSvgElement('text');
     engineTimerLabel.classList.add('ert-inquiry-engine-timer', 'ert-hidden');
     engineTimerLabel.setAttribute('x', String(engineBadgeX + iconSize + 38));
     engineTimerLabel.setAttribute('y', '28');
@@ -198,7 +198,7 @@ export function createInquiryDesktopShell(args: {
     const navNextButton = args.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next book', 'ert-inquiry-nav-btn');
     const navNextIcon = navNextButton.querySelector('.ert-inquiry-icon') as SVGUseElement | undefined;
 
-    const navSessionLabel = createSvgElement('text') as SVGTextElement;
+    const navSessionLabel = createSvgElement('text');
     navSessionLabel.classList.add('ert-inquiry-nav-session-label');
     navSessionLabel.setAttribute('x', '108');
     navSessionLabel.setAttribute('y', '4');
@@ -236,7 +236,7 @@ export function createInquiryPromptPreviewPanel(args: {
 }): InquiryPromptPreviewPanelRefs {
     const panel = createSvgGroup(args.parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
 
-    const clickTarget = createSvgElement('rect') as SVGRectElement;
+    const clickTarget = createSvgElement('rect');
     clickTarget.classList.add('ert-inquiry-preview-hitbox');
     clickTarget.setAttribute('fill', 'transparent');
     // pointer-events controlled by CSS — only enabled when preview is visible + results
@@ -266,7 +266,7 @@ export function createInquiryPromptPreviewPanel(args: {
         if (index === historyRowIndex) {
             group.classList.add('is-history-slot');
         }
-        const bg = createSvgElement('rect') as SVGRectElement;
+        const bg = createSvgElement('rect');
         bg.classList.add('ert-inquiry-preview-pill-bg');
         group.appendChild(bg);
 

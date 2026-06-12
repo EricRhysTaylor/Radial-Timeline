@@ -154,7 +154,7 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
         // Extract the main grade (A/B/C) from first currentSceneAnalysis item
         const firstCurrent = parsed.currentSceneAnalysis?.[0];
         const sceneGrade = (firstCurrent?.grade === 'A' || firstCurrent?.grade === 'B' || firstCurrent?.grade === 'C')
-            ? firstCurrent.grade as 'A' | 'B' | 'C'
+            ? firstCurrent.grade
             : undefined;
         
         return {

@@ -512,7 +512,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 type: 'number',
                 cls: 'ert-synopsis-control-input',
                 attr: { min: '75', max: '500', step: '25' }
-            }) as HTMLInputElement;
+            });
             targetInput.value = String(this.synopsisTargetWords);
 
             const saveTargetValue = () => {
@@ -549,7 +549,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 type: 'number',
                 cls: 'ert-synopsis-control-input',
                 attr: { min: '10', max: '300', step: '5' }
-            }) as HTMLInputElement;
+            });
             thresholdInput.value = String(this.synopsisWeakThreshold);
 
             const saveThresholdValue = () => {
@@ -600,13 +600,13 @@ export class SceneAnalysisProcessingModal extends Modal {
                 type: 'checkbox',
                 cls: 'ert-synopsis-control-checkbox',
                 attr: { id: synopsisCheckboxId }
-            }) as HTMLInputElement;
+            });
             synopsisCheckbox.checked = this.plugin.settings.alsoUpdateSynopsis ?? false;
             const synopsisLengthInput = synopsisControls.createEl('input', {
                 type: 'number',
                 cls: 'ert-synopsis-control-input',
                 attr: { min: '10', max: '300', step: '5' }
-            }) as HTMLInputElement;
+            });
             synopsisLengthInput.value = String(synopsisWordLimit);
 
             const saveSynopsisWordLimit = () => {
@@ -1132,12 +1132,12 @@ export class SceneAnalysisProcessingModal extends Modal {
                     });
 
                     // Track internal AI update timestamps
-                    const sceneTimestamps = this.plugin.settings.aiUpdateTimestamps![path] ?? {};
+                    const sceneTimestamps = this.plugin.settings.aiUpdateTimestamps[path] ?? {};
                     sceneTimestamps.summaryUpdated = isoNow;
                     if (processedSynopsisResults.has(path)) {
                         sceneTimestamps.synopsisUpdated = isoNow;
                     }
-                    this.plugin.settings.aiUpdateTimestamps![path] = sceneTimestamps;
+                    this.plugin.settings.aiUpdateTimestamps[path] = sceneTimestamps;
 
                     updated++;
                 }

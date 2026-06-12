@@ -131,7 +131,7 @@ export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLay
             const parsedEnd = parseWhenField(item.End);
             itemEnd = parsedEnd ? parsedEnd.getTime() : itemStart;
         } else {
-            const duration = parseDuration(item.Duration!) || 0;
+            const duration = parseDuration(item.Duration) || 0;
             itemEnd = itemStart + duration;
         }
 
@@ -161,7 +161,7 @@ export function buildBackdropRingLayout(scenes: TimelineItem[]): BackdropRingLay
         // as nothing, which silently blanked the whole timeline in the
         // pre-lane architecture.
         if (!Number.isFinite(computedStartAngle) || !Number.isFinite(computedEndAngle)) {
-            // eslint-disable-next-line no-console
+             
             console.warn(
                 '[radial-timeline] dropping backdrop with non-finite angles:',
                 item.title || item.path,
