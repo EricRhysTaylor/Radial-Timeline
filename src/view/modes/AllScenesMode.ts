@@ -1,4 +1,4 @@
-import { TFile, App } from 'obsidian';
+import { TFile } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import type { TimelineItem } from '../../types';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
@@ -6,24 +6,9 @@ import { SceneInteractionManager } from '../interactions/SceneInteractionManager
 import { OuterRingDragController, isDragInProgress, isDragInteractionActive, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
+import type { RadialTimelineView } from '../TimeLineView';
 
-export interface AllScenesView {
-    currentMode: string;
-    plugin: {
-        app: App;
-        settings: {
-            enableZeroDraftMode?: boolean;
-            dominantSubplots?: Record<string, string>;
-            enableSceneTitleAutoExpand?: boolean;
-        } & Record<string, unknown>;
-        saveSettings?: () => Promise<void>;
-    };
-    registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
-    getSquareGroupForSceneId(svg: SVGSVGElement, sceneId: string): SVGGElement | null;
-    setNumberSquareGroupPosition(svg: SVGSVGElement, sceneId: string, x: number, y: number): void;
-}
-
-export function setupSceneInteractions(view: AllScenesView, group: Element, svgElement: SVGSVGElement, scenes: TimelineItem[]): void {
+export function setupSceneInteractions(view: RadialTimelineView, group: Element, svgElement: SVGSVGElement, scenes: TimelineItem[]): void {
     if (view.currentMode !== 'narrative') return;
 
     const path = group.querySelector('.rt-scene-path');
@@ -74,7 +59,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
     }
 }
 
-export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTMLElement, scenes: TimelineItem[]): void {
+export function setupAllScenesDelegatedHover(view: RadialTimelineView, container: HTMLElement, scenes: TimelineItem[]): void {
     const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
     if (!svg) return;
     
@@ -84,12 +69,12 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     const svgActs = svgActsAttr ? parseInt(svgActsAttr, 10) : NaN;
     const totalActs = Number.isFinite(svgActs) && svgActs >= 1
         ? svgActs
-        : Math.max(3, (view.plugin.settings as any).actCount ?? 3);
-    const manager = new SceneInteractionManager(view as any, svg, totalActs);
+        : Math.max(3, view.plugin.settings.actCount ?? 3);
+    const manager = new SceneInteractionManager(view, svg, totalActs);
     // Keep manager enabled in this mode and read the user setting live at hover-time.
     // This allows toggling auto-expand without reopening the timeline view.
     manager.setTitleExpansionEnabled(true);
-    setupSceneContextMenu(view as any, svg);
+    setupSceneContextMenu(view, svg);
 
     let currentGroup: Element | null = null;
     let rafId: number | null = null;
@@ -100,11 +85,15 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         currentGroup = null;
     };
 
-    view.registerDomEvent(svg as unknown as HTMLElement, 'rt-scene-open-begin', () => {
+    // Custom event name isn't part of HTMLElementEventMap, so register directly.
+    // SAFE: listener removed via view.register() (Component lifecycle cleanup).
+    const onSceneOpenBegin = () => {
         suspendHoverUntilPointerMove = true;
         svg.classList.remove('scene-hover');
         clearSelection();
-    });
+    };
+    svg.addEventListener('rt-scene-open-begin', onSceneOpenBegin);
+    view.register(() => svg.removeEventListener('rt-scene-open-begin', onSceneOpenBegin));
 
     const getSceneIdFromGroup = (group: Element): string | null => {
         const pathEl = group.querySelector('.rt-scene-path');
@@ -189,19 +178,15 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 }
 
-export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): void {
-    if ((view.plugin.settings as any)?.timelineScope === 'saga') return;
+export function setupOuterRingDrag(view: RadialTimelineView, svg: SVGSVGElement): void {
+    if (view.plugin.settings.timelineScope === 'saga') return;
 
-    const controller = new OuterRingDragController(view as any, svg, {
+    const controller = new OuterRingDragController(view, svg, {
         onRefresh: () => {
             // Use direct refresh (bypasses debounce) for immediate update after drag operations
-            if (typeof (view as any).refreshTimeline === 'function') {
-                (view as any).refreshTimeline();
-            } else {
-                (view.plugin as any)?.refreshTimelineIfNeeded?.(null);
-            }
+            view.refreshTimeline();
         },
-        enableDebug: (view.plugin.settings as any)?.enableHoverDebugLogging,
+        enableDebug: view.plugin.settings.enableHoverDebugLogging,
         mode: view.currentMode,
     });
     controller.attach();

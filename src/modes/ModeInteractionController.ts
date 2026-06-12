@@ -113,19 +113,19 @@ export class ModeInteractionController {
         const { setupAllScenesDelegatedHover, setupSceneInteractions, setupOuterRingDrag } = await import('../view/modes/AllScenesMode');
         
         // Setup delegated hover
-        const container = (this.view as any).containerEl as HTMLElement;
+        const container = this.view.containerEl;
         if (container) {
-            setupAllScenesDelegatedHover(this.view as any, container, this.view.sceneData || []);
+            setupAllScenesDelegatedHover(this.view, container, this.view.sceneData || []);
         }
-        
+
         // Setup scene interactions for each scene group
         const sceneGroups = svg.querySelectorAll('.rt-scene-group');
         sceneGroups.forEach(group => {
-            setupSceneInteractions(this.view as any, group, svg, this.view.sceneData || []);
+            setupSceneInteractions(this.view, group, svg, this.view.sceneData || []);
         });
 
         // Setup drag-to-reorder on the outer ring (narrative mode only)
-        setupOuterRingDrag(this.view as any, svg);
+        setupOuterRingDrag(this.view, svg);
     }
     
     /**
@@ -152,24 +152,10 @@ export class ModeInteractionController {
     private async setupChronologueHandlers(svg: SVGSVGElement): Promise<void> {
         // Import and use existing Chronologue mode setup
         const { setupChronologueMode } = await import('../view/modes/ChronologueMode');
-        
-        // Calculate outer radius from SVG viewBox or fallback to default
-        const viewBox = svg.getAttribute('viewBox');
-        let outerRadius = 300; // Default fallback
-        if (viewBox) {
-            const [, , width, height] = viewBox.split(' ').map(parseFloat);
-            const size = Math.min(width, height);
-            const margin = 50; // Approximate margin
-            outerRadius = size / 2 - margin;
-        }
-        
-        // Pass scenes and outer radius to chronologue mode setup
-        // Pass the actual view instance directly (don't spread - it breaks methods like registerDomEvent)
-        // Add scenes and outerRadius as properties on the view temporarily
-        const view = this.view as any;
-        view.scenes = this.view.sceneData || [];
-        view.outerRadius = outerRadius;
-        setupChronologueMode(view, svg);
+
+        // Pass the actual view instance directly (don't spread - it breaks methods like registerDomEvent).
+        // Scene data is read from view.sceneData; the shift controller derives its own outer radius.
+        setupChronologueMode(this.view, svg);
     }
     
     /**

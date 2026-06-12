@@ -2,6 +2,7 @@ import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { RadialTimelineView } from '../view/TimeLineView';
 import { getActivePlanetaryProfile, convertFromEarth } from '../utils/planetaryTime';
+import { frontmatterValueToText } from '../utils/frontmatter';
 import type { TimelineItem } from '../types';
 
 export interface TimelineSearchMatchOptions {
@@ -56,7 +57,7 @@ function appendSearchValue(fields: string[], value: unknown): void {
         value.forEach(item => appendSearchValue(fields, item));
         return;
     }
-    const text = (typeof value === 'object' ? JSON.stringify(value) : String(value)).trim();
+    const text = frontmatterValueToText(value).trim();
     if (text) fields.push(text);
 }
 

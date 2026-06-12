@@ -6,7 +6,7 @@
 
 import { App, TFile, Notice, getFrontMatterInfo, parseYaml } from 'obsidian';
 import { SceneDataService } from './SceneDataService';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { frontmatterValueToText, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
 
 export interface SubplotStats {
@@ -193,17 +193,12 @@ export class SubplotManagementService {
      * Rename subplot in settings (Dominant Subplots preference)
      */
     async renameSubplotInSettings(oldName: string, newName: string): Promise<void> {
-        // Access settings through the plugin instance if possible, or pass settings in.
-        // Since we don't have direct access to plugin here easily without circular dependency or passing it in,
-        // we might need to rely on the caller or pass a callback.
-        // But wait, SceneDataService has settings. But it might be a copy or reference.
-        // SceneDataService.settings is public.
-        
-        const settings = (this.sceneDataService as any).settings; // Access settings
-        if (settings && settings.dominantSubplots) {
+        // SceneDataService shares the live settings reference with the plugin.
+        const settings = this.sceneDataService.getSettings();
+        if (settings.dominantSubplots) {
             let settingsChanged = false;
-            const dominantSubplots = settings.dominantSubplots as Record<string, string>;
-            
+            const dominantSubplots = settings.dominantSubplots;
+
             for (const [path, subplot] of Object.entries(dominantSubplots)) {
                 if (subplot === oldName) {
                     dominantSubplots[path] = newName;
@@ -236,8 +231,8 @@ export class SubplotManagementService {
         // But simpler: just get all markdown files in source path and check Class
         
         // Use the settings from sceneDataService
-        const settings = (this.sceneDataService as any).settings;
-        const sourcePath = settings?.sourcePath || "";
+        const settings = this.sceneDataService.getSettings();
+        const sourcePath = settings.sourcePath || "";
 
         const files = this.app.vault.getMarkdownFiles().filter((file: TFile) => {
             return isPathInFolderScope(file.path, sourcePath);
@@ -283,7 +278,7 @@ export class SubplotManagementService {
                 return ["Main Plot"];
             }
 
-            return [(typeof rawSubplots === 'object' ? JSON.stringify(rawSubplots) : String(rawSubplots)).trim()].filter(Boolean);
+            return [frontmatterValueToText(rawSubplots).trim()].filter(Boolean);
         } catch {
             return ["Main Plot"];
         }

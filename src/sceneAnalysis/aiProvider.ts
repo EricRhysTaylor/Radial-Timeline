@@ -292,7 +292,7 @@ export async function callAiProvider(
             ? parsePulseAnalysisResponse(runResult.content, plugin)
             : null;
         const parseFailure = commandContext !== 'synopsis' && !parsedForLog
-            ? ((plugin as any).lastAnalysisError?.trim() || 'Pulse analysis response failed validation.')
+            ? (plugin.lastAnalysisError.trim() || 'Pulse analysis response failed validation.')
             : null;
         if (commandContext !== 'synopsis') {
             await writePulseLog(plugin, vault, {

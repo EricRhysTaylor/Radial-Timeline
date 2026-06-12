@@ -17,7 +17,7 @@ import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/act
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getScenePrefixNumber } from '../../utils/text';
 import { comparePrefixTokens, extractPrefixToken } from '../../utils/prefixOrder';
-import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { frontmatterValueToText, getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { tooltipForComponent } from '../../utils/tooltip';
 import {
@@ -193,14 +193,7 @@ export function renderBeatPropertiesSection(params: {
                 id?: unknown;
                 range?: unknown;
             };
-            const objName = normalizeBeatNameInput(
-                typeof obj.name === 'string'
-                    ? obj.name
-                    : typeof obj.name === 'object' && obj.name !== null
-                        ? JSON.stringify(obj.name)
-                        : String(obj.name ?? ''),
-                ''
-            );
+            const objName = normalizeBeatNameInput(frontmatterValueToText(obj.name), '');
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
             const objPurpose = typeof obj.purpose === 'string' ? obj.purpose.trim() : '';
             const objId = typeof obj.id === 'string' ? obj.id : undefined;
@@ -213,7 +206,7 @@ export function renderBeatPropertiesSection(params: {
                 range: objRange || undefined,
             };
         }
-        const raw = normalizeBeatNameInput(typeof item === 'object' && item !== null ? JSON.stringify(item) : String(item ?? ''), '');
+        const raw = normalizeBeatNameInput(frontmatterValueToText(item), '');
         if (!raw) return { name: '', act: 1 };
         const m = raw.match(/^(.*?)\[(\d+)\]$/);
         if (m) {
@@ -5029,7 +5022,7 @@ export function renderBeatPropertiesSection(params: {
                     } else {
                         valuedFieldCount++;
                         if (valuedFieldSamples.length < 8) {
-                            const valStr = Array.isArray(val) ? val.join(', ') : typeof val === 'object' ? JSON.stringify(val) : String(val);
+                            const valStr = Array.isArray(val) ? val.join(', ') : frontmatterValueToText(val);
                             valuedFieldSamples.push({
                                 key: field,
                                 value: valStr.length > 60 ? valStr.slice(0, 57) + '...' : valStr

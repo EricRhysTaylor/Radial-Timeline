@@ -26,7 +26,18 @@ export function classifySynopsis(synopsis: unknown, weakThreshold: number = 75):
         return 'missing';
     }
 
-    const text = (typeof synopsis === 'object' ? JSON.stringify(synopsis) : String(synopsis)).trim();
+    let text: string;
+    if (typeof synopsis === 'string') {
+        text = synopsis.trim();
+    } else if (typeof synopsis === 'number' || typeof synopsis === 'boolean' || typeof synopsis === 'bigint') {
+        text = String(synopsis).trim();
+    } else {
+        try {
+            text = JSON.stringify(synopsis).trim();
+        } catch {
+            text = '';
+        }
+    }
     if (text === '') {
         return 'missing';
     }

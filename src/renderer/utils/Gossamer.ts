@@ -29,11 +29,8 @@ export function renderGossamerOverlay({
     }
 
     // Detect whether any timeline view is in Gossamer mode
-    const views = (plugin as any).app.workspace.getLeavesOfType('radial-timeline');
-    const isGossamerMode = views.some((leaf: { view: { currentMode?: string } }) => {
-        const view = leaf.view;
-        return view?.currentMode === 'gossamer';
-    });
+    const views = plugin.app.workspace.getLeavesOfType('radial-timeline');
+    const isGossamerMode = views.some(leaf => leaf.view?.currentMode === 'gossamer');
 
     if (!isGossamerMode) {
         return '';
@@ -42,8 +39,8 @@ export function renderGossamerOverlay({
     let svg = '';
     const polar = { innerRadius, outerRadius: actualOuterRadius };
     const outerRingInnerRadius = ringStartRadii[numRings - 1];
-    const run = (plugin as any)._gossamerLastRun || null;
-    const anglesByBeat = (plugin as any)._beatAngles || new Map<string, number>();
+    const run = plugin._gossamerLastRun || null;
+    const anglesByBeat = plugin._beatAngles || new Map<string, number>();
 
     const beatPathByName = new Map<string, string>();
     scenes.forEach(scene => {
@@ -61,15 +58,15 @@ export function renderGossamerOverlay({
         publishStageColorByBeat.set(titleWithoutNumber, stageColor);
     });
 
-    const beatSlicesByName = (plugin as any)._beatSlices || new Map();
+    const beatSlicesByName = plugin._beatSlices || new Map();
 
     // Render spokes before the gossamer traces so they sit beneath the data layer
-    const numActs = Math.max(3, Math.floor((plugin.settings as any).actCount ?? 3));
+    const numActs = Math.max(3, Math.floor(plugin.settings.actCount ?? 3));
     svg += renderGossamerMonthSpokes({ innerRadius, outerRadius: actualOuterRadius, numActs });
 
-    const historicalRuns = (plugin as any)._gossamerHistoricalRuns || [];
-    const minMax = (plugin as any)._gossamerMinMax || null;
-    const hasAnyScores = (plugin as any)._gossamerHasAnyScores || false;
+    const historicalRuns = plugin._gossamerHistoricalRuns || [];
+    const minMax = plugin._gossamerMinMax || undefined;
+    const hasAnyScores = plugin._gossamerHasAnyScores || false;
 
     const layer = renderGossamerLayer(
         scenes,

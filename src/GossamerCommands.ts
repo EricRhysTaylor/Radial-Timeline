@@ -2,6 +2,7 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
+import type { RadialTimelineView } from './view/TimeLineView';
 import {
   applyGossamerRunMetadata,
   appendGossamerScore,
@@ -434,7 +435,7 @@ const lastRunByPlugin = new WeakMap<RadialTimelinePlugin, GossamerRun>();
 function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
   lastRunByPlugin.set(plugin, run);
   // Provide compatibility for renderer access
-  (plugin as unknown as Record<string, unknown>)._gossamerLastRun = run;
+  plugin._gossamerLastRun = run;
 }
 
 /**
@@ -483,9 +484,9 @@ export async function syncGossamerPresentationState(
   plugin.gossamerFilterBeatSystemKey = allRuns.beatSystemKey;
 
   setInMemoryRun(plugin, allRuns.current);
-  (plugin as any)._gossamerHistoricalRuns = allRuns.historical;
-  (plugin as any)._gossamerMinMax = allRuns.minMax;
-  (plugin as any)._gossamerHasAnyScores = allRuns.hasAnyScores;
+  plugin._gossamerHistoricalRuns = allRuns.historical;
+  plugin._gossamerMinMax = allRuns.minMax;
+  plugin._gossamerHasAnyScores = allRuns.hasAnyScores;
 
   return allRuns;
 }
@@ -550,10 +551,8 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
   if (!view) return;
   
   // Try using ModeManager first
-  const modeManager = hasKey(view, 'getModeManager') && typeof (view as any).getModeManager === 'function'
-    ? (view as any).getModeManager()
-    : null;
-  
+  const modeManager = view.getModeManager();
+
   if (modeManager) {
     // Use new ModeManager for mode switching
     await modeManager.switchMode(TimelineMode.GOSSAMER);
@@ -561,35 +560,31 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
   } else {
     // Fallback mode switching
     // Update mode system
-    if (hasKey(view, 'currentMode')) {
-      (view as any).currentMode = 'gossamer';
-    }
-    
+    view.currentMode = 'gossamer';
+
     // Update settings
     plugin.settings.currentMode = 'gossamer';
     void plugin.saveSettings();
   }
-  
+
   // Only do selective update if not using ModeManager
   // (ModeManager handles refresh through lifecycle hooks)
   if (!modeManager) {
     // Prefer selective update: build layer in-place without full refresh
-    const v = view as unknown as { containerEl?: HTMLElement; currentMode?: string } & Record<string, unknown>;
-    const svg = (v as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector?.('.radial-timeline-svg') as SVGSVGElement | null;
+    const svg = view.containerEl.querySelector<SVGSVGElement>('.radial-timeline-svg');
     let didSelective = false;
     try {
-      const rs = (plugin.getRendererService && plugin.getRendererService()) || (plugin as any).rendererService;
-      if (rs && v) {
+      const rs = plugin.getRendererService();
+      if (rs) {
         // Attach scene data to view if available for color/path mapping
-        (v as any).sceneData = plugin.lastSceneData || (v as any).sceneData;
-        (v as any).currentMode = 'gossamer';
-        const viewArg = {
-          containerEl: (v as any).containerEl as HTMLElement,
+        view.sceneData = plugin.lastSceneData || view.sceneData;
+        view.currentMode = 'gossamer';
+        didSelective = rs.updateGossamerLayer({
+          containerEl: view.containerEl,
           plugin,
-          sceneData: (v as any).sceneData,
-          currentMode: 'gossamer' as const
-        };
-        didSelective = rs.updateGossamerLayer(viewArg);
+          sceneData: view.sceneData,
+          currentMode: 'gossamer'
+        });
       }
       if (didSelective && svg) {
         // Apply gossamer-mode styling: mute non-plot elements
@@ -617,9 +612,8 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
           }
         }
         
-        // Set up gossamer handlers on existing DOM if method exposed
-        const setup = (v as any)?.setupGossamerEventListeners as ((svg: SVGSVGElement) => void) | undefined;
-        if (typeof setup === 'function') setup(svg);
+        // Set up gossamer handlers on existing DOM
+        view.setupGossamerEventListeners(svg);
       }
     } catch { /* selective refresh is best-effort */ }
     if (!didSelective) {
@@ -644,61 +638,50 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
   _isExitingGossamer = true;
   
   // Try using ModeManager first
-  const modeManager = hasKey(view, 'getModeManager') && typeof (view as any).getModeManager === 'function'
-    ? (view as any).getModeManager()
-    : null;
-  
+  const modeManager = view.getModeManager();
+
   if (modeManager) {
     // Use new ModeManager for mode switching
     const restoredMode = restoreBaseMode(plugin);
-    
+
     // Use ModeManager to switch (handles lifecycle hooks and refresh)
-    await modeManager.switchMode(restoredMode as any);
-    
+    await modeManager.switchMode(coerceTimelineMode(restoredMode));
+
     // Reset guard flag after a short delay
     window.setTimeout(() => {
       _isExitingGossamer = false;
     }, 100);
-    
+
     return;
   }
-  
+
   // Fallback mode exit
   // Get SVG element
-  const svg = (view as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector('.radial-timeline-svg') as SVGSVGElement;
-  
+  const svg = view.containerEl.querySelector<SVGSVGElement>('.radial-timeline-svg');
+
   // Remove all Gossamer muting classes FIRST
   if (svg) {
     const allElements = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-subplot-ring-label-text');
     allElements.forEach(el => el.classList.remove('rt-non-selected'));
     svg.removeAttribute('data-gossamer-mode');
-  }
-  
-  // Remove Gossamer event listeners
-  if (svg && typeof (view as unknown as { removeGossamerEventListeners?: (s: SVGSVGElement) => void }).removeGossamerEventListeners === 'function') {
-    (view as unknown as { removeGossamerEventListeners: (s: SVGSVGElement) => void }).removeGossamerEventListeners(svg);
+
+    // Remove Gossamer event listeners
+    view.removeGossamerEventListeners(svg);
   }
 
   const restoredMode = restoreBaseMode(plugin);
-  
-  // Update new mode system if available
-  if (hasKey(view, 'currentMode')) {
-    (view as any).currentMode = restoredMode;
-  }
-  
+
+  // Update new mode system
+  view.currentMode = restoredMode;
+
   // Update settings
   plugin.settings.currentMode = restoredMode;
   void plugin.saveSettings();
-  
+
   // Force an immediate full refresh when exiting Gossamer mode
   // Use direct refreshTimeline() to avoid debounce delay
-  if (typeof (view as any).refreshTimeline === 'function') {
-    (view as any).refreshTimeline();
-  } else {
-    // Fallback to plugin refresh
-    plugin.refreshTimelineIfNeeded(null);
-  }
-  
+  view.refreshTimeline();
+
   // Reset guard flag after a short delay to allow the refresh to complete
   window.setTimeout(() => {
     _isExitingGossamer = false;
@@ -735,43 +718,29 @@ export function resetGossamerModeState() {
 }
 
 export function resetRotation(plugin: RadialTimelinePlugin) {
-  const views = getAllViews(plugin);
-  if (!Array.isArray(views)) return;
-  views.forEach((view) => {
-    if (hasKey(view, 'rotationState')) {
-      (view as { rotationState: boolean }).rotationState = false;
-    }
-  });
+  getAllViews(plugin).forEach((view) => view.setRotationState(false));
 }
 
-// --- Safe access helpers ---
-function getAllViews(plugin: RadialTimelinePlugin): unknown[] | null {
-    const timelineService = (plugin as any).timelineService;
-    if (timelineService && typeof timelineService.getTimelineViews === 'function') {
-        return timelineService.getTimelineViews();
-    }
-    return null;
+// --- View access helpers ---
+function getAllViews(plugin: RadialTimelinePlugin): RadialTimelineView[] {
+    return plugin.getTimelineViews();
 }
 
-function getFirstView(plugin: RadialTimelinePlugin): unknown {
-    const timelineService = (plugin as any).timelineService;
-    if (timelineService && typeof timelineService.getFirstTimelineView === 'function') {
-        return timelineService.getFirstTimelineView();
-    }
-    // Fallback for older versions or if the method doesn't exist
+function getFirstView(plugin: RadialTimelinePlugin): RadialTimelineView | null {
     const views = getAllViews(plugin);
-    return views && views.length > 0 ? views[0] : null;
+    return views.length > 0 ? views[0] : null;
 }
 
-function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
-  return typeof obj === 'object' && obj !== null && key in (obj as Record<string, unknown>);
+const TIMELINE_MODE_VALUES = new Set<string>(Object.values(TimelineMode));
+
+/** Narrow a persisted mode string to the TimelineMode enum, defaulting to narrative. */
+function coerceTimelineMode(mode: string): TimelineMode {
+  return TIMELINE_MODE_VALUES.has(mode) ? (mode as TimelineMode) : TimelineMode.NARRATIVE;
 }
 
-function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer' | undefined {
-  if (hasKey(view, 'currentMode')) {
-    const val = (view).currentMode;
-    if (val === 'narrative' || val === 'gossamer' || val === 'subplot') return val as any;
-  }
+function getInteractionMode(view: RadialTimelineView): 'narrative' | 'subplot' | 'gossamer' | undefined {
+  const val = view.currentMode;
+  if (val === 'narrative' || val === 'gossamer' || val === 'subplot') return val;
   return undefined;
 }
 
@@ -796,8 +765,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     for (const beat of allBeats) {
       if (!beat.path) continue;
       const file = plugin.app.vault.getAbstractFileByPath(beat.path);
-      if (!file) continue;
-      const cache = plugin.app.metadataCache.getFileCache(file as any);
+      if (!(file instanceof TFile)) continue;
+      const cache = plugin.app.metadataCache.getFileCache(file);
       const beatModel = cache?.frontmatter?.["Beat Model"] as string | undefined;
       
       // If we find a custom beat model (not one of the recognized systems)
@@ -848,7 +817,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         // narrows the untyped Obsidian cache to BeatFrontmatter so `fm.Synopsis`
         // (a legacy *Backdrop* key, never valid on a Beat) is a compile-time error.
         const file = plugin.app.vault.getAbstractFileByPath(beat.path || '');
-        const cache = file ? plugin.app.metadataCache.getFileCache(file as any) : null;
+        const cache = file instanceof TFile ? plugin.app.metadataCache.getFileCache(file) : null;
         const fm = asBeatFrontmatter(cache?.frontmatter);
 
         const rangeValue = (typeof fm?.Range === 'string' ? fm.Range : '0-100');
@@ -1267,13 +1236,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       .map(({ file }) => file)
       .filter((file, index, array) => array.findIndex((candidate) => candidate.path === file.path) === index)
       .filter((file) => {
-        const priorFrontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
+        const priorFrontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!priorFrontmatter) return false;
         return willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0;
       });
     const snapshotPath = await archiveGossamerFrontmatterFields(plugin.app, filesToSnapshot, {
       operation: 'gossamer-ai-run',
-      selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+      selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter),
       meta: {
         scope: 'beat-note',
         signal: selectedSignal,
@@ -1283,9 +1252,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     for (const { beat, file } of matchedTargets) {
       // Update beat note with scores
-      await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-        const fm = yaml as Record<string, any>;
-        
+      await plugin.app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
+        const fm = yaml;
+
         // Append new score to end (G1=oldest, newest=highest number)
         const { nextIndex, updated } = appendGossamerScore(fm);
         Object.assign(fm, updated);

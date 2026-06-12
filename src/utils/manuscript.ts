@@ -539,9 +539,9 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
 
   // Sort scenes using the same logic as the timeline view
   // Check current mode and sorting settings
-  const currentMode = (plugin.settings as any).currentMode || 'narrative';
+  const currentMode = plugin.settings.currentMode || 'narrative';
   const isChronologueMode = currentMode === 'chronologue';
-  const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+  const sortByWhen = isChronologueMode ? true : (plugin.settings.sortByWhenDate ?? false);
   const forceChronological = isChronologueMode;
 
   // Import and use the same sortScenes function that the timeline uses

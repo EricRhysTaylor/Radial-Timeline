@@ -146,7 +146,7 @@ export class AuthorProgressRenderService {
             showProgressPercent: ringOnly ? false : baseReveal.showProgressPercent,
             showBranding: !ringOnly,
             centerMark: 'none',
-            stageColors: (this.plugin.settings as any).publishStageColors,
+            stageColors: this.plugin.settings.publishStageColors,
             workingPatternId: this.plugin.settings.workingPatternId,
             customWorkingPatterns: this.plugin.settings.customWorkingPatterns,
             actCount: this.plugin.settings.actCount || undefined,

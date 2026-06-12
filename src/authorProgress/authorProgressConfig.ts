@@ -357,7 +357,7 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
         enableReminders: asBoolean(raw.enableReminders, defaults.enableReminders),
         exportPath: asString(raw.exportPath ?? raw.dynamicEmbedPath) ?? buildDefaultEmbedPath({
             updateFrequency,
-            aprExportQuality: asString(raw.aprExportQuality) as any,
+            aprExportQuality: normalizeAprExportQuality(raw.aprExportQuality),
             exportFormat
         }),
         autoUpdateExportPath: asBoolean(raw.autoUpdateExportPath ?? raw.autoUpdateEmbedPaths, defaults.autoUpdateExportPath ?? true)

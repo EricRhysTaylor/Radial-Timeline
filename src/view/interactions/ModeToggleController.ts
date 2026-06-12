@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import { resetGossamerModeState } from '../../GossamerCommands';
-import type { ModeManager } from '../../modes/ModeManager';
 import { TimelineMode } from '../../modes/ModeDefinition';
+import type { RadialTimelineView } from '../TimeLineView';
 import { getToggleableModes } from '../../modes/ModeRegistry';
 import {
     MODE_SELECTOR_POS_X,
@@ -9,7 +9,6 @@ import {
     MODE_TITLE_POS_X,
     MODE_TITLE_POS_Y
 } from '../../renderer/layout/LayoutConstants';
-import type { RadialTimelineSettings } from '../../types';
 import { t } from '../../i18n';
 
 /**
@@ -28,19 +27,6 @@ function getModeAcronym(modeId: string, fallback: string): string {
     const key = `timeline.modes.${modeId}.acronym`;
     const value = t(key);
     return value && !value.startsWith('[missing:') ? value : fallback;
-}
-
-interface ModeToggleView {
-    currentMode?: string;
-    closeWritingSessionPanel?: () => void;
-    getModeManager?: () => ModeManager | undefined;
-    plugin: {
-        settings: RadialTimelineSettings;
-        saveSettings: () => Promise<void>;
-        refreshTimelineIfNeeded: (file: unknown) => void;
-    };
-    registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
-    register: (cb: () => void) => void;
 }
 
 // Build MODE_OPTIONS dynamically from mode registry - SINGLE SOURCE OF TRUTH
@@ -119,7 +105,7 @@ function createActiveDocumentShape(): string {
 /**
  * Create the mode selector grid element
  */
-function createModeSelectorGrid(view: ModeToggleView, doc: Document): SVGGElement {
+function createModeSelectorGrid(view: RadialTimelineView, doc: Document): SVGGElement {
     const grid = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
     grid.setAttribute('class', 'rt-mode-selector-grid');
     grid.setAttribute('id', 'mode-selector');
@@ -193,9 +179,9 @@ function createModeSelectorGrid(view: ModeToggleView, doc: Document): SVGGElemen
 /**
  * Switch to the specified mode
  */
-async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: SVGGElement): Promise<void> {
-    const modeManager = view.getModeManager?.();
-    view.closeWritingSessionPanel?.();
+async function switchToMode(view: RadialTimelineView, modeId: string, modeSelector: SVGGElement): Promise<void> {
+    const modeManager = view.getModeManager();
+    view.closeWritingSessionPanel();
 
     // Update UI immediately for instant visual feedback
     updateModeSelectorState(modeSelector, modeId);
@@ -214,12 +200,8 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
             await view.plugin.saveSettings();
             resetGossamerModeState();
 
-            // Use direct refresh if available (bypasses 400ms debounce)
-            if (typeof (view as any).refreshTimeline === 'function') {
-                (view as any).refreshTimeline();
-            } else {
-                view.plugin.refreshTimelineIfNeeded(null);
-            }
+            // Use direct refresh (bypasses 400ms debounce)
+            view.refreshTimeline();
         }
     } catch (error) {
         // Revert UI on unhandled error and notify user
@@ -309,7 +291,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
 /**
  * Initialize mode selector controls for a view
  */
-export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGElement): void {
+export function setupModeToggleController(view: RadialTimelineView, svg: SVGSVGElement): void {
     const doc = svg.ownerDocument;
 
     // Create mode selector grid
@@ -334,7 +316,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     // Register keyboard shortcuts (1, 2, 3, 4)
     const handleKeyPress = async (e: KeyboardEvent) => {
         // Only handle shortcuts when the radial timeline is the active view
-        const activeView = (view as any).app?.workspace?.activeLeaf?.view;
+        const activeView = view.app.workspace.activeLeaf?.view;
         if (activeView !== view) {
             return; // Different view is active, don't intercept
         }

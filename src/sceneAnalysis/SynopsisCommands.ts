@@ -216,7 +216,15 @@ function wasSynopsisUpdatedToday(scene: SceneData, plugin: RadialTimelinePlugin,
 function normalizeErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message.trim();
     if (error === null || error === undefined) return 'Unknown error';
-    return (typeof error === 'object' ? JSON.stringify(error) : String(error)).trim();
+    if (typeof error === 'string') return error.trim();
+    if (typeof error === 'number' || typeof error === 'boolean' || typeof error === 'bigint' || typeof error === 'symbol') {
+        return String(error).trim();
+    }
+    try {
+        return JSON.stringify(error).trim();
+    } catch {
+        return 'Unknown error';
+    }
 }
 
 function explainSummaryRefreshFailure(

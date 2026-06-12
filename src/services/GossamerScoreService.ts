@@ -64,13 +64,13 @@ export class GossamerScoreService {
             .map(({ file }) => file)
             .filter((file, index, array) => array.findIndex((candidate) => candidate.path === file.path) === index)
             .filter((file) => {
-                const priorFrontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
+                const priorFrontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
                 if (!priorFrontmatter) return false;
                 return willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0;
             });
         const snapshotPath = await archiveGossamerFrontmatterFields(this.app, filesToSnapshot, {
             operation: source === 'clipboard-paste' ? 'gossamer-clipboard-save' : 'gossamer-save',
-            selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+            selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter),
             meta: {
                 scope: 'beat-note',
                 signal,
@@ -80,8 +80,8 @@ export class GossamerScoreService {
 
         for (const { beatTitle, newScore, file } of targets) {
             try {
-                await this.app.fileManager.processFrontMatter(file, (yaml) => {
-                    const fm = yaml as Record<string, any>;
+                await this.app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
+                    const fm = yaml;
                     const { nextIndex, updated } = appendGossamerScore(fm);
                     Object.assign(fm, updated);
                     fm[`Gossamer${nextIndex}`] = newScore;

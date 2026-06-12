@@ -145,12 +145,13 @@ export function createSnapshot(
             
             // Include all Gossamer fields (Gossamer1 through Gossamer30)
             for (let i = 1; i <= 30; i++) {
-                const gossamerKey = `Gossamer${i}` as keyof TimelineItem;
-                parts.push((s[gossamerKey] as any) || '');
-                
-                // Include Gossamer justifications (rendered in Gossamer mode)
-                const justificationKey = `Gossamer${i} Justification` as keyof TimelineItem;
-                parts.push((s[justificationKey] as any) || '');
+                const gossamerKey = `Gossamer${i}` as Extract<keyof TimelineItem, `Gossamer${number}`>;
+                parts.push(s[gossamerKey] || '');
+
+                // Include Gossamer justifications (rendered in Gossamer mode).
+                // Justifications are dynamic frontmatter keys, not typed on TimelineItem.
+                const justification = s.rawFrontmatter?.[`Gossamer${i} Justification`];
+                parts.push(typeof justification === 'string' ? justification : '');
             }
             
             return parts.join(':');

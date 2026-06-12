@@ -48,18 +48,18 @@ export const CHRONOLOGUE_MODE: ModeDefinition = {
      */
     onExit: async (view: RadialTimelineView) => {
         // Call the chronologue shift cleanup function if it exists
-        if ((view as any)._chronologueShiftCleanup) {
-            (view as any)._chronologueShiftCleanup();
+        if (view._chronologueShiftCleanup) {
+            view._chronologueShiftCleanup();
             // Clear the cleanup function reference
-            delete (view as any)._chronologueShiftCleanup;
+            delete view._chronologueShiftCleanup;
         }
-        
+
         // Reset the global shift mode state
         const { resetShiftModeState } = await import('../../view/interactions/ChronologueShiftController');
         resetShiftModeState();
-        
+
         // Clean up any remaining shift mode UI from the SVG
-        const container = (view as any).containerEl as HTMLElement;
+        const container = view.containerEl;
         if (container) {
             const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
             if (svg) {

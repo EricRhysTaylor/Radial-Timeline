@@ -101,7 +101,7 @@ function determineHighlightCount(countOverride: number | undefined, characterCou
 }
 
 export function resolveScenePov(
-    scene: TimelineItem,
+    scene: Pick<TimelineItem, 'Character' | 'pov'>,
     options: { globalMode?: GlobalPovMode }
 ): ResolvedPov {
     const characters = scene.Character || [];

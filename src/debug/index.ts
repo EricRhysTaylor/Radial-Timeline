@@ -5,8 +5,13 @@
 import type RadialTimelinePlugin from '../main';
 import { buildSnapshot } from './snapshot';
 
-export function installDebug(plugin: RadialTimelinePlugin): void {
-    (window as any).__RT_DEBUG_SNAPSHOT__ = () => buildSnapshot(plugin);
-    (window as any).__RT_DEBUG_CAPS__ = { snapshotVersion: 1 };
+interface DebugGlobals {
+    __RT_DEBUG_SNAPSHOT__?: () => ReturnType<typeof buildSnapshot>;
+    __RT_DEBUG_CAPS__?: { snapshotVersion: number };
 }
 
+export function installDebug(plugin: RadialTimelinePlugin): void {
+    const debugWindow = window as Window & DebugGlobals;
+    debugWindow.__RT_DEBUG_SNAPSHOT__ = () => buildSnapshot(plugin);
+    debugWindow.__RT_DEBUG_CAPS__ = { snapshotVersion: 1 };
+}

@@ -4,9 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { TFile, App } from 'obsidian';
-import type { TimelineItem } from '../../types';
-import type SynopsisManager from '../../SynopsisManager';
+import { TFile } from 'obsidian';
 import { setupChronologueShiftController, isShiftModeActive, isAlienModeActive, isRuntimeModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
@@ -14,31 +12,13 @@ import { SceneInteractionManager } from '../interactions/SceneInteractionManager
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
-
-export interface ChronologueView {
-    registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
-    register: (cb: () => void) => void;
-    plugin: {
-        refreshTimelineIfNeeded?: (path: string | null) => void;
-        app?: App;
-        settings: {
-            dominantSubplots?: Record<string, string>;
-            enableSceneTitleAutoExpand?: boolean;
-            enableZeroDraftMode?: boolean;
-        };
-        saveSettings?: () => Promise<void>;
-        synopsisManager: SynopsisManager;
-    };
-    currentMode: string;
-    sceneData?: TimelineItem[]; // Full scene data from view
-    [key: string]: any; // SAFE: any type used for view augmentation by Obsidian/other modules
-}
+import type { RadialTimelineView } from '../TimeLineView';
 
 /**
  * Setup Chronologue Mode interactions
  * Handles scene hover/click interactions and integrates with shift mode
  */
-export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement): void {
+export function setupChronologueMode(view: RadialTimelineView, svg: SVGSVGElement): void {
     // Only setup if in Chronologue mode
     if (view.currentMode !== 'chronologue') {
         return;
@@ -53,16 +33,16 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
     // Scene click interactions (will delegate to shift mode if active)
     setupSceneClickInteractions(view, svg);
 
-    setupSceneContextMenu(view as any, svg);
+    setupSceneContextMenu(view, svg);
 }
 
 /**
  * Setup scene hover interactions for synopsis display
  */
-function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement): void {
+function setupSceneHoverInteractions(view: RadialTimelineView, svg: SVGSVGElement): void {
     // Create scene interaction manager for title expansion
-    const totalActs = Math.max(3, (view.plugin.settings as any).actCount ?? 3);
-    const manager = new SceneInteractionManager(view as any, svg, totalActs);
+    const totalActs = Math.max(3, view.plugin.settings.actCount ?? 3);
+    const manager = new SceneInteractionManager(view, svg, totalActs);
 
     // ALWAYS DISABLE title expansion in Chronologue mode:
     // - Not needed: Chronological order focuses on temporal relationships, not scene titles
@@ -375,21 +355,21 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 /**
  * Setup scene click interactions for opening files
  */
-function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement): void {
+function setupSceneClickInteractions(view: RadialTimelineView, svg: SVGSVGElement): void {
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => { void (async () => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]');
         if (!g) return;
 
         // When shift/alt/runtime mode is active, delegate to shift controller
         if (isShiftModeActive() || isAlienModeActive() || isRuntimeModeActive()) {
-            const handled = (view as any).handleShiftModeClick?.(e, g);
+            const handled = view.handleShiftModeClick?.(e, g);
             if (handled) {
                 return; // Shift/ALT mode handled the click
             }
         }
 
         // Handle dominant subplot selection for scenes in multiple subplots
-        const scenes = view.sceneData || (view as any).scenes || [];
+        const scenes = view.sceneData;
         if (scenes.length > 0) {
             await handleDominantSubplotSelection(view, g, svg, scenes);
         }
@@ -409,14 +389,14 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
                     file,
                     enableZeroDraftMode: view.plugin.settings.enableZeroDraftMode,
                     sceneTitle: file.basename || 'Scene',
-                    onOverrideOpen: async () => openOrRevealFile((view.plugin as any).app, file)
+                    onOverrideOpen: async () => openOrRevealFile(view.plugin.app, file)
                 });
                 if (zeroDraftHandled) {
                     e.preventDefault();
                     e.stopPropagation();
                     return;
                 }
-                await openOrRevealFile((view.plugin as any).app, file);
+                await openOrRevealFile(view.plugin.app, file);
             }
         }
     })(); });

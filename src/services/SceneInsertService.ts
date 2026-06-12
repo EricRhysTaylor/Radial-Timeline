@@ -300,8 +300,19 @@ function normalizeWhenFallback(value: unknown): string {
     if (value instanceof Date && !Number.isNaN(value.getTime())) return formatDateForYaml(value);
     if (Array.isArray(value)) return value.length > 0 ? normalizeWhenFallback(value[0]) : '';
     if (value === null || value === undefined) return '';
-    if (value instanceof Date || typeof value !== 'object') return String(value).trim();
-    return JSON.stringify(value).trim();
+    if (value instanceof Date) return value.toString().trim();
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+        return String(value).trim();
+    }
+    if (typeof value === 'object') {
+        try {
+            return JSON.stringify(value).trim();
+        } catch {
+            return '';
+        }
+    }
+    return '';
 }
 
 async function readAnchorWhen(app: App, settings: RadialTimelineSettings, file: TFile): Promise<string> {

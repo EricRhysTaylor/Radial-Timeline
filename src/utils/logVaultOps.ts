@@ -1,4 +1,4 @@
-import { App, TAbstractFile, TFile, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
+import { App, TAbstractFile, TFile, Vault, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
 import { confirmWithErtModal } from '../modals/ErtConfirmModal';
 import { resolveSnapshotsLogsRoot } from '../ai/log';
 
@@ -49,7 +49,9 @@ export interface ManagedOutputWriteResult {
  */
 export function useSystemTrash(app: App): boolean {
     try {
-        const trashOption = (app.vault as any).getConfig?.('trashOption');
+        // getConfig is an undocumented Vault API; type it structurally.
+        const vault = app.vault as Vault & { getConfig?: (key: string) => unknown };
+        const trashOption = vault.getConfig?.('trashOption');
         return trashOption === 'system';
     } catch {
         return false;

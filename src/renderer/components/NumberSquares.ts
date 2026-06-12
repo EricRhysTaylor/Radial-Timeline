@@ -50,9 +50,9 @@ export function renderNumberSquaresUnified(params: {
   } = params;
 
   let svg = '<g class="rt-number-squares">';
-  const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
+  const readabilityScale = getReadabilityMultiplier(plugin.settings);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1; // pad more aggressively when font grows
-  const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+  const isSagaScope = getTimelineScope(plugin.settings) === 'saga';
   const totalActs = isSagaScope ? Math.max(1, numActs ?? 1) : Math.max(3, numActs ?? 3);
 
   scenes.forEach((scene, idx) => {
@@ -88,9 +88,9 @@ export function renderNumberSquaresUnified(params: {
       const ring = NUM_RINGS - 1 - subplotIndex;
 
       // Check if using When date sorting
-      const currentMode = (plugin.settings as any).currentMode || 'narrative';
+      const currentMode = plugin.settings.currentMode || 'narrative';
       const isChronologueMode = currentMode === 'chronologue';
-      const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+      const sortByWhen = isChronologueMode ? true : (plugin.settings.sortByWhenDate ?? false);
 
       const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
       // When using When date sorting, all scenes are in act 0
@@ -231,15 +231,15 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   numActs?: number;
 }): string {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual, numActs } = params;
-  const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
+  const readabilityScale = getReadabilityMultiplier(plugin.settings);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1;
-  const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+  const isSagaScope = getTimelineScope(plugin.settings) === 'saga';
   const totalActs = isSagaScope ? Math.max(1, numActs ?? 1) : Math.max(3, numActs ?? 3);
 
   // Check if using When date sorting
-  const currentMode = (plugin.settings as any).currentMode || 'narrative';
+  const currentMode = plugin.settings.currentMode || 'narrative';
   const isChronologueMode = currentMode === 'chronologue';
-  const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+  const sortByWhen = isChronologueMode ? true : (plugin.settings.sortByWhenDate ?? false);
 
   let svg = '';
   scenes.forEach((scene) => {

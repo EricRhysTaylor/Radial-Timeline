@@ -51,11 +51,11 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
     } = ctx;
 
     let svg = '';
-    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+    const isSagaScope = getTimelineScope(plugin.settings) === 'saga';
     const NUM_RINGS = masterSubplotOrder.length;
     const totalActs = isSagaScope
         ? Math.max(1, numActs || 1)
-        : Math.max(3, numActs || getConfiguredActCount(plugin.settings as any));
+        : Math.max(3, numActs || getConfiguredActCount(plugin.settings));
 
     if (shouldShowAllScenesInOuterRing(plugin)) {
         // In outer-ring-narrative mode, draw number squares for ALL rings
@@ -69,9 +69,9 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
         const squareRadiusOuter = (innerROuter + outerROuter) / 2;
 
         // Determine number of acts to iterate based on sorting method
-        const currentMode = (plugin.settings as any).currentMode || 'narrative';
+        const currentMode = plugin.settings.currentMode || 'narrative';
         const isChronologueMode = currentMode === 'chronologue';
-        const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+        const sortByWhen = isChronologueMode ? true : (plugin.settings.sortByWhenDate ?? false);
         const actsToRender = sortByWhen ? 1 : totalActs;
 
         for (let act = 0; act < actsToRender; act++) {

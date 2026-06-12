@@ -4,8 +4,8 @@ import { escapeRegExp } from '../../utils/regex';
  * CSS-escape a value for use in attribute selectors
  */
 function cssEscape(value: string): string {
-    if (typeof (window as any).CSS !== 'undefined' && (window as any).CSS.escape) {
-        return (window as any).CSS.escape(value);
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+        return CSS.escape(value);
     }
     return value.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 }

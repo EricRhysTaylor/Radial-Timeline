@@ -23,7 +23,7 @@ export class ManageSubplotsModal extends Modal {
         this.plugin = plugin;
         // Instantiate service on demand, or could be passed in
         // Ideally checking if plugin has it, but for now new instance is fine as it's stateless-ish (depends on app/sceneDataService)
-        this.service = new SubplotManagementService(app, (plugin as any).sceneDataService);
+        this.service = new SubplotManagementService(app, plugin.getSceneDataService());
     }
 
     onOpen() {

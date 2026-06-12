@@ -8,6 +8,7 @@ import { buildProgressSnapshot } from '../progress/progressSnapshot';
 import { normalizeBeatSetNameInput, toBeatMatchKey, toBeatModelMatchKey } from './beatsInputNormalize';
 import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from '../types/gossamerSignals';
+import type { TimelineItem } from '../types';
 import { getModelDisplayName } from './modelResolver';
 
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
@@ -53,6 +54,21 @@ export interface GossamerRunRecord {
   stage?: string;
   signal: GossamerSignalType;
   run: GossamerRun;
+}
+
+/** Historical run overlay shape consumed by the gossamer renderer layer. */
+export interface GossamerHistoricalRunOverlay {
+  label: string;
+  points: { beat: string; score: number }[];
+  color: string;
+  stage?: string;
+  runIndex: number;
+}
+
+/** Min/max confidence band across all runs, keyed by beat name. */
+export interface GossamerMinMaxBand {
+  min: { beat: string; score: number }[];
+  max: { beat: string; score: number }[];
 }
 
 export interface GossamerRunFilterState {
@@ -303,9 +319,9 @@ const BUILTIN_BEAT_MODEL_KEYS = new Set<string>([
  * @returns The dominant stage: 'Zero' | 'Author' | 'House' | 'Press'
  */
 export function detectDominantStage(
-  scenes: { itemType?: string; status?: string | string[]; "Publish Stage"?: string }[]
+  scenes: TimelineItem[]
 ): typeof STAGE_ORDER[number] {
-  const snapshot = buildProgressSnapshot(scenes as any);
+  const snapshot = buildProgressSnapshot(scenes);
   return snapshot.highestCompletedStage ?? 'Zero';
 }
 
@@ -317,7 +333,7 @@ export function detectDominantStage(
  * @param selectedBeatModel - The beat model to filter by (e.g., "Save The Cat", "Podcast Narrative Arc")
  * @returns Filtered array of beats matching the selected system
  */
-export function filterBeatsBySystem<T>(
+export function filterBeatsBySystem<T extends object>(
   beats: T[],
   selectedBeatModel?: string
 ): T[] {
@@ -331,7 +347,7 @@ export function filterBeatsBySystem<T>(
   if (selectedKey === 'custom') {
     // Default Custom: exclude beats that belong to built-in systems
     return beats.filter(b => {
-      const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
+      const beatModel = (b as Record<string, unknown>)["Beat Model"];
       if (!beatModel || typeof beatModel !== 'string') return false; // Missing Beat Model is invalid for Beat notes
       const modelKey = toBeatModelMatchKey(beatModel);
       if (!modelKey) return false;
@@ -342,7 +358,7 @@ export function filterBeatsBySystem<T>(
     // For specific system: only include beats matching that system
     const selectedLooksCustom = !BUILTIN_BEAT_MODEL_KEYS.has(selectedKey) && selectedKey !== 'custom';
     return beats.filter(b => {
-      const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
+      const beatModel = (b as Record<string, unknown>)["Beat Model"];
       if (!beatModel || typeof beatModel !== 'string') return false;
       const modelKey = toBeatModelMatchKey(beatModel);
       if (selectedLooksCustom) {
@@ -709,8 +725,8 @@ export function buildAllGossamerRuns(
   filterState: GossamerRunFilterState = {}
 ): { // SAFE: unknown type used for dynamic Gossamer1-30 field access
   current: GossamerRun;
-  historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string; stage?: string; runIndex: number }>;
-  minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null;
+  historical: GossamerHistoricalRunOverlay[];
+  minMax: GossamerMinMaxBand | null;
   hasAnyScores: boolean;
   runs: GossamerRunRecord[];
   visibleRuns: GossamerRunRecord[];
@@ -900,7 +916,7 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
  * Shift Gossamer history down by one (Gossamer1 → Gossamer2, etc.)
  * Shifts both scores and justifications. Returns updated frontmatter.
  */
-export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<string, any> {
+export function shiftGossamerHistory(frontmatter: Record<string, unknown>): Record<string, unknown> {
   const maxHistory = GOSSAMER_MAX_HISTORY;
   const updated = { ...frontmatter };
   for (let i = maxHistory; i >= 2; i--) {
@@ -926,12 +942,12 @@ export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<s
   return updated;
 }
 
-export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
-  normalized: Record<string, any>;
+export function normalizeGossamerHistory(frontmatter: Record<string, unknown>): {
+  normalized: Record<string, unknown>;
   changed: boolean;
 } {
   const maxHistory = GOSSAMER_MAX_HISTORY;
-  const normalized: Record<string, any> = {};
+  const normalized: Record<string, unknown> = {};
   type Entry = {
     score: number;
     justification?: string;
@@ -946,15 +962,15 @@ export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
     const justKey = getGossamerJustificationKey(i);
     const numeric = parseGossamerScoreValue(frontmatter[scoreKey]);
     const metadata = readGossamerSlotMetadata(frontmatter, i);
+    const justification = frontmatter[justKey];
     if (numeric !== undefined) {
       const entry: Entry = { score: numeric, originalIndex: i, metadata };
-      const justification = frontmatter[justKey];
       if (typeof justification === 'string' && justification.trim().length > 0) {
         entry.justification = justification;
       }
       entries.push(entry);
     } else if (
-      (typeof frontmatter[justKey] === 'string' && frontmatter[justKey].trim().length > 0) ||
+      (typeof justification === 'string' && justification.trim().length > 0) ||
       metadata.runId ||
       metadata.createdAt ||
       metadata.provider ||
@@ -982,7 +998,7 @@ export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
   return { normalized, changed };
 }
 
-export function collectGossamerManagedSnapshot(frontmatter: Record<string, any>, maxHistory: number = 40): Record<string, unknown> {
+export function collectGossamerManagedSnapshot(frontmatter: Record<string, unknown>, maxHistory: number = 40): Record<string, unknown> {
   const snapshot: Record<string, unknown> = {};
   for (let i = 1; i <= maxHistory; i++) {
     const scoreKey = getGossamerScoreKey(i);
@@ -1008,7 +1024,7 @@ export function collectGossamerManagedSnapshot(frontmatter: Record<string, any>,
   return snapshot;
 }
 
-export function willAppendGossamerPrune(frontmatter: Record<string, any>, maxHistory: number = 30): boolean {
+export function willAppendGossamerPrune(frontmatter: Record<string, unknown>, maxHistory: number = 30): boolean {
   const hasValue = (value: unknown): boolean => {
     if (value === null || value === undefined) return false;
     if (typeof value === 'number') return !Number.isNaN(value);
@@ -1024,9 +1040,9 @@ export function willAppendGossamerPrune(frontmatter: Record<string, any>, maxHis
 }
 
 export function appendGossamerScore(
-  frontmatter: Record<string, any>,
+  frontmatter: Record<string, unknown>,
   maxHistory: number = GOSSAMER_MAX_HISTORY
-): { nextIndex: number; updated: Record<string, any> } {
+): { nextIndex: number; updated: Record<string, unknown> } {
   const updated = { ...frontmatter };
   const hasValue = (value: unknown): boolean => {
     if (value === null || value === undefined) return false;

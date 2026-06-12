@@ -4,7 +4,7 @@ import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorP
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { AprStyleService } from '../../services/apr/AprStyleService';
 import { DEFAULT_SETTINGS } from '../defaults';
-import type { AprStyleSettings, AuthorProgressDefaults, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
+import type { AprStyleSettings, AuthorProgressDefaults, AuthorProgressFrequency, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getTeaserRevealLevel, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
@@ -1746,7 +1746,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                             aprExportQuality: current.aprExportQuality,
                             exportFormat: defaultFormat
                         });
-                        current.updateFrequency = val as any;
+                        // Dropdown options are limited to the AuthorProgressFrequency values above
+                        current.updateFrequency = val as AuthorProgressFrequency;
                         if (current.exportPath === oldDefaultPath) {
                             current.exportPath = buildDefaultEmbedPath({
                                 bookTitle: plugin.getActiveBookTitle(),
@@ -2037,7 +2038,7 @@ async function renderHeroPreview(
             showProgressPercent,
             showBranding,
             centerMark: 'none',
-            stageColors: (plugin.settings as any).publishStageColors,
+            stageColors: plugin.settings.publishStageColors,
             workingPatternId: plugin.settings.workingPatternId,
             customWorkingPatterns: plugin.settings.customWorkingPatterns,
             actCount: plugin.settings.actCount || undefined,

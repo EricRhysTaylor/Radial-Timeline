@@ -131,7 +131,8 @@ function stringifyForScan(value: unknown): string {
     try {
         return JSON.stringify(value);
     } catch {
-        return typeof value === 'object' && value !== null ? '[unserializable]' : String(value);
+        // JSON.stringify only throws for circular objects and BigInt values.
+        return typeof value === 'bigint' ? String(value) : '[unserializable]';
     }
 }
 

@@ -1,4 +1,4 @@
-import { App, Notice } from 'obsidian';
+import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { resolveBookTitle } from '../../renderer/apr/aprHelpers';
 import { AuthorProgressRenderService } from './AuthorProgressRenderService';
@@ -51,8 +51,8 @@ export class AuthorProgressPublishService {
         if (settings.noteBehavior === 'custom' && settings.customNoteTemplatePath) {
             try {
                 const templateFile = this.app.vault.getAbstractFileByPath(settings.customNoteTemplatePath);
-                if (templateFile && 'path' in templateFile) {
-                    const templateContent = await this.app.vault.read(templateFile as any);
+                if (templateFile instanceof TFile) {
+                    const templateContent = await this.app.vault.read(templateFile);
                     noteContent = templateContent
                         .replace(/{{SVG_PATH}}/g, exportPath)
                         .replace(/{{SOCIAL_PATH}}/g, exportPath)

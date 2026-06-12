@@ -26,11 +26,11 @@ type PluginFacade = PluginRendererFacade;
  * @returns true if beats should be shown, false if they should be hidden/removed
  */
 export function shouldRenderStoryBeats(plugin: PluginFacade): boolean {
-    if (getTimelineScope(plugin.settings as any) === 'saga') {
+    if (getTimelineScope(plugin.settings) === 'saga') {
         return false;
     }
 
-    const currentMode = (plugin.settings as any).currentMode || TimelineMode.NARRATIVE;
+    const currentMode = plugin.settings.currentMode || TimelineMode.NARRATIVE;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check if beats are shown in this mode
@@ -44,7 +44,7 @@ export function shouldRenderStoryBeats(plugin: PluginFacade): boolean {
  * @returns true if subplot rings should be shown, false if hidden
  */
 export function shouldShowSubplotRings(plugin: PluginFacade): boolean {
-    const currentMode = (plugin.settings as any).currentMode || TimelineMode.NARRATIVE;
+    const currentMode = plugin.settings.currentMode || TimelineMode.NARRATIVE;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check if inner rings are visible (not hidden)
@@ -59,7 +59,7 @@ export function shouldShowSubplotRings(plugin: PluginFacade): boolean {
  * @returns true if all scenes shown, false if only main plot
  */
 export function shouldShowAllScenesInOuterRing(plugin: PluginFacade): boolean {
-    const currentMode = (plugin.settings as any).currentMode || TimelineMode.NARRATIVE;
+    const currentMode = plugin.settings.currentMode || TimelineMode.NARRATIVE;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check outer ring content setting
@@ -75,7 +75,7 @@ export function shouldShowAllScenesInOuterRing(plugin: PluginFacade): boolean {
  * @returns true if inner rings show content, false if hidden/empty
  */
 export function shouldShowInnerRingContent(plugin: PluginFacade): boolean {
-    const currentMode = (plugin.settings as any).currentMode || TimelineMode.NARRATIVE;
+    const currentMode = plugin.settings.currentMode || TimelineMode.NARRATIVE;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Inner rings show content unless hidden
@@ -96,7 +96,7 @@ export function getSubplotLabelText(plugin: PluginFacade, subplot: string, isOut
     }
     
     // Outer ring label depends on mode
-    const currentMode = (plugin.settings as any).currentMode || TimelineMode.NARRATIVE;
+    const currentMode = plugin.settings.currentMode || TimelineMode.NARRATIVE;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check outer ring content type

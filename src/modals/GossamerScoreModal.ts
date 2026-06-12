@@ -92,7 +92,7 @@ export class GossamerScoreModal extends Modal {
   private async snapshotGossamerFields(files: TFile[], operation: string, meta: Record<string, unknown> = {}): Promise<string | null> {
     return archiveGossamerFrontmatterFields(this.app, files, {
       operation,
-      selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+      selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter),
       meta: {
         scope: 'beat-note',
         ...meta
@@ -100,7 +100,7 @@ export class GossamerScoreModal extends Modal {
     });
   }
 
-  private analyzeNormalizationFrontmatter(frontmatter: Record<string, any>, beatTitle: string): NormalizationIssue {
+  private analyzeNormalizationFrontmatter(frontmatter: Record<string, unknown>, beatTitle: string): NormalizationIssue {
     const maxHistory = 30;
     const missingSlots: number[] = [];
     const orphanJustifications: number[] = [];
@@ -110,6 +110,7 @@ export class GossamerScoreModal extends Modal {
       const scoreKey = `Gossamer${i}`;
       const justKey = `Gossamer${i} Justification`;
       const rawScore = frontmatter[scoreKey];
+      const rawJustification = frontmatter[justKey];
       let numeric: number | undefined;
 
       if (typeof rawScore === 'number') {
@@ -121,7 +122,7 @@ export class GossamerScoreModal extends Modal {
 
       if (numeric !== undefined) {
         indices.push(i);
-      } else if (typeof frontmatter[justKey] === 'string' && frontmatter[justKey].trim().length > 0) {
+      } else if (typeof rawJustification === 'string' && rawJustification.trim().length > 0) {
         orphanJustifications.push(i);
       }
     }
@@ -268,8 +269,8 @@ export class GossamerScoreModal extends Modal {
           const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
           if (!file || !(file instanceof TFile)) continue;
 
-          await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-            const fm = yaml as Record<string, any>;
+          await this.plugin.app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
+            const fm = yaml;
             const { normalized, changed } = normalizeGossamerHistory(fm);
             if (changed) {
               changedCount++;
@@ -358,10 +359,10 @@ export class GossamerScoreModal extends Modal {
         return { beat, "Beat Model": undefined as string | undefined };
       }
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
-      if (!file) {
+      if (!(file instanceof TFile)) {
         return { beat, "Beat Model": undefined as string | undefined };
       }
-      const cache = this.plugin.app.metadataCache.getFileCache(file as any);
+      const cache = this.plugin.app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
       return { beat, "Beat Model": fm?.["Beat Model"] as string | undefined };
     });
@@ -721,9 +722,9 @@ export class GossamerScoreModal extends Modal {
 
       // Get metadata from cache
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
-      if (!file) continue;
+      if (!(file instanceof TFile)) continue;
 
-      const cache = this.plugin.app.metadataCache.getFileCache(file as any);
+      const cache = this.plugin.app.metadataCache.getFileCache(file);
       const fm = asBeatFrontmatter(cache?.frontmatter);
       // rawFm is retained for the dynamic Gossamer<N> / Score<N> sweep below —
       // those keys are accessed by computed name (`Gossamer${i}`), not by literal,
@@ -1124,12 +1125,10 @@ export class GossamerScoreModal extends Modal {
       }
 
       try {
-        await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-          const fm = yaml as Record<string, any>;
-
+        await this.plugin.app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
           // Delete specified Gossamer fields
           for (const num of gossamerNums) {
-            clearGossamerRunSlot(fm, num);
+            clearGossamerRunSlot(yaml, num);
           }
         });
       } catch (error) {
@@ -1199,7 +1198,7 @@ export class GossamerScoreModal extends Modal {
 
     // Signal-aware score detection: only count slots whose GossamerSignal${i}
     // matches the active signal (missing signal field = momentum by legacy rule).
-    const slotMatchesActiveSignal = (fm: Record<string, any>, index: number): boolean => {
+    const slotMatchesActiveSignal = (fm: Record<string, unknown>, index: number): boolean => {
       const raw = fm[`GossamerSignal${index}`];
       if (typeof raw === 'string' && raw.trim().length > 0) {
         return raw.trim().toLowerCase() === activeSignal;
@@ -1207,7 +1206,7 @@ export class GossamerScoreModal extends Modal {
       return activeSignal === 'momentum';
     };
 
-    const fileHasActiveSignalScore = (fm: Record<string, any>): number[] => {
+    const fileHasActiveSignalScore = (fm: Record<string, unknown>): number[] => {
       const hits: number[] = [];
       for (let i = 1; i <= 30; i++) {
         if (fm[`Gossamer${i}`] === undefined) continue;
@@ -1220,7 +1219,7 @@ export class GossamerScoreModal extends Modal {
     for (const file of files) {
       const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
       if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
-        if (fileHasActiveSignalScore(fm as any).length > 0) {
+        if (fileHasActiveSignalScore(fm).length > 0) {
           hasAnyScores = true;
           break;
         }
@@ -1246,7 +1245,7 @@ export class GossamerScoreModal extends Modal {
       const filesToSnapshot = files.filter((file) => {
         const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!(fm && (fm.Class === 'Beat' || fm.class === 'Beat'))) return false;
-        return fileHasActiveSignalScore(fm as any).length > 0;
+        return fileHasActiveSignalScore(fm).length > 0;
       });
       const snapshotPath = await this.snapshotGossamerFields(filesToSnapshot, `gossamer-delete-${activeSignal}`, {
         beatCount: filesToSnapshot.length,
@@ -1256,11 +1255,11 @@ export class GossamerScoreModal extends Modal {
       for (const file of files) {
         const fmRead = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!(fmRead && (fmRead.Class === 'Beat' || fmRead.class === 'Beat'))) continue;
-        const slotsToClear = fileHasActiveSignalScore(fmRead as any);
+        const slotsToClear = fileHasActiveSignalScore(fmRead);
         if (slotsToClear.length === 0) continue;
 
-        await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-          const frontmatter = yaml as Record<string, any>;
+        await this.plugin.app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
+          const frontmatter = yaml;
           // Re-check inside the write to avoid races on stale cache.
           for (let i = 1; i <= 30; i++) {
             if (frontmatter[`Gossamer${i}`] === undefined) continue;
@@ -1301,10 +1300,10 @@ export class GossamerScoreModal extends Modal {
       ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
 
-    const isBeat = (fm: Record<string, any> | undefined): boolean =>
+    const isBeat = (fm: Record<string, unknown> | undefined): fm is Record<string, unknown> =>
       !!fm && (fm.Class === 'Beat' || fm.class === 'Beat');
 
-    const fileHasGossamerData = (fm: Record<string, any>): boolean => {
+    const fileHasGossamerData = (fm: Record<string, unknown>): boolean => {
       for (let i = 1; i <= 30; i++) {
         if (fm[`Gossamer${i}`] !== undefined) return true;
       }
@@ -1316,7 +1315,7 @@ export class GossamerScoreModal extends Modal {
 
     const beatsWithData = files.filter((file) => {
       const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
-      return isBeat(fm as any) && fileHasGossamerData(fm as any);
+      return isBeat(fm) && fileHasGossamerData(fm);
     });
 
     if (beatsWithData.length === 0) {

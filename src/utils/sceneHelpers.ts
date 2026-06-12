@@ -4,7 +4,8 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import type { TimelineItem } from '../types';
-import type { ChronologueBackdropMicroRing, GlobalPovMode } from '../types/settings';
+import type { BookProfile, ChronologueBackdropMicroRing, GlobalPovMode, ReadabilityScale } from '../types/settings';
+import type { GossamerHistoricalRunOverlay, GossamerMinMaxBand, GossamerRun } from './gossamer';
 import { parseWhenField } from './date';
 import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
 
@@ -135,6 +136,21 @@ export interface PluginRendererFacade {
         discontinuityThreshold?: string;
         globalPovMode?: GlobalPovMode;
         runtimeContentType?: 'novel' | 'screenplay';
+        currentMode?: string;
+        sortByWhenDate?: boolean;
+        showChapterMarkers?: boolean;
+        timelineScope?: 'book' | 'saga';
+        books: BookProfile[];
+        readabilityScale?: ReadabilityScale;
+        actCount?: number;
+        timelapseYearSimulation?: {
+            enabled?: boolean;
+            startDate?: string;
+            finishDate?: string;
+            totalScenes?: number;
+        };
+        synopsisGenerationMaxWords?: number;
+        synopsisGenerationMaxLines?: number;
     };
     searchActive: boolean;
     searchResults: Set<string>;
@@ -155,6 +171,24 @@ export interface PluginRendererFacade {
     } | null;
     synopsisManager: { generateElement: (scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
     latestStatusCounts?: Record<string, number>;
+    /** Beat label angles captured during ring rendering; consumed by the Gossamer overlay. */
+    _beatAngles?: Map<string, number>;
+    /** Beat slice geometry captured during ring rendering; consumed by the Gossamer overlay. */
+    _beatSlices?: Map<string, { startAngle: number; endAngle: number; innerR: number; outerR: number }>;
+    /** Latest Gossamer run; set by GossamerCommands, consumed by the Gossamer overlay. */
+    _gossamerLastRun?: GossamerRun | null;
+    /** Historical Gossamer run overlays; set by GossamerCommands. */
+    _gossamerHistoricalRuns?: GossamerHistoricalRunOverlay[];
+    /** Min/max confidence band across Gossamer runs; set by GossamerCommands. */
+    _gossamerMinMax?: GossamerMinMaxBand | null;
+    /** Whether any Gossamer scores exist for the active signal; set by GossamerCommands. */
+    _gossamerHasAnyScores?: boolean;
+    /** Minimal workspace access used to detect Gossamer mode across timeline views. */
+    app: {
+        workspace: {
+            getLeavesOfType(viewType: string): Array<{ view: { currentMode?: string } }>;
+        };
+    };
 }
 
 export interface SceneState {

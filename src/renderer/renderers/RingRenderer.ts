@@ -74,11 +74,11 @@ export function renderRings(ctx: RingRenderContext): string {
     } = ctx;
 
     let svg = '';
-    const fontScale = getReadabilityMultiplier(plugin.settings as any);
+    const fontScale = getReadabilityMultiplier(plugin.settings);
     const NUM_RINGS = masterSubplotOrder.length;
-    const readabilityScale = (plugin.settings as any).readabilityScale || 'normal';
+    const readabilityScale = plugin.settings.readabilityScale || 'normal';
     // Use the value from constant, handling the structure
-    const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale as keyof typeof BEAT_TEXT_RADIUS] || BEAT_TEXT_RADIUS.normal;
+    const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale] || BEAT_TEXT_RADIUS.normal;
 
     const resolveSubplotColorIndex = (subplotName: string): number => {
         const key = subplotName && subplotName.trim().length > 0 ? subplotName : 'Main Plot';
@@ -103,9 +103,9 @@ export function renderRings(ctx: RingRenderContext): string {
     };
 
     // Check if we need to force subplot fill colors
-    const currentMode = (plugin.settings as any).currentMode || 'narrative';
+    const currentMode = plugin.settings.currentMode || 'narrative';
     const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
-    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+    const isSagaScope = getTimelineScope(plugin.settings) === 'saga';
 
     // Loop through Acts
     for (let act = 0; act < actsToRender; act++) {
@@ -226,9 +226,9 @@ export function renderRings(ctx: RingRenderContext): string {
                     if (isBeatNote(scene) && scene.title) {
                         const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                         const center = (sceneStartAngle + sceneEndAngle) / 2;
-                        (plugin as any)._beatAngles.set(titleWithoutNumber, center);
-                        if (!(plugin as any)._beatSlices) (plugin as any)._beatSlices = new Map();
-                        (plugin as any)._beatSlices.set(titleWithoutNumber, {
+                        plugin._beatAngles?.set(titleWithoutNumber, center);
+                        if (!plugin._beatSlices) plugin._beatSlices = new Map();
+                        plugin._beatSlices.set(titleWithoutNumber, {
                             startAngle: sceneStartAngle,
                             endAngle: sceneEndAngle,
                             innerR: innerR,

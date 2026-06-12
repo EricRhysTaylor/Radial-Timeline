@@ -242,18 +242,39 @@ export function normalizeBeatFrontmatterKeys(fm: Record<string, unknown>, custom
 }
 
 /**
+ * Convert an arbitrary frontmatter value to display text.
+ * Strings pass through; number/boolean/bigint stringify; objects and arrays
+ * JSON-serialize (empty string when unserializable); null/undefined and
+ * YAML-impossible types (symbol/function) -> ''.
+ */
+export function frontmatterValueToText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+/**
  * Canonical extraction of the `Summary` frontmatter field as a normalized
  * string. Single source of truth for inquiry/forecast corpus summary text:
- * array -> newline-joined (each element String-coerced); string -> trimmed;
- * null/undefined/missing -> ''; objects -> JSON.stringify(raw).trim();
- * anything else -> String(raw).trim().
+ * array -> newline-joined (each element text-coerced); string -> trimmed;
+ * null/undefined/missing -> ''; anything else -> frontmatterValueToText(raw).trim().
  */
 export function extractSummary(frontmatter: Record<string, unknown>): string {
   const raw = frontmatter['Summary'];
-  if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
+  if (Array.isArray(raw)) return raw.map(value => frontmatterValueToText(value)).join('\n').trim();
   if (typeof raw === 'string') return raw.trim();
   if (raw === null || raw === undefined) return '';
-  return (typeof raw === 'object' ? JSON.stringify(raw) : String(raw)).trim();
+  return frontmatterValueToText(raw).trim();
 }
 
 /* ----------------------------------------------------------------------- *

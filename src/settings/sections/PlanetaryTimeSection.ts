@@ -332,21 +332,24 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
         return profiles.find(p => p.id === activeProfileId) || null;
     };
 
+    // Keys of PlanetaryProfile whose values are (optional) numbers / strings
+    type NumberFieldKey = { [K in keyof PlanetaryProfile]-?: NonNullable<PlanetaryProfile[K]> extends number ? K : never }[keyof PlanetaryProfile];
+    type StringFieldKey = { [K in keyof PlanetaryProfile]-?: NonNullable<PlanetaryProfile[K]> extends string ? K : never }[keyof PlanetaryProfile];
+
     const renderFields = () => {
         fieldsContainer.empty();
         const profile = getActiveProfile();
-        const hasProfile = !!profile;
-        fieldsContainer.classList.toggle('ert-settings-hidden', !hasProfile);
-        if (!hasProfile) return;
+        fieldsContainer.classList.toggle('ert-settings-hidden', !profile);
+        if (!profile) return;
 
-        const addNumberField = (label: string, key: keyof PlanetaryProfile, hint?: string) => {
+        const addNumberField = (label: string, key: NumberFieldKey, hint?: string) => {
             const setting = new Settings(fieldsContainer).setName(label);
             if (hint) setting.setDesc(hint);
             setting.addText((text: TextComponent) => {
                 text.inputEl.type = 'number';
                 text.inputEl.min = '0';
                 text.inputEl.addClass('ert-input--xs');
-                const current = (profile as any)[key];
+                const current = profile[key];
                 const originalValue = current !== undefined ? String(current) : '';
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
@@ -358,17 +361,17 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                         flash(text.inputEl, 'error');
                         return;
                     }
-                    (profile as any)[key] = num;
+                    profile[key] = num;
                     await saveProfile(profile, text.inputEl);
                 })(); });
             });
         };
 
-        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string, onSave?: () => void, sizeClass = 'ert-input--lg') => {
+        const addTextField = (label: string, key: StringFieldKey, placeholder?: string, onSave?: () => void, sizeClass = 'ert-input--lg') => {
             const setting = new Settings(fieldsContainer).setName(label);
             if (placeholder) setting.setDesc(placeholder);
             setting.addText((text: TextComponent) => {
-                const current = (profile as any)[key];
+                const current = profile[key];
                 const originalValue = current ?? '';
                 text.setValue(originalValue);
                 text.inputEl.addClass(sizeClass);
@@ -376,7 +379,7 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
                 text.inputEl.addEventListener('blur', () => { void (async () => {
                     const value = text.getValue();
                     if (value === originalValue) return; // No change
-                    (profile as any)[key] = value;
+                    profile[key] = value;
                     await saveProfile(profile, text.inputEl);
                     if (onSave) onSave();
                 })(); });

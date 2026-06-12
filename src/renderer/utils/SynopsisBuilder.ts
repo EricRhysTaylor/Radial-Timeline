@@ -37,9 +37,9 @@ export function buildSynopsisElement(
     orderedSubplots: string[],
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
-    const fontScale = getReadabilityMultiplier(plugin.settings as any);
-    const synopsisWordLimit = getSynopsisGenerationWordLimit(plugin.settings as any);
-    const hoverWordLimit = getSynopsisHoverWordLimit(plugin.settings as any);
+    const fontScale = getReadabilityMultiplier(plugin.settings);
+    const synopsisWordLimit = getSynopsisGenerationWordLimit(plugin.settings);
+    const hoverWordLimit = getSynopsisHoverWordLimit(plugin.settings);
 
     // For Backdrop items, only show Title and Context text from YAML.
     if (scene.itemType === 'Backdrop') {

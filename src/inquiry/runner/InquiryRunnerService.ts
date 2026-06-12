@@ -2718,13 +2718,22 @@ export class InquiryRunnerService implements InquiryRunner {
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
         error?: unknown
     ): InquiryResult {
-        const message = error instanceof Error
-            ? error.message
-            : !error
-                ? ''
-                : typeof error === 'object'
-                    ? JSON.stringify(error)
-                    : String(error);
+        let message: string;
+        if (error instanceof Error) {
+            message = error.message;
+        } else if (!error) {
+            message = '';
+        } else if (typeof error === 'string') {
+            message = error;
+        } else if (typeof error === 'number' || typeof error === 'boolean' || typeof error === 'bigint' || typeof error === 'symbol') {
+            message = String(error);
+        } else {
+            try {
+                message = JSON.stringify(error);
+            } catch {
+                message = '[unserializable error]';
+            }
+        }
         const summary = this.buildStubSummary(aiMeta.aiStatus, aiMeta.aiReason, message);
         const bullets = message ? [t('inquiry.findings.stubBulletNote', { message })] : [t('inquiry.findings.stubBulletPlaceholder')];
         const fallbackRefId = this.resolveFindingFallbackRefId(input);

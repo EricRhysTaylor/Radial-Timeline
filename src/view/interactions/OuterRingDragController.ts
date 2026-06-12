@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import {
     applySceneNumberUpdates,
@@ -14,6 +14,12 @@ import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemStat
 import { appendRecentStructuralMove, getActiveRecentStructuralMoves } from '../../utils/recentStructuralMoves';
 import { openStructuralMoveHistoryLog } from '../../utils/recentStructuralMoveLog';
 import type { RadialTimelineSettings } from '../../types/settings';
+
+/**
+ * Settings plus the legacy `masterSubplotOrder` key that older vault data.json
+ * files may still carry (it is no longer part of RadialTimelineSettings).
+ */
+type SettingsWithLegacySubplotOrder = RadialTimelineSettings & { masterSubplotOrder?: string[] };
 
 export interface OuterRingViewAdapter {
     plugin: RadialTimelinePlugin;
@@ -254,8 +260,8 @@ export class OuterRingDragController {
     }
 
     private cssEscape(value: string): string {
-        if (typeof (window as any).CSS !== 'undefined' && (window as any).CSS.escape) {
-            return (window as any).CSS.escape(value);
+        if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+            return CSS.escape(value);
         }
         return value.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
     }
@@ -322,8 +328,8 @@ export class OuterRingDragController {
             || 'unknown-item';
         if (!filePath) return normalizedFallback;
         const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
-        if (!file) return normalizedFallback;
-        const frontmatter = this.view.plugin.app.metadataCache.getFileCache(file as any)?.frontmatter;
+        if (!(file instanceof TFile)) return normalizedFallback;
+        const frontmatter = this.view.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
         const fromId = frontmatter?.ID ?? frontmatter?.id ?? frontmatter?.['Reference ID'] ?? frontmatter?.referenceId;
         if (typeof fromId === 'string' && fromId.trim().length > 0) {
             return fromId.trim();
@@ -405,7 +411,7 @@ export class OuterRingDragController {
     }
 
     private isRippleRenameEnabled(): boolean {
-        return Boolean((this.view.plugin.settings as any).enableManuscriptRippleRename);
+        return Boolean(this.view.plugin.settings.enableManuscriptRippleRename);
     }
 
     private buildContextChangeSummary(sourceContext?: string, destinationContext?: string): string | undefined {
@@ -429,7 +435,7 @@ export class OuterRingDragController {
      * Number text is extracted from the file path basename prefix (e.g., "03 Scene Title.md" → "03").
      */
     private buildOuterRingOrder(): OuterRingOrderEntry[] {
-        const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
+        const masterSubplotOrder = (this.view.plugin.settings as SettingsWithLegacySubplotOrder).masterSubplotOrder || ['Main Plot'];
         
         // Use shared helper for outer ring detection
         const outerRing = this.getOuterRingIndex();
@@ -819,7 +825,7 @@ export class OuterRingDragController {
         const actChanged = targetActNumber !== undefined && targetActNumber !== sourceActNumber;
 
         // Determine target subplot from target scene's subplot-index
-        const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
+        const masterSubplotOrder = (this.view.plugin.settings as SettingsWithLegacySubplotOrder).masterSubplotOrder || ['Main Plot'];
         const targetSubplotIdx = Number(targetGroup?.getAttribute('data-subplot-index') ?? 0);
         const targetSubplot = masterSubplotOrder[targetSubplotIdx] || 'Main Plot';
         
@@ -1175,16 +1181,13 @@ export class OuterRingDragController {
     }
 
     private async runRippleRenameIfEnabled(onStatus?: (message: string) => void): Promise<void> {
-        const enabled = Boolean((this.view.plugin.settings as any).enableManuscriptRippleRename);
+        const enabled = Boolean(this.view.plugin.settings.enableManuscriptRippleRename);
         if (!enabled) return;
 
-        const pluginAny = this.view.plugin as any;
-        if (typeof pluginAny?.getSceneData !== 'function') return;
-
         try {
-            const sceneData = await pluginAny.getSceneData();
+            const sceneData = await this.view.plugin.getSceneData();
             const plan = buildRippleRenamePlan(sceneData, {
-                beatModel: resolveSelectedBeatModelFromSettings(pluginAny.settings)
+                beatModel: resolveSelectedBeatModelFromSettings(this.view.plugin.settings)
             });
             if (plan.needRename === 0) {
                 if (onStatus) onStatus('Ripple rename: already normalized (filenames only; no content edits).');
@@ -1448,8 +1451,8 @@ export class OuterRingDragController {
             const filePath = encodedPath ? decodeURIComponent(encodedPath) : '';
             if (!filePath) return 'Zero';
             const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
-            if (!file) return 'Zero';
-            const cache = this.view.plugin.app.metadataCache.getFileCache(file as any);
+            if (!(file instanceof TFile)) return 'Zero';
+            const cache = this.view.plugin.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter;
             if (!frontmatter) return 'Zero';
             return normalizeStage(frontmatter['Publish Stage'] ?? frontmatter['publish stage'] ?? frontmatter['publishStage']);
@@ -1481,7 +1484,7 @@ export class OuterRingDragController {
                 const normalized = ((Math.trunc(idx) % 16) + 16) % 16;
                 const subplotColor =
                     readCssVariable(`--rt-subplot-colors-${normalized}`)
-                    || ((this.view.plugin.settings as any)?.subplotColors?.[normalized] as string | undefined);
+                    || this.view.plugin.settings.subplotColors?.[normalized];
                 if (subplotColor) return subplotColor;
             }
         }
@@ -1526,8 +1529,8 @@ export class OuterRingDragController {
      */
     private async getSceneSubplots(filePath: string): Promise<string[]> {
         const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
-        if (!file) return [];
-        const cache = this.view.plugin.app.metadataCache.getFileCache(file as any);
+        if (!(file instanceof TFile)) return [];
+        const cache = this.view.plugin.app.metadataCache.getFileCache(file);
         const fm = cache?.frontmatter;
         if (!fm) return [];
         

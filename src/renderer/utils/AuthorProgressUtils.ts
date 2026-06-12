@@ -19,9 +19,9 @@ export function anonymizeTimeline(scenes: TimelineItem[]): TimelineItem[] {
         delete clean.pendingEdits;
         delete clean.rawFrontmatter;
         
-        // Remove pulse data
+        // Remove pulse data (Gossamer1-30, GossamerStage1-30 — all optional keys)
         Object.keys(clean).forEach(key => {
-            if (key.startsWith('Gossamer')) delete (clean as any)[key];
+            if (key.startsWith('Gossamer')) delete clean[key as Extract<keyof TimelineItem, `Gossamer${string}`>];
         });
         
         // Ensure minimal title for renderer stability

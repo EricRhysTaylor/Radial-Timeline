@@ -149,7 +149,7 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
             }
         }
         validateSceneAnalysisPayload(parsed);
-        (plugin as any).lastAnalysisError = '';
+        plugin.lastAnalysisError = '';
         
         // Extract the main grade (A/B/C) from first currentSceneAnalysis item
         const firstCurrent = parsed.currentSceneAnalysis?.[0];
@@ -165,7 +165,7 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
         };
     } catch (error) {
         console.error('[parseJsonBeatsResponse] Error parsing JSON beats response:', error);
-        (plugin as any).lastAnalysisError = String(error);
+        plugin.lastAnalysisError = String(error);
         return null;
     }
 }
@@ -191,13 +191,13 @@ export function parsePulseAnalysisResponse(llmResult: string, plugin: RadialTime
 
         const jsonResult = parseJsonBeatsResponse(trimmed, plugin);
         if (jsonResult) {
-            (plugin as any).lastAnalysisError = '';
+            plugin.lastAnalysisError = '';
             return jsonResult;
         }
         return null;
     } catch (error) {
         console.error('[parsePulseAnalysisResponse] Error parsing beats response:', error);
-        (plugin as any).lastAnalysisError = String(error);
+        plugin.lastAnalysisError = String(error);
         return null;
     }
 }

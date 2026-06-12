@@ -29,6 +29,7 @@ import { updateSubplotLabels } from '../renderer/dom/SubplotLabelDOMUpdater';
 import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
 import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
 import { PluginRendererFacade, isBeatNote, isSceneItem } from '../utils/sceneHelpers';
+import type { CompletionEstimate } from './TimelineMetricsService';
 import { STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../utils/constants';
 import { AuthorProgressService } from './AuthorProgressService';
 import type { MilestoneInfo } from '../renderer/components/MilestoneIndicator';
@@ -55,9 +56,18 @@ export interface RenderResult {
 export class RendererService {
     constructor(private plugin: RadialTimelinePlugin) {}
 
+    /**
+     * SAFE: RadialTimelinePlugin structurally satisfies the renderer facade; the
+     * conversion through unknown keeps renderer modules decoupled from the full
+     * plugin type (the facade narrows Obsidian's workspace surface).
+     */
+    private static asFacade(plugin: RadialTimelinePlugin): PluginRendererFacade {
+        return plugin as unknown as PluginRendererFacade;
+    }
+
     public renderTimeline(scenes: TimelineItem[]): RenderResult {
-        const pluginFacade = this.plugin as unknown as PluginRendererFacade;
-        
+        const pluginFacade = RendererService.asFacade(this.plugin);
+
         // Check if APR needs refresh (stale check)
         let aprNeedsRefresh = false;
         try {
@@ -100,7 +110,7 @@ export class RendererService {
     updateSceneColorsDOM(container: HTMLElement, plugin: RadialTimelinePlugin, changedScenes: TimelineItem[]): boolean {
         const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
-        return updateSceneColors(svg, plugin as any, changedScenes); // SAFE: any type used for plugin interface compatibility
+        return updateSceneColors(svg, RendererService.asFacade(plugin), changedScenes);
     }
 
     /**
@@ -109,7 +119,7 @@ export class RendererService {
     updateSceneFillsDOM(container: HTMLElement, plugin: RadialTimelinePlugin, changedScenes: TimelineItem[]): boolean {
         const svg = container.querySelector<SVGSVGElement>('.radial-timeline-svg');
         if (!svg) return false;
-        return updateSceneFills(svg, plugin as any, changedScenes); // SAFE: any type used for plugin interface compatibility
+        return updateSceneFills(svg, RendererService.asFacade(plugin), changedScenes);
     }
 
     /**
@@ -185,12 +195,11 @@ export class RendererService {
         
         // Handle both signatures: (container, plugin) and (container, plugin, scenes)
         if (Array.isArray(pluginOrScenes)) {
-            return updateNumberSquareStates(svg, this.plugin as any, pluginOrScenes); // SAFE: any type used for plugin interface compatibility
+            return updateNumberSquareStates(svg, RendererService.asFacade(this.plugin), pluginOrScenes);
         }
         const plugin = pluginOrScenes;
-        const pluginAny = plugin as any; // SAFE: any type used for accessing lastSceneData
-        const sceneData = scenes || pluginAny.lastSceneData || [];
-        return updateNumberSquareStates(svg, plugin as any, sceneData); // SAFE: any type used for plugin interface compatibility
+        const sceneData = scenes || plugin.lastSceneData || [];
+        return updateNumberSquareStates(svg, RendererService.asFacade(plugin), sceneData);
     }
 
     /**
@@ -206,8 +215,7 @@ export class RendererService {
             return updateSynopsisText(svg, pluginOrScenes);
         }
         // If plugin passed, get scenes from it
-        const pluginAny = pluginOrScenes as any; // SAFE: any type used for accessing lastSceneData
-        const scenes = pluginAny.lastSceneData || [];
+        const scenes = pluginOrScenes.lastSceneData || [];
         updateSynopsisText(svg, scenes);
         updateSynopsisVisibility(svg, pluginOrScenes.openScenePaths || new Set());
         return true;
@@ -359,8 +367,7 @@ export class RendererService {
             return true;
         }
 
-        const pluginAny = view.plugin as any; // SAFE: any type used for accessing dynamic gossamer properties
-        const run = pluginAny._gossamerLastRun || null;
+        const run = view.plugin._gossamerLastRun || null;
         if (!run) {
             removeExisting();
             applyGossamerMask();
@@ -369,11 +376,11 @@ export class RendererService {
 
         const scenes: TimelineItem[] = Array.isArray(view.sceneData) && view.sceneData.length > 0
             ? view.sceneData
-            : (pluginAny.lastSceneData || []);
+            : (view.plugin.lastSceneData || []);
 
-        const anglesByBeat: Map<string, number> = pluginAny._beatAngles || new Map<string, number>();
+        const anglesByBeat: Map<string, number> = view.plugin._beatAngles || new Map<string, number>();
         const beatSlicesByName: Map<string, { startAngle: number; endAngle: number; innerR: number; outerR: number }>
-            = pluginAny._beatSlices || new Map();
+            = view.plugin._beatSlices || new Map();
 
         const beatPathByName = new Map<string, string>();
         const publishStageColorByBeat = new Map<string, string>();
@@ -382,20 +389,14 @@ export class RendererService {
                 if (!isBeatNote(s) || !s.title) return; // Modern 'Beat' + legacy 'Plot'
                 const titleWithoutNumber = (s.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                 if (s.path) beatPathByName.set(titleWithoutNumber, s.path);
-                const publishStage = (s as any)['Publish Stage'] || 'Zero'; // SAFE: any type used for dynamic frontmatter access
-                const PUBLISH_STAGE_COLORS = pluginAny.PUBLISH_STAGE_COLORS as Record<string, string> | undefined;
-                if (PUBLISH_STAGE_COLORS) {
-                    const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
-                    publishStageColorByBeat.set(titleWithoutNumber, stageColor);
-                }
             });
         }
 
         const { innerRadius, outerRadius, outerRingInnerRadius } = captureGeometry();
         removeExisting();
 
-        const historicalRuns = pluginAny._gossamerHistoricalRuns || [];
-        const minMax = pluginAny._gossamerMinMax || null;
+        const historicalRuns = view.plugin._gossamerHistoricalRuns || [];
+        const minMax = view.plugin._gossamerMinMax || undefined;
 
         const spokesHtml = renderGossamerMonthSpokes({
             innerRadius,
@@ -464,9 +465,8 @@ export class RendererService {
         svg.querySelectorAll('.rt-estimate-tick-group, line.estimated-date-tick, circle.estimated-date-dot, .rt-estimate-hotspot').forEach(n => n.parentNode?.removeChild(n));
         svg.querySelectorAll('path.progress-ring-base').forEach(n => n.parentNode?.removeChild(n));
 
-        const pluginAny = this.plugin as any; // SAFE: any type used for dynamic method access
-        const scenes: TimelineItem[] = pluginAny.lastSceneData || [];
-        const now = resolveProgressRingDate(this.plugin as any, scenes);
+        const scenes: TimelineItem[] = this.plugin.lastSceneData || [];
+        const now = resolveProgressRingDate(RendererService.asFacade(this.plugin), scenes);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const yearProgress = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 365);
         const currentYearStartAngle = -Math.PI / 2;
@@ -475,16 +475,16 @@ export class RendererService {
         
         // Get scenes and estimate for enhanced tick tooltips
         let enhancedData: TargetTickEnhancedData | undefined;
-        let estimateResult: ReturnType<typeof pluginAny.calculateCompletionEstimate> = null;
-        
+        let estimateResult: CompletionEstimate | null = null;
+
         try {
-            if (typeof pluginAny.calculateCompletionEstimate === 'function' && scenes.length > 0) {
-                estimateResult = resolveProgressEstimate(this.plugin as any, scenes, pluginAny.calculateCompletionEstimate(scenes));
+            if (scenes.length > 0) {
+                estimateResult = resolveProgressEstimate(RendererService.asFacade(this.plugin), scenes, this.plugin.calculateCompletionEstimate(scenes));
                 enhancedData = this.calculateTargetTickEnhancedData(scenes, estimateResult);
             }
         } catch { /* enhanced tick data is optional */ }
-        
-        const tickHtml = renderTargetDateTick({ plugin: this.plugin as any, progressRadius, dateToAngle, enhancedData }); // SAFE: any type used for plugin interface compatibility
+
+        const tickHtml = renderTargetDateTick({ plugin: RendererService.asFacade(this.plugin), progressRadius, dateToAngle, enhancedData });
 
         let estimationHtml = '';
         try {

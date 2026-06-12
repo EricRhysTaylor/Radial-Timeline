@@ -15,6 +15,7 @@ class TextInputModal extends Modal {
     private readonly defaultValue: string;
     private readonly onSubmit: (result: string) => void;
     private inputEl?: HTMLInputElement;
+    private _keydownHandler?: (e: KeyboardEvent) => void;
 
     constructor(app: App, title: string, defaultValue: string, onSubmit: (result: string) => void) {
         super(app);
@@ -64,7 +65,7 @@ class TextInputModal extends Modal {
         this.inputEl.addEventListener('keydown', handleKeydown);
 
         // Store handler reference for cleanup
-        (this as any)._keydownHandler = handleKeydown;
+        this._keydownHandler = handleKeydown;
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -81,8 +82,8 @@ class TextInputModal extends Modal {
 
     onClose(): void {
         // Clean up event listeners to prevent memory leaks
-        if (this.inputEl && (this as any)._keydownHandler) {
-            this.inputEl.removeEventListener('keydown', (this as any)._keydownHandler);
+        if (this.inputEl && this._keydownHandler) {
+            this.inputEl.removeEventListener('keydown', this._keydownHandler);
         }
     }
 
@@ -112,6 +113,7 @@ export class AiContextModal extends Modal {
     
     private dropdownComponent?: DropdownComponent;
     private textareaEl?: HTMLTextAreaElement;
+    private _inputHandler?: () => void;
     private saveButton?: ButtonComponent;
     private deleteButton?: ButtonComponent;
     private renameButton?: ButtonComponent;
@@ -228,7 +230,7 @@ export class AiContextModal extends Modal {
         this.textareaEl.addEventListener('input', handleInput);
         
         // Store handler reference for cleanup
-        (this as any)._inputHandler = handleInput;
+        this._inputHandler = handleInput;
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -266,8 +268,8 @@ export class AiContextModal extends Modal {
 
     onClose(): void {
         // Clean up event listeners to prevent memory leaks
-        if (this.textareaEl && (this as any)._inputHandler) {
-            this.textareaEl.removeEventListener('input', (this as any)._inputHandler);
+        if (this.textareaEl && this._inputHandler) {
+            this.textareaEl.removeEventListener('input', this._inputHandler);
         }
     }
 

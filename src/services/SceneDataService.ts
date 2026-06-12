@@ -13,7 +13,7 @@
 
 import { App, TFile } from 'obsidian';
 import type { TimelineItem, RadialTimelineSettings, BookMeta, MatterMeta } from '../types';
-import { getActiveFrontmatterMappings, normalizeBeatFrontmatterKeys, normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { frontmatterValueToText, getActiveFrontmatterMappings, normalizeBeatFrontmatterKeys, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
 import { stripWikiLinks } from '../utils/text';
@@ -62,6 +62,13 @@ export class SceneDataService {
      */
     updateSettings(settings: RadialTimelineSettings): void {
         this.settings = settings;
+    }
+
+    /**
+     * Read access to the live settings reference (shared with the plugin).
+     */
+    getSettings(): RadialTimelineSettings {
+        return this.settings;
     }
 
     /**
@@ -134,7 +141,7 @@ export class SceneDataService {
                     for (const subplot of subplots) {
                         const durationValue = metadata.Duration;
                         const duration = (durationValue !== undefined && durationValue !== null)
-                            ? (typeof durationValue === 'object' ? JSON.stringify(durationValue) : String(durationValue))
+                            ? frontmatterValueToText(durationValue)
                             : undefined;
 
                         const pulseUpdate = metadata["Pulse Update"];
@@ -172,7 +179,7 @@ export class SceneDataService {
                         let povField: string | undefined;
                         if (Array.isArray(rawPov)) {
                             for (const entry of rawPov) {
-                                const candidate = typeof entry === 'string' ? entry : entry !== undefined && entry !== null ? String(entry) : '';
+                                const candidate = typeof entry === 'string' ? entry : frontmatterValueToText(entry);
                                 const trimmed = candidate.trim();
                                 if (trimmed.length > 0) {
                                     povField = trimmed;
@@ -185,7 +192,7 @@ export class SceneDataService {
                                 povField = trimmed;
                             }
                         } else if (rawPov !== undefined && rawPov !== null) {
-                            const converted = (typeof rawPov === 'object' ? JSON.stringify(rawPov) : String(rawPov)).trim();
+                            const converted = frontmatterValueToText(rawPov).trim();
                             if (converted.length > 0) {
                                 povField = converted;
                             }
@@ -193,7 +200,7 @@ export class SceneDataService {
 
                         const runtimeProfileRaw = metadata["Runtime Profile"] ?? metadata["RuntimeProfile"];
                         const runtimeProfile = runtimeProfileRaw !== undefined && runtimeProfileRaw !== null
-                            ? (typeof runtimeProfileRaw === 'object' ? JSON.stringify(runtimeProfileRaw) : String(runtimeProfileRaw)).trim()
+                            ? frontmatterValueToText(runtimeProfileRaw).trim()
                             : undefined;
                         const chapterTitle = readSharedChapterTitle(metadata);
 
@@ -221,17 +228,17 @@ export class SceneDataService {
                                 // Note: "Iterations" is a separate numeric field for revision count
                                 const raw = metadata["Pending Edits"];
                                 if (Array.isArray(raw)) {
-                                    return raw.map(entry => String(entry)).join('\n');
+                                    return raw.map(entry => frontmatterValueToText(entry)).join('\n');
                                 }
                                 if (raw !== undefined && raw !== null) {
-                                    return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
+                                    return frontmatterValueToText(raw);
                                 }
                                 return undefined;
                             })(),
                             Duration: duration,
                             Chapter: chapterTitle,
                             Runtime: metadata.Runtime !== undefined && metadata.Runtime !== null
-                                ? (typeof metadata.Runtime === 'object' ? JSON.stringify(metadata.Runtime) : String(metadata.Runtime))
+                                ? frontmatterValueToText(metadata.Runtime)
                                 : undefined,
                             RuntimeProfile: runtimeProfile && runtimeProfile.length > 0 ? runtimeProfile : undefined,
                             // AI Scene Analysis fields - handle both string and array formats from YAML
@@ -263,7 +270,7 @@ export class SceneDataService {
 
                     const durationValue = metadata.Duration;
                     const duration = (durationValue !== undefined && durationValue !== null)
-                        ? (typeof durationValue === 'object' ? JSON.stringify(durationValue) : String(durationValue))
+                        ? frontmatterValueToText(durationValue)
                         : undefined;
 
                     const isoDate = when ? when.toISOString().split('T')[0] : '';
@@ -484,7 +491,8 @@ export class SceneDataService {
             // Mark scenes matching the dominant subplot
             scenesForPath.forEach(scene => {
                 // Store the preference on the scene for later filtering
-                (scene as any)._isDominantSubplot = scene.subplot === dominantSubplot;
+                (scene as TimelineItem & { _isDominantSubplot?: boolean })._isDominantSubplot =
+                    scene.subplot === dominantSubplot;
             });
         });
     }

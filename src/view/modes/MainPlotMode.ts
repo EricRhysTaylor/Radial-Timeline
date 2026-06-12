@@ -1,21 +1,11 @@
-import { TFile, App } from 'obsidian';
+import { TFile } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 import { setupSceneContextMenu } from '../interactions/SceneContextMenu';
+import type { RadialTimelineView } from '../TimeLineView';
 
-interface ViewLike {
-    plugin: {
-        app: App;
-        settings: {
-            enableSceneTitleAutoExpand?: boolean;
-            enableZeroDraftMode?: boolean;
-        };
-    };
-    registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
-}
-
-export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
+export function setupMainPlotMode(view: RadialTimelineView, svg: SVGSVGElement): void {
     // Main Plot mode shows main plot SCENES (not beats)
     // Story beats are removed entirely in this mode
     // No muting needed - only main plot scenes are rendered
@@ -24,12 +14,12 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     // The class should only be added during actual hover events
 
     // Create scene interaction manager for title expansion and styling
-    const totalActs = Math.max(3, (view.plugin.settings as any).actCount ?? 3);
-    const manager = new SceneInteractionManager(view as any, svg, totalActs);
+    const totalActs = Math.max(3, view.plugin.settings.actCount ?? 3);
+    const manager = new SceneInteractionManager(view, svg, totalActs);
     // Keep manager enabled in this mode and read the user setting live at hover-time.
     // This allows toggling auto-expand without reopening the timeline view.
     manager.setTitleExpansionEnabled(true);
-    setupSceneContextMenu(view as any, svg);
+    setupSceneContextMenu(view, svg);
 
     let currentGroup: Element | null = null;
     let rafId: number | null = null;
@@ -122,14 +112,14 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
                 file,
                 enableZeroDraftMode: view.plugin.settings.enableZeroDraftMode,
                 sceneTitle: file.basename || 'Scene',
-                onOverrideOpen: async () => openOrRevealFile((view.plugin as any).app, file)
+                onOverrideOpen: async () => openOrRevealFile(view.plugin.app, file)
             });
             if (zeroDraftHandled) {
                 e.preventDefault();
                 e.stopPropagation();
                 return;
             }
-            await openOrRevealFile((view.plugin as any).app, file);
+            await openOrRevealFile(view.plugin.app, file);
         }
     })(); });
 }

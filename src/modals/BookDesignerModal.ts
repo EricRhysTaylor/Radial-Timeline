@@ -283,7 +283,7 @@ export class BookDesignerModal extends Modal {
     }
 
     private getMaxActs(): number {
-        const fromSettings = (this.plugin.settings as any).actCount;
+        const fromSettings = this.plugin.settings.actCount;
         const parsed = typeof fromSettings === 'number' ? Math.floor(fromSettings) : 3;
         return Math.min(10, Math.max(3, parsed));
     }
@@ -517,7 +517,7 @@ export class BookDesignerModal extends Modal {
     }
 
     private getTemplateList(): BookDesignerTemplate[] {
-        const list = (this.plugin.settings as any).bookDesignerTemplates;
+        const list = this.plugin.settings.bookDesignerTemplates;
         if (Array.isArray(list)) return list;
         return [];
     }
@@ -529,7 +529,7 @@ export class BookDesignerModal extends Modal {
     }
 
     private async persistTemplateList(list: BookDesignerTemplate[]): Promise<void> {
-        (this.plugin.settings as any).bookDesignerTemplates = list;
+        this.plugin.settings.bookDesignerTemplates = list;
         await this.plugin.saveSettings();
     }
 

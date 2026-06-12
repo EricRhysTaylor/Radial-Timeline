@@ -49,15 +49,15 @@ export function computeCacheableValues(
 ): PrecomputedRenderValues {
     const stopPrecompute = startPerfSegment(plugin, 'timeline.precompute');
 
-    const currentMode = (plugin.settings as any).currentMode || 'narrative';
+    const currentMode = plugin.settings.currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
     const isProgressMode = currentMode === 'progress';
-    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
+    const isSagaScope = getTimelineScope(plugin.settings) === 'saga';
     const segmentCount = isSagaScope
-        ? Math.max(1, getSagaBooks(plugin.settings as any).length)
-        : getConfiguredActCount(plugin.settings as any);
-    const readabilityScale = getReadabilityScale(plugin.settings as any);
-    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+        ? Math.max(1, getSagaBooks(plugin.settings).length)
+        : getConfiguredActCount(plugin.settings);
+    const readabilityScale = getReadabilityScale(plugin.settings);
+    const sortByWhen = isChronologueMode ? true : (plugin.settings.sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
 
     const allSubplotsSet = new Set<string>();
@@ -73,10 +73,10 @@ export function computeCacheableValues(
     const allSubplots = Array.from(allSubplotsSet);
 
     // Add virtual 'Backdrop' subplot for Chronologue mode to reserve space
-    const showBackdropRing = (plugin.settings as any).showBackdropRing ?? true;
+    const showBackdropRing = plugin.settings.showBackdropRing ?? true;
     const shouldIncludeBackdrop = isChronologueMode && hasBackdrops && showBackdropRing;
-    const microRingConfigs = Array.isArray((plugin.settings as any).chronologueBackdropMicroRings)
-        ? (plugin.settings as any).chronologueBackdropMicroRings
+    const microRingConfigs = Array.isArray(plugin.settings.chronologueBackdropMicroRings)
+        ? plugin.settings.chronologueBackdropMicroRings
         : [];
     const microRingLayout = (shouldIncludeBackdrop && microRingConfigs.length > 0)
         ? buildBackdropMicroRingLayout({ scenes, configs: microRingConfigs })

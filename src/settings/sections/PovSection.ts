@@ -144,7 +144,7 @@ export function renderPovSection(params: {
             {
                 Character: characters,
                 pov: povValue
-            } as any,
+            },
             { globalMode }
         );
 

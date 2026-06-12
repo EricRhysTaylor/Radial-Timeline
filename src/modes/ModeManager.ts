@@ -170,13 +170,8 @@ export class ModeManager {
      * Uses the view's refresh method if available, otherwise triggers plugin refresh
      */
     private async refreshTimeline(): Promise<void> {
-        // Try to use the view's direct refresh method first
-        if (typeof (this.view as any).refreshTimeline === 'function') {
-            await (this.view as any).refreshTimeline();
-        } else {
-            // Fallback to plugin's refresh
-            this.plugin.refreshTimelineIfNeeded(null);
-        }
+        // Use the view's direct refresh method (always present on RadialTimelineView)
+        this.view.refreshTimeline();
     }
 }
 

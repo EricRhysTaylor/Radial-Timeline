@@ -102,30 +102,33 @@ export class ReleaseNotesService {
     // --- Internal Helpers ---
 
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
-        // Cast the JSON import to our interface
-        // We handle legacy structure (major/latest/patches) vs new structure (entries array)
-        const bundle = releaseNotesBundle as unknown as any;
-        if (!bundle) return null;
+        // The JSON import has a varying schema:
+        // legacy structure (major/latest/patches) vs new structure (entries array)
+        const raw: unknown = releaseNotesBundle;
+        if (!raw || typeof raw !== 'object') return null;
+        const bundle = raw as Record<string, unknown>;
 
         // If it's already in new format
         if (Array.isArray(bundle.entries)) {
-            return bundle as EmbeddedReleaseNotesBundle;
+            return raw as EmbeddedReleaseNotesBundle;
         }
 
         // Convert legacy format to new format
         const entries: EmbeddedReleaseNotesEntry[] = [];
-        
-        // Helper to push if exists
-        const addEntry = (e: any) => { // SAFE: any type used for processing external JSON with varying schema
-            if (e && e.version && Array.isArray(e.sections)) {
+
+        // Helper to push if exists; narrows the loosely-typed legacy JSON entry
+        const addEntry = (e: unknown) => {
+            if (!e || typeof e !== 'object') return;
+            const record = e as Record<string, unknown>;
+            if (typeof record.version === 'string' && record.version && Array.isArray(record.sections)) {
                 // Ensure required fields
                 entries.push({
-                    version: e.version,
-                    title: e.title || `Release ${e.version}`,
-                    sections: e.sections,
-                    publishedAt: e.publishedAt,
-                    body: e.body,
-                    url: e.url
+                    version: record.version,
+                    title: typeof record.title === 'string' && record.title ? record.title : `Release ${record.version}`,
+                    sections: record.sections as EmbeddedReleaseNotesEntry['sections'],
+                    publishedAt: typeof record.publishedAt === 'string' ? record.publishedAt : undefined,
+                    body: typeof record.body === 'string' ? record.body : undefined,
+                    url: typeof record.url === 'string' ? record.url : undefined
                 });
             }
         };
@@ -150,7 +153,9 @@ export class ReleaseNotesService {
         );
 
         return {
-            version: bundle.version || (uniqueEntries[0]?.version ?? '0.0.0'),
+            version: typeof bundle.version === 'string' && bundle.version
+                ? bundle.version
+                : (uniqueEntries[0]?.version ?? '0.0.0'),
             entries: uniqueEntries
         };
     }

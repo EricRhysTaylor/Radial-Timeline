@@ -1,4 +1,4 @@
-import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
+import { App, Setting as Settings, Notice, DropdownComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import type { ChronologueCalendarDefault } from '../../types/settings';
@@ -215,7 +215,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     discontinuitySetting.settingEl.addClass('ert-setting-two-row', 'ert-chronologue-discontinuity-setting');
 
     // Declare the text component reference first (before updateDescriptionAndPlaceholder uses it)
-    let discontinuityText: any; // SAFE: any type used for Obsidian TextComponent reference (library limitation)
+    let discontinuityText: TextComponent | undefined;
 
     // Calculate threshold dynamically when settings are displayed
     let autoThresholdLoaded = false;

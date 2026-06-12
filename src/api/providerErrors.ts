@@ -16,7 +16,11 @@ type ErrorEnvelope = {
 const extractStatus = (input: ErrorEnvelope): number | null => {
     if (typeof input.status === 'number') return input.status;
     const responseData = input.responseData as Record<string, unknown> | undefined;
-    const status = responseData?.status ?? (responseData?.error as any)?.status;
+    const nestedError = responseData?.error;
+    const nestedStatus = typeof nestedError === 'object' && nestedError !== null
+        ? (nestedError as Record<string, unknown>).status
+        : undefined;
+    const status = responseData?.status ?? nestedStatus;
     return typeof status === 'number' ? status : null;
 };
 

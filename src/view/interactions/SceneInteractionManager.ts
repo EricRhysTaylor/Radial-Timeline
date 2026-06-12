@@ -11,6 +11,7 @@
  * Extracted from the 400-line closure in TimeLineView.ts to enable reuse across modes.
  */
 
+import type { App } from 'obsidian';
 import type { RadialTimelineView } from '../TimeLineView';
 import { updateSynopsisTitleColor } from './SynopsisTitleColorManager';
 import {
@@ -54,7 +55,7 @@ export class SceneInteractionManager {
         // Prefer segment count from the rendered SVG so hover redistribution matches the actual geometry.
         const svgSegments = this.getSegmentCountFromSvg(svg);
         this.totalSegments = svgSegments ?? Math.max(3, totalActs ?? 3);
-        this.registerFn = typeof (view as any).register === 'function' ? (view.register as any).bind(view) : null;
+        this.registerFn = view.register.bind(view);
         
         // Create reusable text measurement element
         this.measurementText = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -116,10 +117,10 @@ export class SceneInteractionManager {
         const doc = this.svg.ownerDocument;
         if (!doc || !doc.defaultView) return null;
         
-        // SAFE: app is added to window by Obsidian
-        const win = doc.defaultView as any;
+        // app is added to the window object by Obsidian (popout windows included)
+        const win = doc.defaultView as Window & { app?: App };
         if (!win.app) return null;
-        
+
         const leaves = win.app.workspace.getLeavesOfType('radial-timeline');
         if (!leaves || leaves.length === 0) return null;
         return leaves[0].view as RadialTimelineView;
@@ -165,7 +166,7 @@ export class SceneInteractionManager {
             }
             
             // Update title color based on mode
-            const currentMode = (view.plugin.settings as any).currentMode || 'narrative';
+            const currentMode = view.plugin.settings.currentMode || 'narrative';
             updateSynopsisTitleColor(this.currentSynopsis, sceneId, currentMode);
             
             this.currentSynopsis.classList.add('rt-visible');
@@ -211,7 +212,7 @@ export class SceneInteractionManager {
             if (!view) return;
 
             // Live-sync title expansion with current setting without requiring view reopen.
-            const autoExpandEnabled = Boolean((view.plugin.settings as any).enableSceneTitleAutoExpand);
+            const autoExpandEnabled = Boolean(view.plugin.settings.enableSceneTitleAutoExpand);
             if ((!this.enabled || !autoExpandEnabled) && this.originalAngles.size > 0) {
                 this.resetAngularRedistribution();
             } else if (this.enabled && autoExpandEnabled && this.currentGroup && this.originalAngles.size === 0) {

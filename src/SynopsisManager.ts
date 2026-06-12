@@ -846,8 +846,7 @@ export default class SynopsisManager {
 
   private buildPlanetaryLine(scene: TimelineItem): string | null {
     if (!scene.when) return null;
-    const settings = this.plugin.settings as any;
-    const profile = getActivePlanetaryProfile(settings);
+    const profile = getActivePlanetaryProfile(this.plugin.settings);
     if (!profile) return null;
     const conversion = convertFromEarth(scene.when, profile);
     if (!conversion) return null;
@@ -1100,7 +1099,7 @@ export default class SynopsisManager {
 
     // Format date from When field for display
     // For Beats (Plot items), only show date if NOT in Gossamer mode
-    const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
+    const currentMode = this.plugin.settings.currentMode || 'narrative';
     const isGossamerMode = currentMode === 'gossamer';
     const isBackdrop = scene.itemType === 'Backdrop';
     const shouldShowDate = scene.when && !(scene.itemType === 'Plot' && isGossamerMode);
@@ -1108,8 +1107,7 @@ export default class SynopsisManager {
     let formattedDate: string | undefined;
     if (shouldShowDate && scene.when) {
       if (isAlienModeActive()) {
-        const settings = this.plugin.settings as any;
-        const profile = getActivePlanetaryProfile(settings);
+        const profile = getActivePlanetaryProfile(this.plugin.settings);
         const conversion = profile ? convertFromEarth(scene.when, profile) : null;
         if (conversion) {
           // Use Alien Date Format
@@ -1123,12 +1121,12 @@ export default class SynopsisManager {
     }
 
     let duration = scene.Duration ? scene.Duration : undefined;
-    if (isBackdrop && (scene as any).End) {
-      const endDate = parseWhenField((scene as any).End);
+    if (isBackdrop && scene.End) {
+      const endDate = parseWhenField(scene.End);
       if (endDate) {
         duration = `to ${this.formatDateForDisplay(endDate)}`;
       } else {
-        duration = `to ${(scene as any).End}`;
+        duration = `to ${scene.End}`;
       }
     }
 
@@ -1496,7 +1494,22 @@ export default class SynopsisManager {
               return val.map(item => formatValue(item)).join(', ');
             }
 
-            let str = typeof val === 'object' && !(val instanceof Date) ? JSON.stringify(val) : String(val);
+            let str: string;
+            if (val instanceof Date) {
+              str = val.toString();
+            } else if (typeof val === 'string') {
+              str = val;
+            } else if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'bigint') {
+              str = String(val);
+            } else if (typeof val === 'object') {
+              try {
+                str = JSON.stringify(val);
+              } catch {
+                str = '';
+              }
+            } else {
+              str = '';
+            }
 
             // Strip wiki link brackets: [[Link]] -> Link, [[Path/Name]] -> Name
             str = str.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, (_match, link) => {
@@ -1750,7 +1763,7 @@ export default class SynopsisManager {
     const svgP = pt.matrixTransform(ctm.inverse());
     const quadrant = this.getQuadrant(svgP.x, svgP.y);
 
-    const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
+    const currentMode = this.plugin.settings.currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
     const isProgressMode = currentMode === 'progress';
     const readabilityScale = getReadabilityScale(this.plugin.settings);

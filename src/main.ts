@@ -63,7 +63,7 @@ import { WritingSessionService } from './services/WritingSessionService';
 import { ensureBundledPandocLayoutsRegistered, ensureSpecDrivenBundledFictionTemplatesCurrent, setBundledFontSourcePath, setPandocFontPathsForVault } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import { DARIAN_MARS_MONTH_NAMES, MARS_TEMPLATE_ID, matchesLegacyMarsMonthNames } from './utils/planetaryMars';
-import type { GossamerRunRecord } from './utils/gossamer';
+import type { GossamerHistoricalRunOverlay, GossamerMinMaxBand, GossamerRun, GossamerRunRecord } from './utils/gossamer';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
 import type { GossamerCacheWindow } from './gossamer/cacheWindow';
 import { seedProEntitlement } from './settings/proEntitlementSeed';
@@ -208,6 +208,18 @@ export default class RadialTimelinePlugin extends Plugin {
     public gossamerVisibleRunInventory: GossamerRunRecord[] = [];
     public gossamerFilterBeatSystemKey = '';
     public gossamerSelectedSignal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL;
+    /** Most recent Gossamer scoring run (in-memory only; written by GossamerCommands). */
+    public _gossamerLastRun?: GossamerRun;
+    /** Historical Gossamer runs for overlay rendering (in-memory only; written by GossamerCommands). */
+    public _gossamerHistoricalRuns?: GossamerHistoricalRunOverlay[];
+    /** Min/max band across Gossamer runs (in-memory only; written by GossamerCommands). */
+    public _gossamerMinMax?: GossamerMinMaxBand | null;
+    /** Whether any Gossamer scores exist for the active signal (in-memory only; written by GossamerCommands). */
+    public _gossamerHasAnyScores?: boolean;
+    /** Beat label angles captured during ring rendering (in-memory only; written by the renderer). */
+    public _beatAngles?: Map<string, number>;
+    /** Beat slice geometry captured during ring rendering (in-memory only; written by the renderer). */
+    public _beatSlices?: Map<string, { startAngle: number; endAngle: number; innerR: number; outerR: number }>;
     /**
      * Provider-cache window armed by the most recent Gossamer AI run. While
      * open, scoring the remaining signals reuses the cached manuscript. In
@@ -234,8 +246,14 @@ export default class RadialTimelinePlugin extends Plugin {
     // Track active scene analysis processing modal and status bar item
     public activeBeatsModal: SceneAnalysisProcessingModal | null = null;
 
+    // Last error reported while parsing a Pulse/scene-analysis AI response
+    public lastAnalysisError = '';
+
     // Helper: get all currently open timeline views
     public getTimelineViews(): RadialTimelineView[] { return this.timelineService.getTimelineViews(); }
+
+    // Helper: expose the scene data service to consumers (modals, services)
+    public getSceneDataService(): SceneDataService { return this.sceneDataService; }
 
     // Helper: get the first open timeline view (if any)
     private getFirstTimelineView(): RadialTimelineView | null {
@@ -347,9 +365,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
     public updateTimelineBookHeaders(): void {
         this.getTimelineViews().forEach(view => {
-            if ((view as any).syncBookHeader) {
-                (view as any).syncBookHeader();
-            }
+            view.syncBookHeader();
         });
     }
 

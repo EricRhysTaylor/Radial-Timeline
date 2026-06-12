@@ -1,5 +1,5 @@
 import { App, Notice, TFile } from 'obsidian';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { frontmatterValueToText, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { normalizeStatus } from '../../utils/text';
 import { prepareFrontmatterRewrite, verifyFrontmatterRewrite } from '../../utils/frontmatterWriteSafety';
 
@@ -19,7 +19,7 @@ const normalizeYamlValue = (value: unknown): string | undefined => {
     if (typeof value === 'string') {
         return value.trim() || undefined;
     }
-    return (typeof value === 'object' ? JSON.stringify(value) : String(value)).trim() || undefined;
+    return frontmatterValueToText(value).trim() || undefined;
 };
 
 const isStageZero = (value: string | undefined): boolean => {

@@ -103,7 +103,7 @@ export function resolveProgressEstimate(
 }
 
 function getTimelapseYearSimulationSettings(plugin: PluginRendererFacade): TimelapseYearSimulationSettings | undefined {
-    return (plugin.settings as any).timelapseYearSimulation as TimelapseYearSimulationSettings | undefined;
+    return plugin.settings.timelapseYearSimulation;
 }
 
 function resolveTimelapseFinishDate(config: TimelapseYearSimulationSettings, startDate: Date): Date {

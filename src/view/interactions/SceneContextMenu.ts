@@ -7,6 +7,7 @@ import type { RadialTimelineSettings, TimelineItem } from '../../types';
 import { AddSceneConfirmModal } from '../../modals/AddSceneConfirmModal';
 import { buildChapterContainerSummaries, SetChapterModal } from '../../modals/SetChapterModal';
 import { readSharedChapterTitle, SHARED_CHAPTER_FIELD_KEY } from '../../utils/timelineChapters';
+import { frontmatterValueToText } from '../../utils/frontmatter';
 
 type SceneContextMenuView = {
     plugin: {
@@ -59,7 +60,7 @@ function getLocalDateString(date = new Date()): string {
 function normalizeScalar(value: unknown): string {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.length > 0 ? normalizeScalar(value[0]) : '';
-    return (typeof value === 'object' ? JSON.stringify(value) : String(value)).trim();
+    return frontmatterValueToText(value).trim();
 }
 
 function normalizeFrontmatterKey(key: string): string {

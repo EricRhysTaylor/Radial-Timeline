@@ -6,7 +6,10 @@
 
 import { setIcon } from 'obsidian';
 import type { TimelineItem } from '../../types';
-import type { PlanetaryProfile, RuntimeContentType } from '../../types/settings';
+import type { RadialTimelineSettings, RuntimeContentType } from '../../types/settings';
+// Value import used only inside event handlers (call-time), so the
+// TimeLineView <-> controller cycle stays inert at module init.
+import { RadialTimelineView } from '../TimeLineView';
 import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary, formatPlanetaryDateAdaptive } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { parseRuntimeField, formatRuntimeValue } from '../../utils/runtimeEstimator';
@@ -38,23 +41,6 @@ function restoreEarthLabelNodes(textPath: Element): boolean {
     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
     nodes.forEach(node => textPath.appendChild(node.cloneNode(true)));
     return true;
-}
-
-export interface ChronologueShiftView {
-    registerDomEvent: (
-        el: HTMLElement | Window | Document,
-        event: string,
-        handler: (ev: Event) => void,
-        options?: boolean | AddEventListenerOptions
-    ) => void;
-    register: (cb: () => void) => void;
-    plugin: {
-        refreshTimelineIfNeeded?: (path: string | null) => void;
-        [key: string]: any; // SAFE: any type used for facade extension by downstream plugins
-    };
-    currentMode: string;
-    sceneData?: TimelineItem[]; // Full scene data from view
-    [key: string]: any; // SAFE: any type used for additional runtime fields from Obsidian
 }
 
 interface SceneGeometryInfo {
@@ -96,7 +82,7 @@ export function resetShiftModeState(): void {
  * Setup Chronologue Shift Mode Controller
  * Handles the shift button and two-scene selection for elapsed time comparison
  */
-export function setupChronologueShiftController(view: ChronologueShiftView, svg: SVGSVGElement): void {
+export function setupChronologueShiftController(view: RadialTimelineView, svg: SVGSVGElement): void {
     // Only available in Chronologue mode
     if (view.currentMode !== 'chronologue') {
         return;
@@ -231,10 +217,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         const settings = view.plugin.settings;
         if (!settings || settings.chronologueLastCalendarView === calendarView) return;
         settings.chronologueLastCalendarView = calendarView;
-        const saveSettings = view.plugin.saveSettings;
-        if (typeof saveSettings === 'function') {
-            void saveSettings.call(view.plugin);
-        }
+        void view.plugin.saveSettings();
     };
 
     const shouldStartInPlanetaryCalendar = (): boolean => {
@@ -247,7 +230,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     // Check if any scene has runtime data
     const checkHasRuntimeData = (): boolean => {
-        const allScenes = (view as any).sceneData || (view as any).scenes || [];
+        const allScenes = view.sceneData;
         return allScenes.some((scene: TimelineItem) => {
             if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
                 const runtime = parseRuntimeField(scene.Runtime);
@@ -503,7 +486,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     // Update date labels for Runtime mode (shows cumulative runtime at each scene position)
     const updateDateLabelsForRuntimeMode = (enableRuntime: boolean) => {
         const dateLabels = svg.querySelectorAll('.rt-month-label-outer');
-        const allScenes: TimelineItem[] = (view as any).sceneData || (view as any).scenes || [];
+        const allScenes: TimelineItem[] = view.sceneData;
         
         // Build chronologically sorted scene list (matching buildChronologueOuterLabels)
         // and calculate cumulative runtime at each scene index
@@ -740,7 +723,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     // Keyboard event handlers for Shift and Caps Lock
     const handleKeyDown = (e: KeyboardEvent) => {
         // Only handle when radial timeline is active and in chronologue mode
-        const activeView = (view as any).app?.workspace?.activeLeaf?.view;
+                const activeView = view.app.workspace.getActiveViewOfType(RadialTimelineView);
         if (activeView !== view || view.currentMode !== 'chronologue') {
             return;
         }
@@ -781,7 +764,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     const handleKeyUp = (e: KeyboardEvent) => {
         // Only handle when radial timeline is active and in chronologue mode
-        const activeView = (view as any).app?.workspace?.activeLeaf?.view;
+                const activeView = view.app.workspace.getActiveViewOfType(RadialTimelineView);
         if (activeView !== view || view.currentMode !== 'chronologue') {
             return;
         }
@@ -819,7 +802,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     });
 
     // Store cleanup function for mode switching (removes buttons immediately)
-    (view as any)._chronologueShiftCleanup = () => {
+    view._chronologueShiftCleanup = () => {
         // Remove keyboard listeners
         doc.removeEventListener('keydown', handleKeyDown);
         doc.removeEventListener('keyup', handleKeyUp);
@@ -842,13 +825,10 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         // Decode path for comparison with Scene.path (which is decoded)
         const decodedPath = decodeURIComponent(path);
 
-        // First try to find in view.sceneData or view.scenes (full Scene objects)
-        const allScenes = (view as any).sceneData || (view as any).scenes;
-        if (allScenes && Array.isArray(allScenes)) {
-            const scene = allScenes.find((s: TimelineItem) => s.path === decodedPath);
-            if (scene) {
-                return scene;
-            }
+        // First try to find in view.sceneData (full Scene objects)
+        const scene = view.sceneData.find((s: TimelineItem) => s.path === decodedPath);
+        if (scene) {
+            return scene;
         }
 
         // Fallback: verify scene group exists
@@ -943,7 +923,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     // Export click handler for external use (called from ChronologueMode)
     // Works for Shift mode, ALT (Alien) mode, and Runtime mode
-    (view as any).handleShiftModeClick = (e: MouseEvent, sceneGroup: Element) => {
+    view.handleShiftModeClick = (e: MouseEvent, sceneGroup: Element) => {
         if (!shiftModeActive && !alienModeActive && !runtimeModeActive) return false;
 
         // Prevent default scene opening behavior when in shift mode
@@ -975,8 +955,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             if (selectedScenes.length < 2) {
                 removeElapsedTimeArc(svg);
             } else {
-                const allScenes = (view as any).sceneData || (view as any).scenes || [];
-                showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
+                showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, view.sceneData);
             }
             return true;
         }
@@ -992,8 +971,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
         // If we have 2 scenes, show elapsed time
         if (selectedScenes.length === 2) {
-            const allScenes = (view as any).sceneData || (view as any).scenes || [];
-            showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
+            showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, view.sceneData);
         }
 
         return true; // Indicate we handled the click
@@ -1010,8 +988,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         e.stopPropagation();
 
         elapsedTimeClickCount++;
-        const allScenes = (view as any).sceneData || (view as any).scenes || [];
-        showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
+        showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, view.sceneData);
     });
 
     // =========================================================================
@@ -1519,7 +1496,7 @@ function showElapsedTime(
     clickCount: number,
     sceneGeometry: Map<string, SceneGeometryInfo>,
     defaultOuterRadius: number,
-    settings?: { enablePlanetaryTime?: boolean; planetaryProfiles?: PlanetaryProfile[]; activePlanetaryProfileId?: string },
+    settings?: RadialTimelineSettings,
     allScenes?: TimelineItem[]
 ): void {
     removeElapsedTimeArc(svg);
@@ -1550,7 +1527,7 @@ function showElapsedTime(
     // Check if Runtime mode is active
     const isRuntimeMode = svg.getAttribute('data-shift-mode') === 'runtime';
     const isAlienMode = svg.getAttribute('data-shift-mode') === 'alien';
-    const profile = settings ? getActivePlanetaryProfile(settings as any) : null;
+    const profile = settings ? getActivePlanetaryProfile(settings) : null;
     
     let elapsedTimeText: string;
     

@@ -94,9 +94,6 @@ export const GOSSAMER_MODE: ModeDefinition = {
         setBaseModeAllScenes(plugin);
         resetRotation(plugin);
         plugin.clearSearch();
-        
-        // Set interaction mode to gossamer
-        (view as any).interactionMode = 'gossamer';
     },
     
     onExit: async (view) => {

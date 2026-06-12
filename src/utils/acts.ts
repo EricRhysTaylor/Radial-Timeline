@@ -3,7 +3,7 @@ import { t } from '../i18n';
 
 const MIN_ACTS = 3;
 
-export function getConfiguredActCount(settings?: RadialTimelineSettings): number {
+export function getConfiguredActCount(settings?: Pick<RadialTimelineSettings, 'actCount'>): number {
     const raw = settings?.actCount;
     if (typeof raw === 'number' && Number.isFinite(raw)) {
         return Math.max(MIN_ACTS, Math.floor(raw));

@@ -361,9 +361,10 @@ export function formatAiLogContent(
         try {
             return JSON.stringify(redactedValue, null, jsonSpacing);
         } catch {
-            const fallbackText = typeof redactedValue === 'object' && redactedValue !== null
-                ? '[unserializable object]'
-                : String(redactedValue);
+            // JSON.stringify only throws for circular objects and BigInt values.
+            const fallbackText = typeof redactedValue === 'bigint'
+                ? String(redactedValue)
+                : '[unserializable object]';
             return JSON.stringify(redactSensitiveValue(fallbackText));
         }
     };

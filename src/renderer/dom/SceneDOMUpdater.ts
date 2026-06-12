@@ -66,7 +66,7 @@ export function updateSceneFills(
 ): boolean {
     try {
         const publishStageColors = plugin.settings.publishStageColors || {};
-        const currentMode = (plugin.settings as any).currentMode || 'narrative';
+        const currentMode = plugin.settings.currentMode || 'narrative';
         const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
         
         let updated = false;

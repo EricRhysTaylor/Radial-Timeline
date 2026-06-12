@@ -157,6 +157,10 @@ export class RadialTimelineView extends ItemView {
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
+
+    // Chronologue shift-mode hooks installed per-render by ChronologueShiftController
+    public handleShiftModeClick?: (e: MouseEvent, sceneGroup: Element) => boolean;
+    public _chronologueShiftCleanup?: () => void;
     
     // Mode system
     private _currentMode: string = 'narrative'; // TimelineMode enum value
@@ -2045,7 +2049,7 @@ export class RadialTimelineView extends ItemView {
      */
     private setupInteractionsForMode(svg: SVGSVGElement): void {
         if (this.interactionController) {
-            const modeDef = getModeDefinition(this.currentMode as any);
+            const modeDef = getModeDefinition(this.currentMode as TimelineMode);
             void this.interactionController.setupMode(modeDef, svg);
         }
     }
@@ -2154,7 +2158,7 @@ export class RadialTimelineView extends ItemView {
                     this.plugin.searchResults,
                     this._currentMode,
                     this.plugin.settings,
-                    (this.plugin as any)._gossamerLastRun
+                    this.plugin._gossamerLastRun
                 );
                 
                 // Detect changes from last render
@@ -2366,8 +2370,8 @@ export class RadialTimelineView extends ItemView {
         this.plugin.searchResults.clear();
         
         // Clean up chronologue shift mode buttons (keyboard listeners auto-cleanup via view.register())
-        if ((this as any)._chronologueShiftCleanup) {
-            (this as any)._chronologueShiftCleanup();
+        if (this._chronologueShiftCleanup) {
+            this._chronologueShiftCleanup();
         }
         if (this.beatLabelAdjustTimeout !== null) {
             window.clearTimeout(this.beatLabelAdjustTimeout);
@@ -3149,9 +3153,10 @@ export class RadialTimelineView extends ItemView {
     private _tabHighlightTimeout: number | null = null;
     
     /**
-     * Remove all Gossamer-specific event listeners and restore normal mode
+     * Remove all Gossamer-specific event listeners and restore normal mode.
+     * Public: invoked by GossamerCommands during the non-ModeManager exit path.
      */
-    private removeGossamerEventListeners(svg: SVGSVGElement): void {
+    public removeGossamerEventListeners(svg: SVGSVGElement): void {
         this.gossamerEventHandlers.forEach((handler, key) => {
             const [eventType] = key.split('::');
             // All handlers recorded here were attached to the SVG root via delegation
@@ -3162,9 +3167,10 @@ export class RadialTimelineView extends ItemView {
     
     /**
      * Setup Gossamer-specific event listeners
-     * These are simpler and don't have conditionals - just Plot slice and dot interactions
+     * These are simpler and don't have conditionals - just Plot slice and dot interactions.
+     * Public: invoked by GossamerCommands during the non-ModeManager enter path.
      */
-    private setupGossamerEventListeners(svg: SVGSVGElement): void {
+    public setupGossamerEventListeners(svg: SVGSVGElement): void {
         // Clear any existing Gossamer handlers first
         this.removeGossamerEventListeners(svg);
         

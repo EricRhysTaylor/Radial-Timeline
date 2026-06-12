@@ -302,7 +302,7 @@ export function createTimelineSVG(
     } = precomputed;
 
     const NUM_RINGS = masterSubplotOrder.length;
-    const currentMode = (plugin.settings as any).currentMode || 'narrative';
+    const currentMode = settings.currentMode || 'narrative';
     const shouldApplyNumberSquareColors = currentMode !== 'gossamer';
     const isNarrativeMode = currentMode === 'narrative';
 
@@ -328,16 +328,16 @@ export function createTimelineSVG(
     };
 
     // Determine sorting method (needed for later logic; pulled out for readability)
-    const timelineSegments = buildTimelineSegments(plugin.settings as any);
+    const timelineSegments = buildTimelineSegments(settings);
     const numActs = Math.max(1, timelineSegments.length);
     const actLabels = timelineSegments.map(segment => segment.label);
     const segmentKind = timelineSegments[0]?.kind ?? 'act';
     const isChronologueMode = currentMode === 'chronologue';
     const isProgressMode = currentMode === 'progress';
-    const isSagaScope = getTimelineScope(plugin.settings as any) === 'saga';
-    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+    const isSagaScope = getTimelineScope(settings) === 'saga';
+    const sortByWhen = isChronologueMode ? true : (settings.sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
-    const showChapterMarkers = isNarrativeMode && !sortByWhen && ((plugin.settings as any).showChapterMarkers ?? false);
+    const showChapterMarkers = isNarrativeMode && !sortByWhen && (settings.showChapterMarkers ?? false);
     const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
         ? collectChronologueSceneEntries(scenes)
         : undefined;
@@ -531,9 +531,9 @@ export function createTimelineSVG(
         // Get the scenes for this act and subplot to determine correct index
         // When using When date sorting, all scenes are in act 0
         // When using manuscript order, use the scene's actual act
-        const currentMode = (plugin.settings as any).currentMode || 'narrative';
+        const currentMode = settings.currentMode || 'narrative';
         const isChronologueMode = currentMode === 'chronologue';
-        const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+        const sortByWhen = isChronologueMode ? true : (settings.sortByWhenDate ?? false);
 
         const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
         const actIndex = sortByWhen
@@ -582,7 +582,7 @@ export function createTimelineSVG(
     }
 
     // Initialize beat angles map for Gossamer (clear any stale data from previous render)
-    (plugin as any)._beatAngles = new Map();
+    plugin._beatAngles = new Map();
 
     // Store manuscript-order scene positions for Level 4 duration arcs (keyed by scene path or title)
     // Initialize map if in Chronologue mode so RingRenderer can populate it
@@ -812,7 +812,7 @@ export function createTimelineSVG(
     let versionIndicatorX: number | undefined;
     try {
         const versionService = getVersionCheckService();
-        const hasSettingsAlert = hasActiveAlerts(plugin.settings as any);
+        const hasSettingsAlert = hasActiveAlerts(settings);
         const versionResult = renderVersionIndicator({
             version: versionService.getCurrentVersion(),
             hasUpdate: versionService.isUpdateAvailable(),
