@@ -38,7 +38,6 @@
   --ert-pro-accent-border: color-mix(in srgb, var(--ert-pro-accent-color) 35%, transparent);
   --ert-pro-accent-border-strong: color-mix(in srgb, var(--ert-pro-accent-color) 60%, transparent);
   --ert-pro-gradient-primary: linear-gradient(135deg, #9333ea, #6366f1);
-  --ert-pro-gradient-primary-hover: linear-gradient(135deg, #a855f7, #818cf8);
   --ert-social-gradient-primary: linear-gradient(135deg, #fbbf24, #d97706);
   --ert-alert-info-color: #3b82f6;
   --ert-alert-success-color: var(--text-success, #22c55e);
@@ -9363,33 +9362,6 @@
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
-}
-
-/* Primary Pro Button (Gradient) */
-.ert-ui .ert-btn--primary-pro {
-  background: var(--ert-pro-gradient-primary);
-  color: var(--ert-color-white);
-  border: none;
-  box-shadow: none;
-}
-
-.ert-ui .ert-btn--primary-pro:hover:not(:disabled) {
-  background: var(--ert-pro-gradient-primary-hover);
-  box-shadow: none;
-  transform: translateY(-1px);
-}
-
-.ert-ui .ert-btn--primary-pro:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-.ert-ui .ert-btn--primary-pro:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--background-modifier-disabled);
-  color: var(--text-muted);
-  box-shadow: none;
 }
 
 /* Standard Pro Button (Subtle Tint - like Dropdowns) */

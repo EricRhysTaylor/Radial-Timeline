@@ -96,10 +96,10 @@ export class FolderLocationModal extends ErtModal {
             .onClick(() => this.close());
         cancelButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
 
-        const saveButton = new ButtonComponent(actions)
+        new ButtonComponent(actions)
             .setButtonText('Save')
+            .setCta()
             .onClick(() => { void save(); });
-        saveButton.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
 
         window.setTimeout(() => { input.focus(); input.select(); }, 0);
     }

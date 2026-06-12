@@ -155,8 +155,8 @@ export class BugReportModal extends ErtModal {
 
         const send = new ButtonComponent(actions)
             .setButtonText('Post on GitHub')
+            .setCta()
             .onClick(() => void this.handleSend('github'));
-        send.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
         this.sendButton = send;
         this.updateSendEnabled();
 

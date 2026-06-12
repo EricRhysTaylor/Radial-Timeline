@@ -50,14 +50,14 @@ class ErtConfirmModal extends ErtModal {
             });
         cancelButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
 
-        const confirmButton = new ButtonComponent(actions)
+        new ButtonComponent(actions)
             .setButtonText(this.options.confirmText ?? 'Continue')
+            .setCta()
             .onClick(() => {
                 this.resolved = true;
                 this.close();
                 this.onResolve(true);
             });
-        confirmButton.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
     }
 
     onClose(): void {
