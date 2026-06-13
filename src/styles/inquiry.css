@@ -11,7 +11,6 @@
   --ert-inquiry-corpus-mode-summary: #3b82ff;
   --ert-inquiry-corpus-mode-full: #00ff00;
   --ert-inquiry-target-color: color-mix(in srgb, var(--interactive-accent) 84%, #ffffff 16%);
-  --ert-inquiry-context-color: color-mix(in srgb, var(--text-normal) 82%, transparent);
   --ert-inquiry-active-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-finding-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-inactive-fill: var(--interactive-normal);
@@ -19,8 +18,6 @@
   --ert-inquiry-ai-success: var(--rt-ai-success, var(--ert-alert-success-color, var(--text-success)));
   --ert-inquiry-ai-warning: var(--rt-ai-warning, var(--ert-alert-warning-color, var(--text-warning)));
   --ert-inquiry-ai-error: var(--rt-ai-error, var(--ert-alert-critical-color, var(--text-error)));
-  --ert-inquiry-ai-running: var(--rt-ai-running, var(--interactive-accent));
-  --ert-inquiry-ai-advisory: var(--rt-ai-advisory, var(--text-muted));
   --ert-inquiry-ai-neutral: var(--rt-ai-neutral, var(--text-normal));
 }
 
@@ -627,7 +624,6 @@
 .ert-inquiry-minimap-tick {
   --ert-inquiry-minimap-tick-color: var(--icon-color, var(--text-normal));
   --ert-inquiry-minimap-tick-hover-color: var(--text-normal);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 18%, var(--background-secondary));
   --ert-inquiry-minimap-target-letter-color: var(--ert-inquiry-target-color);
   opacity: 1;
   cursor: pointer;
@@ -636,7 +632,6 @@
 .ert-inquiry-minimap-tick.is-empty {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
   --ert-inquiry-minimap-tick-hover-color: var(--ert-inquiry-empty);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
 }
 
 .ert-inquiry-minimap-tick.is-excluded {
@@ -1202,7 +1197,6 @@
 .ert-inquiry-minimap-tick.is-active {
   opacity: 1;
   --ert-inquiry-minimap-tick-color: var(--interactive-accent);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary));
 }
 
 .ert-inquiry-minimap-tick.is-finding {
@@ -1211,12 +1205,10 @@
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-finding {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-finding-color);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-finding-color) 18%, var(--background-secondary));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-active {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-active-zone-color);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
 }
 
 .ert-inquiry-minimap-tick.is-linked-hover {
@@ -1234,13 +1226,11 @@
 .ert-inquiry-minimap-tick.is-empty.is-active,
 .ert-inquiry-minimap-tick.is-empty.is-finding {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-empty.is-finding,
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-empty.is-active {
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
 }
 
 .ert-inquiry-zones {
@@ -1257,7 +1247,6 @@
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-setup-stroke);
   --ert-inquiry-zone-fill: url(#ert-inquiry-zone-setup-raised);
-  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-setup-pressed);
 }
 
 .inq-zone-segment-wrap--setup .inq-zone-segment-path {
@@ -1268,7 +1257,6 @@
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-pressure-stroke);
   --ert-inquiry-zone-fill: url(#ert-inquiry-zone-pressure-raised);
-  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-pressure-pressed);
 }
 
 .inq-zone-segment-wrap--pressure .inq-zone-segment-path {
@@ -1279,7 +1267,6 @@
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-payoff-stroke);
   --ert-inquiry-zone-fill: url(#ert-inquiry-zone-payoff-raised);
-  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-payoff-pressed);
 }
 
 .inq-zone-segment-wrap--payoff .inq-zone-segment-path {
@@ -1496,21 +1483,18 @@
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-setup-stroke);
   --ert-inquiry-zone-fill: url(#ert-inquiry-zone-setup-raised);
-  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-setup-pressed);
 }
 
 .inq-zone-dot--pressure {
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-pressure-stroke);
   --ert-inquiry-zone-fill: url(#ert-inquiry-zone-pressure-raised);
-  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-pressure-pressed);
 }
 
 .inq-zone-dot--payoff {
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-payoff-stroke);
   --ert-inquiry-zone-fill: url(#ert-inquiry-zone-payoff-raised);
-  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-payoff-pressed);
 }
 
 .inq-zone-dot-circle {
@@ -3997,7 +3981,6 @@ body.rt-modal-open .ert-inquiry-svg {
 }
 @media (max-width: 980px) {
   .ert-inquiry-svg {
-    --ert-inquiry-panel-scale: 0.96;
   }
 
   :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon {

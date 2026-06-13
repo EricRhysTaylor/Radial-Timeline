@@ -19,9 +19,7 @@
   --ert-briefing-scene-ref-text: var(--text-normal, #222222);
   --ert-briefing-scene-ref-num-bg: color-mix(in srgb, var(--text-normal, #222222) 68%, var(--background-primary, #fcfcfc));
   --ert-briefing-scene-ref-num-text: var(--background-primary, #fcfcfc);
-  --ert-briefing-active-bg: var(--background-primary, #fcfcfc);
   --ert-briefing-active-text: var(--text-normal, #222222);
-  --ert-briefing-active-shadow: 0 0 0 1px var(--background-modifier-border, rgba(0, 0, 0, 0.14)), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .ert-briefing-modal[data-ert-briefing-theme="dark"] {
@@ -43,9 +41,7 @@
   --ert-briefing-scene-ref-text: var(--text-normal, #dcddde);
   --ert-briefing-scene-ref-num-bg: var(--interactive-accent, #7f6df2);
   --ert-briefing-scene-ref-num-text: var(--text-on-accent, #ffffff);
-  --ert-briefing-active-bg: var(--background-secondary, #262626);
   --ert-briefing-active-text: var(--text-normal, #dcddde);
-  --ert-briefing-active-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
 .ert-briefing-modal .modal-content {

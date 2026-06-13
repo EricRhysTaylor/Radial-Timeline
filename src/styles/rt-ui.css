@@ -51,8 +51,6 @@
   --ert-alert-success-border: color-mix(in srgb, var(--ert-alert-success-color) 30%, transparent);
   --ert-alert-warning-border: color-mix(in srgb, var(--ert-alert-warning-color) 35%, transparent);
   --ert-alert-critical-border: color-mix(in srgb, var(--ert-alert-critical-color) 35%, transparent);
-  --ert-alert-warning-pulse: color-mix(in srgb, var(--ert-alert-warning-color) 40%, transparent);
-  --ert-alert-critical-pulse: color-mix(in srgb, var(--ert-alert-critical-color) 50%, transparent);
   --ert-alert-warning-pulse-strong: color-mix(in srgb, var(--ert-alert-warning-color) 60%, transparent);
   --ert-alert-critical-pulse-strong: color-mix(in srgb, var(--ert-alert-critical-color) 70%, transparent);
   /*
@@ -92,9 +90,7 @@
   --ert-shadow-inset-highlight-subtle: inset 0 1px 0 color-mix(in srgb, var(--ert-color-white) 4%, transparent);
   --ert-shadow-ring-accent: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 15%, transparent);
   --ert-shadow-ring-accent-strong: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
-  --ert-shadow-pro-glow: 0 1px 4px color-mix(in srgb, var(--ert-pro-accent-color) 18%, transparent);
   --ert-shadow-pro-glow-strong: 0 2px 6px color-mix(in srgb, var(--ert-pro-accent-color) 28%, transparent);
-  --ert-shadow-pro-glow-subtle: 0 1px 2px color-mix(in srgb, var(--ert-pro-accent-color) 14%, transparent);
   --ert-shadow-apr-glow: none;
   --ert-flow-fallback: var(--text-muted);
   --ert-ai-cache-active-color: color-mix(in srgb, var(--text-success) 90%, #eaffef 10%);
@@ -187,19 +183,14 @@
   --ert-pill-hover-bg: var(--interactive-hover);
   --ert-pill-hover-border: var(--background-modifier-border);
   --ert-pill-hover-color: var(--text-normal);
-  --ert-pill-active-border: var(--ert-accent);
   --ert-pill-icon-color: var(--text-muted);
   --ert-pill-icon-opacity: 0.7;
   --ert-pill-icon-hover-color: var(--ert-pill-icon-color);
   --ert-pill-icon-active-color: var(--ert-pill-icon-color);
   --ert-pill-disabled-opacity: 0.4;
   --ert-pill-shadow: none;
-  --ert-pill-hover-ring: none;
-  --ert-pill-active-ring: none;
   --ert-iconBtn-shadow: none;
   --ert-iconBtn-hover-ring: none;
-  --ert-swatch-shadow: none;
-  --ert-swatch-hover-ring: none;
   --ert-control-height: var(--input-height, 32px);
   --ert-control-pad-x: 10px;
   --ert-control-pad-y: 6px;
@@ -214,7 +205,6 @@
   --ert-control-color: var(--text-normal);
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
   --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 96%, transparent);
-  --ert-modal-shadow: none;
   --ert-modal-blur: blur(24px) saturate(1.12);
   --ert-modal-tint: linear-gradient(
     180deg,
@@ -222,7 +212,6 @@
     color-mix(in srgb, var(--background-primary) 4%, transparent) 55%,
     transparent 82%
   );
-  --ert-modal-glow: 0 4px 16px color-mix(in srgb, var(--ert-accent) 10%, transparent);
   --ert-input-width-xs: 6ch;
   --ert-input-width-2digit: 4.75ch;
   --ert-input-width-3digit: 5.75ch;
@@ -2754,7 +2743,6 @@
 .ert-ui.ert-modal--social,
 .ert-ui .ert-modal--social {
   --ert-modal-tint: transparent;
-  --ert-modal-glow: none;
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
   --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   --ert-panel-bg: color-mix(in srgb, var(--background-primary) 86%, transparent);
@@ -4323,7 +4311,6 @@
   --ert-panel-shadow-elev: none;
   --ert-pill-shadow: none;
   --ert-iconBtn-shadow: none;
-  --ert-swatch-shadow: none;
   --ert-badgePill-shadow: none;
 }
 
