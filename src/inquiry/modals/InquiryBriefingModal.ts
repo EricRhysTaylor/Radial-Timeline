@@ -52,12 +52,12 @@ export class InquiryBriefingModal extends Modal {
         const { contentEl, titleEl, modalEl } = this;
         contentEl.empty();
         titleEl.setText('');
-        modalEl.addClass('rt-briefing-modal');
-        contentEl.addClass('rt-briefing-surface');
+        modalEl.addClass('ert-briefing-modal');
+        contentEl.addClass('ert-briefing-surface');
         this.applyTheme();
         this.installThemeObserver();
 
-        const shell = contentEl.createDiv({ cls: 'rt-briefing-shell' });
+        const shell = contentEl.createDiv({ cls: 'ert-briefing-shell' });
         this.renderHeader(shell);
         this.renderHero(shell);
         this.renderSummary(shell);
@@ -76,28 +76,28 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private renderHeader(container: HTMLElement): void {
-        const header = container.createEl('header', { cls: 'rt-briefing-header' });
-        const brand = header.createDiv({ cls: 'rt-briefing-brand' });
+        const header = container.createEl('header', { cls: 'ert-briefing-header' });
+        const brand = header.createDiv({ cls: 'ert-briefing-brand' });
         const logoHref = this.resolveLogoHref();
         if (logoHref) {
             brand.createEl('img', {
-                cls: 'rt-briefing-brand-logo',
+                cls: 'ert-briefing-brand-logo',
                 attr: {
                     src: logoHref,
                     alt: 'Radial Timeline'
                 }
             });
         } else {
-            brand.createDiv({ cls: 'rt-briefing-brand-mark', text: 'RT' });
+            brand.createDiv({ cls: 'ert-briefing-brand-mark', text: 'RT' });
         }
 
-        const brandText = brand.createDiv({ cls: 'rt-briefing-brand-text' });
-        brandText.createDiv({ cls: 'rt-briefing-brand-name', text: 'Radial Timeline' });
-        brandText.createDiv({ cls: 'rt-briefing-brand-subline', text: 'Inquiry Briefing' });
+        const brandText = brand.createDiv({ cls: 'ert-briefing-brand-text' });
+        brandText.createDiv({ cls: 'ert-briefing-brand-name', text: 'Radial Timeline' });
+        brandText.createDiv({ cls: 'ert-briefing-brand-subline', text: 'Inquiry Briefing' });
 
-        const actions = header.createDiv({ cls: 'rt-briefing-actions' });
+        const actions = header.createDiv({ cls: 'ert-briefing-actions' });
         const pdfAction = actions.createEl('button', {
-            cls: 'rt-briefing-action',
+            cls: 'ert-briefing-action',
             text: 'Save PDF'
         });
         pdfAction.addEventListener('click', () => {
@@ -106,7 +106,7 @@ export class InquiryBriefingModal extends Modal {
         const briefFile = this.briefFile;
         if (briefFile) {
             const noteAction = actions.createEl('button', {
-                cls: 'rt-briefing-action',
+                cls: 'ert-briefing-action',
                 text: 'Open Markdown'
             });
             noteAction.addEventListener('click', () => {
@@ -116,24 +116,24 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private renderHero(container: HTMLElement): void {
-        const hero = container.createEl('section', { cls: 'rt-briefing-hero' });
-        hero.createDiv({ cls: 'rt-briefing-kicker', text: 'Briefing' });
+        const hero = container.createEl('section', { cls: 'ert-briefing-hero' });
+        hero.createDiv({ cls: 'ert-briefing-kicker', text: 'Briefing' });
         const context = this.brief.questionTitle?.trim();
         if (context && context.toLowerCase() !== 'briefing') {
-            hero.createDiv({ cls: 'rt-briefing-context', text: context });
+            hero.createDiv({ cls: 'ert-briefing-context', text: context });
         }
         hero.createEl('h1', {
-            cls: 'rt-briefing-title',
+            cls: 'ert-briefing-title',
             text: this.brief.questionText?.trim() || 'Inquiry question unavailable.'
         });
 
-        const meta = hero.createDiv({ cls: 'rt-briefing-meta' });
+        const meta = hero.createDiv({ cls: 'ert-briefing-meta' });
         const primaryMeta = [
             this.formatGeneratedAt(),
             this.brief.scopeIndicator ? `Scope ${this.brief.scopeIndicator}` : '',
         ].filter(Boolean);
         if (primaryMeta.length) {
-            const primaryLine = meta.createDiv({ cls: 'rt-briefing-meta-line', text: primaryMeta.join(' · ') });
+            const primaryLine = meta.createDiv({ cls: 'ert-briefing-meta-line', text: primaryMeta.join(' · ') });
             if (this.isCorpusStale) {
                 primaryLine.appendText(' · ');
                 const labelText = this.staleDiagnosis
@@ -143,24 +143,24 @@ export class InquiryBriefingModal extends Modal {
                     ? `Corpus has changed since this briefing was generated:\n${this.staleDiagnosis.tooltipLines.join('\n')}\nRe-run to refresh.`
                     : 'Corpus has changed since this briefing was generated. Re-run to refresh.';
                 primaryLine.createSpan({
-                    cls: 'rt-briefing-stale-badge',
+                    cls: 'ert-briefing-stale-badge',
                     text: labelText,
                     attr: { title: tooltip }
                 });
             }
         }
         if (this.brief.pills.length) {
-            meta.createDiv({ cls: 'rt-briefing-meta-line rt-briefing-meta-line--secondary', text: this.brief.pills.join(' · ') });
+            meta.createDiv({ cls: 'ert-briefing-meta-line ert-briefing-meta-line--secondary', text: this.brief.pills.join(' · ') });
         }
         if (this.isCorpusStale && this.staleDiagnosis?.tooltipLines.length) {
-            const detail = meta.createDiv({ cls: 'rt-briefing-meta-line rt-briefing-stale-detail' });
+            const detail = meta.createDiv({ cls: 'ert-briefing-meta-line ert-briefing-stale-detail' });
             detail.setText(this.staleDiagnosis.tooltipLines.join(' · '));
         }
     }
 
     private renderSummary(container: HTMLElement): void {
         const section = this.createSection(container, 'Summary');
-        const summaryStack = section.createDiv({ cls: 'rt-briefing-summary-stack' });
+        const summaryStack = section.createDiv({ cls: 'ert-briefing-summary-stack' });
 
         const summaryEntries = this.brief.mode === 'depth'
             ? [
@@ -177,11 +177,11 @@ export class InquiryBriefingModal extends Modal {
             .forEach((entry, index) => {
                 const block = summaryStack.createEl('article', {
                     cls: index === 0
-                        ? 'rt-briefing-block rt-briefing-block--lead rt-briefing-summary-block'
-                        : 'rt-briefing-block rt-briefing-summary-block'
+                        ? 'ert-briefing-block ert-briefing-block--lead ert-briefing-summary-block'
+                        : 'ert-briefing-block ert-briefing-summary-block'
                 });
-                block.createDiv({ cls: 'rt-briefing-summary-label', text: entry.label });
-                this.renderTextElement(block, 'p', 'rt-briefing-paragraph rt-briefing-summary-text', entry.text);
+                block.createDiv({ cls: 'ert-briefing-summary-label', text: entry.label });
+                this.renderTextElement(block, 'p', 'ert-briefing-paragraph ert-briefing-summary-text', entry.text);
             });
     }
 
@@ -199,15 +199,15 @@ export class InquiryBriefingModal extends Modal {
     private renderSources(container: HTMLElement): void {
         if (!this.brief.sources.length) return;
         const section = this.createSection(container, 'Sources');
-        const list = section.createDiv({ cls: 'rt-briefing-stack' });
+        const list = section.createDiv({ cls: 'ert-briefing-stack' });
         this.brief.sources.forEach(source => {
-            const item = list.createEl('article', { cls: 'rt-briefing-block rt-briefing-source' });
-            const titleRow = item.createDiv({ cls: 'rt-briefing-source-header' });
+            const item = list.createEl('article', { cls: 'ert-briefing-block ert-briefing-source' });
+            const titleRow = item.createDiv({ cls: 'ert-briefing-source-header' });
             const title = source.title?.trim() || 'Untitled source';
 
             if (source.path) {
                 const link = titleRow.createEl('a', {
-                    cls: 'rt-briefing-source-title rt-briefing-link',
+                    cls: 'ert-briefing-source-title ert-briefing-link',
                     text: title,
                     href: '#'
                 });
@@ -217,7 +217,7 @@ export class InquiryBriefingModal extends Modal {
                 });
             } else if (source.url) {
                 titleRow.createEl('a', {
-                    cls: 'rt-briefing-source-title rt-briefing-link',
+                    cls: 'ert-briefing-source-title ert-briefing-link',
                     text: title,
                     href: source.url,
                     attr: {
@@ -226,7 +226,7 @@ export class InquiryBriefingModal extends Modal {
                     }
                 });
             } else {
-                titleRow.createDiv({ cls: 'rt-briefing-source-title', text: title });
+                titleRow.createDiv({ cls: 'ert-briefing-source-title', text: title });
             }
 
             const metaParts = [
@@ -236,10 +236,10 @@ export class InquiryBriefingModal extends Modal {
                     : ''
             ].filter(Boolean);
             if (metaParts.length) {
-                item.createDiv({ cls: 'rt-briefing-source-meta', text: metaParts.join(' · ') });
+                item.createDiv({ cls: 'ert-briefing-source-meta', text: metaParts.join(' · ') });
             }
             if (source.excerpt?.trim()) {
-                this.renderTextElement(item, 'p', 'rt-briefing-paragraph rt-briefing-source-excerpt', source.excerpt.trim());
+                this.renderTextElement(item, 'p', 'ert-briefing-paragraph ert-briefing-source-excerpt', source.excerpt.trim());
             }
         });
     }
@@ -247,19 +247,19 @@ export class InquiryBriefingModal extends Modal {
     private renderSceneNotes(container: HTMLElement): void {
         if (!this.brief.sceneNotes.length) return;
         const section = this.createSection(container, 'Scene Notes');
-        const notes = section.createDiv({ cls: 'rt-briefing-stack' });
+        const notes = section.createDiv({ cls: 'ert-briefing-stack' });
 
         this.brief.sceneNotes.forEach(note => {
             const article = notes.createEl('article', {
-                cls: 'rt-briefing-block rt-briefing-note',
+                cls: 'ert-briefing-block ert-briefing-note',
                 attr: note.anchorId ? { 'data-rt-brief-anchor': note.anchorId } : undefined
             });
-            const labelRow = article.createDiv({ cls: 'rt-briefing-note-label-row' });
-            labelRow.createDiv({ cls: 'rt-briefing-note-label', text: note.header });
+            const labelRow = article.createDiv({ cls: 'ert-briefing-note-label-row' });
+            labelRow.createDiv({ cls: 'ert-briefing-note-label', text: note.header });
             const anchorTarget = this.briefFile;
             if (note.anchorId && anchorTarget) {
                 const anchorAction = labelRow.createEl('a', {
-                    cls: 'rt-briefing-note-link',
+                    cls: 'ert-briefing-note-link',
                     text: '↗',
                     attr: {
                         href: '#',
@@ -274,16 +274,16 @@ export class InquiryBriefingModal extends Modal {
             }
 
             note.entries.forEach(entry => {
-                const entryBlock = article.createDiv({ cls: 'rt-briefing-note-entry' });
-                this.renderTextElement(entryBlock, 'h3', 'rt-briefing-finding-title', entry.headline, 'headline');
+                const entryBlock = article.createDiv({ cls: 'ert-briefing-note-entry' });
+                this.renderTextElement(entryBlock, 'h3', 'ert-briefing-finding-title', entry.headline, 'headline');
                 if (entry.lens) {
                     entryBlock.createDiv({
-                        cls: 'rt-briefing-finding-meta',
+                        cls: 'ert-briefing-finding-meta',
                         text: entry.lens
                     });
                 }
                 entry.bullets.forEach(bullet => {
-                    this.renderTextElement(entryBlock, 'p', 'rt-briefing-paragraph', bullet);
+                    this.renderTextElement(entryBlock, 'p', 'ert-briefing-paragraph', bullet);
                 });
             });
         });
@@ -292,13 +292,13 @@ export class InquiryBriefingModal extends Modal {
     private renderPendingActions(container: HTMLElement): void {
         if (!this.brief.pendingActions.length) return;
         const section = this.createSection(container, 'Action Items');
-        const list = section.createEl('ol', { cls: 'rt-briefing-action-list' });
+        const list = section.createEl('ol', { cls: 'ert-briefing-action-list' });
         this.brief.pendingActions.forEach(action => {
-            const item = list.createEl('li', { cls: 'rt-briefing-action-item' });
+            const item = list.createEl('li', { cls: 'ert-briefing-action-item' });
             if (action.targetLabel) {
-                item.createSpan({ cls: 'rt-briefing-action-pill', text: action.targetLabel });
+                item.createSpan({ cls: 'ert-briefing-action-pill', text: action.targetLabel });
             }
-            this.renderTextElement(item, 'span', 'rt-briefing-action-text', action.text);
+            this.renderTextElement(item, 'span', 'ert-briefing-action-text', action.text);
         });
     }
 
@@ -306,45 +306,45 @@ export class InquiryBriefingModal extends Modal {
         if (!this.brief.rawResponse?.trim()) return;
         const section = this.createSection(container, 'Provider Response');
         section.createEl('pre', {
-            cls: 'rt-briefing-raw',
+            cls: 'ert-briefing-raw',
             text: this.brief.rawResponse.trim()
         });
     }
 
     private renderFindingGroup(container: HTMLElement, label: string, findings: InquiryBriefModel['findings']): void {
         if (!findings.length) return;
-        const group = container.createDiv({ cls: 'rt-briefing-group' });
-        group.createDiv({ cls: 'rt-briefing-group-label', text: label });
+        const group = container.createDiv({ cls: 'ert-briefing-group' });
+        group.createDiv({ cls: 'ert-briefing-group-label', text: label });
         findings.forEach(finding => {
-            const card = group.createEl('article', { cls: 'rt-briefing-block rt-briefing-finding' });
+            const card = group.createEl('article', { cls: 'ert-briefing-block ert-briefing-finding' });
             if (finding.sceneLabel) {
                 card.createDiv({
-                    cls: 'rt-briefing-group-label',
+                    cls: 'ert-briefing-group-label',
                     text: finding.sceneLabel
                 });
             }
-            this.renderTextElement(card, 'h3', 'rt-briefing-finding-title', finding.headline, 'headline');
+            this.renderTextElement(card, 'h3', 'ert-briefing-finding-title', finding.headline, 'headline');
             if (finding.lens) {
                 card.createDiv({
-                    cls: 'rt-briefing-finding-meta',
+                    cls: 'ert-briefing-finding-meta',
                     text: finding.lens
                 });
             }
             if (finding.bullets.length) {
                 finding.bullets.forEach(bullet => {
-                    this.renderTextElement(card, 'p', 'rt-briefing-paragraph', bullet);
+                    this.renderTextElement(card, 'p', 'ert-briefing-paragraph', bullet);
                 });
             }
         });
     }
 
     private createSection(container: HTMLElement, label?: string): HTMLElement {
-        const section = container.createEl('section', { cls: 'rt-briefing-section' });
+        const section = container.createEl('section', { cls: 'ert-briefing-section' });
         // Label optional: the Findings section omits it because its first group
         // label ("Primary Findings") already heads the area — an outer
         // "Findings" header would just stack two near-identical labels.
         if (label) {
-            section.createDiv({ cls: 'rt-briefing-section-label', text: label });
+            section.createDiv({ cls: 'ert-briefing-section-label', text: label });
         }
         return section;
     }
@@ -391,7 +391,7 @@ export class InquiryBriefingModal extends Modal {
 
     private applyTheme(): void {
         const effectiveTheme = this.resolveEffectiveTheme();
-        this.modalEl.setAttribute('data-rt-briefing-theme', effectiveTheme);
+        this.modalEl.setAttribute('data-ert-briefing-theme', effectiveTheme);
     }
 
     private renderTextElement(
@@ -464,7 +464,7 @@ export class InquiryBriefingModal extends Modal {
         const doc = this.contentEl.ownerDocument;
         if (style === 'headline') {
             const textEl = doc.createElement('span');
-            textEl.className = 'rt-briefing-scene-inline';
+            textEl.className = 'ert-briefing-scene-inline';
             textEl.textContent = label;
             return textEl;
         }
@@ -472,7 +472,7 @@ export class InquiryBriefingModal extends Modal {
         const titlePart = titleParts.join(' ').trim();
         const interactive = !!anchorId;
         const el = doc.createElement(interactive ? 'a' : 'span');
-        el.className = 'rt-briefing-scene-ref';
+        el.className = 'ert-briefing-scene-ref';
         if (interactive && el instanceof HTMLAnchorElement) {
             el.href = '#';
             el.addEventListener('click', (event) => {
@@ -482,12 +482,12 @@ export class InquiryBriefingModal extends Modal {
             el.setAttribute('aria-label', `Jump to ${label}`);
         }
         const numberEl = doc.createElement('span');
-        numberEl.className = 'rt-briefing-scene-ref-num';
+        numberEl.className = 'ert-briefing-scene-ref-num';
         numberEl.textContent = numberPart;
         el.append(numberEl);
         if (titlePart) {
             const titleEl = doc.createElement('span');
-            titleEl.className = 'rt-briefing-scene-ref-title';
+            titleEl.className = 'ert-briefing-scene-ref-title';
             titleEl.textContent = titlePart;
             el.append(titleEl);
         }
@@ -498,14 +498,14 @@ export class InquiryBriefingModal extends Modal {
         const doc = this.contentEl.ownerDocument;
         if (style === 'headline') {
             const textEl = doc.createElement('span');
-            textEl.className = 'rt-briefing-scene-inline rt-briefing-scene-inline--unresolved';
+            textEl.className = 'ert-briefing-scene-inline ert-briefing-scene-inline--unresolved';
             textEl.textContent = rawRef;
             return textEl;
         }
         const el = doc.createElement('span');
-        el.className = 'rt-briefing-scene-ref rt-briefing-scene-ref--unresolved';
+        el.className = 'ert-briefing-scene-ref ert-briefing-scene-ref--unresolved';
         const textEl = doc.createElement('span');
-        textEl.className = 'rt-briefing-scene-ref-title';
+        textEl.className = 'ert-briefing-scene-ref-title';
         textEl.textContent = rawRef;
         el.append(textEl);
         return el;
@@ -513,7 +513,7 @@ export class InquiryBriefingModal extends Modal {
 
     private buildQuoteNode(text: string, mode: 'single' | 'double'): HTMLElement {
         const el = this.contentEl.ownerDocument.createElement('span');
-        el.className = `rt-briefing-quote rt-briefing-quote--${mode}`;
+        el.className = `ert-briefing-quote ert-briefing-quote--${mode}`;
         el.textContent = text;
         return el;
     }
@@ -524,7 +524,7 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private focusAnchorIdInternal(anchorId: string): void {
-        const notes = Array.from(this.contentEl.querySelectorAll<HTMLElement>('.rt-briefing-note[data-rt-brief-anchor]'));
+        const notes = Array.from(this.contentEl.querySelectorAll<HTMLElement>('.ert-briefing-note[data-rt-brief-anchor]'));
         const target = notes.find(note => note.getAttribute('data-rt-brief-anchor') === anchorId);
         if (!target) return;
         target.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -569,7 +569,7 @@ export class InquiryBriefingModal extends Modal {
 
     private createPrintHost(): HTMLElement {
         const host = this.contentEl.ownerDocument.createElement('div');
-        host.className = 'print rt-briefing-print-root';
+        host.className = 'print ert-briefing-print-root';
         host.setAttribute('aria-hidden', 'true');
 
         const article = this.contentEl.cloneNode(true) as HTMLElement;

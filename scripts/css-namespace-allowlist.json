@@ -53,6 +53,7 @@
     "files": [
       "src/styles/settings.css",
       "src/styles/modal.css",
+      "src/styles/briefing.css",
       "src/styles/timeline-audit.css",
       "src/styles/timeline-repair.css",
       "src/styles/book-designer.css",
