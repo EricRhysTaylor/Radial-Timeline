@@ -5,7 +5,7 @@
 
 import { normalizePath, FileSystemAdapter, Platform, Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { PandocLayoutTemplate } from '../types';
+import type { PandocLayoutTemplate, LegacyPersistedSettings } from '../types';
 import type { ManuscriptSceneSelection, ManuscriptOrder } from './manuscript';
 import { execFile, execFileSync } from 'child_process'; // SAFE: Node child_process for Pandoc subprocess + font probes
 import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
@@ -1171,7 +1171,7 @@ export function getTemplateForPreset(
     plugin: RadialTimelinePlugin,
     preset: ManuscriptPreset
 ): string | undefined {
-    const templates = plugin.settings.pandocTemplates || {};
+    const templates = (plugin.settings as LegacyPersistedSettings).pandocTemplates || {};
     switch (preset) {
         case 'screenplay':
             return templates.screenplay || undefined;

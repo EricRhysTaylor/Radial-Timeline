@@ -1036,6 +1036,24 @@ export interface RadialTimelineSettings {
     templateHotfixHistory?: HotfixHistoryEntry[];
 }
 
+/**
+ * Non-deprecated view of the legacy persisted fields on RadialTimelineSettings.
+ * Old data.json files may still carry these; the migration / fallback code reads
+ * them through this shape so the boundary access doesn't trip no-deprecated while
+ * the deprecation tags stay on RadialTimelineSettings for everyone else.
+ */
+export interface LegacyPersistedSettings {
+    showSourcePathAsTitle?: boolean;
+    outlineOutputFolder?: string;
+    backdropYamlTemplate?: string;
+    pandocTemplates?: {
+        screenplay?: string;
+        podcast?: string;
+        novel?: string;
+    };
+    lastUsedPandocLayoutByPreset?: Record<string, string>;
+}
+
 export interface HotfixHistoryEntry {
     layoutId: string;        // e.g. 'bundled-fiction-classic-manuscript'
     hotfixId: string;        // e.g. 'scene-opener-macro-v1', 'symmetric-margins-v1'

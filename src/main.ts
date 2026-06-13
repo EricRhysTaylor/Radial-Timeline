@@ -23,7 +23,7 @@ import { INQUIRY_VIEW_TYPE } from './inquiry/constants';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { cleanupTooltipAnchors } from './utils/tooltip';
-import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
+import type { RadialTimelineSettings, LegacyPersistedSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { getAllRefactorAlertIds } from './settings/refactorAlerts';
 import { autoAdoptDetectedBeatsIfEmpty } from './storyBeats/workspaceState';
@@ -822,7 +822,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 sourcePath: legacySourcePath,
                 legacyTitle
             })) {
-                const derivedTitle = this.settings.showSourcePathAsTitle !== false
+                const derivedTitle = (this.settings as LegacyPersistedSettings).showSourcePathAsTitle !== false
                     ? deriveBookTitleFromSourcePath(legacySourcePath)
                     : null;
                 const title = legacyTitle || derivedTitle || DEFAULT_BOOK_TITLE;
@@ -864,7 +864,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
 
             // ─── Migrate global lastUsedPandocLayoutByPreset into active book ───
-            const globalLayoutPrefs = this.settings.lastUsedPandocLayoutByPreset;
+            const globalLayoutPrefs = (this.settings as LegacyPersistedSettings).lastUsedPandocLayoutByPreset;
             if (active && globalLayoutPrefs && Object.keys(globalLayoutPrefs).length > 0 && !active.lastUsedPandocLayoutByPreset) {
                 const validPresets = new Set(['novel', 'screenplay', 'podcast']);
                 const filtered: Record<string, string> = {};
@@ -876,7 +876,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (Object.keys(filtered).length > 0) {
                     active.lastUsedPandocLayoutByPreset = filtered;
                 }
-                this.settings.lastUsedPandocLayoutByPreset = {};
+                (this.settings as LegacyPersistedSettings).lastUsedPandocLayoutByPreset = {};
                 booksMigrated = true;
             }
         }
@@ -960,7 +960,7 @@ export default class RadialTimelinePlugin extends Plugin {
         const legacyOutlineFolder = 'Radial Timeline/Outline';
         const exportFolderDefault = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export';
         const manuscriptFolder = (this.settings.manuscriptOutputFolder || '').trim();
-        const outlineFolder = (this.settings.outlineOutputFolder || '').trim();
+        const outlineFolder = ((this.settings as LegacyPersistedSettings).outlineOutputFolder || '').trim();
         let exportFolderMigrated = false;
 
         if (!manuscriptFolder || manuscriptFolder === legacyManuscriptFolder) {
@@ -969,7 +969,7 @@ export default class RadialTimelinePlugin extends Plugin {
         }
 
         if (!outlineFolder || outlineFolder === legacyOutlineFolder || outlineFolder !== this.settings.manuscriptOutputFolder) {
-            this.settings.outlineOutputFolder = this.settings.manuscriptOutputFolder || exportFolderDefault;
+            (this.settings as LegacyPersistedSettings).outlineOutputFolder = this.settings.manuscriptOutputFolder || exportFolderDefault;
             exportFolderMigrated = true;
         }
 
@@ -983,7 +983,7 @@ export default class RadialTimelinePlugin extends Plugin {
         let backdropTemplateMigrated = false;
         if (!this.settings.backdropYamlTemplates) {
             const knownBaseKeys = ['Class', 'When', 'End', 'Context', 'Synopsis'];
-            const legacyBackdropTemplate = this.settings.backdropYamlTemplate ?? '';
+            const legacyBackdropTemplate = (this.settings as LegacyPersistedSettings).backdropYamlTemplate ?? '';
             if (legacyBackdropTemplate.trim()) {
                 // Parse all keys from the legacy template
                 const allKeys: string[] = [];
@@ -1027,7 +1027,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // ─── Migrate legacy pandocTemplates → pandocLayouts ─────────────────
         let pandocLayoutsMigrated = false;
-        const legacyTemplates = this.settings.pandocTemplates;
+        const legacyTemplates = (this.settings as LegacyPersistedSettings).pandocTemplates;
         if (legacyTemplates && (!this.settings.pandocLayouts || this.settings.pandocLayouts.length === 0)) {
             const migrated: import('./types').PandocLayoutTemplate[] = [];
             const presets = ['screenplay', 'podcast', 'novel'] as const;
@@ -1046,7 +1046,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
             if (migrated.length > 0) {
                 this.settings.pandocLayouts = migrated;
-                this.settings.pandocTemplates = undefined;
+                (this.settings as LegacyPersistedSettings).pandocTemplates = undefined;
                 pandocLayoutsMigrated = true;
             }
         }
@@ -1091,7 +1091,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
             }
         }
-        const globalLastUsed = this.settings.lastUsedPandocLayoutByPreset;
+        const globalLastUsed = (this.settings as LegacyPersistedSettings).lastUsedPandocLayoutByPreset;
         if (globalLastUsed?.novel && legacyLayoutIdMap[globalLastUsed.novel]) {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;

@@ -12,7 +12,10 @@ import {
 import { getBeatLibraryItems } from '../storyBeats/libraryState';
 import { WORKSPACE_TAB_ID_PREFIX } from '../storyBeats/workspaceState';
 
-type LegacyBeatSettings = RadialTimelineSettings & {
+type LegacyBeatSettings = Omit<RadialTimelineSettings, 'beatSystem' | 'activeCustomBeatSystemId'> & {
+    // Re-declared without the @deprecated tag: this is the migration-input shape.
+    beatSystem?: string;
+    activeCustomBeatSystemId?: string;
     customBeatSystemName?: string;
     customBeatSystemDescription?: string;
     customBeatSystemBeats?: BeatDefinition[];
@@ -56,12 +59,12 @@ function cloneBeatConfig(config: BeatSystemConfig | undefined): BeatSystemConfig
     };
 }
 
-function getLegacyActiveCustomBeatSystemId(settings: Pick<RadialTimelineSettings, 'activeCustomBeatSystemId'>): string {
+function getLegacyActiveCustomBeatSystemId(settings: Pick<LegacyBeatSettings, 'activeCustomBeatSystemId'>): string {
     return (settings.activeCustomBeatSystemId ?? '').trim() || DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
 }
 
 function ensureLegacyActiveCustomBeatSystem(
-    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
+    settings: Pick<LegacyBeatSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
 ): SavedBeatSystem {
     if (!Array.isArray(settings.savedBeatSystems)) {
         settings.savedBeatSystems = [];

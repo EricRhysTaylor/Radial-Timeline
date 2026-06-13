@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { TimelineItem, RadialTimelineSettings } from '../types';
+import type { TimelineItem, RadialTimelineSettings, LegacyPersistedSettings } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
@@ -417,7 +417,7 @@ function getActiveNovelPandocLayoutId(settings: RadialTimelineSettings): string 
     if (typeof bookLayoutId === 'string' && bookLayoutId.trim()) {
         return bookLayoutId.trim();
     }
-    const globalLayoutId = settings.lastUsedPandocLayoutByPreset?.novel;
+    const globalLayoutId = (settings as LegacyPersistedSettings).lastUsedPandocLayoutByPreset?.novel;
     return typeof globalLayoutId === 'string' ? globalLayoutId.trim() : '';
 }
 

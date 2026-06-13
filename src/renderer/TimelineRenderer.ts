@@ -15,7 +15,7 @@ import {
 import { renderRings, type RingRenderContext } from './renderers/RingRenderer';
 import { computeGridData } from './utils/GridData';
 import { renderNumberSquares, type NumberSquareRenderContext } from './renderers/NumberSquareRenderer';
-import type { BookPublishingPreferences, ExportProfile, PandocLayoutTemplate, RadialTimelineSettings, TimelineItem } from '../types';
+import type { BookPublishingPreferences, ExportProfile, PandocLayoutTemplate, RadialTimelineSettings, LegacyPersistedSettings, TimelineItem } from '../types';
 import { dateToAngle } from '../utils/date';
 import {
     extractGradeFromScene,
@@ -119,7 +119,7 @@ function resolveActiveNovelPandocLayout(settings: RadialTimelineSettings): Pando
         activeBook?.lastUsedPandocLayoutByPreset?.novel,
         exportProfileTemplateId,
         publishingPreferences?.preferredTemplateProfileIdByContext?.novel,
-        settings.lastUsedPandocLayoutByPreset?.novel,
+        (settings as LegacyPersistedSettings).lastUsedPandocLayoutByPreset?.novel,
     ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
 
     for (const id of candidateIds) {

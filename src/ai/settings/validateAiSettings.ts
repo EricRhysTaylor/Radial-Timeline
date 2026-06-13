@@ -1,4 +1,4 @@
-import type { AiSettingsV1, AIProviderId, LocalLlmBackendId, LocalLlmConfigurationMode, LocalLlmJsonMode } from '../types';
+import type { AiSettingsV1, AIProviderId, AnthropicCacheTtl, LocalLlmBackendId, LocalLlmConfigurationMode, LocalLlmJsonMode } from '../types';
 import { ANTHROPIC_REQUESTED_CACHE_TTL, buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 import {
@@ -250,9 +250,12 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     }
 
     if (value.cacheWindows) {
-        if (value.cacheWindows.anthropicTtl !== ANTHROPIC_REQUESTED_CACHE_TTL) {
+        // anthropicTtl is a legacy persisted field (fixed 1h TTL now); read/normalize
+        // it through a non-deprecated view so this boundary does not trip no-deprecated.
+        const legacyCache: { anthropicTtl?: AnthropicCacheTtl } = value.cacheWindows;
+        if (legacyCache.anthropicTtl !== ANTHROPIC_REQUESTED_CACHE_TTL) {
             warnings.push(`Anthropic cache TTL is fixed at ${ANTHROPIC_REQUESTED_CACHE_TTL}; ignoring persisted value.`);
-            value.cacheWindows.anthropicTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
+            legacyCache.anthropicTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
         }
         if (typeof value.cacheWindows.googleTtlSeconds !== 'number' || !Number.isFinite(value.cacheWindows.googleTtlSeconds)) {
             value.cacheWindows.googleTtlSeconds = defaults.cacheWindows?.googleTtlSeconds ?? GEMINI_CACHE_TTL_DEFAULT_SECONDS;
