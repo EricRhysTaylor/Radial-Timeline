@@ -8,9 +8,18 @@
   },
   "legacyIslands": {
     "timelineRendererSvg": {
-      "description": "Legacy Radial Timeline SVG/rendering primitives. This island still uses rt-* selectors and --rt-* vars.",
+      "description": "Legacy Radial Timeline SVG/rendering primitives. This island intentionally and permanently uses rt-* selectors and --rt-* vars — these class names are emitted into the rendered SVG and are the renderer's stable contract. They are NOT migration debt. See docs/engineering/standards/css-namespace-policy.md.",
       "files": [
         "src/styles/timeline.css",
+        "src/styles/scenes.css",
+        "src/styles/grid.css",
+        "src/styles/indicators.css",
+        "src/styles/drag.css",
+        "src/styles/base.css",
+        "src/styles/chronologue-base.css",
+        "src/styles/chronologue-runtime.css",
+        "src/styles/chronologue-shift.css",
+        "src/styles/chronologue-alt.css",
         "src/view/modes",
         "src/renderer"
       ],
@@ -38,5 +47,18 @@
         "rt-visible"
       ]
     }
+  },
+  "rtCleanFiles": {
+    "description": "CSS files that have been fully migrated off rt-* and must stay that way. css-drift-check.mjs hard-FAILs on any rt-* selector here (apr-rt-* branding is exempt). This is the backslide guard the count-based WARN ratchet cannot provide on its own. When a file finishes migration, add it here.",
+    "files": [
+      "src/styles/settings.css",
+      "src/styles/modal.css",
+      "src/styles/timeline-audit.css",
+      "src/styles/timeline-repair.css",
+      "src/styles/book-designer.css",
+      "src/styles/font.css",
+      "src/styles/variables.css",
+      "src/styles/legacy/apr-legacy.css"
+    ]
   }
 }

@@ -39,6 +39,28 @@ const FILES = [
 const exists = (p) => fs.existsSync(p);
 const read = (p) => fs.readFileSync(p, "utf8");
 
+// Namespace policy: which CSS files have finished migrating off rt-* and must
+// stay clean. A hard-FAIL on rt-* in these files is the backslide guard that
+// the count-based WARN ratchet cannot provide (the ratchet only freezes the
+// global total, so an rt- removed from the renderer island could silently be
+// re-introduced into a migrated chrome file). See css-namespace-allowlist.json.
+const ALLOWLIST_PATH = path.join(ROOT, "scripts/css-namespace-allowlist.json");
+const RT_CLEAN_FILES = (() => {
+  try {
+    const policy = JSON.parse(read(ALLOWLIST_PATH));
+    return new Set(policy?.rtCleanFiles?.files ?? []);
+  } catch {
+    return new Set();
+  }
+})();
+
+// Matches an rt-* class token at the START of a class name (preceded by `.`,
+// whitespace, `,`, `>`, etc.) — NOT one embedded after a hyphen. This excludes
+// `apr-rt-attribution` (APR branding emitted into exported SVGs, never legacy
+// debt) and `--rt-*` custom-property references, while still catching real
+// legacy selectors like `.rt-foo` and compounds like `.rt-a.rt-b`.
+const RT_LEGACY_TOKEN = "(?<![\\w-])rt-[a-zA-Z0-9_-]+";
+
 const args = new Set(process.argv.slice(2));
 const MODE = args.has("--strict")
   ? "strict"
@@ -319,9 +341,26 @@ for (const file of FILES.filter(exists)) {
     }
   }
 
+  // 5b) Backslide guard (fail) — rt-* selectors in files that have finished
+  //     migrating off rt-* are a hard FAIL. apr-rt-* branding is exempt via
+  //     RT_LEGACY_TOKEN. See scripts/css-namespace-allowlist.json → rtCleanFiles.
+  const relPath = path.relative(ROOT, file);
+  if (RT_CLEAN_FILES.has(relPath)) {
+    const cleanRe = new RegExp(`(^|\\n)\\s*[^@{]*${RT_LEGACY_TOKEN}[^,{]*\\{`, "g");
+    for (const m of findAll(cleanRe, css)) {
+      addFail(
+        file,
+        "Legacy rt-* selector in a migrated (rt-clean) file — backslide. Use ert-* or remove.",
+        m[0].trim(),
+        "rt-clean-backslide",
+        getLineNumber(lineStarts, m.index)
+      );
+    }
+  }
+
   // 6) Legacy rt-* selectors outside rt-ui.css (warn in migration/maintenance)
   if (!file.endsWith("rt-ui.css")) {
-    const rtSelectorRe = /(^|\n)\s*[^@{]*\brt-[a-zA-Z0-9_-]+[^,{]*\{/g;
+    const rtSelectorRe = new RegExp(`(^|\\n)\\s*[^@{]*${RT_LEGACY_TOKEN}[^,{]*\\{`, "g");
     for (const m of findAll(rtSelectorRe, css)) {
       addWarn(
         file,
