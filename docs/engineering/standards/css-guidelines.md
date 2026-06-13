@@ -131,12 +131,20 @@ chrome to that allowlist when you create it.
 - unscoped Obsidian selectors like `.setting-item` or `.modal`
 - skin overreach (`.ert-skin--*` changing layout/typography instead of visual treatment)
 - `.rt-*` selectors inside `src/styles/rt-ui.css`
+- `.rt-*` selectors in any file listed under `rtCleanFiles` in the allowlist
+  (`rt-clean-backslide` — backslide guard for files that finished migrating)
 
 **Warn in maintenance/migration modes**
 - raw hex colors outside token lines
-- legacy `.rt-*` selectors outside `rt-ui.css`
+- legacy `.rt-*` selectors outside `rt-ui.css` (excludes `apr-rt-*` branding and
+  `--rt-*` variable references — those are not legacy selectors)
 - literal `px` spacing
 - raw `rgba()` shadows
+
+The `rt-legacy` WARN count is mostly the permanent renderer-SVG island, not a
+backlog. See [css-drift-debt.md](css-drift-debt.md) for the island-vs-stragglers
+split and [css-namespace-policy.md](css-namespace-policy.md) for why the island
+stays `rt-*`.
 
 This is the live behavior today. It is not a theoretical future gate.
 
@@ -160,8 +168,10 @@ This is intentionally narrower than the renderer island itself:
 ## Current vs Target-State Guidance
 - **Current / enforced**: scope under `.ert-ui`, avoid `!important`, do not add `.rt-*` to `rt-ui.css`.
 - **Current / enforced**: settings and modals use separate ERT scope roots.
-- **Target-state guidance**: reduce remaining legacy `.rt-*` islands over time.
-- **Tolerated migration reality**: legacy selectors still exist outside `rt-ui.css`.
+- **Target-state guidance**: migrate app-chrome stragglers off `.rt-*`; the
+  renderer-SVG island stays `.rt-*` permanently (it is the SVG contract).
+- **Tolerated migration reality**: legacy selectors still exist outside `rt-ui.css`,
+  predominantly in the blessed renderer island.
 
 ## Practical Review Checklist
 - Is the selector scoped under the correct ERT root?

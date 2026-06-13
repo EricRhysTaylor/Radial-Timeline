@@ -55,6 +55,27 @@ If yes: use `ert-*`.
 
 If yes: it may remain in a legacy `rt-*` island if that island is allowlisted.
 
+## Renderer SVG island is permanent (not debt)
+
+The legacy renderer-SVG island — `rt-*` selectors in `timeline.css`,
+`scenes.css`, `grid.css`, `indicators.css`, `drag.css`, the `chronologue-*`
+files, and the renderer primitives in `base.css` — is **intentional and
+permanent**. These class names are emitted into the rendered SVG by the
+renderer (`src/renderer/**`) and are its stable styling contract. Renaming them
+to `ert-*` would change that contract for **zero** functional or visual gain.
+
+So: the large `rt-legacy` WARN count is **not** a migration backlog. The
+migratable portion is only the app-chrome stragglers (tracked in
+[css-drift-debt.md](css-drift-debt.md)); the rest is the blessed island. Do not
+treat the island as work remaining, and do not "finish the migration" by
+renaming renderer primitives.
+
+Backslide is prevented two ways:
+- the renderer island stays frozen by the count-based WARN ratchet
+  (`--maintenance` baseline cannot grow); and
+- files that have finished migrating are listed under `rtCleanFiles` in the
+  allowlist and **hard-FAIL** on any new `rt-*` selector (`rt-clean-backslide`).
+
 ## Timeline-Specific Rule
 
 Radial Timeline currently has two realities:
@@ -95,11 +116,12 @@ Do not invent a new prefix ad hoc in implementation.
 
 The machine-readable allowlist lives at:
 
-- [scripts/css-namespace-allowlist.json](/Users/ericrhystaylor/Documents/RT%20LLC/CodeBase/radial-timeline/scripts/css-namespace-allowlist.json)
+- [scripts/css-namespace-allowlist.json](../../../scripts/css-namespace-allowlist.json)
 
 That file defines:
-- which files are accepted legacy islands
+- which files are accepted legacy islands (`legacyIslands`)
 - which `rt-*` prefixes are tolerated there
+- which files have finished migrating and must stay `rt-*`-free (`rtCleanFiles`)
 - which areas are expected to use `ert-*` for new work
 
 ## Short Rule For LLM Work
