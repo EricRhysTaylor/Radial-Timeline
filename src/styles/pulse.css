@@ -1971,9 +1971,8 @@
   color: var(--text-muted);
 }
 
-/* Consolidated chip pattern - shared by pulse ruler and beats ruler */
-.ert-pulse-ruler-chip,
-.rt-beats-ruler-chip {
+/* Pulse ruler chip pattern */
+.ert-pulse-ruler-chip {
   padding: 8px 12px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1983,107 +1982,17 @@
   gap: 2px;
 }
 
-.ert-pulse-ruler-chip-label,
-.rt-beats-ruler-chip-label {
+.ert-pulse-ruler-chip-label {
   text-transform: uppercase;
   font-size: 0.65rem;
   letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
-.ert-pulse-ruler-chip-value,
-.rt-beats-ruler-chip-value {
+.ert-pulse-ruler-chip-value {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-normal);
-}
-
-.rt-beats-ruler-value {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-normal);
-  letter-spacing: 0.03em;
-}
-
-.rt-beats-ruler-item.ert-is-active .rt-beats-ruler-value {
-  color: var(--text-on-accent, #fff);
-}
-
-.rt-beats-ruler-label {
-  text-transform: uppercase;
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.rt-beats-ruler-item.ert-is-active .rt-beats-ruler-label {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.rt-beats-ruler-empty {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.rt-beats-ruler-note {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-/* rt-beats-ruler-chip - consolidated above with ert-pulse-ruler-chip */
-
-.rt-beats-summary {
-  margin-top: 18px;
-  padding: 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.rt-beats-summary-title {
-  margin: 0 0 10px;
-  font-size: 1rem;
-}
-
-.rt-beats-summary-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rt-beats-summary-row {
-  font-size: 0.9rem;
-}
-
-.rt-beats-summary-row.rt-beats-summary-error {
-  color: var(--text-error, #ff6b6b);
-  font-weight: 600;
-}
-
-.rt-beats-summary-row.rt-beats-summary-warning {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.rt-beats-summary-tip {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.rt-beats-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 26px;
-  padding-right: 18px; /* Align with content padding */
 }
 
 .ert-success-text {
@@ -2317,22 +2226,6 @@
 .ert-manuscript-template-warning.ert-warning-info .ert-warning-icon {
   color: var(--text-success, var(--color-green, #6ddccf));
 }
-
-/* Status bar item for active beats processing */
-.rt-beats-status-bar {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  padding: 0 8px;
-  border-radius: 3px;
-  font-weight: 500;
-  transition: opacity 0.2s;
-}
-
-.rt-beats-status-bar:hover {
-  opacity: 0.8;
-}
-
-
 
 /* ==========================================================================
    Custom SVG Tooltips

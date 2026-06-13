@@ -165,7 +165,8 @@ function extractMatterMeta(content: string): MatterMeta | null {
     if (!yaml || typeof yaml !== 'object' || Array.isArray(yaml)) return null;
 
     const parsed = parseMatterMetaFromFrontmatter(yaml as Record<string, unknown>);
-    if ((parsed as LegacyMatterOrder | null)?.order !== undefined) {
+    const parsedLegacy: LegacyMatterOrder | null = parsed;
+    if (parsedLegacy?.order !== undefined) {
       warnMatterOrderIgnoredOnce();
     }
     return parsed;
@@ -743,7 +744,8 @@ export async function getSceneFilesByOrder(
     }
 
     if (isMatterItem(scene) && scene.path) {
-      if ((scene.matterMeta as LegacyMatterOrder | undefined)?.order !== undefined) {
+      const matterLegacy: LegacyMatterOrder | undefined = scene.matterMeta;
+      if (matterLegacy?.order !== undefined) {
         warnMatterOrderIgnoredOnce();
       }
       const normalizedSide: 'front' | 'back' = resolveMatterSideFromClass(scene);
