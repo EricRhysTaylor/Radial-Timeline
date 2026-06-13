@@ -521,8 +521,5 @@ export async function createBeatNotesFromSet(
 
 // ─── Deprecated aliases (remove after v5.2) ─────────────────────────
 
-/** @deprecated Use getMergedBeatYaml */
-export const getMergedBeatYamlTemplate = getMergedBeatYaml;
-
 /** @deprecated Use createBeatNotesFromSet */
 export const createBeatTemplateNotes = createBeatNotesFromSet;

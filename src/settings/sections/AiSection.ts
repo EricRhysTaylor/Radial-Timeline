@@ -81,7 +81,6 @@ import type { PreviewPill } from './aiSettingsPreview';
 import {
     buildPanelViewModel,
     formatExpectedPassesLabel,
-    formatPanelHeadlineTokens,
     formatProviderInputSummary,
     formatTokenRowText,
     formatTotalRowText,
@@ -89,7 +88,7 @@ import {
     type PanelTokenEstimate,
     type PanelViewModel
 } from './aiPanelEstimate';
-import { tokenEstimateFromMethod } from '../../ai/estimates';
+import { tokenEstimateFromMethod, formatTokenHeadline } from '../../ai/estimates';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean; extraCls?: string };
@@ -591,7 +590,7 @@ export function renderAiSection(params: {
         viewModel: PanelViewModel;
     }): void => {
         const { tokenEl, expectedEl, providerInputEl, viewModel } = params;
-        const headlineFmt = formatPanelHeadlineTokens(viewModel.header.headline);
+        const headlineFmt = formatTokenHeadline(viewModel.header.headline);
         tokenEl.empty();
         tokenEl.createSpan({ cls: 'ert-ai-token-value', text: headlineFmt.numericText });
         if (headlineFmt.unitText) {

@@ -10,12 +10,6 @@ import { modelSupportsSystemRole } from './providerCapabilities';
 import { modelSupportsRequestTemperature, modelSupportsRequestTopP } from '../ai/registry/modelRequestProfiles';
 import type { OpenAiPromptCacheRetention, SourceAttributionType, SourceCitation } from '../ai/types';
 
-/** @deprecated Use modelSupportsSystemRole(provider, modelId) from providerCapabilities.
- *  Retained as thin wrapper for backward compat and evidence pattern validation. */
-export function openAiModelSupportsSystemRole(modelId: string): boolean {
-    return modelSupportsSystemRole('openai', modelId);
-}
-
 // Interface for the expected successful OpenAI Chat Completion response
 interface OpenAiChatSuccessResponse {
     choices: {
@@ -125,7 +119,7 @@ function buildOpenAiChatMessages(
     userPrompt: string,
     baseUrl?: string
 ): { role: string; content: string }[] {
-    const supportsSystem = !baseUrl && openAiModelSupportsSystemRole(modelId);
+    const supportsSystem = !baseUrl && modelSupportsSystemRole('openai', modelId);
     if (systemPrompt && supportsSystem) {
         return [
             { role: 'system', content: systemPrompt },
@@ -142,7 +136,7 @@ function buildOpenAiResponsesInput(
     systemPrompt: string | null,
     userPrompt: string
 ): { role: 'system' | 'user'; content: { type: 'input_text'; text: string }[] }[] {
-    const supportsSystem = openAiModelSupportsSystemRole(modelId);
+    const supportsSystem = modelSupportsSystemRole('openai', modelId);
     if (systemPrompt && supportsSystem) {
         return [
             { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },

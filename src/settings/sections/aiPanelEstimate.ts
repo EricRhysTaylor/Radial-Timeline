@@ -43,9 +43,6 @@ export type PanelTokenEstimate = TokenEstimate;
 /** @deprecated Use TOKEN_ESTIMATE_SOURCE_LABEL from `src/ai/estimates`. */
 export const ESTIMATE_SOURCE_LABEL = TOKEN_ESTIMATE_SOURCE_LABEL;
 
-/** @deprecated Use TOKEN_ESTIMATE_DISCLOSURE from `src/ai/estimates`. */
-export const ESTIMATE_PROVENANCE_DISCLOSURE = TOKEN_ESTIMATE_DISCLOSURE;
-
 export interface PanelRowItem {
     label: string;
     /** Token count with provenance. When the source is `unavailable`, the row hides the token figure. */
@@ -153,15 +150,6 @@ export interface BuildPanelInput {
 /** Sum positive tokens across rows; result is always non-negative. */
 export function sumLocalEstimateTokens(...parts: number[]): number {
     return parts.reduce((sum, part) => sum + (part > 0 && Number.isFinite(part) ? part : 0), 0);
-}
-
-/**
- * @deprecated Use `pickBestTokenEstimate` from `src/ai/estimates`. Kept
- * as a thin wrapper so legacy call sites compile during the migration
- * sweep.
- */
-export function pickBestEstimate(...candidates: Array<PanelTokenEstimate | null | undefined>): PanelTokenEstimate {
-    return pickBestTokenEstimate(...candidates);
 }
 
 function makeRow(label: string, tokens: number, source: 'provider_count' | 'local_estimate', leadCount?: number): PanelRowItem {
@@ -362,7 +350,7 @@ export function buildPanelViewModel(input: BuildPanelInput): PanelViewModel {
     const localEstimate: PanelTokenEstimate = localTotal > 0
         ? { source: 'local_estimate', tokens: localTotal }
         : { source: 'unavailable' };
-    const headline = pickBestEstimate(fc.providerCount, localEstimate);
+    const headline = pickBestTokenEstimate(fc.providerCount, localEstimate);
 
     const sections: PanelSection[] = [];
     sections.push(buildCorpusSection(fc, input.feature));
@@ -382,29 +370,13 @@ export function buildPanelViewModel(input: BuildPanelInput): PanelViewModel {
             headline,
             expectedPasses,
             providerInputSummary,
-            headlineDisclosure: ESTIMATE_PROVENANCE_DISCLOSURE[headline.source]
+            headlineDisclosure: TOKEN_ESTIMATE_DISCLOSURE[headline.source]
         },
         sections
     };
 }
 
 // ── Render helpers (string-level, still pure) ───────────────────────
-
-/**
- * @deprecated Use `formatTokenShorthand` from `src/ai/estimates`. Thin
- * wrapper for back-compat during migration.
- */
-export function formatPanelTokenShorthand(estimate: PanelTokenEstimate): string {
-    return formatTokenShorthand(estimate);
-}
-
-/**
- * @deprecated Use `formatTokenHeadline` from `src/ai/estimates`. Thin
- * wrapper for back-compat during migration.
- */
-export function formatPanelHeadlineTokens(estimate: PanelTokenEstimate): { numericText: string; unitText: string | null } {
-    return formatTokenHeadline(estimate);
-}
 
 export function formatExpectedPassesLabel(label: ExpectedPassesLabel): string {
     if (label.kind === 'unavailable') return 'Expected structured passes · unavailable';
@@ -416,7 +388,7 @@ export function formatExpectedPassesLabel(label: ExpectedPassesLabel): string {
 
 export function formatProviderInputSummary(summary: ProviderInputSummary): string {
     if (summary.kind === 'unavailable') return 'Estimated provider input · unavailable';
-    const tokens = formatPanelTokenShorthand({ source: summary.source, tokens: summary.tokens });
+    const tokens = formatTokenShorthand({ source: summary.source, tokens: summary.tokens });
     if (summary.source === 'provider_count') {
         return `Estimated provider input · ${tokens}`;
     }
@@ -431,11 +403,11 @@ export function formatTokenRowText(row: PanelRowItem): string {
     if (row.estimate.source === 'unavailable') {
         return row.label;
     }
-    const shorthand = formatPanelTokenShorthand(row.estimate);
+    const shorthand = formatTokenShorthand(row.estimate);
     return `${row.label} (${shorthand})`;
 }
 
 export function formatTotalRowText(estimate: PanelTokenEstimate): string {
     if (estimate.source === 'unavailable') return 'Total · unavailable';
-    return `Total ${formatPanelTokenShorthand(estimate)}`;
+    return `Total ${formatTokenShorthand(estimate)}`;
 }

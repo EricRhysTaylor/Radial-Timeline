@@ -15,8 +15,6 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export type FieldEntryValue = string | string[];
-/** @deprecated Use FieldEntryValue */
-export type TemplateEntryValue = FieldEntryValue;
 
 export type NoteType = 'Scene' | 'Beat' | 'Backdrop';
 
@@ -83,11 +81,11 @@ export function extractKeysInOrder(template: string): string[] {
  * Arrays are preserved as `string[]`; everything else becomes `string`.
  * `null` / `undefined` values are normalized to `''`.
  */
-export function safeParseYaml(template: string): Record<string, TemplateEntryValue> {
+export function safeParseYaml(template: string): Record<string, FieldEntryValue> {
     try {
         const parsed = parseYaml(sanitizeTemplatePlaceholdersForYamlParse(template));
         if (!parsed || typeof parsed !== 'object') return {};
-        const entries: Record<string, TemplateEntryValue> = {};
+        const entries: Record<string, FieldEntryValue> = {};
         Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
             if (Array.isArray(value)) {
                 entries[key] = value.map((v) => normalizeParsedTemplateScalar(v));
@@ -308,14 +306,14 @@ export function getCustomDefaults(
     noteType: NoteType,
     settings: RadialTimelineSettings,
     beatSystemKey?: string
-): Record<string, TemplateEntryValue> {
+): Record<string, FieldEntryValue> {
     const parts = getTemplateParts(noteType, settings, beatSystemKey);
     const customKeys = extractKeysInOrder(parts.advanced).filter(
         k => !extractKeysInOrder(parts.base).includes(k)
     );
 
     const parsed = safeParseYaml(parts.advanced);
-    const defaults: Record<string, TemplateEntryValue> = {};
+    const defaults: Record<string, FieldEntryValue> = {};
     for (const key of customKeys) {
         const val = parsed[key];
         defaults[key] = val ?? '';

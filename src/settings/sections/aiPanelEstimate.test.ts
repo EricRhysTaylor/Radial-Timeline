@@ -1,18 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import {
     buildPanelViewModel,
-    formatPanelHeadlineTokens,
     formatExpectedPassesLabel,
     formatProviderInputSummary,
     formatTokenRowText,
     formatTotalRowText,
-    pickBestEstimate,
     sumLocalEstimateTokens,
     type BuildPanelInput,
     type FeatureForecastInput,
     type PanelSection,
     type PanelTokenEstimate
 } from './aiPanelEstimate';
+import { formatTokenHeadline, pickBestTokenEstimate } from '../../ai/estimates';
 
 // ── Test fixtures ──────────────────────────────────────────────────
 
@@ -52,8 +51,8 @@ describe('aiPanelEstimate — invariants', () => {
         expect(vm.header.headline.source).toBe('local_estimate');
         if (vm.header.headline.source === 'unavailable') throw new Error('unreachable');
         expect(vm.header.headline.tokens).toBeGreaterThan(135_000);
-        expect(formatPanelHeadlineTokens(vm.header.headline).numericText).not.toBe('—');
-        expect(formatPanelHeadlineTokens(vm.header.headline).numericText).not.toBe('Unavailable');
+        expect(formatTokenHeadline(vm.header.headline).numericText).not.toBe('—');
+        expect(formatTokenHeadline(vm.header.headline).numericText).not.toBe('Unavailable');
         expect(vm.header.headlineDisclosure).toContain('Provider count unavailable');
     });
 
@@ -91,7 +90,7 @@ describe('aiPanelEstimate — invariants', () => {
             promptBreakdown: { requestTokens: 0, roleTemplateTokens: 0, instructionTokens: 0, outputContractTokens: 0, transformTokens: 0 }
         }));
         expect(vm.header.headline.source).toBe('unavailable');
-        const headlineFmt = formatPanelHeadlineTokens(vm.header.headline);
+        const headlineFmt = formatTokenHeadline(vm.header.headline);
         expect(headlineFmt.unitText).toBeNull();
         expect(headlineFmt.numericText).toBe('Unavailable');
         // Passes label discloses unavailable instead of "n/a".
@@ -164,7 +163,7 @@ describe('aiPanelEstimate — pickBestEstimate (delegates to shared pickBestToke
         // prior run actually saw what the model processed, while the
         // count is just a pre-flight estimate. See doctrine in
         // src/ai/estimates/tokenEstimate.ts.
-        const result = pickBestEstimate(
+        const result = pickBestTokenEstimate(
             { source: 'local_estimate', tokens: 100 },
             { source: 'provider_count', tokens: 200 },
             { source: 'prior_run', tokens: 300 }
@@ -173,7 +172,7 @@ describe('aiPanelEstimate — pickBestEstimate (delegates to shared pickBestToke
     });
 
     it('falls back from prior_run → provider_count → local_estimate', () => {
-        const result = pickBestEstimate(
+        const result = pickBestTokenEstimate(
             null,
             { source: 'provider_count', tokens: 50 },
             { source: 'local_estimate', tokens: 100 }
@@ -182,7 +181,7 @@ describe('aiPanelEstimate — pickBestEstimate (delegates to shared pickBestToke
     });
 
     it('treats local_estimate with zero tokens as no-signal (skips it)', () => {
-        const result = pickBestEstimate(
+        const result = pickBestTokenEstimate(
             { source: 'local_estimate', tokens: 0 },
             { source: 'prior_run', tokens: 75 }
         );
@@ -190,7 +189,7 @@ describe('aiPanelEstimate — pickBestEstimate (delegates to shared pickBestToke
     });
 
     it('returns unavailable when no candidate has signal', () => {
-        const result = pickBestEstimate(
+        const result = pickBestTokenEstimate(
             null,
             { source: 'local_estimate', tokens: 0 },
             undefined
