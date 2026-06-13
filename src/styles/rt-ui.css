@@ -593,7 +593,7 @@
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: var(--ert-gap-md, var(--ert-gap-sm));
+  gap: 0 var(--ert-gap-md, var(--ert-gap-sm));
   align-items: center;
 }
 
@@ -1463,7 +1463,7 @@
 .ert-ui .ert-panel__header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: var(--ert-gap-sm);
+  gap: 0 var(--ert-gap-sm);
   align-items: stretch;
 }
 
@@ -2058,7 +2058,7 @@
 
 .ert-ui .ert-apr-progressModeGrid {
   grid-template-columns: minmax(0, 0.85fr) auto minmax(0, 1.15fr);
-  column-gap: var(--ert-gap-md);
+  gap: var(--ert-gap-sm) var(--ert-gap-md);
 }
 
 .ert-ui .ert-apr-stageBadgeRow {
@@ -2514,7 +2514,7 @@
 .ert-ui .setting-item.mod-toggle {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: var(--ert-gap-lg);
+  gap: 0 var(--ert-gap-lg);
   align-items: center;
 }
 
@@ -3074,8 +3074,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   grid-template-rows: auto minmax(0, 1fr);
-  column-gap: var(--ert-gap-sm);
-  row-gap: calc(var(--ert-gap-xs) / 2);
+  gap: calc(var(--ert-gap-xs) / 2) var(--ert-gap-sm);
   align-items: start;
   align-content: start;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
@@ -3807,7 +3806,7 @@
 .ert-ui.ert-scope--modal .ert-ai-strategy-question {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: var(--ert-gap-xs);
+  gap: 0 var(--ert-gap-xs);
   align-items: start;
   font-size: 12px;
   color: var(--text-normal);
@@ -5661,7 +5660,7 @@
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
-  column-gap: var(--ert-gap-sm);
+  gap: 0 var(--ert-gap-sm);
   align-items: start;
   min-height: 0;
   line-height: 1.35;
@@ -6561,7 +6560,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(200px, 220px);
   align-items: center;
-  column-gap: var(--ert-gap-md);
+  gap: 0 var(--ert-gap-md);
   margin: 0; /* override inherited right margin from Obsidian setting-item children */
 }
 
@@ -8405,7 +8404,7 @@
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: start;
-  column-gap: var(--ert-gap-sm);
+  gap: 0 var(--ert-gap-sm);
   border: 1px solid var(--background-modifier-border);
   border-radius: 12px;
   padding: var(--ert-pad-sm);

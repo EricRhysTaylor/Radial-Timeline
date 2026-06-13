@@ -381,7 +381,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--ert-planetary-time-control-width);
   align-items: flex-start;
-  column-gap: var(--ert-gap-xl);
+  gap: 0 var(--ert-gap-xl);
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -463,8 +463,7 @@
     ". label"
     "icon select";
   align-items: end;
-  column-gap: var(--ert-gap-2xs);
-  row-gap: var(--ert-gap-2xs);
+  gap: var(--ert-gap-2xs) var(--ert-gap-2xs);
   width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md)));
   min-width: min(100%, calc(var(--ert-planetary-icon-column) + var(--ert-gap-2xs) + var(--ert-input-width-md)));
 }
@@ -1935,8 +1934,7 @@
 .ert-ui.ert-scope--modal .ert-apr-status-grid {
   display: grid;
   grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content;
-  column-gap: var(--ert-gap-cozy);
-  row-gap: var(--ert-gap-xs);
+  gap: var(--ert-gap-xs) var(--ert-gap-cozy);
   width: 100%;
 }
 
@@ -2045,12 +2043,12 @@
 /* Omnibus grids (APR-aligned layout) */
 .ert-ui.ert-scope--modal .ert-omnibus-summary-grid {
   grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
-  column-gap: var(--ert-gap-md);
+  gap: var(--ert-gap-xs) var(--ert-gap-md);
 }
 
 .ert-ui.ert-scope--modal .ert-omnibus-question-grid {
   grid-template-columns: max-content minmax(0, 1fr) max-content max-content max-content;
-  column-gap: var(--ert-gap-md);
+  gap: var(--ert-gap-xs) var(--ert-gap-md);
 }
 
 .ert-ui.ert-scope--modal .ert-omnibus-question-cell {
@@ -2301,8 +2299,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content max-content max-content max-content;
   align-items: center;
-  column-gap: var(--ert-gap-sm);
-  row-gap: var(--ert-gap-xs);
+  gap: var(--ert-gap-xs) var(--ert-gap-sm);
   padding: var(--ert-gap-sm) 0;
 }
 
@@ -2712,7 +2709,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: var(--ert-gap-loose);
+  gap: 0 var(--ert-gap-loose);
 }
 
 .ert-synopsis-control-checkbox {

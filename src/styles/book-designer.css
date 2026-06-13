@@ -218,8 +218,7 @@
     align-items: start;
     width: 100%;
     grid-template-columns: var(--ert-duo-grid-cols);
-    column-gap: 0;
-    row-gap: var(--ert-gap-lg);
+    gap: var(--ert-gap-lg) 0;
 }
 
 .ert-manuscript-surface .ert-manuscript-trio-grid {

@@ -8,7 +8,9 @@ declare module 'obsidian' {
     registerDomEvent(
       el: HTMLElement | Window | Document,
       event: string,
-      callback: (...args: any[]) => any, // SAFE: any used to match Obsidian's official API signature for DOM event handlers
+      // Method syntax keeps parameters bivariant, so handlers typed with
+      // specific Event subclasses (KeyboardEvent, CustomEvent, ...) still fit.
+      callback: (evt: Event) => void,
       options?: boolean | AddEventListenerOptions
     ): EventRef;
   }

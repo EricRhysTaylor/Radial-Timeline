@@ -406,8 +406,7 @@
   grid-template-columns: 28px minmax(0, 1fr);
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: var(--ert-gap-sm);
-  row-gap: var(--ert-gap-sm);
+  gap: var(--ert-gap-sm) var(--ert-gap-sm);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m, 8px);
   padding: var(--ert-pad-xs) var(--ert-pad-sm);

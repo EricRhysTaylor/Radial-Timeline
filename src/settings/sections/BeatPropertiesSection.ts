@@ -1203,7 +1203,7 @@ export function renderBeatPropertiesSection(params: {
                     plugin.registerDomEvent(placeholder, 'dragleave', () => {
                         placeholder.removeClass('is-dragover');
                     });
-                    plugin.registerDomEvent(placeholder, 'drop', (e) => {
+                    plugin.registerDomEvent(placeholder, 'drop', (e: DragEvent) => {
                         e.preventDefault();
                         placeholder.removeClass('is-dragover');
                         const from = parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
@@ -1377,7 +1377,7 @@ export function renderBeatPropertiesSection(params: {
                     };
 
                     // Drag and drop reorder
-                    plugin.registerDomEvent(row, 'dragstart', (e) => {
+                    plugin.registerDomEvent(row, 'dragstart', (e: DragEvent) => {
                         e.dataTransfer?.setData('text/plain', index.toString());
                         row.classList.add('is-dragging');
                     });
@@ -1387,7 +1387,7 @@ export function renderBeatPropertiesSection(params: {
                     plugin.registerDomEvent(row, 'dragover', (e) => {
                         e.preventDefault();
                     });
-                    plugin.registerDomEvent(row, 'drop', (e) => {
+                    plugin.registerDomEvent(row, 'drop', (e: DragEvent) => {
                         e.preventDefault();
                         const from = parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
                         if (Number.isNaN(from) || from === index || from < 0) return;
@@ -1443,7 +1443,7 @@ export function renderBeatPropertiesSection(params: {
             };
 
             addBtn.onclick = commitAdd;
-            plugin.registerDomEvent(addNameInput, 'keydown', (e) => {
+            plugin.registerDomEvent(addNameInput, 'keydown', (e: KeyboardEvent) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     commitAdd();
@@ -2417,7 +2417,7 @@ export function renderBeatPropertiesSection(params: {
                 };
 
                 // Drag events (matches scene: is-dragging / ert-template-dragover + plugin.registerDomEvent)
-                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e: DragEvent) => {
                     beatDragIndex = idx;
                     row.addClass('is-dragging');
                     e.dataTransfer?.setData('text/plain', String(idx));

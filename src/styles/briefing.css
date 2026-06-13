@@ -649,7 +649,6 @@ a.rt-briefing-scene-ref {
   .rt-briefing-block,
   .rt-briefing-note,
   .rt-briefing-finding {
-    break-inside: auto;
     page-break-inside: auto;
   }
 
@@ -658,7 +657,6 @@ a.rt-briefing-scene-ref {
   .rt-briefing-summary-label,
   .rt-briefing-finding-title,
   .rt-briefing-note-label-row {
-    break-after: avoid;
     page-break-after: avoid;
   }
 

@@ -3638,7 +3638,7 @@ body.rt-modal-open .ert-inquiry-svg {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: var(--ert-gap-md, 14px);
+  gap: 0 var(--ert-gap-md, 14px);
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon {

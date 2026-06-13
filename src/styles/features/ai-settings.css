@@ -33,7 +33,7 @@
 .ert-ui.ert-scope--settings .ert-ai-provider-key-state {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: var(--ert-gap-md);
+  gap: 0 var(--ert-gap-md);
   align-items: start;
 }
 

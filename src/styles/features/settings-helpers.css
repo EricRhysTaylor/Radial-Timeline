@@ -464,8 +464,7 @@
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-setting-two-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: var(--ert-gap-lg);
-  row-gap: var(--ert-gap-sm);
+  gap: var(--ert-gap-sm) var(--ert-gap-lg);
   align-items: start;
 }
 
@@ -566,7 +565,7 @@
   --ert-row-pad: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: var(--ert-gap, var(--ert-gap-lg));
+  gap: 0 var(--ert-gap, var(--ert-gap-lg));
   align-items: start;
   padding: var(--ert-row-pad);
 }

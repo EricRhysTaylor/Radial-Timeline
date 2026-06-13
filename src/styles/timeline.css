@@ -1914,7 +1914,7 @@
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   align-items: start;
-  column-gap: var(--size-4-2);
+  gap: 0 var(--size-4-2);
   min-height: 28px;
   padding: var(--size-2-1) 0;
 }

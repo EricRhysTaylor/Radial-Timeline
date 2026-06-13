@@ -1415,7 +1415,7 @@ export function renderInquirySection(params: SectionParams): void {
                     setTooltip(customizedIcon, t('settings.inquiry.prompts.customizedQuestion'));
                 }
 
-                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e: DragEvent) => {
                     dragState.index = slotIndex;
                     dragState.sourceRow = row;
                     promptContainer.addClass('ert-inquiry-prompt-config--dragging');
@@ -1437,7 +1437,7 @@ export function renderInquirySection(params: SectionParams): void {
                     row.classList.add('is-dragover');
                 });
 
-                plugin.registerDomEvent(row, 'dragover', (e) => {
+                plugin.registerDomEvent(row, 'dragover', (e: DragEvent) => {
                     e.preventDefault();
                     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
                     row.classList.add('is-dragover');
@@ -1447,7 +1447,7 @@ export function renderInquirySection(params: SectionParams): void {
                     row.classList.remove('is-dragover');
                 });
 
-                plugin.registerDomEvent(row, 'drop', (e) => {
+                plugin.registerDomEvent(row, 'drop', (e: DragEvent) => {
                     e.preventDefault();
                     row.classList.remove('is-dragover');
                     const from = dragState.index ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
@@ -1635,7 +1635,7 @@ export function renderInquirySection(params: SectionParams): void {
                 };
 
                 addBtn.onclick = commitAdd;
-                plugin.registerDomEvent(questionInput.inputEl, 'keydown', (e) => {
+                plugin.registerDomEvent(questionInput.inputEl, 'keydown', (e: KeyboardEvent) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         commitAdd();
