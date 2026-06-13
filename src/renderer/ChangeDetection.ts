@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { TimelineItem, RadialTimelineSettings, LegacyPersistedSettings } from '../types';
+import type { TimelineItem, RadialTimelineSettings, LegacyPersistedSettings, LegacyBeatDescription } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
@@ -132,7 +132,7 @@ export function createSnapshot(
                 s.pendingEdits || '',
                 s.Purpose || '',
                 s.Context || '',
-                s.Description || '', // legacy fallback
+                (s as LegacyBeatDescription).Description || '', // legacy fallback
                 readSharedChapterTitle(s.rawFrontmatter) || s.Chapter || '',
                 stringifyPovForHash(s.pov),
                 // Range field (rendered in Gossamer mode)

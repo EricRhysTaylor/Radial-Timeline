@@ -3,7 +3,7 @@
  */
 import { TFile, Vault, App, getFrontMatterInfo, parseYaml } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { TimelineItem, BookMeta, MatterMeta } from '../types';
+import type { TimelineItem, BookMeta, MatterMeta, LegacyMatterOrder } from '../types';
 import { getScenePrefixNumber } from './text';
 import { getActiveBookExportContext } from './exportContext';
 import { normalizeMatterBodyMode, parseMatterMetaFromFrontmatter, type MatterBodyMode } from './matterMeta';
@@ -165,7 +165,7 @@ function extractMatterMeta(content: string): MatterMeta | null {
     if (!yaml || typeof yaml !== 'object' || Array.isArray(yaml)) return null;
 
     const parsed = parseMatterMetaFromFrontmatter(yaml as Record<string, unknown>);
-    if (parsed?.order !== undefined) {
+    if ((parsed as LegacyMatterOrder | null)?.order !== undefined) {
       warnMatterOrderIgnoredOnce();
     }
     return parsed;
@@ -743,7 +743,7 @@ export async function getSceneFilesByOrder(
     }
 
     if (isMatterItem(scene) && scene.path) {
-      if (scene.matterMeta?.order !== undefined) {
+      if ((scene.matterMeta as LegacyMatterOrder | undefined)?.order !== undefined) {
         warnMatterOrderIgnoredOnce();
       }
       const normalizedSide: 'front' | 'back' = resolveMatterSideFromClass(scene);

@@ -1,4 +1,5 @@
 import { TimelineItem } from '../../types';
+import type { LegacyBeatDescription } from '../../types';
 
 /**
  * Anonymize timeline data for public sharing.
@@ -13,7 +14,7 @@ export function anonymizeTimeline(scenes: TimelineItem[]): TimelineItem[] {
         delete clean.Summary;
         delete clean.Purpose;
         delete clean.Context;
-        delete clean.Description;
+        delete (clean as LegacyBeatDescription).Description;
         delete clean.Character;
         delete clean.place;
         delete clean.pendingEdits;

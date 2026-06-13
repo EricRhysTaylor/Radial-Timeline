@@ -1,4 +1,4 @@
-import type { MatterMeta } from '../types';
+import type { MatterMeta, LegacyMatterOrder } from '../types';
 
 export type MatterSide = 'front' | 'back';
 export type MatterBodyMode = 'latex' | 'plain';
@@ -93,7 +93,7 @@ export function parseMatterMetaFromFrontmatter(
   if (usesBookMeta !== undefined) meta.usesBookMeta = usesBookMeta;
 
   const order = parseOrder(frontmatter.Order);
-  if (order !== undefined) meta.order = order;
+  if (order !== undefined) (meta as LegacyMatterOrder).order = order;
 
   // Enabled defaults to true. Only an explicit `Enabled: false` is recorded;
   // absence or `true` leaves `meta.enabled` undefined (treated as enabled

@@ -72,6 +72,19 @@ export interface MatterMeta {
     order?: number;
 }
 
+/**
+ * Non-deprecated views of legacy frontmatter fields. Compatibility code that
+ * must still read these (to fall back, or to warn the value is ignored) goes
+ * through these shapes so the boundary access doesn't trip no-deprecated while
+ * the deprecation tags stay on MatterMeta / TimelineItem for everyone else.
+ */
+export interface LegacyMatterOrder {
+    order?: number;
+}
+export interface LegacyBeatDescription {
+    Description?: string;
+}
+
 export interface TimelineItem {
     title?: string;
     date: string;
