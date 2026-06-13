@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-13T03:07:43.040Z",
+  "generatedAt": "2026-06-13T03:32:52.210Z",
   "scoringModel": "rt-impact-v1",
   "scoringAxes": [
     "authorTrust",
@@ -12,7 +12,19 @@
   "validationWarnings": [
     "openai-citations-annotations: missing availableSince (required for provider reality)"
   ],
-  "evidenceFailures": [],
+  "evidenceFailures": [
+    {
+      "id": "openai-automatic-prompt-caching",
+      "kind": "feature_missing",
+      "reason": "/!baseUrl\\s*&&\\s*openAiModelSupportsSystemRole/: missing required evidence /!baseUrl\\s*&&\\s*openAiModelSupportsSystemRole/",
+      "rule": "/!baseUrl\\s*&&\\s*openAiModelSupportsSystemRole/",
+      "sourceFiles": [
+        "src/api/openaiApi.ts",
+        "src/api/requestPayload.ts",
+        "src/ai/providers/openaiProvider.ts"
+      ]
+    }
+  ],
   "providerSummaries": {
     "anthropic": {
       "total": 9,
