@@ -10,7 +10,9 @@ declare module 'obsidian' {
       event: string,
       // Method syntax keeps parameters bivariant, so handlers typed with
       // specific Event subclasses (KeyboardEvent, CustomEvent, ...) still fit.
-      callback: (evt: Event) => void,
+      // Return type unknown (not void) so async handlers remain assignable
+      // without tripping no-misused-promises; the return value is ignored.
+      callback: (evt: Event) => unknown,
       options?: boolean | AddEventListenerOptions
     ): EventRef;
   }

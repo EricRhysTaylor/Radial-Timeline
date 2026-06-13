@@ -1,4 +1,4 @@
-/* global __RT_DEV__ */
+/* global __RT_DEV__ -- build-time flags injected by esbuild define; see esbuild.config.mjs */
 /*
  * Utility for generating scene content from templates
  */

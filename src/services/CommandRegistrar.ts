@@ -1,4 +1,4 @@
-/* global __RT_RELEASE__ */
+/* global __RT_RELEASE__ -- build-time flags injected by esbuild define; see esbuild.config.mjs */
 /*
  * CommandRegistrar
  * Encapsulates all command+ribbon registration.

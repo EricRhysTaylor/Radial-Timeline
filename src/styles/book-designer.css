@@ -214,7 +214,6 @@
 /* Base Grid */
 .ert-manuscript-surface .ert-manuscript-duo-grid {
     display: grid;
-    gap: 0;
     align-items: start;
     width: 100%;
     grid-template-columns: var(--ert-duo-grid-cols);
