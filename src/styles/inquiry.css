@@ -3980,9 +3980,6 @@ body.rt-modal-open .ert-inquiry-svg {
   font-size: var(--font-ui-small, 13px);
 }
 @media (max-width: 980px) {
-  .ert-inquiry-svg {
-  }
-
   :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon {
     width: 84px;
     min-width: 84px;
