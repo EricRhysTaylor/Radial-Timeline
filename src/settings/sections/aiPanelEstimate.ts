@@ -26,8 +26,7 @@ import {
     TOKEN_ESTIMATE_DISCLOSURE,
     TOKEN_ESTIMATE_SOURCE_LABEL,
     pickBestTokenEstimate,
-    formatTokenShorthand,
-    formatTokenHeadline
+    formatTokenShorthand
 } from '../../ai/estimates';
 
 // ── Types ───────────────────────────────────────────────────────────
