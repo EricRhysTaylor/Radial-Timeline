@@ -22,6 +22,7 @@ import {
     type ModalExportProfile,
 } from '../utils/exportProfileModel';
 import { getPandocLayoutSortRank, getPandocLayoutTier } from '../publishing/templateTiering';
+import { EDITORIALIST_LOGO_PATHS, EDITORIALIST_LOGO_VIEWBOX } from '../branding/editorialistLogo';
 import {
     applySpreadValidation,
     collectSpreadStatuses,
@@ -752,6 +753,7 @@ export class ManuscriptOptionsModal extends Modal {
             cls: 'ert-sub-card-note',
             text: 'Controls inclusion of SceneID to identify scenes. Helpful for various AI-assisted editorial workflows.'
         });
+        this.renderEditorialistPlug(sceneIdCard);
         const sceneIdRow = sceneIdCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
         sceneIdRow.createSpan({
             cls: 'ert-manuscript-toggle-label',
@@ -1510,6 +1512,34 @@ export class ManuscriptOptionsModal extends Modal {
                 target.appendText(part);
             }
         });
+    }
+
+    private renderEditorialistPlug(target: HTMLElement): void {
+        const plug = target.createDiv({ cls: 'ert-editorialist-plug' });
+
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        const svg = plug.ownerDocument.createElementNS(SVG_NS, 'svg');
+        svg.addClass('ert-editorialist-plug__logo');
+        svg.setAttr('viewBox', `${EDITORIALIST_LOGO_VIEWBOX.x} ${EDITORIALIST_LOGO_VIEWBOX.y} ${EDITORIALIST_LOGO_VIEWBOX.width} ${EDITORIALIST_LOGO_VIEWBOX.height}`);
+        svg.setAttr('aria-hidden', 'true');
+        EDITORIALIST_LOGO_PATHS.forEach((pathData) => {
+            const path = plug.ownerDocument.createElementNS(SVG_NS, 'path');
+            path.setAttr('d', pathData);
+            path.setAttr('fill', 'currentColor');
+            svg.append(path);
+        });
+        plug.append(svg);
+
+        const text = plug.createSpan({ cls: 'ert-editorialist-plug__text' });
+        text.appendText('See companion app ');
+        const link = text.createEl('a', {
+            cls: 'ert-link-accent',
+            text: 'Editorialist',
+        });
+        link.setAttribute('href', 'https://community.obsidian.md/plugins/editorialist');
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener');
+        text.appendText('.');
     }
 
     private createPill(parent: HTMLElement, label: string, active: boolean, onClick: () => void): void {

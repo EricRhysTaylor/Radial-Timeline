@@ -171,6 +171,27 @@
   line-height: 1.5;
 }
 
+.ert-editorialist-plug {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  margin-top: var(--ert-gap-tight);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.ert-editorialist-plug__logo {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--text-normal);
+}
+
+.ert-editorialist-plug__text {
+  flex: 1;
+}
+
 /* Preview toggle and panel */
 .ert-manuscript-preview-toggle {
   display: flex;
