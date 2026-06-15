@@ -398,7 +398,7 @@
       "priority": "p0",
       "implementationEvidence": [
         "const\\s+messages\\s*=\\s*buildOpenAiChatMessages\\(",
-        "!baseUrl\\s*&&\\s*openAiModelSupportsSystemRole",
+        "!baseUrl\\s*&&\\s*modelSupportsSystemRole",
         "\\{\\s*role:\\s*'system'\\s*,\\s*content:\\s*systemPrompt\\s*\\}",
         "\\{\\s*role:\\s*'user'\\s*,\\s*content:\\s*userPrompt\\s*\\}"
       ],
