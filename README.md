@@ -23,6 +23,9 @@
   <a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aissue+is%3Aopen+label%3Abug"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline/bug?colorA=363a4f&colorB=e93147&style=for-the-badge&label=bugs" alt="Open bugs on GitHub"></a>
 </p>
 
+> [!NOTE]
+> **Why Obsidian flags "Direct Filesystem Access" and "Shell Execution" on install:** both come from a single feature — the **Pandoc manuscript publishing pipeline**. Shell execution runs Pandoc (and its LaTeX engine) only when you export; filesystem access writes your export files and locates the Pandoc binary and fonts that live outside the vault. Neither is used for anything else. See [Privacy & Security](docs/privacy-and-security.md).
+
 ## What It Does
 
 Radial Timeline® arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.
