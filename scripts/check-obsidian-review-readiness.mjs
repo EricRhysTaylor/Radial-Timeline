@@ -84,6 +84,15 @@ ensure(srcManifest.isDesktopOnly === true, 'Source manifest must set `isDesktopO
 ensure(rootManifest.version === srcManifest.version, 'Root and source manifest versions must stay in sync.', failures);
 ensure(rootManifest.minAppVersion === srcManifest.minAppVersion, 'Root and source manifest minAppVersion must stay in sync.', failures);
 
+const versions = readJson('versions.json');
+ensure(
+  versions[rootManifest.version] === rootManifest.minAppVersion,
+  `versions.json must map ${rootManifest.version} to minAppVersion ${rootManifest.minAppVersion} ` +
+    `(found ${versions[rootManifest.version] ?? 'no entry'}). Hand-editing minAppVersion after a version ` +
+    `bump drifts versions.json out of sync — update it to match the shipped manifest.`,
+  failures
+);
+
 ensure(typeof packageJson.scripts?.lint === 'string', 'package.json must expose `npm run lint`.', failures);
 ensure(typeof packageJson.scripts?.['review:obsidian'] === 'string', 'package.json must expose `npm run review:obsidian`.', failures);
 ensure(typeof packageJson.scripts?.['release:eyeball'] === 'string', 'package.json must expose `npm run release:eyeball`.', failures);
@@ -135,6 +144,7 @@ if (failures.length > 0) {
 
 console.log('[obsidian-review] PASS');
 console.log('- Desktop-only manifests are aligned.');
+console.log(`- versions.json maps ${rootManifest.version} to minAppVersion ${rootManifest.minAppVersion}.`);
 console.log('- README and privacy/security disclosures are present.');
 console.log('- Runtime network/platform/filesystem checks passed.');
 console.log('- Release eyeball checklist is present.');
