@@ -5,7 +5,6 @@ export * from './settings/migrateAiSettings';
 export * from './settings/validateAiSettings';
 export * from './registry/builtinModels';
 export * from './registry/modelRegistry';
-export * from './registry/remoteRegistry';
 export * from './registry/providerSnapshot';
 export * from './registry/mergeModels';
 export * from './registry/recommendations';

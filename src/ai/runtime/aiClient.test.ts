@@ -76,20 +76,10 @@ describe('AI client privacy-flag wiring', () => {
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-    it('reads allowRemoteRegistry from privacy settings on every registry build', () => {
-        expect(code).toContain('isRemoteRegistryAllowed()');
-        expect(code).toContain('allowRemoteRegistry: this.isRemoteRegistryAllowed()');
-        expect(code).toContain('getAiSettings(this.plugin.settings).privacy.allowRemoteRegistry');
-    });
-
     it('reads allowProviderSnapshot from privacy settings on every snapshot fetch', () => {
         expect(code).toContain('isProviderSnapshotAllowed()');
         expect(code).toContain('enabled: this.isProviderSnapshotAllowed()');
         expect(code).toContain('getAiSettings(this.plugin.settings).privacy.allowProviderSnapshot');
-    });
-
-    it('never hard-codes allowRemoteRegistry: true in executable code', () => {
-        expect(code).not.toMatch(/allowRemoteRegistry:\s*true\b/);
     });
 
     it('never hard-codes enabled: true on the provider-snapshot loader', () => {

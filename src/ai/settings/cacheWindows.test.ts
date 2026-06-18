@@ -14,7 +14,7 @@ function settings(overrides: Partial<NonNullable<AiSettingsV1['cacheWindows']>> 
         modelPolicy: { type: 'latestStable' },
         overrides: {},
         aiAccessProfile: {},
-        privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+        privacy: { allowTelemetry: false, allowProviderSnapshot: false },
         cacheWindows: {
             anthropicTtl: '1h',
             googleTtlSeconds: 900,

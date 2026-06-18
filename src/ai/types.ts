@@ -149,7 +149,6 @@ export interface AIOverrides {
 
 export interface AIPrivacySettings {
     allowTelemetry: boolean;
-    allowRemoteRegistry: boolean;
     allowProviderSnapshot: boolean;
 }
 

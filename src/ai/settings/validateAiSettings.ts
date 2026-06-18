@@ -193,7 +193,6 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     }
 
     value.privacy.allowTelemetry = !!value.privacy.allowTelemetry;
-    value.privacy.allowRemoteRegistry = !!value.privacy.allowRemoteRegistry;
     value.privacy.allowProviderSnapshot = !!value.privacy.allowProviderSnapshot;
 
     if (

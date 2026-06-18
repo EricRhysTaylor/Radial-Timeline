@@ -44,7 +44,6 @@ import { validateJsonResponse } from './jsonValidator';
 import { estimateInputTokens, estimateUncertaintyTokens } from '../tokens/inputTokenEstimate';
 import { extractTokenUsage } from '../usage/providerUsage';
 
-const DEFAULT_REMOTE_REGISTRY_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/scripts/models/registry.json';
 const DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/HEAD/scripts/models/latest-models.json';
 const DEFAULT_REMOTE_PRICING_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/scripts/models/pricing.json';
 
@@ -326,28 +325,15 @@ export class AIClient {
      * rather than caching at constructor time — means a settings toggle takes
      * effect on the next operation without requiring a plugin reload.
      */
-    private isRemoteRegistryAllowed(): boolean {
-        return !!getAiSettings(this.plugin.settings).privacy.allowRemoteRegistry;
-    }
-
     private isProviderSnapshotAllowed(): boolean {
         return !!getAiSettings(this.plugin.settings).privacy.allowProviderSnapshot;
     }
 
     private buildRegistry(): ModelRegistry {
-        return new ModelRegistry({
-            remoteRegistryUrl: DEFAULT_REMOTE_REGISTRY_URL,
-            allowRemoteRegistry: this.isRemoteRegistryAllowed(),
-            readCache: async () => this.plugin.settings.aiRegistryCacheJson ?? null,
-            writeCache: async (content: string) => {
-                this.plugin.settings.aiRegistryCacheJson = content;
-                await this.plugin.saveSettings();
-            }
-        });
+        return new ModelRegistry();
     }
 
-    async refreshRegistry(forceRemote?: boolean): Promise<RegistryRefreshResult> {
-        this.registry = this.buildRegistry();
+    async refreshRegistry(): Promise<RegistryRefreshResult> {
         const result = await this.registry.refresh();
         this.registryReady = true;
         return result;
@@ -417,10 +403,9 @@ export class AIClient {
     }
 
     getLastModelUpdateAt(): string | null {
-        const registryFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiRegistryCacheJson ?? null);
         const snapshotFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiProviderSnapshotCacheJson ?? null);
         const pricingFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiPricingCacheJson ?? null);
-        const candidates = [registryFetchedAt, snapshotFetchedAt, pricingFetchedAt]
+        const candidates = [snapshotFetchedAt, pricingFetchedAt]
             .filter((value): value is string => !!value)
             .map(value => Date.parse(value))
             .filter(value => Number.isFinite(value));
@@ -435,7 +420,7 @@ export class AIClient {
         lastUpdatedAt: string | null;
     }> {
         const [registry, snapshot, pricing] = await Promise.all([
-            this.refreshRegistry(forceRemote),
+            this.refreshRegistry(),
             this.refreshProviderSnapshot(forceRemote),
             this.refreshPricing()
         ]);
@@ -460,9 +445,9 @@ export class AIClient {
         return true;
     }
 
-    async getRegistryModels(forceRemote?: boolean): Promise<ModelInfo[]> {
-        if (!this.registryReady || forceRemote) {
-            await this.refreshRegistry(forceRemote);
+    async getRegistryModels(): Promise<ModelInfo[]> {
+        if (!this.registryReady) {
+            await this.refreshRegistry();
         }
         return this.registry.getAll();
     }
@@ -477,7 +462,7 @@ export class AIClient {
     async prepareRunEstimate(request: AIRunRequest): Promise<AIRunEstimateResult> {
         const aiSettings = getAiSettings(this.plugin.settings);
         if (!this.registryReady) {
-            await this.refreshRegistry(false);
+            await this.refreshRegistry();
         }
         if (!this.pricingReady) {
             await this.refreshPricing();

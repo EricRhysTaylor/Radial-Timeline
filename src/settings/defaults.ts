@@ -127,7 +127,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     cachedReleaseNotes: null,
     releaseNotesLastFetched: undefined,
     aiSettings: buildDefaultAiSettings(),
-    aiRegistryCacheJson: '',
     aiProviderSnapshotCacheJson: '',
     aiPricingCacheJson: '',
     enablePlanetaryTime: false,

@@ -11,7 +11,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'pinned', pinnedAlias: 'missing' },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false }
         } as any);
 
         expect(result.value.provider).toBe('openai');
@@ -26,7 +26,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             overrides: { temperature: 99, topP: 99, maxOutputMode: 'bad' as any },
             aiAccessProfile: { openaiTier: 99 as any },
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false }
         } as any);
 
         expect(result.value.overrides.temperature).toBe(2);
@@ -42,7 +42,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             overrides: {},
             aiAccessProfile: { openaiTier: 4 },
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false }
         } as unknown as AiSettingsV1);
 
         expect(result.value.aiAccessProfile.openaiTier).toBe(4);
@@ -55,7 +55,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false },
             credentials: {
                 openaiApiKey: 'raw-key-should-not-persist',
                 openaiSecretId: 'rt.openai.api-key'
@@ -73,7 +73,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'manual' as unknown as AiSettingsV1['modelPolicy']['type'] },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false }
         } as unknown as AiSettingsV1);
 
         expect(result.value.modelPolicy.type).toBe('latestStable');
@@ -87,7 +87,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestPro' },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false }
         } as unknown as AiSettingsV1);
 
         expect(result.value.modelPolicy.type).toBe('latestPro');
@@ -110,7 +110,7 @@ describe('validateAiSettings', () => {
             },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false }
         } as unknown as AiSettingsV1);
 
         expect(result.value.localLlm.backend).toBe('ollama');
@@ -129,7 +129,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false },
             cacheWindows: {
                 anthropicTtl: '5m',
                 googleTtlSeconds: 900,
@@ -149,7 +149,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false },
             cacheWindows: {
                 anthropicTtl: '1h',
                 googleTtlSeconds: 900,
@@ -169,7 +169,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             overrides: {},
             aiAccessProfile: {},
-            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            privacy: { allowTelemetry: false, allowProviderSnapshot: false },
             cacheWindows: {
                 anthropicTtl: '1h',
                 googleTtlSeconds: 86_400,

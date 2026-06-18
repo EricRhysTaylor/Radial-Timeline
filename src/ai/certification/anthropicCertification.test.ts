@@ -47,7 +47,6 @@ function assertCondition(condition: unknown, message: string): asserts condition
 function createCertificationPlugin() {
     const aiSettings = buildDefaultAiSettings();
     aiSettings.provider = 'anthropic';
-    aiSettings.privacy.allowRemoteRegistry = false;
     aiSettings.privacy.allowProviderSnapshot = false;
     aiSettings.privacy.allowTelemetry = false;
 
@@ -55,7 +54,6 @@ function createCertificationPlugin() {
         app: {},
         settings: {
             aiSettings,
-            aiRegistryCacheJson: null,
             aiPricingCacheJson: null,
             aiProviderSnapshotCacheJson: null
         },

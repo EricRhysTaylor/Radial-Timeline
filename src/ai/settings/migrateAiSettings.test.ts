@@ -52,7 +52,7 @@ describe('migrateAiSettings', () => {
                 ],
                 overrides: { maxOutputMode: 'auto', reasoningDepth: 'standard', jsonStrict: true },
                 aiAccessProfile: { anthropicTier: 1, openaiTier: 1, googleTier: 1 },
-                privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+                privacy: { allowTelemetry: false, allowProviderSnapshot: false },
                 localLlm: {
                     enabled: true,
                     configurationMode: 'auto',

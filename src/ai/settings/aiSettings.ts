@@ -108,7 +108,6 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
         },
         privacy: {
             allowTelemetry: false,
-            allowRemoteRegistry: false,
             allowProviderSnapshot: false
         },
         cacheWindows: { ...DEFAULT_CACHE_WINDOWS },
