@@ -27,14 +27,19 @@ Unlike Narrative Mode, this mode replaces subplot colors with your workflow stat
     *   Once a scene is "Complete", it displays the color of its current stage (Zero Draft, Author's Draft, House Edit, Press Ready).
     *   These colors can be customized in [Progress stage colors](Settings-Core#progress-stage-colors).
 
-<div style="text-align: center; margin: 20px 0;">
-  <img src="images/panel-zero-draft.png" alt="Zero Draft Mode panel" style="width: 480px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Zero Draft Mode — focused drafting entry point</div>
-</div>
+Together, inner status and the stage grid answer two questions:
 
-Think of this as the Progress Mode status grammar:
-
-*   **Inner status** answers: what is happening with this scene right now?
-*   **Stage grid** answers: which draft or editing stage has this scene reached?
+*   **Inner status**: what is happening with this scene right now?
+*   **Stage grid**: which draft or editing stage has this scene reached?
 
 Together they turn the radial view into a project-management dashboard, highlighting what needs to be written, what is overdue, and what is ready for the next stage of editing.
+
+<a name="zero-draft-mode"></a>
+## Zero Draft Mode
+
+**Zero Draft Mode** is a guardrail against never-ending revision while you finish a first draft. When it is enabled, clicking a scene that has reached **Progress Stage = Zero** and **Status = Complete** opens a **Pending Edits** panel instead of the scene file, so you can jot down what to revise later without dropping back into the prose. Enable it in [Settings](Settings-Core), and capture revision ideas in the scene's `Pending Edits` field.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/panel-zero-draft.png" alt="Zero Draft Mode panel" style="width: 480px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Zero Draft Mode — capture revision notes without reopening the scene</div>
+</div>

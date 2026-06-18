@@ -34,7 +34,7 @@ Radial Timeline® arranges your scenes by act, subplot, narrative or chronologic
 | --- | --- |
 | Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline. | One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture. |
 
-Radial Timeline® captures and visualizes four core timeline grammars, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
+Radial Timeline® captures and visualizes four core timelines, letting you see manuscript order, story chronology, writing progress, and revision stage in one connected view.
 
 - **Narrative time**: the sequence you reveal events to readers.
 - **Chronological time**: when events happen in your story's world.
