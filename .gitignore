@@ -58,3 +58,6 @@ tmp/publishing-pdf-qa/
 # Local reference copies — not part of the plugin; Obsidian scorecard scans repo CSS
 app.css
 vault-restore-point/
+
+# Generated nightly by the Model & Pricing Watch workflow
+scripts/models/pricing-watch-report.md
