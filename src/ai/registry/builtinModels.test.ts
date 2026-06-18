@@ -56,9 +56,9 @@ describe('BUILTIN_MODELS — Anthropic Claude Opus 4.8', () => {
 });
 
 describe('BUILTIN_MODELS — Google Gemini', () => {
-    it('declares Gemini 3.1 Pro Preview as the preview/depth lane', () => {
+    it('declares Gemini 3.1 Pro Preview as the depth lane', () => {
         const model = byAlias('gemini-3.1-pro-preview');
-        expect(model.status).toBe('preview');
+        expect(model.status).toBe('stable');
         expect(model.tier).toBe('DEEP');
         expect(model.contextWindow).toBe(1048576);
         expect(model.maxOutput).toBe(65536);
@@ -78,12 +78,13 @@ describe('BUILTIN_MODELS — Google Gemini', () => {
 describe('BUILTIN_MODELS — catalog policy invariants', () => {
     it('keeps the catalog small enough to be deliberately curated (one top model per provider, plus Google fast/deep split)', () => {
         const cloud = BUILTIN_MODELS.filter(m => m.provider !== 'none' && m.provider !== 'ollama');
-        // Anthropic 1 + OpenAI 1 + Google 2 = 4 cloud models.
+        // Anthropic 2 (4.8 + 4.7 continuity) + OpenAI 2 (5.5 + 5.4 economy)
+        // + Google 2 (3.1 Pro depth / 3.5 Flash speed) = 6 cloud models.
         // If this assertion fails because a model was added, confirm the
         // addition followed the promotion process documented in
         // docs/engineering/standards/model-promotion.md before updating
         // this expectation.
-        expect(cloud.length).toBeLessThanOrEqual(5);
+        expect(cloud.length).toBeLessThanOrEqual(6);
     });
 
     it('does not curate experimental "*-pro" OpenAI lanes here (they would come via remote drift if needed)', () => {

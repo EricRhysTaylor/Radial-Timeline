@@ -102,6 +102,35 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         }
     },
     {
+        // Economy second on the gpt-5 line: a strong, cheaper alternative to
+        // 5.5, same request contract (Responses API, reasoning effort,
+        // provider-managed sampling). Auto-selection resolves to 5.5 (newer on
+        // the line); 5.4 is an explicit opt-in in the picker.
+        provider: 'openai',
+        id: 'gpt-5.4',
+        alias: 'gpt-5.4',
+        label: 'GPT-5.4',
+        line: 'gpt-5',
+        tier: 'BALANCED',
+        capabilities: [...DEEP_CAPS, 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 9, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-03-05',
+        status: 'stable',
+        rollout: {
+            channel: 'stable',
+            status: 'stable',
+            lane: 'default'
+        },
+        constraints: {
+            supportsTemperature: false,
+            supportsTopP: false,
+            supportsReasoningEffort: true,
+            preferredOpenAiEndpoint: 'responses'
+        }
+    },
+    {
         provider: 'google',
         id: 'gemini-3.1-pro-preview',
         alias: 'gemini-3.1-pro-preview',
@@ -112,7 +141,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         personality: { reasoning: 9, writing: 8, determinism: 8 },
         contextWindow: 1048576,
         maxOutput: 65536,
-        status: 'preview',
+        status: 'stable',
         constraints: { cacheVsCitationsExclusive: true }
     },
     {
@@ -154,7 +183,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         personality: { reasoning: 5, writing: 5, determinism: 4 },
         contextWindow: 32000,
         maxOutput: 4000,
-        status: 'legacy'
+        status: 'stable'
     },
     {
         provider: 'none',
