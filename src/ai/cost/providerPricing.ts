@@ -73,6 +73,18 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
                 outputPer1M: 45.0,
                 cacheReadPer1M: 1.0
             }
+        },
+        // Economy second on the gpt-5 line.
+        'gpt-5.4': {
+            inputPer1M: 2.5,
+            outputPer1M: 15.0,
+            cacheReadPer1M: 0.25,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 5.0,
+                outputPer1M: 22.5,
+                cacheReadPer1M: 0.5
+            }
         }
     },
     google: {
@@ -88,9 +100,9 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
             }
         },
         'gemini-3.5-flash': {
-            inputPer1M: 0.5,
-            outputPer1M: 3.0,
-            cacheReadPer1M: 0.05
+            inputPer1M: 1.5,
+            outputPer1M: 9.0,
+            cacheReadPer1M: 0.15
         }
     }
 };

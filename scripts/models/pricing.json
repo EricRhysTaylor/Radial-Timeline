@@ -3,150 +3,58 @@
   "models": [
     {
       "provider": "anthropic",
-      "modelId": "claude-opus-4-1-20250805",
-      "inputPer1M": 15.0,
-      "outputPer1M": 75.0,
-      "cacheWrite5mPer1M": 18.75,
-      "cacheWrite1hPer1M": 30.0,
-      "cacheReadPer1M": 1.5
-    },
-    {
-      "provider": "anthropic",
       "modelId": "claude-opus-4-8",
-      "inputPer1M": 5.0,
-      "outputPer1M": 25.0,
+      "inputPer1M": 5,
+      "outputPer1M": 25,
       "cacheWrite5mPer1M": 6.25,
-      "cacheWrite1hPer1M": 10.0,
+      "cacheWrite1hPer1M": 10,
       "cacheReadPer1M": 0.5
     },
     {
       "provider": "anthropic",
       "modelId": "claude-opus-4-7",
-      "inputPer1M": 5.0,
-      "outputPer1M": 25.0,
+      "inputPer1M": 5,
+      "outputPer1M": 25,
       "cacheWrite5mPer1M": 6.25,
-      "cacheWrite1hPer1M": 10.0,
-      "cacheReadPer1M": 0.5
-    },
-    {
-      "provider": "anthropic",
-      "modelId": "claude-sonnet-4-6",
-      "inputPer1M": 3.0,
-      "outputPer1M": 15.0,
-      "cacheWrite5mPer1M": 3.75,
-      "cacheWrite1hPer1M": 6.0,
-      "cacheReadPer1M": 0.3
-    },
-    {
-      "provider": "anthropic",
-      "modelId": "claude-sonnet-4-5-20250929",
-      "inputPer1M": 3.0,
-      "outputPer1M": 15.0,
-      "cacheWrite5mPer1M": 3.75,
-      "cacheWrite1hPer1M": 6.0,
-      "cacheReadPer1M": 0.3,
-      "longContext": {
-        "thresholdInputTokens": 200000,
-        "inputPer1M": 6.0,
-        "outputPer1M": 22.5,
-        "cacheWrite5mPer1M": 7.5,
-        "cacheWrite1hPer1M": 12.0,
-        "cacheReadPer1M": 0.6
-      }
-    },
-    {
-      "provider": "anthropic",
-      "modelId": "claude-opus-4-6",
-      "inputPer1M": 5.0,
-      "outputPer1M": 25.0,
-      "cacheWrite5mPer1M": 6.25,
-      "cacheWrite1hPer1M": 10.0,
+      "cacheWrite1hPer1M": 10,
       "cacheReadPer1M": 0.5
     },
     {
       "provider": "openai",
       "modelId": "gpt-5.5",
-      "inputPer1M": 5.0,
-      "outputPer1M": 30.0,
+      "inputPer1M": 5,
+      "outputPer1M": 30,
       "cacheReadPer1M": 0.5,
       "longContext": {
         "thresholdInputTokens": 272000,
-        "inputPer1M": 10.0,
-        "outputPer1M": 45.0,
-        "cacheReadPer1M": 1.0
-      }
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-5.5-2026-04-23",
-      "inputPer1M": 5.0,
-      "outputPer1M": 30.0,
-      "cacheReadPer1M": 0.5,
-      "longContext": {
-        "thresholdInputTokens": 272000,
-        "inputPer1M": 10.0,
-        "outputPer1M": 45.0,
-        "cacheReadPer1M": 1.0
+        "inputPer1M": 10,
+        "outputPer1M": 45,
+        "cacheReadPer1M": 1
       }
     },
     {
       "provider": "openai",
       "modelId": "gpt-5.4",
       "inputPer1M": 2.5,
-      "outputPer1M": 15.0,
+      "outputPer1M": 15,
       "cacheReadPer1M": 0.25,
       "longContext": {
         "thresholdInputTokens": 272000,
-        "inputPer1M": 5.0,
+        "inputPer1M": 5,
         "outputPer1M": 22.5,
         "cacheReadPer1M": 0.5
-      }
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-5.4-2026-03-05",
-      "inputPer1M": 2.5,
-      "outputPer1M": 15.0,
-      "cacheReadPer1M": 0.25,
-      "longContext": {
-        "thresholdInputTokens": 272000,
-        "inputPer1M": 5.0,
-        "outputPer1M": 22.5,
-        "cacheReadPer1M": 0.5
-      }
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-5.4-pro",
-      "inputPer1M": 30.0,
-      "outputPer1M": 180.0,
-      "longContext": {
-        "thresholdInputTokens": 272000,
-        "inputPer1M": 60.0,
-        "outputPer1M": 270.0
-      }
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-5.4-pro-2026-03-05",
-      "inputPer1M": 30.0,
-      "outputPer1M": 180.0,
-      "longContext": {
-        "thresholdInputTokens": 272000,
-        "inputPer1M": 60.0,
-        "outputPer1M": 270.0
       }
     },
     {
       "provider": "google",
       "modelId": "gemini-3.1-pro-preview",
-      "inputPer1M": 2.0,
-      "outputPer1M": 12.0,
+      "inputPer1M": 2,
+      "outputPer1M": 12,
       "cacheReadPer1M": 0.2,
       "longContext": {
         "thresholdInputTokens": 200000,
-        "inputPer1M": 4.0,
-        "outputPer1M": 18.0,
+        "inputPer1M": 4,
+        "outputPer1M": 18,
         "cacheReadPer1M": 0.4
       }
     },
@@ -154,34 +62,8 @@
       "provider": "google",
       "modelId": "gemini-3.5-flash",
       "inputPer1M": 1.5,
-      "outputPer1M": 9.0,
+      "outputPer1M": 9,
       "cacheReadPer1M": 0.15
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-pro-latest",
-      "inputPer1M": 2.0,
-      "outputPer1M": 12.0,
-      "cacheReadPer1M": 0.2,
-      "longContext": {
-        "thresholdInputTokens": 200000,
-        "inputPer1M": 4.0,
-        "outputPer1M": 18.0,
-        "cacheReadPer1M": 0.4
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-pro",
-      "inputPer1M": 1.25,
-      "outputPer1M": 10.0,
-      "cacheReadPer1M": 0.125,
-      "longContext": {
-        "thresholdInputTokens": 200000,
-        "inputPer1M": 2.5,
-        "outputPer1M": 15.0,
-        "cacheReadPer1M": 0.25
-      }
     }
   ]
 }

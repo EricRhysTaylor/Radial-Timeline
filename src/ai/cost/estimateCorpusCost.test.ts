@@ -173,14 +173,14 @@ describe('estimateCorpusCost', () => {
             totalTokens: 140_621,
             cacheReadInputTokens: 135_700
         };
-        // Flash table: input $0.50/M, output $3.00/M, cacheRead $0.05/M.
+        // Flash table: input $1.50/M, output $9.00/M, cacheRead $0.15/M.
         const created = estimateUsageCost('google', 'gemini-3.5-flash', usage, 'created');
         const hit = estimateUsageCost('google', 'gemini-3.5-flash', usage, 'hit');
 
-        // Created ≈ fresh: 135.7k @ $0.50/M + 4.9k @ $3/M ≈ $0.083.
-        expect(created?.totalCostUSD).toBeCloseTo(0.0830, 2);
-        // Hit gets the 10x read discount on the cached prefix ≈ $0.021.
-        expect(hit?.totalCostUSD).toBeCloseTo(0.0215, 2);
+        // Created ≈ fresh: 135.7k @ $1.50/M + 4.9k @ $9/M ≈ $0.248.
+        expect(created?.totalCostUSD).toBeCloseTo(0.2477, 2);
+        // Hit gets the read discount on the cached prefix ≈ $0.064.
+        expect(hit?.totalCostUSD).toBeCloseTo(0.0645, 2);
         // The created run must be materially pricier than a genuine reuse hit.
         expect((created?.totalCostUSD ?? 0)).toBeGreaterThan((hit?.totalCostUSD ?? 0) * 3);
     });

@@ -65,9 +65,9 @@ describe('providerPricing', () => {
         expect(geminiLong.inputPer1M).toBe(4);
         expect(geminiLong.outputPer1M).toBe(18);
         expect(geminiLong.cacheReadPer1M).toBe(0.4);
-        expect(geminiFlash.inputPer1M).toBe(0.5);
-        expect(geminiFlash.outputPer1M).toBe(3);
-        expect(geminiFlash.cacheReadPer1M).toBe(0.05);
+        expect(geminiFlash.inputPer1M).toBe(1.5);
+        expect(geminiFlash.outputPer1M).toBe(9);
+        expect(geminiFlash.cacheReadPer1M).toBe(0.15);
     });
 
     it('isPromoActive returns true for promo without expiresAt', () => {
