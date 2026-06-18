@@ -202,7 +202,12 @@ async function callClaude({ apiKey, model, prompt, fetchImpl, maxContinuations =
 
         if (!res.ok) {
             const detail = await res.text().catch(() => '');
-            throw new Error(`Anthropic API ${res.status}: ${detail.slice(0, 300)}`);
+            let message = detail.slice(0, 200);
+            try {
+                const parsed = JSON.parse(detail);
+                if (parsed?.error?.message) message = parsed.error.message;
+            } catch { /* keep raw slice */ }
+            throw new Error(`Anthropic API ${res.status}: ${message}`);
         }
 
         const data = await res.json();
@@ -217,6 +222,16 @@ async function callClaude({ apiKey, model, prompt, fetchImpl, maxContinuations =
         return lastText;
     }
     return lastText;
+}
+
+// Collapse per-model errors for display: when every failure shares one cause
+// (e.g. a billing limit hit on all 16 calls), say it once instead of 16 times.
+export function summarizeErrors(errors) {
+    if (!errors.length) return '';
+    const messages = errors.map(e => e.replace(/^[^:]+:\s*/, ''));
+    const unique = [...new Set(messages)];
+    if (unique.length === 1) return `${errors.length} lookup(s) failed — ${unique[0]}`;
+    return errors.join('; ');
 }
 
 // Look up every model's price with one short call apiece, capped concurrency.
@@ -360,11 +375,11 @@ export async function runPricingDriftCheck(options = {}) {
         try {
             const entries = pricing.models.map(e => ({ provider: e.provider, modelId: e.modelId }));
             const { rows, errors } = await lookupPrices(entries, { apiKey: anthropicApiKey, model, fetchImpl });
-            if (!rows.length) throw new Error(errors.length ? errors.join('; ') : 'no prices returned');
+            if (!rows.length) throw new Error(summarizeErrors(errors) || 'no prices returned');
             result.llmRan = true;
             result.llmPartialErrors = errors;
             result.priceDrifts = diffPrices(pricing, rows);
-            if (errors.length) warn(`[check-pricing-drift] ${errors.length} model(s) could not be verified: ${errors.join('; ')}`);
+            if (errors.length) warn(`[check-pricing-drift] ${summarizeErrors(errors)}`);
         } catch (error) {
             result.llmError = error instanceof Error ? error.message : String(error);
             warn(`[check-pricing-drift] price lookup failed: ${result.llmError}`);

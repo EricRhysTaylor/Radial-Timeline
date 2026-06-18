@@ -25,7 +25,7 @@ import path from 'path';
 import process from 'process';
 import { fileURLToPath } from 'url';
 import { runModelUpdateCheck } from './check-model-updates.mjs';
-import { runPricingDriftCheck } from './check-pricing-drift.mjs';
+import { runPricingDriftCheck, summarizeErrors } from './check-pricing-drift.mjs';
 
 const REPORT_FILE = path.resolve('scripts/models/pricing-watch-report.md');
 
@@ -40,7 +40,7 @@ function pricingSection(p) {
     if (p.llmRan) {
         const partial = (p.llmPartialErrors || []).length;
         lines.push(partial
-            ? `**Live price verification:** ⚠️ partial (Claude + web search) — ${partial} model(s) unverified: ${p.llmPartialErrors.map(e => `\`${e}\``).join(', ')}`
+            ? `**Live price verification:** ⚠️ partial (Claude + web search) — ${summarizeErrors(p.llmPartialErrors)}`
             : '**Live price verification:** ✓ ran (Claude + web search)');
     } else {
         lines.push(`**Live price verification:** ⚠️ skipped — ${p.llmError || 'no API key'}`);
