@@ -1,8 +1,10 @@
 name: Model & Pricing Watch
 
+# Disabled on a schedule by request — runs only on manual dispatch.
+# (Re-enable the nightly run by uncommenting the schedule block below.)
 on:
-  schedule:
-    - cron: '0 8 * * *'
+  # schedule:
+  #   - cron: '0 8 * * *'
   workflow_dispatch:
 
 # Auto-commit verified price corrections and open/update the report issue.
