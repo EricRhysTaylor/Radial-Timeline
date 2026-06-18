@@ -18,8 +18,8 @@ Progress Mode isolates each subplot into its own radial pass, removing the combi
 Unlike Narrative Mode, this mode replaces subplot colors with your workflow status:
 
 1.  **Author Status**:
-    *   **Todo**: Plaid pattern.
-    *   **Working**: Pink.
+    *   **Todo**: Solid light pink.
+    *   **Working**: Pink, with an optional Hero Patterns plaid motif overlaid on top. The motif is customizable with the **Pro Signature Tier** — paste any pattern from [heropatterns.com](https://heropatterns.com) in Settings.
     *   **Overdue**: Red.
     *   **Complete**: Inherits the color of the scene Progress Stage.
 
