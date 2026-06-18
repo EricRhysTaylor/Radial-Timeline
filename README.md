@@ -104,7 +104,7 @@ Radial Timeline ships complete English interface text and partial interface tran
 - API keys use Obsidian secret storage when available.
 - AI is optional and can be disabled with the **AI Off** toggle.
 - Vault content should only leave the vault when you explicitly use enabled external features.
-- Shell commands are run only to invoke Pandoc (and its LaTeX engine) when you export a manuscript, and to probe for those binaries with `which`/`where` during setup. Never otherwise.
+- Shell commands are run only to invoke Pandoc (and its LaTeX engine) when you export a manuscript, and to probe for those binaries with `which`/`where` during setup.
 - Files outside the vault are read or written only to save exports where you choose and to locate the Pandoc executable.
 - The only environment variable read directly is `PATH`, used to locate Pandoc. Subprocesses receive a minimal allowlisted environment (PATH, home, temp, and locale/TeX variables) — never the full set, so credentials in your session can't leak to child processes.
 
