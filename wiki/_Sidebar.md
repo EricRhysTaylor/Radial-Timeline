@@ -23,7 +23,7 @@
         *   [AI Analysis](Gossamer-Mode#ai-analysis)
     *   [AI Pulse Triplet Analysis](AI-Pulse-Analysis)
     *   [Beat Systems](Gossamer-Mode#story-beats-configuration)
-    *   [Inner Status & Stage Grid](Progress-Mode#inner-status-and-stage-grid)
+    *   [Status & Progress Stage](Progress-Mode#status-and-progress-stage)
 *   [Inquiry View](Inquiry)
     *   [Inquiry Glyph](Inquiry#inquiry-glyph)
     *   [Minimap](Inquiry#minimap)
