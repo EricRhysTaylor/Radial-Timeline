@@ -164,8 +164,6 @@
       "rollout": {
         "channel": "rollback",
         "status": "stable",
-        "supersedes": "gpt-5.3",
-        "fallbackModelId": "gpt-5.3",
         "lane": "default"
       }
     },
@@ -185,8 +183,6 @@
       "rollout": {
         "channel": "pro",
         "status": "stable",
-        "supersedes": "gpt-5.3",
-        "fallbackModelId": "gpt-5.3",
         "lane": "pro"
       }
     },
@@ -208,7 +204,6 @@
         "hiddenFromPicker": true,
         "status": "provisional",
         "supersedes": "gpt-5.4",
-        "fallbackModelId": "gpt-5.3",
         "lane": "default",
         "datedVariantOf": "gpt-5.4"
       }
@@ -231,43 +226,9 @@
         "hiddenFromPicker": true,
         "status": "provisional",
         "supersedes": "gpt-5.4-pro",
-        "fallbackModelId": "gpt-5.3",
         "lane": "pro",
         "datedVariantOf": "gpt-5.4-pro"
       }
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-5.3",
-      "alias": "gpt-5.3",
-      "label": "GPT-5.3",
-      "line": "gpt-5",
-      "tier": "BALANCED",
-      "capabilities": ["longContext", "jsonStrict", "reasoningStrong", "highOutputCap", "toolCalling", "functionCalling"],
-      "personality": { "reasoning": 9, "writing": 8, "determinism": 9 },
-      "contextWindow": 400000,
-      "maxOutput": 16000,
-      "status": "stable",
-      "rollout": {
-        "channel": "rollback",
-        "status": "stable",
-        "supersedes": "gpt-5.2-chat-latest",
-        "fallbackModelId": "gpt-5.3",
-        "lane": "default"
-      }
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-5.2-chat-latest",
-      "alias": "gpt-5.2-latest",
-      "label": "GPT-5.2",
-      "line": "gpt-5",
-      "tier": "BALANCED",
-      "capabilities": ["longContext", "jsonStrict", "reasoningStrong", "highOutputCap", "toolCalling", "functionCalling"],
-      "personality": { "reasoning": 9, "writing": 8, "determinism": 9 },
-      "contextWindow": 400000,
-      "maxOutput": 16000,
-      "status": "stable"
     },
     {
       "provider": "openai",

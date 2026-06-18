@@ -27,8 +27,6 @@ const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
     // OpenAI
     'gpt-5.4': 'GPT-5.4',
     'gpt-5.4-pro': 'GPT-5.4 Pro',
-    'gpt-5.3': 'GPT-5.3',
-    'gpt-5.2-chat-latest': 'GPT-5.2',
     'gpt-5.1-chat-latest': 'GPT-5.1',
     'gpt-5-chat-latest': 'GPT-5',
     'chatgpt-4o-latest': 'ChatGPT-4o',
