@@ -707,6 +707,13 @@ describe('inquiryViewText', () => {
             expect(formatTokenCountFailureReason(msg)).toBe('API key invalid');
         });
 
+        it('keeps a trailing clock time intact instead of chopping at its colon', () => {
+            // Regression: the old last-colon split turned "…14:00 UTC" into the
+            // fragment "00 UTC", which the caller rendered as "00 UTC..".
+            const msg = 'google countTokens failed for model "gemini-x": rate limited, retry after 14:00 UTC.';
+            expect(formatTokenCountFailureReason(msg)).toBe('rate limited, retry after 14:00 UTC');
+        });
+
         it('returns empty string for null/undefined/empty input', () => {
             expect(formatTokenCountFailureReason(undefined)).toBe('');
             expect(formatTokenCountFailureReason(null)).toBe('');
