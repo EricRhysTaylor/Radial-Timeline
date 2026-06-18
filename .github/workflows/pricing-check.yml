@@ -33,11 +33,9 @@ jobs:
 
       - name: Run model & pricing watch
         id: watch
-        env:
-          # Repo secret is named "AI_Pricewatch"; the scripts read it as ANTHROPIC_API_KEY.
-          ANTHROPIC_API_KEY: ${{ secrets.AI_Pricewatch }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        # No API keys: the paid LLM price lookup is disabled. This runs only the
+        # free, deterministic cross-check (missing/orphan prices, promos, staleness)
+        # and the model checker (which falls back to its cached snapshot).
         run: node scripts/model-pricing-watch.mjs --apply
 
       - name: Commit verified updates

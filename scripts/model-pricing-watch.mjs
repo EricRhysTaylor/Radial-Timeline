@@ -112,7 +112,7 @@ function modelsSection(modelResult) {
 }
 
 export async function runWatch(options = {}) {
-    const { apply = false, now = () => Date.now(), log = console.log } = options;
+    const { apply = false, useLlm = false, now = () => Date.now(), log = console.log } = options;
     const date = new Date(now()).toISOString().slice(0, 10);
 
     // 1. Model checker (refreshes the snapshot itself when >1 day old).
@@ -124,8 +124,9 @@ export async function runWatch(options = {}) {
         modelError = error instanceof Error ? error.message : String(error);
     }
 
-    // 2. Pricing drift engine.
-    const pricingResult = await runPricingDriftCheck({ apply });
+    // 2. Pricing drift engine. The paid LLM price lookup is OFF by default; the
+    //    free, deterministic cross-check + staleness always runs.
+    const pricingResult = await runPricingDriftCheck({ apply, useLlm });
 
     // 3. Compose report.
     const actionable = pricingResult.actionable
@@ -174,7 +175,9 @@ export async function runWatch(options = {}) {
 
 async function main() {
     const apply = process.argv.includes('--apply');
-    await runWatch({ apply });
+    // The paid Claude price lookup only runs if explicitly opted in with --llm.
+    const useLlm = process.argv.includes('--llm');
+    await runWatch({ apply, useLlm });
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);
