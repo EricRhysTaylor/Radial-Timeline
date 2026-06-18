@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-14T17:47:20.000Z",
+  "generatedAt": "2026-06-18T15:42:36.000Z",
   "models": [
     {
       "provider": "anthropic",
@@ -153,9 +153,9 @@
     {
       "provider": "google",
       "modelId": "gemini-3.5-flash",
-      "inputPer1M": 0.5,
-      "outputPer1M": 3.0,
-      "cacheReadPer1M": 0.05
+      "inputPer1M": 1.5,
+      "outputPer1M": 9.0,
+      "cacheReadPer1M": 0.15
     },
     {
       "provider": "google",
