@@ -1325,7 +1325,7 @@ export class InquiryView extends ItemView {
             const reason = formatTokenCountFailureReason(corpus.requestEstimateFailureMessage)
                 || 'provider token count failed';
             return {
-                message: `Provider token count unavailable — ${reason}.\nThe Inquiry can still run; pre-flight estimate and cost are unavailable until the provider count succeeds.`
+                message: `Couldn't reach the AI provider to size this Inquiry — ${reason}.\nYou can still run it; the estimate and cost just won't show until the provider responds.`
             };
         }
         return null;

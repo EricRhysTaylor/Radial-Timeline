@@ -598,11 +598,17 @@ export const formatTokenCountFailureReason = (message: string | undefined | null
         const reason = httpOnly[0].trim().replace(/\s+/g, ' ');
         return reason.length > 90 ? `${reason.slice(0, 87)}…` : reason;
     }
-    // Fall back to the tail of the message (after the last colon), which
-    // typically holds the actual provider explanation.
-    const tail = message.includes(':') ? message.slice(message.lastIndexOf(':') + 1).trim() : message;
+    // Fall back to the message after the FIRST colon — the provider prefix
+    // (`<provider> countTokens failed for model "<model>":`) ends there, so
+    // the remainder is the real explanation. Splitting on the LAST colon
+    // instead chopped a trailing clock time (`14:00 UTC`) at its own colon
+    // and surfaced a meaningless fragment like "00 UTC" (which the caller
+    // template then turned into "00 UTC..").
+    const firstColon = message.indexOf(':');
+    const tail = (firstColon >= 0 ? message.slice(firstColon + 1) : message).trim();
     if (!tail) return '';
-    const cleaned = tail.replace(/\s+/g, ' ');
+    // Drop a trailing period so the caller's own sentence period doesn't double.
+    const cleaned = tail.replace(/\s+/g, ' ').replace(/\.+$/, '');
     return cleaned.length > 90 ? `${cleaned.slice(0, 87)}…` : cleaned;
 };
 
