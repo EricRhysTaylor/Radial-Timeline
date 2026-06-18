@@ -37,9 +37,14 @@ function pricingSection(p) {
     const lines = [];
     const ageLabel = p.ageDays === null ? 'unknown' : `${p.ageDays}d / ${p.staleDays}d`;
     lines.push(`**Data freshness:** ${ageLabel} ${p.stale && !p.reStamped ? '⚠️ stale' : '✓'}`);
-    lines.push(p.llmRan
-        ? '**Live price verification:** ✓ ran (Claude + web search)'
-        : `**Live price verification:** ⚠️ skipped — ${p.llmError || 'no API key'}`);
+    if (p.llmRan) {
+        const partial = (p.llmPartialErrors || []).length;
+        lines.push(partial
+            ? `**Live price verification:** ⚠️ partial (Claude + web search) — ${partial} model(s) unverified: ${p.llmPartialErrors.map(e => `\`${e}\``).join(', ')}`
+            : '**Live price verification:** ✓ ran (Claude + web search)');
+    } else {
+        lines.push(`**Live price verification:** ⚠️ skipped — ${p.llmError || 'no API key'}`);
+    }
 
     if (p.priceDrifts.length) {
         lines.push('', '**Price drift detected:**', '', '| Model | Field | Was | Now | Confidence | Source |', '|---|---|---|---|---|---|');

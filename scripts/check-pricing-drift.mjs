@@ -32,6 +32,12 @@ const STALE_DAYS = 30;
 const PROMO_EXPIRY_WARN_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// One web-search lookup per model, run a few at a time. A single call covering
+// every model is too slow and trips Node fetch's 300s headers timeout; per-model
+// calls stay short, isolate failures, and finish in a couple of minutes.
+const LOOKUP_CONCURRENCY = 3;
+const REQUEST_TIMEOUT_MS = 120000;
+
 // Apply-time guards: a verified price must clear all of these before it is written.
 const MIN_PRICE = 0;            // strictly greater-than
 const MAX_PRICE = 10000;        // per 1M tokens — anything above is implausible
@@ -119,23 +125,33 @@ function buildCrossCheck(pricing, registry, snapshot, nowMs) {
 
 /* --------------------------------------------------------------- Claude lookup */
 
-function buildLookupPrompt(entries) {
-    const list = entries
-        .map(e => `- provider="${e.provider}" modelId="${e.modelId}"`)
-        .join('\n');
-    return `You are auditing an AI-model pricing table. Use the web_search tool to find the CURRENT official published API price for each model below, from the provider's own pricing/docs page (anthropic.com / platform.claude.com, openai.com / platform.openai.com, ai.google.dev / cloud.google.com). Prefer the provider's own page over aggregators.
+function buildLookupPrompt(entry) {
+    return `You are auditing one row of an AI-model pricing table. Use the web_search tool to find the CURRENT official published API price for this model, from the provider's own pricing/docs page (anthropic.com / platform.claude.com, openai.com / platform.openai.com, ai.google.dev / cloud.google.com). Prefer the provider's own page over aggregators.
 
-For each model report standard-tier (not batch, not long-context) prices per 1 million tokens:
+Model: provider="${entry.provider}" modelId="${entry.modelId}"
+
+Report standard-tier (not batch, not long-context) prices per 1 million tokens:
 - inputPer1M (number)
 - outputPer1M (number)
 - cacheReadPer1M (number, or null if the provider does not publish a cache-read price)
 - source (the exact URL you took the numbers from)
 - confidence ("high" only if a provider-owned page clearly states the number; otherwise "medium" or "low")
 
-Models:
-${list}
+Respond with ONLY a single fenced \`\`\`json code block containing an array with exactly one object with keys: provider, modelId, inputPer1M, outputPer1M, cacheReadPer1M, source, confidence. No prose outside the code block.`;
+}
 
-Respond with ONLY a single fenced \`\`\`json code block containing an array of objects with keys: provider, modelId, inputPer1M, outputPer1M, cacheReadPer1M, source, confidence. No prose outside the code block.`;
+// Run async tasks with a fixed concurrency cap, preserving per-item isolation.
+async function runWithConcurrency(items, limit, worker) {
+    const results = [];
+    let index = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (index < items.length) {
+            const i = index++;
+            results[i] = await worker(items[i], i);
+        }
+    });
+    await Promise.all(runners);
+    return results;
 }
 
 function extractJsonArray(text) {
@@ -153,7 +169,7 @@ function extractJsonArray(text) {
     }
 }
 
-async function callClaude({ apiKey, model, prompt, fetchImpl, maxContinuations = 3 }) {
+async function callClaude({ apiKey, model, prompt, fetchImpl, maxContinuations = 2, timeoutMs = REQUEST_TIMEOUT_MS }) {
     const doFetch = fetchImpl || globalThis.fetch;
     if (typeof doFetch !== 'function') throw new Error('fetch is not available in this runtime');
 
@@ -161,20 +177,28 @@ async function callClaude({ apiKey, model, prompt, fetchImpl, maxContinuations =
     let lastText = '';
 
     for (let i = 0; i <= maxContinuations; i++) {
-        const res = await doFetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-                model,
-                max_tokens: 8000,
-                tools: [{ type: 'web_search_20260209', name: 'web_search' }],
-                messages,
-            }),
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        let res;
+        try {
+            res = await doFetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model,
+                    max_tokens: 4000,
+                    tools: [{ type: 'web_search_20260209', name: 'web_search' }],
+                    messages,
+                }),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timer);
+        }
 
         if (!res.ok) {
             const detail = await res.text().catch(() => '');
@@ -193,6 +217,27 @@ async function callClaude({ apiKey, model, prompt, fetchImpl, maxContinuations =
         return lastText;
     }
     return lastText;
+}
+
+// Look up every model's price with one short call apiece, capped concurrency.
+// Returns parsed rows plus per-model errors (partial failures don't sink the run).
+async function lookupPrices(entries, opts) {
+    const errors = [];
+    const rows = await runWithConcurrency(entries, LOOKUP_CONCURRENCY, async entry => {
+        try {
+            const text = await callClaude({ ...opts, prompt: buildLookupPrompt(entry) });
+            const parsed = extractJsonArray(text);
+            if (!parsed || !parsed.length) {
+                errors.push(`${entry.modelId}: no parseable result`);
+                return null;
+            }
+            return parsed[0];
+        } catch (error) {
+            errors.push(`${entry.modelId}: ${error instanceof Error ? error.message : String(error)}`);
+            return null;
+        }
+    });
+    return { rows: rows.filter(Boolean), errors };
 }
 
 function diffPrices(pricing, lookups) {
@@ -304,6 +349,7 @@ export async function runPricingDriftCheck(options = {}) {
         crossCheck,
         llmRan: false,
         llmError: null,
+        llmPartialErrors: [],
         priceDrifts: [],
         applied: [],
         reStamped: false,
@@ -312,12 +358,13 @@ export async function runPricingDriftCheck(options = {}) {
 
     if (useLlm && anthropicApiKey) {
         try {
-            const prompt = buildLookupPrompt(pricing.models.map(e => ({ provider: e.provider, modelId: e.modelId })));
-            const text = await callClaude({ apiKey: anthropicApiKey, model, prompt, fetchImpl });
-            const lookups = extractJsonArray(text);
-            if (!lookups) throw new Error('Could not parse a JSON array from the model response');
+            const entries = pricing.models.map(e => ({ provider: e.provider, modelId: e.modelId }));
+            const { rows, errors } = await lookupPrices(entries, { apiKey: anthropicApiKey, model, fetchImpl });
+            if (!rows.length) throw new Error(errors.length ? errors.join('; ') : 'no prices returned');
             result.llmRan = true;
-            result.priceDrifts = diffPrices(pricing, lookups);
+            result.llmPartialErrors = errors;
+            result.priceDrifts = diffPrices(pricing, rows);
+            if (errors.length) warn(`[check-pricing-drift] ${errors.length} model(s) could not be verified: ${errors.join('; ')}`);
         } catch (error) {
             result.llmError = error instanceof Error ? error.message : String(error);
             warn(`[check-pricing-drift] price lookup failed: ${result.llmError}`);
@@ -333,8 +380,10 @@ export async function runPricingDriftCheck(options = {}) {
         // timestamp asserts "verified fresh as of now", so don't rubber-stamp it
         // when verification was skipped or failed. To avoid a churn commit every
         // night, only re-stamp when a value changed or the freshness clock is
-        // about to lapse; an unchanged, still-fresh table needs no rewrite.
-        if (result.llmRan) {
+        // about to lapse; an unchanged, still-fresh table needs no rewrite. A
+        // partial verification (some models failed) does not reset the clock.
+        const fullyVerified = result.llmRan && result.llmPartialErrors.length === 0;
+        if (fullyVerified) {
             const clockLapsing = ageDays === null || ageDays >= staleDays - reStampMargin;
             if (applied.length > 0 || clockLapsing) {
                 pricing.generatedAt = new Date(nowMs).toISOString();
