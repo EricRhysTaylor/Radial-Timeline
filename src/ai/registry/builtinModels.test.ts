@@ -45,11 +45,11 @@ describe('BUILTIN_MODELS — OpenAI GPT-5.5', () => {
 });
 
 describe('BUILTIN_MODELS — Anthropic Claude Opus 4.8', () => {
-    it('exposes a 1M context / 64k output window', () => {
+    it('exposes a 1M context / 128k output window', () => {
         const model = byAlias('claude-opus-4.8');
         expect(model.id).toBe('claude-opus-4-8');
         expect(model.contextWindow).toBe(1000000);
-        expect(model.maxOutput).toBe(64000);
+        expect(model.maxOutput).toBe(128000);
         expect(model.status).toBe('stable');
         expect(model.tier).toBe('DEEP');
     });
@@ -58,7 +58,7 @@ describe('BUILTIN_MODELS — Anthropic Claude Opus 4.8', () => {
 describe('BUILTIN_MODELS — Google Gemini', () => {
     it('declares Gemini 3.1 Pro Preview as the depth lane', () => {
         const model = byAlias('gemini-3.1-pro-preview');
-        expect(model.status).toBe('stable');
+        expect(model.status).toBe('preview');
         expect(model.tier).toBe('DEEP');
         expect(model.contextWindow).toBe(1048576);
         expect(model.maxOutput).toBe(65536);

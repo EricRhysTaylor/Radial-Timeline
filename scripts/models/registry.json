@@ -11,7 +11,7 @@
       "capabilities": ["longContext", "jsonStrict", "reasoningStrong", "highOutputCap"],
       "personality": { "reasoning": 10, "writing": 10, "determinism": 9 },
       "contextWindow": 1000000,
-      "maxOutput": 64000,
+      "maxOutput": 128000,
       "releasedAt": "2026-05-28",
       "status": "stable",
       "rollout": { "channel": "stable", "status": "stable", "lane": "default" },
@@ -27,7 +27,7 @@
       "capabilities": ["longContext", "jsonStrict", "reasoningStrong", "highOutputCap"],
       "personality": { "reasoning": 10, "writing": 10, "determinism": 9 },
       "contextWindow": 1000000,
-      "maxOutput": 64000,
+      "maxOutput": 128000,
       "releasedAt": "2026-04-16",
       "status": "stable",
       "rollout": { "channel": "stable", "status": "stable", "lane": "default" },
@@ -76,7 +76,7 @@
       "personality": { "reasoning": 9, "writing": 8, "determinism": 8 },
       "contextWindow": 1048576,
       "maxOutput": 65536,
-      "status": "stable",
+      "status": "preview",
       "constraints": { "cacheVsCitationsExclusive": true }
     },
     {

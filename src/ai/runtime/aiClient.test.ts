@@ -63,10 +63,10 @@ describe('AI client resolved-model caching', () => {
  * Privacy-flag wiring (regression guard added 2026-05-23).
  *
  * The aiSettings.privacy block is the user's authoritative consent for outbound
- * model-data calls. AIClient previously hard-coded allowRemoteRegistry: true
- * and provider-snapshot enabled: true in every loader constructor, making the
- * settings UI toggles decorative. These source-grep tests pin the rule that
- * every loader must read its consent flag from settings — not from a literal.
+ * model-data calls. AIClient previously hard-coded provider-snapshot enabled:
+ * true in loader construction, making the settings UI toggle decorative. These
+ * source-grep tests pin the rule that every loader must read its consent flag
+ * from settings — not from a literal.
  */
 describe('AI client privacy-flag wiring', () => {
     const rawSource = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');

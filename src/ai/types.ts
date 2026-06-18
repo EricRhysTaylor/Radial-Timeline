@@ -25,15 +25,11 @@ export interface ModelRolloutMeta {
     channel: ModelReleaseChannel;
     /** Hide from normal author-facing picker while keeping model available internally. */
     hiddenFromPicker?: boolean;
-    /** Canonical predecessor/superseded model id in this line. */
-    supersedes?: string;
 }
 
 export interface ModelRolloutInfo extends ModelRolloutMeta {
     /** Lifecycle status for deliberate model rollouts. */
     status: ModelRolloutStatus;
-    /** Explicit rollback target for this model line. */
-    fallbackModelId?: string;
     /** Optional lane classification (for example: default vs pro). */
     lane?: 'default' | 'pro';
     /** Indicates this model is a dated/snapshot variant of a canonical model. */
@@ -560,9 +556,7 @@ export interface AIRunResult {
 }
 
 export interface RegistryRefreshResult {
-    source: 'builtin' | 'cache' | 'remote';
-    fetchedAt?: string;
-    warning?: string;
+    source: 'builtin';
 }
 
 export interface CanonicalModelRecord {

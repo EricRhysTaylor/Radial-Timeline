@@ -18,20 +18,17 @@ export interface ProviderCapsDefinition {
 
 export const PROVIDER_CAPS: Record<Exclude<AIProviderId, 'none'>, ProviderCapsDefinition> = {
     anthropic: {
-        // Output headroom raised 2026-06-05 for Opus 4.8: 128k is the
-        // documented synchronous max output (no beta header). RT caps at
-        // 64k — enough to stop truncating large structured replies and to
-        // leave room for adaptive-thinking tokens (which count against
-        // max_tokens), while keeping a runaway rail below the 128k ceiling.
-        // Lower tiers stay smaller as a per-request blast-radius limit.
-        providerMaxOutputTokens: 64000,
+        // Claude 4.x models RT serves expose 128k synchronous output without a
+        // beta header. Lower tiers stay smaller as a per-request blast-radius
+        // limit, but truncation recovery can request the provider/model ceiling.
+        providerMaxOutputTokens: 128000,
         defaultInputTokens: 200000,
         defaultOutputTokens: 8000,
         tiers: {
             1: { maxOutputTokens: 16000, requestPerMinute: 20, retryAttempts: 1, safeUtilization: 0.7 },
             2: { maxOutputTokens: 32000, requestPerMinute: 40, retryAttempts: 2, safeUtilization: 0.8 },
             3: { maxOutputTokens: 64000, requestPerMinute: 60, retryAttempts: 2, safeUtilization: 0.85 },
-            4: { maxOutputTokens: 64000, requestPerMinute: 90, retryAttempts: 3, safeUtilization: 0.9 }
+            4: { maxOutputTokens: 128000, requestPerMinute: 90, retryAttempts: 3, safeUtilization: 0.9 }
         }
     },
     openai: {

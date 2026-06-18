@@ -28,7 +28,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         capabilities: [...DEEP_CAPS],
         personality: { reasoning: 10, writing: 10, determinism: 9 },
         contextWindow: 1000000,
-        maxOutput: 64000,
+        maxOutput: 128000,
         releasedAt: '2026-05-28',
         status: 'stable',
         rollout: {
@@ -62,7 +62,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         capabilities: [...DEEP_CAPS],
         personality: { reasoning: 10, writing: 10, determinism: 9 },
         contextWindow: 1000000,
-        maxOutput: 64000,
+        maxOutput: 128000,
         releasedAt: '2026-04-16',
         status: 'stable',
         rollout: {
@@ -141,7 +141,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         personality: { reasoning: 9, writing: 8, determinism: 8 },
         contextWindow: 1048576,
         maxOutput: 65536,
-        status: 'stable',
+        status: 'preview',
         constraints: { cacheVsCitationsExclusive: true }
     },
     {
