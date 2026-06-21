@@ -512,7 +512,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ert-gap-xs);
   min-width: 0;
   padding: var(--ert-pad-sm);
   border-radius: 14px;
@@ -572,13 +572,13 @@
   right: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-gap-xs) var(--ert-pad-xs);
   font-size: 0.7rem;
   font-weight: 600;
   border-radius: 999px;
-  color: #fff;
-  background: color-mix(in srgb, var(--ert-pro-accent-color) 80%, #000);
+  color: var(--text-on-accent);
+  background: color-mix(in srgb, var(--ert-pro-accent-color) 80%, var(--background-primary));
 }
 
 .ert-ui.ert-scope--settings .ert-bonus-card__statusBadge-icon {
@@ -591,7 +591,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-bonus-card__title {
-  margin-top: 6px;
+  margin-top: var(--ert-gap-tight);
   font-weight: 700;
   color: var(--text-normal);
   line-height: 1.25;
@@ -610,14 +610,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--ert-gap-tight);
-  margin-top: 8px;
+  margin-top: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-bonus-card__btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: var(--ert-gap-tight);
+  padding: var(--ert-gap-tight) var(--ert-pad-sm);
   font-size: 0.82rem;
   font-weight: 600;
   border-radius: 8px;
@@ -634,8 +634,8 @@
 
 .ert-ui.ert-scope--settings .ert-bonus-card__btn--primary {
   border-color: transparent;
-  color: #fff;
-  background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%);
+  color: var(--text-on-accent);
+  background: var(--ert-pro-accent-color);
 }
 
 .ert-ui.ert-scope--settings .ert-bonus-card__btn--ghost {
