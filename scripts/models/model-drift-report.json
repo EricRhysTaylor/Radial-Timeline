@@ -1,11 +1,11 @@
 {
-  "checkedAt": "2026-06-20T17:55:20.575Z",
+  "checkedAt": "2026-06-21T23:33:12.815Z",
   "mode": "report",
   "snapshotBefore": {
-    "generatedAt": "2026-06-18T16:17:44.712Z"
+    "generatedAt": "2026-06-21T20:52:37.799Z"
   },
   "snapshotAfter": {
-    "generatedAt": "2026-06-20T17:55:20.557Z"
+    "generatedAt": "2026-06-21T20:52:37.799Z"
   },
   "changes": {
     "openai": {
@@ -14,10 +14,7 @@
     },
     "anthropic": {
       "added": [],
-      "removed": [
-        "claude-opus-4-20250514",
-        "claude-sonnet-4-20250514"
-      ]
+      "removed": []
     },
     "google": {
       "added": [],
@@ -28,10 +25,6 @@
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [],
-  "hasActionableChanges": true,
-  "recommendedFollowUps": [
-    "Review scripts/models/latest-models.json and scripts/models/model-drift-report.json for provider catalog drift.",
-    "If a new provider model should ship in RT, update scripts/models/registry.json and src/ai/registry/builtinModels.ts.",
-    "If RT surfaces cost or positioning for the model, update src/ai/cost/providerPricing.ts."
-  ]
+  "hasActionableChanges": false,
+  "recommendedFollowUps": []
 }
