@@ -480,6 +480,177 @@
   color: var(--text-normal);
 }
 
+/* ── Bonus vaults (Website Exclusives) card grid ──────────────────────── */
+.ert-ui.ert-scope--settings .ert-bonus-section {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: var(--ert-gap-md, var(--ert-gap-sm));
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-tight);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ert-gap-sm);
+  width: 100%;
+  margin-top: var(--ert-gap-sm);
+}
+
+@media (max-width: 520px) {
+  .ert-ui.ert-scope--settings .ert-bonus-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--ert-pad-sm);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background-secondary) 60%, transparent);
+  border: 1px solid var(--background-modifier-border);
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card.is-available:hover,
+.ert-ui.ert-scope--settings .ert-bonus-card.is-installed:hover {
+  border-color: color-mix(in srgb, var(--ert-pro-accent-color) 55%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--ert-pro-accent-color) 14%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card.is-coming-soon {
+  opacity: 0.62;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__thumbWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--background-primary);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--text-muted) 14%, transparent) 0%, transparent 70%),
+    var(--background-secondary);
+  filter: grayscale(1);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__glyph {
+  width: 42%;
+  height: 42%;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__statusBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 999px;
+  color: #fff;
+  background: color-mix(in srgb, var(--ert-pro-accent-color) 80%, #000);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__statusBadge-icon {
+  display: inline-flex;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__statusBadge-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__title {
+  margin-top: 6px;
+  font-weight: 700;
+  color: var(--text-normal);
+  line-height: 1.25;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card.is-coming-soon .ert-bonus-card__title {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-tight);
+  margin-top: 8px;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__btn--primary {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%);
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__btn--ghost {
+  background: transparent;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__btn-icon {
+  display: inline-flex;
+}
+
+.ert-ui.ert-scope--settings .ert-bonus-card__btn-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 .ert-ui.ert-scope--settings .ert-pro-mode {
   display: flex;
   flex-direction: column;

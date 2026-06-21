@@ -970,6 +970,8 @@ export interface RadialTimelineSettings {
     // Pro access
     proLicenseKey?: string;
     proAccessEnabled?: boolean;
+    /** IDs of bonus (Website Exclusive) vaults the user has activated/installed. */
+    installedBonusVaults?: string[];
 
     // Runtime Estimation Settings (Pro feature)
     runtimeRateProfiles?: RuntimeRateProfile[];

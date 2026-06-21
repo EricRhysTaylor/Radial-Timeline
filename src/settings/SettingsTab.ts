@@ -19,6 +19,7 @@ import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderGoalsSessionsSection } from './sections/GoalsSessionsSection';
 import { renderProEntitlementPanel } from './sections/ProEntitlementPanel';
+import { renderBonusVaultsSection } from './sections/BonusVaultsSection';
 import { getProEntitlement } from './proEntitlement';
 import { renderPublishSection } from './sections/PublishSection';
 import { FolderSuggest } from './FolderSuggest';
@@ -994,6 +995,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             plugin: this.plugin,
             containerEl: proStack,
             onEntitlementChanged: refreshProDependentSections
+        });
+
+        renderBonusVaultsSection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: proStack
         });
 
         // Social Tab Content - Social Section
