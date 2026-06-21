@@ -1009,6 +1009,16 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderInquiryHero(inquiryStack);
         const inquiryBody = inquiryStack.createDiv({ cls: `ert-settings-searchable-content ${ERT_CLASSES.STACK}` });
+        const inquirySection = inquiryBody.createDiv({
+            cls: ERT_CLASSES.STACK,
+            attr: { [ERT_DATA.SECTION]: 'inquiry' }
+        });
+        renderInquirySection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: inquirySection,
+            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+        });
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
@@ -1125,17 +1135,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             { label: 'Colors', target: colorsWorkingPatternSection },
             { label: 'Release Notes', target: releaseNotesSection }
         ]);
-
-        const inquirySection = inquiryBody.createDiv({
-            cls: ERT_CLASSES.STACK,
-            attr: { [ERT_DATA.SECTION]: 'inquiry' }
-        });
-        renderInquirySection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: inquirySection,
-            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
-        });
 
         const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
         try {
