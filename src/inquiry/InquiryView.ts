@@ -36,7 +36,7 @@ import {
 } from './state';
 import { replayTransientClass } from '../utils/domClassEffects';
 import { providerSupportsCitations } from '../api/providerCapabilities';
-import { formatProviderCacheTtlLabel, resolveProviderCacheWindowMs } from '../ai/settings/cacheWindows';
+import { formatProviderCacheTtlLabel, normalizeGeminiCacheTtlSeconds, resolveProviderCacheWindowMs } from '../ai/settings/cacheWindows';
 import type {
     InquiryCanonicalQuestionTier,
     InquiryClassConfig,
@@ -11681,7 +11681,8 @@ export class InquiryView extends ItemView {
                 resolveInquiryBriefLensLabel: this.resolveInquiryBriefLensLabel.bind(this),
                 formatInquiryIdFromResult: this.formatInquiryIdFromResult.bind(this),
                 pluginVersion: this.plugin.manifest.version,
-                estimateSnapshot: this.plugin.getInquiryEstimateService().getSnapshot()
+                estimateSnapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
+                geminiCacheTtlSeconds: normalizeGeminiCacheTtlSeconds(this.getCanonicalAiSettings().cacheWindows?.googleTtlSeconds)
             }
         });
     }
@@ -11720,7 +11721,8 @@ export class InquiryView extends ItemView {
                 resolveInquiryBriefLensLabel: this.resolveInquiryBriefLensLabel.bind(this),
                 formatInquiryIdFromResult: this.formatInquiryIdFromResult.bind(this),
                 pluginVersion: this.plugin.manifest.version,
-                estimateSnapshot: this.plugin.getInquiryEstimateService().getSnapshot()
+                estimateSnapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
+                geminiCacheTtlSeconds: normalizeGeminiCacheTtlSeconds(this.getCanonicalAiSettings().cacheWindows?.googleTtlSeconds)
             }
         });
     }

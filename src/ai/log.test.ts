@@ -177,6 +177,43 @@ describe('buildUsageCostBreakdown', () => {
         expect(lines.some(line => line.startsWith('- Actual usage cost: $'))).toBe(true);
     });
 
+    it('surfaces the separately-billed Gemini cache storage charge when a TTL is supplied', () => {
+        const ttlSeconds = 900; // 15m window
+        const storedTokens = 140_000;
+        const lines = formatUsageCostBreakdownLines('google', 'gemini-3.5-flash', {
+            inputTokens: 140_000,
+            outputTokens: 7_000,
+            rawInputTokens: 0,
+            cacheReadInputTokens: storedTokens
+        }, {
+            executionInputTokens: 140_000,
+            expectedOutputTokens: 7_000,
+            expectedPasses: 1
+        }, 'created', ttlSeconds);
+
+        const storageLine = lines.find(line => line.startsWith('- Cache storage (billed separately): '));
+        expect(storageLine).toBeTruthy();
+        // 140k tokens × $1.00/1M/hr × 0.25h = $0.035 (rounded by formatExactUsdCost).
+        expect(storageLine).toContain('$0.035');
+        expect(storageLine).toContain('held for 15m');
+        expect(storageLine).toContain('$1.00/1M/hr');
+        expect(lines.some(line => line.includes('NOT included in "Actual usage cost"'))).toBe(true);
+    });
+
+    it('omits the cache storage line when no TTL is supplied', () => {
+        const lines = formatUsageCostBreakdownLines('google', 'gemini-3.5-flash', {
+            inputTokens: 140_000,
+            outputTokens: 7_000,
+            cacheReadInputTokens: 140_000
+        }, {
+            executionInputTokens: 140_000,
+            expectedOutputTokens: 7_000,
+            expectedPasses: 1
+        }, 'created');
+
+        expect(lines.some(line => line.startsWith('- Cache storage'))).toBe(false);
+    });
+
     it('omits cost accuracy when actual cost is unavailable', () => {
         const lines = formatUsageCostBreakdownLines('anthropic', 'claude-opus-4-8', {
             outputTokens: 10_000

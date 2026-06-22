@@ -7,6 +7,7 @@ import { redactSensitiveObject, redactSensitiveValue } from './credentials/redac
 import { getModelDisplayName } from '../utils/modelResolver';
 import {
     type CorpusCostEstimate,
+    estimateCacheStorageCost,
     estimateCorpusCost,
     estimateUsageCost,
     formatExactUsdCost
@@ -196,7 +197,13 @@ export function formatUsageCostBreakdownLines(
     modelId: string | null | undefined,
     usage?: TokenUsage | null,
     estimateInput?: LogCostEstimateInput | null,
-    cacheProvenance?: 'hit' | 'created'
+    cacheProvenance?: 'hit' | 'created',
+    /**
+     * TTL (seconds) the run requested when priming a provider cache that bills
+     * storage by the hour (Gemini). Used to surface the separate cache-storage
+     * charge; ignored for providers without a storage rate.
+     */
+    cacheStorageTtlSeconds?: number
 ): string[] {
     const breakdown = buildUsageCostBreakdown(provider, modelId, usage, cacheProvenance);
     const pricingProvider = normalizePricingProvider(provider);
@@ -250,6 +257,29 @@ export function formatUsageCostBreakdownLines(
         `- Estimated cached: ${formatCost(estimate?.cachedCostUSD)}`,
         `- Actual usage cost: ${formatCost(breakdown?.totalCostUSD)}`
     ];
+    // Cache storage is billed separately by the hour for the cache's whole TTL
+    // (Gemini), independent of token reads — surface it so the run's true cost
+    // isn't understated by what the provider's usage JSON omits.
+    const storedCacheTokens = typeof cacheWriteTokens === 'number'
+        ? cacheWriteTokens
+        : (typeof cacheReadTokens === 'number' ? cacheReadTokens : undefined);
+    if (
+        pricingProvider
+        && modelId
+        && typeof storedCacheTokens === 'number'
+        && typeof cacheStorageTtlSeconds === 'number'
+    ) {
+        const storage = estimateCacheStorageCost(pricingProvider, modelId, storedCacheTokens, cacheStorageTtlSeconds);
+        if (storage) {
+            const windowLabel = storage.ttlSeconds % 60 === 0
+                ? `${storage.ttlSeconds / 60}m`
+                : `${storage.ttlSeconds}s`;
+            lines.push(
+                `- Cache storage (billed separately): ${formatCost(storage.costUSD)} · ${formatTokenCount(storedCacheTokens)} held for ${windowLabel} @ $${storage.ratePer1MPerHour.toFixed(2)}/1M/hr`,
+                `  Provider charges cache storage by the hour for the full TTL — NOT included in "Actual usage cost" above.`
+            );
+        }
+    }
     if (
         estimate
         && typeof breakdown?.totalCostUSD === 'number'

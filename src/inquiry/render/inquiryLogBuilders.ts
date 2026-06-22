@@ -146,6 +146,8 @@ export type InquiryLogBuilderDependencies = {
     formatInquiryIdFromResult: (result: InquiryResult) => string | null;
     pluginVersion: string;
     estimateSnapshot: InquiryEstimateSnapshot | null;
+    /** Configured Gemini cache TTL (seconds); drives the cache-storage cost line. */
+    geminiCacheTtlSeconds: number;
 };
 
 export function buildInquiryLogContent(args: {
@@ -280,7 +282,8 @@ export function buildInquiryLogContent(args: {
             result.aiModelResolved || result.aiModelRequested,
             usage,
             logCostEstimateInput,
-            trace.cacheStatus
+            trace.cacheStatus,
+            deps.geminiCacheTtlSeconds
         )
         : [];
     const actualUsageCostLabel = isSimulated
@@ -628,7 +631,8 @@ export function buildInquiryContentLogContent(args: {
             aiModelResolved || aiModelRequested,
             tokenUsage,
             logCostEstimateInput,
-            trace.cacheStatus
+            trace.cacheStatus,
+            deps.geminiCacheTtlSeconds
         )
         : [];
 

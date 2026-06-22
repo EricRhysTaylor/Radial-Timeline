@@ -293,6 +293,35 @@ export function estimateUsageCost(
     };
 }
 
+export interface CacheStorageCostEstimate {
+    storedTokens: number;
+    ttlSeconds: number;
+    ratePer1MPerHour: number;
+    costUSD: number;
+}
+
+/**
+ * Estimate the provider's explicit-cache STORAGE charge — billed per stored
+ * token, per hour, for the cache's full TTL, independent of how often it is
+ * read. Only Gemini bills this today; providers without a
+ * `cacheStoragePer1MPerHour` rate return `null` (no storage charge to surface).
+ */
+export function estimateCacheStorageCost(
+    provider: AIProviderId,
+    modelId: string,
+    storedTokens: number,
+    ttlSeconds: number
+): CacheStorageCostEstimate | null {
+    if (!Number.isFinite(storedTokens) || storedTokens <= 0) return null;
+    if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0) return null;
+    const pricing = resolveProviderModelPricing(provider, modelId, storedTokens);
+    const ratePer1MPerHour = pricing.cacheStoragePer1MPerHour;
+    if (typeof ratePer1MPerHour !== 'number' || !Number.isFinite(ratePer1MPerHour)) return null;
+    const hours = ttlSeconds / 3600;
+    const costUSD = (storedTokens / TOKENS_PER_MILLION) * ratePer1MPerHour * hours;
+    return { storedTokens, ttlSeconds, ratePer1MPerHour, costUSD };
+}
+
 export function formatUsdCost(value: number): string {
     return `$${value.toFixed(2)}`;
 }

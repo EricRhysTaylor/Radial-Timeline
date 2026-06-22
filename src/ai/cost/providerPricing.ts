@@ -15,6 +15,13 @@ export interface ProviderModelPricing {
     cacheWrite5mPer1M?: number;
     cacheWrite1hPer1M?: number;
     cacheReadPer1M?: number;
+    /**
+     * Per-1M-token, per-hour charge for holding content in the provider's
+     * explicit cache (Gemini bills cache storage by the hour for the cache's
+     * TTL, separately from input/output/read tokens). Omitted for providers
+     * that do not bill storage (Anthropic, OpenAI).
+     */
+    cacheStoragePer1MPerHour?: number;
     longContext?: {
         thresholdInputTokens: number;
         inputPer1M: number;
@@ -22,6 +29,7 @@ export interface ProviderModelPricing {
         cacheWrite5mPer1M?: number;
         cacheWrite1hPer1M?: number;
         cacheReadPer1M?: number;
+        cacheStoragePer1MPerHour?: number;
     };
     promo?: PromoPricing;
 }
@@ -39,6 +47,7 @@ export interface ResolvedProviderModelPricing {
     cacheWrite5mPer1M?: number;
     cacheWrite1hPer1M?: number;
     cacheReadPer1M?: number;
+    cacheStoragePer1MPerHour?: number;
     pricingPhase: 'standard' | 'longContext';
     promo?: PromoPricing;
     meta: PricingMeta;
@@ -102,7 +111,8 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
         'gemini-3.5-flash': {
             inputPer1M: 1.5,
             outputPer1M: 9.0,
-            cacheReadPer1M: 0.15
+            cacheReadPer1M: 0.15,
+            cacheStoragePer1MPerHour: 1.0
         }
     }
 };
@@ -253,6 +263,7 @@ export function resolveProviderModelPricing(
             cacheWrite5mPer1M: longContext.cacheWrite5mPer1M,
             cacheWrite1hPer1M: longContext.cacheWrite1hPer1M,
             cacheReadPer1M: longContext.cacheReadPer1M,
+            cacheStoragePer1MPerHour: longContext.cacheStoragePer1MPerHour ?? pricing.cacheStoragePer1MPerHour,
             pricingPhase: 'longContext',
             promo,
             meta
@@ -265,6 +276,7 @@ export function resolveProviderModelPricing(
         cacheWrite5mPer1M: pricing.cacheWrite5mPer1M,
         cacheWrite1hPer1M: pricing.cacheWrite1hPer1M,
         cacheReadPer1M: pricing.cacheReadPer1M,
+        cacheStoragePer1MPerHour: pricing.cacheStoragePer1MPerHour,
         pricingPhase: 'standard',
         promo,
         meta

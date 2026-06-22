@@ -19,7 +19,8 @@ describe('buildInquiryLogContent', () => {
         resolveInquiryBriefLensLabel: () => 'Flow',
         formatInquiryIdFromResult: () => 'inq_123',
         pluginVersion: 'test',
-        estimateSnapshot: null
+        estimateSnapshot: null,
+        geminiCacheTtlSeconds: 900
     };
 
     it('surfaces cache summary near the top and moves corpus toc to the bottom', () => {
