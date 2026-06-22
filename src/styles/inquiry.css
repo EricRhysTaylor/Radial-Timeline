@@ -1104,6 +1104,23 @@
   pointer-events: none;
 }
 
+/* Scan lines: hidden at rest (the dot icon shows instead). While an API run is
+   in progress the dot is hidden and these document-style lines are pulsed
+   top→bottom by updateCorpusScanlines() in the active question-zone color. */
+.ert-inquiry-cc-cell-scan {
+  pointer-events: none;
+}
+
+.ert-inquiry-cc-cell-scan-line {
+  fill: var(--ert-inquiry-active-zone-color, var(--text-muted));
+  opacity: 0;
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-cc-cell-icon,
+.ert-inquiry-svg.is-running .ert-inquiry-cc-cell-low-substance-x {
+  opacity: 0;
+}
+
 .ert-inquiry-cc-cell-target-letter {
   display: none;
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;

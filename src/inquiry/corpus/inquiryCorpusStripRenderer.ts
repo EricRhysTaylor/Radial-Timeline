@@ -730,6 +730,17 @@ export function renderInquiryCorpusStrip(args: {
         iconInner.classList.add('ert-inquiry-cc-cell-icon-inner');
         icon.appendChild(iconOuter);
         icon.appendChild(iconInner);
+        // Scan lines: shown in place of the dot during an API run and pulsed
+        // top→bottom in the active question-zone color. Created here (3 lines:
+        // short, wide, wide) and positioned in the per-slot layout pass below.
+        const scanGroup = createSvgGroup(group, 'ert-inquiry-cc-cell-scan');
+        const scanLines: SVGRectElement[] = [];
+        for (let line = 0; line < 3; line += 1) {
+            const scanLine = createSvgElement('rect');
+            scanLine.classList.add('ert-inquiry-cc-cell-scan-line');
+            scanGroup.appendChild(scanLine);
+            scanLines.push(scanLine);
+        }
         const targetLetter = createSvgText(group, 'ert-inquiry-cc-cell-target-letter', 'F', 0, 0);
         targetLetter.setAttribute('text-anchor', 'middle');
         targetLetter.setAttribute('aria-hidden', 'true');
@@ -737,6 +748,7 @@ export function renderInquiryCorpusStrip(args: {
         group.appendChild(fill);
         group.appendChild(border);
         group.appendChild(icon);
+        group.appendChild(scanGroup);
         group.appendChild(targetLetter);
         group.appendChild(lowSubstanceX);
         args.registerSvgEvent(group, 'click', (event: MouseEvent) => {
@@ -774,7 +786,8 @@ export function renderInquiryCorpusStrip(args: {
             icon,
             iconOuter,
             iconInner,
-            targetLetter
+            targetLetter,
+            scanLines
         });
     }
 
@@ -836,6 +849,22 @@ export function renderInquiryCorpusStrip(args: {
         slot.iconInner.setAttribute('r', String(innerRadius));
         slot.targetLetter.setAttribute('x', String(iconCenterX));
         slot.targetLetter.setAttribute('y', String(iconCenterY + 3));
+        // Scan lines: left-aligned "document" rows centered on the icon, with a
+        // short top line followed by two wider lines. Heights/gaps scale with
+        // the page so they stay legible as cells shrink.
+        const scanLeft = Math.max(2, Math.round(layout.pageWidth * 0.24));
+        const scanInnerW = Math.max(2, layout.pageWidth - scanLeft * 2);
+        const scanH = Math.max(1, Math.round(layout.pageHeight * 0.045));
+        const scanGap = Math.max(2, Math.round(layout.pageHeight * 0.14));
+        const scanWidths = [scanInnerW * 0.5, scanInnerW, scanInnerW];
+        slot.scanLines.forEach((scanLine, lineIndex) => {
+            const lineCenterY = iconCenterY + (lineIndex - 1) * scanGap;
+            scanLine.setAttribute('x', String(scanLeft));
+            scanLine.setAttribute('y', String(Math.round(lineCenterY - scanH / 2)));
+            scanLine.setAttribute('width', String(Math.round(scanWidths[lineIndex])));
+            scanLine.setAttribute('height', String(scanH));
+            scanLine.setAttribute('rx', String(scanH / 2));
+        });
     });
 
     while (refs.ccClassLabels.length < layout.classLayouts.length) {
