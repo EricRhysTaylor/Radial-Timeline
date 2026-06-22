@@ -539,4 +539,23 @@ describe('getFontDiagnosticForFontKey — vault-then-system resolver', () => {
             expect(diag.installHint?.url).toMatch(/^https:\/\/fonts\.google\.com\//);
         }
     });
+
+    it('requires exact Arial for system-sans', () => {
+        const priorFontCatalog = process.env.RT_FONT_CATALOG;
+        try {
+            process.env.RT_FONT_CATALOG = 'Arial Black';
+            const missingDiag = getFontDiagnosticForFontKey('system-sans', 'linux');
+            expect(missingDiag.state).toBe('missing-system');
+            expect(missingDiag.primaryFontName).toBe('Arial');
+
+            process.env.RT_FONT_CATALOG = 'Arial';
+            const okDiag = getFontDiagnosticForFontKey('system-sans', 'linux');
+            expect(okDiag.state).toBe('ok');
+            expect(okDiag.primaryFontName).toBe('Arial');
+            expect(okDiag.resolvedFontName).toBe('Arial');
+        } finally {
+            if (priorFontCatalog === undefined) delete process.env.RT_FONT_CATALOG;
+            else process.env.RT_FONT_CATALOG = priorFontCatalog;
+        }
+    });
 });

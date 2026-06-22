@@ -501,8 +501,27 @@ function isFontInstalled(fontName: string, catalog: string[]): boolean {
         const normalizedEntry = normalizeFontFamilyName(entry);
         if (!normalizedEntry) continue;
         if (normalizedEntry === target) return true;
-        if (normalizedEntry.includes(target) || target.includes(normalizedEntry)) return true;
     }
+    return false;
+}
+
+function requiredSystemFontFileExists(fontName: string, platform: FontDiagnosticPlatform): boolean {
+    const target = normalizeFontFamilyName(fontName);
+    if (target !== 'arial') return false;
+
+    if (platform === 'mac') {
+        return [
+            '/System/Library/Fonts/Supplemental/Arial.ttf',
+            '/Library/Fonts/Arial.ttf',
+            path.join(os.homedir(), 'Library/Fonts/Arial.ttf'),
+        ].some(fontPath => fs.existsSync(fontPath));
+    }
+
+    if (platform === 'win') {
+        const windowsRoot = process.env.WINDIR || process.env.SystemRoot || 'C:\\Windows';
+        return fs.existsSync(path.join(windowsRoot, 'Fonts', 'arial.ttf'));
+    }
+
     return false;
 }
 
@@ -772,7 +791,8 @@ function resolveFontDiagnosticForKey(
     // 2. System install present → ready (system-name emit).
     const catalog = loadSystemFontCatalog();
     const canVerify = Array.isArray(catalog);
-    const installed = canVerify ? isFontInstalled(primaryFontName, catalog) : false;
+    const installed = (canVerify && isFontInstalled(primaryFontName, catalog))
+        || requiredSystemFontFileExists(primaryFontName, platform);
     if (installed) {
         return { state: 'ok', primaryFontName, resolvedFontName: primaryFontName };
     }
