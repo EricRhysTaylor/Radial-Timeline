@@ -968,57 +968,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const proEntitlement = getProEntitlement(this.plugin);
         proTab.toggleClass('is-pro-active', proEntitlement.isProActive);
         proTab.toggleClass('is-pro-disabled', !proEntitlement.isProActive);
-
-        const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
-        this.renderPublishingHero(publishingStack);
         const refreshProDependentSections = () => this.display();
-        const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
-        renderPublishSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: publishingPanels
-        });
-
-        const advancedStack = advancedContent.createDiv({ cls: ERT_CLASSES.STACK });
-        const advancedIntro = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
-        this.renderAdvancedHero(advancedIntro);
-        const advancedConfigurationSection = advancedStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
-        renderConfigurationSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: advancedConfigurationSection
-        });
-
-        const proStack = proContent.createDiv({ cls: ERT_CLASSES.STACK });
-        renderProEntitlementPanel({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: proStack,
-            onEntitlementChanged: refreshProDependentSections
-        });
-
-        renderBonusVaultsSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: proStack
-        });
-
-        // Social Tab Content - Social Section
-        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
-
-        const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
-        this.renderInquiryHero(inquiryStack);
-        const inquiryBody = inquiryStack.createDiv({ cls: `ert-settings-searchable-content ${ERT_CLASSES.STACK}` });
-        const inquirySection = inquiryBody.createDiv({
-            cls: ERT_CLASSES.STACK,
-            attr: { [ERT_DATA.SECTION]: 'inquiry' }
-        });
-        renderInquirySection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: inquirySection,
-            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
-        });
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
@@ -1136,6 +1086,31 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             { label: 'Release Notes', target: releaseNotesSection }
         ]);
 
+        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
+
+        const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderInquiryHero(inquiryStack);
+        const inquiryBody = inquiryStack.createDiv({ cls: `ert-settings-searchable-content ${ERT_CLASSES.STACK}` });
+        const inquirySection = inquiryBody.createDiv({
+            cls: ERT_CLASSES.STACK,
+            attr: { [ERT_DATA.SECTION]: 'inquiry' }
+        });
+        renderInquirySection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: inquirySection,
+            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+        });
+
+        const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderPublishingHero(publishingStack);
+        const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
+        renderPublishSection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: publishingPanels
+        });
+
         const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
         try {
             renderAiSection({
@@ -1166,6 +1141,30 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 text: 'AI settings could not be fully rendered. Reopen settings after updating your configuration.'
             });
         }
+
+        const advancedStack = advancedContent.createDiv({ cls: ERT_CLASSES.STACK });
+        const advancedIntro = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderAdvancedHero(advancedIntro);
+        const advancedConfigurationSection = advancedStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
+        renderConfigurationSection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: advancedConfigurationSection
+        });
+
+        const proStack = proContent.createDiv({ cls: ERT_CLASSES.STACK });
+        renderProEntitlementPanel({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: proStack,
+            onEntitlementChanged: refreshProDependentSections
+        });
+
+        renderBonusVaultsSection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: proStack
+        });
 
         this.applyElementBlockLayout(containerEl);
     }
