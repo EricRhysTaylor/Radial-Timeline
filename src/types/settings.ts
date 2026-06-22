@@ -49,6 +49,10 @@ export type HealthState = 'ready' | 'warning' | 'blocked';
 
 export interface ManuscriptExportCleanupOptions {
     stripComments: boolean;
+    // Editorialist author queries (%%ai: …%%) are a distinct comment category:
+    // the generic stripComments pass spares them so they survive an export bound
+    // for AI review. They are removed only when stripAiComments is on.
+    stripAiComments: boolean;
     stripLinks: boolean;
     stripCallouts: boolean;
     stripBlockIds: boolean;

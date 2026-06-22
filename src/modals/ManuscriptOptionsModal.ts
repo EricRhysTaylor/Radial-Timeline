@@ -278,6 +278,7 @@ export class ManuscriptOptionsModal extends Modal {
     private synopsisToggle?: ToggleComponent;
     private updateWordCountsToggle?: ToggleComponent;
     private cleanupCommentsToggle?: ToggleComponent;
+    private cleanupAiCommentsToggle?: ToggleComponent;
     private cleanupLinksToggle?: ToggleComponent;
     private cleanupCalloutsToggle?: ToggleComponent;
     private cleanupBlockIdsToggle?: ToggleComponent;
@@ -779,8 +780,14 @@ export class ManuscriptOptionsModal extends Modal {
             this.setActiveCleanupOption('stripLinks', value);
         });
 
+        const aiCommentsRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
+        aiCommentsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip author queries (%%ai:...%%) — off keeps them for Editorialist review' });
+        this.cleanupAiCommentsToggle = new ToggleComponent(aiCommentsRow).onChange((value) => {
+            this.setActiveCleanupOption('stripAiComments', value);
+        });
+
         const commentsRow = this.exportCleanupCard.createDiv({ cls: 'ert-manuscript-toggle-row' });
-        commentsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip comments (%%...%%, <!--...-->)' });
+        commentsRow.createSpan({ cls: 'ert-manuscript-toggle-label', text: 'Strip comments (%%...%%, <!--...-->; excludes author queries)' });
         this.cleanupCommentsToggle = new ToggleComponent(commentsRow).onChange((value) => {
             this.setActiveCleanupOption('stripComments', value);
         });
@@ -1183,6 +1190,7 @@ export class ManuscriptOptionsModal extends Modal {
     private updateCleanupToggleState(): void {
         const options = this.getActiveCleanupOptions();
         this.cleanupCommentsToggle?.setValue(options.stripComments);
+        this.cleanupAiCommentsToggle?.setValue(options.stripAiComments);
         this.cleanupLinksToggle?.setValue(options.stripLinks);
         this.cleanupCalloutsToggle?.setValue(options.stripCallouts);
         this.cleanupBlockIdsToggle?.setValue(options.stripBlockIds);

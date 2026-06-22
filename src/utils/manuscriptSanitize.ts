@@ -4,6 +4,7 @@ export type ManuscriptCleanupFormat = 'markdown' | 'pdf';
 
 const MARKDOWN_CLEANUP_DEFAULTS: ManuscriptExportCleanupOptions = {
     stripComments: false,
+    stripAiComments: false,
     stripLinks: false,
     stripCallouts: false,
     stripBlockIds: false
@@ -11,6 +12,9 @@ const MARKDOWN_CLEANUP_DEFAULTS: ManuscriptExportCleanupOptions = {
 
 const PDF_CLEANUP_DEFAULTS: ManuscriptExportCleanupOptions = {
     stripComments: true,
+    // PDF is reader-facing output, so author queries are stripped by default
+    // here (markdown — the review handoff path — retains them by default).
+    stripAiComments: true,
     stripLinks: true,
     stripCallouts: true,
     stripBlockIds: false
@@ -71,10 +75,20 @@ function stripYamlFrontmatterBlocks(content: string): string {
     return output.join('\n');
 }
 
+// Editorialist author queries: `%%ai: <question>%%`. Matched case-insensitively
+// and tolerant of whitespace, mirroring Editorialist's own extractor.
+const AI_COMMENT_PATTERN = /%%\s*ai\s*:[\s\S]*?%%/gi;
+
 function stripComments(content: string): string {
     return content
-        .replace(/%%[\s\S]*?%%/g, '')
+        // Generic comment strip deliberately spares %%ai: …%% (negative lookahead)
+        // so author queries are governed only by the stripAiComments toggle.
+        .replace(/%%(?!\s*ai\s*:)[\s\S]*?%%/gi, '')
         .replace(/<!--[\s\S]*?-->/g, '');
+}
+
+function stripAiComments(content: string): string {
+    return content.replace(AI_COMMENT_PATTERN, '');
 }
 
 function stripEditorialistReviewBlocks(content: string): string {
@@ -182,6 +196,7 @@ export function normalizeManuscriptCleanupOptions(
     const defaults = getDefaultManuscriptCleanupOptions(format);
     return {
         stripComments: options?.stripComments ?? defaults.stripComments,
+        stripAiComments: options?.stripAiComments ?? defaults.stripAiComments,
         stripLinks: options?.stripLinks ?? defaults.stripLinks,
         stripCallouts: options?.stripCallouts ?? defaults.stripCallouts,
         stripBlockIds: options?.stripBlockIds ?? defaults.stripBlockIds
@@ -197,6 +212,7 @@ export function sanitizeCompiledManuscript(
     cleaned = stripEditorialistReviewBlocks(cleaned);
 
     if (opts.stripComments) cleaned = stripComments(cleaned);
+    if (opts.stripAiComments) cleaned = stripAiComments(cleaned);
     if (opts.stripLinks) cleaned = stripLinks(cleaned);
     if (opts.stripCallouts) cleaned = stripCallouts(cleaned);
     if (opts.stripBlockIds) cleaned = stripBlockIds(cleaned);

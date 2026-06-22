@@ -1086,6 +1086,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (
                     !existingCleanup
                     || existingCleanup.stripComments !== normalizedCleanup.stripComments
+                    || existingCleanup.stripAiComments !== normalizedCleanup.stripAiComments
                     || existingCleanup.stripLinks !== normalizedCleanup.stripLinks
                     || existingCleanup.stripCallouts !== normalizedCleanup.stripCallouts
                     || existingCleanup.stripBlockIds !== normalizedCleanup.stripBlockIds

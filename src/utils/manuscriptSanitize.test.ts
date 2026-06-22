@@ -180,4 +180,38 @@ Ends here ^scene-end`;
 
         expect(sanitized).toBe('- [ ] recently read');
     });
+
+    it('keeps %%ai:%% author queries while stripping generic comments', () => {
+        const input = 'Prose %%normal note%% and %%ai: Is this beat too abrupt?%% end.';
+        const sanitized = sanitizeCompiledManuscript(input, {
+            stripComments: true,
+            stripAiComments: false,
+            stripLinks: false,
+            stripCallouts: false,
+            stripBlockIds: false
+        });
+
+        expect(sanitized).not.toContain('%%normal note%%');
+        expect(sanitized).toContain('%%ai: Is this beat too abrupt?%%');
+    });
+
+    it('strips %%ai:%% author queries only when stripAiComments is enabled', () => {
+        const input = 'Prose %%ai: Is this beat too abrupt?%% end.';
+        const sanitized = sanitizeCompiledManuscript(input, { stripAiComments: true });
+
+        expect(sanitized).not.toContain('%%ai:');
+        expect(sanitized).toContain('Prose');
+        expect(sanitized).toContain('end.');
+    });
+
+    it('matches AI comments case-insensitively and with surrounding whitespace', () => {
+        const input = 'A %% AI : keep? %% B';
+
+        const stripped = sanitizeCompiledManuscript(input, { stripAiComments: true });
+        expect(stripped).not.toContain('keep?');
+
+        // The generic comment strip must spare it as an AI-comment category.
+        const kept = sanitizeCompiledManuscript(input, { stripComments: true });
+        expect(kept).toContain('%% AI : keep? %%');
+    });
 });
