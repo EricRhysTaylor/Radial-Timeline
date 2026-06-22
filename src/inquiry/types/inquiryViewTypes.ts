@@ -188,11 +188,6 @@ export type CorpusCcSlot = {
     iconOuter: SVGCircleElement;
     iconInner: SVGCircleElement;
     targetLetter: SVGTextElement;
-    // Document "scan lines" shown in place of the dot icon while an API run is
-    // in progress (short line on top, two wider lines below). Their opacity is
-    // animated top→bottom by InquiryView's running frame loop; see
-    // updateCorpusScanlines(). Color comes from --ert-inquiry-active-zone-color.
-    scanLines: SVGRectElement[];
 };
 
 export type CorpusCcHeader = {

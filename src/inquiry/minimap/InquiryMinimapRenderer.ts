@@ -51,6 +51,16 @@ export const MINIMAP_EXTRA_WIDTH = 200;
 
 export const SWEEP_RANDOM_CYCLE_MS = 1800;
 export const MIN_PROCESSING_MS = 5000;
+
+// Sweep "scan line" geometry, in the file-text icon's 0..24 viewBox space, so
+// the animated lines land exactly on the glyph's own text lines: a short stub
+// on top followed by two wider lines. Pulsed top→bottom during a run.
+const SWEEP_LINE_GEOMETRY: ReadonlyArray<{ x1: number; x2: number; y: number }> = [
+    { x1: 8, x2: 10.5, y: 9 },
+    { x1: 8, x2: 16, y: 13 },
+    { x1: 8, x2: 16, y: 17 }
+];
+const SWEEP_LINE_STAGGER = 0.18; // top→bottom delay between the 3 lines (cycle fraction)
 export const BACKBONE_FADE_OUT_MS = 800;
 
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
@@ -289,7 +299,7 @@ export class InquiryMinimapRenderer {
 
     // ── Sweep state ──────────────────────────────────────────────────
 
-    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number; lastOpacity?: string }> = [];
+    private minimapSweepTicks: Array<{ lines: SVGLineElement[]; rowIndex: number; lastOps: string[] }> = [];
     private pendingSweepLayout?: {
         tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }>;
         tickWidth: number;
@@ -558,32 +568,45 @@ export class InquiryMinimapRenderer {
         const cycleIndex = Math.floor(_elapsed / SWEEP_RANDOM_CYCLE_MS);
         if (cycleIndex !== this.sweepRandomCycle) {
             this.sweepRandomCycle = cycleIndex;
-            const total = this.minimapSweepTicks.length;
-            const count = Math.max(1, Math.floor(Math.random() * total) + 1);
-            const indices = Array.from({ length: total }, (_, idx) => idx);
-            for (let i = indices.length - 1; i > 0; i -= 1) {
+            // Only animate real file-text scene pages — empty (file-x-corner)
+            // and saga book glyphs have no text lines to light up.
+            const eligible = this.minimapSweepTicks.reduce<number[]>((acc, _tick, idx) => {
+                const tickEl = this.minimapTicks[idx];
+                if (tickEl
+                    && tickEl.getAttribute('data-item-kind') === 'scene'
+                    && !tickEl.classList.contains('is-empty')) {
+                    acc.push(idx);
+                }
+                return acc;
+            }, []);
+            for (let i = eligible.length - 1; i > 0; i -= 1) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [indices[i], indices[j]] = [indices[j], indices[i]];
+                [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
             }
-            this.sweepRandomActive = new Set(indices.slice(0, count));
+            const count = eligible.length ? Math.max(1, Math.floor(Math.random() * eligible.length) + 1) : 0;
+            this.sweepRandomActive = new Set(eligible.slice(0, count));
         }
 
         const phase = (_elapsed % SWEEP_RANDOM_CYCLE_MS) / SWEEP_RANDOM_CYCLE_MS;
-        const pulse = Math.sin(Math.PI * phase);
-        const intensity = 0.24 + (pulse * 0.76);
-        const intensityStr = intensity.toFixed(2);
         this.minimapSweepTicks.forEach((tick, index) => {
-            if (!this.sweepRandomActive.has(index)) {
-                if (tick.lastOpacity !== '0') {
-                    tick.rect.setAttribute('opacity', '0');
-                    tick.lastOpacity = '0';
+            const active = this.sweepRandomActive.has(index);
+            tick.lines.forEach((line, lineIndex) => {
+                let intensity = 0;
+                if (active) {
+                    // Each line lags the one above it so the pulse reads as a
+                    // top→bottom scan within the page.
+                    const lineProgress = phase - lineIndex * SWEEP_LINE_STAGGER;
+                    if (lineProgress > 0) {
+                        const pulse = Math.sin(Math.PI * Math.min(1, lineProgress / (1 - SWEEP_LINE_STAGGER * 2)));
+                        if (pulse > 0) intensity = pulse;
+                    }
                 }
-                return;
-            }
-            if (tick.lastOpacity !== intensityStr) {
-                tick.rect.setAttribute('opacity', intensityStr);
-                tick.lastOpacity = intensityStr;
-            }
+                const next = intensity.toFixed(2);
+                if (tick.lastOps[lineIndex] !== next) {
+                    line.setAttribute('opacity', next);
+                    tick.lastOps[lineIndex] = next;
+                }
+            });
         });
     }
 
@@ -603,25 +626,27 @@ export class InquiryMinimapRenderer {
         this.minimapTicksEl.querySelector('.ert-inquiry-minimap-sweep')?.remove();
         const sweepGroup = createSvgElement('g');
         sweepGroup.classList.add('ert-inquiry-minimap-sweep');
+        // One set of scan lines per tick, overlaid exactly on the file-text
+        // glyph's own lines (viewBox 0..24 → tick rect). These pulse green
+        // top→bottom during a run in place of the old single square.
         tickLayouts.forEach(layout => {
-            const rawSweepWidth = Math.max(5, Math.floor(layout.width * 0.46));
-            const sweepWidth = Math.max(4, rawSweepWidth - 1);
-            const sweepHeight = Math.max(8, Math.floor(layout.height * 0.68));
-            const sweepX = Math.round(layout.x + ((layout.width - rawSweepWidth) / 2));
-            const sweepY = Math.round(layout.y + ((layout.height - sweepHeight) / 2));
-            const inner = createSvgElement('rect');
-            inner.classList.add('ert-inquiry-minimap-sweep-inner');
-            inner.setAttribute('x', String(sweepX));
-            inner.setAttribute('y', String(sweepY));
-            inner.setAttribute('width', String(sweepWidth));
-            inner.setAttribute('height', String(sweepHeight));
-            inner.setAttribute('rx', '2');
-            inner.setAttribute('ry', '2');
-            inner.setAttribute('opacity', '0');
-            sweepGroup.appendChild(inner);
-            this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (layout.width / 2), rowIndex: layout.rowIndex });
+            const scale = layout.width / 24;
+            const lines = SWEEP_LINE_GEOMETRY.map(geom => {
+                const line = createSvgElement('line');
+                line.classList.add('ert-inquiry-minimap-sweep-line');
+                line.setAttribute('x1', String(layout.x + geom.x1 * scale));
+                line.setAttribute('x2', String(layout.x + geom.x2 * scale));
+                line.setAttribute('y1', String(layout.y + geom.y * scale));
+                line.setAttribute('y2', String(layout.y + geom.y * scale));
+                line.setAttribute('opacity', '0');
+                sweepGroup.appendChild(line);
+                return line;
+            });
+            this.minimapSweepTicks.push({ lines, rowIndex: layout.rowIndex, lastOps: ['0', '0', '0'] });
         });
-        this.minimapTicksEl.insertBefore(sweepGroup, this.minimapTicksEl.firstChild);
+        // On top of the ticks so the lit lines read clearly over the resting
+        // (muted) glyph lines.
+        this.minimapTicksEl.appendChild(sweepGroup);
         this.minimapSweepLayout = {
             startX: -Math.max(tickWidth * 1.6, 36),
             endX: length + Math.max(tickWidth * 1.6, 36),
@@ -711,10 +736,12 @@ export class InquiryMinimapRenderer {
         }
         this.runningAnimationStart = undefined;
         this.minimapSweepTicks.forEach(tick => {
-            if (tick.lastOpacity !== '0') {
-                tick.rect.setAttribute('opacity', '0');
-                tick.lastOpacity = '0';
-            }
+            tick.lines.forEach((line, lineIndex) => {
+                if (tick.lastOps[lineIndex] !== '0') {
+                    line.setAttribute('opacity', '0');
+                    tick.lastOps[lineIndex] = '0';
+                }
+            });
         });
         this.sweepRandomCycle = -1;
         this.sweepRandomActive.clear();

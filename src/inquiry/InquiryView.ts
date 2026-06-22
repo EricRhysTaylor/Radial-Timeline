@@ -379,12 +379,6 @@ import { polarToCartesian } from './utils/inquiryGeometry';
 
 const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
 
-// Corpus scan-line run animation tuning (see updateCorpusScanlines).
-const CORPUS_SCAN_CYCLE_MS = 900;      // length of one random light-up cycle
-const CORPUS_SCAN_THROTTLE_MS = 60;    // cap attribute writes to ~16fps
-const CORPUS_SCAN_IDLE_OPACITY = 0.18; // faint resting line while running
-const CORPUS_SCAN_LINE_STAGGER = 0.18; // top→bottom delay between the 3 lines
-
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
@@ -576,12 +570,6 @@ export class InquiryView extends ItemView {
     private ccClassLabels: CorpusCcHeader[] = [];
     private ccEntries: CorpusCcEntry[] = [];
     private ccSlots: CorpusCcSlot[] = [];
-    // Corpus scan-line run animation: each cycle a random subset of visible
-    // cells "light up", pulsing their document lines top→bottom — mirroring the
-    // minimap sweep's random action. State here is reset when a run stops.
-    private corpusScanCycle = -1;
-    private corpusScanActive = new Map<number, number>();
-    private corpusScanLastFrameMs = 0;
     private ccUpdateId = 0;
     private ccLayout?: { pageWidth: number; pageHeight: number; gap: number };
     private ccWordCache = new Map<string, {
@@ -5871,7 +5859,6 @@ export class InquiryView extends ItemView {
             this.updateMinimapPressureGauge();
         } else {
             this.stopRunningAnimations();
-            this.resetCorpusScanlines();
             if (wasRunning) {
                 this.startBackboneFadeOut();
             }
@@ -9847,68 +9834,6 @@ export class InquiryView extends ItemView {
         this.currentRunElapsedMs = elapsedMs;
         // HUD text updates are now managed by a decoupled setInterval to prevent 60fps layout thrash
         this.minimap.setRunningBackboneProgress(this.getRunningBackboneProgressRatio(elapsedMs));
-        this.updateCorpusScanlines(elapsedMs);
-    }
-
-    // Pulse the corpus cells' document scan lines while a run is in progress.
-    // Mirrors InquiryMinimapRenderer's sweep: each cycle a random subset of
-    // visible cells is chosen; within an active cell the three lines fade in
-    // top→bottom (a small per-cell stagger keeps the field from pulsing in
-    // lockstep). Throttled and diff-guarded to keep attribute writes cheap.
-    private updateCorpusScanlines(elapsedMs: number): void {
-        const slots = this.ccSlots;
-        if (!slots.length) return;
-        if (elapsedMs - this.corpusScanLastFrameMs < CORPUS_SCAN_THROTTLE_MS) return;
-        this.corpusScanLastFrameMs = elapsedMs;
-
-        const cycle = Math.floor(elapsedMs / CORPUS_SCAN_CYCLE_MS);
-        if (cycle !== this.corpusScanCycle) {
-            this.corpusScanCycle = cycle;
-            this.corpusScanActive = new Map();
-            const visible: number[] = [];
-            slots.forEach((slot, index) => {
-                if (!slot.group.classList.contains('ert-hidden')) visible.push(index);
-            });
-            if (visible.length) {
-                for (let i = visible.length - 1; i > 0; i -= 1) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [visible[i], visible[j]] = [visible[j], visible[i]];
-                }
-                const count = Math.max(1, Math.floor(Math.random() * visible.length) + 1);
-                for (let a = 0; a < count; a += 1) {
-                    // Small random head-start so active cells don't pulse in unison.
-                    this.corpusScanActive.set(visible[a], Math.random() * 0.15);
-                }
-            }
-        }
-
-        const phase = (elapsedMs % CORPUS_SCAN_CYCLE_MS) / CORPUS_SCAN_CYCLE_MS;
-        slots.forEach((slot, index) => {
-            const stagger = this.corpusScanActive.get(index);
-            slot.scanLines.forEach((line, lineIndex) => {
-                let opacity = CORPUS_SCAN_IDLE_OPACITY;
-                if (stagger !== undefined) {
-                    const lineProgress = phase - stagger - lineIndex * CORPUS_SCAN_LINE_STAGGER;
-                    if (lineProgress > 0) {
-                        const pulse = Math.sin(Math.min(1, lineProgress / 0.5) * Math.PI);
-                        if (pulse > 0) opacity = Math.max(opacity, pulse);
-                    }
-                }
-                const next = opacity.toFixed(2);
-                if (line.getAttribute('opacity') !== next) line.setAttribute('opacity', next);
-            });
-        });
-    }
-
-    private resetCorpusScanlines(): void {
-        this.corpusScanCycle = -1;
-        this.corpusScanActive = new Map();
-        this.corpusScanLastFrameMs = 0;
-        this.ccSlots.forEach(slot => {
-            slot.scanLines.forEach(line => {
-                if (line.getAttribute('opacity') !== '0') line.setAttribute('opacity', '0');
-            });
-        });
     }
 
     private updateRunningHud(): void {

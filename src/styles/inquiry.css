@@ -761,9 +761,12 @@
   opacity: 1;
 }
 
-.ert-inquiry-minimap-sweep-inner {
-  fill: var(--ert-inquiry-active-zone-color);
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 70%, transparent));
+.ert-inquiry-minimap-sweep-line {
+  stroke: var(--ert-inquiry-active-zone-color);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 75%, transparent));
 }
 
 .ert-inquiry-cc {
@@ -1102,23 +1105,6 @@
 
 .ert-inquiry-cc-cell-icon {
   pointer-events: none;
-}
-
-/* Scan lines: hidden at rest (the dot icon shows instead). While an API run is
-   in progress the dot is hidden and these document-style lines are pulsed
-   top→bottom by updateCorpusScanlines() in the active question-zone color. */
-.ert-inquiry-cc-cell-scan {
-  pointer-events: none;
-}
-
-.ert-inquiry-cc-cell-scan-line {
-  fill: var(--ert-inquiry-active-zone-color, var(--text-muted));
-  opacity: 0;
-}
-
-.ert-inquiry-svg.is-running .ert-inquiry-cc-cell-icon,
-.ert-inquiry-svg.is-running .ert-inquiry-cc-cell-low-substance-x {
-  opacity: 0;
 }
 
 .ert-inquiry-cc-cell-target-letter {
