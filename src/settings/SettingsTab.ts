@@ -865,6 +865,22 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
     }
 
+    private renderGuarded(label: string, containerEl: HTMLElement, render: () => void): boolean {
+        try {
+            render();
+            return true;
+        } catch (error) {
+            console.error(`[Settings] Failed to render ${label}:`, error);
+            const fallback = containerEl.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
+            fallback.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: `${label} unavailable` });
+            fallback.createDiv({
+                cls: ERT_CLASSES.SECTION_DESC,
+                text: 'This settings section could not be rendered. The rest of Settings is still available.'
+            });
+            return false;
+        }
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -992,12 +1008,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const quickLinksRow = coreStack.createDiv();
 
         const completionRow = coreStack.createDiv();
-        renderCompletionEstimatePreview({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: completionRow,
-            frameClass: 'ert-previewFrame--flush',
-            forceExpanded: forceExpandCompletionPreview
+        this.renderGuarded('Completion estimate', completionRow, () => {
+            renderCompletionEstimatePreview({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: completionRow,
+                frameClass: 'ert-previewFrame--flush',
+                forceExpanded: forceExpandCompletionPreview
+            });
         });
 
         const coreBody = coreStack.createDiv();
@@ -1007,12 +1025,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             attr: { [ERT_DATA.SECTION]: 'general' }
         });
         const generalStack = generalSection.createDiv({ cls: ERT_CLASSES.STACK });
-        renderGeneralSection({
-            app: this.app,
-            plugin: this.plugin,
-            attachFolderSuggest: (t) => this.attachFolderSuggest(t),
-            containerEl: generalStack,
-            addAiRelatedElement: (el) => this._aiRelatedElements.push(el)
+        this.renderGuarded('General settings', generalStack, () => {
+            renderGeneralSection({
+                app: this.app,
+                plugin: this.plugin,
+                attachFolderSuggest: (t) => this.attachFolderSuggest(t),
+                containerEl: generalStack,
+                addAiRelatedElement: (el) => this._aiRelatedElements.push(el)
+            });
         });
 
         progressSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress' } });
@@ -1020,57 +1040,80 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const progressStatusSection = progressStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress-status' } });
         const progressStatusStack = progressStatusSection.createDiv({ cls: ERT_CLASSES.STACK });
-        renderProgressSection({
-            plugin: this.plugin,
-            containerEl: progressStatusStack
+        this.renderGuarded('Progress status', progressStatusStack, () => {
+            renderProgressSection({
+                plugin: this.plugin,
+                containerEl: progressStatusStack
+            });
         });
 
         goalsSessionsSection = searchableContent.createDiv({
             attr: { [ERT_DATA.SECTION]: 'goals-sessions' }
         });
-        renderGoalsSessionsSection({ plugin: this.plugin, containerEl: goalsSessionsSection });
+        const goalsSessionsTarget = goalsSessionsSection;
+        this.renderGuarded('Goals and sessions', goalsSessionsTarget, () => {
+            renderGoalsSessionsSection({ plugin: this.plugin, containerEl: goalsSessionsTarget });
+        });
 
         const runtimeSection = searchableContent.createDiv({
             cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.STACK}`,
             attr: { [ERT_DATA.SECTION]: 'runtime' }
         });
-        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: runtimeSection });
+        this.renderGuarded('Runtime profiles', runtimeSection, () => {
+            renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: runtimeSection });
+        });
 
         const beatsWrapper = searchableContent.createDiv();
         const backdropYamlTarget = createDiv();
         this._beatsWrapper = beatsWrapper;
         this._backdropYamlTarget = backdropYamlTarget;
-        renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
-        beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
-        const beatsActsSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);
-        const beatsYamlSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-yaml"]`);
-        scenePropertiesSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="scene-properties"]`);
-        if (beatsStorySection) beatsWrapper.appendChild(beatsStorySection);
-        if (beatsActsSection) beatsWrapper.appendChild(beatsActsSection);
-        if (beatsYamlSection) beatsWrapper.appendChild(beatsYamlSection);
+        this.renderGuarded('Story and scene properties', beatsWrapper, () => {
+            renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
+            beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
+            const beatsActsSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);
+            const beatsYamlSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-yaml"]`);
+            scenePropertiesSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="scene-properties"]`);
+            if (beatsStorySection) beatsWrapper.appendChild(beatsStorySection);
+            if (beatsActsSection) beatsWrapper.appendChild(beatsActsSection);
+            if (beatsYamlSection) beatsWrapper.appendChild(beatsYamlSection);
+        });
 
         chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
-        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });
+        const chronologueTarget = chronologueSection;
+        this.renderGuarded('Chronologue settings', chronologueTarget, () => {
+            renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueTarget });
+        });
 
         const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
-        renderPovSection({ plugin: this.plugin, containerEl: povSection });
+        this.renderGuarded('POV settings', povSection, () => {
+            renderPovSection({ plugin: this.plugin, containerEl: povSection });
+        });
 
         const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
-        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
+        this.renderGuarded('Planet calendar settings', planetarySection, () => {
+            renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
+        });
 
         backdropSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'backdrop' } });
-        renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropSection });
-        backdropSection.appendChild(backdropYamlTarget);
+        const backdropTarget = backdropSection;
+        this.renderGuarded('Backdrop settings', backdropTarget, () => {
+            renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropTarget });
+            backdropTarget.appendChild(backdropYamlTarget);
+        });
 
         const colorsWrapper = searchableContent.createDiv();
-        renderColorsSection(colorsWrapper, this.plugin);
-        colorsWorkingPatternSection = colorsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="colors-working-pattern"]`);
+        this.renderGuarded('Color settings', colorsWrapper, () => {
+            renderColorsSection(colorsWrapper, this.plugin);
+            colorsWorkingPatternSection = colorsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="colors-working-pattern"]`);
+        });
 
         const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
         this.releaseNotesComponent?.unload();
         this.releaseNotesComponent = new Component();
         this.releaseNotesComponent.load();
-        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection, component: this.releaseNotesComponent });
+        this.renderGuarded('Release notes', releaseNotesSection, () => {
+            void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection, component: this.releaseNotesComponent! });
+        });
 
         // Order mirrors the on-page section order so the links read top-to-bottom.
         this.renderCoreQuickLinks(quickLinksRow, [
@@ -1086,7 +1129,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             { label: 'Release Notes', target: releaseNotesSection }
         ]);
 
-        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
+        this.renderGuarded('Social settings', socialContent, () => {
+            renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
+        });
 
         const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderInquiryHero(inquiryStack);
@@ -1095,20 +1140,24 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: ERT_CLASSES.STACK,
             attr: { [ERT_DATA.SECTION]: 'inquiry' }
         });
-        renderInquirySection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: inquirySection,
-            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+        this.renderGuarded('Inquiry settings', inquirySection, () => {
+            renderInquirySection({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: inquirySection,
+                attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+            });
         });
 
         const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderPublishingHero(publishingStack);
         const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
-        renderPublishSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: publishingPanels
+        this.renderGuarded('Publish settings', publishingPanels, () => {
+            renderPublishSection({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: publishingPanels
+            });
         });
 
         const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
@@ -1146,24 +1195,30 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const advancedIntro = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderAdvancedHero(advancedIntro);
         const advancedConfigurationSection = advancedStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
-        renderConfigurationSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: advancedConfigurationSection
+        this.renderGuarded('Advanced settings', advancedConfigurationSection, () => {
+            renderConfigurationSection({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: advancedConfigurationSection
+            });
         });
 
         const proStack = proContent.createDiv({ cls: ERT_CLASSES.STACK });
-        renderProEntitlementPanel({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: proStack,
-            onEntitlementChanged: refreshProDependentSections
+        this.renderGuarded('PRO settings', proStack, () => {
+            renderProEntitlementPanel({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: proStack,
+                onEntitlementChanged: refreshProDependentSections
+            });
         });
 
-        renderBonusVaultsSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: proStack
+        this.renderGuarded('Bonus vaults', proStack, () => {
+            renderBonusVaultsSection({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: proStack
+            });
         });
 
         this.applyElementBlockLayout(containerEl);

@@ -9544,6 +9544,20 @@
   transform: translateY(0);
 }
 
+.ert-ui.ert-scope--settings .ert-btn--destructive,
+.ert-ui.ert-scope--modal .ert-btn--destructive {
+  color: var(--text-error);
+  background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
+  border-color: color-mix(in srgb, var(--text-error) 35%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-btn--destructive:hover:not(:disabled),
+.ert-ui.ert-scope--modal .ert-btn--destructive:hover:not(:disabled) {
+  color: var(--text-error);
+  background: color-mix(in srgb, var(--text-error) 16%, var(--background-secondary));
+  border-color: color-mix(in srgb, var(--text-error) 52%, var(--background-modifier-border));
+}
+
 /* =============================================================================
    APR Teaser Stepper (Author Progress Modal)
    ============================================================================= */

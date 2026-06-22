@@ -5,7 +5,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { Plugin, Notice, TAbstractFile, WorkspaceLeaf, addIcon } from "obsidian";
+import { ButtonComponent, Plugin, Notice, TAbstractFile, WorkspaceLeaf, addIcon } from "obsidian";
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { TimelineService } from './services/TimelineService';
 import { SceneDataService } from './services/SceneDataService';
@@ -92,6 +92,20 @@ function detectPlaintextCredentialPattern(serialized: string): string | null {
 }
 
 const WORD_START_PATTERN = /[\p{L}\p{N}]/u;
+
+type ButtonComponentPrototype = typeof ButtonComponent.prototype & {
+    setDestructive?: () => ButtonComponent;
+};
+
+function ensureButtonComponentCompatibility(): void {
+    const prototype = ButtonComponent.prototype as ButtonComponentPrototype;
+    if (typeof prototype.setDestructive === 'function') return;
+
+    prototype.setDestructive = function setDestructiveCompat(this: ButtonComponent): ButtonComponent {
+        this.buttonEl.addClass('ert-btn', 'ert-btn--destructive');
+        return this;
+    };
+}
 
 function isWordCharacter(value: string): boolean {
     return WORD_START_PATTERN.test(value);
@@ -470,6 +484,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
+        ensureButtonComponentCompatibility();
         this.settingsService = new SettingsService(this);
         await this.loadSettings();
 
