@@ -1,6 +1,7 @@
 import { getFrontMatterInfo, parseYaml, Menu, Notice, TFile, type App } from 'obsidian';
 import { normalizeStatus } from '../../utils/text';
 import { applySceneInsertionPlan, planSceneInsertion } from '../../services/SceneInsertService';
+import type { SceneReorderProgress } from '../../services/SceneReorderService';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import type { RadialTimelineSettings, TimelineItem } from '../../types';
@@ -288,22 +289,38 @@ async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, f
         return;
     }
 
+    const plan = await planSceneInsertion({
+        app: view.plugin.app,
+        settings: view.plugin.settings,
+        anchorFile: file,
+        primarySubplot: resolvePrimarySubplotFromGroup(group),
+        getSceneData: view.plugin.getSceneData.bind(view.plugin),
+        beatModel: resolveSelectedBeatModelFromSettings(view.plugin.settings)
+    }).catch((error) => {
+        console.error('[SceneContextMenu] Failed to plan scene insert:', error);
+        new Notice(`Could not add a scene after ${file.basename}. Review the console for details.`, 7000);
+        return null;
+    });
+    if (!plan) return;
+
+    const modal = new AddSceneConfirmModal(
+        view.plugin.app,
+        plan,
+        resolveSubplotColorFromGroup(view, group)
+    );
+    const started = await modal.waitForBegin();
+    if (!started) return;
+
+    // The modal stays open through the insert. Keeping it open also defers
+    // FileTrackingService's per-rename timeline refreshes (gated on an open
+    // modal), so the ripple rename runs as one quiet batch instead of a flood
+    // of refreshes/notices. Progress and the final summary live in the modal.
     try {
-        const plan = await planSceneInsertion({
-            app: view.plugin.app,
-            settings: view.plugin.settings,
-            anchorFile: file,
-            primarySubplot: resolvePrimarySubplotFromGroup(group),
-            getSceneData: view.plugin.getSceneData.bind(view.plugin),
-            beatModel: resolveSelectedBeatModelFromSettings(view.plugin.settings)
+        const result = await applySceneInsertionPlan(view.plugin.app, plan, {
+            onProgress: (progress) => modal.updateProgress(formatSceneInsertProgress(progress))
         });
-        const confirmed = await new AddSceneConfirmModal(
-            view.plugin.app,
-            plan,
-            resolveSubplotColorFromGroup(view, group)
-        ).waitForConfirm();
-        if (!confirmed) return;
-        const result = await applySceneInsertionPlan(view.plugin.app, plan);
+        modal.updateProgress('Refreshing timeline...');
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
         const finalFile = view.plugin.app.vault.getAbstractFileByPath(result.finalPath);
         if (finalFile instanceof TFile) {
             refreshTimelineView(view, finalFile);
@@ -312,11 +329,28 @@ async function addSceneAfterAnchor(view: SceneContextMenuView, group: Element, f
             refreshTimelineView(view, file);
         }
         const rippleText = result.usedRippleRename ? ` Ripple renamed ${result.renameCount} file(s).` : '';
-        new Notice(`Added scene after ${file.basename}.${rippleText}`, 3500);
+        await modal.finishWithDismiss(`Added scene after ${file.basename}.${rippleText}`);
     } catch (error) {
         console.error('[SceneContextMenu] Failed to add scene:', error);
-        new Notice(`Could not add a scene after ${file.basename}. Review the console for details.`, 7000);
+        await modal.finishWithDismiss(`Could not add a scene after ${file.basename}. Review the console for details, then dismiss.`, true);
     }
+}
+
+function formatSceneInsertProgress(progress: SceneReorderProgress): string {
+    if (progress.phase === 'scan') {
+        if (progress.totalFiles === 0) return 'Add scene: no filename renames needed.';
+        return `Add scene: planning ${progress.totalFiles} file rename(s)...`;
+    }
+    if (progress.phase === 'stage') {
+        return `Add scene: staging ${progress.stagedFiles}/${progress.totalFiles} files...`;
+    }
+    if (progress.phase === 'rename') {
+        return `Add scene: renamed ${progress.renamedFiles}/${progress.totalFiles} files.`;
+    }
+    if (progress.totalFiles === 0) {
+        return 'Add scene: no filename renames needed.';
+    }
+    return `Add scene: renamed ${progress.totalFiles}/${progress.totalFiles} files.`;
 }
 
 async function setChapterAtScene(view: SceneContextMenuView, file: TFile, currentChapterTitle: string | undefined): Promise<void> {

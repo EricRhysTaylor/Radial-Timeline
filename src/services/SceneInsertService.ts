@@ -1,6 +1,6 @@
 import { App, TFile, getFrontMatterInfo } from 'obsidian';
 import type { RadialTimelineSettings, TimelineItem } from '../types';
-import { applySceneNumberUpdates, type RippleRenamePlan, type SceneUpdate } from './SceneReorderService';
+import { applySceneNumberUpdates, type RippleRenamePlan, type SceneReorderProgress, type SceneUpdate } from './SceneReorderService';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
@@ -443,7 +443,15 @@ export async function planSceneInsertion(options: SceneInsertOptions): Promise<S
     };
 }
 
-export async function applySceneInsertionPlan(app: App, plan: SceneInsertionPlan): Promise<SceneInsertResult> {
+export interface ApplySceneInsertionPlanOptions {
+    onProgress?: (progress: SceneReorderProgress) => void;
+}
+
+export async function applySceneInsertionPlan(
+    app: App,
+    plan: SceneInsertionPlan,
+    options?: ApplySceneInsertionPlanOptions
+): Promise<SceneInsertResult> {
     await app.vault.create(plan.initialPath, `---\n${plan.frontmatter}\n---\n\n`);
 
     if (!plan.ripplePlan) {
@@ -457,6 +465,7 @@ export async function applySceneInsertionPlan(app: App, plan: SceneInsertionPlan
     }
 
     await applySceneNumberUpdates(app, plan.ripplePlan.updates, {
+        onProgress: options?.onProgress,
         verification: {
             expectedOrderedPaths: plan.ripplePlan.orderedPaths,
             expectedNumbersByPath: plan.ripplePlan.expectedNumbersByPath,
