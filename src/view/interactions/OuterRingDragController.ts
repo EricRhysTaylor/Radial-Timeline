@@ -844,11 +844,16 @@ export class OuterRingDragController {
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
         const sourceDescriptor = this.formatItemDescriptor(moved);
         const targetDescriptor = this.formatItemDescriptor(order[toIdx]);
-        const sourceContext = this.formatContext(sourceActNumber, sourceSubplot);
-        const destinationContext = this.formatContext(targetActNumber, targetSubplot);
+        // Narrative-mode reorders happen on the "All Scenes" outer ring, where
+        // every group carries the ring's subplot-index (0 = Main Plot), not the
+        // note's real YAML Subplot. A reorder here never changes a scene's
+        // subplot, so show Act context only — a subplot label would be
+        // misleading (e.g. "Main Plot" for a scene that lives in another subplot).
+        const sourceContext = this.formatContext(sourceActNumber);
+        const destinationContext = this.formatContext(targetActNumber);
         const contextChange = this.buildContextChangeSummary(
             sourceContext,
-            (actChanged || (subplotChanged && sourceType === 'Scene')) ? destinationContext : sourceContext
+            actChanged ? destinationContext : sourceContext
         );
         const rippleRename = this.isRippleRenameEnabled();
         const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings);
