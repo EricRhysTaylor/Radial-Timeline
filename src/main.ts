@@ -333,13 +333,15 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     /**
-     * Gate for auto-track: real writing activity only counts when the app is
-     * focused and the active file is a scene. Throttled so per-keystroke and
-     * scroll bursts stay cheap; the service throttles persistence separately.
+     * Gate for auto-track: keeps a session the author has begun alive while they
+     * write. Only runs when a session is active (auto-track never starts one),
+     * the app is focused, and the active file is a scene. Throttled so
+     * per-keystroke and scroll bursts stay cheap; the service throttles
+     * persistence separately.
      */
     private signalWritingActivity(): void {
         const service = this.writingSessionService;
-        if (!service?.isAutoTrackEnabled()) return;
+        if (!service?.isAutoTrackEnabled() || !service.getActiveSession()) return;
         const now = Date.now();
         if (now - this.lastWritingActivitySignalMs < 1000) return;
         this.lastWritingActivitySignalMs = now;

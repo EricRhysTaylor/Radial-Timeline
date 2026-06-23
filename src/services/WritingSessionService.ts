@@ -79,8 +79,6 @@ export interface WritingSessionStartOptions {
     goalMinutes?: number;
     goalWords?: number;
     targetMode?: WritingSessionTargetMode;
-    /** Marks a session opened by auto-track rather than a manual play press. */
-    autoStarted?: boolean;
 }
 
 export interface WritingSessionSceneSuggestion {
@@ -380,7 +378,6 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
                     ? Math.max(0, Math.round(active.countdownSegmentStartElapsedMs ?? 0))
                     : undefined,
                 lastActivityAt: typeof active.lastActivityAt === 'string' ? active.lastActivityAt : undefined,
-                autoStarted: active.autoStarted === true,
                 idleAuto: active.idleAuto === true,
             }
         } : {}),
@@ -676,7 +673,10 @@ export class WritingSessionService {
      * (keystroke, cursor move, scroll, scene switch) while focused on a scene;
      * the caller owns that focus+scene gate. No-op unless auto-track is on.
      *
-     * - No session running → opens one from the saved defaults (autoStarted).
+     * Auto-track governs a session the author has already begun — it never
+     * starts one. With no active session this is a no-op (opening a scene is
+     * not "writing"). For a running session it:
+     *
      * - Idle-auto-paused → resumes silently so typing keeps counting.
      * - Manual pause → left untouched (the author's explicit hold).
      * - Running → advances the activity clock that drives idle detection.
@@ -688,10 +688,7 @@ export class WritingSessionService {
     async onActivity(): Promise<void> {
         if (!this.isAutoTrackEnabled()) return;
         const active = this.getActiveSession();
-        if (!active) {
-            await this.start({ autoStarted: true });
-            return;
-        }
+        if (!active) return;
         const iso = nowIso();
         if (active.pausedAt) {
             if (!active.idleAuto) return; // manual hold — respect the author's override
@@ -760,8 +757,8 @@ export class WritingSessionService {
             ? Math.max(0, active.elapsedMsBeforePause || 0) // SAFE: matches activeElapsedMs floor; 0 guards malformed persisted data
             : activeElapsedMs(active, new Date(lastActivityMs));
         const typedWords = Math.max(0, Math.round(active.typedWords || 0)); // SAFE: typedWords is optional; 0 = nothing typed yet
-        // Discard a trivially-empty auto-started session (e.g. a stray cursor
-        // move that opened a session, then nothing) rather than logging noise.
+        // Discard a trivially-empty session (started, then abandoned with no
+        // measurable time or words) rather than logging a 0/0 record.
         if (elapsedMs < 60000 && typedWords === 0) {
             this.getSettings().active = undefined;
             await this.plugin.saveSettings();
@@ -982,7 +979,6 @@ export class WritingSessionService {
             lastResumedAt: startedAt,
             lastSeenAt: startedAt,
             lastActivityAt: startedAt,
-            autoStarted: startOptions.autoStarted === true,
             idleAuto: false,
             elapsedMsBeforePause: 0,
             targetMode,

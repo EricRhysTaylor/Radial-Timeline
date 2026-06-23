@@ -680,17 +680,38 @@ describe('WritingSessionService auto-track', () => {
         expect(plugin.settings.writingSessions.active).toBeUndefined();
     });
 
-    it('opens an auto-started session on first activity', async () => {
+    it('never starts a session on activity — only the author begins one', async () => {
         const plugin = autoTrackPlugin();
         const service = new WritingSessionService(plugin as any);
 
         await service.onActivity();
 
-        const active = plugin.settings.writingSessions.active;
-        expect(active).toBeDefined();
-        expect(active?.autoStarted).toBe(true);
-        expect(active?.idleAuto).toBe(false);
-        expect(active?.lastActivityAt).toBeDefined();
+        expect(plugin.settings.writingSessions.active).toBeUndefined();
+    });
+
+    it('advances the activity clock of a running session on activity', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:10:00.000Z'));
+            const plugin = autoTrackPlugin();
+            plugin.settings.writingSessions.active = {
+                id: 'running',
+                mode: 'drafting',
+                startedAt: '2026-05-20T16:00:00.000Z',
+                lastResumedAt: '2026-05-20T16:00:00.000Z',
+                lastActivityAt: '2026-05-20T16:00:00.000Z',
+                elapsedMsBeforePause: 0,
+                idleAuto: false,
+            } as any;
+            const service = new WritingSessionService(plugin as any);
+
+            await service.onActivity();
+
+            expect(plugin.settings.writingSessions.active?.lastActivityAt).toBe('2026-05-20T16:10:00.000Z');
+            expect(plugin.settings.writingSessions.active?.pausedAt).toBeUndefined();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('pauses at the last activity after the idle timeout, then resumes silently on activity', async () => {

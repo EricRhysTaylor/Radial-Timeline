@@ -1127,7 +1127,7 @@ export class RadialTimelineView extends ItemView {
         autoTrackCopy.createDiv({ cls: 'ert-timeline-session-panel__idle-title', text: 'Auto-track' });
         autoTrackCopy.createDiv({
             cls: 'ert-timeline-session-panel__idle-meta',
-            text: 'Starts on its own when you type in a scene; pauses after 2 min idle, resumes when you return.',
+            text: 'Once you start a session, it pauses after 2 min idle and resumes when you return to writing.',
         });
         const autoTrackToggle = autoTrackCard.createEl('input', { cls: 'ert-timeline-session-panel__toggle ert-timeline-session-panel__option-toggle' });
         autoTrackToggle.type = 'checkbox';

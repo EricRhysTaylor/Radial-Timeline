@@ -321,10 +321,11 @@ export interface WritingSessionDefaults {
     weeklyGoalDays?: number;
     writingStatsOpen?: boolean;
     /**
-     * When true, sessions start, pause, resume, and finalize themselves based on
-     * real editing activity (typing, cursor moves, scrolling, scene switches)
-     * instead of the author driving the play/pause buttons. The buttons remain a
-     * manual override.
+     * When true, a session the author has begun pauses, resumes, and finalizes
+     * itself based on real editing activity (typing, cursor moves, scrolling,
+     * scene switches) instead of the author driving the pause button. Auto-track
+     * never starts a session — the author always presses play. The buttons
+     * remain a manual override.
      */
     autoTrack?: boolean;
     /**
@@ -373,8 +374,6 @@ export interface ActiveWritingSession {
      * regardless of activity. Drives idle auto-pause/finalize.
      */
     lastActivityAt?: string;
-    /** True when this session was opened automatically by auto-track rather than by the author pressing play. */
-    autoStarted?: boolean;
     /**
      * True when the session is currently paused by idle auto-detection — it
      * resumes silently on the next activity. Distinguishes an idle pause from a
