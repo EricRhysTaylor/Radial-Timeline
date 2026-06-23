@@ -616,7 +616,7 @@ export class RadialTimelineView extends ItemView {
             const goalWords = Math.max(1, Math.round(active.goalWords || 1));
             const detail = `${typedWords}/${goalWords} words typed · ${this.formatSessionClockHms(elapsedMs)} elapsed`;
             if (active.pausedAt) {
-                return { headline: 'Paused', detail, tone: 'paused' };
+                return { headline: active.idleAuto ? 'Idle' : 'Paused', detail, tone: 'paused' };
             }
             return { headline: String(typedWords), detail, tone: 'running' };
         }
@@ -633,7 +633,7 @@ export class RadialTimelineView extends ItemView {
         }
         if (active.pausedAt) {
             return {
-                headline: 'Paused',
+                headline: active.idleAuto ? 'Idle' : 'Paused',
                 detail: `${clockDisplay.label} ${goalMs ? 'left' : 'elapsed'}`,
                 tone: 'paused',
             };
@@ -743,7 +743,7 @@ export class RadialTimelineView extends ItemView {
         return {
             label: display.tone === 'complete' ? 'Complete' : display.headline,
             detail: active.pausedAt
-                ? `Paused ${this.formatWritingSessionMode(active.mode)} session, ${display.detail}`
+                ? `${active.idleAuto ? 'Idle' : 'Paused'} ${this.formatWritingSessionMode(active.mode)} session, ${display.detail}`
                 : `Active ${this.formatWritingSessionMode(active.mode)} session, ${display.detail}`,
             state: active.pausedAt ? 'paused' : 'active',
             progressStep: this.getActiveSessionProgressStep(active, elapsedMs),
@@ -753,9 +753,17 @@ export class RadialTimelineView extends ItemView {
 
     private refreshWritingSessionControl(): void {
         if (!this.writingSessionButton || !this.writingSessionLabel) return;
+        const service = this.plugin.getWritingSessionService();
         // Heartbeat: marks the running session as still alive so an app
         // crash/quit freezes elapsed time instead of counting dead time.
-        void this.plugin.getWritingSessionService().markActiveSessionSeen();
+        void service.markActiveSessionSeen();
+        // Auto-track: pause on idle, finalize a long-abandoned session. Re-render
+        // the panel when the session state actually changes.
+        if (service.isAutoTrackEnabled()) {
+            void service.maybeHandleIdle().then(changed => {
+                if (changed) this.renderWritingSessionPanel();
+            });
+        }
         const snapshot = this.getSessionClockSnapshot();
         const shouldPulseCount = this.shouldPulseWritingSessionTitleCount(snapshot.pulseKey);
         const pulseColor = shouldPulseCount ? this.getWritingSessionPulseColor() : undefined;
@@ -1112,6 +1120,23 @@ export class RadialTimelineView extends ItemView {
         // sessions; that's where running totals belong. The intro card answers
         // one question only: "what will this session do?"
 
+        const autoTrackRow = panel.createDiv({ cls: 'ert-timeline-session-panel__row ert-timeline-session-panel__row--toggle' });
+        const autoTrackLabel = autoTrackRow.createEl('label', { cls: 'ert-timeline-session-panel__toggle-label' });
+        const autoTrackToggle = autoTrackLabel.createEl('input', { cls: 'ert-timeline-session-panel__toggle' });
+        autoTrackToggle.type = 'checkbox';
+        autoTrackToggle.checked = sessionSettings.defaults.autoTrack === true;
+        autoTrackLabel.createSpan({ text: 'Auto-track while I write' });
+        autoTrackRow.createDiv({
+            cls: 'ert-timeline-session-panel__idle-meta',
+            text: 'Starts on its own when you type in a scene; pauses after 2 min idle, resumes when you return.',
+        });
+        this.isolateSessionPanelControl(autoTrackToggle);
+        this.registerDomEvent(autoTrackToggle, 'change', () => {
+            void service.setAutoTrack(autoTrackToggle.checked).catch(error => {
+                new Notice(error instanceof Error ? error.message : 'Could not save auto-track setting.');
+            });
+        });
+
         const form = panel.createDiv({ cls: 'ert-timeline-session-panel__form' });
         const sessionSection = form.createDiv({ cls: 'ert-timeline-session-panel__section' });
         this.createSessionSectionTitle(sessionSection, 'pen-line', 'Session');
@@ -1407,7 +1432,7 @@ export class RadialTimelineView extends ItemView {
         const statusDisplay = this.getSessionStatusDisplay(active, elapsedMs);
         return [
             active.id,
-            active.pausedAt ? 'paused' : 'running',
+            active.pausedAt ? (active.idleAuto ? 'idle' : 'paused') : 'running',
             statusDisplay.tone,
             active.targetMode ?? 'time',
             active.goalWords ?? 0,

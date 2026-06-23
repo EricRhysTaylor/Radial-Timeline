@@ -320,6 +320,25 @@ export interface WritingSessionDefaults {
     targetMode?: WritingSessionTargetMode;
     weeklyGoalDays?: number;
     writingStatsOpen?: boolean;
+    /**
+     * When true, sessions start, pause, resume, and finalize themselves based on
+     * real editing activity (typing, cursor moves, scrolling, scene switches)
+     * instead of the author driving the play/pause buttons. The buttons remain a
+     * manual override.
+     */
+    autoTrack?: boolean;
+    /**
+     * Auto-track: gap (ms) with no activity after which a running session is
+     * paused, freezing elapsed time at the last activity. Resumes silently on
+     * the next activity. Default 2 minutes.
+     */
+    idleTimeoutMs?: number;
+    /**
+     * Auto-track: gap (ms) with no activity after which an idle session is
+     * finalized and saved automatically so a forgotten session never lingers.
+     * Default 25 minutes.
+     */
+    autoFinalizeMs?: number;
 }
 
 export interface ActiveWritingSession {
@@ -347,6 +366,21 @@ export interface ActiveWritingSession {
      * this point instead of counting the dead time.
      */
     lastSeenAt?: string;
+    /**
+     * Auto-track: ISO timestamp of the last *real* writing activity (keystroke,
+     * cursor move, scroll, or scene switch while focused on a scene). Distinct
+     * from `lastSeenAt`, which is the crash heartbeat that ticks every second
+     * regardless of activity. Drives idle auto-pause/finalize.
+     */
+    lastActivityAt?: string;
+    /** True when this session was opened automatically by auto-track rather than by the author pressing play. */
+    autoStarted?: boolean;
+    /**
+     * True when the session is currently paused by idle auto-detection — it
+     * resumes silently on the next activity. Distinguishes an idle pause from a
+     * manual pause (the author's explicit hold), which auto-track never touches.
+     */
+    idleAuto?: boolean;
     targetMode?: WritingSessionTargetMode;
     goalWords?: number;
     typedWords?: number;

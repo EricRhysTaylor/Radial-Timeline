@@ -653,3 +653,167 @@ describe('WritingSessionService pure helpers', () => {
         ]);
     });
 });
+
+describe('WritingSessionService auto-track', () => {
+    const autoTrackPlugin = (overrides: Record<string, unknown> = {}) => ({
+        settings: {
+            books: [{ id: 'book-1', title: 'Book One', sourceFolder: 'Book' }],
+            activeBookId: 'book-1',
+            writingSessions: {
+                defaults: { defaultMode: 'drafting', autoTrack: true },
+                records: [],
+            },
+        },
+        getSceneData: async () => [],
+        saveSettings: vi.fn(async () => undefined),
+        ...overrides,
+    });
+
+    it('does nothing on activity when auto-track is disabled', async () => {
+        const plugin = autoTrackPlugin();
+        plugin.settings.writingSessions.defaults.autoTrack = false;
+        const service = new WritingSessionService(plugin as any);
+
+        await service.onActivity();
+
+        expect(plugin.settings.writingSessions.active).toBeUndefined();
+    });
+
+    it('opens an auto-started session on first activity', async () => {
+        const plugin = autoTrackPlugin();
+        const service = new WritingSessionService(plugin as any);
+
+        await service.onActivity();
+
+        const active = plugin.settings.writingSessions.active;
+        expect(active).toBeDefined();
+        expect(active?.autoStarted).toBe(true);
+        expect(active?.idleAuto).toBe(false);
+        expect(active?.lastActivityAt).toBeDefined();
+    });
+
+    it('pauses at the last activity after the idle timeout, then resumes silently on activity', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:03:30.000Z'));
+            const plugin = autoTrackPlugin();
+            plugin.settings.writingSessions.active = {
+                id: 'active-session',
+                mode: 'drafting',
+                stage: 'Zero',
+                stagePreference: 'Zero',
+                startedAt: '2026-05-20T16:00:00.000Z',
+                lastResumedAt: '2026-05-20T16:00:00.000Z',
+                lastSeenAt: '2026-05-20T16:03:25.000Z',
+                lastActivityAt: '2026-05-20T16:01:00.000Z',
+                elapsedMsBeforePause: 0,
+                idleAuto: false,
+            } as any;
+            const service = new WritingSessionService(plugin as any);
+
+            const changed = await service.maybeHandleIdle();
+
+            expect(changed).toBe(true);
+            const paused = plugin.settings.writingSessions.active;
+            expect(paused?.idleAuto).toBe(true);
+            expect(paused?.pausedAt).toBe('2026-05-20T16:01:00.000Z');
+            // Counts only the active minute, not the idle gap.
+            expect(paused?.elapsedMsBeforePause).toBe(60000);
+
+            // Author returns and types: silent resume, fresh segment.
+            vi.setSystemTime(new Date('2026-05-20T16:30:00.000Z'));
+            await service.onActivity();
+            const resumed = plugin.settings.writingSessions.active;
+            expect(resumed?.pausedAt).toBeUndefined();
+            expect(resumed?.idleAuto).toBe(false);
+            expect(resumed?.lastResumedAt).toBe('2026-05-20T16:30:00.000Z');
+            // Elapsed continues from the frozen 1 minute — the 29-minute gap is excluded.
+            vi.setSystemTime(new Date('2026-05-20T16:31:00.000Z'));
+            expect(service.getActiveElapsedMs()).toBe(120000);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('leaves a manual pause untouched (no auto-resume or finalize)', async () => {
+        const plugin = autoTrackPlugin();
+        plugin.settings.writingSessions.active = {
+            id: 'manual-pause',
+            mode: 'drafting',
+            startedAt: '2026-05-20T16:00:00.000Z',
+            lastResumedAt: '2026-05-20T16:00:00.000Z',
+            lastActivityAt: '2026-05-20T15:00:00.000Z',
+            elapsedMsBeforePause: 30 * 60000,
+            pausedAt: '2026-05-20T16:30:00.000Z',
+            idleAuto: false,
+        } as any;
+        const service = new WritingSessionService(plugin as any);
+
+        const changed = await service.maybeHandleIdle();
+
+        expect(changed).toBe(false);
+        expect(plugin.settings.writingSessions.active?.id).toBe('manual-pause');
+        expect(plugin.settings.writingSessions.records).toHaveLength(0);
+    });
+
+    it('auto-finalizes a long-idle session into a saved record', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:50:00.000Z'));
+            const plugin = autoTrackPlugin();
+            plugin.settings.writingSessions.active = {
+                id: 'idle-finalize',
+                mode: 'drafting',
+                stage: 'Zero',
+                startedAt: '2026-05-20T16:00:00.000Z',
+                lastResumedAt: '2026-05-20T16:00:00.000Z',
+                lastSeenAt: '2026-05-20T16:49:55.000Z',
+                lastActivityAt: '2026-05-20T16:20:00.000Z',
+                elapsedMsBeforePause: 0,
+                typedWords: 500,
+                idleAuto: false,
+            } as any;
+            const service = new WritingSessionService(plugin as any);
+
+            const changed = await service.maybeHandleIdle();
+
+            expect(changed).toBe(true);
+            expect(plugin.settings.writingSessions.active).toBeUndefined();
+            expect(plugin.settings.writingSessions.records).toHaveLength(1);
+            const record = plugin.settings.writingSessions.records[0];
+            expect(record.elapsedMs).toBe(20 * 60000);
+            expect(record.typedWords).toBe(500);
+            expect(record.note).toBe('Auto-saved after idle.');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('discards a trivially empty idle session instead of logging noise', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:50:00.000Z'));
+            const plugin = autoTrackPlugin();
+            plugin.settings.writingSessions.active = {
+                id: 'idle-empty',
+                mode: 'drafting',
+                startedAt: '2026-05-20T16:19:50.000Z',
+                lastResumedAt: '2026-05-20T16:19:50.000Z',
+                lastSeenAt: '2026-05-20T16:49:55.000Z',
+                lastActivityAt: '2026-05-20T16:20:00.000Z',
+                elapsedMsBeforePause: 0,
+                typedWords: 0,
+                idleAuto: false,
+            } as any;
+            const service = new WritingSessionService(plugin as any);
+
+            const changed = await service.maybeHandleIdle();
+
+            expect(changed).toBe(true);
+            expect(plugin.settings.writingSessions.active).toBeUndefined();
+            expect(plugin.settings.writingSessions.records).toHaveLength(0);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});

@@ -211,6 +211,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private themeService!: ThemeService;
     private timelineMetricsService!: TimelineMetricsService;
     private writingSessionService!: WritingSessionService;
+    private lastWritingActivitySignalMs = 0;
     private settingsService!: SettingsService;
     private publishingValidationService!: PublishingValidationService;
     private timelineAuditAiService!: TimelineAuditAiService;
@@ -303,7 +304,18 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     private handleWritingSessionEditorUpdate(update: ViewUpdate): void {
-        if (!this.writingSessionService?.getActiveSession()) return;
+        const service = this.writingSessionService;
+        if (!service) return;
+        const docChanged = update.docChanged;
+        // Typing or cursor/selection movement both count as writing activity for
+        // auto-track (revision is mostly reading + navigating, little typing).
+        // Fire the activity signal first so an idle-paused session resumes before
+        // we count the words below.
+        if (docChanged || update.selectionSet) {
+            this.signalWritingActivity();
+        }
+        if (!service.getActiveSession()) return;
+        if (!docChanged) return;
         let typedWords = 0;
         for (const transaction of update.transactions) {
             if (!transaction.docChanged) continue;
@@ -318,6 +330,23 @@ export default class RadialTimelinePlugin extends Plugin {
         if (typedWords > 0) {
             this.writingSessionService.registerTypedWords(typedWords);
         }
+    }
+
+    /**
+     * Gate for auto-track: real writing activity only counts when the app is
+     * focused and the active file is a scene. Throttled so per-keystroke and
+     * scroll bursts stay cheap; the service throttles persistence separately.
+     */
+    private signalWritingActivity(): void {
+        const service = this.writingSessionService;
+        if (!service?.isAutoTrackEnabled()) return;
+        const now = Date.now();
+        if (now - this.lastWritingActivitySignalMs < 1000) return;
+        this.lastWritingActivitySignalMs = now;
+        if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) return;
+        const file = this.app.workspace.getActiveFile();
+        if (!file || !this.isSceneFile(file.path)) return;
+        void service.onActivity();
     }
 
     public async saveGossamerRunFilterState(): Promise<void> {
@@ -571,6 +600,11 @@ export default class RadialTimelinePlugin extends Plugin {
         // by a previous crash/quit before the UI starts ticking.
         await this.writingSessionService.hydrate();
         this.registerEditorExtension(EditorView.updateListener.of((update) => this.handleWritingSessionEditorUpdate(update)));
+        // Auto-track activity signals beyond typing: switching scenes and
+        // scrolling/reading a scene both keep a session alive (revision time).
+        this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.signalWritingActivity()));
+        this.registerEvent(this.app.workspace.on('file-open', () => this.signalWritingActivity()));
+        this.registerDomEvent(document, 'scroll', () => this.signalWritingActivity(), { capture: true });
         this.publishingValidationService = new PublishingValidationService(this);
         this.timelineAuditAiService = new TimelineAuditAiService(this);
         

@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import type {
@@ -26,7 +26,18 @@ const MAX_SESSION_RECORDS = 500;
  * onto settings and the portable vault export so the author's data stays
  * forward-readable even after they stop using this plugin.
  */
-export const WRITING_SESSIONS_SCHEMA_VERSION = 4;
+export const WRITING_SESSIONS_SCHEMA_VERSION = 5;
+
+/** Auto-track: default idle gap before a running session auto-pauses. */
+const DEFAULT_IDLE_TIMEOUT_MS = 2 * 60 * 1000;
+/** Auto-track: hard bounds for a user-configured idle timeout. */
+const MIN_IDLE_TIMEOUT_MS = 30 * 1000;
+const MAX_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+/** Auto-track: default idle gap before an idle session is auto-finalized. */
+const DEFAULT_AUTO_FINALIZE_MS = 25 * 60 * 1000;
+/** Auto-track: hard bounds for a user-configured auto-finalize delay. */
+const MIN_AUTO_FINALIZE_MS = 5 * 60 * 1000;
+const MAX_AUTO_FINALIZE_MS = 4 * 60 * 60 * 1000;
 
 /**
  * If a running session goes this long without a heartbeat it is assumed the
@@ -68,6 +79,8 @@ export interface WritingSessionStartOptions {
     goalMinutes?: number;
     goalWords?: number;
     targetMode?: WritingSessionTargetMode;
+    /** Marks a session opened by auto-track rather than a manual play press. */
+    autoStarted?: boolean;
 }
 
 export interface WritingSessionSceneSuggestion {
@@ -268,6 +281,16 @@ function coerceWeeklyGoalDays(value: number | undefined): number {
     return Math.min(7, Math.max(1, Math.round(value ?? 7)));
 }
 
+function coerceIdleTimeoutMs(value: number | undefined): number {
+    if (!Number.isFinite(value)) return DEFAULT_IDLE_TIMEOUT_MS;
+    return Math.min(MAX_IDLE_TIMEOUT_MS, Math.max(MIN_IDLE_TIMEOUT_MS, Math.round(value ?? DEFAULT_IDLE_TIMEOUT_MS)));
+}
+
+function coerceAutoFinalizeMs(value: number | undefined): number {
+    if (!Number.isFinite(value)) return DEFAULT_AUTO_FINALIZE_MS;
+    return Math.min(MAX_AUTO_FINALIZE_MS, Math.max(MIN_AUTO_FINALIZE_MS, Math.round(value ?? DEFAULT_AUTO_FINALIZE_MS)));
+}
+
 /**
  * True when a running session's heartbeat is older than the stale threshold,
  * i.e. the app was almost certainly closed/crashed during the gap.
@@ -328,10 +351,13 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
     const targetMode = coerceTargetMode(settings?.defaults?.targetMode);
     const weeklyGoalDays = coerceWeeklyGoalDays(settings?.defaults?.weeklyGoalDays);
     const writingStatsOpen = settings?.defaults?.writingStatsOpen === true;
+    const autoTrack = settings?.defaults?.autoTrack === true;
+    const idleTimeoutMs = coerceIdleTimeoutMs(settings?.defaults?.idleTimeoutMs);
+    const autoFinalizeMs = Math.max(coerceAutoFinalizeMs(settings?.defaults?.autoFinalizeMs), idleTimeoutMs);
     const active = settings?.active;
     return {
         schemaVersion: WRITING_SESSIONS_SCHEMA_VERSION,
-        defaults: { defaultMode, defaultStage, targetMode, weeklyGoalDays, writingStatsOpen },
+        defaults: { defaultMode, defaultStage, targetMode, weeklyGoalDays, writingStatsOpen, autoTrack, idleTimeoutMs, autoFinalizeMs },
         ...(active ? {
             active: {
                 ...active,
@@ -351,6 +377,9 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
                 countdownSegmentStartElapsedMs: Number.isFinite(active.countdownSegmentStartElapsedMs)
                     ? Math.max(0, Math.round(active.countdownSegmentStartElapsedMs ?? 0))
                     : undefined,
+                lastActivityAt: typeof active.lastActivityAt === 'string' ? active.lastActivityAt : undefined,
+                autoStarted: active.autoStarted === true,
+                idleAuto: active.idleAuto === true,
             }
         } : {}),
         records: records.map(record => ({
@@ -564,6 +593,7 @@ export function buildWritingRangeStats(params: {
 export class WritingSessionService {
     private hydrated = false;
     private lastHeartbeatPersistMs = 0;
+    private lastActivityPersistMs = 0;
 
     constructor(private plugin: RadialTimelinePlugin) {}
 
@@ -633,6 +663,112 @@ export class WritingSessionService {
         active.typedWords = Math.max(0, Math.round(active.typedWords || 0)) + Math.round(count);
     }
 
+    /**
+     * Auto-track activity signal — call when real writing activity happens
+     * (keystroke, cursor move, scroll, scene switch) while focused on a scene;
+     * the caller owns that focus+scene gate. No-op unless auto-track is on.
+     *
+     * - No session running → opens one from the saved defaults (autoStarted).
+     * - Idle-auto-paused → resumes silently so typing keeps counting.
+     * - Manual pause → left untouched (the author's explicit hold).
+     * - Running → advances the activity clock that drives idle detection.
+     *
+     * The synchronous mutations (clearing an idle pause) run before the first
+     * await, so a caller that fires this immediately before counting typed words
+     * sees the session already running.
+     */
+    async onActivity(): Promise<void> {
+        if (!this.isAutoTrackEnabled()) return;
+        const active = this.getActiveSession();
+        if (!active) {
+            await this.start({ autoStarted: true });
+            return;
+        }
+        const iso = nowIso();
+        if (active.pausedAt) {
+            if (!active.idleAuto) return; // manual hold — respect the author's override
+            active.pausedAt = undefined;
+            active.idleAuto = false;
+            active.lastResumedAt = iso;
+            active.lastSeenAt = iso;
+            active.lastActivityAt = iso;
+            this.lastHeartbeatPersistMs = Date.now();
+            await this.plugin.saveSettings();
+            return;
+        }
+        active.lastActivityAt = iso;
+        const now = Date.now();
+        if (now - this.lastActivityPersistMs < HEARTBEAT_PERSIST_MS) return;
+        this.lastActivityPersistMs = now;
+        await this.plugin.saveSettings();
+    }
+
+    /**
+     * Auto-track idle management, driven from the 1-second UI tick. After the
+     * idle timeout a running session is paused, frozen at the last activity
+     * (interior idle gaps never accrue); after the longer auto-finalize delay an
+     * idle session is saved automatically so a forgotten session never lingers.
+     * Manual pauses are left alone. Returns true if it changed session state so
+     * the caller can re-render.
+     */
+    async maybeHandleIdle(): Promise<boolean> {
+        if (!this.isAutoTrackEnabled()) return false;
+        const active = this.getActiveSession();
+        if (!active) return false;
+        // A manual hold is the author's explicit decision — never auto-resume or finalize it.
+        if (active.pausedAt && !active.idleAuto) return false;
+        const lastActivityMs = Date.parse(active.lastActivityAt || active.lastResumedAt);
+        if (!Number.isFinite(lastActivityMs)) return false;
+        const idleMs = Date.now() - lastActivityMs;
+        if (idleMs > this.getAutoFinalizeMs()) {
+            await this.autoFinalize(active, lastActivityMs);
+            return true;
+        }
+        if (!active.pausedAt && idleMs > this.getIdleTimeoutMs()) {
+            const cutoff = new Date(lastActivityMs);
+            active.elapsedMsBeforePause = activeElapsedMs(active, cutoff);
+            active.pausedAt = cutoff.toISOString();
+            active.idleAuto = true;
+            await this.plugin.saveSettings();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Save an idle-abandoned auto-track session, crediting only time up to the
+     * last activity. Best-effort net-word delta; surfaces a quiet notice so the
+     * author knows it was logged.
+     */
+    private async autoFinalize(active: ActiveWritingSession, lastActivityMs: number): Promise<void> {
+        const elapsedMs = active.pausedAt
+            ? Math.max(0, active.elapsedMsBeforePause || 0)
+            : activeElapsedMs(active, new Date(lastActivityMs));
+        const typedWords = Math.max(0, Math.round(active.typedWords || 0));
+        // Discard a trivially-empty auto-started session (e.g. a stray cursor
+        // move that opened a session, then nothing) rather than logging noise.
+        if (elapsedMs < 60000 && typedWords === 0) {
+            this.getSettings().active = undefined;
+            await this.plugin.saveSettings();
+            return;
+        }
+        let netWordDelta: number | undefined;
+        try {
+            netWordDelta = await this.getActiveNetWordDelta(active);
+        } catch {
+            netWordDelta = undefined;
+        }
+        await this.stop({
+            elapsedMs,
+            typedWords,
+            wordsAdded: typedWords,
+            netWordDelta,
+            scenePaths: active.wordSnapshot?.paths ?? [],
+            note: 'Auto-saved after idle.',
+        });
+        new Notice('Writing session auto-saved after idle.');
+    }
+
     getActiveSession(): ActiveWritingSession | undefined {
         return this.getSettings().active;
     }
@@ -669,6 +805,24 @@ export class WritingSessionService {
     async setDefaultTargetMode(mode: WritingSessionTargetMode): Promise<void> {
         const settings = this.getSettings();
         settings.defaults.targetMode = coerceTargetMode(mode);
+        await this.plugin.saveSettings();
+    }
+
+    isAutoTrackEnabled(): boolean {
+        return this.getSettings().defaults.autoTrack === true;
+    }
+
+    getIdleTimeoutMs(): number {
+        return coerceIdleTimeoutMs(this.getSettings().defaults.idleTimeoutMs);
+    }
+
+    getAutoFinalizeMs(): number {
+        return Math.max(coerceAutoFinalizeMs(this.getSettings().defaults.autoFinalizeMs), this.getIdleTimeoutMs());
+    }
+
+    async setAutoTrack(enabled: boolean): Promise<void> {
+        const settings = this.getSettings();
+        settings.defaults.autoTrack = enabled === true;
         await this.plugin.saveSettings();
     }
 
@@ -815,6 +969,9 @@ export class WritingSessionService {
             startedAt,
             lastResumedAt: startedAt,
             lastSeenAt: startedAt,
+            lastActivityAt: startedAt,
+            autoStarted: startOptions.autoStarted === true,
+            idleAuto: false,
             elapsedMsBeforePause: 0,
             targetMode,
             goalMinutes,
@@ -837,6 +994,8 @@ export class WritingSessionService {
         const pausedAt = new Date();
         active.elapsedMsBeforePause = activeElapsedMs(active, pausedAt);
         active.pausedAt = pausedAt.toISOString();
+        // Manual hold: auto-track must not silently resume or finalize this.
+        active.idleAuto = false;
         await this.plugin.saveSettings();
         return active;
     }
@@ -847,8 +1006,10 @@ export class WritingSessionService {
         if (!active) throw new Error('No writing session is active.');
         if (!active.pausedAt) return active;
         active.pausedAt = undefined;
+        active.idleAuto = false;
         active.lastResumedAt = nowIso();
         active.lastSeenAt = active.lastResumedAt;
+        active.lastActivityAt = active.lastResumedAt;
         this.lastHeartbeatPersistMs = Date.now();
         await this.plugin.saveSettings();
         return active;
@@ -864,8 +1025,10 @@ export class WritingSessionService {
         active.elapsedMsBeforePause = elapsedBeforeNextSegment;
         active.countdownSegmentStartElapsedMs = elapsedBeforeNextSegment;
         active.pausedAt = undefined;
+        active.idleAuto = false;
         active.lastResumedAt = now.toISOString();
         active.lastSeenAt = active.lastResumedAt;
+        active.lastActivityAt = active.lastResumedAt;
         this.lastHeartbeatPersistMs = Date.now();
         await this.plugin.saveSettings();
         return active;
