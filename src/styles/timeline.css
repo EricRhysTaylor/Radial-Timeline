@@ -1333,6 +1333,18 @@
   font-size: var(--font-ui-smaller);
 }
 
+/* Auto-track option: idle-card layout (icon · title+desc) with a checkbox
+   pushed to the right edge and vertically centered by the card's align-items. */
+.ert-timeline-session-panel__option {
+  cursor: pointer;
+}
+
+.ert-timeline-session-panel__option-toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  margin-block: 0;
+}
+
 .ert-timeline-session-panel__row {
   display: flex;
   align-items: center;

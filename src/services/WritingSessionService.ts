@@ -351,7 +351,9 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
     const targetMode = coerceTargetMode(settings?.defaults?.targetMode);
     const weeklyGoalDays = coerceWeeklyGoalDays(settings?.defaults?.weeklyGoalDays);
     const writingStatsOpen = settings?.defaults?.writingStatsOpen === true;
-    const autoTrack = settings?.defaults?.autoTrack === true;
+    // Default ON: unset (first run / pre-v5 data) enables auto-track; only an
+    // explicit false (the author unchecked it) keeps it off.
+    const autoTrack = settings?.defaults?.autoTrack !== false;
     const idleTimeoutMs = coerceIdleTimeoutMs(settings?.defaults?.idleTimeoutMs);
     const autoFinalizeMs = Math.max(coerceAutoFinalizeMs(settings?.defaults?.autoFinalizeMs), idleTimeoutMs);
     const active = settings?.active;

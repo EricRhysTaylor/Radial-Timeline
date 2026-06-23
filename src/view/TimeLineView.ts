@@ -1120,16 +1120,18 @@ export class RadialTimelineView extends ItemView {
         // sessions; that's where running totals belong. The intro card answers
         // one question only: "what will this session do?"
 
-        const autoTrackRow = panel.createDiv({ cls: 'ert-timeline-session-panel__row ert-timeline-session-panel__row--toggle' });
-        const autoTrackLabel = autoTrackRow.createEl('label', { cls: 'ert-timeline-session-panel__toggle-label' });
-        const autoTrackToggle = autoTrackLabel.createEl('input', { cls: 'ert-timeline-session-panel__toggle' });
-        autoTrackToggle.type = 'checkbox';
-        autoTrackToggle.checked = sessionSettings.defaults.autoTrack === true;
-        autoTrackLabel.createSpan({ text: 'Auto-track while I write' });
-        autoTrackRow.createDiv({
+        const autoTrackCard = panel.createEl('label', { cls: 'ert-timeline-session-panel__idle-card ert-timeline-session-panel__option' });
+        const autoTrackIcon = autoTrackCard.createDiv({ cls: 'ert-timeline-session-panel__idle-icon' });
+        setIcon(autoTrackIcon, 'activity');
+        const autoTrackCopy = autoTrackCard.createDiv({ cls: 'ert-timeline-session-panel__idle-copy' });
+        autoTrackCopy.createDiv({ cls: 'ert-timeline-session-panel__idle-title', text: 'Auto-track' });
+        autoTrackCopy.createDiv({
             cls: 'ert-timeline-session-panel__idle-meta',
             text: 'Starts on its own when you type in a scene; pauses after 2 min idle, resumes when you return.',
         });
+        const autoTrackToggle = autoTrackCard.createEl('input', { cls: 'ert-timeline-session-panel__toggle ert-timeline-session-panel__option-toggle' });
+        autoTrackToggle.type = 'checkbox';
+        autoTrackToggle.checked = sessionSettings.defaults.autoTrack === true;
         this.isolateSessionPanelControl(autoTrackToggle);
         this.registerDomEvent(autoTrackToggle, 'change', () => {
             void service.setAutoTrack(autoTrackToggle.checked).catch(error => {
