@@ -14,6 +14,7 @@
  * NEVER emitted to friends or community at any tier:
  *   - scenePaths
  *   - scenesCompletedPaths
+ *   - scenesActivity (per-scene time/words — contains scene paths)
  *   - note
  *   - raw scene titles
  *

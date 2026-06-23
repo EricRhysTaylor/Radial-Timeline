@@ -25,6 +25,7 @@ const TRACERS = {
     note: 'PRIVACY_TRACER_NOTE_DO_NOT_LEAK',
     scenePath: 'PRIVACY_TRACER_PATH_DO_NOT_LEAK',
     scenesCompletedPath: 'PRIVACY_TRACER_COMPLETED_PATH_DO_NOT_LEAK',
+    sceneActivityPath: 'PRIVACY_TRACER_ACTIVITY_PATH_DO_NOT_LEAK',
     bookTitle: 'PRIVACY_TRACER_TITLE_DO_NOT_LEAK',
 } as const;
 
@@ -42,6 +43,7 @@ function tracedRecord(overrides: Partial<WritingSessionRecord> = {}): WritingSes
         scenesCompleted: 1,
         scenePaths: [`Book/Scenes/${TRACERS.scenePath}.md`],
         scenesCompletedPaths: [`Book/Scenes/${TRACERS.scenesCompletedPath}.md`],
+        scenesActivity: [{ path: `Book/Scenes/${TRACERS.sceneActivityPath}.md`, activeMs: 600000, typedWords: 120 }],
         pagesEdited: undefined,
         note: TRACERS.note,
         source: 'timer',

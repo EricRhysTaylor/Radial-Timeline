@@ -12,8 +12,24 @@ export interface WritingSessionCompletionWordStats {
     netWordDelta?: number;
 }
 
+/** Resolved per-scene memory-aid row shown in the save popover (title resolved by caller). */
+export interface WritingSessionSceneActivityEntry {
+    title: string;
+    activeMs: number;
+    typedWords: number;
+}
+
 function minutesFromElapsed(elapsedMs: number): number {
     return Math.max(1, Math.round(Math.max(0, elapsedMs) / 60000));
+}
+
+function formatActiveDuration(ms: number): string {
+    const minutes = Math.round(Math.max(0, ms) / 60000);
+    if (minutes < 1) return '<1m';
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest > 0 ? `${hours}h ${rest}m` : `${hours}h`;
 }
 
 function localDateString(date = new Date()): string {
@@ -48,6 +64,7 @@ export class WritingSessionCompletionModal extends Modal {
         private elapsedMs: number,
         private sceneSuggestions: WritingSessionSceneSuggestion[],
         private wordStats: WritingSessionCompletionWordStats,
+        private sceneActivity: WritingSessionSceneActivityEntry[],
         private onSubmit: (result: WritingSessionCompletionResult) => Promise<void>
     ) {
         super(app);
@@ -176,6 +193,22 @@ export class WritingSessionCompletionModal extends Modal {
             value => { scenesCompleted = parseOptionalInteger(value); },
             'ert-writing-session-compact-setting'
         );
+
+        if (this.sceneActivity.length > 0) {
+            const activitySection = form.createDiv({ cls: 'ert-writing-session-scenes ert-writing-session-activity' });
+            activitySection.createDiv({ cls: 'ert-writing-session-scenes__title', text: 'Today by scene' });
+            activitySection.createDiv({
+                cls: 'ert-writing-session-activity__hint',
+                text: 'Approximate time and typed words to jog your memory — adjust the totals above as needed.',
+            });
+            const activityList = activitySection.createDiv({ cls: 'ert-writing-session-activity__list' });
+            this.sceneActivity.forEach(entry => {
+                const row = activityList.createDiv({ cls: 'ert-writing-session-activity__row' });
+                row.createSpan({ cls: 'ert-writing-session-activity__scene', text: entry.title });
+                row.createSpan({ cls: 'ert-writing-session-activity__metric', text: formatActiveDuration(entry.activeMs) });
+                row.createSpan({ cls: 'ert-writing-session-activity__metric', text: `${entry.typedWords} w` });
+            });
+        }
 
         if (this.sceneSuggestions.length > 0) {
             const sceneSection = form.createDiv({ cls: 'ert-writing-session-scenes' });

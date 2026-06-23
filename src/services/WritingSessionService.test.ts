@@ -873,3 +873,151 @@ describe('WritingSessionService auto-track', () => {
         }
     });
 });
+
+describe('WritingSessionService per-scene activity', () => {
+    const sessionPlugin = () => ({
+        settings: {
+            books: [{ id: 'book-1', title: 'Book One', sourceFolder: 'Book' }],
+            activeBookId: 'book-1',
+            writingSessions: {
+                defaults: { defaultMode: 'drafting', autoTrack: true },
+                records: [],
+            },
+        },
+        saveSettings: vi.fn(async () => undefined),
+    });
+
+    const runningSession = (overrides: Record<string, unknown> = {}) => ({
+        id: 'session-1',
+        mode: 'drafting',
+        startedAt: '2026-05-20T16:00:00.000Z',
+        lastResumedAt: '2026-05-20T16:00:00.000Z',
+        lastActivityAt: '2026-05-20T16:00:00.000Z',
+        elapsedMsBeforePause: 0,
+        typedWords: 0,
+        sceneActivity: {},
+        currentScenePath: 'Book/A.md',
+        idleAuto: false,
+        ...overrides,
+    });
+
+    it('buckets typed words per scene, total counts regardless of path', () => {
+        const plugin = sessionPlugin();
+        plugin.settings.writingSessions.active = runningSession() as any;
+        const service = new WritingSessionService(plugin as any);
+
+        service.registerTypedWords(5, 'Book/A.md');
+        service.registerTypedWords(3); // no path — total only
+        service.registerTypedWords(2, 'Book/B.md');
+
+        const active = plugin.settings.writingSessions.active!;
+        expect(active.typedWords).toBe(10);
+        expect(active.sceneActivity?.['Book/A.md']).toEqual({ activeMs: 0, typedWords: 5 });
+        expect(active.sceneActivity?.['Book/B.md']).toEqual({ activeMs: 0, typedWords: 2 });
+    });
+
+    it('credits each activity window to the scene focused during it', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:00:00.000Z'));
+            const plugin = sessionPlugin();
+            plugin.settings.writingSessions.active = runningSession() as any;
+            const service = new WritingSessionService(plugin as any);
+
+            vi.setSystemTime(new Date('2026-05-20T16:00:30.000Z'));
+            await service.onActivity('Book/A.md'); // 30s credited to A
+
+            vi.setSystemTime(new Date('2026-05-20T16:01:30.000Z'));
+            await service.onActivity('Book/B.md'); // 60s more on A, then focus moves to B
+
+            vi.setSystemTime(new Date('2026-05-20T16:02:00.000Z'));
+            await service.onActivity('Book/B.md'); // 30s credited to B
+
+            const active = plugin.settings.writingSessions.active!;
+            expect(active.sceneActivity?.['Book/A.md']?.activeMs).toBe(90000);
+            expect(active.sceneActivity?.['Book/B.md']?.activeMs).toBe(30000);
+            expect(active.currentScenePath).toBe('Book/B.md');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('excludes an idle-length gap from per-scene time', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:00:00.000Z'));
+            const plugin = sessionPlugin();
+            plugin.settings.writingSessions.active = runningSession() as any;
+            const service = new WritingSessionService(plugin as any);
+
+            // Gap exceeds the 2-min idle timeout: not credited (idle, not writing).
+            vi.setSystemTime(new Date('2026-05-20T16:05:00.000Z'));
+            await service.onActivity('Book/A.md');
+
+            expect(plugin.settings.writingSessions.active?.sceneActivity?.['Book/A.md']).toBeUndefined();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('serializes the per-scene map onto the saved record, dropping empties', async () => {
+        const plugin = sessionPlugin();
+        plugin.settings.writingSessions.active = runningSession({
+            sceneActivity: {
+                'Book/A.md': { activeMs: 120000, typedWords: 80 },
+                'Book/Empty.md': { activeMs: 0, typedWords: 0 },
+            },
+        }) as any;
+        const service = new WritingSessionService(plugin as any);
+
+        const record = await service.stop({ elapsedMs: 120000 });
+
+        expect(record.scenesActivity).toEqual([{ path: 'Book/A.md', activeMs: 120000, typedWords: 80 }]);
+    });
+
+    it('aggregates today\'s records plus the active session, newest-effort first', () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T18:00:00')); // local
+            const plugin = sessionPlugin();
+            plugin.settings.writingSessions.records = [
+                {
+                    id: 'today-1',
+                    mode: 'drafting',
+                    startedAt: '2026-05-20T09:00:00.000Z',
+                    endedAt: '2026-05-20T10:00:00.000Z',
+                    sessionDate: '2026-05-20',
+                    elapsedMs: 60 * 60000,
+                    source: 'timer',
+                    scenesActivity: [{ path: 'Book/A.md', activeMs: 60000, typedWords: 40 }],
+                },
+                {
+                    id: 'yesterday-1',
+                    mode: 'drafting',
+                    startedAt: '2026-05-19T09:00:00.000Z',
+                    endedAt: '2026-05-19T10:00:00.000Z',
+                    sessionDate: '2026-05-19',
+                    elapsedMs: 60 * 60000,
+                    source: 'timer',
+                    scenesActivity: [{ path: 'Book/A.md', activeMs: 99999, typedWords: 99 }],
+                },
+            ] as any;
+            plugin.settings.writingSessions.active = runningSession({
+                sceneActivity: {
+                    'Book/A.md': { activeMs: 30000, typedWords: 10 },
+                    'Book/C.md': { activeMs: 5000, typedWords: 0 },
+                },
+            }) as any;
+            const service = new WritingSessionService(plugin as any);
+
+            const today = service.getTodaySceneActivity();
+
+            expect(today).toEqual([
+                { path: 'Book/A.md', activeMs: 90000, typedWords: 50 },
+                { path: 'Book/C.md', activeMs: 5000, typedWords: 0 },
+            ]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});

@@ -387,6 +387,24 @@ export interface ActiveWritingSession {
         startedWords: number;
         paths: string[];
     };
+    /**
+     * Per-scene attribution accumulated during the session: active milliseconds
+     * and typed words, keyed by scene path. A memory aid surfaced at save time —
+     * the active-ms values sum to roughly the session elapsed. PRIVATE (contains
+     * scene paths); never emitted to non-private audiences.
+     */
+    sceneActivity?: Record<string, SceneActivityTotals>;
+    /**
+     * Scene path currently credited the in-progress activity window. The gap to
+     * the next activity is attributed here, then this advances to the
+     * newly-focused scene. Transient; not part of the saved record.
+     */
+    currentScenePath?: string;
+}
+
+export interface SceneActivityTotals {
+    activeMs: number;
+    typedWords: number;
 }
 
 export interface WritingSessionRecord {
@@ -420,6 +438,18 @@ export interface WritingSessionRecord {
     pagesEdited?: number;
     note?: string;
     source: 'timer' | 'manual';
+    /**
+     * Per-scene time + typed-word breakdown for the session. PRIVATE — contains
+     * scene paths; never emitted to non-private audiences. Day views aggregate
+     * these across the day's records.
+     */
+    scenesActivity?: SceneActivityRecord[];
+}
+
+export interface SceneActivityRecord {
+    path: string;
+    activeMs: number;
+    typedWords: number;
 }
 
 export interface WritingSessionsSettings {

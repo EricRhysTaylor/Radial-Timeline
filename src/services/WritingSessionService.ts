@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import type {
     ActiveWritingSession,
+    SceneActivityRecord,
     WritingSessionMode,
     WritingSessionRecord,
     WritingSessionStage,
@@ -26,7 +27,7 @@ const MAX_SESSION_RECORDS = 500;
  * onto settings and the portable vault export so the author's data stays
  * forward-readable even after they stop using this plugin.
  */
-export const WRITING_SESSIONS_SCHEMA_VERSION = 5;
+export const WRITING_SESSIONS_SCHEMA_VERSION = 6;
 
 /** Auto-track: default idle gap before a running session auto-pauses. */
 const DEFAULT_IDLE_TIMEOUT_MS = 2 * 60 * 1000;
@@ -262,6 +263,69 @@ function uniquePaths(paths: Array<string | undefined>): string[] {
     return [...new Set(paths.map(path => path?.trim()).filter((path): path is string => Boolean(path)))];
 }
 
+function nonNegativeInt(value: number | undefined): number {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.round(value ?? 0)); // SAFE: finite by the guard above; ?? 0 only satisfies the type
+}
+
+/** Coerce a persisted per-scene activity map, dropping malformed/empty entries. */
+function normalizeSceneActivityMap(
+    raw: Record<string, { activeMs?: number; typedWords?: number }> | undefined
+): Record<string, { activeMs: number; typedWords: number }> | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const out: Record<string, { activeMs: number; typedWords: number }> = {};
+    for (const [path, totals] of Object.entries(raw)) {
+        const trimmed = path?.trim();
+        if (!trimmed) continue;
+        const activeMs = nonNegativeInt(totals?.activeMs);
+        const typedWords = nonNegativeInt(totals?.typedWords);
+        if (activeMs === 0 && typedWords === 0) continue;
+        out[trimmed] = { activeMs, typedWords };
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Coerce a persisted per-scene activity record array, dropping empty entries. */
+function normalizeSceneActivityArray(raw: SceneActivityRecord[] | undefined): SceneActivityRecord[] {
+    if (!Array.isArray(raw)) return [];
+    const out: SceneActivityRecord[] = [];
+    for (const entry of raw) {
+        const path = entry?.path?.trim();
+        if (!path) continue;
+        const activeMs = nonNegativeInt(entry.activeMs);
+        const typedWords = nonNegativeInt(entry.typedWords);
+        if (activeMs === 0 && typedWords === 0) continue;
+        out.push({ path, activeMs, typedWords });
+    }
+    return out;
+}
+
+/** Accumulate per-scene active-ms / typed-words onto the running session. */
+function addSceneActivity(
+    active: ActiveWritingSession,
+    path: string,
+    delta: { activeMs?: number; typedWords?: number }
+): void {
+    const trimmed = path.trim();
+    if (!trimmed) return;
+    const map = active.sceneActivity ?? (active.sceneActivity = {});
+    const entry = map[trimmed] ?? (map[trimmed] = { activeMs: 0, typedWords: 0 });
+    entry.activeMs += Math.max(0, Math.round(delta.activeMs ?? 0)); // SAFE: omitted delta = no time to add
+    entry.typedWords += Math.max(0, Math.round(delta.typedWords ?? 0)); // SAFE: omitted delta = no words to add
+}
+
+/** Serialize a running session's per-scene map into a record array (drops empties). */
+function sceneActivityToArray(map: Record<string, { activeMs: number; typedWords: number }> | undefined): SceneActivityRecord[] {
+    if (!map) return [];
+    return Object.entries(map)
+        .map(([path, totals]) => ({
+            path,
+            activeMs: Math.max(0, Math.round(totals.activeMs || 0)), // SAFE: floor guards malformed persisted number
+            typedWords: Math.max(0, Math.round(totals.typedWords || 0)), // SAFE: floor guards malformed persisted number
+        }))
+        .filter(entry => entry.activeMs > 0 || entry.typedWords > 0);
+}
+
 function positiveInteger(value: number | undefined): number | undefined {
     if (!Number.isFinite(value)) return undefined;
     const rounded = Math.max(0, Math.round(value ?? 0));
@@ -379,6 +443,8 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
                     : undefined,
                 lastActivityAt: typeof active.lastActivityAt === 'string' ? active.lastActivityAt : undefined,
                 idleAuto: active.idleAuto === true,
+                sceneActivity: normalizeSceneActivityMap(active.sceneActivity),
+                currentScenePath: typeof active.currentScenePath === 'string' ? active.currentScenePath : undefined,
             }
         } : {}),
         records: records.map(record => ({
@@ -392,6 +458,7 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
             netWordDelta: Number.isFinite(record.netWordDelta) ? Math.round(record.netWordDelta ?? 0) : undefined,
             scenePaths: uniquePaths(record.scenePaths ?? []),
             scenesCompletedPaths: uniquePaths(record.scenesCompletedPaths ?? []),
+            scenesActivity: normalizeSceneActivityArray(record.scenesActivity),
         })),
     };
 }
@@ -662,10 +729,13 @@ export class WritingSessionService {
         await this.plugin.saveSettings();
     }
 
-    registerTypedWords(count: number): void {
+    registerTypedWords(count: number, scenePath?: string): void {
         const active = this.getActiveSession();
         if (!active || active.pausedAt || count <= 0) return;
-        active.typedWords = Math.max(0, Math.round(active.typedWords || 0)) + Math.round(count);
+        const words = Math.round(count);
+        active.typedWords = Math.max(0, Math.round(active.typedWords || 0)) + words;
+        // Per-scene attribution only when the typing happened in a scene file.
+        if (scenePath) addSceneActivity(active, scenePath, { typedWords: words });
     }
 
     /**
@@ -685,7 +755,7 @@ export class WritingSessionService {
      * await, so a caller that fires this immediately before counting typed words
      * sees the session already running.
      */
-    async onActivity(): Promise<void> {
+    async onActivity(scenePath?: string): Promise<void> {
         if (!this.isAutoTrackEnabled()) return;
         const active = this.getActiveSession();
         if (!active) return;
@@ -697,10 +767,23 @@ export class WritingSessionService {
             active.lastResumedAt = iso;
             active.lastSeenAt = iso;
             active.lastActivityAt = iso;
+            // Resume fresh on the focused scene — the idle gap is never credited.
+            if (scenePath) active.currentScenePath = scenePath;
             this.lastHeartbeatPersistMs = Date.now();
             await this.plugin.saveSettings();
             return;
         }
+        // Credit the elapsed window to the scene focused during it, then advance
+        // to the newly-focused scene. Idle-length gaps are excluded (same cap as
+        // session elapsed), so per-scene times sum to roughly the session total.
+        const prevMs = Date.parse(active.lastActivityAt || active.lastResumedAt);
+        if (Number.isFinite(prevMs) && active.currentScenePath) {
+            const gap = Date.now() - prevMs;
+            if (gap > 0 && gap <= this.getIdleTimeoutMs()) {
+                addSceneActivity(active, active.currentScenePath, { activeMs: gap });
+            }
+        }
+        if (scenePath) active.currentScenePath = scenePath;
         active.lastActivityAt = iso;
         const now = Date.now();
         if (now - this.lastActivityPersistMs < HEARTBEAT_PERSIST_MS) return;
@@ -780,6 +863,41 @@ export class WritingSessionService {
 
     getActiveSession(): ActiveWritingSession | undefined {
         return this.getSettings().active;
+    }
+
+    /** Active file path if it is a scene, else undefined — the unit of per-scene attribution. */
+    private getActiveScenePath(): string | undefined {
+        const path = this.plugin.app?.workspace?.getActiveFile?.()?.path;
+        if (!path || typeof this.plugin.isSceneFile !== 'function') return undefined;
+        return this.plugin.isSceneFile(path) ? path : undefined;
+    }
+
+    /**
+     * Per-scene time + typed-word totals for the local day — today's saved
+     * records plus the in-progress session — newest-effort first. A memory aid
+     * for the save popover; values are advisory (active-ms ≈ session elapsed).
+     */
+    getTodaySceneActivity(at = new Date()): SceneActivityRecord[] {
+        const todayKey = localDateString(at);
+        const totals = new Map<string, { activeMs: number; typedWords: number }>();
+        const add = (path: string, activeMs: number, typedWords: number): void => {
+            const entry = totals.get(path) ?? { activeMs: 0, typedWords: 0 }; // SAFE: first sighting of a scene starts a zero accumulator
+            entry.activeMs += activeMs;
+            entry.typedWords += typedWords;
+            totals.set(path, entry);
+        };
+        for (const record of this.getSettings().records) {
+            if (recordDateKey(record) !== todayKey) continue;
+            for (const scene of record.scenesActivity ?? []) add(scene.path, scene.activeMs, scene.typedWords); // SAFE: pre-v6 records have no per-scene data
+        }
+        const active = this.getActiveSession();
+        if (active?.sceneActivity) {
+            for (const [path, t] of Object.entries(active.sceneActivity)) add(path, t.activeMs, t.typedWords);
+        }
+        return [...totals.entries()]
+            .map(([path, t]) => ({ path, activeMs: t.activeMs, typedWords: t.typedWords }))
+            .filter(entry => entry.activeMs > 0 || entry.typedWords > 0)
+            .sort((a, b) => b.activeMs - a.activeMs || b.typedWords - a.typedWords);
     }
 
     getActiveElapsedMs(at = new Date()): number {
@@ -987,6 +1105,8 @@ export class WritingSessionService {
             typedWords: 0,
             wordSnapshot: await this.captureOpenSceneWordSnapshot(),
             countdownSegmentStartElapsedMs: goalMinutes ? 0 : undefined,
+            sceneActivity: {},
+            currentScenePath: this.getActiveScenePath(),
         };
         settings.active = active;
         this.lastHeartbeatPersistMs = Date.now();
@@ -1067,6 +1187,7 @@ export class WritingSessionService {
             pagesEdited: positiveInteger(completion.pagesEdited),
             note: completion.note?.trim() || undefined,
             source: 'timer',
+            scenesActivity: sceneActivityToArray(active.sceneActivity),
         };
         const allRecords = [...settings.records, record];
         settings.records = allRecords.slice(-MAX_SESSION_RECORDS);

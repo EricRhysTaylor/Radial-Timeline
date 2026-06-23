@@ -1406,10 +1406,21 @@ export class RadialTimelineView extends ItemView {
         this.createSessionIconButton(actions, 'save', 'Save', `ert-timeline-session-panel__primary ert-timeline-session-panel__icon-action${statusDisplay.tone === 'complete' ? ' is-save-ready' : ''}`, async () => {
             const sceneSuggestions = await service.collectTouchedSceneSuggestions(active).catch(() => []);
             const netWordDelta = await service.getActiveNetWordDelta(active).catch(() => undefined);
+            const titleByPath = new Map<string, string>();
+            for (const scene of this.sceneData) {
+                if (scene.path && scene.title) titleByPath.set(scene.path, scene.title);
+            }
+            const sceneActivity = service.getTodaySceneActivity().map(entry => ({
+                title: titleByPath.get(entry.path)
+                    ?? entry.path.split('/').pop()?.replace(/\.md$/i, '') // SAFE: basename fallback when a scene title isn't loaded
+                    ?? entry.path,
+                activeMs: entry.activeMs,
+                typedWords: entry.typedWords,
+            }));
             new WritingSessionCompletionModal(this.app, active, service.getActiveElapsedMs(), sceneSuggestions, {
                 typedWords: active.typedWords,
                 netWordDelta,
-            }, async (completion) => {
+            }, sceneActivity, async (completion) => {
                 try {
                     const record = await service.stop(completion);
                     new Notice(`Saved ${this.formatWritingSessionMode(record.mode)} session (${this.formatSessionClock(record.elapsedMs)}).`);

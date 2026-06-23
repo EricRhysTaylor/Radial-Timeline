@@ -328,7 +328,10 @@ export default class RadialTimelinePlugin extends Plugin {
             }, true);
         }
         if (typedWords > 0) {
-            this.writingSessionService.registerTypedWords(typedWords);
+            // Bucket per-scene only when typing in a scene; the total counts regardless.
+            const path = this.app.workspace.getActiveFile()?.path;
+            const scenePath = path && this.isSceneFile(path) ? path : undefined;
+            this.writingSessionService.registerTypedWords(typedWords, scenePath);
         }
     }
 
@@ -348,7 +351,7 @@ export default class RadialTimelinePlugin extends Plugin {
         if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) return;
         const file = this.app.workspace.getActiveFile();
         if (!file || !this.isSceneFile(file.path)) return;
-        void service.onActivity();
+        void service.onActivity(file.path);
     }
 
     public async saveGossamerRunFilterState(): Promise<void> {
