@@ -1409,6 +1409,18 @@
   color: var(--text-muted);
 }
 
+/* Auto-track card icon: larger than the inline section pencils, still muted
+   (not the accent chip used by the idle card). */
+.ert-timeline-session-panel__option-icon {
+  width: var(--size-4-6);
+  height: var(--size-4-6);
+}
+
+.ert-timeline-session-panel__option-icon .svg-icon {
+  width: var(--size-4-6);
+  height: var(--size-4-6);
+}
+
 .ert-timeline-session-panel__row--toggle {
   justify-content: space-between;
 }

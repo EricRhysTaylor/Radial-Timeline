@@ -1121,7 +1121,7 @@ export class RadialTimelineView extends ItemView {
         // one question only: "what will this session do?"
 
         const autoTrackCard = panel.createEl('label', { cls: 'ert-timeline-session-panel__idle-card ert-timeline-session-panel__option' });
-        const autoTrackIcon = autoTrackCard.createDiv({ cls: 'ert-timeline-session-panel__section-icon' });
+        const autoTrackIcon = autoTrackCard.createDiv({ cls: 'ert-timeline-session-panel__section-icon ert-timeline-session-panel__option-icon' });
         setIcon(autoTrackIcon, 'calendar-sync');
         const autoTrackCopy = autoTrackCard.createDiv({ cls: 'ert-timeline-session-panel__idle-copy' });
         autoTrackCopy.createDiv({ cls: 'ert-timeline-session-panel__idle-title', text: 'Auto-track' });
