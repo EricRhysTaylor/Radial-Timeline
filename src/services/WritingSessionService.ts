@@ -594,6 +594,12 @@ export class WritingSessionService {
     private hydrated = false;
     private lastHeartbeatPersistMs = 0;
     private lastActivityPersistMs = 0;
+    /**
+     * Guards the unawaited 1-second idle tick from re-entering `autoFinalize`
+     * before `settings.active` is cleared, which would otherwise write the same
+     * session twice when the finalize I/O takes longer than one tick.
+     */
+    private idleHandlingInFlight = false;
 
     constructor(private plugin: RadialTimelinePlugin) {}
 
@@ -712,7 +718,7 @@ export class WritingSessionService {
      * the caller can re-render.
      */
     async maybeHandleIdle(): Promise<boolean> {
-        if (!this.isAutoTrackEnabled()) return false;
+        if (!this.isAutoTrackEnabled() || this.idleHandlingInFlight) return false;
         const active = this.getActiveSession();
         if (!active) return false;
         // A manual hold is the author's explicit decision — never auto-resume or finalize it.
@@ -720,19 +726,26 @@ export class WritingSessionService {
         const lastActivityMs = Date.parse(active.lastActivityAt || active.lastResumedAt);
         if (!Number.isFinite(lastActivityMs)) return false;
         const idleMs = Date.now() - lastActivityMs;
-        if (idleMs > this.getAutoFinalizeMs()) {
-            await this.autoFinalize(active, lastActivityMs);
-            return true;
+        // Re-entrancy guard: the tick fires this every second without awaiting,
+        // so the slow finalize path must not run twice on the same session.
+        this.idleHandlingInFlight = true;
+        try {
+            if (idleMs > this.getAutoFinalizeMs()) {
+                await this.autoFinalize(active, lastActivityMs);
+                return true;
+            }
+            if (!active.pausedAt && idleMs > this.getIdleTimeoutMs()) {
+                const cutoff = new Date(lastActivityMs);
+                active.elapsedMsBeforePause = activeElapsedMs(active, cutoff);
+                active.pausedAt = cutoff.toISOString();
+                active.idleAuto = true;
+                await this.plugin.saveSettings();
+                return true;
+            }
+            return false;
+        } finally {
+            this.idleHandlingInFlight = false;
         }
-        if (!active.pausedAt && idleMs > this.getIdleTimeoutMs()) {
-            const cutoff = new Date(lastActivityMs);
-            active.elapsedMsBeforePause = activeElapsedMs(active, cutoff);
-            active.pausedAt = cutoff.toISOString();
-            active.idleAuto = true;
-            await this.plugin.saveSettings();
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -742,9 +755,9 @@ export class WritingSessionService {
      */
     private async autoFinalize(active: ActiveWritingSession, lastActivityMs: number): Promise<void> {
         const elapsedMs = active.pausedAt
-            ? Math.max(0, active.elapsedMsBeforePause || 0)
+            ? Math.max(0, active.elapsedMsBeforePause || 0) // SAFE: matches activeElapsedMs floor; 0 guards malformed persisted data
             : activeElapsedMs(active, new Date(lastActivityMs));
-        const typedWords = Math.max(0, Math.round(active.typedWords || 0));
+        const typedWords = Math.max(0, Math.round(active.typedWords || 0)); // SAFE: typedWords is optional; 0 = nothing typed yet
         // Discard a trivially-empty auto-started session (e.g. a stray cursor
         // move that opened a session, then nothing) rather than logging noise.
         if (elapsedMs < 60000 && typedWords === 0) {
@@ -752,18 +765,15 @@ export class WritingSessionService {
             await this.plugin.saveSettings();
             return;
         }
-        let netWordDelta: number | undefined;
-        try {
-            netWordDelta = await this.getActiveNetWordDelta(active);
-        } catch {
-            netWordDelta = undefined;
-        }
+        // getActiveNetWordDelta never throws (its only I/O catches internally),
+        // so no defensive wrapper here — let any real future failure surface.
+        const netWordDelta = await this.getActiveNetWordDelta(active);
         await this.stop({
             elapsedMs,
             typedWords,
             wordsAdded: typedWords,
             netWordDelta,
-            scenePaths: active.wordSnapshot?.paths ?? [],
+            scenePaths: active.wordSnapshot?.paths,
             note: 'Auto-saved after idle.',
         });
         new Notice('Writing session auto-saved after idle.');

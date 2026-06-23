@@ -789,6 +789,40 @@ describe('WritingSessionService auto-track', () => {
         }
     });
 
+    it('does not double-finalize when the idle tick re-enters before the first finalize settles', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(new Date('2026-05-20T16:50:00.000Z'));
+            const plugin = autoTrackPlugin();
+            plugin.settings.writingSessions.active = {
+                id: 'idle-reentrant',
+                mode: 'drafting',
+                stage: 'Zero',
+                startedAt: '2026-05-20T16:00:00.000Z',
+                lastResumedAt: '2026-05-20T16:00:00.000Z',
+                lastSeenAt: '2026-05-20T16:49:55.000Z',
+                lastActivityAt: '2026-05-20T16:20:00.000Z',
+                elapsedMsBeforePause: 0,
+                typedWords: 300,
+                idleAuto: false,
+            } as any;
+            const service = new WritingSessionService(plugin as any);
+
+            // Two concurrent ticks: the second must be blocked by the in-flight guard.
+            const [first, second] = await Promise.all([
+                service.maybeHandleIdle(),
+                service.maybeHandleIdle(),
+            ]);
+
+            expect(first).toBe(true);
+            expect(second).toBe(false);
+            expect(plugin.settings.writingSessions.active).toBeUndefined();
+            expect(plugin.settings.writingSessions.records).toHaveLength(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('discards a trivially empty idle session instead of logging noise', async () => {
         vi.useFakeTimers();
         try {
