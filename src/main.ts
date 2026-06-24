@@ -305,16 +305,19 @@ export default class RadialTimelinePlugin extends Plugin {
 
     private handleWritingSessionEditorUpdate(update: ViewUpdate): void {
         const service = this.writingSessionService;
-        if (!service) return;
+        if (!service?.getActiveSession()) return;
         const docChanged = update.docChanged;
-        // Typing or cursor/selection movement both count as writing activity for
-        // auto-track (revision is mostly reading + navigating, little typing).
-        // Fire the activity signal first so an idle-paused session resumes before
-        // we count the words below.
-        if (docChanged || update.selectionSet) {
-            this.signalWritingActivity();
+        if (!docChanged && !update.selectionSet) return;
+        const path = this.app.workspace.getActiveFile()?.path;
+        const scenePath = path && this.isSceneFile(path) ? path : undefined;
+        // Editor activity in a scene keeps the session alive and resumes it if it
+        // idle-paused. Routed straight through onActivity (not the throttled
+        // signalWritingActivity used for scroll/leaf bursts) so the resume happens
+        // synchronously BEFORE we count the words below — a paused session would
+        // otherwise drop them. onActivity throttles its own persistence.
+        if (scenePath) {
+            void service.onActivity(scenePath);
         }
-        if (!service.getActiveSession()) return;
         if (!docChanged) return;
         let typedWords = 0;
         for (const transaction of update.transactions) {
@@ -328,9 +331,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }, true);
         }
         if (typedWords > 0) {
-            // Bucket per-scene only when typing in a scene; the total counts regardless.
-            const path = this.app.workspace.getActiveFile()?.path;
-            const scenePath = path && this.isSceneFile(path) ? path : undefined;
+            // Total counts regardless of file; per-scene bucketing only for scenes.
             this.writingSessionService.registerTypedWords(typedWords, scenePath);
         }
     }

@@ -334,12 +334,6 @@ export interface WritingSessionDefaults {
      * the next activity. Default 2 minutes.
      */
     idleTimeoutMs?: number;
-    /**
-     * Auto-track: gap (ms) with no activity after which an idle session is
-     * finalized and saved automatically so a forgotten session never lingers.
-     * Default 25 minutes.
-     */
-    autoFinalizeMs?: number;
 }
 
 export interface ActiveWritingSession {

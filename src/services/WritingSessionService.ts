@@ -1,4 +1,4 @@
-import { Notice, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import type {
@@ -34,11 +34,6 @@ const DEFAULT_IDLE_TIMEOUT_MS = 2 * 60 * 1000;
 /** Auto-track: hard bounds for a user-configured idle timeout. */
 const MIN_IDLE_TIMEOUT_MS = 30 * 1000;
 const MAX_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
-/** Auto-track: default idle gap before an idle session is auto-finalized. */
-const DEFAULT_AUTO_FINALIZE_MS = 25 * 60 * 1000;
-/** Auto-track: hard bounds for a user-configured auto-finalize delay. */
-const MIN_AUTO_FINALIZE_MS = 5 * 60 * 1000;
-const MAX_AUTO_FINALIZE_MS = 4 * 60 * 60 * 1000;
 
 /**
  * If a running session goes this long without a heartbeat it is assumed the
@@ -348,11 +343,6 @@ function coerceIdleTimeoutMs(value: number | undefined): number {
     return Math.min(MAX_IDLE_TIMEOUT_MS, Math.max(MIN_IDLE_TIMEOUT_MS, Math.round(value ?? DEFAULT_IDLE_TIMEOUT_MS)));
 }
 
-function coerceAutoFinalizeMs(value: number | undefined): number {
-    if (!Number.isFinite(value)) return DEFAULT_AUTO_FINALIZE_MS;
-    return Math.min(MAX_AUTO_FINALIZE_MS, Math.max(MIN_AUTO_FINALIZE_MS, Math.round(value ?? DEFAULT_AUTO_FINALIZE_MS)));
-}
-
 /**
  * True when a running session's heartbeat is older than the stale threshold,
  * i.e. the app was almost certainly closed/crashed during the gap.
@@ -417,11 +407,10 @@ export function normalizeWritingSessionsSettings(settings: WritingSessionsSettin
     // explicit false (the author unchecked it) keeps it off.
     const autoTrack = settings?.defaults?.autoTrack !== false;
     const idleTimeoutMs = coerceIdleTimeoutMs(settings?.defaults?.idleTimeoutMs);
-    const autoFinalizeMs = Math.max(coerceAutoFinalizeMs(settings?.defaults?.autoFinalizeMs), idleTimeoutMs);
     const active = settings?.active;
     return {
         schemaVersion: WRITING_SESSIONS_SCHEMA_VERSION,
-        defaults: { defaultMode, defaultStage, targetMode, weeklyGoalDays, writingStatsOpen, autoTrack, idleTimeoutMs, autoFinalizeMs },
+        defaults: { defaultMode, defaultStage, targetMode, weeklyGoalDays, writingStatsOpen, autoTrack, idleTimeoutMs },
         ...(active ? {
             active: {
                 ...active,
@@ -660,12 +649,6 @@ export class WritingSessionService {
     private hydrated = false;
     private lastHeartbeatPersistMs = 0;
     private lastActivityPersistMs = 0;
-    /**
-     * Guards the unawaited 1-second idle tick from re-entering `autoFinalize`
-     * before `settings.active` is cleared, which would otherwise write the same
-     * session twice when the finalize I/O takes longer than one tick.
-     */
-    private idleHandlingInFlight = false;
 
     constructor(private plugin: RadialTimelinePlugin) {}
 
@@ -773,18 +756,27 @@ export class WritingSessionService {
             await this.plugin.saveSettings();
             return;
         }
-        // Credit the elapsed window to the scene focused during it, then advance
-        // to the newly-focused scene. Idle-length gaps are excluded (same cap as
-        // session elapsed), so per-scene times sum to roughly the session total.
+        // Running session. Close out the window since the last activity.
         const prevMs = Date.parse(active.lastActivityAt || active.lastResumedAt);
-        if (Number.isFinite(prevMs) && active.currentScenePath) {
-            const gap = Date.now() - prevMs;
-            if (gap > 0 && gap <= this.getIdleTimeoutMs()) {
-                addSceneActivity(active, active.currentScenePath, { activeMs: gap });
-            }
+        const idleTimeout = this.getIdleTimeoutMs();
+        const gap = Number.isFinite(prevMs) ? Date.now() - prevMs : 0;
+        if (gap > idleTimeout) {
+            // A long gap the idle tick never paused (e.g. the window was
+            // backgrounded and its timers were throttled). Bank elapsed up to the
+            // last activity and start a fresh window so the away-time is excluded
+            // from both the session clock and per-scene totals.
+            active.elapsedMsBeforePause = activeElapsedMs(active, new Date(prevMs));
+            active.lastResumedAt = iso;
+        } else if (gap > 0 && active.currentScenePath) {
+            // Credit the window to the scene focused during it, so per-scene times
+            // sum to roughly the session elapsed.
+            addSceneActivity(active, active.currentScenePath, { activeMs: gap });
         }
         if (scenePath) active.currentScenePath = scenePath;
         active.lastActivityAt = iso;
+        // Keep the crash heartbeat fresh on real activity, independent of the
+        // UI tick (which throttles when the window is backgrounded).
+        active.lastSeenAt = iso;
         const now = Date.now();
         if (now - this.lastActivityPersistMs < HEARTBEAT_PERSIST_MS) return;
         this.lastActivityPersistMs = now;
@@ -792,73 +784,30 @@ export class WritingSessionService {
     }
 
     /**
-     * Auto-track idle management, driven from the 1-second UI tick. After the
-     * idle timeout a running session is paused, frozen at the last activity
-     * (interior idle gaps never accrue); after the longer auto-finalize delay an
-     * idle session is saved automatically so a forgotten session never lingers.
-     * Manual pauses are left alone. Returns true if it changed session state so
-     * the caller can re-render.
+     * Auto-track idle pause, driven from the 1-second UI tick. After the idle
+     * timeout a running session is paused, frozen at the last activity (interior
+     * idle gaps never accrue), and resumes silently on the next activity. The
+     * session is never auto-saved — it persists until the author saves it.
+     * Manual pauses are left alone. Returns true if it paused, so the caller can
+     * re-render. `onActivity` is the resume/keepalive counterpart and also banks
+     * a long gap even if this tick was throttled (backgrounded window).
      */
     async maybeHandleIdle(): Promise<boolean> {
-        if (!this.isAutoTrackEnabled() || this.idleHandlingInFlight) return false;
+        if (!this.isAutoTrackEnabled()) return false;
         const active = this.getActiveSession();
-        if (!active) return false;
-        // A manual hold is the author's explicit decision — never auto-resume or finalize it.
-        if (active.pausedAt && !active.idleAuto) return false;
+        if (!active || active.pausedAt) return false; // already paused (manual or idle) — nothing to do
         const lastActivityMs = Date.parse(active.lastActivityAt || active.lastResumedAt);
         if (!Number.isFinite(lastActivityMs)) return false;
-        const idleMs = Date.now() - lastActivityMs;
-        // Re-entrancy guard: the tick fires this every second without awaiting,
-        // so the slow finalize path must not run twice on the same session.
-        this.idleHandlingInFlight = true;
-        try {
-            if (idleMs > this.getAutoFinalizeMs()) {
-                await this.autoFinalize(active, lastActivityMs);
-                return true;
-            }
-            if (!active.pausedAt && idleMs > this.getIdleTimeoutMs()) {
-                const cutoff = new Date(lastActivityMs);
-                active.elapsedMsBeforePause = activeElapsedMs(active, cutoff);
-                active.pausedAt = cutoff.toISOString();
-                active.idleAuto = true;
-                await this.plugin.saveSettings();
-                return true;
-            }
-            return false;
-        } finally {
-            this.idleHandlingInFlight = false;
-        }
-    }
-
-    /**
-     * Save an idle-abandoned auto-track session, crediting only time up to the
-     * last activity. Best-effort net-word delta; surfaces a quiet notice so the
-     * author knows it was logged.
-     */
-    private async autoFinalize(active: ActiveWritingSession, lastActivityMs: number): Promise<void> {
-        const elapsedMs = active.pausedAt
-            ? Math.max(0, active.elapsedMsBeforePause || 0) // SAFE: matches activeElapsedMs floor; 0 guards malformed persisted data
-            : activeElapsedMs(active, new Date(lastActivityMs));
-        const typedWords = Math.max(0, Math.round(active.typedWords || 0)); // SAFE: typedWords is optional; 0 = nothing typed yet
-        // Discard a trivially-empty session (started, then abandoned with no
-        // measurable time or words) rather than logging a 0/0 record.
-        if (elapsedMs < 60000 && typedWords === 0) {
-            this.getSettings().active = undefined;
-            await this.plugin.saveSettings();
-            return;
-        }
-        // getActiveNetWordDelta never throws (its only I/O catches internally),
-        // so no defensive wrapper here — let any real future failure surface.
-        const netWordDelta = await this.getActiveNetWordDelta(active);
-        await this.stop({
-            elapsedMs,
-            typedWords,
-            wordsAdded: typedWords,
-            netWordDelta,
-            scenePaths: active.wordSnapshot?.paths,
-            note: 'Auto-saved after idle.',
-        });
-        new Notice('Writing session auto-saved after idle.');
+        if (Date.now() - lastActivityMs <= this.getIdleTimeoutMs()) return false;
+        // Idle: freeze elapsed at the last activity and pause. Resumes silently on
+        // the next activity. The session is NEVER auto-saved — it persists until
+        // the author saves it, so work after a long break is never lost.
+        const cutoff = new Date(lastActivityMs);
+        active.elapsedMsBeforePause = activeElapsedMs(active, cutoff);
+        active.pausedAt = cutoff.toISOString();
+        active.idleAuto = true;
+        await this.plugin.saveSettings();
+        return true;
     }
 
     getActiveSession(): ActiveWritingSession | undefined {
@@ -941,10 +890,6 @@ export class WritingSessionService {
 
     getIdleTimeoutMs(): number {
         return coerceIdleTimeoutMs(this.getSettings().defaults.idleTimeoutMs);
-    }
-
-    getAutoFinalizeMs(): number {
-        return Math.max(coerceAutoFinalizeMs(this.getSettings().defaults.autoFinalizeMs), this.getIdleTimeoutMs());
     }
 
     async setAutoTrack(enabled: boolean): Promise<void> {

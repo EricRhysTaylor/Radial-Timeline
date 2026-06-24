@@ -778,18 +778,19 @@ describe('WritingSessionService auto-track', () => {
         expect(plugin.settings.writingSessions.records).toHaveLength(0);
     });
 
-    it('auto-finalizes a long-idle session into a saved record', async () => {
+    it('never auto-saves a long-idle session — it stays paused until the author saves', async () => {
         vi.useFakeTimers();
         try {
-            vi.setSystemTime(new Date('2026-05-20T16:50:00.000Z'));
+            // Far past any old finalize threshold (5h idle): the session must persist.
+            vi.setSystemTime(new Date('2026-05-20T21:20:00.000Z'));
             const plugin = autoTrackPlugin();
             plugin.settings.writingSessions.active = {
-                id: 'idle-finalize',
+                id: 'idle-persists',
                 mode: 'drafting',
                 stage: 'Zero',
                 startedAt: '2026-05-20T16:00:00.000Z',
                 lastResumedAt: '2026-05-20T16:00:00.000Z',
-                lastSeenAt: '2026-05-20T16:49:55.000Z',
+                lastSeenAt: '2026-05-20T16:20:00.000Z',
                 lastActivityAt: '2026-05-20T16:20:00.000Z',
                 elapsedMsBeforePause: 0,
                 typedWords: 500,
@@ -800,74 +801,52 @@ describe('WritingSessionService auto-track', () => {
             const changed = await service.maybeHandleIdle();
 
             expect(changed).toBe(true);
-            expect(plugin.settings.writingSessions.active).toBeUndefined();
-            expect(plugin.settings.writingSessions.records).toHaveLength(1);
-            const record = plugin.settings.writingSessions.records[0];
-            expect(record.elapsedMs).toBe(20 * 60000);
-            expect(record.typedWords).toBe(500);
-            expect(record.note).toBe('Auto-saved after idle.');
+            const active = plugin.settings.writingSessions.active!;
+            expect(active.id).toBe('idle-persists'); // still here — never finalized
+            expect(active.idleAuto).toBe(true);
+            expect(active.pausedAt).toBe('2026-05-20T16:20:00.000Z'); // frozen at last activity
+            expect(active.elapsedMsBeforePause).toBe(20 * 60000);
+            expect(plugin.settings.writingSessions.records).toHaveLength(0);
         } finally {
             vi.useRealTimers();
         }
     });
 
-    it('does not double-finalize when the idle tick re-enters before the first finalize settles', async () => {
+    it('banks a long gap on a running session so away-time is excluded from elapsed', async () => {
         vi.useFakeTimers();
         try {
-            vi.setSystemTime(new Date('2026-05-20T16:50:00.000Z'));
+            vi.setSystemTime(new Date('2026-05-20T16:00:00.000Z'));
             const plugin = autoTrackPlugin();
             plugin.settings.writingSessions.active = {
-                id: 'idle-reentrant',
+                id: 'gap-bank',
                 mode: 'drafting',
-                stage: 'Zero',
                 startedAt: '2026-05-20T16:00:00.000Z',
                 lastResumedAt: '2026-05-20T16:00:00.000Z',
-                lastSeenAt: '2026-05-20T16:49:55.000Z',
-                lastActivityAt: '2026-05-20T16:20:00.000Z',
-                elapsedMsBeforePause: 0,
-                typedWords: 300,
-                idleAuto: false,
-            } as any;
-            const service = new WritingSessionService(plugin as any);
-
-            // Two concurrent ticks: the second must be blocked by the in-flight guard.
-            const [first, second] = await Promise.all([
-                service.maybeHandleIdle(),
-                service.maybeHandleIdle(),
-            ]);
-
-            expect(first).toBe(true);
-            expect(second).toBe(false);
-            expect(plugin.settings.writingSessions.active).toBeUndefined();
-            expect(plugin.settings.writingSessions.records).toHaveLength(1);
-        } finally {
-            vi.useRealTimers();
-        }
-    });
-
-    it('discards a trivially empty idle session instead of logging noise', async () => {
-        vi.useFakeTimers();
-        try {
-            vi.setSystemTime(new Date('2026-05-20T16:50:00.000Z'));
-            const plugin = autoTrackPlugin();
-            plugin.settings.writingSessions.active = {
-                id: 'idle-empty',
-                mode: 'drafting',
-                startedAt: '2026-05-20T16:19:50.000Z',
-                lastResumedAt: '2026-05-20T16:19:50.000Z',
-                lastSeenAt: '2026-05-20T16:49:55.000Z',
-                lastActivityAt: '2026-05-20T16:20:00.000Z',
+                lastSeenAt: '2026-05-20T16:00:00.000Z',
+                lastActivityAt: '2026-05-20T16:00:00.000Z',
                 elapsedMsBeforePause: 0,
                 typedWords: 0,
+                sceneActivity: {},
+                currentScenePath: 'Book/A.md',
                 idleAuto: false,
             } as any;
             const service = new WritingSessionService(plugin as any);
 
-            const changed = await service.maybeHandleIdle();
+            // Active for 1 minute, then a 30-minute gap the idle tick never paused
+            // (backgrounded window), then activity resumes.
+            vi.setSystemTime(new Date('2026-05-20T16:01:00.000Z'));
+            await service.onActivity('Book/A.md');
+            vi.setSystemTime(new Date('2026-05-20T16:31:00.000Z'));
+            await service.onActivity('Book/A.md');
 
-            expect(changed).toBe(true);
-            expect(plugin.settings.writingSessions.active).toBeUndefined();
-            expect(plugin.settings.writingSessions.records).toHaveLength(0);
+            const active = plugin.settings.writingSessions.active!;
+            // 1 min banked; the 30-min gap is excluded; a fresh window starts now.
+            expect(active.elapsedMsBeforePause).toBe(60000);
+            expect(active.lastResumedAt).toBe('2026-05-20T16:31:00.000Z');
+            vi.setSystemTime(new Date('2026-05-20T16:32:00.000Z'));
+            expect(service.getActiveElapsedMs()).toBe(120000); // 1 min banked + 1 min new
+            // Only the active minute counted toward the scene, not the idle gap.
+            expect(active.sceneActivity?.['Book/A.md']?.activeMs).toBe(60000);
         } finally {
             vi.useRealTimers();
         }
