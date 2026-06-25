@@ -1,4 +1,4 @@
-import { App, Setting, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
+import { App, Setting, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorProgressConfig';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
@@ -251,6 +251,32 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         fitSelectToSelectedLabel(teaserSelect, { extraPx: 16, minPx: 72 });
         updateTeaserPreviewVisibility(currentSize);
     }
+
+    // Publish — connect the setup above directly to the APR action workflow.
+    // Updates the live APR file using the current size/mode and saved settings.
+    const publishBtn = new ButtonComponent(sizeSelectorControls)
+        .setCta()
+        .setTooltip(t('settings.authorProgress.preview.publishTooltip'))
+        .onClick(async () => {
+            publishBtn.setDisabled(true);
+            publishBtn.setButtonText(t('settings.authorProgress.preview.publishing'));
+            try {
+                const result = await aprService.generateReport('dynamic');
+                new Notice(
+                    result
+                        ? t('settings.authorProgress.preview.publishSuccess')
+                        : t('settings.authorProgress.preview.publishFailed')
+                );
+            } catch (error) {
+                console.error('APR publish failed:', error);
+                new Notice(t('settings.authorProgress.preview.publishFailed'));
+            } finally {
+                publishBtn.setButtonText(t('settings.authorProgress.preview.publish'));
+                publishBtn.setDisabled(false);
+            }
+        });
+    publishBtn.setButtonText(t('settings.authorProgress.preview.publish'));
+    publishBtn.buttonEl.addClass('ert-apr-publish-btn');
 
     // Dimension info (second row, second column)
     const sizeMetaRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_TIGHT} ert-row--stack ert-apr-size-meta` });

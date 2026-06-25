@@ -34,6 +34,13 @@
   color: var(--text-normal);
 }
 
+/* Publish action — ties the preview/size setup to the live APR export. */
+.ert-ui.ert-scope--settings .ert-apr-publish-btn {
+  min-height: 32px;
+  margin-left: var(--ert-gap-xs);
+  font-weight: 600;
+}
+
 /* Ensure the superscript 2 (now a character) doesn't break alignment */
 /* If using the character ², it behaves like text. If fallback to sup is needed, styling is here: */
 .ert-ui.ert-scope--settings .ert-apr-size-btn sup {
