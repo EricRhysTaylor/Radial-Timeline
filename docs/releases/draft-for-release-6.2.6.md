@@ -39,16 +39,16 @@ The supported model catalog has been simplified around the current frontier, eco
 
 **Inquiry minimap page icons**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-minimap-icons-rounded.png" alt="Inquiry minimap page icons with rounded screenshot frame" width="206">
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-minimap-icons-rounded.png" alt="Inquiry minimap page icons with rounded screenshot frame" width="137"></p>
 
 **Auto-track session controls**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-session-start-rounded.png" alt="Radial Timeline auto-track session controls" width="606">
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-session-start-rounded.png" alt="Radial Timeline auto-track session controls" width="360"></p>
 
 **Session save breakdown**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-session-active-rounded.png" alt="Session save popover with scene-level timing and word breakdown" width="602">
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-session-active-rounded.png" alt="Session save popover with scene-level timing and word breakdown" width="360"></p>
 
 **Settings AI model support**
 
-<img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-settings-ai-rounded.png" alt="Settings AI model support with rounded screenshot frame" width="720">
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-settings-ai-rounded.png" alt="Settings AI model support with rounded screenshot frame" width="720"></p>
