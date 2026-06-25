@@ -417,7 +417,7 @@ export interface TranslationKeys {
         };
         authorProgress: {
             hero: { badgeRefresh: string; badgeDefault: string; wikiAriaLabel: string; title: string; desc: string; keyBenefitsHeading: string; featureSpoilerSafe: string; featureShareable: string; featureStageWeighted: string; };
-            preview: { sizeLabel: string; actualSizePreview: string; teaserAuto: string; teaserRing: string; teaserScenes: string; teaserColor: string; teaserComplete: string; publish: string; publishing: string; publishTooltip: string; publishSuccess: string; publishFailed: string; loading: string; lastUpdateNever: string; kickstarterReady: string; patreonFriendly: string; emptyState: string; renderError: string; lastUpdate: string; };
+            preview: { sizeLabel: string; actualSizePreview: string; teaserAuto: string; teaserRing: string; teaserScenes: string; teaserColor: string; teaserComplete: string; publish: string; publishTooltip: string; loading: string; lastUpdateNever: string; kickstarterReady: string; patreonFriendly: string; emptyState: string; renderError: string; lastUpdate: string; };
             configuration: { name: string; desc: string; autoUpdateExportPaths: { name: string; desc: string; }; };
             styling: {
                 name: string; desc: string; choosePaletteButton: string;
@@ -2363,11 +2363,8 @@ export const en: TranslationKeys = {
                 teaserScenes: 'Scenes',
                 teaserColor: 'Color',
                 teaserComplete: 'Complete',
-                publish: 'Publish',
-                publishing: 'Publishing…',
-                publishTooltip: 'Update the live APR file using the current size and settings.',
-                publishSuccess: 'Live APR file updated!',
-                publishFailed: 'Failed to publish APR.',
+                publish: 'Publish…',
+                publishTooltip: 'Open the publisher to update the live file, save a snapshot, or target a campaign.',
                 loading: 'Loading preview...',
                 lastUpdateNever: 'Never',
                 kickstarterReady: 'Kickstarter ready',

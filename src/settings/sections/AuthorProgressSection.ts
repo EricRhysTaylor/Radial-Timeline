@@ -1,4 +1,4 @@
-import { App, Setting, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent, Notice } from 'obsidian';
+import { App, Setting, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorProgressConfig';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
@@ -9,6 +9,7 @@ import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getTeaserRevealLevel, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
+import { AuthorProgressModal } from '../../modals/AuthorProgressModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { hasProFeatureAccess } from '../featureGate';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
@@ -252,30 +253,17 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         updateTeaserPreviewVisibility(currentSize);
     }
 
-    // Publish — connect the setup above directly to the APR action workflow.
-    // Updates the live APR file using the current size/mode and saved settings.
+    // Publish — connect the setup above to the APR action workflow. Opens the
+    // Author Progress modal (the single publish surface) rather than writing
+    // a file in place, so static snapshots, campaign targeting, and reveal are
+    // all reachable from one hub.
     const publishBtn = new ButtonComponent(sizeSelectorControls)
+        .setButtonText(t('settings.authorProgress.preview.publish'))
         .setCta()
         .setTooltip(t('settings.authorProgress.preview.publishTooltip'))
-        .onClick(async () => {
-            publishBtn.setDisabled(true);
-            publishBtn.setButtonText(t('settings.authorProgress.preview.publishing'));
-            try {
-                const result = await aprService.generateReport('dynamic');
-                new Notice(
-                    result
-                        ? t('settings.authorProgress.preview.publishSuccess')
-                        : t('settings.authorProgress.preview.publishFailed')
-                );
-            } catch (error) {
-                console.error('APR publish failed:', error);
-                new Notice(t('settings.authorProgress.preview.publishFailed'));
-            } finally {
-                publishBtn.setButtonText(t('settings.authorProgress.preview.publish'));
-                publishBtn.setDisabled(false);
-            }
+        .onClick(() => {
+            new AuthorProgressModal(app, plugin).open();
         });
-    publishBtn.setButtonText(t('settings.authorProgress.preview.publish'));
     publishBtn.buttonEl.addClass('ert-apr-publish-btn');
 
     // Dimension info (second row, second column)
