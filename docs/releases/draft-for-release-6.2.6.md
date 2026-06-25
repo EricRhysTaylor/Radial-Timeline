@@ -39,16 +39,16 @@ The supported model catalog has been simplified around the current frontier, eco
 
 **Inquiry minimap page icons**
 
-<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-minimap-icons-rounded.png" alt="Inquiry minimap page icons with rounded screenshot frame" width="137"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/0c3a9b05/wiki/images/release-6-2-6-minimap-icons-rounded.png" alt="Inquiry minimap page icons with rounded screenshot frame" width="137"></p>
 
 **Auto-track session controls**
 
-<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-session-start-rounded.png" alt="Radial Timeline auto-track session controls" width="360"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/0c3a9b05/wiki/images/release-6-2-6-session-start-rounded.png" alt="Radial Timeline auto-track session controls" width="360"></p>
 
 **Session save breakdown**
 
-<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-session-active-rounded.png" alt="Session save popover with scene-level timing and word breakdown" width="360"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/0c3a9b05/wiki/images/release-6-2-6-session-active-rounded.png" alt="Session save popover with scene-level timing and word breakdown" width="360"></p>
 
 **Settings AI model support**
 
-<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/master/wiki/images/release-6-2-6-settings-ai-rounded.png" alt="Settings AI model support with rounded screenshot frame" width="720"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Timeline/0c3a9b05/wiki/images/release-6-2-6-settings-ai-rounded.png" alt="Settings AI model support with rounded screenshot frame" width="720"></p>
