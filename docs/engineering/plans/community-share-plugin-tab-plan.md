@@ -23,9 +23,14 @@ Implemented on 2026-06-27:
   (`project.*`, `activity.*`, sensitive future fields disabled).
 - Added Complete Preview generation with canonical payload/preview hashes,
   public book metadata only, and aggregate writing-range stats.
+- Wired manual publish to the live `community-share-publish` edge function,
+  locked behind connection, public audience, launch tier, selected fields, and
+  ready Complete Preview hashes.
+- Manual publish rebuilds the preview before sending and blocks if the reviewed
+  preview is stale.
 - Added focused settings normalizer and tab-wiring tests.
-- Kept publish, revoke, delete, and disconnect network calls disabled pending
-  the next implementation slice.
+- Kept revoke, delete, and disconnect network calls disabled pending the next
+  implementation slice.
 - Verified with `npx vitest run src/communityShare/communityShareSettings.test.ts
   src/communityShare/communityShareClient.test.ts
   src/communityShare/communitySharePreview.test.ts src/settings/SettingsTab.test.ts`
@@ -33,7 +38,7 @@ Implemented on 2026-06-27:
 
 Still pending:
 
-- Manual publish/revoke/delete/disconnect calls to the live edge functions.
+- Revoke/delete/disconnect calls to the live edge functions.
 - Broader UI/behavior tests once activation and publish actions are live.
 
 Community Share must ship as an explicit author publish flow, not as background

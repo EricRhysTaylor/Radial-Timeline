@@ -4,7 +4,7 @@ import {
     COMMUNITY_SHARE_FIELD_KEYS,
     normalizeCommunityShareSettings
 } from '../../communityShare/communityShareSettings';
-import { CommunityShareError, confirmCommunityShareActivation } from '../../communityShare/communityShareClient';
+import { CommunityShareError, confirmCommunityShareActivation, publishCommunityShareReport } from '../../communityShare/communityShareClient';
 import { buildCommunitySharePreview } from '../../communityShare/communitySharePreview';
 import type {
     CommunityShareAudience,
@@ -429,7 +429,29 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
             .setButtonText('Publish Report')
             .setCta()
             .setDisabled(!canPublish)
-            .onClick(() => new Notice('Community publish wiring is the next implementation slice.')));
+            .onClick(async () => {
+                button.setDisabled(true);
+                button.setButtonText('Publishing...');
+                try {
+                    const result = await publishCommunityShareReport(plugin);
+                    new Notice(`Community report published: ${result.public_slug}`);
+                    containerEl.empty();
+                    renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
+                } catch (error) {
+                    const message = error instanceof CommunityShareError
+                        ? error.message
+                        : 'Community publish failed. Review the Complete Preview and try again.';
+                    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+                    plugin.settings.communityShare = normalizeCommunityShareSettings({
+                        ...current,
+                        lastError: message
+                    });
+                    void plugin.saveSettings();
+                    new Notice(message);
+                    button.setButtonText('Publish Report');
+                    button.setDisabled(!canPublish);
+                }
+            }));
 
     new Setting(actionCard)
         .setName('Pause public report')

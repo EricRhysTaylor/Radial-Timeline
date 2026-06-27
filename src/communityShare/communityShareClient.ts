@@ -2,6 +2,7 @@ import { requestUrl } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getSecret, isSecretStorageAvailable, setSecret } from '../ai/credentials/secretStorage';
 import { normalizeCommunityShareSettings } from './communityShareSettings';
+import { COMMUNITY_SHARE_REPORT_SCHEMA_VERSION, buildCommunitySharePreview } from './communitySharePreview';
 
 const FUNCTIONS_BASE_URL = 'https://gjffqdfjcjdmqxuqlzsj.supabase.co/functions/v1';
 const INSTALLATION_SECRET_ID = 'rt.community-share.installation-id';
@@ -22,6 +23,16 @@ interface ActivationConfirmError {
         code?: string;
         message?: string;
     };
+}
+
+interface PublishSuccess {
+    ok: true;
+    publish_id: string;
+    version_id: string;
+    public_slug: string;
+    status: string;
+    published_at: string;
+    superseded_version_id?: string | null;
 }
 
 export class CommunityShareError extends Error {
@@ -65,6 +76,15 @@ function isActivationConfirmSuccess(value: unknown): value is ActivationConfirmS
         && typeof body.connection_secret === 'string'
         && typeof body.profile_id === 'string'
         && typeof body.project_id === 'string';
+}
+
+function isPublishSuccess(value: unknown): value is PublishSuccess {
+    const body = value as Partial<PublishSuccess>;
+    return body?.ok === true
+        && typeof body.publish_id === 'string'
+        && typeof body.version_id === 'string'
+        && typeof body.public_slug === 'string'
+        && typeof body.published_at === 'string';
 }
 
 function connectionSecretId(connectionId: string): string {
@@ -144,6 +164,89 @@ export async function confirmCommunityShareActivation(
             ...current.preview,
             status: 'stale'
         },
+        lastError: undefined
+    });
+    await plugin.saveSettings();
+    return parsed;
+}
+
+export async function publishCommunityShareReport(plugin: RadialTimelinePlugin): Promise<PublishSuccess> {
+    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+    if (!current.enabled || current.connection.status !== 'connected' || !current.connection.connectionId || !current.connection.secretId) {
+        throw new CommunityShareError('connection_required', 'Connect Community Share before publishing.');
+    }
+    if (current.audience !== 'public' || current.tier < 1 || current.tier > 4 || current.manualPublishEnabled !== true) {
+        throw new CommunityShareError('publish_locked', 'Publish requires public audience, launch tier 1-4, and manual publishing enabled.');
+    }
+    if (current.preview.status !== 'ready' || !current.preview.previewHash || !current.preview.payloadHash) {
+        throw new CommunityShareError('preview_required', 'Generate and review the Complete Preview before publishing.');
+    }
+
+    const currentSecret = await getSecret(plugin.app, current.connection.secretId);
+    if (!currentSecret) {
+        throw new CommunityShareError('connection_secret_missing', 'The private connection secret is missing. Reconnect Community Share.');
+    }
+
+    const preview = await buildCommunitySharePreview(plugin);
+    if (preview.previewHash !== current.preview.previewHash || preview.payloadHash !== current.preview.payloadHash) {
+        throw new CommunityShareError('preview_stale', 'The Complete Preview is stale. Generate it again before publishing.');
+    }
+
+    const response = await requestUrl({
+        url: `${FUNCTIONS_BASE_URL}/community-share-publish`,
+        method: 'POST',
+        contentType: 'application/json',
+        body: JSON.stringify({
+            connection_id: current.connection.connectionId,
+            current_secret: currentSecret,
+            publish_mode: 'manual',
+            audience: 'public',
+            tier: current.tier,
+            field_manifest: preview.fieldManifest,
+            redaction_manifest: preview.redactionManifest,
+            payload: preview.payload,
+            schema_version: COMMUNITY_SHARE_REPORT_SCHEMA_VERSION,
+            preview_hash: preview.previewHash,
+            report_period: preview.reportPeriod
+        }),
+        throw: false
+    });
+
+    const parsed = parseResponseJson(response.text);
+    if (response.status < 200 || response.status >= 300) {
+        const body = parsed as ActivationConfirmError;
+        throw new CommunityShareError(
+            body.error?.code || 'publish_failed',
+            body.error?.message || 'Community Share publish failed. Review the preview and try again.'
+        );
+    }
+    if (!isPublishSuccess(parsed)) {
+        throw new CommunityShareError('invalid_response', 'Community publish returned an unexpected response.');
+    }
+
+    plugin.settings.communityShare = normalizeCommunityShareSettings({
+        ...current,
+        connection: {
+            ...current.connection,
+            publicSlug: parsed.public_slug,
+            lastSyncedAt: parsed.published_at
+        },
+        preview: {
+            ...current.preview,
+            status: 'stale'
+        },
+        publishHistory: [
+            ...current.publishHistory,
+            {
+                id: parsed.version_id,
+                action: 'publish',
+                status: 'success',
+                at: parsed.published_at,
+                versionId: parsed.version_id,
+                publicSlug: parsed.public_slug,
+                message: 'Manual public report published.'
+            }
+        ],
         lastError: undefined
     });
     await plugin.saveSettings();
