@@ -107,7 +107,7 @@ describe('authorProgress contract', () => {
         expect(combined.includes('Share · Author Progress Report')).toBe(false);
         expect(combined.includes('preview of your Author Progress Report')).toBe(false);
         expect(combined.includes('Social campaign management and teaser controls')).toBe(true);
-        expect(combined.includes("socialTab.createSpan({ text: 'Social'")).toBe(true);
+        expect(combined.includes("socialTab.createSpan({ text: 'Soc'")).toBe(true);
         expect(combined.includes('Social / authorProgress settings')).toBe(true);
         expect(combined.includes('![Social](')).toBe(true);
         // Path schema lives in aprPaths.ts, not in these contract files

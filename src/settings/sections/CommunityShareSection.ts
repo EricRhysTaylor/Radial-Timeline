@@ -189,11 +189,11 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: `Community Share - ${formatStatus(settings)}` });
     hero.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-        text: 'Community Share'
+        text: 'Community share'
     });
     hero.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Publish an author-to-author progress report only after you connect this vault, select fields, review the Complete Preview, and press Publish.'
+        text: 'Publish a progress report for fellow authors only after you connect this vault, select fields, review the complete preview, and press publish.'
     });
     const heroFeatures = hero.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
@@ -214,7 +214,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     });
 
     new Setting(activationCard)
-        .setName('Community Share')
+        .setName('Community share')
         .setDesc('Master opt-in for this vault. Turning this on still does not publish anything.')
         .addToggle(toggle => toggle
             .setValue(settings.enabled)
@@ -312,7 +312,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(sharingCard)
         .setName('Manual publish')
-        .setDesc('Launch reports publish only when you press Publish after reviewing the Complete Preview.')
+        .setDesc('Launch reports publish only when you press publish after reviewing the complete preview.')
         .addToggle(toggle => toggle
             .setValue(settings.manualPublishEnabled)
             .onChange(value => save({ manualPublishEnabled: value })));
@@ -383,7 +383,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         .setName('Generate preview')
         .setDesc(canGeneratePreview ? 'Builds the hash-checked preview from public fields only.' : 'Requires an active connection, public audience, launch tier, and at least one selected field.')
         .addButton(button => button
-            .setButtonText('Generate Complete Preview')
+            .setButtonText('Generate complete preview')
             .setDisabled(!canGeneratePreview)
             .onClick(async () => {
                 button.setDisabled(true);
@@ -401,7 +401,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
                         },
                         lastError: undefined
                     });
-                    new Notice('Complete Preview generated. Review it before publishing.');
+                    new Notice('Complete preview generated. Review it before publishing.');
                 } catch (error) {
                     const message = error instanceof Error ? error.message : 'Could not generate the Complete Preview.';
                     await save({
@@ -434,7 +434,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         .setName('Manual publish')
         .setDesc(canPublish ? 'Ready to publish.' : 'Locked by opt-in, connection, public audience, selected fields, and Complete Preview.')
         .addButton(button => button
-            .setButtonText('Publish Report')
+            .setButtonText('Publish report')
             .setCta()
             .setDisabled(!canPublish)
             .onClick(async () => {
@@ -456,7 +456,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
                     });
                     void plugin.saveSettings();
                     new Notice(message);
-                    button.setButtonText('Publish Report');
+                    button.setButtonText('Publish report');
                     button.setDisabled(!canPublish);
                 }
             }));
@@ -495,7 +495,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         .setName('Delete shared report data')
         .setDesc('Deletes website payload JSON for the report. Metadata/tombstones remain for audit proof.')
         .addButton(button => button
-            .setButtonText('Delete Shared Data')
+            .setButtonText('Delete shared data')
             .setDisabled(!isConnected || !hasPublishedReport)
             .onClick(async () => {
                 if (!window.confirm('Delete the shared Community report payload from the website? Local writing data stays in this vault.')) return;
@@ -503,7 +503,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
                 button.setButtonText('Deleting...');
                 try {
                     await deleteCommunityShareReport(plugin);
-                    new Notice('Shared Community report data deleted.');
+                    new Notice('Shared community report data deleted.');
                     containerEl.empty();
                     renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
                 } catch (error) {
@@ -512,7 +512,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
                     plugin.settings.communityShare = normalizeCommunityShareSettings({ ...current, lastError: message });
                     void plugin.saveSettings();
                     new Notice(message);
-                    button.setButtonText('Delete Shared Data');
+                    button.setButtonText('Delete shared data');
                     button.setDisabled(!isConnected || !hasPublishedReport);
                 }
             }));
@@ -529,7 +529,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
                 button.setButtonText('Disconnecting...');
                 try {
                     await disconnectCommunityShare(plugin);
-                    new Notice('Community Share disconnected.');
+                    new Notice('Community share disconnected.');
                     containerEl.empty();
                     renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
                 } catch (error) {
