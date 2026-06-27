@@ -4,6 +4,7 @@ import {
     COMMUNITY_SHARE_FIELD_KEYS,
     normalizeCommunityShareSettings
 } from '../../communityShare/communityShareSettings';
+import { CommunityShareError, confirmCommunityShareActivation } from '../../communityShare/communityShareClient';
 import type {
     CommunityShareAudience,
     CommunityShareFieldKey,
@@ -178,17 +179,51 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         .setName('Connection status')
         .setDesc(settings.connection.publicSlug ? `Public slug: ${settings.connection.publicSlug}` : 'No website connection yet.');
 
+    let tokenValue = '';
+    let connectButton: import('obsidian').ButtonComponent | null = null;
     new Setting(activationCard)
         .setName('Activation token')
-        .setDesc('Paste-and-confirm comes next. This screen is ready for the backend connection flow.')
+        .setDesc('Paste the one-time token created on the website. Confirmation publishes no progress data.')
         .addText(text => {
             text.setPlaceholder('One-time token from radialtimeline.com');
-            text.setDisabled(true);
+            text.onChange(value => {
+                tokenValue = value.trim();
+                connectButton?.setDisabled(tokenValue.length < 16);
+            });
         })
-        .addButton(button => button
-            .setButtonText('Connect')
-            .setDisabled(true)
-            .onClick(() => new Notice('Community activation wiring is the next implementation slice.')));
+        .addButton(button => {
+            connectButton = button;
+            button
+                .setButtonText('Connect')
+                .setDisabled(true)
+                .onClick(async () => {
+                    button.setDisabled(true);
+                    button.setButtonText('Connecting...');
+                    try {
+                        const result = await confirmCommunityShareActivation(plugin, tokenValue);
+                        new Notice(`Community Share connected to ${result.project_title || 'your website project'}.`);
+                        containerEl.empty();
+                        renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
+                    } catch (error) {
+                        const message = error instanceof CommunityShareError
+                            ? error.message
+                            : 'Community activation failed. Generate a new token and try again.';
+                        const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+                        plugin.settings.communityShare = normalizeCommunityShareSettings({
+                            ...current,
+                            lastError: message
+                        });
+                        void plugin.saveSettings();
+                        new Notice(message);
+                        button.setButtonText('Connect');
+                        button.setDisabled(tokenValue.length < 16);
+                    }
+                });
+        });
+
+    if (settings.lastError) {
+        activationCard.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: settings.lastError });
+    }
 
     const sharingCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
     sharingCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Share Controls' });

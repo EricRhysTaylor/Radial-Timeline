@@ -13,16 +13,21 @@ Implemented on 2026-06-27:
 - Added a `CommunityShareSection` UI shell with master opt-in, launch audience
   and tier controls, field-by-field opt-ins, Complete Preview checklist, and
   publish/revoke/delete/disconnect safety controls.
+- Wired the website activation-token confirmation flow to the live
+  `community-activation-confirm` edge function.
+- Added a local random installation id stored in Obsidian Secret Storage and
+  sent only as a SHA-256 hash.
+- Stored the returned connection secret only in Obsidian Secret Storage; local
+  settings keep only non-secret metadata and a secret id reference.
 - Added focused settings normalizer and tab-wiring tests.
-- Kept activation, preview generation, publish, revoke, delete, and disconnect
+- Kept preview generation, publish, revoke, delete, and disconnect
   network calls disabled pending the next implementation slice.
 - Verified with `npx vitest run src/communityShare/communityShareSettings.test.ts
-  src/settings/SettingsTab.test.ts` and `SKIP_BACKUP=1 npm run build`.
+  src/communityShare/communityShareClient.test.ts src/settings/SettingsTab.test.ts`
+  and `SKIP_BACKUP=1 npm run build`.
 
 Still pending:
 
-- Website-generated activation token paste/confirm flow.
-- Local secret storage for the returned connection secret.
 - Complete Preview payload/hash generation.
 - Manual publish/revoke/delete/disconnect calls to the live edge functions.
 - Broader UI/behavior tests once activation and publish actions are live.
