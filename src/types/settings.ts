@@ -922,6 +922,7 @@ export interface CommunitySharePublishHistoryEntry {
     status: 'success' | 'failed' | 'blocked';
     at: string;
     message?: string;
+    publishId?: string;
     versionId?: string;
     publicSlug?: string;
 }

@@ -4,7 +4,14 @@ import {
     COMMUNITY_SHARE_FIELD_KEYS,
     normalizeCommunityShareSettings
 } from '../../communityShare/communityShareSettings';
-import { CommunityShareError, confirmCommunityShareActivation, publishCommunityShareReport } from '../../communityShare/communityShareClient';
+import {
+    CommunityShareError,
+    confirmCommunityShareActivation,
+    deleteCommunityShareReport,
+    disconnectCommunityShare,
+    publishCommunityShareReport,
+    revokeCommunityShareReport
+} from '../../communityShare/communityShareClient';
 import { buildCommunitySharePreview } from '../../communityShare/communitySharePreview';
 import type {
     CommunityShareAudience,
@@ -146,6 +153,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     const activeBook = getActiveBook(plugin);
     const isConnected = settings.connection.status === 'connected';
     const selectedFields = getSelectedFieldLabels(settings);
+    const hasPublishedReport = settings.publishHistory.some(entry => entry.action === 'publish' && entry.status === 'success' && Boolean(entry.publishId));
 
     const section = containerEl.createDiv({
         cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.STACK} ${ERT_CLASSES.DENSITY_COMPACT}`
@@ -456,20 +464,82 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     new Setting(actionCard)
         .setName('Pause public report')
         .setDesc('Temporarily hides the public report without deleting local settings.')
-        .addButton(button => button.setButtonText('Pause').setDisabled(!isConnected));
+        .addButton(button => button.setButtonText('Pause').setDisabled(true));
 
     new Setting(actionCard)
         .setName('Revoke public report')
         .setDesc('Removes the current public report while keeping your connection.')
-        .addButton(button => button.setButtonText('Revoke').setDisabled(!isConnected));
+        .addButton(button => button
+            .setButtonText('Revoke')
+            .setDisabled(!isConnected || !hasPublishedReport)
+            .onClick(async () => {
+                button.setDisabled(true);
+                button.setButtonText('Revoking...');
+                try {
+                    await revokeCommunityShareReport(plugin);
+                    new Notice('Community report revoked.');
+                    containerEl.empty();
+                    renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
+                } catch (error) {
+                    const message = error instanceof CommunityShareError ? error.message : 'Could not revoke the Community report.';
+                    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+                    plugin.settings.communityShare = normalizeCommunityShareSettings({ ...current, lastError: message });
+                    void plugin.saveSettings();
+                    new Notice(message);
+                    button.setButtonText('Revoke');
+                    button.setDisabled(!isConnected || !hasPublishedReport);
+                }
+            }));
 
     new Setting(actionCard)
         .setName('Delete shared report data')
         .setDesc('Deletes website payload JSON for the report. Metadata/tombstones remain for audit proof.')
-        .addButton(button => button.setButtonText('Delete Shared Data').setDisabled(!isConnected));
+        .addButton(button => button
+            .setButtonText('Delete Shared Data')
+            .setDisabled(!isConnected || !hasPublishedReport)
+            .onClick(async () => {
+                if (!window.confirm('Delete the shared Community report payload from the website? Local writing data stays in this vault.')) return;
+                button.setDisabled(true);
+                button.setButtonText('Deleting...');
+                try {
+                    await deleteCommunityShareReport(plugin);
+                    new Notice('Shared Community report data deleted.');
+                    containerEl.empty();
+                    renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
+                } catch (error) {
+                    const message = error instanceof CommunityShareError ? error.message : 'Could not delete shared Community report data.';
+                    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+                    plugin.settings.communityShare = normalizeCommunityShareSettings({ ...current, lastError: message });
+                    void plugin.saveSettings();
+                    new Notice(message);
+                    button.setButtonText('Delete Shared Data');
+                    button.setDisabled(!isConnected || !hasPublishedReport);
+                }
+            }));
 
     new Setting(actionCard)
         .setName('Disconnect plugin')
         .setDesc('Disconnects this vault from the website. Local writing data stays local.')
-        .addButton(button => button.setButtonText('Disconnect').setDisabled(!isConnected));
+        .addButton(button => button
+            .setButtonText('Disconnect')
+            .setDisabled(!isConnected)
+            .onClick(async () => {
+                if (!window.confirm('Disconnect this vault from Community Share? This does not delete local writing data.')) return;
+                button.setDisabled(true);
+                button.setButtonText('Disconnecting...');
+                try {
+                    await disconnectCommunityShare(plugin);
+                    new Notice('Community Share disconnected.');
+                    containerEl.empty();
+                    renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
+                } catch (error) {
+                    const message = error instanceof CommunityShareError ? error.message : 'Could not disconnect Community Share.';
+                    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+                    plugin.settings.communityShare = normalizeCommunityShareSettings({ ...current, lastError: message });
+                    void plugin.saveSettings();
+                    new Notice(message);
+                    button.setButtonText('Disconnect');
+                    button.setDisabled(!isConnected);
+                }
+            }));
 }

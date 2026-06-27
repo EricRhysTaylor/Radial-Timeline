@@ -28,9 +28,12 @@ Implemented on 2026-06-27:
   ready Complete Preview hashes.
 - Manual publish rebuilds the preview before sending and blocks if the reviewed
   preview is stale.
+- Wired revoke, delete shared report data, and disconnect to the live edge
+  functions. Delete and disconnect require local confirmation. Disconnect
+  removes the local connection secret from Obsidian Secret Storage.
 - Added focused settings normalizer and tab-wiring tests.
-- Kept revoke, delete, and disconnect network calls disabled pending the next
-  implementation slice.
+- Pause remains disabled; no launch backend pause endpoint is wired in the
+  plugin yet.
 - Verified with `npx vitest run src/communityShare/communityShareSettings.test.ts
   src/communityShare/communityShareClient.test.ts
   src/communityShare/communitySharePreview.test.ts src/settings/SettingsTab.test.ts`
@@ -38,7 +41,9 @@ Implemented on 2026-06-27:
 
 Still pending:
 
-- Revoke/delete/disconnect calls to the live edge functions.
+- Live end-to-end test against a real website-created activation token/settings
+  row/report definition.
+- Optional pause/resume handling if it stays in launch scope.
 - Broader UI/behavior tests once activation and publish actions are live.
 
 Community Share must ship as an explicit author publish flow, not as background

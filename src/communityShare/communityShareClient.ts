@@ -1,8 +1,9 @@
 import { requestUrl } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { getSecret, isSecretStorageAvailable, setSecret } from '../ai/credentials/secretStorage';
+import { deleteSecret, getSecret, isSecretStorageAvailable, setSecret } from '../ai/credentials/secretStorage';
 import { normalizeCommunityShareSettings } from './communityShareSettings';
 import { COMMUNITY_SHARE_REPORT_SCHEMA_VERSION, buildCommunitySharePreview } from './communitySharePreview';
+import type { CommunitySharePublishHistoryEntry, CommunityShareSettings } from '../types/settings';
 
 const FUNCTIONS_BASE_URL = 'https://gjffqdfjcjdmqxuqlzsj.supabase.co/functions/v1';
 const INSTALLATION_SECRET_ID = 'rt.community-share.installation-id';
@@ -33,6 +34,19 @@ interface PublishSuccess {
     status: string;
     published_at: string;
     superseded_version_id?: string | null;
+}
+
+interface ReportActionSuccess {
+    ok: true;
+    publish_id?: string;
+    connection_id?: string;
+    status: string;
+    revoked_at?: string;
+    deleted_at?: string;
+    disconnected_at?: string;
+    mode?: string;
+    affected_publishes?: number;
+    tombstoned?: boolean;
 }
 
 export class CommunityShareError extends Error {
@@ -87,8 +101,41 @@ function isPublishSuccess(value: unknown): value is PublishSuccess {
         && typeof body.published_at === 'string';
 }
 
+function isReportActionSuccess(value: unknown): value is ReportActionSuccess {
+    const body = value as Partial<ReportActionSuccess>;
+    return body?.ok === true && typeof body.status === 'string';
+}
+
 function connectionSecretId(connectionId: string): string {
     return `${CONNECTION_SECRET_PREFIX}.${connectionId}`;
+}
+
+function latestPublishId(settings: CommunityShareSettings): string | null {
+    for (let index = settings.publishHistory.length - 1; index >= 0; index--) {
+        const entry = settings.publishHistory[index];
+        if (entry?.action === 'publish' && entry.status === 'success' && entry.publishId) {
+            return entry.publishId;
+        }
+    }
+    return null;
+}
+
+async function getConnectedSecret(plugin: RadialTimelinePlugin, settings: CommunityShareSettings): Promise<string> {
+    if (!settings.connection.connectionId || !settings.connection.secretId) {
+        throw new CommunityShareError('connection_required', 'Connect Community Share first.');
+    }
+    const secret = await getSecret(plugin.app, settings.connection.secretId);
+    if (!secret) {
+        throw new CommunityShareError('connection_secret_missing', 'The private connection secret is missing. Reconnect Community Share.');
+    }
+    return secret;
+}
+
+function appendHistory(
+    settings: CommunityShareSettings,
+    entry: CommunitySharePublishHistoryEntry
+): CommunitySharePublishHistoryEntry[] {
+    return [...settings.publishHistory, entry].slice(-25);
 }
 
 async function getOrCreateInstallationId(plugin: RadialTimelinePlugin): Promise<string> {
@@ -242,6 +289,7 @@ export async function publishCommunityShareReport(plugin: RadialTimelinePlugin):
                 action: 'publish',
                 status: 'success',
                 at: parsed.published_at,
+                publishId: parsed.publish_id,
                 versionId: parsed.version_id,
                 publicSlug: parsed.public_slug,
                 message: 'Manual public report published.'
@@ -251,4 +299,127 @@ export async function publishCommunityShareReport(plugin: RadialTimelinePlugin):
     });
     await plugin.saveSettings();
     return parsed;
+}
+
+async function callReportAction(
+    plugin: RadialTimelinePlugin,
+    endpoint: 'community-share-revoke' | 'community-share-delete' | 'community-share-disconnect',
+    body: Record<string, unknown>
+): Promise<ReportActionSuccess> {
+    const response = await requestUrl({
+        url: `${FUNCTIONS_BASE_URL}/${endpoint}`,
+        method: 'POST',
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+        throw: false
+    });
+    const parsed = parseResponseJson(response.text);
+    if (response.status < 200 || response.status >= 300) {
+        const errorBody = parsed as ActivationConfirmError;
+        throw new CommunityShareError(
+            errorBody.error?.code || 'community_share_action_failed',
+            errorBody.error?.message || 'Community Share action failed. Try again.'
+        );
+    }
+    if (!isReportActionSuccess(parsed)) {
+        throw new CommunityShareError('invalid_response', 'Community Share returned an unexpected response.');
+    }
+    return parsed;
+}
+
+export async function revokeCommunityShareReport(plugin: RadialTimelinePlugin): Promise<ReportActionSuccess> {
+    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+    const publishId = latestPublishId(current);
+    if (!publishId) throw new CommunityShareError('publish_required', 'Publish a report before revoking it.');
+    const secret = await getConnectedSecret(plugin, current);
+    const result = await callReportAction(plugin, 'community-share-revoke', {
+        publish_id: publishId,
+        current_secret: secret
+    });
+    const at = result.revoked_at || new Date().toISOString();
+    plugin.settings.communityShare = normalizeCommunityShareSettings({
+        ...current,
+        publishHistory: appendHistory(current, {
+            id: `revoke-${at}`,
+            action: 'revoke',
+            status: 'success',
+            at,
+            publishId,
+            message: 'Public report revoked.'
+        }),
+        lastError: undefined
+    });
+    await plugin.saveSettings();
+    return result;
+}
+
+export async function deleteCommunityShareReport(plugin: RadialTimelinePlugin): Promise<ReportActionSuccess> {
+    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+    const publishId = latestPublishId(current);
+    if (!publishId) throw new CommunityShareError('publish_required', 'Publish a report before deleting shared data.');
+    const secret = await getConnectedSecret(plugin, current);
+    const result = await callReportAction(plugin, 'community-share-delete', {
+        publish_id: publishId,
+        current_secret: secret,
+        confirm: true,
+        delete_reason: 'plugin_user_requested'
+    });
+    const at = result.deleted_at || new Date().toISOString();
+    plugin.settings.communityShare = normalizeCommunityShareSettings({
+        ...current,
+        publishHistory: appendHistory(current, {
+            id: `delete-${at}`,
+            action: 'delete',
+            status: 'success',
+            at,
+            publishId,
+            message: 'Shared report payload deleted.'
+        }),
+        preview: {
+            ...current.preview,
+            status: 'stale',
+            previewHash: undefined,
+            payloadHash: undefined
+        },
+        lastError: undefined
+    });
+    await plugin.saveSettings();
+    return result;
+}
+
+export async function disconnectCommunityShare(plugin: RadialTimelinePlugin): Promise<ReportActionSuccess> {
+    const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+    const secret = await getConnectedSecret(plugin, current);
+    const result = await callReportAction(plugin, 'community-share-disconnect', {
+        connection_id: current.connection.connectionId,
+        current_secret: secret,
+        mode: 'disconnect_only'
+    });
+    const at = result.disconnected_at || new Date().toISOString();
+    if (current.connection.secretId) {
+        await deleteSecret(plugin.app, current.connection.secretId);
+    }
+    plugin.settings.communityShare = normalizeCommunityShareSettings({
+        ...current,
+        enabled: false,
+        connection: {
+            ...current.connection,
+            status: 'disconnected',
+            disconnectedAt: at,
+            secretId: undefined
+        },
+        publishHistory: appendHistory(current, {
+            id: `disconnect-${at}`,
+            action: 'disconnect',
+            status: 'success',
+            at,
+            message: 'Plugin disconnected from Community Share.'
+        }),
+        preview: {
+            status: 'not_generated'
+        },
+        lastError: undefined
+    });
+    await plugin.saveSettings();
+    return result;
 }

@@ -7,7 +7,12 @@ vi.mock('obsidian', () => ({
 import * as obsidian from 'obsidian';
 import { buildDefaultCommunityShareSettings } from './communityShareSettings';
 import { buildCommunitySharePreview } from './communitySharePreview';
-import { confirmCommunityShareActivation, publishCommunityShareReport } from './communityShareClient';
+import {
+    confirmCommunityShareActivation,
+    disconnectCommunityShare,
+    publishCommunityShareReport,
+    revokeCommunityShareReport
+} from './communityShareClient';
 
 function createPluginHarness() {
     const secrets = new Map<string, string>();
@@ -20,6 +25,9 @@ function createPluginHarness() {
                         throw new Error(`Invalid secret id: ${id}`);
                     }
                     secrets.set(id, value);
+                },
+                delete: (id: string) => {
+                    secrets.delete(id);
                 },
                 listSecrets: () => Array.from(secrets.keys())
             }
@@ -149,6 +157,86 @@ describe('Community Share activation client', () => {
         expect(plugin.settings.communityShare.connection.publicSlug).toBe('csr_public');
         expect(plugin.settings.communityShare.preview.status).toBe('stale');
         expect(plugin.settings.communityShare.publishHistory[0]?.versionId).toBe('version-1');
+        expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it('revokes the latest published report using the private connection secret', async () => {
+        const { plugin, secrets } = createPluginHarness();
+        vi.clearAllMocks();
+        const settings = plugin.settings.communityShare;
+        settings.enabled = true;
+        settings.connection = {
+            status: 'connected',
+            connectionId: 'conn-1',
+            profileId: 'profile-1',
+            projectId: 'project-1',
+            secretId: 'rt.community-share.connection.conn-1'
+        };
+        settings.publishHistory.push({
+            id: 'version-1',
+            action: 'publish',
+            status: 'success',
+            at: '2026-06-27T19:00:00.000Z',
+            publishId: 'publish-1',
+            versionId: 'version-1',
+            publicSlug: 'csr_public'
+        });
+        secrets.set('rt-community-share-connection-conn-1', 'rtcs_current-secret');
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl').mockResolvedValue({
+            status: 200,
+            text: JSON.stringify({
+                ok: true,
+                publish_id: 'publish-1',
+                status: 'revoked',
+                revoked_at: '2026-06-27T20:00:00.000Z'
+            })
+        } as never);
+
+        await revokeCommunityShareReport(plugin as never);
+
+        const body = JSON.parse((mockedRequestUrl.mock.calls[0]?.[0] as { body: string }).body) as Record<string, unknown>;
+        expect(body.publish_id).toBe('publish-1');
+        expect(body.current_secret).toBe('rtcs_current-secret');
+        expect(plugin.settings.communityShare.publishHistory.at(-1)?.action).toBe('revoke');
+        expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it('disconnects and removes the local connection secret', async () => {
+        const { plugin, secrets } = createPluginHarness();
+        vi.clearAllMocks();
+        const settings = plugin.settings.communityShare;
+        settings.enabled = true;
+        settings.connection = {
+            status: 'connected',
+            connectionId: 'conn-1',
+            profileId: 'profile-1',
+            projectId: 'project-1',
+            secretId: 'rt.community-share.connection.conn-1'
+        };
+        secrets.set('rt-community-share-connection-conn-1', 'rtcs_current-secret');
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl').mockResolvedValue({
+            status: 200,
+            text: JSON.stringify({
+                ok: true,
+                connection_id: 'conn-1',
+                status: 'disconnected',
+                mode: 'disconnect_only',
+                affected_publishes: 0,
+                disconnected_at: '2026-06-27T20:30:00.000Z'
+            })
+        } as never);
+
+        await disconnectCommunityShare(plugin as never);
+
+        const body = JSON.parse((mockedRequestUrl.mock.calls[0]?.[0] as { body: string }).body) as Record<string, unknown>;
+        expect(body.connection_id).toBe('conn-1');
+        expect(body.current_secret).toBe('rtcs_current-secret');
+        expect(body.mode).toBe('disconnect_only');
+        expect(secrets.has('rt-community-share-connection-conn-1')).toBe(false);
+        expect(plugin.settings.communityShare.enabled).toBe(false);
+        expect(plugin.settings.communityShare.connection.status).toBe('disconnected');
+        expect(plugin.settings.communityShare.connection.secretId).toBeUndefined();
+        expect(plugin.settings.communityShare.publishHistory.at(-1)?.action).toBe('disconnect');
         expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
     });
 });
