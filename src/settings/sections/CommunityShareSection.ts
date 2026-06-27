@@ -184,10 +184,23 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     };
 
     const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}` });
-    const badge = hero.createDiv({ cls: ERT_CLASSES.BADGE_PILL });
+    const badgeRow = hero.createDiv({ cls: ERT_CLASSES.INLINE });
+    const badge = badgeRow.createSpan({ cls: ERT_CLASSES.BADGE_PILL });
     setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), settings.enabled ? 'shield-check' : 'shield');
-    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: `Community Share - ${formatStatus(settings)}` });
-    hero.createEl('h3', {
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: `Community share - ${formatStatus(settings)}` });
+    const wikiLink = badge.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings-Community',
+        cls: ERT_CLASSES.BADGE_PILL_WIKI,
+        attr: {
+            'aria-label': 'Read more in the wiki',
+            'target': '_blank',
+            'rel': 'noopener'
+        }
+    });
+    setIcon(wikiLink, 'external-link');
+
+    const titleRow = hero.createDiv({ cls: 'ert-hero-titleRow' });
+    titleRow.createDiv({
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
         text: 'Community share'
     });
@@ -195,15 +208,20 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
         text: 'Publish a progress report for fellow authors only after you connect this vault, select fields, review the complete preview, and press publish.'
     });
-    const heroFeatures = hero.createEl('ul', { cls: ERT_CLASSES.STACK });
+
+    const heroFeatures = hero.createDiv({
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+    });
+    heroFeatures.createDiv({ text: 'Community highlights:', cls: 'ert-kicker' });
+    const featuresList = heroFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
         { icon: 'lock', text: 'Off by default. Nothing publishes from this vault until you opt in.' },
-        { icon: 'eye', text: 'Complete Preview is the hard gate before any report can leave the plugin.' },
+        { icon: 'eye', text: 'Complete preview is the hard gate before any report can leave the plugin.' },
         { icon: 'file-x', text: 'No manuscript text, scene paths, note paths, raw sessions, or exact public timestamps.' }
     ].forEach(item => {
-        const row = heroFeatures.createEl('li', { cls: ERT_CLASSES.INLINE });
-        setIcon(row.createSpan({ cls: 'ert-feature-icon' }), item.icon);
-        row.createSpan({ text: item.text });
+        const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+        setIcon(li.createSpan({ cls: 'ert-feature-icon' }), item.icon);
+        li.createSpan({ text: item.text });
     });
 
     const activationCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
