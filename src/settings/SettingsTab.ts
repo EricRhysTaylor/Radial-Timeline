@@ -5,6 +5,7 @@ import { renderChronologueSection } from './sections/ChronologueSection';
 import { renderBackdropSection } from './sections/BackdropSection';
 import { renderBeatPropertiesSection } from './sections/BeatPropertiesSection';
 import { renderAuthorProgressSection } from './sections/AuthorProgressSection';
+import { renderCommunityShareSection } from './sections/CommunityShareSection';
 import { renderInquirySection } from './sections/InquirySection';
 import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
@@ -909,6 +910,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const socialIcon = socialTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(socialIcon, 'radio');
         socialTab.createSpan({ text: 'Social', cls: 'ert-settings-tab-label' });
+        const communityTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-community' });
+        const communityIcon = communityTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(communityIcon, 'users');
+        communityTab.createSpan({ text: 'Community', cls: 'ert-settings-tab-label' });
         const inquiryTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const inquiryIcon = inquiryTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(inquiryIcon, 'waves');
@@ -934,6 +939,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const socialContent = containerEl.createDiv({
             cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-scope--settings ert-skin--social ert-density--compact'
         });
+        const communityContent = containerEl.createDiv({
+            cls: 'ert-settings-tab-content ert-settings-community-content ert-ui ert-scope--settings ert-density--compact'
+        });
         const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
         const publishingContent = containerEl.createDiv({
             cls: 'ert-settings-tab-content ert-settings-publishing-content ert-scope--settings'
@@ -947,6 +955,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this._tabEls = {
             core: coreTab,
             social: socialTab,
+            community: communityTab,
             inquiry: inquiryTab,
             publishing: publishingTab,
             ai: aiTab,
@@ -956,6 +965,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this._tabContentEls = {
             core: coreContent,
             social: socialContent,
+            community: communityContent,
             inquiry: inquiryContent,
             publishing: publishingContent,
             ai: aiContent,
@@ -974,6 +984,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         };
         this.plugin.registerDomEvent(coreTab, 'click', () => persistTab('core'));
         this.plugin.registerDomEvent(socialTab, 'click', () => persistTab('social'));
+        this.plugin.registerDomEvent(communityTab, 'click', () => persistTab('community'));
         this.plugin.registerDomEvent(inquiryTab, 'click', () => persistTab('inquiry'));
         this.plugin.registerDomEvent(publishingTab, 'click', () => persistTab('publishing'));
         this.plugin.registerDomEvent(aiTab, 'click', () => persistTab('ai'));
@@ -1131,6 +1142,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         this.renderGuarded('Social settings', socialContent, () => {
             renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
+        });
+
+        this.renderGuarded('Community settings', communityContent, () => {
+            renderCommunityShareSection({ app: this.app, plugin: this.plugin, containerEl: communityContent });
         });
 
         const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });

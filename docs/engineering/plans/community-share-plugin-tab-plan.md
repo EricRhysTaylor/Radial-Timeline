@@ -2,8 +2,30 @@
 
 ## Status
 
-Planning only. Do not implement until the website product contract, backend
-schema plan, and this plugin plan are reviewed together.
+Implementation started. The website product contract, backend schema plan, and
+edge-function pipeline have been reviewed together; the first plugin slice is
+now in place as a local, privacy-first settings surface.
+
+Implemented on 2026-06-27:
+
+- Added a top-level `Community` settings tab between `Social` and `Inquiry`.
+- Added persisted `communityShare` settings types and defaults.
+- Added a `CommunityShareSection` UI shell with master opt-in, launch audience
+  and tier controls, field-by-field opt-ins, Complete Preview checklist, and
+  publish/revoke/delete/disconnect safety controls.
+- Added focused settings normalizer and tab-wiring tests.
+- Kept activation, preview generation, publish, revoke, delete, and disconnect
+  network calls disabled pending the next implementation slice.
+- Verified with `npx vitest run src/communityShare/communityShareSettings.test.ts
+  src/settings/SettingsTab.test.ts` and `SKIP_BACKUP=1 npm run build`.
+
+Still pending:
+
+- Website-generated activation token paste/confirm flow.
+- Local secret storage for the returned connection secret.
+- Complete Preview payload/hash generation.
+- Manual publish/revoke/delete/disconnect calls to the live edge functions.
+- Broader UI/behavior tests once activation and publish actions are live.
 
 Community Share must ship as an explicit author publish flow, not as background
 sync. The launch contract is:
@@ -44,22 +66,25 @@ Reasoning:
   setup surface that enables it. Manual publish belongs next to Complete Preview
   status, not in a separate hidden modal path.
 
-Later implementation targets:
+Implementation targets:
 
 - `src/settings/settingsAnchors.ts`
-  - Add `community` to `RadialTimelineSettingsTabId`.
+  - Done: added `community` to `RadialTimelineSettingsTabId`.
 - `src/types/settings.ts`
-  - Add `community` to `SettingsTabId`.
-  - Add `communityShare?: CommunityShareSettings`.
+  - Done: added `community` to `SettingsTabId`.
+  - Done: added `communityShare?: CommunityShareSettings`.
 - `src/settings/SettingsTab.ts`
-  - Add the tab button, tab content container, persistence wiring, and guarded
+  - Done: added the tab button, tab content container, persistence wiring, and guarded
     render call.
-  - Suggested tab order: `Core`, `Social`, `Community`, `Inquiry`, `Publish`,
+  - Current tab order: `Core`, `Social`, `Community`, `Inquiry`, `Publish`,
     `AI`, `Advanced`, `PRO`.
 - `src/settings/sections/CommunityShareSection.ts`
-  - New renderer for the Community tab.
+  - Done: new renderer for the Community tab.
+- `src/communityShare/communityShareSettings.ts`
+  - Done: settings defaults and normalizer.
 - `src/i18n/locales/en.ts`
-  - Add all user-facing copy under `settings.communityShare`.
+  - Pending: move first-slice user-facing copy under `settings.communityShare`
+    once the activation/publish copy stabilizes.
 
 Use the existing ERT settings shell:
 

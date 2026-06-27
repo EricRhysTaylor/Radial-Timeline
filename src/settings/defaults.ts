@@ -10,6 +10,7 @@ import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { DEFAULT_CUSTOM_BEAT_SYSTEM_ID, buildDefaultCustomBeatSystem, getCustomBeatConfigKey } from '../utils/beatSystemState';
 import { PLOT_SYSTEM_NAMES } from '../utils/beatsSystems';
 import { buildDefaultAuthorProgressSettings } from '../authorProgress/authorProgressConfig';
+import { buildDefaultCommunityShareSettings } from '../communityShare/communityShareSettings';
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     books: [],
@@ -266,4 +267,5 @@ Chapter:`,
 
     // Author Progress Report (APR)
     authorProgress: buildDefaultAuthorProgressSettings(),
+    communityShare: buildDefaultCommunityShareSettings(),
 };

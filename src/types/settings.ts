@@ -865,7 +865,76 @@ export interface PandocLayoutTemplate {
     designedSpec?: DesignedStyleSpec;
 }
 
-export type SettingsTabId = 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro';
+export type SettingsTabId = 'core' | 'social' | 'community' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro';
+
+export type CommunityShareConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'paused' | 'revoked';
+export type CommunityShareAudience = 'private_draft' | 'public' | 'followers' | 'trusted_authors' | 'private_link';
+export type CommunityShareTier = 0 | 1 | 2 | 3 | 4 | 5;
+export type CommunityShareReportPeriod = 'weekly' | 'monthly' | 'manual';
+export type CommunityShareFieldKey =
+    | 'projectShell'
+    | 'genre'
+    | 'subgenre'
+    | 'customGenre'
+    | 'projectStage'
+    | 'publicDescription'
+    | 'progressPercent'
+    | 'weeklyWords'
+    | 'weeklyMinutes'
+    | 'streak'
+    | 'sessionCount'
+    | 'aprCard'
+    | 'workingNow';
+
+export type CommunityShareFieldPolicy = Record<CommunityShareFieldKey, boolean>;
+
+export interface CommunityShareConnectionSettings {
+    status: CommunityShareConnectionStatus;
+    connectionId?: string;
+    activationTokenId?: string;
+    profileId?: string;
+    projectId?: string;
+    publicSlug?: string;
+    connectedAt?: string;
+    lastSyncedAt?: string;
+    disconnectedAt?: string;
+    secretId?: string;
+}
+
+export interface CommunitySharePreviewState {
+    status: 'not_generated' | 'ready' | 'stale' | 'blocked';
+    generatedAt?: string;
+    previewHash?: string;
+    payloadHash?: string;
+    reportPeriod?: CommunityShareReportPeriod;
+    summary?: string;
+}
+
+export interface CommunitySharePublishHistoryEntry {
+    id: string;
+    action: 'preview_generated' | 'publish' | 'revoke' | 'delete' | 'disconnect' | 'pause' | 'resume';
+    status: 'success' | 'failed' | 'blocked';
+    at: string;
+    message?: string;
+    versionId?: string;
+    publicSlug?: string;
+}
+
+export interface CommunityShareSettings {
+    schemaVersion: 1;
+    enabled: boolean;
+    tier: CommunityShareTier;
+    audience: CommunityShareAudience;
+    manualPublishEnabled: boolean;
+    scheduledPublishEnabled: boolean;
+    workingNowEnabled: boolean;
+    fieldPolicy: CommunityShareFieldPolicy;
+    redactionPolicy: Record<string, boolean>;
+    connection: CommunityShareConnectionSettings;
+    preview: CommunitySharePreviewState;
+    publishHistory: CommunitySharePublishHistoryEntry[];
+    lastError?: string;
+}
 
 export interface RadialTimelineSettings {
     books: BookProfile[];
@@ -1076,6 +1145,9 @@ export interface RadialTimelineSettings {
 
     // Social / authorProgress settings
     authorProgress?: AuthorProgressSettings;
+
+    // Community Share settings
+    communityShare?: CommunityShareSettings;
 
     // Pro experience (visual/hero activation)
 

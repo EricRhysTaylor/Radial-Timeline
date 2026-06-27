@@ -22,6 +22,20 @@ describe('AI settings tab vocabulary', () => {
 });
 
 describe('settings section navigation anchors', () => {
+    it('wires Community as its own settings tab between Social and Inquiry', () => {
+        const settingsSource = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
+        const anchorsSource = readFileSync(resolve(process.cwd(), 'src/settings/settingsAnchors.ts'), 'utf8');
+
+        expect(anchorsSource.includes("'community'")).toBe(true);
+        expect(settingsSource.indexOf("socialTab.createSpan({ text: 'Social'")).toBeLessThan(
+            settingsSource.indexOf("communityTab.createSpan({ text: 'Community'")
+        );
+        expect(settingsSource.indexOf("communityTab.createSpan({ text: 'Community'")).toBeLessThan(
+            settingsSource.indexOf("inquiryTab.createSpan({ text: 'Inquiry'")
+        );
+        expect(settingsSource.includes("renderCommunityShareSection({ app: this.app, plugin: this.plugin, containerEl: communityContent })")).toBe(true);
+    });
+
     it('uses concise Core quick-link labels', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
         expect(source.includes("{ label: 'Beats', target: beatsStorySection }")).toBe(true);
