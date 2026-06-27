@@ -27,11 +27,11 @@ describe('settings section navigation anchors', () => {
         const anchorsSource = readFileSync(resolve(process.cwd(), 'src/settings/settingsAnchors.ts'), 'utf8');
 
         expect(anchorsSource.includes("'community'")).toBe(true);
-        expect(settingsSource.indexOf("socialTab.createSpan({ text: 'Social'")).toBeLessThan(
-            settingsSource.indexOf("communityTab.createSpan({ text: 'Community'")
+        expect(settingsSource.indexOf("socialTab.createSpan({ text: 'Soc'")).toBeLessThan(
+            settingsSource.indexOf("communityTab.createSpan({ text: 'Com'")
         );
-        expect(settingsSource.indexOf("communityTab.createSpan({ text: 'Community'")).toBeLessThan(
-            settingsSource.indexOf("inquiryTab.createSpan({ text: 'Inquiry'")
+        expect(settingsSource.indexOf("communityTab.createSpan({ text: 'Com'")).toBeLessThan(
+            settingsSource.indexOf("inquiryTab.createSpan({ text: 'Inq'")
         );
         expect(settingsSource.includes("renderCommunityShareSection({ app: this.app, plugin: this.plugin, containerEl: communityContent })")).toBe(true);
     });

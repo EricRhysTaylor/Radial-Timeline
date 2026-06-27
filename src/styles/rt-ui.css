@@ -1784,6 +1784,7 @@
 
 .ert-ui .ert-badgePill {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: var(--ert-gap-xs);
   padding: var(--ert-gap-xs) var(--ert-pad-cozy);

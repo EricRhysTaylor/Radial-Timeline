@@ -156,7 +156,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     const hasPublishedReport = settings.publishHistory.some(entry => entry.action === 'publish' && entry.status === 'success' && Boolean(entry.publishId));
 
     const section = containerEl.createDiv({
-        cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.STACK} ${ERT_CLASSES.DENSITY_COMPACT}`
+        cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.STACK}`
     });
 
     const save = async (next: Partial<CommunityShareSettings>) => {

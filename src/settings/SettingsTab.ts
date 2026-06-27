@@ -904,24 +904,24 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const coreTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const coreIcon = coreTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(coreIcon, 'settings');
-        coreTab.createSpan({ text: 'Core', cls: 'ert-settings-tab-label' });
+        coreTab.createSpan({ text: 'Cor', cls: 'ert-settings-tab-label' });
 
         const socialTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-social' });
         const socialIcon = socialTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(socialIcon, 'radio');
-        socialTab.createSpan({ text: 'Social', cls: 'ert-settings-tab-label' });
+        socialTab.createSpan({ text: 'Soc', cls: 'ert-settings-tab-label' });
         const communityTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-community' });
         const communityIcon = communityTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(communityIcon, 'users');
-        communityTab.createSpan({ text: 'Community', cls: 'ert-settings-tab-label' });
+        communityTab.createSpan({ text: 'Com', cls: 'ert-settings-tab-label' });
         const inquiryTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const inquiryIcon = inquiryTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(inquiryIcon, 'waves');
-        inquiryTab.createSpan({ text: 'Inquiry', cls: 'ert-settings-tab-label' });
+        inquiryTab.createSpan({ text: 'Inq', cls: 'ert-settings-tab-label' });
         const publishingTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-publishing' });
         const publishingIcon = publishingTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(publishingIcon, 'book-open-text');
-        publishingTab.createSpan({ text: 'Publish', cls: 'ert-settings-tab-label' });
+        publishingTab.createSpan({ text: 'Pub', cls: 'ert-settings-tab-label' });
         const aiTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const aiIcon = aiTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(aiIcon, 'cpu');
@@ -929,7 +929,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const advancedTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const advancedIcon = advancedTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(advancedIcon, 'pyramid');
-        advancedTab.createSpan({ text: 'Advanced', cls: 'ert-settings-tab-label' });
+        advancedTab.createSpan({ text: 'Adv', cls: 'ert-settings-tab-label' });
         const proTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-pro' });
         const proIcon = proTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(proIcon, 'signature');
@@ -940,7 +940,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-scope--settings ert-skin--social ert-density--compact'
         });
         const communityContent = containerEl.createDiv({
-            cls: 'ert-settings-tab-content ert-settings-community-content ert-ui ert-scope--settings ert-density--compact'
+            cls: 'ert-settings-tab-content ert-settings-community-content ert-ui ert-scope--settings'
         });
         const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
         const publishingContent = containerEl.createDiv({
