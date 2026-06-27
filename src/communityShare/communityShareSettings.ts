@@ -9,36 +9,48 @@ import type {
 export const COMMUNITY_SHARE_SCHEMA_VERSION = 1;
 
 export const COMMUNITY_SHARE_FIELD_KEYS: CommunityShareFieldKey[] = [
-    'projectShell',
-    'genre',
-    'subgenre',
-    'customGenre',
-    'projectStage',
-    'publicDescription',
-    'progressPercent',
-    'weeklyWords',
-    'weeklyMinutes',
-    'streak',
-    'sessionCount',
-    'aprCard',
-    'workingNow'
+    'project.title',
+    'project.alias',
+    'project.description',
+    'project.status',
+    'project.genre',
+    'project.custom_genre_label',
+    'activity.report_period',
+    'activity.writing_days',
+    'activity.minutes_total',
+    'activity.words_added',
+    'activity.session_count',
+    'activity.mode_mix',
+    'activity.scenes_completed_by_stage',
+    'activity.stage_mix',
+    'activity.completed_scene_count',
+    'activity.revised_scene_count',
+    'activity.streak',
+    'structure.real_scene_titles',
+    'activity.exact_session_timestamps'
 ];
 
 export function buildDefaultCommunityShareFieldPolicy(): CommunityShareFieldPolicy {
     return {
-        projectShell: false,
-        genre: false,
-        subgenre: false,
-        customGenre: false,
-        projectStage: false,
-        publicDescription: false,
-        progressPercent: false,
-        weeklyWords: false,
-        weeklyMinutes: false,
-        streak: false,
-        sessionCount: false,
-        aprCard: false,
-        workingNow: false
+        'project.title': false,
+        'project.alias': false,
+        'project.description': false,
+        'project.status': false,
+        'project.genre': false,
+        'project.custom_genre_label': false,
+        'activity.report_period': false,
+        'activity.writing_days': false,
+        'activity.minutes_total': false,
+        'activity.words_added': false,
+        'activity.session_count': false,
+        'activity.mode_mix': false,
+        'activity.scenes_completed_by_stage': false,
+        'activity.stage_mix': false,
+        'activity.completed_scene_count': false,
+        'activity.revised_scene_count': false,
+        'activity.streak': false,
+        'structure.real_scene_titles': false,
+        'activity.exact_session_timestamps': false
     };
 }
 

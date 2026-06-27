@@ -5,6 +5,7 @@ import {
     normalizeCommunityShareSettings
 } from '../../communityShare/communityShareSettings';
 import { CommunityShareError, confirmCommunityShareActivation } from '../../communityShare/communityShareClient';
+import { buildCommunitySharePreview } from '../../communityShare/communitySharePreview';
 import type {
     CommunityShareAudience,
     CommunityShareFieldKey,
@@ -20,57 +21,82 @@ export interface CommunityShareSectionProps {
 }
 
 const FIELD_COPY: Record<CommunityShareFieldKey, { label: string; desc: string; future?: boolean }> = {
-    projectShell: {
-        label: 'Project shell',
-        desc: 'Public book label, genre labels, status label, and public description.'
+    'project.title': {
+        label: 'Project title',
+        desc: 'The public title or alias chosen for the website project.'
     },
-    genre: {
+    'project.alias': {
+        label: 'Project alias',
+        desc: 'A shorter public label when you do not want to use the local book title.'
+    },
+    'project.description': {
+        label: 'Project description',
+        desc: 'The public description from the active book profile. Never manuscript text.'
+    },
+    'project.status': {
+        label: 'Project status',
+        desc: 'Drafting, revising, querying, publishing, or another author-facing stage.'
+    },
+    'project.genre': {
         label: 'Genre',
         desc: 'The broad genre chosen for this project.'
     },
-    subgenre: {
-        label: 'Subgenre',
-        desc: 'A narrower classification when available.'
-    },
-    customGenre: {
+    'project.custom_genre_label': {
         label: 'Custom genre note',
         desc: 'Optional custom text for projects that do not fit the tree.'
     },
-    projectStage: {
-        label: 'Project stage',
-        desc: 'Drafting, revising, querying, publishing, or another author-facing stage.'
+    'activity.report_period': {
+        label: 'Report period',
+        desc: 'A coarse report-period label such as the last 7 days.'
     },
-    publicDescription: {
-        label: 'Public description',
-        desc: 'The description from the active book profile. Never manuscript text.'
+    'activity.writing_days': {
+        label: 'Writing days',
+        desc: 'Number of writing days in the report period.'
     },
-    progressPercent: {
-        label: 'Progress percent',
-        desc: 'A rounded project progress signal from your existing RT progress model.'
+    'activity.minutes_total': {
+        label: 'Minutes this week',
+        desc: 'Rounded active writing time only. No exact timestamps.'
     },
-    weeklyWords: {
+    'activity.words_added': {
         label: 'Words this week',
         desc: 'Aggregated writing-session words only. No scene paths or raw sessions.'
     },
-    weeklyMinutes: {
-        label: 'Minutes this week',
-        desc: 'Aggregated active writing time only. No exact timestamps.'
+    'activity.session_count': {
+        label: 'Session count',
+        desc: 'A bucketed count for the report period. Raw session rows stay local.'
     },
-    streak: {
+    'activity.mode_mix': {
+        label: 'Mode mix',
+        desc: 'Coarse percentage mix for drafting, revising, editing, and planning.'
+    },
+    'activity.scenes_completed_by_stage': {
+        label: 'Completed scenes by stage',
+        desc: 'Aggregate scene completions grouped by publish stage.'
+    },
+    'activity.stage_mix': {
+        label: 'Stage mix',
+        desc: 'Aggregate stage mix for public progress context.'
+    },
+    'activity.completed_scene_count': {
+        label: 'Completed scene count',
+        desc: 'Aggregate completed-scene total for the report period.'
+    },
+    'activity.revised_scene_count': {
+        label: 'Revised scene count',
+        desc: 'Aggregate revised-scene total for the report period.'
+    },
+    'activity.streak': {
         label: 'Streak',
         desc: 'A public-friendly streak label calculated from local sessions.'
     },
-    sessionCount: {
-        label: 'Session count',
-        desc: 'Aggregated count for the report period. Raw session rows stay local.'
+    'structure.real_scene_titles': {
+        label: 'Real scene titles',
+        desc: 'Sensitive structure field. Future only; excluded from launch.',
+        future: true
     },
-    aprCard: {
-        label: 'APR card',
-        desc: 'A public Author Progress Report visual generated from opted-in fields.'
-    },
-    workingNow: {
-        label: 'Working Now',
-        desc: 'Presence and radial timeline activity. Future only; excluded from launch.',
+    'activity.exact_session_timestamps': {
+        label: 'Exact session timestamps',
+        desc: 'Sensitive timing field. Future only; excluded from launch.',
         future: true
     }
 };
@@ -126,12 +152,23 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     });
 
     const save = async (next: Partial<CommunityShareSettings>) => {
+        const invalidatesPreview = next.fieldPolicy !== undefined
+            || next.audience !== undefined
+            || next.tier !== undefined
+            || next.manualPublishEnabled !== undefined;
         plugin.settings.communityShare = normalizeCommunityShareSettings({
             ...settings,
             ...next,
             fieldPolicy: next.fieldPolicy ?? settings.fieldPolicy,
             connection: next.connection ?? settings.connection,
-            preview: next.preview ?? settings.preview
+            preview: next.preview ?? (invalidatesPreview
+                ? {
+                    ...settings.preview,
+                    status: settings.preview.status === 'not_generated' ? 'not_generated' : 'stale',
+                    previewHash: undefined,
+                    payloadHash: undefined
+                }
+                : settings.preview)
         });
         await plugin.saveSettings();
         containerEl.empty();
@@ -321,13 +358,54 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
             ? `Preview ready: ${settings.preview.generatedAt ?? 'time not recorded'}`
             : 'Preview not generated yet.'
     });
+    if (settings.preview.summary) {
+        previewFrame.createDiv({ text: settings.preview.summary });
+    }
+    if (settings.preview.previewHash) {
+        previewFrame.createDiv({ text: `Preview hash: ${settings.preview.previewHash.slice(0, 12)}...` });
+    }
 
+    const canGeneratePreview = settings.enabled
+        && isConnected
+        && settings.audience === 'public'
+        && settings.tier > 0
+        && settings.tier < 5
+        && selectedFields.length > 0;
     new Setting(previewCard)
         .setName('Generate preview')
-        .setDesc('Will build the hash-checked preview before publishing. Disabled until the network slice lands.')
+        .setDesc(canGeneratePreview ? 'Builds the hash-checked preview from public fields only.' : 'Requires an active connection, public audience, launch tier, and at least one selected field.')
         .addButton(button => button
             .setButtonText('Generate Complete Preview')
-            .setDisabled(true));
+            .setDisabled(!canGeneratePreview)
+            .onClick(async () => {
+                button.setDisabled(true);
+                button.setButtonText('Generating...');
+                try {
+                    const preview = await buildCommunitySharePreview(plugin);
+                    await save({
+                        preview: {
+                            status: 'ready',
+                            generatedAt: new Date().toISOString(),
+                            previewHash: preview.previewHash,
+                            payloadHash: preview.payloadHash,
+                            reportPeriod: 'weekly',
+                            summary: preview.summary
+                        },
+                        lastError: undefined
+                    });
+                    new Notice('Complete Preview generated. Review it before publishing.');
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Could not generate the Complete Preview.';
+                    await save({
+                        preview: {
+                            ...settings.preview,
+                            status: 'blocked'
+                        },
+                        lastError: message
+                    });
+                    new Notice(message);
+                }
+            }));
 
     const actionCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
     actionCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Publish and Safety' });

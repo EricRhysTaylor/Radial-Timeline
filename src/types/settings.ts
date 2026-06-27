@@ -872,19 +872,25 @@ export type CommunityShareAudience = 'private_draft' | 'public' | 'followers' | 
 export type CommunityShareTier = 0 | 1 | 2 | 3 | 4 | 5;
 export type CommunityShareReportPeriod = 'weekly' | 'monthly' | 'manual';
 export type CommunityShareFieldKey =
-    | 'projectShell'
-    | 'genre'
-    | 'subgenre'
-    | 'customGenre'
-    | 'projectStage'
-    | 'publicDescription'
-    | 'progressPercent'
-    | 'weeklyWords'
-    | 'weeklyMinutes'
-    | 'streak'
-    | 'sessionCount'
-    | 'aprCard'
-    | 'workingNow';
+    | 'project.title'
+    | 'project.alias'
+    | 'project.description'
+    | 'project.status'
+    | 'project.genre'
+    | 'project.custom_genre_label'
+    | 'activity.report_period'
+    | 'activity.writing_days'
+    | 'activity.minutes_total'
+    | 'activity.words_added'
+    | 'activity.session_count'
+    | 'activity.mode_mix'
+    | 'activity.scenes_completed_by_stage'
+    | 'activity.stage_mix'
+    | 'activity.completed_scene_count'
+    | 'activity.revised_scene_count'
+    | 'activity.streak'
+    | 'structure.real_scene_titles'
+    | 'activity.exact_session_timestamps';
 
 export type CommunityShareFieldPolicy = Record<CommunityShareFieldKey, boolean>;
 

@@ -28,8 +28,8 @@ describe('Community Share settings', () => {
             workingNowEnabled: true,
             fieldPolicy: {
                 ...buildDefaultCommunityShareSettings().fieldPolicy,
-                projectShell: true,
-                workingNow: true
+                'project.title': true,
+                'activity.exact_session_timestamps': true
             }
         });
 
@@ -38,8 +38,8 @@ describe('Community Share settings', () => {
         expect(settings.audience).toBe('followers');
         expect(settings.scheduledPublishEnabled).toBe(false);
         expect(settings.workingNowEnabled).toBe(false);
-        expect(settings.fieldPolicy.projectShell).toBe(true);
-        expect(settings.fieldPolicy.workingNow).toBe(true);
+        expect(settings.fieldPolicy['project.title']).toBe(true);
+        expect(settings.fieldPolicy['activity.exact_session_timestamps']).toBe(true);
     });
 
     it('clips publish history to a small local audit tail', () => {

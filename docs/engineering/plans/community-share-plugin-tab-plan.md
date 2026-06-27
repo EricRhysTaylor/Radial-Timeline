@@ -19,16 +19,20 @@ Implemented on 2026-06-27:
   sent only as a SHA-256 hash.
 - Stored the returned connection secret only in Obsidian Secret Storage; local
   settings keep only non-secret metadata and a secret id reference.
+- Aligned plugin field policy keys with the backend public report allow-list
+  (`project.*`, `activity.*`, sensitive future fields disabled).
+- Added Complete Preview generation with canonical payload/preview hashes,
+  public book metadata only, and aggregate writing-range stats.
 - Added focused settings normalizer and tab-wiring tests.
-- Kept preview generation, publish, revoke, delete, and disconnect
-  network calls disabled pending the next implementation slice.
+- Kept publish, revoke, delete, and disconnect network calls disabled pending
+  the next implementation slice.
 - Verified with `npx vitest run src/communityShare/communityShareSettings.test.ts
-  src/communityShare/communityShareClient.test.ts src/settings/SettingsTab.test.ts`
+  src/communityShare/communityShareClient.test.ts
+  src/communityShare/communitySharePreview.test.ts src/settings/SettingsTab.test.ts`
   and `SKIP_BACKUP=1 npm run build`.
 
 Still pending:
 
-- Complete Preview payload/hash generation.
 - Manual publish/revoke/delete/disconnect calls to the live edge functions.
 - Broader UI/behavior tests once activation and publish actions are live.
 
