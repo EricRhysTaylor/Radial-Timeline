@@ -4,6 +4,7 @@
 *   [Settings](Settings)
     *   [Core](Settings-Core)
     *   [Social](Author-Progress-Report)
+    *   [Community](Settings-Community)
     *   [Inquiry](Settings-Inquiry)
     *   [Publish](Publishing)
     *   [AI](Settings-AI)
