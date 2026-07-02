@@ -1,4 +1,4 @@
-import { App, Notice, Setting, setIcon } from 'obsidian';
+import { App, ButtonComponent, Notice, Setting, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import {
     COMMUNITY_SHARE_FIELD_KEYS,
@@ -148,6 +148,15 @@ function getSelectedFieldLabels(settings: CommunityShareSettings): string[] {
         .map(key => FIELD_COPY[key].label);
 }
 
+function formatConnectedAt(value?: string): string {
+    if (!value) return '';
+    try {
+        return new Date(value).toLocaleString();
+    } catch {
+        return value;
+    }
+}
+
 export function renderCommunityShareSection({ plugin, containerEl }: CommunityShareSectionProps): void {
     const settings = getCommunitySettings(plugin);
     const activeBook = getActiveBook(plugin);
@@ -238,51 +247,76 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
             .setValue(settings.enabled)
             .onChange(value => save({ enabled: value })));
 
-    new Setting(activationCard)
-        .setName('Connection status')
-        .setDesc(settings.connection.publicSlug ? `Public slug: ${settings.connection.publicSlug}` : 'No website connection yet.');
-
-    let tokenValue = '';
-    let connectButton: import('obsidian').ButtonComponent | null = null;
-    new Setting(activationCard)
-        .setName('Connection code')
-        .setDesc('Connecting does not publish progress. It only lets this vault talk to your saved community profile.')
-        .addText(text => {
-            text.setPlaceholder('Connection code from radialtimeline.com');
-            text.onChange(value => {
-                tokenValue = value.trim();
-                connectButton?.setDisabled(tokenValue.length < 16);
-            });
-        })
-        .addButton(button => {
-            connectButton = button;
-            button
-                .setButtonText('Connect')
-                .setDisabled(true)
-                .onClick(async () => {
-                    button.setDisabled(true);
-                    button.setButtonText('Connecting...');
-                    try {
-                        const result = await confirmCommunityShareActivation(plugin, tokenValue);
-                        new Notice(`Community Share connected to ${result.project_title || 'your website project'}.`);
-                        containerEl.empty();
-                        renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
-                    } catch (error) {
-                        const message = error instanceof CommunityShareError
-                            ? error.message
-                            : 'Community connection failed. Generate a new code and try again.';
-                        const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
-                        plugin.settings.communityShare = normalizeCommunityShareSettings({
-                            ...current,
-                            lastError: message
-                        });
-                        void plugin.saveSettings();
-                        new Notice(message);
-                        button.setButtonText('Connect');
-                        button.setDisabled(tokenValue.length < 16);
-                    }
+    const renderConnectionCodeSetting = (targetEl: HTMLElement): void => {
+        let tokenValue = '';
+        let connectButton: ButtonComponent | null = null;
+        new Setting(targetEl)
+            .setName('Connection code')
+            .setDesc('Connecting does not publish progress. It only lets this vault talk to your saved community profile.')
+            .addText(text => {
+                text.setPlaceholder('Connection code from radialtimeline.com');
+                text.onChange(value => {
+                    tokenValue = value.trim();
+                    connectButton?.setDisabled(tokenValue.length < 16);
                 });
-        });
+            })
+            .addButton(button => {
+                connectButton = button;
+                button
+                    .setButtonText('Connect')
+                    .setDisabled(true)
+                    .onClick(async () => {
+                        button.setDisabled(true);
+                        button.setButtonText('Connecting...');
+                        try {
+                            const result = await confirmCommunityShareActivation(plugin, tokenValue);
+                            new Notice(`Community Share connected to ${result.project_title || 'your website project'}.`);
+                            containerEl.empty();
+                            renderCommunityShareSection({ app: plugin.app, plugin, containerEl });
+                        } catch (error) {
+                            const message = error instanceof CommunityShareError
+                                ? error.message
+                                : 'Community connection failed. Generate a new code and try again.';
+                            const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
+                            plugin.settings.communityShare = normalizeCommunityShareSettings({
+                                ...current,
+                                lastError: message
+                            });
+                            void plugin.saveSettings();
+                            new Notice(message);
+                            button.setButtonText('Connect');
+                            button.setDisabled(tokenValue.length < 16);
+                        }
+                    });
+            });
+    };
+
+    if (isConnected) {
+        const connectedAt = formatConnectedAt(settings.connection.connectedAt);
+        const desc = connectedAt
+            ? `Linked to your Community profile. Connected ${connectedAt}.`
+            : 'Linked to your Community profile.';
+        const replacementContainer = activationCard.createDiv({ cls: 'ert-hidden' });
+
+        new Setting(activationCard)
+            .setName('Active connection')
+            .setDesc(desc)
+            .addButton(button => button
+                .setIcon('badge-check')
+                .setButtonText('Active connection')
+                .onClick(() => {
+                    const willShow = replacementContainer.classList.contains('ert-hidden');
+                    replacementContainer.classList.toggle('ert-hidden', !willShow);
+                    button.setIcon(willShow ? 'x' : 'badge-check');
+                    button.setButtonText(willShow ? 'Cancel replace' : 'Active connection');
+                }));
+        renderConnectionCodeSetting(replacementContainer);
+    } else {
+        new Setting(activationCard)
+            .setName('Connection status')
+            .setDesc('No website connection yet.');
+        renderConnectionCodeSetting(activationCard);
+    }
 
     if (settings.lastError) {
         activationCard.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: settings.lastError });
