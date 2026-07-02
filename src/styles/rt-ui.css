@@ -5725,6 +5725,16 @@
   flex-shrink: 0;
 }
 
+.ert-ui.ert-scope--settings button.ert-btn--connected {
+  color: color-mix(in srgb, var(--color-green) 76%, var(--text-normal));
+  background: color-mix(in srgb, var(--color-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-green) 34%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings button.ert-btn--connected:hover {
+  background: color-mix(in srgb, var(--color-green) 20%, transparent);
+}
+
 .ert-ui.ert-scope--modal button.ert-modal-choice,
 .ert-ui.ert-scope--modal a.ert-modal-choice {
   appearance: none;

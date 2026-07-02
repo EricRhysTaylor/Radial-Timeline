@@ -238,15 +238,22 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         new Setting(activationCard)
             .setName('Active connection')
             .setDesc(desc)
-            .addButton(button => button
-                .setIcon('badge-check')
-                .setButtonText('Active connection')
-                .onClick(() => {
+            .addButton(button => {
+                const renderState = (connected: boolean) => {
+                    button.buttonEl.empty();
+                    const iconEl = button.buttonEl.createSpan();
+                    setIcon(iconEl, connected ? 'plug-zap' : 'x');
+                    button.buttonEl.createSpan({ text: connected ? 'Active connection' : 'Cancel replace' });
+                    button.buttonEl.toggleClass('ert-btn--connected', connected);
+                };
+                button.buttonEl.addClass('ert-btn--icon-left');
+                renderState(true);
+                button.onClick(() => {
                     const willShow = replacementContainer.classList.contains('ert-hidden');
                     replacementContainer.classList.toggle('ert-hidden', !willShow);
-                    button.setIcon(willShow ? 'x' : 'badge-check');
-                    button.setButtonText(willShow ? 'Cancel replace' : 'Active connection');
-                }));
+                    renderState(!willShow);
+                });
+            });
         renderConnectionCodeSetting(replacementContainer);
     } else {
         new Setting(activationCard)
