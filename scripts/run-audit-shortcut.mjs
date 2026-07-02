@@ -3,8 +3,10 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-// Each mode maps to a run-gates profile, so the cadence tiers run genuinely
-// different gate sets (daily = fast core; friday/deep = full suite).
+// Each mode maps to a run-gates profile. Tiers are nested supersets:
+// daily = fast core; friday adds release-readiness (i18n bundle checks);
+// deep adds debt/drift/watch gates (fallback debt, pricing drift, Obsidian
+// version watch).
 const MODES = {
   daily: {
     label: 'Daily Control Tower',

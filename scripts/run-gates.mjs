@@ -106,26 +106,59 @@ const steps = [
         label: 'Unit tests',
         command: 'npm run test:quiet',
     },
+    // Steps below are profile-scoped extras (release/deep only). They are NOT
+    // part of the default `npm run gates` set that every backup runs.
+    {
+        id: 'i18n-release',
+        label: 'i18n release readiness',
+        command: 'node scripts/check-i18n-release.mjs',
+    },
+    {
+        id: 'fallback-gate',
+        label: 'Fallback debt',
+        command: 'node scripts/fallback-gate.mjs --quiet',
+    },
+    {
+        // Cross-check layer only (--no-llm): deterministic, no API key. The
+        // 30-day staleness threshold failing here is intentional — biweekly
+        // deep audit is the cadence where "re-verify pricing" belongs (unlike
+        // validate-pricing in a per-stop hook; see note above).
+        id: 'pricing-drift',
+        label: 'Pricing drift',
+        command: 'node scripts/check-pricing-drift.mjs --no-llm --check',
+    },
+    {
+        // Informational: warns on newer Obsidian versions, never fails
+        // (network errors degrade to a warning inside the script).
+        id: 'obsidian-version',
+        label: 'Obsidian version watch',
+        command: 'node scripts/check-obsidian-version.mjs',
+    },
 ];
 
-// Gate profiles select WHICH steps run for a given cadence, so daily/release/deep
-// are genuinely different rather than the same list under different labels.
-// `'all'` runs every step (default for `npm run gates` / `npm run backup`).
+// Gate profiles are nested supersets: quick ⊂ daily ⊂ all ⊂ release ⊂ deep.
+// `all` (the default for `npm run gates` / `npm run backup`) is the core set;
+// release adds bundle-readiness checks; deep adds debt/drift/watch checks.
+const CORE = [
+    'model-drift', 'api-features', 'model-coverage', 'css-duplicates-pre',
+    'build', 'quality', 'obsidian-review', 'lint-obsidian-enforced',
+    'lint-obsidian', 'css-drift', 'compliance', 'spec-coverage', 'tests',
+];
+const RELEASE = [...CORE, 'i18n-release'];
 const PROFILES = {
     quick: ['css-duplicates-pre', 'build', 'quality', 'tests'],
     daily: ['css-duplicates-pre', 'build', 'quality', 'obsidian-review', 'lint-obsidian-enforced', 'lint-obsidian', 'tests'],
-    release: 'all',
-    deep: 'all',
+    all: CORE,
+    release: RELEASE,
+    deep: [...RELEASE, 'fallback-gate', 'pricing-drift', 'obsidian-version'],
 };
 
 function selectSteps() {
-    if (!profileArg) return steps;
-    const profile = PROFILES[profileArg];
+    const profile = PROFILES[profileArg || 'all'];
     if (!profile) {
         console.error(`Unknown gate profile: ${profileArg}. Use one of: ${Object.keys(PROFILES).join(', ')}.`);
         process.exit(1);
     }
-    if (profile === 'all') return steps;
     const ids = new Set(profile);
     return steps.filter(step => ids.has(step.id));
 }
