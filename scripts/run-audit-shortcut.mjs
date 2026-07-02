@@ -31,7 +31,9 @@ const MODES = {
 
 const modeKey = (process.argv[2] || '').toLowerCase();
 const mode = MODES[modeKey];
-const shouldRecord = process.argv.includes('--record');
+// Recording (backup note + push) is the default so the control-tower
+// reminder text stays true; pass --no-record for a dry run.
+const shouldRecord = !process.argv.includes('--no-record');
 
 if (!mode) {
   console.error('[audit] Unknown audit shortcut. Use: daily, friday, or deep.');
@@ -349,5 +351,5 @@ if (shouldRecord) {
   });
   console.log('[audit] Recorded audit report and pushed backup.');
 } else {
-  console.log('[audit] Not recording (pass --record to record the report and push a backup).');
+  console.log('[audit] Not recording (--no-record). Report saved locally only.');
 }
