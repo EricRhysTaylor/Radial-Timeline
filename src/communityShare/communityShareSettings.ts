@@ -54,6 +54,63 @@ export function buildDefaultCommunityShareFieldPolicy(): CommunityShareFieldPoli
     };
 }
 
+// Author-facing sharing modes (bundle-level opt-in per the amended product
+// contract). Tiers and field manifests stay the wire-level machinery.
+export type CommunityShareMode = 'private' | 'profile_books' | 'progress';
+
+export const COMMUNITY_SHARE_MODE_TIERS: Record<CommunityShareMode, CommunityShareTier> = {
+    private: 0,
+    profile_books: 2,
+    progress: 4
+};
+
+const PROJECT_BUNDLE: CommunityShareFieldKey[] = [
+    'project.title',
+    'project.alias',
+    'project.description',
+    'project.status',
+    'project.genre',
+    'project.custom_genre_label'
+];
+
+const ACTIVITY_BUNDLE: CommunityShareFieldKey[] = [
+    'activity.report_period',
+    'activity.writing_days',
+    'activity.minutes_total',
+    'activity.words_added',
+    'activity.session_count',
+    'activity.mode_mix',
+    'activity.scenes_completed_by_stage',
+    'activity.stage_mix',
+    'activity.completed_scene_count',
+    'activity.revised_scene_count',
+    'activity.streak'
+];
+
+export function buildCommunityShareFieldPolicyForMode(mode: CommunityShareMode): CommunityShareFieldPolicy {
+    const policy = buildDefaultCommunityShareFieldPolicy();
+    if (mode === 'private') return policy;
+    for (const key of PROJECT_BUNDLE) policy[key] = true;
+    if (mode === 'progress') {
+        for (const key of ACTIVITY_BUNDLE) policy[key] = true;
+    }
+    return policy;
+}
+
+export function deriveCommunityShareMode(settings: CommunityShareSettings): CommunityShareMode {
+    if (!settings.enabled || settings.tier === 0) return 'private';
+    return settings.tier >= 3 ? 'progress' : 'profile_books';
+}
+
+export function buildCommunityShareModeUpdate(mode: CommunityShareMode): Partial<CommunityShareSettings> {
+    return {
+        enabled: mode !== 'private',
+        tier: COMMUNITY_SHARE_MODE_TIERS[mode],
+        audience: mode === 'private' ? 'private_draft' : 'public',
+        fieldPolicy: buildCommunityShareFieldPolicyForMode(mode)
+    };
+}
+
 export function buildDefaultCommunityShareSettings(): CommunityShareSettings {
     return {
         schemaVersion: COMMUNITY_SHARE_SCHEMA_VERSION,

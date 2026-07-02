@@ -2,7 +2,10 @@ import { App, ButtonComponent, Notice, Setting, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import {
     COMMUNITY_SHARE_FIELD_KEYS,
-    normalizeCommunityShareSettings
+    buildCommunityShareModeUpdate,
+    deriveCommunityShareMode,
+    normalizeCommunityShareSettings,
+    type CommunityShareMode
 } from '../../communityShare/communityShareSettings';
 import {
     CommunityShareError,
@@ -13,12 +16,7 @@ import {
     revokeCommunityShareReport
 } from '../../communityShare/communityShareClient';
 import { buildCommunitySharePreview } from '../../communityShare/communitySharePreview';
-import type {
-    CommunityShareAudience,
-    CommunityShareFieldKey,
-    CommunityShareSettings,
-    CommunityShareTier
-} from '../../types/settings';
+import type { CommunityShareFieldKey, CommunityShareSettings } from '../../types/settings';
 import { ERT_CLASSES } from '../../ui/classes';
 
 export interface CommunityShareSectionProps {
@@ -27,93 +25,40 @@ export interface CommunityShareSectionProps {
     containerEl: HTMLElement;
 }
 
-const FIELD_COPY: Record<CommunityShareFieldKey, { label: string; desc: string; future?: boolean }> = {
-    'project.title': {
-        label: 'Project title',
-        desc: 'The public title or alias chosen for the website project.'
-    },
-    'project.alias': {
-        label: 'Project alias',
-        desc: 'A shorter public label to use in place of the local book title.'
-    },
-    'project.description': {
-        label: 'Project description',
-        desc: 'The public description from the active book profile, written for readers.'
-    },
-    'project.status': {
-        label: 'Project status',
-        desc: 'Drafting, revising, querying, publishing, or another author-facing stage.'
-    },
-    'project.genre': {
-        label: 'Genre',
-        desc: 'The broad genre chosen for this project.'
-    },
-    'project.custom_genre_label': {
-        label: 'Custom genre note',
-        desc: 'Optional custom text for projects beyond the standard genre list.'
-    },
-    'activity.report_period': {
-        label: 'Report period',
-        desc: 'A coarse report-period label such as the last 7 days.'
-    },
-    'activity.writing_days': {
-        label: 'Writing days',
-        desc: 'Number of writing days in the report period.'
-    },
-    'activity.minutes_total': {
-        label: 'Minutes this week',
-        desc: 'Rounded active writing time for the report period.'
-    },
-    'activity.words_added': {
-        label: 'Words this week',
-        desc: 'Aggregated words from writing sessions in the report period.'
-    },
-    'activity.session_count': {
-        label: 'Session count',
-        desc: 'A bucketed session count for the report period.'
-    },
-    'activity.mode_mix': {
-        label: 'Mode mix',
-        desc: 'Coarse percentage mix for drafting, revising, editing, and planning.'
-    },
-    'activity.scenes_completed_by_stage': {
-        label: 'Completed scenes by stage',
-        desc: 'Aggregate scene completions grouped by publish stage.'
-    },
-    'activity.stage_mix': {
-        label: 'Stage mix',
-        desc: 'Aggregate stage mix for public progress context.'
-    },
-    'activity.completed_scene_count': {
-        label: 'Completed scene count',
-        desc: 'Aggregate completed-scene total for the report period.'
-    },
-    'activity.revised_scene_count': {
-        label: 'Revised scene count',
-        desc: 'Aggregate revised-scene total for the report period.'
-    },
-    'activity.streak': {
-        label: 'Streak',
-        desc: 'A public-friendly streak label calculated from local sessions.'
-    },
-    'structure.real_scene_titles': {
-        label: 'Real scene titles',
-        desc: 'Arriving in a future update.',
-        future: true
-    },
-    'activity.exact_session_timestamps': {
-        label: 'Exact session timestamps',
-        desc: 'Arriving in a future update.',
-        future: true
-    }
+// Labels for the Complete Preview field listing. The field manifest itself is
+// wire-level machinery; authors choose a sharing mode, not individual fields.
+const FIELD_LABELS: Record<CommunityShareFieldKey, string> = {
+    'project.title': 'Project title',
+    'project.alias': 'Project alias',
+    'project.description': 'Project description',
+    'project.status': 'Project status',
+    'project.genre': 'Genre',
+    'project.custom_genre_label': 'Custom genre note',
+    'activity.report_period': 'Report period',
+    'activity.writing_days': 'Writing days',
+    'activity.minutes_total': 'Minutes this week',
+    'activity.words_added': 'Words this week',
+    'activity.session_count': 'Session count',
+    'activity.mode_mix': 'Mode mix',
+    'activity.scenes_completed_by_stage': 'Completed scenes by stage',
+    'activity.stage_mix': 'Stage mix',
+    'activity.completed_scene_count': 'Completed scene count',
+    'activity.revised_scene_count': 'Revised scene count',
+    'activity.streak': 'Streak',
+    'structure.real_scene_titles': 'Real scene titles',
+    'activity.exact_session_timestamps': 'Exact session timestamps'
 };
 
-const AUDIENCE_LABELS: Record<CommunityShareAudience, string> = {
-    private_draft: 'Private draft',
-    public: 'Public',
-    followers: 'Followers',
-    trusted_authors: 'Trusted authors',
-    private_link: 'Private link'
+const MODE_LABELS: Record<CommunityShareMode, string> = {
+    private: 'Private',
+    profile_books: 'Profile + books',
+    progress: 'Profile, books + progress summaries'
+};
+
+const MODE_NOTES: Record<CommunityShareMode, string> = {
+    private: 'Nothing is shared. Your connection stays in place for when you are ready.',
+    profile_books: 'Shows your public author profile and book cards so fellow authors can see what you are working on.',
+    progress: 'Also shares progress summaries: writing days, words, minutes, streak, and mode mix as rounded weekly aggregates. Raw sessions stay in this vault.'
 };
 
 function getCommunitySettings(plugin: RadialTimelinePlugin): CommunityShareSettings {
@@ -130,7 +75,6 @@ function getActiveBook(plugin: RadialTimelinePlugin) {
 }
 
 function formatStatus(settings: CommunityShareSettings): string {
-    if (!settings.enabled) return 'Off';
     if (settings.connection.status === 'connected') return 'Connected';
     if (settings.connection.status === 'paused') return 'Paused';
     if (settings.connection.status === 'revoked') return 'Revoked';
@@ -145,7 +89,7 @@ function hasReadyPreview(settings: CommunityShareSettings): boolean {
 function getSelectedFieldLabels(settings: CommunityShareSettings): string[] {
     return COMMUNITY_SHARE_FIELD_KEYS
         .filter(key => settings.fieldPolicy[key])
-        .map(key => FIELD_COPY[key].label);
+        .map(key => FIELD_LABELS[key]);
 }
 
 function formatConnectedAt(value?: string): string {
@@ -161,6 +105,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     const settings = getCommunitySettings(plugin);
     const activeBook = getActiveBook(plugin);
     const isConnected = settings.connection.status === 'connected';
+    const mode = deriveCommunityShareMode(settings);
     const selectedFields = getSelectedFieldLabels(settings);
     const hasPublishedReport = settings.publishHistory.some(entry => entry.action === 'publish' && entry.status === 'success' && Boolean(entry.publishId));
 
@@ -171,8 +116,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     const save = async (next: Partial<CommunityShareSettings>) => {
         const invalidatesPreview = next.fieldPolicy !== undefined
             || next.audience !== undefined
-            || next.tier !== undefined
-            || next.manualPublishEnabled !== undefined;
+            || next.tier !== undefined;
         plugin.settings.communityShare = normalizeCommunityShareSettings({
             ...settings,
             ...next,
@@ -215,7 +159,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     });
     hero.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Connect this vault, choose the fields to share, review the complete preview, then publish a progress report for fellow authors.'
+        text: 'Show your author profile, show your books, and optionally share progress summaries. Review the complete preview, then publish.'
     });
 
     const heroFeatures = hero.createDiv({
@@ -224,7 +168,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     heroFeatures.createDiv({ text: 'Community highlights:', cls: 'ert-kicker' });
     const featuresList = heroFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'lock', text: 'Off by default. You choose exactly when and what to share.' },
+        { icon: 'lock', text: 'Private by default. You choose exactly when and what to share.' },
         { icon: 'eye', text: 'The complete preview shows you the full report before you publish.' },
         { icon: 'file-check', text: 'Reports share aggregate progress only. Your manuscript, paths, and raw sessions stay in this vault.' }
     ].forEach(item => {
@@ -239,23 +183,6 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         cls: ERT_CLASSES.SECTION_DESC,
         text: 'Paste the one-time connection code from the website to link this vault to your Community profile.'
     });
-
-    const masterToggle = new Setting(activationCard)
-        .setName('Community share')
-        .setDesc('Master opt-in for this vault. Log into the website community section to customize. ')
-        .addToggle(toggle => toggle
-            .setValue(settings.enabled)
-            .onChange(value => save({ enabled: value })));
-    const profileLink = masterToggle.descEl.createEl('a', {
-        href: 'https://www.radialtimeline.com/community/me',
-        cls: ERT_CLASSES.BADGE_PILL_WIKI,
-        attr: {
-            'aria-label': 'Open your community profile',
-            'target': '_blank',
-            'rel': 'noopener'
-        }
-    });
-    setIcon(profileLink, 'external-link');
 
     const renderConnectionCodeSetting = (targetEl: HTMLElement): void => {
         let tokenValue = '';
@@ -333,81 +260,33 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     }
 
     const sharingCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
-    sharingCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Share Controls' });
+    sharingCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'What You Share' });
     sharingCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Public manual reports are live today. Followers, trusted authors, and private links arrive in future updates.'
+        text: 'Pick one sharing level. The complete preview always shows exactly what a level includes before anything publishes.'
     });
 
-    new Setting(sharingCard)
-        .setName('Audience')
-        .setDesc('Choose public to share on the website, or private draft to keep the report local while you refine it.')
+    const modeSetting = new Setting(sharingCard)
+        .setName('What you share')
+        .setDesc('Manage your public profile and book cards on the website. ')
         .addDropdown(dropdown => {
-            dropdown.addOption('private_draft', AUDIENCE_LABELS.private_draft);
-            dropdown.addOption('public', AUDIENCE_LABELS.public);
-            dropdown.addOption('followers', `${AUDIENCE_LABELS.followers} (future)`);
-            dropdown.addOption('trusted_authors', `${AUDIENCE_LABELS.trusted_authors} (future)`);
-            dropdown.addOption('private_link', `${AUDIENCE_LABELS.private_link} (future)`);
-            dropdown.setValue(settings.audience);
-            dropdown.selectEl.querySelector('option[value="followers"]')?.setAttr('disabled', 'disabled');
-            dropdown.selectEl.querySelector('option[value="trusted_authors"]')?.setAttr('disabled', 'disabled');
-            dropdown.selectEl.querySelector('option[value="private_link"]')?.setAttr('disabled', 'disabled');
-            dropdown.onChange(value => save({ audience: value as CommunityShareAudience }));
+            dropdown.addOption('private', MODE_LABELS.private);
+            dropdown.addOption('profile_books', MODE_LABELS.profile_books);
+            dropdown.addOption('progress', MODE_LABELS.progress);
+            dropdown.setValue(mode);
+            dropdown.onChange(value => save(buildCommunityShareModeUpdate(value as CommunityShareMode)));
         });
-
-    new Setting(sharingCard)
-        .setName('Report tier')
-        .setDesc('Pick how much detail to include, from tier 1 project shell to tier 4 full public report. Tier 5 richer reports arrive in a future update.')
-        .addDropdown(dropdown => {
-            [
-                [0, 'Tier 0 - Off'],
-                [1, 'Tier 1 - Project shell'],
-                [2, 'Tier 2 - Progress totals'],
-                [3, 'Tier 3 - Weekly report'],
-                [4, 'Tier 4 - Full public report'],
-                [5, 'Tier 5 - Future']
-            ].forEach(([value, label]) => dropdown.addOption(String(value), String(label)));
-            dropdown.setValue(String(settings.tier));
-            dropdown.selectEl.querySelector('option[value="5"]')?.setAttr('disabled', 'disabled');
-            dropdown.onChange(value => save({ tier: Number(value) as CommunityShareTier }));
-        });
-
-    new Setting(sharingCard)
-        .setName('Manual publish')
-        .setDesc('Review the complete preview, then press Publish report to share it.')
-        .addToggle(toggle => toggle
-            .setValue(settings.manualPublishEnabled)
-            .onChange(value => save({ manualPublishEnabled: value })));
-
-    new Setting(sharingCard)
-        .setName('Scheduled publishing')
-        .setDesc('Arriving in a future update: publish reports automatically on a schedule.')
-        .addToggle(toggle => toggle
-            .setValue(false)
-            .setDisabled(true));
-
-    const fieldsCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
-    fieldsCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Field Opt-ins' });
-    fieldsCard.createDiv({
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Toggle on each field you want to appear in the public report.'
+    const profileLink = modeSetting.descEl.createEl('a', {
+        href: 'https://www.radialtimeline.com/community/me',
+        cls: ERT_CLASSES.BADGE_PILL_WIKI,
+        attr: {
+            'aria-label': 'Open your community profile',
+            'target': '_blank',
+            'rel': 'noopener'
+        }
     });
-
-    COMMUNITY_SHARE_FIELD_KEYS.forEach(key => {
-        const copy = FIELD_COPY[key];
-        new Setting(fieldsCard)
-            .setName(copy.future ? `${copy.label} - future` : copy.label)
-            .setDesc(copy.desc)
-            .addToggle(toggle => toggle
-                .setValue(settings.fieldPolicy[key])
-                .setDisabled(copy.future === true)
-                .onChange(value => save({
-                    fieldPolicy: {
-                        ...settings.fieldPolicy,
-                        [key]: value
-                    }
-                })));
-    });
+    setIcon(profileLink, 'external-link');
+    sharingCard.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: MODE_NOTES[mode] });
 
     const previewCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
     previewCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Complete Preview' });
@@ -417,11 +296,11 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     });
     const previewFrame = previewCard.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ${ERT_CLASSES.STACK} ert-previewFrame--flush` });
     previewFrame.createDiv({ cls: 'ert-previewFrame__title', text: activeBook?.publicLabel || activeBook?.title || 'No active project selected' });
-    previewFrame.createDiv({ text: `Audience: ${AUDIENCE_LABELS[settings.audience]} - Tier ${settings.tier}` });
+    previewFrame.createDiv({ text: `Sharing: ${MODE_LABELS[mode]}` });
     previewFrame.createDiv({ text: `Project stage: ${activeBook?.projectStage || 'Not set'}` });
     previewFrame.createDiv({ text: `Genre: ${activeBook?.genre || 'Not set'}` });
     previewFrame.createDiv({ text: `Public description: ${activeBook?.publicDescription || 'Not set'}` });
-    previewFrame.createDiv({ text: selectedFields.length ? `Included fields: ${selectedFields.join(', ')}` : 'Included fields: toggle fields above to include them' });
+    previewFrame.createDiv({ text: selectedFields.length ? `Included fields: ${selectedFields.join(', ')}` : 'Included fields: choose a sharing level above to include them' });
     previewFrame.createDiv({ text: 'Stays in this vault: manuscript text, scene/note/vault paths, raw sessions, exact timestamps, secrets.' });
     previewFrame.createDiv({
         text: hasReadyPreview(settings)
@@ -435,15 +314,12 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         previewFrame.createDiv({ text: `Preview hash: ${settings.preview.previewHash.slice(0, 12)}...` });
     }
 
-    const canGeneratePreview = settings.enabled
+    const canGeneratePreview = mode !== 'private'
         && isConnected
-        && settings.audience === 'public'
-        && settings.tier > 0
-        && settings.tier < 5
         && selectedFields.length > 0;
     new Setting(previewCard)
         .setName('Generate preview')
-        .setDesc(canGeneratePreview ? 'Builds the hash-checked preview from your selected public fields.' : 'Next steps: connect this vault, set the audience to Public, pick a launch tier, and select at least one field.')
+        .setDesc(canGeneratePreview ? 'Builds the hash-checked preview from your selected sharing level.' : 'Next steps: connect this vault and pick a sharing level above.')
         .addButton(button => button
             .setButtonText('Generate complete preview')
             .setDisabled(!canGeneratePreview)
@@ -481,20 +357,19 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     actionCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Publish and Safety' });
     actionCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Connect this vault, enable manual publish, and generate the Complete Preview to make publishing available.'
+        text: 'Connect this vault, choose what you share, and generate the Complete Preview to make publishing available.'
     });
-    const canPublish = settings.enabled
+    const canPublish = mode !== 'private'
         && isConnected
         && settings.audience === 'public'
-        && settings.tier > 0
-        && settings.tier < 5
-        && settings.manualPublishEnabled
+        && settings.tier >= 1
+        && settings.tier <= 4
         && hasReadyPreview(settings)
         && selectedFields.length > 0;
 
     new Setting(actionCard)
-        .setName('Manual publish')
-        .setDesc(canPublish ? 'Ready to publish.' : 'Next steps: turn on Community share, connect, choose the Public audience, select fields, and generate the Complete Preview.')
+        .setName('Publish report')
+        .setDesc(canPublish ? 'Ready to publish.' : 'Next steps: connect, pick a sharing level, and generate the Complete Preview.')
         .addButton(button => button
             .setButtonText('Publish report')
             .setCta()

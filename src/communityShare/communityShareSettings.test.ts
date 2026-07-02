@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+    buildCommunityShareFieldPolicyForMode,
+    buildCommunityShareModeUpdate,
     buildDefaultCommunityShareSettings,
+    deriveCommunityShareMode,
     normalizeCommunityShareSettings
 } from './communityShareSettings';
 
@@ -55,5 +58,44 @@ describe('Community Share settings', () => {
         expect(settings.publishHistory).toHaveLength(25);
         expect(settings.publishHistory[0]?.id).toBe('entry-5');
         expect(settings.publishHistory[24]?.id).toBe('entry-29');
+    });
+
+    it('maps sharing modes to launch-safe tier, audience, and field bundles', () => {
+        const privateUpdate = buildCommunityShareModeUpdate('private');
+        expect(privateUpdate.enabled).toBe(false);
+        expect(privateUpdate.tier).toBe(0);
+        expect(privateUpdate.audience).toBe('private_draft');
+        expect(Object.values(privateUpdate.fieldPolicy ?? {}).every(value => value === false)).toBe(true);
+
+        const booksUpdate = buildCommunityShareModeUpdate('profile_books');
+        expect(booksUpdate.enabled).toBe(true);
+        expect(booksUpdate.tier).toBe(2);
+        expect(booksUpdate.audience).toBe('public');
+        expect(booksUpdate.fieldPolicy?.['project.title']).toBe(true);
+        expect(booksUpdate.fieldPolicy?.['activity.words_added']).toBe(false);
+
+        const progressUpdate = buildCommunityShareModeUpdate('progress');
+        expect(progressUpdate.tier).toBe(4);
+        expect(progressUpdate.fieldPolicy?.['project.title']).toBe(true);
+        expect(progressUpdate.fieldPolicy?.['activity.words_added']).toBe(true);
+        expect(progressUpdate.fieldPolicy?.['activity.streak']).toBe(true);
+    });
+
+    it('never enables sensitive structure fields in any mode bundle', () => {
+        for (const mode of ['private', 'profile_books', 'progress'] as const) {
+            const policy = buildCommunityShareFieldPolicyForMode(mode);
+            expect(policy['structure.real_scene_titles']).toBe(false);
+            expect(policy['activity.exact_session_timestamps']).toBe(false);
+        }
+    });
+
+    it('derives the sharing mode from stored tier and enabled state', () => {
+        expect(deriveCommunityShareMode(buildDefaultCommunityShareSettings())).toBe('private');
+        expect(deriveCommunityShareMode(normalizeCommunityShareSettings({ enabled: true, tier: 0 }))).toBe('private');
+        expect(deriveCommunityShareMode(normalizeCommunityShareSettings({ enabled: false, tier: 4 }))).toBe('private');
+        expect(deriveCommunityShareMode(normalizeCommunityShareSettings({ enabled: true, tier: 1 }))).toBe('profile_books');
+        expect(deriveCommunityShareMode(normalizeCommunityShareSettings({ enabled: true, tier: 2 }))).toBe('profile_books');
+        expect(deriveCommunityShareMode(normalizeCommunityShareSettings({ enabled: true, tier: 3 }))).toBe('progress');
+        expect(deriveCommunityShareMode(normalizeCommunityShareSettings({ enabled: true, tier: 5 }))).toBe('progress');
     });
 });
