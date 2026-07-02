@@ -77,7 +77,7 @@ function parseCache(raw: string | null): ProviderSnapshotCache | null {
             snapshot
         };
     } catch {
-        return null;
+        return null; // SAFE: corrupt snapshot-cache JSON just means "no usable cache"; loadProviderSnapshot then fetches remotely or reports source 'none'
     }
 }
 

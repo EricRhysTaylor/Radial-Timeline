@@ -284,7 +284,7 @@ function extractJsonFromContent(content: string): unknown {
         if (firstBrace >= 0 && lastBrace > firstBrace) {
             try {
                 return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
-            } catch {
+            } catch { // SAFE: AI response still isn't valid JSON after brace-trimming — null means "no estimate"; caller reports the scene as errored
                 return null;
             }
         }

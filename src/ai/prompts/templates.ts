@@ -10,7 +10,7 @@ const toText = (value: unknown): string => {
         try {
             return JSON.stringify(value);
         } catch {
-            return '';
+            return ''; // SAFE: unserializable template var (circular reference/BigInt) renders as an empty string, matching how toText treats every other non-textual value
         }
     }
     return '';

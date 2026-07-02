@@ -162,7 +162,7 @@ async function applyTripletAnalysisResult(input: {
 }
 
 function getLocalReviewErrorMessage(scene: SceneData): string {
-    return t('sceneAnalysis.pipeline.errors.localLlmReview', { num: scene.sceneNumber ?? 'N/A', path: scene.file.path });
+    return t('sceneAnalysis.pipeline.errors.localLlmReview', { num: scene.sceneNumber ?? 'N/A', path: scene.file.path }); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
 }
 
 export async function processWithModal(
@@ -171,7 +171,7 @@ export async function processWithModal(
     mode: ProcessingMode,
     modal: SceneAnalysisProcessingModal
 ): Promise<void> {
-    const isResuming = plugin.settings._isResuming || false;
+    const isResuming = plugin.settings._isResuming || false; // SAFE: _isResuming is an optional transient settings flag — absent means a normal (non-resume) run
     if (isResuming) {
         plugin.settings._isResuming = false;
         await plugin.saveSettings();
@@ -241,9 +241,9 @@ export async function processWithModal(
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
         const nextBody = triplet.next ? triplet.next.body : null;
-        const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
-        const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-        const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+        const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+        const currentNum = String(triplet.current.sceneNumber ?? 'N/A'); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+        const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
 
         if (modal && typeof modal.setTripletInfo === 'function') {
             modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, triplet.current.file.basename);
@@ -317,18 +317,18 @@ export async function processWithModal(
                     if (safeWrite.route === 'warning') {
                         modal.addError(getLocalReviewErrorMessage(triplet.current));
                     } else {
-                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
+                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
                     }
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
+                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
             }
         } catch (sceneError) {
             await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }));
+            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
         } finally {
             modal.noteLogAttempt();
         }
@@ -407,14 +407,14 @@ export async function processBySubplotOrder(
                     continue;
                 }
 
-                notice.setMessage(t('sceneAnalysis.pipeline.notices.processingScene', { num: triplet.current.sceneNumber ?? 'N/A', current: totalProcessedCount + 1, total: totalTripletsAcrossSubplots, name: subplotName }));
+                notice.setMessage(t('sceneAnalysis.pipeline.notices.processingScene', { num: triplet.current.sceneNumber ?? 'N/A', current: totalProcessedCount + 1, total: totalTripletsAcrossSubplots, name: subplotName })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
 
                 const prevBody = triplet.prev ? triplet.prev.body : null;
                 const currentBody = triplet.current.body;
                 const nextBody = triplet.next ? triplet.next.body : null;
-                const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
-                const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-                const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+                const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+                const currentNum = String(triplet.current.sceneNumber ?? 'N/A'); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+                const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
 
                 const contextPrompt = getActiveContextPrompt(plugin);
                 const userPrompt = buildSceneAnalysisPrompt(
@@ -454,15 +454,15 @@ export async function processBySubplotOrder(
                         } else if (safeWrite.route !== 'skip') {
                             new Notice(getLocalReviewErrorMessage(triplet.current), 6000);
                         } else {
-                            new Notice(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }), 6000);
+                            new Notice(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }), 6000); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
                         }
                     } else {
-                        new Notice(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }), 6000);
+                        new Notice(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }), 6000); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
                     }
                 } catch (sceneError) {
                     await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
                     const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-                    new Notice(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }), 8000);
+                    new Notice(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }), 8000); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
                 }
 
                 totalProcessedCount++;
@@ -511,7 +511,7 @@ export async function processSubplotWithModal(
 
     const contextScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
     const triplets = buildTripletsByIndex(contextScenes, validScenes, (s) => s.file.path);
-    const isResuming = plugin.settings._isResuming || false;
+    const isResuming = plugin.settings._isResuming || false; // SAFE: _isResuming is an optional transient settings flag — absent means a normal (non-resume) run
     if (isResuming) {
         plugin.settings._isResuming = false;
         await plugin.saveSettings();
@@ -550,9 +550,9 @@ export async function processSubplotWithModal(
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
         const nextBody = triplet.next ? triplet.next.body : null;
-        const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
-        const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-        const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+        const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+        const currentNum = String(triplet.current.sceneNumber ?? 'N/A'); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+        const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
 
         if (modal && typeof modal.setTripletInfo === 'function') {
             modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, sceneName);
@@ -618,18 +618,18 @@ export async function processSubplotWithModal(
                     if (safeWrite.route === 'warning') {
                         modal.addError(getLocalReviewErrorMessage(triplet.current));
                     } else {
-                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
+                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
                     }
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
+                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
             }
         } catch (sceneError) {
             await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }));
+            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
         } finally {
             modal.noteLogAttempt();
         }
@@ -656,7 +656,7 @@ export async function processEntireSubplotWithModalInternal(
     }
 
     filtered.sort(compareScenesByOrder);
-    const isResuming = plugin.settings._isResuming || false;
+    const isResuming = plugin.settings._isResuming || false; // SAFE: _isResuming is an optional transient settings flag — absent means a normal (non-resume) run
     if (isResuming) {
         plugin.settings._isResuming = false;
         await plugin.saveSettings();
@@ -703,9 +703,9 @@ export async function processEntireSubplotWithModalInternal(
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
         const nextBody = triplet.next ? triplet.next.body : null;
-        const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
-        const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-        const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+        const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+        const currentNum = String(triplet.current.sceneNumber ?? 'N/A'); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
+        const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A'; // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
 
         if (modal && typeof modal.setTripletInfo === 'function') {
             modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, sceneName);
@@ -771,18 +771,18 @@ export async function processEntireSubplotWithModalInternal(
                     if (safeWrite.route === 'warning') {
                         modal.addError(getLocalReviewErrorMessage(triplet.current));
                     } else {
-                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
+                        modal.addError(t('sceneAnalysis.pipeline.errors.failedUpdate', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
                     }
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path }));
+                modal.addError(t('sceneAnalysis.pipeline.errors.aiProcessingFailed', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
             }
         } catch (sceneError) {
             await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
-            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail }));
+            modal.addError(t('sceneAnalysis.pipeline.errors.fatalScene', { num: triplet.current.sceneNumber ?? 'N/A', path: triplet.current.file.path, detail })); // SAFE: sceneNumber is null for unnumbered scene files — 'N/A' is a display placeholder
         } finally {
             modal.noteLogAttempt();
         }
@@ -794,7 +794,7 @@ export async function processEntireSubplotWithModalInternal(
 
 export function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefined {
     const aiSettings = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-    const templates = aiSettings.roleTemplates || [];
+    const templates = aiSettings.roleTemplates || []; // SAFE: roleTemplates is optional on the AiSettingsV1 type — an empty list simply yields no active context prompt
     const activeId = aiSettings.roleTemplateId;
     const active = templates.find(t => t.id === activeId);
     return active?.prompt;

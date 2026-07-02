@@ -127,7 +127,7 @@ function parseCache(raw: string | null): RemotePricingCache | null {
         if (!parsed.table || typeof parsed.table !== 'object') return null;
         return parsed;
     } catch {
-        return null;
+        return null; // SAFE: corrupt/legacy pricing-cache JSON just means "no usable cache"; caller falls through to a fresh remote fetch, with the bundled pricing table as the floor
     }
 }
 

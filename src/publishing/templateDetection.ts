@@ -72,6 +72,14 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
         /\bcharacter\b/i,
     ].filter((pattern) => pattern.test(source)).length;
 
+    const hasBookLikeClass = hasBookClass || hasMemoirClass || hasKomaClass;
+    const hasRunningHeaders = hasFancyhdr || hasHeaderFooterCommands;
+    const hasStructuralCommands = hasChapter || hasPart || hasSection;
+    const hasLiterarySignals = hasTitlesec
+        || (hasFontspec && hasRunningHeaders)
+        || hasMicrotype
+        || hasDropCapSignals;
+
     const traits: string[] = [];
     const addTrait = (trait: string, confidenceBoost = 0) => {
         if (!traits.includes(trait)) traits.push(trait);
@@ -87,7 +95,7 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
         addTrait('Scene headings detected');
         addTrait('Dialogue-first formatting');
         confidenceScore += screenplaySignals >= 3 ? 3 : 2;
-    } else if (hasBookClass || hasMemoirClass || hasKomaClass || hasChapter || hasPart || hasSection) {
+    } else if (hasBookLikeClass || hasStructuralCommands) {
         usageContext = 'novel';
         confidenceScore += 1;
     }
@@ -99,11 +107,11 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
         if (hasPart) {
             addTrait('Part breaks detected', 1);
         }
-    } else if ((hasBookClass || hasMemoirClass || hasKomaClass) && (hasFancyhdr || hasHeaderFooterCommands)) {
+    } else if (hasBookLikeClass && hasRunningHeaders) {
         styleHint = 'book';
         mockPreviewKind = 'book';
         addTrait('Running headers detected', 2);
-    } else if (hasTitlesec || (hasFontspec && (hasFancyhdr || hasHeaderFooterCommands)) || hasMicrotype || hasDropCapSignals) {
+    } else if (hasLiterarySignals) {
         styleHint = 'literary';
         mockPreviewKind = 'literary';
         addTrait('Refined heading styles', 2);
@@ -113,10 +121,10 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
         addTrait('Minimal manuscript formatting', 2);
     }
 
-    if (hasBookClass || hasMemoirClass || hasKomaClass) {
+    if (hasBookLikeClass) {
         addTrait('Book-style page structure', 1);
     }
-    if (hasFancyhdr || hasHeaderFooterCommands) {
+    if (hasRunningHeaders) {
         addTrait('Running headers detected');
     }
     if (hasFontspec) {

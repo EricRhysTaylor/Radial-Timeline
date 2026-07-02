@@ -95,7 +95,7 @@ export function parseSessionArtifactVault(raw: string): InquiryVaultIdentity | n
     let parsed: unknown;
     try {
         parsed = JSON.parse(raw);
-    } catch {
+    } catch { // SAFE: corrupt sidecar JSON — null means "no usable vault identity"; caller falls back to manifest/scene-folder inference
         return null;
     }
     if (!isArtifact(parsed)) return null;
@@ -114,7 +114,7 @@ export function parseSessionArtifact(raw: string): InquirySession[] | null {
     let parsed: unknown;
     try {
         parsed = JSON.parse(raw);
-    } catch {
+    } catch { // SAFE: corrupt sessions.json — null signals "invalid payload" so the caller logs loudly; we never fabricate session data
         return null;
     }
     if (!isArtifact(parsed)) return null;

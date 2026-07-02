@@ -18,6 +18,16 @@ import type {
 const AUTHOR_PROGRESS_FREQUENCIES = new Set<AuthorProgressFrequency>(['manual', 'daily', 'weekly', 'monthly']);
 const AUTHOR_PROGRESS_PUBLISH_TARGETS = new Set<AuthorProgressPublishTarget>(['folder', 'github_pages', 'note']);
 
+type AprDefaultViewMode = NonNullable<AuthorProgressDefaults['aprDefaultViewMode']>;
+const APR_DEFAULT_VIEW_MODES = new Set<AprDefaultViewMode>(['auto', 'ring', 'scenes', 'colors', 'full']);
+
+const APR_TRACKED_STAGES = new Set<AprTrackedStage>(['Zero', 'Author', 'House', 'Press']);
+
+type AprSpokeColorMode = NonNullable<AprStyleSettings['aprSpokeColorMode']>;
+// 'dark' is deliberately absent: the original migration checks never accepted it,
+// so a saved 'dark' falls through to the caller-provided fallback.
+const APR_SPOKE_COLOR_MODES = new Set<AprSpokeColorMode>(['light', 'none', 'custom', 'sync']);
+
 type LegacyAuthorProgressSettings = Record<string, unknown>;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -73,13 +83,24 @@ function normalizeAprDefaultViewMode(
 ): AuthorProgressDefaults['aprDefaultViewMode'] {
     // TODO(v7): Remove the 'bar' → 'ring' migration. See docs/engineering/plans/v7-removals.md.
     if (value === 'bar') return 'ring';
-    if (value === 'auto' || value === 'ring' || value === 'scenes' || value === 'colors' || value === 'full') return value;
+    if (typeof value === 'string' && APR_DEFAULT_VIEW_MODES.has(value as AprDefaultViewMode)) {
+        return value as AprDefaultViewMode;
+    }
     return fallback;
 }
 
 function normalizeTrackedStage(value: unknown, fallback: AprTrackedStage = 'Zero'): AprTrackedStage {
-    return value === 'Zero' || value === 'Author' || value === 'House' || value === 'Press'
-        ? value
+    return typeof value === 'string' && APR_TRACKED_STAGES.has(value as AprTrackedStage)
+        ? value as AprTrackedStage
+        : fallback;
+}
+
+function normalizeAprSpokeColorMode(
+    value: unknown,
+    fallback: AprStyleSettings['aprSpokeColorMode']
+): AprStyleSettings['aprSpokeColorMode'] {
+    return typeof value === 'string' && APR_SPOKE_COLOR_MODES.has(value as AprSpokeColorMode)
+        ? value as AprSpokeColorMode
         : fallback;
 }
 
@@ -210,9 +231,7 @@ function migrateStyleSettings(raw: unknown, defaults: AuthorProgressDefaults): A
         aprPercentNumberColor: asString(record.aprPercentNumberColor) ?? base.aprPercentNumberColor,
         aprPercentSymbolColor: asString(record.aprPercentSymbolColor) ?? base.aprPercentSymbolColor,
         aprTheme: record.aprTheme === 'light' || record.aprTheme === 'none' ? record.aprTheme : base.aprTheme,
-        aprSpokeColorMode: record.aprSpokeColorMode === 'light' || record.aprSpokeColorMode === 'none' || record.aprSpokeColorMode === 'custom' || record.aprSpokeColorMode === 'sync'
-            ? record.aprSpokeColorMode
-            : base.aprSpokeColorMode,
+        aprSpokeColorMode: normalizeAprSpokeColorMode(record.aprSpokeColorMode, base.aprSpokeColorMode),
         aprSpokeColor: asString(record.aprSpokeColor) ?? base.aprSpokeColor,
         aprBookTitleFontFamily: asString(record.aprBookTitleFontFamily) ?? base.aprBookTitleFontFamily,
         aprBookTitleFontWeight: asNumber(record.aprBookTitleFontWeight, base.aprBookTitleFontWeight ?? 400),
@@ -330,9 +349,7 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
         aprPercentNumberColor: asString(raw.aprPercentNumberColor) ?? defaults.aprPercentNumberColor,
         aprPercentSymbolColor: asString(raw.aprPercentSymbolColor) ?? defaults.aprPercentSymbolColor,
         aprTheme: raw.aprTheme === 'light' || raw.aprTheme === 'none' ? raw.aprTheme : defaults.aprTheme,
-        aprSpokeColorMode: raw.aprSpokeColorMode === 'light' || raw.aprSpokeColorMode === 'none' || raw.aprSpokeColorMode === 'custom' || raw.aprSpokeColorMode === 'sync'
-            ? raw.aprSpokeColorMode
-            : defaults.aprSpokeColorMode,
+        aprSpokeColorMode: normalizeAprSpokeColorMode(raw.aprSpokeColorMode, defaults.aprSpokeColorMode),
         aprSpokeColor: asString(raw.aprSpokeColor) ?? defaults.aprSpokeColor,
         aprBookTitleFontFamily: asString(raw.aprBookTitleFontFamily) ?? defaults.aprBookTitleFontFamily,
         aprBookTitleFontWeight: asNumber(raw.aprBookTitleFontWeight, defaults.aprBookTitleFontWeight ?? 400),

@@ -454,7 +454,7 @@ export class InquiryView extends ItemView {
     // view instance can be reopened after onClose without leaking.
     private viewDisposables = new DisposableRegistry();
     private readonly briefingPurgeScanner = new InquiryBriefingPurgeScanner({
-        getScenes: () => this.corpus?.scenes ?? [],
+        getScenes: () => this.corpus?.scenes ?? [], // SAFE: corpus not loaded yet — purge scanner sees no scenes
         getScope: () => this.state.scope,
         getActiveBookId: () => this.corpus?.activeBookId,
         resolveActionNotesFieldLabel: () => this.resolveInquiryActionNotesFieldLabel(),
@@ -696,7 +696,7 @@ export class InquiryView extends ItemView {
     private buildDynamicDisplayText(): string {
         const base = INQUIRY_VIEW_DISPLAY_TEXT;
         if (this.state?.scope === 'saga') {
-            const labels = (this.corpus?.books ?? [])
+            const labels = (this.corpus?.books ?? []) // SAFE: corpus not loaded yet — tab title omits book labels
                 .map(book => book.displayLabel)
                 .filter((label): label is string => !!label && label !== '?');
             if (labels.length) return `${base}: Saga · ${labels.join(' · ')}`;
@@ -1323,7 +1323,7 @@ export class InquiryView extends ItemView {
         const corpus = this.getCurrentCorpusContext();
         if (corpus.requestEstimateMethod === 'unavailable' && corpus.requestEstimateFailureMessage && !this.isInquiryApiKeyMissing()) {
             const reason = formatTokenCountFailureReason(corpus.requestEstimateFailureMessage)
-                || 'provider token count failed';
+                || 'provider token count failed'; // SAFE: UX default — formatter may yield an empty reason; generic text keeps the error readable
             return {
                 message: `Couldn't reach the AI provider to size this Inquiry — ${reason}.\nYou can still run it; the estimate and cost just won't show until the provider responds.`
             };
@@ -1420,7 +1420,7 @@ export class InquiryView extends ItemView {
         if (!currentModel) return null;
 
         const advancedContext = this.getEffectiveReuseAdvancedContext();
-        const corpusFingerprint = snapshot.corpus.corpusFingerprint || this.state.corpusFingerprint || 'unknown';
+        const corpusFingerprint = snapshot.corpus.corpusFingerprint || this.state.corpusFingerprint || 'unknown'; // SAFE: diagnostic label — unknown until a corpus fingerprint is computed
         const corpusFingerprintReused = advancedContext?.reuseState === 'warm';
         const overrideSummary = this.getCorpusOverrideSummary();
         const estimatedInputTokens = snapshot.estimate.estimatedInputTokens;
@@ -1460,7 +1460,7 @@ export class InquiryView extends ItemView {
     }
 
     private getCurrentPromptQuestion(): string | null {
-        const activeZone = this.state.activeZone ?? 'setup';
+        const activeZone = this.state.activeZone ?? 'setup'; // SAFE: no active zone on first render — setup is the default zone
         const activePrompt = this.getActivePrompt(activeZone);
         if (activePrompt) {
             return this.resolveQuestionPromptForRun(activePrompt, this.getSelectionMode(this.getActiveTargetSceneIds())).trim();
@@ -1491,9 +1491,9 @@ export class InquiryView extends ItemView {
     }
 
     private getAccessTierForProvider(provider: AIProviderId, aiSettings: AiSettingsV1): AccessTier {
-        if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
-        if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
-        if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
+        if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1; // SAFE: unset access profile defaults to tier 1, the lowest tier
+        if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1; // SAFE: unset access profile defaults to tier 1, the lowest tier
+        if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1; // SAFE: unset access profile defaults to tier 1, the lowest tier
         return 1;
     }
 
@@ -1553,7 +1553,7 @@ export class InquiryView extends ItemView {
             }
             return sum + this.getEntryContentLength(entry);
         }, 0);
-        return this.estimateTokensFromChars(summaryChars + (questionText?.length ?? 0) + INQUIRY_PROMPT_OVERHEAD_CHARS);
+        return this.estimateTokensFromChars(summaryChars + (questionText?.length ?? 0) + INQUIRY_PROMPT_OVERHEAD_CHARS); // SAFE: no question text yet — contributes 0 chars to the token estimate
     }
 
     private getSelectedSceneOverrideEntries(): Array<{ entryKey: string; mode: SceneInclusion }> {
@@ -1594,7 +1594,7 @@ export class InquiryView extends ItemView {
     }
 
     private renderBriefingSessionItem(container: HTMLElement, session: InquirySession, blocked: boolean): void {
-        const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
+        const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup'; // SAFE: legacy sessions predate zone metadata — setup is the default zone
         const overrideLabel = formatSessionOverrides(session);
         const metaText = `${formatSessionScope(session)} · ${formatSessionProviderModel(session)} · ${formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
         const status = this.resolveSessionStatus(session);
@@ -1606,7 +1606,7 @@ export class InquiryView extends ItemView {
         if (session.key && priorPendingEditsEmpty !== pendingEditsEmpty) {
             this.sessionStore.updateSession(session.key, { pendingEditsEmpty });
         }
-        const autoPopulateEnabled = this.settingsAccessor.getActionNotesAutoPopulate() ?? false;
+        const autoPopulateEnabled = this.settingsAccessor.getActionNotesAutoPopulate() ?? false; // SAFE: optional setting unset — auto-populate defaults off
         const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
         const pendingEditsTooltip = blocked
             ? 'Inquiry is blocked'
@@ -1669,7 +1669,7 @@ export class InquiryView extends ItemView {
     }
 
     private resolveSessionZoneLabel(session: InquirySession): string {
-        const zone = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
+        const zone = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup'; // SAFE: legacy sessions predate zone metadata — setup is the default zone
         return zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
     }
 
@@ -1689,7 +1689,7 @@ export class InquiryView extends ItemView {
             questionZone: session.questionZone ?? this.findPromptZoneById(session.result.questionId),
             fallbackLabel
         });
-        return questionPrefix ?? `${zoneLabel}: ${fallbackLabel}`;
+        return questionPrefix ?? `${zoneLabel}: ${fallbackLabel}`; // SAFE: no custom question prefix — zone and lens labels compose the fallback
     }
 
     private ensurePendingEditsEmpty(session: InquirySession): boolean {
@@ -1764,7 +1764,7 @@ export class InquiryView extends ItemView {
         const briefAlias = this.formatInquiryBriefShortDate(normalized);
         const notesByMaterial = this.buildInquiryActionNotes(normalized, briefId, briefAlias, activeBookId);
         const sceneLabelsByPath = new Map<string, string>();
-        (this.corpus.scenes ?? []).forEach(scene => {
+        (this.corpus.scenes ?? []).forEach(scene => { // SAFE: snapshot may omit scenes — no scene labels to map
             if (scene.filePath && scene.displayLabel) {
                 sceneLabelsByPath.set(scene.filePath, scene.displayLabel);
             }
@@ -1923,7 +1923,7 @@ export class InquiryView extends ItemView {
             this.notifyInteraction(t('inquiry.interaction.noCorpusAvailable'));
             return;
         }
-        const scenes = this.corpus.scenes ?? [];
+        const scenes = this.corpus.scenes ?? []; // SAFE: snapshot may omit scenes — empty list hits the no-scenes notice below
         if (!scenes.length) {
             this.notifyInteraction(t('inquiry.interaction.noScenesInScope'));
             return;
@@ -2052,7 +2052,7 @@ export class InquiryView extends ItemView {
                     }
                     if (nextState.outcome === 'written') {
                         hadInquiryLines = true;
-                        frontmatter[targetField] = nextState.value ?? '';
+                        frontmatter[targetField] = nextState.value ?? ''; // SAFE: purge may clear the field entirely — write empty string, not undefined
                     }
                 });
 
@@ -2149,7 +2149,7 @@ export class InquiryView extends ItemView {
             logFile: options?.logFile ?? null,
             generatedAt: options?.generatedAt ?? null,
             focusAnchorId: options?.focusAnchorId ?? null,
-            isCorpusStale: options?.isCorpusStale ?? false,
+            isCorpusStale: options?.isCorpusStale ?? false, // SAFE: optional modal flag — omitted means corpus is not stale
             staleDiagnosis: options?.staleDiagnosis ?? null
         }).open();
     }
@@ -2162,7 +2162,7 @@ export class InquiryView extends ItemView {
         questionId: string,
         questionZone?: InquiryZone
     ): { corpusOnlyFingerprint: string; snapshot: InquiryResult['corpusManifestSnapshot'] } {
-        const contextRequired = this.isContextRequiredForQuestion(questionId, questionZone ?? 'setup');
+        const contextRequired = this.isContextRequiredForQuestion(questionId, questionZone ?? 'setup'); // SAFE: caller may omit the zone — setup is the default zone
         const manifest = this.buildCorpusManifest(questionId, {
             modelId: this.resolveEngineSelectionForRun().modelId,
             questionZone,
@@ -2304,7 +2304,7 @@ export class InquiryView extends ItemView {
         if (adoptPersistedSelection && cache?.lastBookId) {
             this.selection.setActiveBookId(cache.lastBookId);
             this.selection.setTargetSceneIds(
-                this.selection.getRememberedTargetSceneIdsForBook(cache.lastBookId) ?? []
+                this.selection.getRememberedTargetSceneIdsForBook(cache.lastBookId) ?? [] // SAFE: no remembered target selection for this book — start with none
             );
         } else if (!adoptPersistedSelection) {
             this.selection.setTargetSceneIds([]);
@@ -2869,7 +2869,7 @@ export class InquiryView extends ItemView {
         const symbol = createSvgElement('symbol');
         const symbolId = `ert-icon-${iconName}`;
         symbol.setAttribute('id', symbolId);
-        symbol.setAttribute('viewBox', source.getAttribute('viewBox') || '0 0 24 24');
+        symbol.setAttribute('viewBox', source.getAttribute('viewBox') || '0 0 24 24'); // SAFE: source icon missing viewBox — Lucide default 24x24 box
         Array.from(source.children).forEach(child => {
             if (child.tagName.toLowerCase() === 'title') return;
             symbol.appendChild(child.cloneNode(true));
@@ -2879,7 +2879,7 @@ export class InquiryView extends ItemView {
             if (circles.length >= 2) {
                 const sorted = circles
                     .slice()
-                    .sort((a, b) => (Number(a.getAttribute('r')) || 0) - (Number(b.getAttribute('r')) || 0));
+                    .sort((a, b) => (Number(a.getAttribute('r')) || 0) - (Number(b.getAttribute('r')) || 0)); // SAFE: circle without an r attribute sorts as radius 0
                 const inner = sorted[0];
                 const outer = sorted[sorted.length - 1];
                 const outerCx = outer.getAttribute('cx');
@@ -2965,7 +2965,7 @@ export class InquiryView extends ItemView {
     private buildDefaultSelectedPromptIds(): Record<InquiryZone, string> {
         const config = this.getPromptConfig();
         const pickFirstAvailable = (zone: InquiryZone): string => {
-            const slots = config[zone] ?? [];
+            const slots = config[zone] ?? []; // SAFE: zone may be absent from prompt config — no slots to pick from
             const firstAvailable = slots.find(slot => this.getQuestionTextForSlot(zone, slot).trim().length > 0);
             return firstAvailable?.id ?? slots[0]?.id ?? zone;
         };
@@ -3049,7 +3049,7 @@ export class InquiryView extends ItemView {
     private getPromptOptions(zone: InquiryZone): InquiryQuestion[] {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
-        const slots = config[zone] ?? [];
+        const slots = config[zone] ?? []; // SAFE: zone may be absent from prompt config — no slots visible
         const visibleSlots = hasProFeatureAccess(this.plugin)
             ? slots
             : slots.slice(0, 4);
@@ -3117,7 +3117,7 @@ export class InquiryView extends ItemView {
                         contextRequired
                     });
                     fingerprintSource = manifest.entries
-                        .map(e => `${e.path}:${e.sceneId ?? ''}:${e.mtime}:${e.mode}:${e.isTarget ? 1 : 0}`)
+                        .map(e => `${e.path}:${e.sceneId ?? ''}:${e.mtime}:${e.mode}:${e.isTarget ? 1 : 0}`) // SAFE: non-scene entries have no sceneId — empty segment keeps the fingerprint stable
                         .sort()
                         .join('|');
                     fingerprintSourceByContext.set(contextRequired, fingerprintSource);
@@ -3326,7 +3326,7 @@ export class InquiryView extends ItemView {
     private syncSelectedPromptIds(): void {
         const config = this.getPromptConfig();
         (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
-            const slots = config[zone] ?? [];
+            const slots = config[zone] ?? []; // SAFE: zone may be absent from prompt config — no slots to sync
             const available = slots.filter(slot => this.getQuestionTextForSlot(zone, slot).trim().length > 0);
             const desired = available[0]?.id ?? slots[0]?.id ?? zone;
             if (!desired) return;
@@ -3380,7 +3380,7 @@ export class InquiryView extends ItemView {
 
     private showQuestionRunMenu(question: InquiryQuestion, event: MouseEvent): void {
         const menu = new Menu();
-        const current = this.state.promptFormOverrides[question.id] ?? 'auto';
+        const current = this.state.promptFormOverrides[question.id] ?? 'auto'; // SAFE: no per-question override recorded — auto is the default form
         const options: Array<{ label: string; value: InquiryPromptFormOverride }> = [
             { label: t('inquiry.menu.optionDefaultRun'), value: 'auto' },
             { label: t('inquiry.menu.optionStandard'), value: 'standard' },
@@ -3788,12 +3788,12 @@ export class InquiryView extends ItemView {
             if (sessionScope !== this.state.scope) continue;
             if (this.state.scope === 'book' && this.getSessionScopeKey(session) !== currentScopeKey) continue;
             if (this.isErrorResult(session.result)) continue;
-            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase(); // SAFE: absent provider normalizes to empty and fails the match below
             if (sessionProvider !== normalizedProvider) continue;
-            const resolvedModel = (session.result.aiModelResolved || '').trim();
-            const requestedModel = (session.result.aiModelRequested || '').trim();
+            const resolvedModel = (session.result.aiModelResolved || '').trim(); // SAFE: absent model normalizes to empty and fails the match below
+            const requestedModel = (session.result.aiModelRequested || '').trim(); // SAFE: absent model normalizes to empty and fails the match below
             if (resolvedModel !== normalizedModelId && requestedModel !== normalizedModelId) continue;
-            const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();
+            const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim(); // SAFE: absent fingerprint normalizes to empty and fails the reuse match below
             if (sessionReuseFingerprint !== currentReuseFingerprint) continue;
             const actualCost = this.getActualUsageCostForResult(session.result, session.providerCacheStatus);
             if (typeof actualCost === 'number' && Number.isFinite(actualCost) && actualCost >= 0) {
@@ -3965,7 +3965,7 @@ export class InquiryView extends ItemView {
             if (snapshot.activeBookId) {
                 const shouldSyncTargetCache = !this.startupFreshMode || this.freshModeTouchedBookIds.has(snapshot.activeBookId);
                 if (shouldSyncTargetCache) {
-                    const prior = this.selection.getRememberedTargetSceneIdsForBook(snapshot.activeBookId) ?? [];
+                    const prior = this.selection.getRememberedTargetSceneIdsForBook(snapshot.activeBookId) ?? []; // SAFE: no remembered target selection for this book — compare against empty
                     if (!this.areTargetSceneIdsEqual(prior, nextTargetSceneIds)) {
                         this.selection.rememberTargetSceneIdsForBook(snapshot.activeBookId, nextTargetSceneIds);
                         shouldPersist = true;
@@ -4001,7 +4001,7 @@ export class InquiryView extends ItemView {
 
     private updateActiveZoneStyling(): void {
         if (!this.rootSvg) return;
-        const zone = this.state.activeZone ?? 'setup';
+        const zone = this.state.activeZone ?? 'setup'; // SAFE: no active zone on first render — setup is the default zone
         const zoneColor = this.getZoneColorVar(zone);
         this.rootSvg.style.setProperty('--ert-inquiry-active-zone-color', zoneColor);
         this.rootSvg.style.setProperty('--ert-inquiry-finding-color', zoneColor);
@@ -4240,7 +4240,7 @@ export class InquiryView extends ItemView {
                 return stats.reduce((sum, stat) => sum + stat.bodyWords, 0);
             }
 
-            const fallbackPaths = item.filePaths ?? [];
+            const fallbackPaths = item.filePaths ?? []; // SAFE: items without filePaths contribute 0 words
             if (!fallbackPaths.length) return 0;
             const stats = await Promise.all(fallbackPaths.map(path => this.loadCorpusCcStatsByPath(path)));
             return stats.reduce((sum, stat) => sum + stat.bodyWords, 0);
@@ -4336,7 +4336,7 @@ export class InquiryView extends ItemView {
         }
 
         this.updatePreviewPanelPosition();
-        this.minimap.buildSweepLayer(result.tickLayouts, result.tickWidth, this.minimap.layoutLength ?? 0);
+        this.minimap.buildSweepLayer(result.tickLayouts, result.tickWidth, this.minimap.layoutLength ?? 0); // SAFE: layout not measured yet — sweep layer built with zero length
         void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
         this.applyMinimapSubsetShading(items);
@@ -4430,7 +4430,7 @@ export class InquiryView extends ItemView {
         const entries = this.getCorpusCcEntries();
         const entriesByClass = new Map<string, CorpusCcEntry[]>();
         entries.forEach(entry => {
-            const list = entriesByClass.get(entry.className) ?? [];
+            const list = entriesByClass.get(entry.className) ?? []; // SAFE: first entry for this class starts a fresh list
             list.push(entry);
             entriesByClass.set(entry.className, list);
         });
@@ -4616,7 +4616,7 @@ export class InquiryView extends ItemView {
             return;
         }
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config])); // SAFE: settings may omit class configs — empty map means no class modes configured
         const currentMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
         const modes = this.getCorpusCycleModes(groupKey);
         const nextMode = this.getNextCorpusMode(currentMode, modes);
@@ -4634,7 +4634,7 @@ export class InquiryView extends ItemView {
 
     private getSceneBookEffectiveMode(entries: CorpusCcEntry[]): SceneInclusion | 'mixed' {
         if (!entries.length) return 'excluded';
-        const modes = entries.map(entry => this.normalizeContributionMode(entry.mode ?? 'excluded', 'scene'));
+        const modes = entries.map(entry => this.normalizeContributionMode(entry.mode ?? 'excluded', 'scene')); // SAFE: entries without a mode are treated as excluded
         const first = modes[0];
         if (modes.every(mode => mode === first)) return first;
         return 'mixed';
@@ -4643,7 +4643,7 @@ export class InquiryView extends ItemView {
     private getSceneBookDisplayMode(entries: CorpusCcEntry[]): SceneInclusion {
         const mode = this.getSceneBookEffectiveMode(entries);
         if (mode === 'mixed') {
-            const hasFull = entries.some(entry => this.normalizeContributionMode(entry.mode ?? 'excluded', 'scene') === 'full');
+            const hasFull = entries.some(entry => this.normalizeContributionMode(entry.mode ?? 'excluded', 'scene') === 'full'); // SAFE: entries without a mode are treated as excluded
             return hasFull ? 'full' : 'summary';
         }
         return mode;
@@ -4654,7 +4654,7 @@ export class InquiryView extends ItemView {
         if (!entries.length) return;
 
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config])); // SAFE: settings may omit class configs — empty map means no class modes configured
         const classMode = this.getCorpusGroupEffectiveMode('scene', configMap);
         const currentMode = this.getSceneBookEffectiveMode(entries);
         const modes = this.getCorpusCycleModes('scene');
@@ -4678,7 +4678,7 @@ export class InquiryView extends ItemView {
         const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
         if (!entry) return;
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config])); // SAFE: settings may omit class configs — empty map means no class modes configured
         const groupKey = this.getCorpusGroupKey(entry.classKey, entry.scope);
         const classMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
         const currentMode = this.normalizeContributionMode(entry.mode, this.getCorpusGroupBaseClass(groupKey));
@@ -4698,7 +4698,7 @@ export class InquiryView extends ItemView {
         const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
         if (!entry) return;
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config])); // SAFE: settings may omit class configs — empty map means no class modes configured
         const groupKey = this.getCorpusGroupKey(entry.classKey, entry.scope);
         const classMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
         const normalizedMode = this.normalizeContributionMode(mode, this.getCorpusGroupBaseClass(groupKey));
@@ -4718,7 +4718,7 @@ export class InquiryView extends ItemView {
             }
             return;
         }
-        const normalizedId = String(sceneId || '').trim();
+        const normalizedId = String(sceneId || '').trim(); // SAFE: null or undefined sceneId normalizes to empty — guarded empty check follows
         if (!normalizedId) return;
 
         const existing = this.normalizeTargetSceneIds(this.state.targetSceneIds);
@@ -4953,7 +4953,7 @@ export class InquiryView extends ItemView {
     private handleCorpusGlobalToggle(): void {
         if (this.state.isRunning) return;
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config])); // SAFE: settings may omit class configs — empty map means no class modes configured
         const groupKeys = this.getCorpusGroupKeys(sources);
         if (!groupKeys.length) return;
         const current = this.getCorpusGlobalMode(groupKeys, configMap);
@@ -5019,7 +5019,7 @@ export class InquiryView extends ItemView {
 
 
     private getSceneBookMetaFromEntry(entry: CorpusCcEntry): { bookId: string; bookLabel: string; order: number } {
-        const books = this.corpus?.books ?? [];
+        const books = this.corpus?.books ?? []; // SAFE: corpus not loaded yet — no books to match
         if (entry.bookId) {
             const match = books.find(book => book.id === entry.bookId);
             if (match) {
@@ -5032,7 +5032,7 @@ export class InquiryView extends ItemView {
             }
             return {
                 bookId: entry.bookId,
-                bookLabel: entry.bookLabel || '?',
+                bookLabel: entry.bookLabel || '?', // SAFE: display placeholder when the book id has no known label
                 order: Number.POSITIVE_INFINITY
             };
         }
@@ -5105,12 +5105,12 @@ export class InquiryView extends ItemView {
     private getCorpusCcClassGroups(entriesByClass: Map<string, CorpusCcEntry[]>): CorpusCcGroup[] {
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const classScope = this.getClassScopeConfig(sources.classScope);
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
-        const configs = (sources.classes || [])
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config])); // SAFE: settings may omit class configs — empty map means no class modes configured
+        const configs = (sources.classes || []) // SAFE: settings may omit class configs — nothing to group
             .filter(config => config.enabled && (classScope.allowAll || classScope.allowed.has(config.className)));
         const groups: CorpusCcGroup[] = [];
         const ensureGroup = (className: string, mode: SceneInclusion) => {
-            const items = entriesByClass.get(className) ?? [];
+            const items = entriesByClass.get(className) ?? []; // SAFE: class has no entries yet — group renders empty
             groups.push({ key: className, className, items, count: items.length, mode });
         };
 
@@ -5119,7 +5119,7 @@ export class InquiryView extends ItemView {
             const normalizedName = config.className;
             if (normalizedName === 'scene' && this.state.scope === 'saga') {
                 const sceneMode = this.getCorpusGroupEffectiveMode('scene', configMap);
-                const sceneItems = entriesByClass.get('scene') ?? [];
+                const sceneItems = entriesByClass.get('scene') ?? []; // SAFE: no scene entries in saga scope — book groups render empty
                 groups.push(...this.buildSagaSceneGroups(sceneItems, sceneMode));
                 return;
             }
@@ -5128,7 +5128,7 @@ export class InquiryView extends ItemView {
                 ensureGroup('outline', outlineMode);
                 if (this.state.scope === 'saga') {
                     const sagaMode = this.getCorpusGroupEffectiveMode('outline-saga', configMap);
-                    const sagaItems = entriesByClass.get('outline-saga') ?? [];
+                    const sagaItems = entriesByClass.get('outline-saga') ?? []; // SAFE: no saga outline entries — group renders empty
                     groups.push({
                         key: 'outline-saga',
                         className: 'outline-saga',
@@ -5152,7 +5152,7 @@ export class InquiryView extends ItemView {
             const entryConfig = configMap.get(baseClass);
             if (entryConfig && !entryConfig.enabled) return;
             const override = this.corpusService.getClassOverride(className);
-            const mode = override ?? items[0]?.mode ?? 'excluded';
+            const mode = override ?? items[0]?.mode ?? 'excluded'; // SAFE: no override and no entries — class defaults to excluded
             groups.push({
                 key: className,
                 className,
@@ -5176,7 +5176,7 @@ export class InquiryView extends ItemView {
     }
 
     private resolveCorpusBookForPath(path: string): { id: string; label: string } | undefined {
-        const books = this.corpus?.books ?? [];
+        const books = this.corpus?.books ?? []; // SAFE: corpus not loaded yet — no books to match
         const match = books.find(book => path === book.rootPath || path.startsWith(`${book.rootPath}/`));
         if (match) {
             return {
@@ -5210,7 +5210,7 @@ export class InquiryView extends ItemView {
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
             return [];
         }
-        const manifest = this.buildCorpusEntryList(this.state.activeQuestionId ?? 'cc-preview', {
+        const manifest = this.buildCorpusEntryList(this.state.activeQuestionId ?? 'cc-preview', { // SAFE: no active question — stable preview id keys the entry list
             questionZone: this.state.activeZone ?? undefined,
             includeInactive: true,
             applyOverrides: true
@@ -5242,8 +5242,8 @@ export class InquiryView extends ItemView {
             const resolvedSceneBook = entry.class === 'scene' ? this.resolveCorpusBookForPath(entry.path) : undefined;
             const sceneBook = entry.class === 'scene'
                 ? {
-                    id: entry.bookId || resolvedSceneBook?.id || '',
-                    label: resolvedSceneBook?.label || '?'
+                    id: entry.bookId || resolvedSceneBook?.id || '', // SAFE: unresolved scene book — empty id renders as unknown book
+                    label: resolvedSceneBook?.label || '?' // SAFE: display placeholder for an unresolved book label
                 }
                 : undefined;
             return {
@@ -5257,7 +5257,7 @@ export class InquiryView extends ItemView {
                 className,
                 classKey: entry.class,
                 scope: entry.scope,
-                mode: this.normalizeContributionMode(entry.mode ?? 'excluded', entry.class),
+                mode: this.normalizeContributionMode(entry.mode ?? 'excluded', entry.class), // SAFE: entries without a mode are treated as excluded
                 isTarget: entry.isTarget,
                 sortLabel: label
             };
@@ -5288,7 +5288,7 @@ export class InquiryView extends ItemView {
     private buildSagaCcEntries(corpus: InquiryCorpusSnapshot): CorpusCcEntry[] {
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const classScope = this.getClassScopeConfig(sources.classScope);
-        const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
+        const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline'); // SAFE: settings may omit class configs — missing outline config disables outlines below
         if (!outlineConfig?.enabled) {
             return [];
         }
@@ -5300,14 +5300,14 @@ export class InquiryView extends ItemView {
         }
 
         const outlineFiles = this.getOutlineFiles();
-        const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book');
+        const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book'); // SAFE: outlines without an explicit scope are book-scoped
         const sagaOutlines = outlineFiles.filter(file => this.getOutlineScope(file) === 'saga');
 
         const entries: CorpusCcEntry[] = [];
         if (includeBookOutlines) {
             entries.push(...corpus.books.map(book => {
                 const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
-                const filePath = outline?.path || '';
+                const filePath = outline?.path || ''; // SAFE: book without an outline file — empty path marks a missing outline entry
                 return {
                     id: outline?.path || book.id,
                     entryKey: this.getCorpusItemKey('outline', filePath || book.id, 'book'),
@@ -5323,10 +5323,10 @@ export class InquiryView extends ItemView {
 
         if (includeSagaOutlines) {
             const sagaOutline = sagaOutlines[0];
-            const filePath = sagaOutline?.path || '';
+            const filePath = sagaOutline?.path || ''; // SAFE: no saga outline file — empty path marks a missing outline entry
             entries.push({
-                id: sagaOutline?.path || 'saga-outline',
-                entryKey: this.getCorpusItemKey('outline', filePath || 'saga-outline', 'saga'),
+                id: sagaOutline?.path || 'saga-outline', // SAFE: stable placeholder id when no saga outline file exists
+                entryKey: this.getCorpusItemKey('outline', filePath || 'saga-outline', 'saga'), // SAFE: stable placeholder key when no saga outline file exists
                 label: 'Saga',
                 filePath,
                 className: 'outline',
@@ -5342,7 +5342,7 @@ export class InquiryView extends ItemView {
     private getOutlineFiles(): TFile[] {
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const classScope = this.getClassScopeConfig(sources.classScope);
-        const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
+        const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline'); // SAFE: settings may omit class configs — missing outline config yields no files
         if (!outlineConfig?.enabled) return [];
         if (!this.isModeActive(outlineConfig.bookScope) && !this.isModeActive(outlineConfig.sagaScope)) return [];
         if (!classScope.allowAll && !classScope.allowed.has('outline')) return [];
@@ -5418,9 +5418,9 @@ export class InquiryView extends ItemView {
         if (!file || !this.isTFile(file)) {
             return { bodyWords: 0, synopsisWords: 0, synopsisQuality: 'missing' };
         }
-        const mtime = file.stat.mtime ?? 0;
+        const mtime = file.stat.mtime ?? 0; // SAFE: missing mtime treated as 0 — cache lookup simply misses
         const title = this.getDocumentTitle(file);
-        const frontmatter = this.getNormalizedFrontmatter(file) ?? {};
+        const frontmatter = this.getNormalizedFrontmatter(file) ?? {}; // SAFE: file without frontmatter — status fields read from an empty object
         const { statusRaw, due } = getDocumentStatusFields(frontmatter);
         const cached = this.ccWordCache.get(filePath);
         if (cached && cached.mtime === mtime && cached.statusRaw === statusRaw && cached.due === due && cached.title === title) {
@@ -5672,10 +5672,10 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
         }
-        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
+        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup'; // SAFE: legacy results predate zone metadata — setup is the default zone
         const hero = formatAuthorFacingErrorHero(result);
         const meta = formatAuthorFacingErrorDetail(result);
-        const emptyRows = Array(this.previewRows.length || 6).fill('');
+        const emptyRows = Array(this.previewRows.length || 6).fill(''); // SAFE: rows not built yet — render six placeholder rows
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-error');
         this.previewGroup.classList.remove('is-locked', 'is-results');
@@ -5727,10 +5727,10 @@ export class InquiryView extends ItemView {
         const prevBook = hasPrev ? books[current - 1] : undefined;
         const nextBook = hasNext ? books[current + 1] : undefined;
         const prevTooltip = prevBook
-            ? `Previous book: ${this.getBookTitleForId(prevBook.id) || prevBook.displayLabel || 'Book'}`
+            ? `Previous book: ${this.getBookTitleForId(prevBook.id) || prevBook.displayLabel || 'Book'}` // SAFE: display fallback chain for the book tooltip label
             : t('inquiry.nav.noPreviousBook');
         const nextTooltip = nextBook
-            ? `Next book: ${this.getBookTitleForId(nextBook.id) || nextBook.displayLabel || 'Book'}`
+            ? `Next book: ${this.getBookTitleForId(nextBook.id) || nextBook.displayLabel || 'Book'}` // SAFE: display fallback chain for the book tooltip label
             : t('inquiry.nav.noNextBook');
 
         addTooltipData(this.navPrevButton, balanceTooltipText(prevTooltip), 'top');
@@ -5797,7 +5797,7 @@ export class InquiryView extends ItemView {
         const abbr = resolvedZone === 'setup' ? 'Set' : resolvedZone === 'pressure' ? 'Pres' : 'Pay';
         if (!questionId) return abbr;
         const config = this.getPromptConfig();
-        const slots = config[resolvedZone] ?? [];
+        const slots = config[resolvedZone] ?? []; // SAFE: zone may be absent from prompt config — no slot number appended
         const slotIndex = slots.findIndex(slot => slot.id === questionId);
         const num = slotIndex >= 0 ? slotIndex + 1 : null;
         return num !== null ? `${abbr}${num}` : abbr;
@@ -5919,13 +5919,13 @@ export class InquiryView extends ItemView {
     }
 
     private getDemoVaultLabel(): string {
-        return this.demoVaultName?.trim() || 'Demo Vault';
+        return this.demoVaultName?.trim() || 'Demo Vault'; // SAFE: UX default — unnamed demo vault shows the generic label
     }
 
     private isInquiryConfigured(): boolean {
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
-        const hasBooks = (this.plugin.settings.books || []).some(book => (book.sourceFolder || '').trim().length > 0);
-        return hasBooks && (sources.classScope?.length ?? 0) > 0;
+        const hasBooks = (this.plugin.settings.books || []).some(book => (book.sourceFolder || '').trim().length > 0); // SAFE: settings without books or sourceFolder count as not configured
+        return hasBooks && (sources.classScope?.length ?? 0) > 0; // SAFE: missing classScope means no classes selected — not configured
     }
 
     private getInquirySceneCount(): number {
@@ -6001,7 +6001,7 @@ export class InquiryView extends ItemView {
         });
 
         this.setIconButtonDisabled(this.apiSimulationButton, runDisabled || running);
-        const singleBook = (this.corpus?.books ?? []).length <= 1;
+        const singleBook = (this.corpus?.books ?? []).length <= 1; // SAFE: corpus not loaded yet — treat as single book and disable scope toggle
         this.setIconButtonDisabled(this.scopeToggleButton, lockout || running || singleBook);
         // The engine button opens AI settings, so keep it clickable during setup
         // (not-configured / no-scenes) — only mute it while a query is running.
@@ -6089,7 +6089,7 @@ export class InquiryView extends ItemView {
         const hoverTextEl = this.hoverTextEl;
         if (!hoverTextEl) return;
         clearSvgChildren(hoverTextEl);
-        const x = hoverTextEl.getAttribute('x') ?? '0';
+        const x = hoverTextEl.getAttribute('x') ?? '0'; // SAFE: text element without an x attribute anchors tspans at 0
         const primaryClass = options?.primaryClass;
         const primarySize = options?.primarySize;
         const primaryWeight = options?.primaryWeight;
@@ -6562,7 +6562,7 @@ export class InquiryView extends ItemView {
                 runTrace = runOutput.trace;
                 const progressState = this.currentRunProgress as InquiryRunProgressEvent | null;
                 const progressPassCount = progressState?.totalPasses;
-                const finalPassCount = Math.max(1, runOutput.trace.executionPassCount ?? progressPassCount ?? 1);
+                const finalPassCount = Math.max(1, runOutput.trace.executionPassCount ?? progressPassCount ?? 1); // SAFE: trace and progress may omit pass counts — a run has at least one pass
                 this.updateRunProgress({
                     phase: 'finalizing',
                     currentPass: finalPassCount,
@@ -6743,7 +6743,7 @@ export class InquiryView extends ItemView {
             questions,
             providerSummary: providerPlan.summary,
             providerLabel: providerPlan.label,
-            logsEnabled: this.plugin.settings.logApiInteractions ?? true,
+            logsEnabled: this.plugin.settings.logApiInteractions ?? true, // SAFE: unset logging setting defaults to logging on
             runDisabledReason,
             priorProgress: priorProgress ?? undefined,
             resumeAvailable: resumeCheck.available,
@@ -6791,7 +6791,7 @@ export class InquiryView extends ItemView {
 
         const nextProviderPlan = this.buildOmnibusProviderPlan();
         if (!nextProviderPlan.choice) {
-            const reason = nextProviderPlan.disabledReason || 'Provider unavailable';
+            const reason = nextProviderPlan.disabledReason || 'Provider unavailable'; // SAFE: UX default when the provider plan carries no specific reason
             new Notice(t('inquiry.notice.omnibusUnavailable', { reason }));
             return;
         }
@@ -7013,7 +7013,7 @@ export class InquiryView extends ItemView {
 
         // Ensure scene IDs exist before the sequential loop.
         {
-            const preflightManifest = this.buildCorpusManifest(questions[0]?.id ?? 'preflight', {
+            const preflightManifest = this.buildCorpusManifest(questions[0]?.id ?? 'preflight', { // SAFE: no questions yet — placeholder id for the preflight manifest
                 modelId: providerChoice.modelId,
                 questionZone: questions[0]?.zone
             });
@@ -7249,8 +7249,8 @@ export class InquiryView extends ItemView {
             tokenEstimate: { ...trace.tokenEstimate },
             response: trace.response ? { ...trace.response } : null,
             usage: trace.usage ? { ...trace.usage } : undefined,
-            sanitizationNotes: [...(trace.sanitizationNotes || [])],
-            notes: [...(trace.notes || [])]
+            sanitizationNotes: [...(trace.sanitizationNotes || [])], // SAFE: older traces lack this array — clone as empty
+            notes: [...(trace.notes || [])] // SAFE: older traces lack this array — clone as empty
         };
     }
 
@@ -7305,7 +7305,7 @@ export class InquiryView extends ItemView {
 
     private buildCorpusSettingsFingerprint(): string {
         const sources = this.settingsAccessor.getSources();
-        const classes = sources?.classes ?? [];
+        const classes = sources?.classes ?? []; // SAFE: settings may omit class configs — fingerprint has no parts
         const parts = classes
             .filter(c => c.enabled)
             .map(c => `${c.className}:${c.bookScope}:${c.sagaScope}:${c.referenceScope}`)
@@ -7351,7 +7351,7 @@ export class InquiryView extends ItemView {
         const seen = new Set<string>();
 
         zones.forEach(zone => {
-            const slots = config[zone] ?? [];
+            const slots = config[zone] ?? []; // SAFE: zone may be absent from prompt config — no questions contributed
             if (!slots.length) return;
             const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
             const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
@@ -7378,7 +7378,7 @@ export class InquiryView extends ItemView {
                 choice: null,
                 summary: engine.blockReason || t('inquiry.runner.inquiryAiUnavailable'),
                 label: 'Unavailable',
-                disabledReason: engine.blockReason || 'Canonical Inquiry engine unavailable'
+                disabledReason: engine.blockReason || 'Canonical Inquiry engine unavailable' // SAFE: UX default when the engine carries no specific block reason
             };
         }
 
@@ -7404,7 +7404,7 @@ export class InquiryView extends ItemView {
         if (this.guidanceState === 'no-scenes') return t('inquiry.runner.noScenesAvailable');
         if (this.isInquiryApiKeyMissing()) return t('inquiry.interaction.noApiKey');
         if (!questions.length) return t('inquiry.runner.noEnabledQuestions');
-        if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable';
+        if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable'; // SAFE: UX default when the provider plan carries no specific reason
         return null;
     }
 
@@ -7608,14 +7608,14 @@ export class InquiryView extends ItemView {
                 path: scene.filePath,
                 label: scene.displayLabel,
                 sceneNumber: scene.sceneNumber,
-                aliases: [scene.id, ...(scene.filePaths || [])]
+                aliases: [scene.id, ...(scene.filePaths || [])] // SAFE: scenes without alternate filePaths get no extra aliases
             })));
         const normalized = normalizeSceneRef({ ref_id: trimmed }, index);
         if (normalized.warning) {
             console.warn(`[Inquiry] ${normalized.warning}`);
         }
         return {
-            refId: normalized.ref.ref_id || '',
+            refId: normalized.ref.ref_id || '', // SAFE: unresolved ref normalizes to empty — caller treats empty as unresolved
             wasNormalized: normalized.normalizedFromLegacy && !normalized.unresolved
         };
     }
@@ -7631,7 +7631,7 @@ export class InquiryView extends ItemView {
         if (raw.runId !== normalized.runId && normalized.runId) {
             notes.push('Normalized runId to inquiry id.');
         }
-        const refNormCount = normalized.refNormalizationCount ?? 0;
+        const refNormCount = normalized.refNormalizationCount ?? 0; // SAFE: older normalizer results lack the count — 0 skips the note
         if (refNormCount > 0) {
             notes.push(`Normalized ${refNormCount} scene ref${refNormCount === 1 ? '' : 's'} from non-standard format to canonical scn_ id.`);
         }
@@ -7643,7 +7643,7 @@ export class InquiryView extends ItemView {
     }
 
     private shouldAutoPopulatePendingEdits(): boolean {
-        return this.settingsAccessor.getActionNotesAutoPopulate() ?? false;
+        return this.settingsAccessor.getActionNotesAutoPopulate() ?? false; // SAFE: optional setting unset — auto-populate defaults off
     }
 
     private async writeInquiryPendingEdits(
@@ -7823,7 +7823,7 @@ export class InquiryView extends ItemView {
         const book = this.corpus.books.find(entry => entry.id === resolvedBookId) ?? this.corpus.books[0];
         if (!book) return null;
         const outlineFiles = this.getOutlineFiles();
-        const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book');
+        const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book'); // SAFE: outlines without an explicit scope are book-scoped
         const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
         return outline?.path ?? null;
     }
@@ -7855,9 +7855,9 @@ export class InquiryView extends ItemView {
                 return;
             }
             if (nextState.outcome === 'written') {
-                frontmatter[fieldKey] = nextState.value ?? '';
+                frontmatter[fieldKey] = nextState.value ?? ''; // SAFE: writer may return no value — empty string keeps the field defined
             }
-            outcome = nextState.outcome ?? 'skipped';
+            outcome = nextState.outcome ?? 'skipped'; // SAFE: writer without an explicit outcome counts as skipped
         });
         if (outcome === 'written') {
             const verifiedContent = await this.app.vault.read(file);
@@ -7872,7 +7872,7 @@ export class InquiryView extends ItemView {
                 return 'refused';
             }
         }
-        return outcome ?? 'skipped';
+        return outcome ?? 'skipped'; // SAFE: processFrontMatter callback may not run — treat as skipped
     }
 
     private applyExecutionObservabilityFromTrace(
@@ -7984,7 +7984,7 @@ export class InquiryView extends ItemView {
             label: 'Simulation',
             standardPrompt: 'Simulated inquiry run.',
             focusedPrompt: 'Simulated inquiry run.',
-            zone: this.state.activeZone ?? 'setup',
+            zone: this.state.activeZone ?? 'setup', // SAFE: no active zone on first render — setup is the default zone
             icon: 'activity'
         };
         const selectedPrompt = prompt ?? fallbackPrompt;
@@ -8099,7 +8099,7 @@ export class InquiryView extends ItemView {
     }
 
     private pickSimulationPrompt(): InquiryQuestion | undefined {
-        const preferredZone = this.state.activeZone ?? 'setup';
+        const preferredZone = this.state.activeZone ?? 'setup'; // SAFE: no active zone on first render — setup is the default zone
         return this.getActivePrompt(preferredZone)
             ?? this.getActivePrompt('setup')
             ?? this.getActivePrompt('pressure')
@@ -8206,10 +8206,10 @@ export class InquiryView extends ItemView {
         const sources = this.normalizeInquirySources(this.settingsAccessor.getSources());
         const entries: CorpusManifestEntry[] = [];
         const now = Date.now();
-        const includeInactive = options?.includeInactive ?? false;
-        const applyOverrides = options?.applyOverrides ?? true;
+        const includeInactive = options?.includeInactive ?? false; // SAFE: optional flag — inactive entries excluded unless requested
+        const applyOverrides = options?.applyOverrides ?? true; // SAFE: optional flag — overrides apply unless explicitly disabled
         const classConfigMap = new Map(
-            (sources.classes || []).map(config => [config.className, config])
+            (sources.classes || []).map(config => [config.className, config]) // SAFE: settings may omit class configs — empty map means no class modes configured
         );
         const classScope = this.getClassScopeConfig(sources.classScope);
         const contextRequired = typeof options?.contextRequired === 'boolean'
@@ -8250,7 +8250,7 @@ export class InquiryView extends ItemView {
 
                 let mode: SceneInclusion = 'excluded';
                 if (className === 'outline') {
-                    const outlineScope = this.getFrontmatterScope(frontmatter) ?? 'book';
+                    const outlineScope = this.getFrontmatterScope(frontmatter) ?? 'book'; // SAFE: outlines without an explicit scope are book-scoped
                     if (config && config.enabled) {
                         mode = this.normalizeContributionMode(
                             outlineScope === 'saga' ? config.sagaScope : config.bookScope,
@@ -8374,7 +8374,7 @@ export class InquiryView extends ItemView {
     ): CorpusManifest {
         const now = Date.now();
         const modelIdOverride = options?.modelId;
-        const applyOverrides = options?.applyOverrides ?? true;
+        const applyOverrides = options?.applyOverrides ?? true; // SAFE: optional flag — overrides apply unless explicitly disabled
         const entryResult = this.buildCorpusEntryList(questionId, {
             modelId: modelIdOverride,
             questionZone: options?.questionZone,
@@ -8384,13 +8384,13 @@ export class InquiryView extends ItemView {
         });
         const entries = entryResult.entries.map(entry => ({
             ...entry,
-            mode: entry.mode ?? 'excluded',
+            mode: entry.mode ?? 'excluded', // SAFE: entries without a mode are treated as excluded
             isTarget: entry.class === 'scene' && !!entry.sceneId && entry.isTarget
         }));
         const resolvedRoots = entryResult.resolvedRoots;
 
         const fingerprintSource = entries
-            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}:${entry.isTarget ? 1 : 0}`)
+            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}:${entry.isTarget ? 1 : 0}`) // SAFE: non-scene entries have no sceneId — empty segment keeps the fingerprint stable
             .sort()
             .join('|');
         // The provider prompt-cache reuse key must be corpus-only. Target-scene
@@ -8403,7 +8403,7 @@ export class InquiryView extends ItemView {
         // `corpusOnlyFingerprint` — keeps isTarget so target re-selection still
         // produces a distinct session.)
         const reuseFingerprintSource = entries
-            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}`)
+            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}`) // SAFE: non-scene entries have no sceneId — empty segment keeps the fingerprint stable
             .sort()
             .join('|');
         const modelId = modelIdOverride ?? this.getResolvedEngine().modelId;
@@ -8422,7 +8422,7 @@ export class InquiryView extends ItemView {
         }));
 
         const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
-            acc[entry.class] = (acc[entry.class] || 0) + 1;
+            acc[entry.class] = (acc[entry.class] || 0) + 1; // SAFE: first entry of a class starts its count at 0
             return acc;
         }, {});
         const allowedClasses = Array.from(new Set(entries.map(entry => entry.class)));
@@ -8644,7 +8644,7 @@ export class InquiryView extends ItemView {
     }
 
     private getNavigationBooks(): InquiryBookItem[] {
-        return this.corpus?.books ?? [];
+        return this.corpus?.books ?? []; // SAFE: corpus not loaded yet — no books to navigate
     }
 
     private getNavigationBookIndex(books: InquiryBookItem[]): number {
@@ -8656,12 +8656,12 @@ export class InquiryView extends ItemView {
 
     private getActiveBookLabel(): string {
         if (!this.corpus?.bookResolved) return '?';
-        const books = this.corpus?.books ?? [];
+        const books = this.corpus?.books ?? []; // SAFE: resolved corpus may still omit books — placeholder label below covers it
         if (this.state.activeBookId) {
             const match = books.find(book => book.id === this.state.activeBookId);
             if (match) return match.displayLabel;
         }
-        return books[0]?.displayLabel ?? '?';
+        return books[0]?.displayLabel ?? '?'; // SAFE: display placeholder when no book label resolves
     }
 
     private getActiveBookTitleForMessages(): string | null {
@@ -8674,8 +8674,8 @@ export class InquiryView extends ItemView {
         if (!bookId) return null;
         const normalizedBookId = normalizePath(bookId);
         if (!normalizedBookId) return null;
-        const match = (this.plugin.settings.books || []).find(book =>
-            normalizePath((book.sourceFolder || '').trim()) === normalizedBookId
+        const match = (this.plugin.settings.books || []).find(book => // SAFE: settings without books — no title match
+            normalizePath((book.sourceFolder || '').trim()) === normalizedBookId // SAFE: book without a sourceFolder normalizes to empty and never matches
         );
         const title = match?.title?.trim();
         return title && title.length > 0 ? title : null;
@@ -8752,7 +8752,7 @@ export class InquiryView extends ItemView {
     private getScopeKey(): string {
         if (this.state.scope === 'saga') return 'saga';
         if (this.state.activeBookId) return this.state.activeBookId;
-        return this.corpus?.activeBookId ?? 'unresolved';
+        return this.corpus?.activeBookId ?? 'unresolved'; // SAFE: diagnostic scope key when no book is resolved
     }
 
     private buildScopeHoverText(): string {
@@ -8860,7 +8860,7 @@ export class InquiryView extends ItemView {
         if (this.startupFreshMode && !this.freshModeTouchedBookIds.has(bookId)) {
             return [];
         }
-        return this.selection.getRememberedTargetSceneIdsForBook(bookId) ?? [];
+        return this.selection.getRememberedTargetSceneIdsForBook(bookId) ?? []; // SAFE: no remembered target selection for this book — none visible
     }
 
     private exitStartupFreshMode(): void {
@@ -8928,7 +8928,7 @@ export class InquiryView extends ItemView {
             item.displayLabel.toLowerCase(),
             item.id.toLowerCase(),
             ...(item.sceneId ? [item.sceneId.toLowerCase()] : []),
-            ...(item.filePaths ?? []).map(path => path.toLowerCase())
+            ...(item.filePaths ?? []).map(path => path.toLowerCase()) // SAFE: items without filePaths add no candidate keys
         ]);
         for (const finding of ordered) {
             if (!this.isFindingHit(finding)) continue;
@@ -9059,7 +9059,7 @@ export class InquiryView extends ItemView {
         const words = text.split(/\s+/).filter(Boolean);
         if (!words.length) return [];
         const maxLines = Math.max(options?.maxLines ?? words.length, 1);
-        const minNonFinalFillRatio = Math.max(0, Math.min(options?.minNonFinalFillRatio ?? 0, 0.95));
+        const minNonFinalFillRatio = Math.max(0, Math.min(options?.minNonFinalFillRatio ?? 0, 0.95)); // SAFE: optional layout tuning — 0 disables the fill-ratio floor
 
         const widthCache = new Map<string, number>();
         const measureWidth = (content: string): number => {
@@ -9164,7 +9164,7 @@ export class InquiryView extends ItemView {
             minNonFinalFillRatio?: number;
         }
     ): number {
-        const align = options?.align ?? 'center';
+        const align = options?.align ?? 'center'; // SAFE: optional alignment — centered by default
         const x = align === 'start' ? -maxWidth / 2 : 0;
         textEl.setAttribute('y', '0');
         textEl.setAttribute('x', String(x));
@@ -9460,7 +9460,7 @@ export class InquiryView extends ItemView {
     private async recordInquiryTimingSample(result: InquiryResult, trace: InquiryRunTrace | null | undefined): Promise<void> {
         if (!result || result.aiReason === 'simulated' || result.aiReason === 'stub') return;
         const provider = result.aiProvider?.trim();
-        const model = (result.aiModelResolved || result.aiModelRequested || '').trim();
+        const model = (result.aiModelResolved || result.aiModelRequested || '').trim(); // SAFE: absent model normalizes to empty and yields no history key below
         const evidenceMode = this.getCurrentEvidenceModeKey();
         const key = this.getInquiryTimingHistoryKey(provider, model, evidenceMode);
         if (!key) return;
@@ -9479,7 +9479,7 @@ export class InquiryView extends ItemView {
         });
         if (!sampleRate) return;
 
-        const history = this.settingsAccessor.getTimingHistory() ?? {};
+        const history = this.settingsAccessor.getTimingHistory() ?? {}; // SAFE: no timing history recorded yet — start from an empty map
         const previous = history[key];
         const blended = blendSampleRate({
             previousAvg: previous?.avgMsPerInputToken,
@@ -9526,7 +9526,7 @@ export class InquiryView extends ItemView {
 
     private applyRunningProgressPreviewState(progress: InquiryRunProgressEvent | null): void {
         this.reconcileRunningEstimate(progress);
-        const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || '';
+        const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || ''; // SAFE: no question text available — running note renders without it
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
         this.setPreviewFooterText('');
     }
@@ -9541,7 +9541,7 @@ export class InquiryView extends ItemView {
 
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } | null {
         const readinessUi = this.buildReadinessUiState();
-        const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
+        const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0); // SAFE: estimate unavailable — 0 tokens skips duration prediction
 
         // If we have history for this (provider, model, evidenceMode) bucket,
         // trust it. The blended prediction guards against single-sample
@@ -9656,7 +9656,7 @@ export class InquiryView extends ItemView {
             `docs=${diagnostics.documentBlockCount}/${diagnostics.documentChars} chars`,
             `volatile=${diagnostics.volatileTextChars} chars`,
             `same-as-previous=${previousFingerprint ? (sameAsPrevious ? 'yes' : 'no') : 'n/a'}`,
-            `previous=${previousFingerprint ?? 'none'}`
+            `previous=${previousFingerprint ?? 'none'}` // SAFE: diagnostic label — first dispatch has no previous fingerprint
         ].join(' · ');
         if (!trace.notes.includes(note)) {
             trace.notes.unshift(note);
@@ -9670,7 +9670,7 @@ export class InquiryView extends ItemView {
 
     private resolveCacheWindowExpiry(result: InquiryResult, trace?: InquiryRunTrace | null): number | null {
         if (this.isErrorResult(result)) return null;
-        const provider = (result.aiProvider ?? '').trim().toLowerCase() as AIProviderId;
+        const provider = (result.aiProvider ?? '').trim().toLowerCase() as AIProviderId; // SAFE: absent provider normalizes to empty — guarded as no cache window below
         if (!provider || provider === 'none' || provider === 'ollama') return null;
         const aiSettings = this.getCanonicalAiSettings();
         const ttlMs = this.resolveCacheWindowMs(provider, aiSettings);
@@ -9716,7 +9716,7 @@ export class InquiryView extends ItemView {
         const usage = trace?.usage;
         if (!usage) return null;
         // Cache-CREATE runs report cacheReadInputTokens=0; cache-HIT runs report
-        // cacheCreationInputTokens=0. `??` short-circuits at 0, so we'd lose the
+        // cacheCreationInputTokens=0. Nullish coalescing short-circuits at 0, so we'd lose the
         // creation-side count on the first run that primes the cache. Prefer the
         // larger of the two so either path populates the persisted metric.
         const readTokens = typeof usage.cacheReadInputTokens === 'number'
@@ -9726,7 +9726,7 @@ export class InquiryView extends ItemView {
         const creationTokens = typeof usage.cacheCreationInputTokens === 'number'
             && Number.isFinite(usage.cacheCreationInputTokens) && usage.cacheCreationInputTokens > 0
             ? usage.cacheCreationInputTokens
-            : ((usage.cacheCreation5mInputTokens ?? 0) + (usage.cacheCreation1hInputTokens ?? 0));
+            : ((usage.cacheCreation5mInputTokens ?? 0) + (usage.cacheCreation1hInputTokens ?? 0)); // SAFE: providers without TTL-split cache counters contribute 0 creation tokens
         const cachedTokens = Math.max(readTokens, creationTokens);
         const totalInputTokens = typeof usage.inputTokens === 'number' && Number.isFinite(usage.inputTokens)
             ? Math.max(0, Math.floor(usage.inputTokens))
@@ -9818,7 +9818,7 @@ export class InquiryView extends ItemView {
     }
 
     private getRunningBackboneProgressRatio(elapsedMs: number): number {
-        const estimateMaxMs = Math.max(1000, this.currentRunEstimatedMaxMs || 0);
+        const estimateMaxMs = Math.max(1000, this.currentRunEstimatedMaxMs || 0); // SAFE: no estimate yet — clamps to the 1s minimum
         const timeRatio = estimateMaxMs > 0 ? Math.min(1, Math.max(0, elapsedMs / estimateMaxMs)) : 0;
         const progress = this.currentRunProgress;
         if (!progress) return timeRatio;
@@ -9851,7 +9851,7 @@ export class InquiryView extends ItemView {
             buildRunningStageLabel: this.buildRunningStageLabel.bind(this),
             engineTimerText: this.state.isRunning
                 ? formatElapsedRunClock(this.currentRunElapsedMs)
-                : (contextLabel ?? ''),
+                : (contextLabel ?? ''), // SAFE: no warm-context label — engine timer text renders empty
             engineTimerVisible: this.state.isRunning || !!contextLabel,
             engineTimerIconVisible: hasWarmContextCountdown,
             setTextIfChanged: (el, text) => this.setTextIfChanged(el, text, 'hudTextWrites'),
@@ -9913,7 +9913,7 @@ export class InquiryView extends ItemView {
         }
         const questionText = this.previewLast?.question
             || this.getCurrentPromptQuestion()
-            || '';
+            || ''; // SAFE: no question text available — cancel prompt renders without it
         const confirmed = await this.promptCancelInquiryRun(questionText);
         if (!confirmed) return;
         this.requestActiveInquiryCancellation();
@@ -9982,7 +9982,7 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
         }
-        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
+        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup'; // SAFE: legacy results predate zone metadata — setup is the default zone
         const mode = this.state.mode;
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-results');
@@ -9991,7 +9991,7 @@ export class InquiryView extends ItemView {
         this.setPreviewRunningNoteText('');
         const hero = this.buildResultsHeroText(result, mode);
         const meta = this.buildResultsMetaText(result, mode, zone);
-        const emptyRows = Array(this.previewRows.length || 6).fill('');
+        const emptyRows = Array(this.previewRows.length || 6).fill(''); // SAFE: rows not built yet — render six placeholder rows
         this.resetPreviewRowLabels();
         this.updatePromptPreview(zone, mode, hero, emptyRows, meta, { hideEmpty: true });
         this.setPreviewHeroNormalizationTooltip(result);
@@ -10005,7 +10005,7 @@ export class InquiryView extends ItemView {
         if (!this.previewHero) return;
         const existing = this.previewHero.querySelector('title');
         if (existing) existing.remove();
-        if ((result.refNormalizationCount ?? 0) > 0) {
+        if ((result.refNormalizationCount ?? 0) > 0) { // SAFE: older results lack the count — 0 hides the normalization tooltip
             const title = this.previewHero.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'title');
             title.textContent = t('inquiry.findings.referencesNormalized');
             this.previewHero.appendChild(title);
@@ -10147,7 +10147,7 @@ export class InquiryView extends ItemView {
         renderSection(t('inquiry.findings.targetSection'), targetFindings);
         renderSection(t('inquiry.findings.contextSection'), contextFindings);
 
-        const unverifiedFindings = result.unverifiedFindings || [];
+        const unverifiedFindings = result.unverifiedFindings || []; // SAFE: results without unverified findings render no warning section
         if (unverifiedFindings.length) {
             const severityClass = integrity.evidenceCompromised
                 ? 'is-citation-evidence-compromised'
@@ -10210,7 +10210,7 @@ export class InquiryView extends ItemView {
     ): number {
         const cacheKey = `${text}|${maxWidth}|${lineHeight}`;
         if (textEl.getAttribute('data-rt-hero-cache') === cacheKey) {
-            return Number(textEl.getAttribute('data-rt-hero-lines')) || 1;
+            return Number(textEl.getAttribute('data-rt-hero-lines')) || 1; // SAFE: cached hero renders at least one line
         }
         
         // Wipe existing content for measuring pass.
@@ -10267,7 +10267,7 @@ export class InquiryView extends ItemView {
         // Final layout achieved - attach the fixed lines via tspans
         this.perfCounters.svgClearCalls++;
         clearSvgChildren(textEl);
-        const x = textEl.getAttribute('x') ?? '0';
+        const x = textEl.getAttribute('x') ?? '0'; // SAFE: text element without an x attribute anchors tspans at 0
         const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
             this.perfCounters.svgNodeCreates++;
             const tspan = createSvgElement('tspan');
@@ -10481,7 +10481,7 @@ export class InquiryView extends ItemView {
         if (!historyRow) return;
         const defaultLabel = this.previewRowDefaultLabels.find((_, idx) =>
             this.previewRows[idx]?.group.classList.contains('is-history-slot')
-        ) ?? 'Prior result ·';
+        ) ?? 'Prior result ·'; // SAFE: UX default row label when no default label matches the history slot
         const staleState = this.getHoveredQuestionStaleState();
         historyRow.label = staleState.isStale ? 'Stale - corpus changed ·' : defaultLabel;
     }
@@ -10540,7 +10540,7 @@ export class InquiryView extends ItemView {
             : 0;
         const cacheKey = `${text}|${maxWidth}|${maxLines}|${lineHeight}|${preferFrontLoaded ? 1 : 0}|${minNonFinalFillRatio}`;
         if (textEl.getAttribute('data-rt-wrap-cache') === cacheKey) {
-            return Number(textEl.getAttribute('data-rt-wrap-lines')) || 1;
+            return Number(textEl.getAttribute('data-rt-wrap-lines')) || 1; // SAFE: cached wrap renders at least one line
         }
 
         // Invalidate sibling cache — setBalancedHeroText may have left a stale
@@ -10555,7 +10555,7 @@ export class InquiryView extends ItemView {
         });
 
         const words = text.split(/\s+/).filter(Boolean);
-        const x = textEl.getAttribute('x') ?? '0';
+        const x = textEl.getAttribute('x') ?? '0'; // SAFE: text element without an x attribute anchors tspans at 0
 
         // Single stamp path for both wrap branches. Skip caching when the
         // element is not currently measurable (hidden leaf) so the one-line
@@ -10666,7 +10666,7 @@ export class InquiryView extends ItemView {
     }
 
     private applyEllipsis(tspan: SVGTSpanElement, maxWidth: number): void {
-        let content = tspan.textContent ?? '';
+        let content = tspan.textContent ?? ''; // SAFE: empty tspan normalizes to empty — guarded empty check follows
         if (!content.length) return;
         let next = `${content}…`;
         tspan.textContent = next;
@@ -10871,11 +10871,11 @@ export class InquiryView extends ItemView {
         entries.forEach(entry => {
             if (!this.hasEntryEvidence(entry)) return;
             chars += this.getEntryContentLength(entry);
-            byClass[entry.class] = (byClass[entry.class] || 0) + 1;
+            byClass[entry.class] = (byClass[entry.class] || 0) + 1; // SAFE: first entry of a class starts its count at 0
         });
-        const character = byClass['character'] ?? 0;
-        const place = byClass['place'] ?? 0;
-        const power = byClass['power'] ?? 0;
+        const character = byClass['character'] ?? 0; // SAFE: class absent from the corpus counts as 0
+        const place = byClass['place'] ?? 0; // SAFE: class absent from the corpus counts as 0
+        const power = byClass['power'] ?? 0; // SAFE: class absent from the corpus counts as 0
         const total = Object.values(byClass).reduce((sum, value) => sum + value, 0);
         const other = Math.max(0, total - character - place - power);
         return { counts: { character, place, power, other, total }, byClass, chars };
@@ -10884,7 +10884,7 @@ export class InquiryView extends ItemView {
     private getEntryCharCount(path: string): number {
         const file = this.app.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return 0;
-        const mtime = file.stat.mtime ?? 0;
+        const mtime = file.stat.mtime ?? 0; // SAFE: missing mtime treated as 0 — cache lookup simply misses
         const cached = this.entryBodyCharCache.get(path);
         if (cached && cached.mtime === mtime) {
             return cached.chars;
@@ -11024,7 +11024,7 @@ export class InquiryView extends ItemView {
     }
 
     private getLatestPreviewQuestionActualCost(zone?: InquiryZone, questionId?: string): number | null {
-        const effectiveZone = zone ?? this.previewLast?.zone ?? this.state.activeZone ?? 'setup';
+        const effectiveZone = zone ?? this.previewLast?.zone ?? this.state.activeZone ?? 'setup'; // SAFE: no zone in args, preview, or state — setup is the default zone
         const activeQuestion = questionId
             ? this.getPromptOptions(effectiveZone).find(prompt => prompt.id === questionId)
             : this.getActivePrompt(effectiveZone);
@@ -11052,10 +11052,10 @@ export class InquiryView extends ItemView {
         for (const session of sessions) {
             if (session.baseKey !== baseKey) continue;
             if (this.isErrorResult(session.result)) continue;
-            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase(); // SAFE: absent provider normalizes to empty and fails the match below
             if (sessionProvider !== normalizedProvider) continue;
-            const resolvedModel = (session.result.aiModelResolved || '').trim();
-            const requestedModel = (session.result.aiModelRequested || '').trim();
+            const resolvedModel = (session.result.aiModelResolved || '').trim(); // SAFE: absent model normalizes to empty and fails the match below
+            const requestedModel = (session.result.aiModelRequested || '').trim(); // SAFE: absent model normalizes to empty and fails the match below
             if (resolvedModel !== normalizedModelId && requestedModel !== normalizedModelId) continue;
             const actualCost = this.getActualUsageCostForResult(session.result, session.providerCacheStatus);
             if (typeof actualCost === 'number' && Number.isFinite(actualCost) && actualCost >= 0) {
@@ -11146,15 +11146,15 @@ export class InquiryView extends ItemView {
     }
 
     private buildQuestionSignature(questionText?: string | null): string {
-        const normalized = (questionText ?? '')
+        const normalized = (questionText ?? '') // SAFE: no question text — signature hashes the empty form
             .trim()
             .toLowerCase()
             .replace(/\s+/g, ' ');
-        return this.hashString(normalized || 'question');
+        return this.hashString(normalized || 'question'); // SAFE: empty question hashes a stable placeholder token
     }
 
     private getPreviewHistoryValue(zone?: InquiryZone, questionId?: string): string {
-        const effectiveZone = zone ?? this.previewLast?.zone ?? this.state.activeZone ?? 'setup';
+        const effectiveZone = zone ?? this.previewLast?.zone ?? this.state.activeZone ?? 'setup'; // SAFE: no zone in args, preview, or state — setup is the default zone
         const activeQuestion = questionId
             ? this.getPromptOptions(effectiveZone).find(prompt => prompt.id === questionId)
             : this.getActivePrompt(effectiveZone);
@@ -11198,7 +11198,7 @@ export class InquiryView extends ItemView {
     }
 
     private formatPreviewHistoryModelLabel(session: InquirySession): string {
-        const raw = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
+        const raw = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim(); // SAFE: absent model normalizes to empty — caller renders no label
         if (!raw) return '';
         const normalized = raw.toLowerCase();
         if (normalized.startsWith('gpt-')) {
@@ -11262,7 +11262,7 @@ export class InquiryView extends ItemView {
             if (!element) return;
             const balancedText = balanceTooltipText(text);
             if (this.helpTipsEnabled) {
-                addTooltipData(element, balancedText, placement ?? 'bottom');
+                addTooltipData(element, balancedText, placement ?? 'bottom'); // SAFE: optional placement — tooltips default below the element
                 return;
             }
             const rtTooltipValue = element.getAttribute('data-rt-tip');
@@ -11384,7 +11384,7 @@ export class InquiryView extends ItemView {
             }
             if (options.sessionKey) {
                 this.sessionStore.updateSession(options.sessionKey, {
-                    status: options.statusOverride ?? 'saved',
+                    status: options.statusOverride ?? 'saved', // SAFE: no status override — a successful save marks the session saved
                     briefPath: file.path
                 });
                 // Write-through: the session now holds its final restorable
@@ -11451,7 +11451,7 @@ export class InquiryView extends ItemView {
         options?: { sessionKey?: string; normalizationNotes?: string[]; silent?: boolean }
     ): Promise<string | null> {
         const folder = await ensureInquiryLogFolder(this.app);
-        const silent = options?.silent ?? true;
+        const silent = options?.silent ?? true; // SAFE: optional flag — log failures are silent unless requested
         if (!folder) {
             if (!silent) {
                 new Notice(t('inquiry.notice.logFolderFailed'));
@@ -11495,7 +11495,7 @@ export class InquiryView extends ItemView {
         manifest: CorpusManifest | null,
         options?: { normalizationNotes?: string[]; silent?: boolean }
     ): Promise<void> {
-        const silent = options?.silent ?? true;
+        const silent = options?.silent ?? true; // SAFE: optional flag — log failures are silent unless requested
         const folder = await ensureInquiryContentLogFolder(this.app);
         if (!folder) {
             if (!silent) {
@@ -11597,7 +11597,7 @@ export class InquiryView extends ItemView {
             label: fallbackLabel || item.displayLabel || item.id,
             itemDisplayLabel: item.displayLabel,
             itemTitle: this.getMinimapItemTitle(item),
-            hoverLabel: fallbackLabel || item.displayLabel || item.id || 'Scene'
+            hoverLabel: fallbackLabel || item.displayLabel || item.id || 'Scene' // SAFE: display fallback chain for the scene hover label
         });
     }
 
@@ -11665,7 +11665,7 @@ export class InquiryView extends ItemView {
                     || this.findPromptLabelById(currentResult.questionId)
                     || this.getQuestionTextById(currentResult.questionId)
                     || currentResult.questionId
-                    || 'Inquiry Question',
+                    || 'Inquiry Question', // SAFE: UX default label when the question cannot be resolved
                 getBriefModelLabel: this.getBriefModelLabel.bind(this),
                 getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
                 getTokenTier: this.getTokenTier.bind(this),
@@ -11705,7 +11705,7 @@ export class InquiryView extends ItemView {
                     || this.findPromptLabelById(currentResult.questionId)
                     || this.getQuestionTextById(currentResult.questionId)
                     || currentResult.questionId
-                    || 'Inquiry Question',
+                    || 'Inquiry Question', // SAFE: UX default label when the question cannot be resolved
                 getBriefModelLabel: this.getBriefModelLabel.bind(this),
                 getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
                 getTokenTier: this.getTokenTier.bind(this),
@@ -11814,7 +11814,7 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
         for (const zone of zones) {
-            const slot = (config[zone] || []).find(entry => entry.id === questionId);
+            const slot = (config[zone] || []).find(entry => entry.id === questionId); // SAFE: zone may be absent from prompt config — no slot match
             if (slot?.label?.trim()) {
                 return slot.label.trim();
             }
@@ -11827,7 +11827,7 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
         for (const zone of zones) {
-            if ((config[zone] || []).some(entry => entry.id === questionId)) {
+            if ((config[zone] || []).some(entry => entry.id === questionId)) { // SAFE: zone may be absent from prompt config — no slot match
                 return zone;
             }
         }
@@ -11839,11 +11839,11 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
         for (const zone of zones) {
-            const slot = (config[zone] || []).find(entry => entry.id === questionId);
+            const slot = (config[zone] || []).find(entry => entry.id === questionId); // SAFE: zone may be absent from prompt config — no slot match
             if (slot?.requiresContext) return true;
         }
         if (questionZone) {
-            const slots = config[questionZone] || [];
+            const slots = config[questionZone] || []; // SAFE: zone may be absent from prompt config — no slots to check
             return slots.some(entry => entry.id === questionId && entry.requiresContext);
         }
         return false;
@@ -11858,7 +11858,7 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
         for (const zone of zones) {
-            const slot = (config[zone] || []).find(entry => entry.id === questionId);
+            const slot = (config[zone] || []).find(entry => entry.id === questionId); // SAFE: zone may be absent from prompt config — no slot match
             if (!slot) continue;
             const questionText = this.getQuestionTextForSlot(zone, slot);
             if (questionText.trim()) return questionText;

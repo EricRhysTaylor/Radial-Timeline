@@ -188,7 +188,7 @@ export async function getAllSceneData(
                 const rawFrontmatter = fmText ? (parseYaml(fmText) || {}) : {};
                 const mappings = getActiveFrontmatterMappings(plugin.settings);
                 frontmatter = normalizeFrontmatterKeys(rawFrontmatter, mappings);
-            } catch {
+            } catch { // SAFE: unparseable frontmatter YAML — null excludes the file from scene data instead of guessing at fields
                 return null;
             }
 
@@ -209,7 +209,7 @@ export async function getAllSceneData(
 
             body = stripObsidianComments(body);
             return { file, frontmatter, sceneNumber, body };
-        } catch {
+        } catch { // SAFE: unreadable scene file — null skips just this file; the remaining vault files still produce scene data
             return null;
         }
     });

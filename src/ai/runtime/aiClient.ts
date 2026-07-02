@@ -398,7 +398,7 @@ export class AIClient {
             if (!Number.isFinite(timestamp)) return null;
             return new Date(timestamp).toISOString();
         } catch {
-            return null;
+            return null; // SAFE: this only reads a display timestamp from cache JSON; unparseable cache means getLastModelUpdateAt reports "never updated" instead of failing the caller
         }
     }
 

@@ -87,6 +87,13 @@ const isQuotaExceededMessage = (normalized: string): boolean => {
     return false;
 };
 
+const RATE_LIMIT_MARKERS = ['rate limit', 'too many requests', 'overloaded'] as const;
+const AUTH_MARKERS = ['unauthorized', 'authentication', 'invalid api key', 'api key', 'permission'] as const;
+const TIMEOUT_MARKERS = ['timeout', 'timed out', 'deadline exceeded', 'etimedout', 'econnaborted'] as const;
+
+const includesAnyMarker = (normalized: string, markers: readonly string[]): boolean =>
+    markers.some(marker => normalized.includes(marker));
+
 export function classifyProviderError(err: unknown): ProviderErrorClassification {
     const envelope: ErrorEnvelope = typeof err === 'object' && err !== null
         ? err
@@ -104,17 +111,15 @@ export function classifyProviderError(err: unknown): ProviderErrorClassification
         return { aiStatus: 'rejected', aiReason: 'quota_exceeded' };
     }
 
-    if (status === 429 || normalized.includes('rate limit') || normalized.includes('too many requests') || normalized.includes('overloaded')) {
+    if (status === 429 || includesAnyMarker(normalized, RATE_LIMIT_MARKERS)) {
         return { aiStatus: 'rate_limit' };
     }
 
-    if (status === 401 || status === 403 || normalized.includes('unauthorized') || normalized.includes('authentication') ||
-        normalized.includes('invalid api key') || normalized.includes('api key') || normalized.includes('permission')) {
+    if (status === 401 || status === 403 || includesAnyMarker(normalized, AUTH_MARKERS)) {
         return { aiStatus: 'auth' };
     }
 
-    if (status === 408 || status === 504 || normalized.includes('timeout') || normalized.includes('timed out') ||
-        normalized.includes('deadline exceeded') || normalized.includes('etimedout') || normalized.includes('econnaborted')) {
+    if (status === 408 || status === 504 || includesAnyMarker(normalized, TIMEOUT_MARKERS)) {
         return { aiStatus: 'timeout' };
     }
 
