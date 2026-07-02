@@ -34,11 +34,11 @@ const FIELD_COPY: Record<CommunityShareFieldKey, { label: string; desc: string; 
     },
     'project.alias': {
         label: 'Project alias',
-        desc: 'A shorter public label when you do not want to use the local book title.'
+        desc: 'A shorter public label to use in place of the local book title.'
     },
     'project.description': {
         label: 'Project description',
-        desc: 'The public description from the active book profile. Never manuscript text.'
+        desc: 'The public description from the active book profile, written for readers.'
     },
     'project.status': {
         label: 'Project status',
@@ -50,7 +50,7 @@ const FIELD_COPY: Record<CommunityShareFieldKey, { label: string; desc: string; 
     },
     'project.custom_genre_label': {
         label: 'Custom genre note',
-        desc: 'Optional custom text for projects that do not fit the tree.'
+        desc: 'Optional custom text for projects beyond the standard genre list.'
     },
     'activity.report_period': {
         label: 'Report period',
@@ -62,15 +62,15 @@ const FIELD_COPY: Record<CommunityShareFieldKey, { label: string; desc: string; 
     },
     'activity.minutes_total': {
         label: 'Minutes this week',
-        desc: 'Rounded active writing time only. No exact timestamps.'
+        desc: 'Rounded active writing time for the report period.'
     },
     'activity.words_added': {
         label: 'Words this week',
-        desc: 'Aggregated writing-session words only. No scene paths or raw sessions.'
+        desc: 'Aggregated words from writing sessions in the report period.'
     },
     'activity.session_count': {
         label: 'Session count',
-        desc: 'A bucketed count for the report period. Raw session rows stay local.'
+        desc: 'A bucketed session count for the report period.'
     },
     'activity.mode_mix': {
         label: 'Mode mix',
@@ -98,12 +98,12 @@ const FIELD_COPY: Record<CommunityShareFieldKey, { label: string; desc: string; 
     },
     'structure.real_scene_titles': {
         label: 'Real scene titles',
-        desc: 'Sensitive structure field. Future only; excluded from launch.',
+        desc: 'Arriving in a future update.',
         future: true
     },
     'activity.exact_session_timestamps': {
         label: 'Exact session timestamps',
-        desc: 'Sensitive timing field. Future only; excluded from launch.',
+        desc: 'Arriving in a future update.',
         future: true
     }
 };
@@ -215,7 +215,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     });
     hero.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Publish a progress report for fellow authors only after you connect this vault, select fields, review the complete preview, and press publish.'
+        text: 'Connect this vault, choose the fields to share, review the complete preview, then publish a progress report for fellow authors.'
     });
 
     const heroFeatures = hero.createDiv({
@@ -224,9 +224,9 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     heroFeatures.createDiv({ text: 'Community highlights:', cls: 'ert-kicker' });
     const featuresList = heroFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'lock', text: 'Off by default. Nothing publishes from this vault until you opt in.' },
-        { icon: 'eye', text: 'Complete preview is the hard gate before any report can leave the plugin.' },
-        { icon: 'file-x', text: 'No manuscript text, scene paths, note paths, raw sessions, or exact public timestamps.' }
+        { icon: 'lock', text: 'Off by default. You choose exactly when and what to share.' },
+        { icon: 'eye', text: 'The complete preview shows you the full report before you publish.' },
+        { icon: 'file-check', text: 'Reports share aggregate progress only. Your manuscript, paths, and raw sessions stay in this vault.' }
     ].forEach(item => {
         const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         setIcon(li.createSpan({ cls: 'ert-feature-icon' }), item.icon);
@@ -240,19 +240,29 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         text: 'Paste the one-time connection code from the website to link this vault to your Community profile.'
     });
 
-    new Setting(activationCard)
+    const masterToggle = new Setting(activationCard)
         .setName('Community share')
-        .setDesc('Master opt-in for this vault. Turning this on still does not publish anything.')
+        .setDesc('Master opt-in for this vault. Log into the website community section to customize. ')
         .addToggle(toggle => toggle
             .setValue(settings.enabled)
             .onChange(value => save({ enabled: value })));
+    const profileLink = masterToggle.descEl.createEl('a', {
+        href: 'https://www.radialtimeline.com/community/me',
+        cls: ERT_CLASSES.BADGE_PILL_WIKI,
+        attr: {
+            'aria-label': 'Open your community profile',
+            'target': '_blank',
+            'rel': 'noopener'
+        }
+    });
+    setIcon(profileLink, 'external-link');
 
     const renderConnectionCodeSetting = (targetEl: HTMLElement): void => {
         let tokenValue = '';
         let connectButton: ButtonComponent | null = null;
         new Setting(targetEl)
             .setName('Connection code')
-            .setDesc('Connecting does not publish progress. It only lets this vault talk to your saved community profile.')
+            .setDesc('Links this vault to your saved community profile so publishing is ready when you are.')
             .addText(text => {
                 text.setPlaceholder('Connection code from radialtimeline.com');
                 text.onChange(value => {
@@ -314,7 +324,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     } else {
         new Setting(activationCard)
             .setName('Connection status')
-            .setDesc('No website connection yet.');
+            .setDesc('Ready to connect. Paste your connection code below to link this vault.');
         renderConnectionCodeSetting(activationCard);
     }
 
@@ -326,12 +336,12 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     sharingCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Share Controls' });
     sharingCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Launch scope is public manual reports only. Future audiences stay visible here so the boundary is clear, but they are disabled.'
+        text: 'Public manual reports are live today. Followers, trusted authors, and private links arrive in future updates.'
     });
 
     new Setting(sharingCard)
         .setName('Audience')
-        .setDesc('Public is the only launched website audience. Private draft keeps work local.')
+        .setDesc('Choose public to share on the website, or private draft to keep the report local while you refine it.')
         .addDropdown(dropdown => {
             dropdown.addOption('private_draft', AUDIENCE_LABELS.private_draft);
             dropdown.addOption('public', AUDIENCE_LABELS.public);
@@ -347,7 +357,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(sharingCard)
         .setName('Report tier')
-        .setDesc('Tier 0 shares nothing. Tiers 1-4 are launch-safe. Tier 5 is reserved for future richer reports.')
+        .setDesc('Pick how much detail to include, from tier 1 project shell to tier 4 full public report. Tier 5 richer reports arrive in a future update.')
         .addDropdown(dropdown => {
             [
                 [0, 'Tier 0 - Off'],
@@ -364,14 +374,14 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(sharingCard)
         .setName('Manual publish')
-        .setDesc('Launch reports publish only when you press publish after reviewing the complete preview.')
+        .setDesc('Review the complete preview, then press Publish report to share it.')
         .addToggle(toggle => toggle
             .setValue(settings.manualPublishEnabled)
             .onChange(value => save({ manualPublishEnabled: value })));
 
     new Setting(sharingCard)
         .setName('Scheduled publishing')
-        .setDesc('Future feature. Forced off in launch backend guardrails.')
+        .setDesc('Arriving in a future update: publish reports automatically on a schedule.')
         .addToggle(toggle => toggle
             .setValue(false)
             .setDisabled(true));
@@ -380,7 +390,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     fieldsCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Field Opt-ins' });
     fieldsCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Every field starts off. Toggle only the data you want in the public report.'
+        text: 'Toggle on each field you want to appear in the public report.'
     });
 
     COMMUNITY_SHARE_FIELD_KEYS.forEach(key => {
@@ -403,7 +413,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     previewCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Complete Preview' });
     previewCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'This is the exact category checklist for the website report. The next slice will generate the signed preview hash from this state.'
+        text: 'The exact category checklist for the website report. Generate the preview below to create its signed hash.'
     });
     const previewFrame = previewCard.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ${ERT_CLASSES.STACK} ert-previewFrame--flush` });
     previewFrame.createDiv({ cls: 'ert-previewFrame__title', text: activeBook?.publicLabel || activeBook?.title || 'No active project selected' });
@@ -411,12 +421,12 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     previewFrame.createDiv({ text: `Project stage: ${activeBook?.projectStage || 'Not set'}` });
     previewFrame.createDiv({ text: `Genre: ${activeBook?.genre || 'Not set'}` });
     previewFrame.createDiv({ text: `Public description: ${activeBook?.publicDescription || 'Not set'}` });
-    previewFrame.createDiv({ text: selectedFields.length ? `Included fields: ${selectedFields.join(', ')}` : 'Included fields: none selected' });
-    previewFrame.createDiv({ text: 'Always excluded: manuscript text, scene/note/vault paths, raw sessions, exact public timestamps, secrets.' });
+    previewFrame.createDiv({ text: selectedFields.length ? `Included fields: ${selectedFields.join(', ')}` : 'Included fields: toggle fields above to include them' });
+    previewFrame.createDiv({ text: 'Stays in this vault: manuscript text, scene/note/vault paths, raw sessions, exact timestamps, secrets.' });
     previewFrame.createDiv({
         text: hasReadyPreview(settings)
             ? `Preview ready: ${settings.preview.generatedAt ?? 'time not recorded'}`
-            : 'Preview not generated yet.'
+            : 'Generate the preview below when you are ready.'
     });
     if (settings.preview.summary) {
         previewFrame.createDiv({ text: settings.preview.summary });
@@ -433,7 +443,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
         && selectedFields.length > 0;
     new Setting(previewCard)
         .setName('Generate preview')
-        .setDesc(canGeneratePreview ? 'Builds the hash-checked preview from public fields only.' : 'Requires an active connection, public audience, launch tier, and at least one selected field.')
+        .setDesc(canGeneratePreview ? 'Builds the hash-checked preview from your selected public fields.' : 'Next steps: connect this vault, set the audience to Public, pick a launch tier, and select at least one field.')
         .addButton(button => button
             .setButtonText('Generate complete preview')
             .setDisabled(!canGeneratePreview)
@@ -471,7 +481,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     actionCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Publish and Safety' });
     actionCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Publish stays locked until the website connection exists, manual publishing is enabled, and the Complete Preview hash is ready.'
+        text: 'Connect this vault, enable manual publish, and generate the Complete Preview to make publishing available.'
     });
     const canPublish = settings.enabled
         && isConnected
@@ -484,7 +494,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(actionCard)
         .setName('Manual publish')
-        .setDesc(canPublish ? 'Ready to publish.' : 'Locked by opt-in, connection, public audience, selected fields, and Complete Preview.')
+        .setDesc(canPublish ? 'Ready to publish.' : 'Next steps: turn on Community share, connect, choose the Public audience, select fields, and generate the Complete Preview.')
         .addButton(button => button
             .setButtonText('Publish report')
             .setCta()
@@ -515,12 +525,12 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(actionCard)
         .setName('Pause public report')
-        .setDesc('Temporarily hides the public report without deleting local settings.')
+        .setDesc('Temporarily hides the public report. Your settings stay in place so you can resume anytime.')
         .addButton(button => button.setButtonText('Pause').setDisabled(true));
 
     new Setting(actionCard)
         .setName('Revoke public report')
-        .setDesc('Removes the current public report while keeping your connection.')
+        .setDesc('Takes down the current public report. Your connection stays active so you can publish again later.')
         .addButton(button => button
             .setButtonText('Revoke')
             .setDisabled(!isConnected || !hasPublishedReport)
@@ -545,7 +555,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(actionCard)
         .setName('Delete shared report data')
-        .setDesc('Deletes website payload JSON for the report. Metadata/tombstones remain for audit proof.')
+        .setDesc('Deletes the report payload from the website. Audit metadata remains for your records.')
         .addButton(button => button
             .setButtonText('Delete shared data')
             .setDisabled(!isConnected || !hasPublishedReport)
@@ -571,12 +581,12 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
 
     new Setting(actionCard)
         .setName('Disconnect plugin')
-        .setDesc('Disconnects this vault from the website. Local writing data stays local.')
+        .setDesc('Unlinks this vault from the website. Your writing data stays in this vault, and you can reconnect anytime.')
         .addButton(button => button
             .setButtonText('Disconnect')
             .setDisabled(!isConnected)
             .onClick(async () => {
-                if (!window.confirm('Disconnect this vault from Community Share? This does not delete local writing data.')) return;
+                if (!window.confirm('Disconnect this vault from Community Share? Your writing data stays in this vault.')) return;
                 button.setDisabled(true);
                 button.setButtonText('Disconnecting...');
                 try {
