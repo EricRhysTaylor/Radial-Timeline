@@ -13,7 +13,7 @@ describe('Community Share preview builder', () => {
             connectionId: 'connection-1',
             profileId: 'profile-1',
             projectId: 'project-1',
-            secretId: 'rt.community-share.connection.connection-1'
+            secretId: 'rt.community-share.connection-secret'
         };
         settings.fieldPolicy['project.title'] = true;
         settings.fieldPolicy['project.genre'] = true;

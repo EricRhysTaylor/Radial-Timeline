@@ -7,7 +7,7 @@ import type { CommunitySharePublishHistoryEntry, CommunityShareSettings } from '
 
 const FUNCTIONS_BASE_URL = 'https://gjffqdfjcjdmqxuqlzsj.supabase.co/functions/v1';
 const INSTALLATION_SECRET_ID = 'rt.community-share.installation-id';
-const CONNECTION_SECRET_PREFIX = 'rt.community-share.connection';
+const CONNECTION_SECRET_ID = 'rt.community-share.connection-secret';
 
 interface ActivationConfirmSuccess {
     connection_id: string;
@@ -106,8 +106,8 @@ function isReportActionSuccess(value: unknown): value is ReportActionSuccess {
     return body?.ok === true && typeof body.status === 'string';
 }
 
-function connectionSecretId(connectionId: string): string {
-    return `${CONNECTION_SECRET_PREFIX}.${connectionId}`;
+function connectionSecretId(): string {
+    return CONNECTION_SECRET_ID;
 }
 
 function latestPublishId(settings: CommunityShareSettings): string | null {
@@ -150,13 +150,31 @@ async function getOrCreateInstallationId(plugin: RadialTimelinePlugin): Promise<
     return next;
 }
 
+async function cleanupUnstoredConnection(connectionId: string, currentSecret: string): Promise<void> {
+    try {
+        await requestUrl({
+            url: `${FUNCTIONS_BASE_URL}/community-share-disconnect`,
+            method: 'POST',
+            contentType: 'application/json',
+            body: JSON.stringify({
+                connection_id: connectionId,
+                current_secret: currentSecret,
+                mode: 'disconnect_only'
+            }),
+            throw: false
+        });
+    } catch {
+        // Best effort only. The user can generate a fresh website connection code.
+    }
+}
+
 export async function confirmCommunityShareActivation(
     plugin: RadialTimelinePlugin,
     activationToken: string
 ): Promise<ActivationConfirmSuccess> {
     const token = activationToken.trim();
     if (token.length < 16) {
-        throw new CommunityShareError('invalid_activation_token', 'Paste the full activation token from the website.');
+        throw new CommunityShareError('invalid_activation_token', 'Paste the full connection code from the website.');
     }
     if (!isSecretStorageAvailable(plugin.app)) {
         throw new CommunityShareError('secret_storage_unavailable', 'Private secret storage is unavailable, so Community Share cannot connect safely.');
@@ -180,17 +198,22 @@ export async function confirmCommunityShareActivation(
         const body = parsed as ActivationConfirmError;
         throw new CommunityShareError(
             body.error?.code || 'activation_failed',
-            body.error?.message || 'Community activation failed. Generate a new token and try again.'
+            body.error?.message || 'Community connection failed. Generate a new code and try again.'
         );
     }
     if (!isActivationConfirmSuccess(parsed)) {
-        throw new CommunityShareError('invalid_response', 'Community activation returned an unexpected response.');
+        throw new CommunityShareError('invalid_response', 'Community connection returned an unexpected response.');
     }
 
-    const secretId = connectionSecretId(parsed.connection_id);
+    const secretId = connectionSecretId();
     const storedSecret = await setSecret(plugin.app, secretId, parsed.connection_secret);
-    if (!storedSecret) {
-        throw new CommunityShareError('secret_storage_failed', 'The connection succeeded, but the plugin could not store the private connection secret.');
+    const verifiedSecret = storedSecret ? await getSecret(plugin.app, secretId) : null;
+    if (verifiedSecret !== parsed.connection_secret) {
+        await cleanupUnstoredConnection(parsed.connection_id, parsed.connection_secret);
+        throw new CommunityShareError(
+            'secret_storage_failed',
+            'The website connection was confirmed, but RT could not save it locally. Generate a new connection code and try again.'
+        );
     }
 
     const current = normalizeCommunityShareSettings(plugin.settings.communityShare);

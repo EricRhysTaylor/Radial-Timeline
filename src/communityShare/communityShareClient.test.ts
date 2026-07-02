@@ -14,7 +14,7 @@ import {
     revokeCommunityShareReport
 } from './communityShareClient';
 
-function createPluginHarness() {
+function createPluginHarness(options: { failConnectionSecretStorage?: boolean } = {}) {
     const secrets = new Map<string, string>();
     const plugin = {
         app: {
@@ -23,6 +23,9 @@ function createPluginHarness() {
                 setSecret: (id: string, value: string) => {
                     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
                         throw new Error(`Invalid secret id: ${id}`);
+                    }
+                    if (options.failConnectionSecretStorage && id === 'rt-community-share-connection-secret') {
+                        throw new Error('Secret storage unavailable for connection');
                     }
                     secrets.set(id, value);
                 },
@@ -95,13 +98,50 @@ describe('Community Share activation client', () => {
         expect(JSON.stringify(body)).not.toContain('rtpi_');
 
         expect(secrets.get('rt-community-share-installation-id')).toMatch(/^rtpi_/);
-        expect(secrets.get('rt-community-share-connection-conn-1')).toBe('rtcs_returned-secret');
+        expect(secrets.get('rt-community-share-connection-secret')).toBe('rtcs_returned-secret');
         expect(plugin.settings.communityShare.connection.status).toBe('connected');
-        expect(plugin.settings.communityShare.connection.secretId).toBe('rt.community-share.connection.conn-1');
+        expect(plugin.settings.communityShare.connection.secretId).toBe('rt.community-share.connection-secret');
         expect(plugin.settings.communityShare.connection.profileId).toBe('profile-1');
         expect(plugin.settings.communityShare.connection.projectId).toBe('project-1');
         expect(plugin.settings.communityShare.preview.status).toBe('stale');
         expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it('cleans up the server connection if the returned secret cannot be stored locally', async () => {
+        const { plugin, secrets } = createPluginHarness({ failConnectionSecretStorage: true });
+        vi.clearAllMocks();
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl')
+            .mockResolvedValueOnce({
+                status: 201,
+                text: JSON.stringify({
+                    connection_id: 'conn-1',
+                    connection_secret: 'rtcs_returned-secret',
+                    secret_expires_at: null,
+                    profile_id: 'profile-1',
+                    project_id: 'project-1'
+                })
+            } as never)
+            .mockResolvedValueOnce({
+                status: 200,
+                text: JSON.stringify({ ok: true })
+            } as never);
+
+        await expect(confirmCommunityShareActivation(plugin as never, 'activation-token-from-website'))
+            .rejects
+            .toMatchObject({ code: 'secret_storage_failed' });
+
+        expect(secrets.get('rt-community-share-installation-id')).toMatch(/^rtpi_/);
+        expect(secrets.has('rt-community-share-connection-secret')).toBe(false);
+        expect(plugin.settings.communityShare.connection.status).toBe('disconnected');
+        expect(plugin.saveSettings).not.toHaveBeenCalled();
+
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
+        const cleanupRequest = mockedRequestUrl.mock.calls[1]?.[0] as { body: string; url: string };
+        const cleanupBody = JSON.parse(cleanupRequest.body) as Record<string, unknown>;
+        expect(cleanupRequest.url).toContain('/community-share-disconnect');
+        expect(cleanupBody.connection_id).toBe('conn-1');
+        expect(cleanupBody.current_secret).toBe('rtcs_returned-secret');
+        expect(cleanupBody.mode).toBe('disconnect_only');
     });
 
     it('publishes only after a ready preview and records the returned public slug', async () => {
@@ -116,11 +156,11 @@ describe('Community Share activation client', () => {
             connectionId: 'conn-1',
             profileId: 'profile-1',
             projectId: 'project-1',
-            secretId: 'rt.community-share.connection.conn-1'
+            secretId: 'rt.community-share.connection-secret'
         };
         settings.fieldPolicy['project.title'] = true;
         settings.fieldPolicy['activity.words_added'] = true;
-        secrets.set('rt-community-share-connection-conn-1', 'rtcs_current-secret');
+        secrets.set('rt-community-share-connection-secret', 'rtcs_current-secret');
 
         const preview = await buildCommunitySharePreview(plugin as never);
         settings.preview = {
@@ -170,7 +210,7 @@ describe('Community Share activation client', () => {
             connectionId: 'conn-1',
             profileId: 'profile-1',
             projectId: 'project-1',
-            secretId: 'rt.community-share.connection.conn-1'
+            secretId: 'rt.community-share.connection-secret'
         };
         settings.publishHistory.push({
             id: 'version-1',
@@ -181,7 +221,7 @@ describe('Community Share activation client', () => {
             versionId: 'version-1',
             publicSlug: 'csr_public'
         });
-        secrets.set('rt-community-share-connection-conn-1', 'rtcs_current-secret');
+        secrets.set('rt-community-share-connection-secret', 'rtcs_current-secret');
         const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl').mockResolvedValue({
             status: 200,
             text: JSON.stringify({
@@ -211,9 +251,9 @@ describe('Community Share activation client', () => {
             connectionId: 'conn-1',
             profileId: 'profile-1',
             projectId: 'project-1',
-            secretId: 'rt.community-share.connection.conn-1'
+            secretId: 'rt.community-share.connection-secret'
         };
-        secrets.set('rt-community-share-connection-conn-1', 'rtcs_current-secret');
+        secrets.set('rt-community-share-connection-secret', 'rtcs_current-secret');
         const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl').mockResolvedValue({
             status: 200,
             text: JSON.stringify({
@@ -232,7 +272,7 @@ describe('Community Share activation client', () => {
         expect(body.connection_id).toBe('conn-1');
         expect(body.current_secret).toBe('rtcs_current-secret');
         expect(body.mode).toBe('disconnect_only');
-        expect(secrets.has('rt-community-share-connection-conn-1')).toBe(false);
+        expect(secrets.has('rt-community-share-connection-secret')).toBe(false);
         expect(plugin.settings.communityShare.enabled).toBe(false);
         expect(plugin.settings.communityShare.connection.status).toBe('disconnected');
         expect(plugin.settings.communityShare.connection.secretId).toBeUndefined();

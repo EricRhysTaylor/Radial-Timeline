@@ -225,10 +225,10 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     });
 
     const activationCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
-    activationCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Activation and Connection' });
+    activationCard.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Connect Radial Timeline' });
     activationCard.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'The website creates a one-time activation token. The plugin will confirm it, store only a local secret reference, and map this vault to one public project.'
+        text: 'Paste the one-time connection code from the website to link this vault to your Community profile.'
     });
 
     new Setting(activationCard)
@@ -245,10 +245,10 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
     let tokenValue = '';
     let connectButton: import('obsidian').ButtonComponent | null = null;
     new Setting(activationCard)
-        .setName('Activation token')
-        .setDesc('Paste the one-time token created on the website. Confirmation publishes no progress data.')
+        .setName('Connection code')
+        .setDesc('Connecting does not publish progress. It only lets this vault talk to your saved community profile.')
         .addText(text => {
-            text.setPlaceholder('One-time token from radialtimeline.com');
+            text.setPlaceholder('Connection code from radialtimeline.com');
             text.onChange(value => {
                 tokenValue = value.trim();
                 connectButton?.setDisabled(tokenValue.length < 16);
@@ -270,7 +270,7 @@ export function renderCommunityShareSection({ plugin, containerEl }: CommunitySh
                     } catch (error) {
                         const message = error instanceof CommunityShareError
                             ? error.message
-                            : 'Community activation failed. Generate a new token and try again.';
+                            : 'Community connection failed. Generate a new code and try again.';
                         const current = normalizeCommunityShareSettings(plugin.settings.communityShare);
                         plugin.settings.communityShare = normalizeCommunityShareSettings({
                             ...current,

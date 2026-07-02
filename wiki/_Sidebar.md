@@ -1,6 +1,7 @@
 *   [Home](Home)
 *   [Getting Started](Getting-Started)
 *   [How to](How-to)
+*   [FAQ](FAQ)
 *   [Settings](Settings)
     *   [Core](Settings-Core)
     *   [Social](Author-Progress-Report)
@@ -45,5 +46,4 @@
     *   [Scene Properties (Core + Advanced)](YAML-Frontmatter)
     *   [Beat Audit + Heal](Beat-Audit-Heal)
 *   **Support & Legal**
-    *   [FAQ](FAQ)
     *   [Legal](Legal)
